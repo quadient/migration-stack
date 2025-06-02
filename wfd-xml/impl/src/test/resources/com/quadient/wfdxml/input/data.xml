@@ -1,0 +1,25 @@
+<RootNode>
+    <XmlElement1>
+        <Data1>Data1 value</Data1>
+    </XmlElement1>
+    <XmlElement2>
+        <Data2>5p6</Data2>
+    </XmlElement2>
+    <Persons>
+        <Person>
+            <Name>Thomas</Name>
+        </Person>
+        <Person>
+            <Name>Jenda</Name>
+        </Person>
+        <Person>
+            <Name>Honza</Name>
+        </Person>
+        <Person>
+            <Name>David</Name>
+        </Person>
+        <Person>
+            <Name>Boris</Name>
+        </Person>
+    </Persons>
+</RootNode>

@@ -1,0 +1,42 @@
+<Layout>
+    <Flow>
+        <Id>SR_1</Id>
+        <Name>ImageFlow</Name>
+        <ParentId>Def.FlowGroup</ParentId>
+        <Forward/>
+    </Flow>
+    <Image>
+        <Id>SR_2</Id>
+        <ParentId>Def.ImagesGroup</ParentId>
+        <Forward/>
+    </Image>
+    <Flow>
+        <Id>SR_1</Id>
+        <Type>Simple</Type>
+        <FlowContent Width="0.2">
+            <P>
+                <T xml:space="preserve"><O Id="SR_2"/></T>
+            </P>
+        </FlowContent>
+        <SectionFlow>False</SectionFlow>
+    </Flow>
+    <Image>
+        <Id>SR_2</Id>
+        <ImageType>Simple</ImageType>
+        <ImageLocation>VCSLocation,icm://testImage.jpg</ImageLocation>
+        <ImageDPIX>0.0</ImageDPIX>
+        <ImageDPIY>0.0</ImageDPIY>
+        <UseResizeWidth>False</UseResizeWidth>
+        <ResizeImageWidth>0.0</ResizeImageWidth>
+        <UseResizeHeight>False</UseResizeHeight>
+        <ResizeImageHeight>0.0</ResizeImageHeight>
+        <MakeTransparent>False</MakeTransparent>
+        <TransparencyR X="255" Y="255"/>
+        <TransparencyG X="255" Y="255"/>
+        <TransparencyB X="255" Y="255"/>
+        <UseDifferentImageSizeForHtml>False</UseDifferentImageSizeForHtml>
+    </Image>
+    <Data>
+        <Id>Def.Data</Id>
+    </Data>
+</Layout>

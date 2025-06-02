@@ -1,0 +1,35 @@
+<Layout>
+    <Flow>
+        <Id>SR_1</Id>
+        <Name>flowWithGeneratedId1</Name>
+        <ParentId>Def.FlowGroup</ParentId>
+        <Forward/>
+    </Flow>
+    <Flow>
+        <Id>SR_2</Id>
+        <Name>flowWithGeneratedId2</Name>
+        <ParentId>Def.FlowGroup</ParentId>
+        <Forward/>
+    </Flow>
+    <Flow>
+        <Id>SR_1</Id>
+        <Type>Simple</Type>
+        <FlowContent Width="0.2"/>
+        <SectionFlow>False</SectionFlow>
+    </Flow>
+    <Flow>
+        <Id>Def.MainFlow</Id>
+        <Type>Simple</Type>
+        <FlowContent Width="0.2"/>
+        <SectionFlow>False</SectionFlow>
+    </Flow>
+    <Flow>
+        <Id>SR_2</Id>
+        <Type>Simple</Type>
+        <FlowContent Width="0.2"/>
+        <SectionFlow>False</SectionFlow>
+    </Flow>
+    <Data>
+        <Id>Def.Data</Id>
+    </Data>
+</Layout>

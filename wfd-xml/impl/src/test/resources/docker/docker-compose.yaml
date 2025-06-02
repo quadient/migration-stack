@@ -1,0 +1,26 @@
+name: designer
+services:
+  icm:
+    image: ${ICM_IMAGE_ENV}
+    environment:
+      CX_LICENSE: ${CX_LICENSE_ENV}
+      CX_LIC_SERVER: ${CX_LIC_SERVER_ENV}
+      ICM_PORT: 30353
+    networks:
+      - "designer-network"
+  ips:
+    image: ${IPS_IMAGE_ENV}
+    restart: on-failure
+    environment:
+      CX_LICENSE: ${CX_LICENSE_ENV}
+      CX_LIC_SERVER: ${CX_LIC_SERVER_ENV}
+      IPS_PORT: 30354
+      ADD_PARAMS: "-icmaddress icm:30353 -icmuser admin -icmpassword pass -threadcount 1"
+    depends_on:
+      - icm
+    networks:
+      - "designer-network"
+networks:
+  designer-network:
+    driver: bridge
+    name: designer_network

@@ -1,0 +1,11 @@
+/build
+/.gradle
+/.idea
+/api/out
+/api/build
+/impl/out
+/impl/build
+/build-logic/build
+/build-logic/.gradle
+/*.iml
+/lib/
