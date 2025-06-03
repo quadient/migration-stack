@@ -1,0 +1,18 @@
+project.dependencies {
+    implementation "com.quadient:migration:0.0.3-SNAPSHOT"
+
+    implementation "org.apache.groovy:groovy:4.0.14"
+    implementation "org.apache.groovy:groovy-xml:4.0.14"
+    implementation "org.apache.groovy:groovy-toml:4.0.14"
+    implementation "org.apache.groovy:groovy-sql:4.0.14"
+    implementation "org.apache.groovy:groovy-json:4.0.14"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.18.3"
+
+    testImplementation platform("org.junit:junit-bom:5.10.0")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation "org.junit.jupiter:junit-jupiter-api"
+    testImplementation "org.junit.jupiter:junit-jupiter-engine"
+    testImplementation "org.postgresql:postgresql:42.2.27"
+
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}

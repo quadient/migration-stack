@@ -1,0 +1,39 @@
+<configuration>
+    <context name="SCRIPT_NAME" value="${script.name:-unknown-script}"/>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>time=%d{yyyy-MM-dd'T'HH:mm:ss.SSSX} level=%level{length=1} thread=%t logger=%c{1} line=%file:%line msg=%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/script.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>logs/script.%i.log</fileNamePattern>
+            <minIndex>1</minIndex>
+            <maxIndex>5</maxIndex> <!-- Keeps last 5 log files -->
+        </rollingPolicy>
+
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>10MB</maxFileSize>
+        </triggeringPolicy>
+
+        <encoder>
+            <pattern>time=%d{yyyy-MM-dd'T'HH:mm:ss.SSSX} level=%level{length=1} thread=%t logger=%c{1} line=%file:%line msg=%msg%n</pattern>
+        </encoder>
+    </appender>
+
+<!--    Log Exposed only to file but not to console-->
+    <logger name="Exposed" level="INFO" additivity="false">
+        <appender-ref ref="TRACE"/>
+    </logger>
+    <logger name="Exposed" level="DEBUG" additivity="false">
+        <appender-ref ref="FILE"/>
+    </logger>
+
+    <root level="TRACE">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE" />
+    </root>
+</configuration>

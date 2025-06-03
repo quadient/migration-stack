@@ -1,0 +1,8 @@
+name = "<project name>"
+baseTemplatePath = "icm://Interactive/StandardPackage/BaseTemplates/LetterheadBaseTemplate.wfd"
+inputDataPath = "<path to input data>"
+interactiveTenant = "StandardPackage"
+#defaultTargetFolder = ""
+inspireOutput = "Designer" # "Evolve", "Interactive", "Designer"
+
+[context]
