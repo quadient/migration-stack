@@ -1,5 +1,5 @@
 project.dependencies {
-    implementation "com.quadient:migration:0.0.3-SNAPSHOT"
+    implementation "com.quadient:migration-library"
 
     implementation "org.apache.groovy:groovy:4.0.14"
     implementation "org.apache.groovy:groovy-xml:4.0.14"

@@ -35,8 +35,8 @@ repositories {
 }
 
 dependencies {
-    implementation("com.quadient.wfdxml:wfd-xml-api:1.3-SNAPSHOT")
-    implementation("com.quadient.wfdxml:wfd-xml-impl:1.3-SNAPSHOT")
+    implementation("com.quadient.wfdxml:wfd-xml-api")
+    implementation("com.quadient.wfdxml:wfd-xml-impl")
 
     implementation("org.postgresql:postgresql:$postgresVersion")
 
