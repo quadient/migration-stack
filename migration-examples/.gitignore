@@ -40,6 +40,9 @@ bin/
 ### Mac OS ###
 .DS_Store
 
+logs/
+mapping/
+report/
 deploy/
 
 src/main/resources/active-project-config
