@@ -17,6 +17,6 @@ configurations.all {
 }
 
 apply {
-    from("/gradle/dependencies.gradle")
-    from("/gradle/tasks.gradle.kts")
+    from(file("gradle/dependencies.gradle"))
+    from(file("gradle/tasks.gradle.kts"))
 }
