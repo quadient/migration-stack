@@ -1,0 +1,19 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>time=%d{yyyy-MM-dd'T'HH:mm:ss.SSSX} level=%level{length=1} thread=%t logger=%c{1} line=%file:%line msg=%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>logs/app.log</file>
+        <encoder>
+            <pattern>time=%d{yyyy-MM-dd'T'HH:mm:ss.SSSX} level=%level{length=1} thread=%t logger=%c{1} msg=%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="trace">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE" />
+    </root>
+</configuration>
