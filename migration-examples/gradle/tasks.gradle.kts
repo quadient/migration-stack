@@ -70,6 +70,9 @@ val migrationTasks = listOf<MigTask>(
         "exampleImport", "migration example", "Import example", "example.Import"
     ),
     MigTask(
+        "acknowledgementLetterFromSource", "migration example", "acknowledgementLetterFromSource", "example.AcknowledgementLetterFromSource"
+    ),
+    MigTask(
         "destroy", "migration common", "Destroy database and storage", "common.Destroy", System.`in`
     ),
 )
