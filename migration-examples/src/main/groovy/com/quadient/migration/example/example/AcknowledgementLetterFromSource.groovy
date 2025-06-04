@@ -30,6 +30,13 @@ def headerImage = new ImageBuilder("header_crop")
     .imageType(ImageType.Png)
     .sourcePath("header_crop.png")
     .build()
+
+def additionalResources = ["b.cooke.png", "b.d.fleck.png", "d.parsley.png", "e.leroy.png", "Claims.csv", "Policies.csv"]
+for (resource in additionalResources) {
+    def resourceFile = this.class.getClassLoader().getResource("exampleResources/acknowledgementLetterFromSource/${resource}")
+    migration.icmClient.upload("icm://$resource", resourceFile.bytes)
+}
+
 migration.imageRepository.upsert(headerImage)
 
 def signatureImageFile = this.class.getClassLoader().getResource('exampleResources/acknowledgementLetterFromSource/a.madsen.png')
