@@ -21,7 +21,6 @@ tasks {
             attributes(
                 mapOf(
                     "Implementation-Title" to project.name,
-                    "VCS-Revision" to getGitRevision(),
                     "Build-Date" to getCurrentTime()
                 )
             )
@@ -32,15 +31,6 @@ tasks {
             (this as CoreJavadocOptions).addBooleanOption("Xdoclint:none", true)
         }
     }
-}
-
-fun getGitRevision(): String {
-    val stdout = ByteArrayOutputStream()
-    exec {
-        commandLine("git", "rev-parse", "HEAD")
-        standardOutput = stdout
-    }
-    return stdout.toString().trim()
 }
 
 fun getCurrentTime(): String =
