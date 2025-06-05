@@ -118,6 +118,10 @@ class IpsClient(private val host: String, private val port: Int, private val tim
     }
 
     fun waitForJob(
+        jobIdValue: Int, timeoutSeconds: Int = this.timeout.inWholeSeconds.toInt()
+    ) = waitForJob(JobId(jobIdValue), timeoutSeconds)
+
+    fun waitForJob(
         jobId: JobId,
         timeoutSeconds: Int = this.timeout.inWholeSeconds.toInt()
     ): IpsResult<Unit, Unit, Unit, WaitForJobResult> {
