@@ -2,6 +2,7 @@ package com.quadient.migration.data
 
 import com.quadient.migration.persistence.migrationmodel.DisplayRuleEntityRef
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
+import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefOrRefEntity
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefinitionEntity
@@ -20,12 +21,13 @@ sealed interface RefModel {
 
 sealed interface TextContentModel {
     companion object {
-        fun fromDb(entity: TextContentEntity) = when (entity) {
+        fun fromDb(entity: TextContentEntity): TextContentModel = when (entity) {
             is StringEntity -> StringModel.fromDb(entity)
             is VariableEntityRef -> VariableModelRef.fromDb(entity)
             is TableEntity -> TableModel.fromDb(entity)
             is DocumentObjectEntityRef -> DocumentObjectModelRef.fromDb(entity)
             is ImageEntityRef -> ImageModelRef.fromDb(entity)
+            is FirstMatchEntity -> FirstMatchModel.fromDb(entity)
         }
     }
 }

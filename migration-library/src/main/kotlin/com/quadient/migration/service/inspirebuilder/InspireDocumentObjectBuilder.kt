@@ -5,6 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
+import com.quadient.migration.data.FirstMatchModel
 import com.quadient.migration.data.FlowAreaModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
@@ -60,12 +61,9 @@ import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.Table
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.data.WorkFlowTreeDefinition
-import com.quadient.wfdxml.internal.layoutnodes.FlowImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
-import com.quadient.wfdxml.internal.layoutnodes.data.VariableImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeOptionality
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.SUB_TREE
-import com.quadient.wfdxml.internal.module.layout.LayoutImpl
 import kotlinx.datetime.Clock
 import org.slf4j.LoggerFactory
 import com.quadient.migration.shared.DataType as DataTypeModel
@@ -126,8 +124,7 @@ abstract class InspireDocumentObjectBuilder(
         buildTextStyles(
             layout, textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel })
         buildParagraphStyles(
-            layout,
-            paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
+            layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
 
         logger.debug("Successfully built style definition.")
         return builder.build()
@@ -154,6 +151,7 @@ abstract class InspireDocumentObjectBuilder(
 
                 is DocumentObjectModelRef -> flowModels.add(FlowModel.DocumentObject(contentPart))
                 is FlowAreaModel -> mutableContent.addAll(idx + 1, contentPart.content)
+                is FirstMatchModel -> flowModels.add(FlowModel.FirstMatch(contentPart))
             }
             idx++
         }
@@ -172,6 +170,8 @@ abstract class InspireDocumentObjectBuilder(
                         buildCompositeFlow(layout, variableStructure, it.parts, name)
                     }
                 }
+
+                is FlowModel.FirstMatch -> buildFirstMatch(layout, variableStructure, it.model)
             }
         }
     }
@@ -179,6 +179,7 @@ abstract class InspireDocumentObjectBuilder(
     sealed interface FlowModel {
         data class Composite(val parts: List<DocumentContentModel>) : FlowModel
         data class DocumentObject(val ref: DocumentObjectModelRef) : FlowModel
+        data class FirstMatch(val model: FirstMatchModel) : FlowModel
     }
 
     protected fun buildDocumentContentAsSingleFlow(
@@ -211,9 +212,9 @@ abstract class InspireDocumentObjectBuilder(
             customFields = CustomFieldMap()
         )
 
-        val normalizedVariablePaths = variableStructureModel.structure
-            .map { (_, variablePath) -> removeDataFromVariablePath(variablePath.value) }
-            .filter { it.isNotBlank() }
+        val normalizedVariablePaths =
+            variableStructureModel.structure.map { (_, variablePath) -> removeDataFromVariablePath(variablePath.value) }
+                .filter { it.isNotBlank() }
 
         val variableTree = buildVariableTree(normalizedVariablePaths)
 
@@ -476,11 +477,12 @@ abstract class InspireDocumentObjectBuilder(
                     is StringModel -> text.appendText(it.value)
                     is VariableModelRef -> text.appendVariable(it, layout, variableStructure)
                     is TableModel -> text.appendTable(buildTable(layout, variableStructure, it))
-                    is DocumentObjectModelRef -> buildDocumentObjectRef(layout, variableStructure, it)?.also {
-                        text.appendFlow(it)
+                    is DocumentObjectModelRef -> buildDocumentObjectRef(layout, variableStructure, it)?.also { flow ->
+                        text.appendFlow(flow)
                     }
 
                     is ImageModelRef -> buildAndAppendImage(layout, text, it)
+                    is FirstMatchModel -> text.appendFlow(buildFirstMatch(layout, variableStructure, it))
                 }
             }
         }
@@ -591,6 +593,31 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         return table
+    }
+
+    private fun buildFirstMatch(
+        layout: Layout, variableStructure: VariableStructureModel, model: FirstMatchModel
+    ): Flow {
+        val firstMatchFlow = layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION)
+
+        model.cases.forEach { case ->
+            val displayRule = displayRuleRepository.findModelOrFail(case.displayRuleRef.id)
+            if (displayRule.definition == null) {
+                error("Display rule '${case.displayRuleRef.id}' definition is null.")
+            }
+
+            val successFlow = buildDocumentContentAsSingleFlow(layout, variableStructure, case.content)
+
+            firstMatchFlow.addLineForSelectByInlineCondition(
+                displayRule.definition.toScript(layout, variableStructure), successFlow
+            )
+        }
+
+        if (model.default.isNotEmpty()) {
+            firstMatchFlow.setDefaultFlow(buildDocumentContentAsSingleFlow(layout, variableStructure, model.default))
+        }
+
+        return firstMatchFlow
     }
 
     protected fun DisplayRuleDefinition.toScript(layout: Layout, variableStructure: VariableStructureModel): String {

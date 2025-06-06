@@ -45,6 +45,7 @@ data class ParagraphModel(
                     is TableModel -> it.collectRefs()
                     is DocumentObjectModelRef -> listOf(it)
                     is ImageModelRef -> listOf(it)
+                    is FirstMatchModel -> it.collectRefs()
                 }
             }.flatten().toMutableList()
 

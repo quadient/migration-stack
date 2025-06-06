@@ -1,6 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.data.DocumentObjectModelRef
+import com.quadient.migration.data.FirstMatchModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphModel
 import com.quadient.migration.data.StringModel
@@ -22,15 +23,16 @@ data class Paragraph(
                 Text(
                     styleRef = it.styleRef?.let { TextStyleRef.fromModel(it) },
                     displayRuleRef = it.displayRuleRef?.let { DisplayRuleRef.fromModel(it) },
-                    content = it.content.map {
-                    when (it) {
-                        is StringModel -> StringValue.fromModel(it)
-                        is VariableModelRef -> VariableRef.fromModel(it)
-                        is DocumentObjectModelRef -> DocumentObjectRef.fromModel(it)
-                        is TableModel -> Table.fromModel(it)
-                        is ImageModelRef -> ImageRef.fromModel(it)
-                    }
-                })
+                    content = it.content.map { textContent ->
+                        when (textContent) {
+                            is StringModel -> StringValue.fromModel(textContent)
+                            is VariableModelRef -> VariableRef.fromModel(textContent)
+                            is DocumentObjectModelRef -> DocumentObjectRef.fromModel(textContent)
+                            is TableModel -> Table.fromModel(textContent)
+                            is ImageModelRef -> ImageRef.fromModel(textContent)
+                            is FirstMatchModel -> FirstMatch.fromModel(textContent)
+                        }
+                    })
             },
         )
     }
@@ -64,14 +66,15 @@ data class Paragraph(
     fun toDb(): ParagraphEntity = ParagraphEntity(
         styleRef = styleRef?.toDb(),
         displayRuleRef = displayRuleRef?.toDb(),
-        content = content.map {
-            TextEntity(it.content.map {
-                when (it) {
-                    is Table -> it.toDb()
-                    is DocumentObjectRef -> it.toDb()
-                    is ImageRef -> it.toDb()
-                    is StringValue -> it.toDb()
-                    is VariableRef -> it.toDb()
+        content = content.map { it ->
+            TextEntity(it.content.map { textContent ->
+                when (textContent) {
+                    is Table -> textContent.toDb()
+                    is DocumentObjectRef -> textContent.toDb()
+                    is ImageRef -> textContent.toDb()
+                    is StringValue -> textContent.toDb()
+                    is VariableRef -> textContent.toDb()
+                    is FirstMatch -> textContent.toDb()
                 }
             }.toMutableList(), it.styleRef?.toDb(), it.displayRuleRef?.toDb())
         }.toMutableList(),

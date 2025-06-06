@@ -3,11 +3,11 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.data.FirstMatchModel
 import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
 
-data class FirstMatch(val cases: List<Case>, val default: List<DocumentContent>) {
+data class FirstMatch(val cases: List<Case>, val default: List<DocumentContent>) : DocumentContent, TextContent {
     companion object {
-        fun fromModel(entity: FirstMatchModel): FirstMatch = FirstMatch(
-            cases = entity.cases.map { Case.fromModel(it) },
-            default = entity.default.map { DocumentContent.fromModelContent(it) }
+        fun fromModel(model: FirstMatchModel): FirstMatch = FirstMatch(
+            cases = model.cases.map { Case.fromModel(it) },
+            default = model.default.map { DocumentContent.fromModelContent(it) }
         )
     }
 
