@@ -69,5 +69,10 @@ class ParagraphBuilder {
         fun appendContent(content: TextContent) = apply { this.content.add(content) }
         fun appendContent(content: String) = apply { this.content.add(StringValue(content)) }
         fun content(content: List<TextContent>) = apply { this.content = content.toMutableList() }
+
+        fun firstMatch(builder: FirstMatchBuilder.() -> Unit) = apply {
+            val firstMatchBuilder = FirstMatchBuilder().apply(builder)
+            content.add(firstMatchBuilder.build())
+        }
     }
 }

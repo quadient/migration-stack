@@ -9,6 +9,7 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
@@ -70,6 +71,14 @@ def displayLastSentenceRule = new DisplayRuleBuilder("displayLastSentenceRule")
     .comparison { it.value(true).equals().variable(displayLastSentenceVariable.id) }
     .build()
 
+def displayRuleStateCzechia = new DisplayRuleBuilder("displayRuleStateCzechia")
+        .comparison { it.value("Czechia").equals().variable(stateVariable.id) }
+        .build()
+
+def displayRuleStateSlovakia = new DisplayRuleBuilder("displayRuleStateSlovakia")
+        .comparison { it.value("Slovakia").equals().variable(stateVariable.id) }
+        .build()
+
 // Define text and paragraph styles to be used in the document
 def normalStyle = new TextStyleBuilder("normalStyle")
     .definition {
@@ -88,8 +97,17 @@ def headingStyle = new TextStyleBuilder("headingStyle")
 def paragraphStyle = new ParagraphStyleBuilder("paragraphStyle")
     .definition {
         it.firstLineIndent(Size.ofMillimeters(10))
+        it.spaceAfter(Size.ofMillimeters(5))
     }
     .build()
+
+def spaceBeforeParagraphStyle = new ParagraphStyleBuilder("spaceBeforeParagraphStyle")
+        .definition {
+            it.firstLineIndent(Size.ofMillimeters(10))
+            it.spaceBefore(Size.ofMillimeters(5))
+            it.spaceAfter(Size.ofMillimeters(5))
+        }
+        .build()
 
 // Define image to be used as a logo, base64 encoded image is hardcoded
 // here for simplicity but any valid image that is saved to the storage
@@ -221,12 +239,26 @@ def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", Doc
     .internal(true)
     .displayRuleRef(displayParagraphRule.id)
     .paragraph {
-        it.styleRef(new ParagraphStyleRef(paragraphStyle.id))
+        it.styleRef(new ParagraphStyleRef(spaceBeforeParagraphStyle.id))
         .text {
             it.content("Integer quis quam semper, accumsan neque at, pellentesque diam. Etiam in blandit dolor. Maecenas sit amet interdum augue, vel pellentesque erat. Suspendisse ut sem in justo rhoncus placerat vitae ut lacus. Etiam consequat bibendum justo ut posuere. Donec aliquam posuere nibh, vehicula pulvinar lectus dictum et. Nullam rhoncus ultrices ipsum et consectetur. Nam tincidunt id purus ac viverra. ")
         }
     }
     .build()
+
+def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
+        .internal(true)
+        .firstMatch { fb ->
+            fb.case { cb ->
+                cb.appendContent(new ParagraphBuilder().text {
+                    it.appendContent("Nashledanou.")
+                }.build()).displayRule(displayRuleStateCzechia.id)
+            }.case { cb ->
+                cb.appendContent(new ParagraphBuilder().text {
+                    it.appendContent("Dovidenia.")
+                }.build()).displayRule(displayRuleStateSlovakia.id)
+            }.default(new ParagraphBuilder().text { it.appendContent("Goodbye.") }.build())
+        }.build()
 
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas
@@ -234,7 +266,7 @@ def paragraph1TopMargin = topMargin + Size.ofCentimeters(2)
 def paragraph2TopMargin = paragraph1TopMargin + Size.ofMillimeters(32)
 def tableTopMargin = paragraph2TopMargin + Size.ofMillimeters(32)
 def conditionalParagraphTopMargin = tableTopMargin + Size.ofCentimeters(2)
-def signatureTopMargin = conditionalParagraphTopMargin + Size.ofCentimeters(2)
+def signatureTopMargin = pageHeight - Size.ofCentimeters(3)
 def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
     .options(new PageOptions(pageWidth, pageHeight))
     .flowArea {
@@ -260,36 +292,13 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.left(leftMargin)
             it.top(paragraph1TopMargin)
             it.width(contentWidth)
-            it.height(Size.ofMillimeters(32))
+            it.height(pageHeight - Size.ofCentimeters(4))
         }
-        .content([new DocumentObjectRef(paragraph1.id)])
-    }
-    .flowArea {
-        it.position {
-            it.left(leftMargin)
-            it.top(paragraph2TopMargin)
-            it.width(contentWidth)
-            it.height(Size.ofMillimeters(32))
-        }
-        .content([new DocumentObjectRef(paragraph2.id)])
-    }
-    .flowArea {
-        it.position {
-            it.left(leftMargin)
-            it.top(tableTopMargin)
-            it.width(contentWidth)
-            it.height(Size.ofCentimeters(2))
-        }
-        .content([table])
-    }
-    .flowArea {
-        it.position {
-            it.left(leftMargin)
-            it.top(conditionalParagraphTopMargin)
-            it.width(contentWidth)
-            it.height(Size.ofCentimeters(2))
-        }
-        .content([new DocumentObjectRef(conditionalParagraph.id)])
+                .content([new DocumentObjectRef(paragraph1.id),
+                          new DocumentObjectRef(paragraph2.id),
+                          table,
+                          new DocumentObjectRef(conditionalParagraph.id),
+                          new DocumentObjectRef(firstMatchBlock.id)])
     }
     .flowArea {
         it.position {
@@ -307,7 +316,7 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
     .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {
@@ -316,10 +325,13 @@ for (item in [headingStyle, normalStyle]) {
 for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable]) {
     migration.variableRepository.upsert(item)
 }
-for (item in [displayHeaderRule, displayParagraphRule, displayLastSentenceRule]) {
+for (item in [displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateSlovakia]) {
     migration.displayRuleRepository.upsert(item)
 }
-migration.paragraphStyleRepository.upsert(paragraphStyle)
+for (item in [paragraphStyle, spaceBeforeParagraphStyle]) {
+    migration.paragraphStyleRepository.upsert(item)
+}
+
 migration.imageRepository.upsert(logo)
 migration.variableStructureRepository.upsert(
     new VariableStructureBuilder("variableStructure")
