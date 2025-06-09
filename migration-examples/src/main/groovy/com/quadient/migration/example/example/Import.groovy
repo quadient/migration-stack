@@ -250,11 +250,11 @@ def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType
         .internal(true)
         .firstMatch { fb ->
             fb.case { cb ->
-                cb.appendContent(new ParagraphBuilder().text {
+                cb.name("Czech Variant").appendContent(new ParagraphBuilder().text {
                     it.appendContent("Nashledanou.")
                 }.build()).displayRule(displayRuleStateCzechia.id)
             }.case { cb ->
-                cb.appendContent(new ParagraphBuilder().text {
+                cb.name("Slovak Variant").appendContent(new ParagraphBuilder().text {
                     it.appendContent("Dovidenia.")
                 }.build()).displayRule(displayRuleStateSlovakia.id)
             }.default(new ParagraphBuilder().text { it.appendContent("Goodbye.") }.build())

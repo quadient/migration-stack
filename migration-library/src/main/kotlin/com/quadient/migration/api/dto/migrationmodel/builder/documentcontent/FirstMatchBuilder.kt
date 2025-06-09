@@ -13,10 +13,10 @@ class FirstMatchBuilder {
             cases.map {
                 FirstMatch.Case(
                     it.displayRuleRef ?: throw IllegalArgumentException("displayRuleRef must be provided"),
-                    it.content
+                    it.content,
+                    it.name
                 )
-            },
-            default
+            }, default
         )
     }
 
@@ -32,10 +32,12 @@ class FirstMatchBuilder {
     class CaseBuilder {
         var content: MutableList<DocumentContent> = mutableListOf()
         var displayRuleRef: DisplayRuleRef? = null
+        var name: String? = null
 
         fun content(content: DocumentContent) = apply { this.content = mutableListOf(content) }
         fun appendContent(content: DocumentContent) = apply { this.content.add(content) }
         fun displayRule(ref: DisplayRuleRef) = apply { this.displayRuleRef = ref }
         fun displayRule(id: String) = apply { this.displayRuleRef = DisplayRuleRef(id) }
+        fun name(name: String) = apply { this.name = name }
     }
 }

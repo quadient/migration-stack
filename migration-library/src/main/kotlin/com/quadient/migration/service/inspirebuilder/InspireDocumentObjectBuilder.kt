@@ -157,7 +157,7 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         val flowCount = flowModels.size
-        var currentCompositeFlowSuffix = 1
+        var flowSuffix = 1
         return flowModels.mapNotNull {
             when (it) {
                 is FlowModel.DocumentObject -> buildDocumentObjectRef(layout, variableStructure, it.ref)
@@ -165,13 +165,21 @@ abstract class InspireDocumentObjectBuilder(
                     if (flowName == null) {
                         buildCompositeFlow(layout, variableStructure, it.parts)
                     } else {
-                        val name = if (flowCount == 1) flowName else "$flowName $currentCompositeFlowSuffix"
-                        currentCompositeFlowSuffix++
+                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
+                        flowSuffix++
                         buildCompositeFlow(layout, variableStructure, it.parts, name)
                     }
                 }
 
-                is FlowModel.FirstMatch -> buildFirstMatch(layout, variableStructure, it.model)
+                is FlowModel.FirstMatch -> {
+                    if (flowName == null) {
+                        buildFirstMatch(layout, variableStructure, it.model, false)
+                    } else {
+                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
+                        flowSuffix++
+                        buildFirstMatch(layout, variableStructure, it.model, false, name)
+                    }
+                }
             }
         }
     }
@@ -482,7 +490,7 @@ abstract class InspireDocumentObjectBuilder(
                     }
 
                     is ImageModelRef -> buildAndAppendImage(layout, text, it)
-                    is FirstMatchModel -> text.appendFlow(buildFirstMatch(layout, variableStructure, it))
+                    is FirstMatchModel -> text.appendFlow(buildFirstMatch(layout, variableStructure, it, true))
                 }
             }
         }
@@ -596,25 +604,44 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun buildFirstMatch(
-        layout: Layout, variableStructure: VariableStructureModel, model: FirstMatchModel
+        layout: Layout,
+        variableStructure: VariableStructureModel,
+        model: FirstMatchModel,
+        isInline: Boolean,
+        flowName: String? = null
     ): Flow {
         val firstMatchFlow = layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION)
+        flowName?.let { firstMatchFlow.setName(it) }
 
-        model.cases.forEach { case ->
+        model.cases.forEachIndexed { i, case ->
             val displayRule = displayRuleRepository.findModelOrFail(case.displayRuleRef.id)
             if (displayRule.definition == null) {
                 error("Display rule '${case.displayRuleRef.id}' definition is null.")
             }
 
-            val successFlow = buildDocumentContentAsSingleFlow(layout, variableStructure, case.content)
+            val caseName = case.name ?: "Case ${i + 1}"
+
+            val contentFlow = buildDocumentContentAsSingleFlow(layout, variableStructure, case.content)
+
+            val caseFlow =
+                if (isInline) contentFlow else layout.addFlow().setSectionFlow(true).setType(Flow.Type.SIMPLE)
+                    .setWebEditingType(Flow.WebEditingType.SECTION).setName(caseName)
+                    .also { it.addParagraph().addText().appendFlow(contentFlow) }
 
             firstMatchFlow.addLineForSelectByInlineCondition(
-                displayRule.definition.toScript(layout, variableStructure), successFlow
+                displayRule.definition.toScript(layout, variableStructure), caseFlow
             )
         }
 
         if (model.default.isNotEmpty()) {
-            firstMatchFlow.setDefaultFlow(buildDocumentContentAsSingleFlow(layout, variableStructure, model.default))
+            val contentFlow = buildDocumentContentAsSingleFlow(layout, variableStructure, model.default)
+
+            val caseFlow =
+                if (isInline) contentFlow else layout.addFlow().setSectionFlow(true).setType(Flow.Type.SIMPLE)
+                    .setWebEditingType(Flow.WebEditingType.SECTION).setName("Else Case")
+                    .also { it.addParagraph().addText().appendFlow(contentFlow) }
+
+            firstMatchFlow.setDefaultFlow(caseFlow)
         }
 
         return firstMatchFlow

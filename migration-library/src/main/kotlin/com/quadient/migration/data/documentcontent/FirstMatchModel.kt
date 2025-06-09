@@ -16,11 +16,15 @@ data class FirstMatchModel(val cases: List<CaseModel>, val default: List<Documen
         return cases.flatMap { listOf(it.displayRuleRef) + it.content.flatMap { it.collectRefs() } + default.flatMap { it.collectRefs() } }
     }
 
-    data class CaseModel(val displayRuleRef: DisplayRuleModelRef, val content: List<DocumentContentModel>) {
+    data class CaseModel(
+        val displayRuleRef: DisplayRuleModelRef, val content: List<DocumentContentModel>, val name: String?
+    ) {
         companion object {
             fun fromDb(entity: CaseEntity) = CaseModel(
                 displayRuleRef = DisplayRuleModelRef.fromDb(entity.displayRuleRef),
-                content = entity.content.map { DocumentContentModel.fromDbContent(it) })
+                content = entity.content.map { DocumentContentModel.fromDbContent(it) },
+                name = entity.name
+            )
         }
     }
 }

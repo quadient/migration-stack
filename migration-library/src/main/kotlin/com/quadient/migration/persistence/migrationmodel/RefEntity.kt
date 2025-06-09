@@ -39,5 +39,7 @@ data class StringEntity(val value: String) : TextContentEntity
 data class FirstMatchEntity(val cases: List<CaseEntity>, val default: List<DocumentContentEntity>) :
     DocumentContentEntity, TextContentEntity {
     @Serializable
-    data class CaseEntity(val displayRuleRef: DisplayRuleEntityRef, val content: List<DocumentContentEntity>)
+    data class CaseEntity(
+        val displayRuleRef: DisplayRuleEntityRef, val content: List<DocumentContentEntity>, val name: String? = null
+    )
 }
