@@ -9,6 +9,7 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
@@ -70,6 +71,14 @@ def displayLastSentenceRule = new DisplayRuleBuilder("displayLastSentenceRule")
     .comparison { it.value(true).equals().variable(displayLastSentenceVariable.id) }
     .build()
 
+def displayRuleStateCzechia = new DisplayRuleBuilder("displayRuleStateCzechia")
+        .comparison { it.value("Czechia").equals().variable(stateVariable.id) }
+        .build()
+
+def displayRuleStateFrance = new DisplayRuleBuilder("displayRuleStateFrance")
+        .comparison { it.value("France").equals().variable(stateVariable.id) }
+        .build()
+
 // Define text and paragraph styles to be used in the document
 def normalStyle = new TextStyleBuilder("normalStyle")
     .definition {
@@ -88,6 +97,7 @@ def headingStyle = new TextStyleBuilder("headingStyle")
 def paragraphStyle = new ParagraphStyleBuilder("paragraphStyle")
     .definition {
         it.firstLineIndent(Size.ofMillimeters(10))
+        it.spaceAfter(Size.ofMillimeters(5))
     }
     .build()
 
@@ -184,22 +194,33 @@ def signature = new DocumentObjectBuilder("signature", DocumentObjectType.Block)
 // Sample paragraph containing a heading using headingStyle style,
 // and body text with normalStyle, both defined above.
 def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Block)
-    // No separate file will be created and the content will be inlined instead when block is internal.
-    .internal(true)
-    .paragraph {
-        it.text {
-            it.styleRef(headingStyle.id)
-            it.content("Lorem ipsum dolor sit amet\n")
-        }
-    }
-    .paragraph {
-        it.styleRef(new ParagraphStyleRef(paragraphStyle.id))
-            .text {
-                it.styleRef(normalStyle.id)
-                it.content("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
+// No separate file will be created and the content will be inlined instead when block is internal.
+        .internal(true)
+        .paragraph {
+            it.text {
+                it.styleRef(headingStyle.id)
+                it.content("Lorem ipsum dolor sit amet\n")
             }
-    }
-    .build()
+        }
+        .paragraph {
+            it.styleRef(paragraphStyle.id)
+                    .text {
+                        it.styleRef(normalStyle.id)
+                        it.firstMatch {
+                            it.case {
+                                it.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                                    it.appendContent("Dobrý den")
+                                }.build()).displayRule(displayRuleStateCzechia.id)
+                            }.case {
+                                it.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                                    it.appendContent("Bonjour")
+                                }.build()).displayRule(displayRuleStateFrance.id)
+                            }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Good morning") }.build())
+                        }
+                        it.appendContent(", Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
+                    }
+        }
+        .build()
 
 // Second sample paragraph
 def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Block)
@@ -228,13 +249,24 @@ def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", Doc
     }
     .build()
 
+def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
+        .internal(true)
+        .firstMatch { fb ->
+            fb.case { cb ->
+                cb.name("Czech Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                    it.appendContent("Nashledanou.")
+                }.build()).displayRule(displayRuleStateCzechia.id)
+            }.case { cb ->
+                cb.name("French Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                    it.appendContent("Au revoir.")
+                }.build()).displayRule(displayRuleStateFrance.id)
+            }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Goodbye.") }.build())
+        }.build()
+
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas
 def paragraph1TopMargin = topMargin + Size.ofCentimeters(2)
-def paragraph2TopMargin = paragraph1TopMargin + Size.ofMillimeters(32)
-def tableTopMargin = paragraph2TopMargin + Size.ofMillimeters(32)
-def conditionalParagraphTopMargin = tableTopMargin + Size.ofCentimeters(2)
-def signatureTopMargin = conditionalParagraphTopMargin + Size.ofCentimeters(2)
+def signatureTopMargin = pageHeight - Size.ofCentimeters(3)
 def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
     .options(new PageOptions(pageWidth, pageHeight))
     .flowArea {
@@ -260,36 +292,13 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.left(leftMargin)
             it.top(paragraph1TopMargin)
             it.width(contentWidth)
-            it.height(Size.ofMillimeters(32))
+            it.height(pageHeight - Size.ofCentimeters(4))
         }
-        .content([new DocumentObjectRef(paragraph1.id)])
-    }
-    .flowArea {
-        it.position {
-            it.left(leftMargin)
-            it.top(paragraph2TopMargin)
-            it.width(contentWidth)
-            it.height(Size.ofMillimeters(32))
-        }
-        .content([new DocumentObjectRef(paragraph2.id)])
-    }
-    .flowArea {
-        it.position {
-            it.left(leftMargin)
-            it.top(tableTopMargin)
-            it.width(contentWidth)
-            it.height(Size.ofCentimeters(2))
-        }
-        .content([table])
-    }
-    .flowArea {
-        it.position {
-            it.left(leftMargin)
-            it.top(conditionalParagraphTopMargin)
-            it.width(contentWidth)
-            it.height(Size.ofCentimeters(2))
-        }
-        .content([new DocumentObjectRef(conditionalParagraph.id)])
+                .content([new DocumentObjectRef(paragraph1.id),
+                          new DocumentObjectRef(paragraph2.id),
+                          new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent(table) }.build(),
+                          new DocumentObjectRef(conditionalParagraph.id),
+                          new DocumentObjectRef(firstMatchBlock.id)])
     }
     .flowArea {
         it.position {
@@ -307,7 +316,7 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
     .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {
@@ -316,10 +325,13 @@ for (item in [headingStyle, normalStyle]) {
 for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable]) {
     migration.variableRepository.upsert(item)
 }
-for (item in [displayHeaderRule, displayParagraphRule, displayLastSentenceRule]) {
+for (item in [displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {
     migration.displayRuleRepository.upsert(item)
 }
-migration.paragraphStyleRepository.upsert(paragraphStyle)
+for (item in [paragraphStyle]) {
+    migration.paragraphStyleRepository.upsert(item)
+}
+
 migration.imageRepository.upsert(logo)
 migration.variableStructureRepository.upsert(
     new VariableStructureBuilder("variableStructure")

@@ -24,6 +24,8 @@ public interface Flow extends Node<Flow> {
 
     Flow setLocation(String location);
 
+    Flow setWebEditingType(WebEditingType webEditingType);
+
     enum Type {
         SIMPLE,
         SELECT_BY_INTEGER,
@@ -42,5 +44,9 @@ public interface Flow extends Node<Flow> {
         SELECT_BY_LANGUAGE,
         DIRECT_EXTERNAL,
         DYNAMIC_EXTERNAL,
+    }
+
+    enum WebEditingType {
+        SIMPLE, SECTION, INSERTION_POINT,
     }
 }

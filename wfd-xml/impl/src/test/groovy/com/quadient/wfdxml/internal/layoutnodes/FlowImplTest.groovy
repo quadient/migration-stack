@@ -10,6 +10,7 @@ import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.DIRECT_EXTERNAL
 import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.REPEATED
 import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.SELECT_BY_CONDITION
 import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.SELECT_BY_INLINE_CONDITION
+import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.SIMPLE
 import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.VARIABLE_FORMATTED
 import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.OVERFLOWABLE_VARIABLE_FORMATTED
 import static com.quadient.wfdxml.utils.AssertXml.assertXmlEqualsWrapRoot
@@ -292,6 +293,23 @@ class FlowImplTest extends Specification {
                              <FlowContent Width="0.2"/>
                              <ExternalLocation>icm://somewhere/here.jld</ExternalLocation>
                              <SectionFlow>False</SectionFlow>
+                             """)
+    }
+
+    def "export section flow with web editing type"() {
+        given:
+        Flow flow = new FlowImpl()
+        flow.setType(SIMPLE).setSectionFlow(true).setWebEditingType(Flow.WebEditingType.SECTION).setName("Section Flow")
+
+        when:
+        flow.export(exporter)
+
+        then:
+        assertXmlEqualsWrapRoot(exporter.buildString(), """
+                             <Type>Simple</Type>
+                             <FlowContent Width="0.2"/>
+                             <WebEditingType>Section</WebEditingType>
+                             <SectionFlow>True</SectionFlow>
                              """)
     }
 }

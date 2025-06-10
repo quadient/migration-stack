@@ -2,6 +2,7 @@ package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModelRef
+import com.quadient.migration.data.FirstMatchModel
 import com.quadient.migration.data.FlowAreaModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphModel
@@ -16,6 +17,7 @@ sealed interface DocumentContent {
             is DocumentObjectModelRef -> DocumentObjectRef.fromModel(model)
             is ImageModelRef -> ImageRef.fromModel(model)
             is FlowAreaModel -> FlowArea.fromModel(model)
+            is FirstMatchModel -> FirstMatch.fromModel(model)
         }
     }
 }
@@ -28,6 +30,7 @@ fun List<DocumentContent>.toDb(): List<DocumentContentEntity> {
             is DocumentObjectRef -> it.toDb()
             is ImageRef -> it.toDb()
             is FlowArea -> it.toDb()
+            is FirstMatch -> it.toDb()
         }
     }
 }

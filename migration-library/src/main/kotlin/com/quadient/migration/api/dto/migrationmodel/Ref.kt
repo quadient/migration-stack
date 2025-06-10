@@ -2,6 +2,7 @@ package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModelRef
+import com.quadient.migration.data.FirstMatchModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphStyleDefOrRefModel
 import com.quadient.migration.data.ParagraphStyleDefinitionModel
@@ -45,6 +46,7 @@ sealed interface TextContent {
             is StringModel -> StringValue.fromModel(model)
             is TableModel -> Table.fromModel(model)
             is VariableModelRef -> VariableRef.fromModel(model)
+            is FirstMatchModel -> FirstMatch.fromModel(model)
         }
     }
 }

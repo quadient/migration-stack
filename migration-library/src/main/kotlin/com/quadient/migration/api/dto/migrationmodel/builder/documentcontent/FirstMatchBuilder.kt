@@ -5,18 +5,18 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
 
 class FirstMatchBuilder {
-    var default: MutableList<DocumentContent> = mutableListOf()
-    var cases: MutableList<CaseBuilder> = mutableListOf()
+    private var default: MutableList<DocumentContent> = mutableListOf()
+    private var cases: MutableList<CaseBuilder> = mutableListOf()
 
     fun build(): FirstMatch {
         return FirstMatch(
             cases.map {
                 FirstMatch.Case(
                     it.displayRuleRef ?: throw IllegalArgumentException("displayRuleRef must be provided"),
-                    it.content
+                    it.content,
+                    it.name
                 )
-            },
-            default
+            }, default
         )
     }
 
@@ -24,13 +24,20 @@ class FirstMatchBuilder {
     fun default(default: DocumentContent) = apply { this.default = mutableListOf(default) }
     fun appendDefault(default: DocumentContent) = apply { this.default.add(default) }
 
+    fun case(builder: CaseBuilder.() -> Unit) = apply {
+        val caseBuilder = CaseBuilder().apply(builder)
+        cases.add(caseBuilder)
+    }
+
     class CaseBuilder {
         var content: MutableList<DocumentContent> = mutableListOf()
         var displayRuleRef: DisplayRuleRef? = null
+        var name: String? = null
 
         fun content(content: DocumentContent) = apply { this.content = mutableListOf(content) }
         fun appendContent(content: DocumentContent) = apply { this.content.add(content) }
-        fun displayRule(ref: DisplayRuleRef) = apply { this.displayRuleRef = displayRuleRef }
+        fun displayRule(ref: DisplayRuleRef) = apply { this.displayRuleRef = ref }
         fun displayRule(id: String) = apply { this.displayRuleRef = DisplayRuleRef(id) }
+        fun name(name: String) = apply { this.name = name }
     }
 }

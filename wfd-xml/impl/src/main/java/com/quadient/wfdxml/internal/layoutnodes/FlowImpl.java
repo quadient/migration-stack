@@ -37,6 +37,7 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
     private Flow defFlow;
     private boolean treatDefaultAsError = false;
     private String location;
+    private WebEditingType webEditingType = null;
 
     public static String convertTypeToXmlName(Type type) {
         switch (type) {
@@ -166,6 +167,12 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
         return this;
     }
 
+    @Override
+    public Flow setWebEditingType(WebEditingType webEditingType) {
+        this.webEditingType = webEditingType;
+        return this;
+    }
+
     public Flow getDefFlow() {
         return defFlow;
     }
@@ -224,6 +231,10 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
 
         if (type == DIRECT_EXTERNAL) {
             exporter.addElementWithStringData("ExternalLocation", location);
+        }
+
+        if (webEditingType != null) {
+            exporter.addElementWithStringData("WebEditingType", getWebEditingTypeValue(webEditingType));
         }
 
         exporter.addElementWithBoolData("SectionFlow", sectionFlow);
@@ -292,5 +303,13 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
         public Object getCondition() {
             return condition;
         }
+    }
+
+    private String getWebEditingTypeValue(WebEditingType webEditingType) {
+        return switch (webEditingType) {
+            case SIMPLE -> "Simple";
+            case SECTION -> "Section";
+            case INSERTION_POINT -> "InsertionPoint";
+        };
     }
 }

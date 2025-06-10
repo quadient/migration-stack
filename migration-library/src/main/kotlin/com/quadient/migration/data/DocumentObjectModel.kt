@@ -27,6 +27,7 @@ data class DocumentObjectModel(
                 is TableModel -> it.collectRefs()
                 is ParagraphModel -> it.collectRefs()
                 is FlowAreaModel -> it.collectRefs()
+                is FirstMatchModel -> it.collectRefs()
             }
         }.flatten() + (displayRuleRef?.let { listOf(it) } ?: emptyList())
     }

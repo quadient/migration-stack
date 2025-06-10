@@ -8,6 +8,7 @@ public abstract class NodeImpl<S extends Node<S>> implements Node<S>, XmlExporta
     private String name;
     private String comment;
     private String id;
+    private String displayName;
 
     @Override
     public String getName() {
@@ -45,8 +46,19 @@ public abstract class NodeImpl<S extends Node<S>> implements Node<S>, XmlExporta
         return (S) this;
     }
 
+    @Override
+    public String getDisplayName() {
+        return displayName;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public S setDisplayName(String displayName) {
+        this.displayName = displayName;
+        return (S) this;
+    }
+
     public String getXmlElementName() {
         throw new UnsupportedOperationException("Not supported operation on class '" + this.getClass().getName() + "'");
     }
-
 }

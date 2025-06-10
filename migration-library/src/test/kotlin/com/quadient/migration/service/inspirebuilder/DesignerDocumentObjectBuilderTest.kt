@@ -2,8 +2,10 @@ package com.quadient.migration.service.inspirebuilder
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.data.DisplayRuleModel
+import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
+import com.quadient.migration.data.FirstMatchModel
 import com.quadient.migration.data.FlowAreaModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
@@ -351,7 +353,7 @@ class DesignerDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `deployDocumentObjects creates multiple times used variable only once`() {
+    fun `buildDocumentObject creates multiple times used variable only once`() {
         // given
         val variable = mockVar(aVariable("V_1"))
 
@@ -410,6 +412,80 @@ class DesignerDocumentObjectBuilderTest {
         val secondBlockContent = result["Flow"].last { it["Id"].textValue() == secondBlockId }["FlowContent"]["P"]["T"]
         secondBlockContent[""].textValue().shouldBeEqualTo("Second usage: ")
         secondBlockContent["O"]["Id"].textValue().shouldBeEqualTo(variableId)
+    }
+
+    @Test
+    fun `block with first match is built to inline condition flow with multiple options`() {
+        // given
+        val defaultFlowModel = mockObj(aDocObj("B_10", Block, listOf(aParagraph(aText(StringModel("I am default"))))))
+        val rule1 = mockRule(
+            aDisplayRule(
+                Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String), id = "R_1"
+            )
+        )
+        val flow1 =
+            mockObj(aDocObj("B_11", Block, listOf(aParagraph(aText(StringModel("flow 1 content")))), internal = false))
+
+        val rule2 = mockRule(
+            aDisplayRule(
+                Literal("C", LiteralDataType.String), BinOp.Equals, Literal("C", LiteralDataType.String), id = "R_2"
+            )
+        )
+
+        val block = mockObj(
+            aDocObj(
+                "B_1", Block, listOf(
+                    FirstMatchModel(
+                        cases = listOf(
+                            FirstMatchModel.CaseModel(
+                                DisplayRuleModelRef(rule1.id), listOf(DocumentObjectModelRef(flow1.id)), null
+                            ), FirstMatchModel.CaseModel(
+                                DisplayRuleModelRef(rule2.id),
+                                listOf(aParagraph(aText(StringModel("flow 2 content")))),
+                                null
+                            )
+                        ), default = defaultFlowModel.content
+                    )
+                )
+            )
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val conditionFlow = result["Flow"].last { it["Type"]?.textValue() == "InlCond" }
+        val conditions = conditionFlow["Condition"]
+        conditions.size().shouldBeEqualTo(2)
+
+        conditions[0]["Value"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val firstConditionFlowId = conditions[0][""].textValue()
+
+        val firstConditionFlow = result["Flow"].last { it["Id"].textValue() == firstConditionFlowId }
+        firstConditionFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
+        val firstConditionContentFlowId = firstConditionFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+
+        result["Flow"].last { it["Id"].textValue() == firstConditionContentFlowId }["ExternalLocation"].textValue()
+            .shouldBeEqualTo("icm://${config.defaultTargetFolder}/${flow1.nameOrId()}.wfd")
+
+        conditions[1]["Value"].textValue().shouldBeEqualTo("return (String('C')==String('C'));")
+        val secondConditionFlowId = conditions[1][""].textValue()
+
+        val secondConditionFlow = result["Flow"].last { it["Id"].textValue() == secondConditionFlowId }
+        secondConditionFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
+        val secondConditionContentFlowId = secondConditionFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+
+        result["Flow"].last { it["Id"].textValue() == secondConditionContentFlowId }["FlowContent"]["P"]["T"][""].textValue()
+            .shouldBeEqualTo("flow 2 content")
+
+        val defaultFlowId = conditionFlow["Default"].textValue()
+
+        val defaultFlow = result["Flow"].last { it["Id"].textValue() == defaultFlowId }
+        defaultFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
+        val defaultContentFlowId = defaultFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+
+        result["Flow"].last { it["Id"].textValue() == defaultContentFlowId }["FlowContent"]["P"]["T"][""].textValue()
+            .shouldBeEqualTo("I am default")
     }
 
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {

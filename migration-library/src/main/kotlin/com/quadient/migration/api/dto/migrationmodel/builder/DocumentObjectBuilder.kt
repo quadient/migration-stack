@@ -96,6 +96,16 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     }
 
     /**
+     * Add a first match block to the document object
+     * @param builder Builder function where receiver is a [FirstMatchBuilder].
+     * @return This builder instance for method chaining.
+     */
+    fun firstMatch(builder: FirstMatchBuilder.() -> Unit) = apply {
+        val firstMatchBuilder = FirstMatchBuilder().apply (builder)
+        content = content + firstMatchBuilder.build()
+    }
+
+    /**
      * Add a reference to an image to the document object
      * @param imageRef ID of the image to reference.
      * @return This builder instance for method chaining.

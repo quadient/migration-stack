@@ -4,9 +4,10 @@ import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
 import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity.CaseEntity
 import com.quadient.migration.service.RefValidatable
 
-data class FirstMatchModel(val cases: List<CaseModel>, val default: List<DocumentContentModel>) : RefValidatable {
+data class FirstMatchModel(val cases: List<CaseModel>, val default: List<DocumentContentModel>) : DocumentContentModel,
+    TextContentModel, RefValidatable {
     companion object {
-        fun fromDb(entity: FirstMatchEntity) = FirstMatchModel(
+        fun fromDb(entity: FirstMatchEntity): FirstMatchModel = FirstMatchModel(
             cases = entity.cases.map { CaseModel.fromDb(it) },
             default = entity.default.map { DocumentContentModel.fromDbContent(it) })
     }
@@ -15,11 +16,15 @@ data class FirstMatchModel(val cases: List<CaseModel>, val default: List<Documen
         return cases.flatMap { listOf(it.displayRuleRef) + it.content.flatMap { it.collectRefs() } + default.flatMap { it.collectRefs() } }
     }
 
-    data class CaseModel(val displayRuleRef: DisplayRuleModelRef, val content: List<DocumentContentModel>) {
+    data class CaseModel(
+        val displayRuleRef: DisplayRuleModelRef, val content: List<DocumentContentModel>, val name: String?
+    ) {
         companion object {
             fun fromDb(entity: CaseEntity) = CaseModel(
                 displayRuleRef = DisplayRuleModelRef.fromDb(entity.displayRuleRef),
-                content = entity.content.map { DocumentContentModel.fromDbContent(it) })
+                content = entity.content.map { DocumentContentModel.fromDbContent(it) },
+                name = entity.name
+            )
         }
     }
 }

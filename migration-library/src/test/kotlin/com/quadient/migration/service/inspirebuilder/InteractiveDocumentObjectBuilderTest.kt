@@ -1,8 +1,12 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.data.DisplayRuleModelRef
+import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
+import com.quadient.migration.data.FirstMatchModel
+import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphStyleModelRef
 import com.quadient.migration.data.StringModel
@@ -22,6 +26,7 @@ import com.quadient.migration.persistence.repository.VariableStructureInternalRe
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.DocumentObjectType.Block
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.Literal
@@ -36,6 +41,7 @@ import com.quadient.migration.tools.model.aParaDef
 import com.quadient.migration.tools.model.aParaStyle
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aCell
+import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aRow
 import com.quadient.migration.tools.model.aTemplate
@@ -281,9 +287,7 @@ class InteractiveDocumentObjectBuilderTest {
                 aParagraph(
                     aText(
                         listOf(
-                            VariableModelRef(longVar.id),
-                            VariableModelRef(currencyVar.id),
-                            VariableModelRef(boolVar.id)
+                            VariableModelRef(longVar.id), VariableModelRef(currencyVar.id), VariableModelRef(boolVar.id)
                         )
                     )
                 )
@@ -333,9 +337,7 @@ class InteractiveDocumentObjectBuilderTest {
             aDisplayRule(Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String))
 
         val block = aBlock(
-            "1",
-            listOf(aParagraph(aText(StringModel("Hello")))),
-            displayRuleRef = DisplayRuleModelRef(displayRule.id)
+            "1", listOf(aParagraph(aText(StringModel("Hello")))), displayRuleRef = DisplayRuleModelRef(displayRule.id)
         )
         val template = aTemplate("2", listOf(DocumentObjectModelRef(block.id)))
 
@@ -377,18 +379,14 @@ class InteractiveDocumentObjectBuilderTest {
         val paraStyle = aParaStyle("P1", definition = aParaDef(10.millimeters()))
         val textStyle = aTextStyle("T1", definition = aTextDef(bold = true))
         val displayRule = aDisplayRule(
-            Literal(variable.id, LiteralDataType.Variable),
-            BinOp.Equals,
-            Literal("Jon", LiteralDataType.String)
+            Literal(variable.id, LiteralDataType.Variable), BinOp.Equals, Literal("Jon", LiteralDataType.String)
         )
 
         val block = aBlock(
             "1", listOf(
                 aParagraph(
                     aText(
-                        StringModel("Hello There"),
-                        textStyle.id,
-                        DisplayRuleModelRef(displayRule.id)
+                        StringModel("Hello There"), textStyle.id, DisplayRuleModelRef(displayRule.id)
                     ), paraStyle.id
                 )
             )
@@ -448,10 +446,7 @@ class InteractiveDocumentObjectBuilderTest {
             id = "R_para"
         )
         val textDisplayRule = aDisplayRule(
-            Literal("A", LiteralDataType.String),
-            BinOp.NotEquals,
-            Literal("B", LiteralDataType.String),
-            id = "R_text"
+            Literal("A", LiteralDataType.String), BinOp.NotEquals, Literal("B", LiteralDataType.String), id = "R_text"
         )
 
         val block = aBlock(
@@ -461,13 +456,9 @@ class InteractiveDocumentObjectBuilderTest {
                         aText(
                             StringModel("This is")
                         ), aText(
-                            StringModel("Preposterous!"),
-                            textStyle.id,
-                            DisplayRuleModelRef(textDisplayRule.id)
+                            StringModel("Preposterous!"), textStyle.id, DisplayRuleModelRef(textDisplayRule.id)
                         )
-                    ),
-                    ParagraphStyleModelRef(paraStyle.id),
-                    DisplayRuleModelRef(paraDisplayRule.id)
+                    ), ParagraphStyleModelRef(paraStyle.id), DisplayRuleModelRef(paraDisplayRule.id)
                 )
             )
         )
@@ -638,9 +629,7 @@ class InteractiveDocumentObjectBuilderTest {
         )
 
         val block = aBlock(
-            "1",
-            listOf(aParagraph(aText(StringModel("Hello")))),
-            displayRuleRef = DisplayRuleModelRef(displayRule.id)
+            "1", listOf(aParagraph(aText(StringModel("Hello")))), displayRuleRef = DisplayRuleModelRef(displayRule.id)
         )
         val template = aTemplate("2", listOf(DocumentObjectModelRef(block.id)))
 
@@ -755,6 +744,78 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `paragraph with first match is built to inline condition flow with multiple options`() {
+        // given
+        val rule1 = mockRule(
+            aDisplayRule(
+                Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String), id = "R_1"
+            )
+        )
+
+        val rule2 = mockRule(
+            aDisplayRule(
+                Literal("C", LiteralDataType.String), BinOp.Equals, Literal("C", LiteralDataType.String), id = "R_2"
+            )
+        )
+
+        val block = mockObj(
+            aDocObj(
+                "B_1", Block, listOf(
+                    aParagraph(
+                        aText(
+                            listOf(
+                                StringModel("Hello, "), FirstMatchModel(
+                                    cases = listOf(
+                                        FirstMatchModel.CaseModel(
+                                            DisplayRuleModelRef(rule1.id),
+                                            listOf(aParagraph(aText(StringModel("Mike")))),
+                                            null
+                                        ), FirstMatchModel.CaseModel(
+                                            DisplayRuleModelRef(rule2.id),
+                                            listOf(aParagraph(aText(StringModel("Jon")))),
+                                            null
+                                        )
+                                    ), emptyList()
+                                ), StringModel(", how are you?")
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
+        val contentFlow =
+            result["Flow"].last { it["Id"].textValue() == mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+        val contentFlowText = contentFlow["FlowContent"]["P"]["T"]
+
+        contentFlowText[""][0].textValue().shouldBeEqualTo("Hello, ")
+        contentFlowText[""][1].textValue().shouldBeEqualTo(", how are you?")
+
+        val firstMatch = result["Flow"].last { it["Id"].textValue() == contentFlowText["O"]["Id"].textValue() }
+        firstMatch["Type"].textValue().shouldBeEqualTo("InlCond")
+        firstMatch["Default"].textValue().shouldBeEqualTo("")
+        val conditions = firstMatch["Condition"]
+        conditions.size().shouldBeEqualTo(2)
+
+        conditions[0]["Value"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val firstConditionFlowId = conditions[0][""].textValue()
+
+        result["Flow"].last { it["Id"].textValue() == firstConditionFlowId }["FlowContent"]["P"]["T"][""].textValue()
+            .shouldBeEqualTo("Mike")
+
+        conditions[1]["Value"].textValue().shouldBeEqualTo("return (String('C')==String('C'));")
+        val secondConditionFlowId = conditions[1][""].textValue()
+
+        result["Flow"].last { it["Id"].textValue() == secondConditionFlowId }["FlowContent"]["P"]["T"][""].textValue()
+            .shouldBeEqualTo("Jon")
+    }
+
+    @Test
     fun `build of simple text style accepts the specified values`() {
         every { paragraphStyleRepository.listAllModel() } returns listOf()
         every { textStyleRepository.listAllModel() } returns listOf(
@@ -828,5 +889,15 @@ class InteractiveDocumentObjectBuilderTest {
         textStyle["SpaceAfter"].textValue().shouldBeEqualTo("0.006")
         textStyle["FirstLineLeftIndent"].textValue().shouldBeEqualTo("0.0155")
         textStyle["LineSpacing"].textValue().shouldBeEqualTo("0.015")
+    }
+
+    private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
+        every { documentObjectRepository.findModelOrFail(documentObject.id) } returns documentObject
+        return documentObject
+    }
+
+    private fun mockRule(rule: DisplayRuleModel): DisplayRuleModel {
+        every { displayRuleRepository.findModelOrFail(rule.id) } returns rule
+        return rule
     }
 }

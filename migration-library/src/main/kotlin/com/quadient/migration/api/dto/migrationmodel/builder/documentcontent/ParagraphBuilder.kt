@@ -9,9 +9,9 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 
 class ParagraphBuilder {
-    var styleRef: ParagraphStyleRef? = null
-    var displayRuleRef: DisplayRuleRef? = null
-    var content: MutableList<TextBuilder> = mutableListOf()
+    private var styleRef: ParagraphStyleRef? = null
+    private var displayRuleRef: DisplayRuleRef? = null
+    private var content: MutableList<TextBuilder> = mutableListOf()
 
     fun styleRef(styleRef: ParagraphStyleRef) = apply { this.styleRef = styleRef }
     fun styleRef(styleRefId: String) = apply { this.styleRef = ParagraphStyleRef(styleRefId) }
@@ -69,5 +69,10 @@ class ParagraphBuilder {
         fun appendContent(content: TextContent) = apply { this.content.add(content) }
         fun appendContent(content: String) = apply { this.content.add(StringValue(content)) }
         fun content(content: List<TextContent>) = apply { this.content = content.toMutableList() }
+
+        fun firstMatch(builder: FirstMatchBuilder.() -> Unit) = apply {
+            val firstMatchBuilder = FirstMatchBuilder().apply(builder)
+            content.add(firstMatchBuilder.build())
+        }
     }
 }
