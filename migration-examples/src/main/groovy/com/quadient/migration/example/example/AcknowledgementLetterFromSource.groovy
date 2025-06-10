@@ -4,6 +4,7 @@ package com.quadient.migration.example.example
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
@@ -21,6 +22,7 @@ import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.Size
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
+import static com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 
 Migration migration = initMigration(this.binding.variables["args"])
 
@@ -150,19 +152,61 @@ def addressFlow = new DocumentObjectBuilder("addressFlow", DocumentObjectType.Bl
         it.text {
             it.styleRef = new TextStyleRef(normalStyle.id)
             it.appendContent(new VariableRef(cityVar.id))
-        }
-    }
-    .paragraph {
-        it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
-        it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
+            it.appendContent(", ")
             it.appendContent(new VariableRef(stateVar.id))
-            it.appendContent(",")
+            it.appendContent(" ")
             it.appendContent(new VariableRef(zipcodeVar.id))
         }
     }
     .build()
 migration.documentObjectRepository.upsert(addressFlow)
+
+// def infoTable = new DocumentObjectBuilder("infoTable", DocumentObjectType.Block)
+//     .internal(true)
+//     .content([table {
+//         it.row {
+//             it.cell { it.paragraph { it.text {
+//                 it.styleRef = new TextStyleRef(normalStyle.id)
+//                 it.content("Policy holder name")
+//             } } }
+//             it.cell { it.paragraph { it.text {
+//                 it.styleRef = new TextStyleRef(normalStyle.id)
+//                 it.content(new VariableRef(policyHolderNameVar.id))
+//             } } }
+//         }
+//         it.row {
+//             it.cell { it.paragraph { it.text {
+//                 it.styleRef = new TextStyleRef(normalStyle.id)
+//                 it.content("Date of loss")
+//             } } }
+//             it.cell { it.paragraph { it.text {
+//                 it.styleRef = new TextStyleRef(normalStyle.id)
+//                 it.content(new VariableRef(dateOfLossVar.id))
+//             } } }
+//         }
+//         it.row {
+//             it.cell { it.paragraph { it.text {
+//                 it.styleRef = new TextStyleRef(normalStyle.id)
+//                 it.content("Date of notification")
+//             } } }
+//             it.cell { it.paragraph { it.text {
+//                 it.styleRef = new TextStyleRef(normalStyle.id)
+//                 it.content(new VariableRef(notificationDateVar.id))
+//             } } }
+//         }
+//         it.row {
+//             it.cell { it.paragraph { it.text {
+//                 it.styleRef = new TextStyleRef(normalStyle.id)
+//                 it.content("Claim number")
+//             } } }
+//             it.cell { it.paragraph { it.text {
+//                 it.styleRef = new TextStyleRef(normalStyle.id)
+//                 it.content(new VariableRef(claimNumberVar.id))
+//             } } }
+//         }
+//     }])
+//     .build()
+// migration.documentObjectRepository.upsert(infoTable)
 
 def mainFlow = new DocumentObjectBuilder("mainFlow", DocumentObjectType.Block)
     .internal(true)
@@ -235,6 +279,12 @@ def mainFlow = new DocumentObjectBuilder("mainFlow", DocumentObjectType.Block)
             it.appendContent(".")
         }
     }
+//     .paragraph {
+//         it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+//         it.text {
+//             it.appendContent(new DocumentObjectRef(infoTable.id))
+//         }
+//     }
     .paragraph {
         it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
         it.text {
