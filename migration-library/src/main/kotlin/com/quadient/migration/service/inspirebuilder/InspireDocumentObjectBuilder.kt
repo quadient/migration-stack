@@ -625,7 +625,7 @@ abstract class InspireDocumentObjectBuilder(
 
             val caseFlow =
                 if (isInline) contentFlow else layout.addFlow().setSectionFlow(true).setType(Flow.Type.SIMPLE)
-                    .setWebEditingType(Flow.WebEditingType.SECTION).setName(caseName)
+                    .setWebEditingType(Flow.WebEditingType.SECTION).setDisplayName(caseName)
                     .also { it.addParagraph().addText().appendFlow(contentFlow) }
 
             firstMatchFlow.addLineForSelectByInlineCondition(
@@ -638,7 +638,7 @@ abstract class InspireDocumentObjectBuilder(
 
             val caseFlow =
                 if (isInline) contentFlow else layout.addFlow().setSectionFlow(true).setType(Flow.Type.SIMPLE)
-                    .setWebEditingType(Flow.WebEditingType.SECTION).setName("Else Case")
+                    .setWebEditingType(Flow.WebEditingType.SECTION).setDisplayName("Else Case")
                     .also { it.addParagraph().addText().appendFlow(contentFlow) }
 
             firstMatchFlow.setDefaultFlow(caseFlow)

@@ -73,6 +73,10 @@ public class ForwardReferencesExporter {
             exporter.addElementWithIface("ParentId", parent);
         }
 
+        if (node.getDisplayName() != null && !node.getDisplayName().isBlank()) {
+            exporter.addElementWithStringData("CustomProperty", "{\"DisplayName\":\"" + node.getDisplayName() + "\"}");
+        }
+
         var forwardElement = exporter.beginElement("Forward");
         if (node instanceof Variable && useExistingVariables) {
             forwardElement.addBoolAttribute("useExisting", true);

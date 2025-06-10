@@ -171,4 +171,17 @@ class LayoutImplTest extends Specification {
         assert result.contains("<Variable><Id>SR_1</Id><Name>MyVar</Name><ParentId>Data.Clients.Value</ParentId><Forward useExisting=\"True\"></Forward></Variable>")
         assert result.contains("<Variable><Id>SR_1</Id><Type>Disconnected</Type><VarType>Int</VarType><Content>0</Content></Variable>")
     }
+
+    def "node with display name"() {
+        given:
+        Layout layout = new LayoutImpl()
+        layout.addFlow().setType(Flow.Type.SIMPLE).setDisplayName("Custom flow name")
+
+        when:
+        layout.exportLayoutDelta(exporter)
+        String result = exporter.buildString()
+
+        then:
+        assert result.contains("<Flow><Id>SR_1</Id><ParentId>Def.FlowGroup</ParentId><CustomProperty>{&quot;DisplayName&quot;:&quot;Custom flow name&quot;}</CustomProperty><Forward></Forward></Flow>")
+    }
 }

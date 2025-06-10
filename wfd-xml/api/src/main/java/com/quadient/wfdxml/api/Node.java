@@ -12,4 +12,8 @@ public interface Node<S extends Node<S>> {
     String getId();
 
     S setId(String id);
+
+    String getDisplayName();
+
+    S setDisplayName(String displayName);
 }
