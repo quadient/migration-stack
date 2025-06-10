@@ -5,8 +5,8 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
 
 class FirstMatchBuilder {
-    var default: MutableList<DocumentContent> = mutableListOf()
-    var cases: MutableList<CaseBuilder> = mutableListOf()
+    private var default: MutableList<DocumentContent> = mutableListOf()
+    private var cases: MutableList<CaseBuilder> = mutableListOf()
 
     fun build(): FirstMatch {
         return FirstMatch(

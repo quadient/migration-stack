@@ -75,8 +75,8 @@ def displayRuleStateCzechia = new DisplayRuleBuilder("displayRuleStateCzechia")
         .comparison { it.value("Czechia").equals().variable(stateVariable.id) }
         .build()
 
-def displayRuleStateSlovakia = new DisplayRuleBuilder("displayRuleStateSlovakia")
-        .comparison { it.value("Slovakia").equals().variable(stateVariable.id) }
+def displayRuleStateFrance = new DisplayRuleBuilder("displayRuleStateFrance")
+        .comparison { it.value("France").equals().variable(stateVariable.id) }
         .build()
 
 // Define text and paragraph styles to be used in the document
@@ -100,14 +100,6 @@ def paragraphStyle = new ParagraphStyleBuilder("paragraphStyle")
         it.spaceAfter(Size.ofMillimeters(5))
     }
     .build()
-
-def spaceBeforeParagraphStyle = new ParagraphStyleBuilder("spaceBeforeParagraphStyle")
-        .definition {
-            it.firstLineIndent(Size.ofMillimeters(10))
-            it.spaceBefore(Size.ofMillimeters(5))
-            it.spaceAfter(Size.ofMillimeters(5))
-        }
-        .build()
 
 // Define image to be used as a logo, base64 encoded image is hardcoded
 // here for simplicity but any valid image that is saved to the storage
@@ -202,22 +194,33 @@ def signature = new DocumentObjectBuilder("signature", DocumentObjectType.Block)
 // Sample paragraph containing a heading using headingStyle style,
 // and body text with normalStyle, both defined above.
 def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Block)
-    // No separate file will be created and the content will be inlined instead when block is internal.
-    .internal(true)
-    .paragraph {
-        it.text {
-            it.styleRef(headingStyle.id)
-            it.content("Lorem ipsum dolor sit amet\n")
-        }
-    }
-    .paragraph {
-        it.styleRef(new ParagraphStyleRef(paragraphStyle.id))
-            .text {
-                it.styleRef(normalStyle.id)
-                it.content("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
+// No separate file will be created and the content will be inlined instead when block is internal.
+        .internal(true)
+        .paragraph {
+            it.text {
+                it.styleRef(headingStyle.id)
+                it.content("Lorem ipsum dolor sit amet\n")
             }
-    }
-    .build()
+        }
+        .paragraph {
+            it.styleRef(paragraphStyle.id)
+                    .text {
+                        it.styleRef(normalStyle.id)
+                        it.firstMatch {
+                            it.case {
+                                it.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                                    it.appendContent("Dobrý den")
+                                }.build()).displayRule(displayRuleStateCzechia.id)
+                            }.case {
+                                it.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                                    it.appendContent("Bonjour")
+                                }.build()).displayRule(displayRuleStateFrance.id)
+                            }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Good morning") }.build())
+                        }
+                        it.appendContent(", Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
+                    }
+        }
+        .build()
 
 // Second sample paragraph
 def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Block)
@@ -239,7 +242,7 @@ def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", Doc
     .internal(true)
     .displayRuleRef(displayParagraphRule.id)
     .paragraph {
-        it.styleRef(new ParagraphStyleRef(spaceBeforeParagraphStyle.id))
+        it.styleRef(new ParagraphStyleRef(paragraphStyle.id))
         .text {
             it.content("Integer quis quam semper, accumsan neque at, pellentesque diam. Etiam in blandit dolor. Maecenas sit amet interdum augue, vel pellentesque erat. Suspendisse ut sem in justo rhoncus placerat vitae ut lacus. Etiam consequat bibendum justo ut posuere. Donec aliquam posuere nibh, vehicula pulvinar lectus dictum et. Nullam rhoncus ultrices ipsum et consectetur. Nam tincidunt id purus ac viverra. ")
         }
@@ -254,18 +257,15 @@ def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType
                     it.appendContent("Nashledanou.")
                 }.build()).displayRule(displayRuleStateCzechia.id)
             }.case { cb ->
-                cb.name("Slovak Variant").appendContent(new ParagraphBuilder().text {
-                    it.appendContent("Dovidenia.")
-                }.build()).displayRule(displayRuleStateSlovakia.id)
+                cb.name("French Variant").appendContent(new ParagraphBuilder().text {
+                    it.appendContent("Au revoir.")
+                }.build()).displayRule(displayRuleStateFrance.id)
             }.default(new ParagraphBuilder().text { it.appendContent("Goodbye.") }.build())
         }.build()
 
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas
 def paragraph1TopMargin = topMargin + Size.ofCentimeters(2)
-def paragraph2TopMargin = paragraph1TopMargin + Size.ofMillimeters(32)
-def tableTopMargin = paragraph2TopMargin + Size.ofMillimeters(32)
-def conditionalParagraphTopMargin = tableTopMargin + Size.ofCentimeters(2)
 def signatureTopMargin = pageHeight - Size.ofCentimeters(3)
 def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
     .options(new PageOptions(pageWidth, pageHeight))
@@ -297,6 +297,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                 .content([new DocumentObjectRef(paragraph1.id),
                           new DocumentObjectRef(paragraph2.id),
                           table,
+                          new ParagraphBuilder().styleRef(paragraphStyle.id).build(),
                           new DocumentObjectRef(conditionalParagraph.id),
                           new DocumentObjectRef(firstMatchBlock.id)])
     }
@@ -325,10 +326,10 @@ for (item in [headingStyle, normalStyle]) {
 for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable]) {
     migration.variableRepository.upsert(item)
 }
-for (item in [displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateSlovakia]) {
+for (item in [displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {
     migration.displayRuleRepository.upsert(item)
 }
-for (item in [paragraphStyle, spaceBeforeParagraphStyle]) {
+for (item in [paragraphStyle]) {
     migration.paragraphStyleRepository.upsert(item)
 }
 

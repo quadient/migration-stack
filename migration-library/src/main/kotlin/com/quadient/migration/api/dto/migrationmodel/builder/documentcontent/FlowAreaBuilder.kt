@@ -6,8 +6,8 @@ import com.quadient.migration.api.dto.migrationmodel.builder.PositionBuilder
 import com.quadient.migration.shared.Position
 
 class FlowAreaBuilder {
-    var content = mutableListOf<DocumentContent>()
-    var position: Position? = null
+    private var content = mutableListOf<DocumentContent>()
+    private var position: Position? = null
 
     fun content(content: List<DocumentContent>) = apply { this.content = content.toMutableList() }
     fun content(content: DocumentContent) = apply { this.content.add(content) }
