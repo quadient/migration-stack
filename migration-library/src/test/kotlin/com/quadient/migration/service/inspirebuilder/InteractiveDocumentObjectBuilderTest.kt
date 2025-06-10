@@ -768,9 +768,12 @@ class InteractiveDocumentObjectBuilderTest {
                                     cases = listOf(
                                         FirstMatchModel.CaseModel(
                                             DisplayRuleModelRef(rule1.id),
-                                            listOf(aParagraph(aText(StringModel("Mike"))))
+                                            listOf(aParagraph(aText(StringModel("Mike")))),
+                                            null
                                         ), FirstMatchModel.CaseModel(
-                                            DisplayRuleModelRef(rule2.id), listOf(aParagraph(aText(StringModel("Jon"))))
+                                            DisplayRuleModelRef(rule2.id),
+                                            listOf(aParagraph(aText(StringModel("Jon")))),
+                                            null
                                         )
                                     ), emptyList()
                                 ), StringModel(", how are you?")

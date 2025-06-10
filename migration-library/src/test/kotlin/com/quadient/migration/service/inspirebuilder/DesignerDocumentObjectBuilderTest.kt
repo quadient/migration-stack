@@ -417,7 +417,7 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `block with first match is built to inline condition flow with multiple options`() {
         // given
-        val defaultFlow = mockObj(aDocObj("B_10", Block, listOf(aParagraph(aText(StringModel("I am default"))))))
+        val defaultFlowModel = mockObj(aDocObj("B_10", Block, listOf(aParagraph(aText(StringModel("I am default"))))))
         val rule1 = mockRule(
             aDisplayRule(
                 Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String), id = "R_1"
@@ -438,11 +438,13 @@ class DesignerDocumentObjectBuilderTest {
                     FirstMatchModel(
                         cases = listOf(
                             FirstMatchModel.CaseModel(
-                                DisplayRuleModelRef(rule1.id), listOf(DocumentObjectModelRef(flow1.id))
+                                DisplayRuleModelRef(rule1.id), listOf(DocumentObjectModelRef(flow1.id)), null
                             ), FirstMatchModel.CaseModel(
-                                DisplayRuleModelRef(rule2.id), listOf(aParagraph(aText(StringModel("flow 2 content"))))
+                                DisplayRuleModelRef(rule2.id),
+                                listOf(aParagraph(aText(StringModel("flow 2 content")))),
+                                null
                             )
-                        ), default = defaultFlow.content
+                        ), default = defaultFlowModel.content
                     )
                 )
             )
@@ -459,18 +461,30 @@ class DesignerDocumentObjectBuilderTest {
         conditions[0]["Value"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
         val firstConditionFlowId = conditions[0][""].textValue()
 
-        result["Flow"].last { it["Id"].textValue() == firstConditionFlowId }["ExternalLocation"].textValue()
+        val firstConditionFlow = result["Flow"].last { it["Id"].textValue() == firstConditionFlowId }
+        firstConditionFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
+        val firstConditionContentFlowId = firstConditionFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+
+        result["Flow"].last { it["Id"].textValue() == firstConditionContentFlowId }["ExternalLocation"].textValue()
             .shouldBeEqualTo("icm://${config.defaultTargetFolder}/${flow1.nameOrId()}.wfd")
 
         conditions[1]["Value"].textValue().shouldBeEqualTo("return (String('C')==String('C'));")
         val secondConditionFlowId = conditions[1][""].textValue()
 
-        result["Flow"].last { it["Id"].textValue() == secondConditionFlowId }["FlowContent"]["P"]["T"][""].textValue()
+        val secondConditionFlow = result["Flow"].last { it["Id"].textValue() == secondConditionFlowId }
+        secondConditionFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
+        val secondConditionContentFlowId = secondConditionFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+
+        result["Flow"].last { it["Id"].textValue() == secondConditionContentFlowId }["FlowContent"]["P"]["T"][""].textValue()
             .shouldBeEqualTo("flow 2 content")
 
         val defaultFlowId = conditionFlow["Default"].textValue()
 
-        result["Flow"].last { it["Id"].textValue() == defaultFlowId }["FlowContent"]["P"]["T"][""].textValue()
+        val defaultFlow = result["Flow"].last { it["Id"].textValue() == defaultFlowId }
+        defaultFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
+        val defaultContentFlowId = defaultFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+
+        result["Flow"].last { it["Id"].textValue() == defaultContentFlowId }["FlowContent"]["P"]["T"][""].textValue()
             .shouldBeEqualTo("I am default")
     }
 

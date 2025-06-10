@@ -108,7 +108,7 @@ class DocumentObjectRepositoryTest {
     @Test
     fun `paragraph roundtrip`() {
         val paragraph = ParagraphBuilder()
-        paragraph.styleRef = ParagraphStyleRef("style")
+        paragraph.styleRef("style")
         paragraph.addText().appendContent(StringValue("test"))
         val input = aBlockDto("id", content = listOf(paragraph.build()))
 
