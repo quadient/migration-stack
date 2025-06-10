@@ -83,6 +83,15 @@ class TableDsl {
          * or [com.quadient.migration.api.dto.migrationmodel.Ref].
          */
         fun content(content: List<DocumentContent>) = this@Cell.content.apply { clear() }.addAll(content)
+
+        /**
+         * Add a paragraph to the cell.
+         * @param builder A lambda that builds the paragraph.
+         * @return The current [Cell] instance for chaining.
+         */
+        fun paragraph(builder: ParagraphBuilder.() -> Unit) = apply {
+            content.add(ParagraphBuilder().apply(builder).build())
+        }
     }
 
     data class ColumnWidth(val minWidth: Size, val percentWidth: Double)
