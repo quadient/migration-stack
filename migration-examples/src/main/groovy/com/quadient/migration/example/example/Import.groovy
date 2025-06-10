@@ -253,14 +253,14 @@ def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType
         .internal(true)
         .firstMatch { fb ->
             fb.case { cb ->
-                cb.name("Czech Variant").appendContent(new ParagraphBuilder().text {
+                cb.name("Czech Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
                     it.appendContent("Nashledanou.")
                 }.build()).displayRule(displayRuleStateCzechia.id)
             }.case { cb ->
-                cb.name("French Variant").appendContent(new ParagraphBuilder().text {
+                cb.name("French Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
                     it.appendContent("Au revoir.")
                 }.build()).displayRule(displayRuleStateFrance.id)
-            }.default(new ParagraphBuilder().text { it.appendContent("Goodbye.") }.build())
+            }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Goodbye.") }.build())
         }.build()
 
 // A page object which contains the address, paragraphs, table, and signature.
@@ -296,8 +296,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         }
                 .content([new DocumentObjectRef(paragraph1.id),
                           new DocumentObjectRef(paragraph2.id),
-                          table,
-                          new ParagraphBuilder().styleRef(paragraphStyle.id).build(),
+                          new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent(table) }.build(),
                           new DocumentObjectRef(conditionalParagraph.id),
                           new DocumentObjectRef(firstMatchBlock.id)])
     }
