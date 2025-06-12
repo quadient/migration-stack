@@ -2,10 +2,7 @@
 package com.quadient.migration.example.example
 
 import com.quadient.migration.api.Migration
-import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.Paragraph
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
@@ -43,7 +40,7 @@ migration.imageRepository.upsert(headerImage)
 
 def signatureImageFile = this.class.getClassLoader().getResource('exampleResources/acknowledgementLetterFromSource/a.madsen.png')
 migration.storage.write("a.madsen.png", signatureImageFile.bytes)
-def signatureImage  = new ImageBuilder("a.madsen")
+def signatureImage = new ImageBuilder("a.madsen")
     .imageType(ImageType.Png)
     .sourcePath("a.madsen.png")
     .build()
@@ -80,29 +77,27 @@ def claimsOfficerEmailShortVar = new VariableBuilder("ClaimsOfficerEmailShort")
     .dataType(DataType.String)
     .build()
 def notificationDateVar = new VariableBuilder("NotificationDate")
-        .dataType(DataType.String)
-        .build()
+    .dataType(DataType.String)
+    .build()
 
 for (item in [policyHolderNameVar, streetVar, cityVar, stateVar, zipcodeVar, policyNumberVar, claimsOfficerVar, dateOfLossVar, claimNumberVar, claimsOfficerEmailShortVar, notificationDateVar]) {
     migration.variableRepository.upsert(item)
 }
 
 def variablePath = "Data.Claims.Value"
-migration.variableStructureRepository.upsert(
-    new VariableStructureBuilder("varStructure")
-        .addVariable(policyHolderNameVar.id, variablePath)
-        .addVariable(streetVar.id, variablePath)
-        .addVariable(cityVar.id, variablePath)
-        .addVariable(stateVar.id, variablePath)
-        .addVariable(zipcodeVar.id, variablePath)
-        .addVariable(policyNumberVar.id, variablePath)
-        .addVariable(claimsOfficerVar.id, variablePath)
-        .addVariable(dateOfLossVar.id, variablePath)
-        .addVariable(claimNumberVar.id, variablePath)
-        .addVariable(claimsOfficerEmailShortVar.id, variablePath)
-        .addVariable(notificationDateVar.id, variablePath)
-        .build()
-)
+migration.variableStructureRepository.upsert(new VariableStructureBuilder("varStructure")
+    .addVariable(policyHolderNameVar.id, variablePath)
+    .addVariable(streetVar.id, variablePath)
+    .addVariable(cityVar.id, variablePath)
+    .addVariable(stateVar.id, variablePath)
+    .addVariable(zipcodeVar.id, variablePath)
+    .addVariable(policyNumberVar.id, variablePath)
+    .addVariable(claimsOfficerVar.id, variablePath)
+    .addVariable(dateOfLossVar.id, variablePath)
+    .addVariable(claimNumberVar.id, variablePath)
+    .addVariable(claimsOfficerEmailShortVar.id, variablePath)
+    .addVariable(notificationDateVar.id, variablePath)
+    .build())
 
 def boldStyle = new TextStyleBuilder("bold").definition {
     it.fontFamily("Aptos")
@@ -124,31 +119,31 @@ def justifyLeftParagraphStyle = new ParagraphStyleBuilder("justifyLeft")
     }
     .build()
 def normalParagraphStyle = new ParagraphStyleBuilder("normal")
-        .definition {
-            it.spaceAfter(Size.ofMillimeters(3))
-        }
-        .build()
+    .definition {
+        it.spaceAfter(Size.ofMillimeters(3))
+    }
+    .build()
 migration.paragraphStyleRepository.upsert(justifyLeftParagraphStyle)
 migration.paragraphStyleRepository.upsert(normalParagraphStyle)
 
 def addressFlow = new DocumentObjectBuilder("addressFlow", DocumentObjectType.Block)
     .internal(true)
     .paragraph {
-        it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle.id)
         it.text {
             it.styleRef = new TextStyleRef(normalStyle.id)
             it.appendContent(new VariableRef(policyHolderNameVar.id))
         }
     }
     .paragraph {
-        it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle.id)
         it.text {
             it.styleRef = new TextStyleRef(normalStyle.id)
             it.appendContent(new VariableRef(streetVar.id))
         }
     }
     .paragraph {
-        it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle.id)
         it.text {
             it.styleRef = new TextStyleRef(normalStyle.id)
             it.appendContent(new VariableRef(cityVar.id))
@@ -211,15 +206,15 @@ migration.documentObjectRepository.upsert(addressFlow)
 def mainFlow = new DocumentObjectBuilder("mainFlow", DocumentObjectType.Block)
     .internal(true)
     .paragraph {
-        it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle.id)
         it.text {
             it.styleRef = new TextStyleRef(boldStyle.id)
             it.appendContent("Subject: Acknowledgement of Notification of Loss – Policy No. ")
-                    .appendContent(new VariableRef(policyNumberVar.id))
+                .appendContent(new VariableRef(policyNumberVar.id))
         }
     }
     .paragraph {
-        it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle.id)
         it.text {
             it.styleRef = new TextStyleRef(normalStyle.id)
             it.appendContent("Dear ")
@@ -234,7 +229,7 @@ def mainFlow = new DocumentObjectBuilder("mainFlow", DocumentObjectType.Block)
         }
     }
     .paragraph {
-        it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle.id)
         it.text {
             it.styleRef = new TextStyleRef(normalStyle.id)
             it.appendContent("We acknowledge receipt of your notification of loss dated ")
@@ -265,7 +260,7 @@ def mainFlow = new DocumentObjectBuilder("mainFlow", DocumentObjectType.Block)
         }
     }
     .paragraph {
-        it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle.id)
         it.text {
             it.styleRef = new TextStyleRef(normalStyle.id)
             it.appendContent("We understand the circumstances described in your letter and appreciate you bringing this matter to our attention promptly. Your claim has been registered under the reference number ")
@@ -280,20 +275,20 @@ def mainFlow = new DocumentObjectBuilder("mainFlow", DocumentObjectType.Block)
         }
     }
 //     .paragraph {
-//         it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+//         it.styleRef(justifyLeftParagraphStyle.id)
 //         it.text {
-//             it.appendContent(new DocumentObjectRef(infoTable.id))
+//             it.documentObjectRef(infoTable.id)
 //         }
 //     }
     .paragraph {
-        it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle.id)
         it.text {
             it.styleRef = new TextStyleRef(normalStyle.id)
             it.appendContent("Our claims department has initiated the review process, and a claims representative will be assigned to your case shortly. You will be contacted within [e.g., 3–5 business days] to discuss the next steps and any additional documentation that may be required to process your claim.")
         }
     }
     .paragraph {
-        it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle.id)
         it.text {
             it.styleRef = new TextStyleRef(normalStyle.id)
             it.appendContent("In the meantime, if you have any urgent questions or need assistance, please feel free to contact our claims support team via email at ")
@@ -308,14 +303,14 @@ def mainFlow = new DocumentObjectBuilder("mainFlow", DocumentObjectType.Block)
         }
     }
     .paragraph {
-        it.styleRef = new ParagraphStyleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle.id)
         it.text {
             it.styleRef = new TextStyleRef(normalStyle.id)
             it.appendContent("We appreciate your cooperation and look forward to resolving your claim efficiently.")
         }
     }
     .paragraph {
-        it.styleRef = new ParagraphStyleRef(normalParagraphStyle.id)
+        it.styleRef(normalParagraphStyle.id)
         it.text {
             it.styleRef = new TextStyleRef(normalStyle.id)
             it.appendContent("Sincerely,")
@@ -347,7 +342,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.width(Size.ofMillimeters(210))
             it.height(Size.ofMillimeters(28))
         }
-        .content(new ImageRef(headerImage.id))
+            .imageRef(headerImage.id)
     }
     .flowArea {
         it.position {
@@ -356,7 +351,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.width(Size.ofMillimeters(80))
             it.height(Size.ofMillimeters(30))
         }
-        .content(new DocumentObjectRef(addressFlow.id))
+            .documentObjectRef(addressFlow.id)
     }
     .flowArea {
         it.position {
@@ -365,13 +360,13 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.width(Size.ofMillimeters(160))
             it.height(Size.ofMillimeters(190))
         }
-        .content(new DocumentObjectRef(mainFlow.id))
+            .documentObjectRef(mainFlow.id)
     }
     .build()
 migration.documentObjectRepository.upsert(page)
 
 def template = new DocumentObjectBuilder("AcknowledgementLetterFromSource", DocumentObjectType.Template)
-        .content([new DocumentObjectRef(page.id)])
-        .build()
+    .documentObjectRef(page.id)
+    .build()
 migration.documentObjectRepository.upsert(template)
 

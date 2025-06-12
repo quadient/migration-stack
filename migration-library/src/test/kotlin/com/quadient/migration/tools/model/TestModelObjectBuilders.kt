@@ -4,6 +4,7 @@ import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModel
+import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ParagraphModel
 import com.quadient.migration.data.ParagraphModel.TextModel
@@ -346,6 +347,9 @@ fun aImage(
         targetFolder = targetFolder
     )
 }
+
+fun aDocumentObjectRef(id: String, displayRuleId: String? = null) =
+    DocumentObjectModelRef(id, displayRuleId?.let { DisplayRuleModelRef(it) })
 
 fun aDocumentObjectInternalRepository() = DocumentObjectInternalRepository(DocumentObjectTable, aProjectConfig().name)
 fun aVariableInternalRepository() = VariableInternalRepository(VariableTable, aProjectConfig().name)

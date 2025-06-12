@@ -84,17 +84,20 @@ class DesignerDocumentObjectBuilder(
             }
         }
 
-        pageModels.forEach { buildPage(layout, variableStructure, it.nameOrId(), it.content, it.options as? PageOptions) }
+        pageModels.forEach {
+            buildPage(
+                layout, variableStructure, it.nameOrId(), it.content, documentObject, it.options as? PageOptions
+            )
+        }
 
         if (virtualPageContent.isNotEmpty() || pageModels.isEmpty()) {
-            buildPage(layout, variableStructure, "Virtual Page", virtualPageContent)
+            buildPage(layout, variableStructure, "Virtual Page", virtualPageContent, documentObject)
         }
 
         buildTextStyles(
             layout, textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel })
         buildParagraphStyles(
-            layout,
-            paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
+            layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
 
         return builder.build()
     }
@@ -129,6 +132,7 @@ class DesignerDocumentObjectBuilder(
         variableStructure: VariableStructureModel,
         name: String,
         content: List<DocumentContentModel>,
+        mainObject: DocumentObjectModel,
         options: PageOptions? = null
     ) {
         val page = layout.addPage().setName(name).setType(Pages.PageConditionType.SIMPLE)
@@ -146,20 +150,24 @@ class DesignerDocumentObjectBuilder(
             }
         }
 
-        flowAreaModels.forEach { buildArea(layout, variableStructure, page, it) }
+        flowAreaModels.forEach { buildArea(layout, variableStructure, page, it, mainObject) }
 
         if (virtualFlowAreaContent.isNotEmpty()) {
             buildArea(
                 layout, variableStructure, page, FlowAreaModel(
                     Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters()),
                     virtualFlowAreaContent
-                )
+                ), mainObject
             )
         }
     }
 
     private fun buildArea(
-        layout: Layout, variableStructure: VariableStructureModel, page: Page, flowAreaModel: FlowAreaModel
+        layout: Layout,
+        variableStructure: VariableStructureModel,
+        page: Page,
+        flowAreaModel: FlowAreaModel,
+        mainObject: DocumentObjectModel
     ) {
         val position = flowAreaModel.position
 
@@ -182,7 +190,11 @@ class DesignerDocumentObjectBuilder(
         } else {
             page.addFlowArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
                 .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlowToNextPage(true)
-                .setFlow(buildDocumentContentAsSingleFlow(layout, variableStructure, flowAreaModel.content))
+                .setFlow(
+                    buildDocumentContentAsSingleFlow(
+                        layout, variableStructure, flowAreaModel.content, displayRuleRef = mainObject.displayRuleRef
+                    )
+                )
         }
     }
 }

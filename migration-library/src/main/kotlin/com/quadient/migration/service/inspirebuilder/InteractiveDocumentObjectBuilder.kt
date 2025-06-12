@@ -14,7 +14,6 @@ import com.quadient.migration.service.getFolder
 import com.quadient.migration.service.imageExtension
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
-import kotlin.collections.forEach
 
 class InteractiveDocumentObjectBuilder(
     documentObjectRepository: DocumentObjectInternalRepository,
@@ -61,9 +60,17 @@ class InteractiveDocumentObjectBuilder(
         val mainFlowText = mainFlow.addParagraph().addText()
 
         val variableStructure = initVariableStructure(layout)
-        buildDocumentContentAsFlows(
+        val flows = buildDocumentContentAsFlows(
             layout, variableStructure, documentObject.content, documentObject.nameOrId()
-        ).forEach { mainFlowText.appendFlow(it) }
+        )
+
+        if (documentObject.displayRuleRef == null) {
+            flows.forEach { mainFlowText.appendFlow(it) }
+        } else {
+            mainFlowText.appendFlow(
+                flows.toSingleFlow(layout, variableStructure, documentObject.nameOrId(), documentObject.displayRuleRef)
+            )
+        }
 
         logger.debug("Successfully built document object '${documentObject.nameOrId()}'")
         return builder.buildLayoutDelta()

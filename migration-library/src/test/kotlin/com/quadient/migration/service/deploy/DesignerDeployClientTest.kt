@@ -1,7 +1,6 @@
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.StringModel
@@ -14,6 +13,7 @@ import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDocObj
+import com.quadient.migration.tools.model.aDocumentObjectRef
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aTemplate
@@ -60,12 +60,12 @@ class DesignerDeployClientTest {
         val page = mockObj(
             aDocObj(
                 "P_1", DocumentObjectType.Page, listOf(
-                    DocumentObjectModelRef(internalBlock.id),
-                    DocumentObjectModelRef(externalBlock.id)
+                    aDocumentObjectRef(internalBlock.id),
+                    aDocumentObjectRef(externalBlock.id)
                 )
             )
         )
-        val template = mockObj(aTemplate("1", listOf(DocumentObjectModelRef(page.id))))
+        val template = mockObj(aTemplate("1", listOf(aDocumentObjectRef(page.id))))
 
         every { documentObjectRepository.list(any()) } returns listOf(template, externalBlock)
         every { ipsService.close() } just runs
@@ -185,9 +185,9 @@ class DesignerDeployClientTest {
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
         val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
-            aBlock(id = "1", content = listOf(DocumentObjectModelRef("4"))),
-            aBlock(id = "2", content = listOf(DocumentObjectModelRef("5"))),
-            aBlock(id = "3", content = listOf(DocumentObjectModelRef("6"))),
+            aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
+            aBlock(id = "2", content = listOf(aDocumentObjectRef("5"))),
+            aBlock(id = "3", content = listOf(aDocumentObjectRef("6"))),
         )
         every { documentObjectRepository.list(any()) } returns docObjects
 
@@ -203,15 +203,15 @@ class DesignerDeployClientTest {
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
         val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
-            aBlock(id = "1", content = listOf(DocumentObjectModelRef("4"))),
-            aBlock(id = "2", content = listOf(DocumentObjectModelRef("5"))),
-            aBlock(id = "3", content = listOf(DocumentObjectModelRef("6"))),
+            aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
+            aBlock(id = "2", content = listOf(aDocumentObjectRef("5"))),
+            aBlock(id = "3", content = listOf(aDocumentObjectRef("6"))),
         )
         val dependencies = listOf(
             aBlock(id = "4"),
-            aBlock(id = "5", content = listOf(DocumentObjectModelRef("7"))),
-            aBlock(id = "6", content = listOf(DocumentObjectModelRef("7"))),
-            aBlock(id = "7", content = listOf(DocumentObjectModelRef("8"))),
+            aBlock(id = "5", content = listOf(aDocumentObjectRef("7"))),
+            aBlock(id = "6", content = listOf(aDocumentObjectRef("7"))),
+            aBlock(id = "7", content = listOf(aDocumentObjectRef("8"))),
             aBlock(id = "8", internal = true),
         )
         every { documentObjectRepository.list(any()) } returns docObjects
@@ -237,7 +237,7 @@ class DesignerDeployClientTest {
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
         val toDeploy = listOf("1")
         val docObjects = listOf(
-            aBlock(id = "1", content = listOf(DocumentObjectModelRef("4"))),
+            aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
         )
         every { documentObjectRepository.list(any()) } returns docObjects
         every { documentObjectRepository.findModelOrFail(any()) } throws IllegalArgumentException("not found")
@@ -253,8 +253,8 @@ class DesignerDeployClientTest {
     fun `deployDocumentObjects continues deployment when there is exception during document build`() {
         // given
         val innerBlock = aDocObj("B_2")
-        val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, listOf(DocumentObjectModelRef(innerBlock.id))))
-        val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(DocumentObjectModelRef(block.id))))
+        val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, listOf(aDocumentObjectRef(innerBlock.id))))
+        val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
 
         every { ipsService.close() } just runs
         every { documentObjectRepository.findModel(innerBlock.id) } throws IllegalStateException("Not found")

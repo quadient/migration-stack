@@ -15,7 +15,8 @@ sealed interface TextStyleDefOrRefEntity
 sealed interface ParagraphStyleDefOrRefEntity
 
 @Serializable
-data class DocumentObjectEntityRef(val id: String) : RefEntity, DocumentContentEntity, TextContentEntity
+data class DocumentObjectEntityRef(val id: String, val displayRuleRef: DisplayRuleEntityRef? = null) : RefEntity,
+    DocumentContentEntity, TextContentEntity
 
 @Serializable
 data class VariableEntityRef(val id: String) : RefEntity, TextContentEntity

@@ -2,8 +2,6 @@ package com.quadient.migration.example.example
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
-import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
-import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
@@ -16,6 +14,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
@@ -36,29 +35,38 @@ def logoHeight = Size.ofMillimeters(13)
 
 // Define variables to be used in the address and table
 def displayHeaderVariable = new VariableBuilder("displayHeaderVariable")
-        .defaultValue("true")
-        .dataType(DataType.Boolean).build()
+    .defaultValue("true")
+    .dataType(DataType.Boolean).build()
 def displayParagraphVariable = new VariableBuilder("displayParagraphVariable")
-        .defaultValue("true")
-        .dataType(DataType.Boolean).build()
+    .defaultValue("true")
+    .dataType(DataType.Boolean).build()
 def displayLastSentenceVariable = new VariableBuilder("displayLastSentenceVariable")
-        .defaultValue("true")
-        .dataType(DataType.Boolean).build()
+    .defaultValue("true")
+    .dataType(DataType.Boolean).build()
 def nameVariable = new VariableBuilder("nameVariable")
-        .defaultValue("John Doe")
-        .dataType(DataType.String).build()
+    .defaultValue("John Doe")
+    .dataType(DataType.String).build()
 def addressVariable = new VariableBuilder("addressVariable")
-        .defaultValue("123 Main St")
-        .dataType(DataType.String).build()
+    .defaultValue("123 Main St")
+    .dataType(DataType.String).build()
 def cityVariable = new VariableBuilder("cityVariable")
-        .defaultValue("Anytown")
-        .dataType(DataType.String).build()
+    .defaultValue("Anytown")
+    .dataType(DataType.String).build()
 def stateVariable = new VariableBuilder("stateVariable")
-        .defaultValue("Canada")
-        .dataType(DataType.String).build()
+    .defaultValue("Canada")
+    .dataType(DataType.String).build()
 
 // Display displayHeaderRule to conditionally display the address.
 // Header is hidden if displayHeaderVariable is set to false
+def displayAddressRule = new DisplayRuleBuilder("displayAddressRule")
+    .group {
+        it.operator(GroupOp.Or)
+        it.comparison { it.variable(nameVariable.id).notEquals().value("") }
+        it.comparison { it.variable(addressVariable.id).notEquals().value("") }
+        it.comparison { it.variable(cityVariable.id).notEquals().value("") }
+        it.comparison { it.variable(stateVariable.id).notEquals().value("") }
+    }.build()
+
 def displayHeaderRule = new DisplayRuleBuilder("displayHeaderRule")
     .comparison { it.value(true).equals().variable(displayHeaderVariable.id) }
     .build()
@@ -72,12 +80,12 @@ def displayLastSentenceRule = new DisplayRuleBuilder("displayLastSentenceRule")
     .build()
 
 def displayRuleStateCzechia = new DisplayRuleBuilder("displayRuleStateCzechia")
-        .comparison { it.value("Czechia").equals().variable(stateVariable.id) }
-        .build()
+    .comparison { it.value("Czechia").equals().variable(stateVariable.id) }
+    .build()
 
 def displayRuleStateFrance = new DisplayRuleBuilder("displayRuleStateFrance")
-        .comparison { it.value("France").equals().variable(stateVariable.id) }
-        .build()
+    .comparison { it.value("France").equals().variable(stateVariable.id) }
+    .build()
 
 // Define text and paragraph styles to be used in the document
 def normalStyle = new TextStyleBuilder("normalStyle")
@@ -108,10 +116,10 @@ def logoBase64 = "iVBORw0KGgoAAAANSUhEUgAAAV4AAACWCAIAAAAZhXcgAAAACXBIWXMAAC4jAA
 def logoImageName = "logo.png"
 migration.storage.write(logoImageName, logoBase64.decodeBase64())
 def logo = new ImageBuilder("logo")
-        .options(new ImageOptions(logoWidth, logoHeight))
-        .sourcePath(logoImageName)
-        .imageType(ImageType.Png)
-        .build()
+    .options(new ImageOptions(logoWidth, logoHeight))
+    .sourcePath(logoImageName)
+    .imageType(ImageType.Png)
+    .build()
 
 // Table containing some data with the first address row being optionally hidden
 // by using displayRuleRef to the display displayHeaderRule defined above.
@@ -195,73 +203,73 @@ def signature = new DocumentObjectBuilder("signature", DocumentObjectType.Block)
 // and body text with normalStyle, both defined above.
 def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Block)
 // No separate file will be created and the content will be inlined instead when block is internal.
-        .internal(true)
-        .paragraph {
-            it.text {
-                it.styleRef(headingStyle.id)
-                it.content("Lorem ipsum dolor sit amet\n")
+    .internal(true)
+    .paragraph {
+        it.text {
+            it.styleRef(headingStyle.id)
+            it.content("Lorem ipsum dolor sit amet\n")
+        }
+    }
+    .paragraph {
+        it.styleRef(paragraphStyle.id)
+            .text {
+                it.styleRef(normalStyle.id)
+                it.firstMatch {
+                    it.case {
+                        it.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                            it.appendContent("Dobrý den")
+                        }.build()).displayRule(displayRuleStateCzechia.id)
+                    }.case {
+                        it.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                            it.appendContent("Bonjour")
+                        }.build()).displayRule(displayRuleStateFrance.id)
+                    }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Good morning") }.build())
+                }
+                it.appendContent(", Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
             }
-        }
-        .paragraph {
-            it.styleRef(paragraphStyle.id)
-                    .text {
-                        it.styleRef(normalStyle.id)
-                        it.firstMatch {
-                            it.case {
-                                it.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                                    it.appendContent("Dobrý den")
-                                }.build()).displayRule(displayRuleStateCzechia.id)
-                            }.case {
-                                it.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                                    it.appendContent("Bonjour")
-                                }.build()).displayRule(displayRuleStateFrance.id)
-                            }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Good morning") }.build())
-                        }
-                        it.appendContent(", Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
-                    }
-        }
-        .build()
+    }
+    .build()
 
 // Second sample paragraph
 def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Block)
     .internal(true)
     .paragraph {
         it.styleRef(new ParagraphStyleRef(paragraphStyle.id))
-        .text {
-            it.content("Donec non porttitor ipsum. Praesent et blandit nulla, quis ullamcorper enim. Curabitur nec rutrum justo. Nunc ac quam a ante consequat ullamcorper eget sit amet tortor. Donec convallis sagittis purus, a feugiat lacus tristique vitae. In a orci risus. Sed elit magna, vestibulum vitae orci sodales, consequat pharetra nisi. Vestibulum non scelerisque elit. Duis feugiat porttitor ante sit amet porta. Fusce at leo posuere, venenatis libero ut, varius dolor. Duis bibendum porta tincidunt.")
-        }
-        .text {
-            it.displayRuleRef(new DisplayRuleRef(displayLastSentenceRule.id))
-            it.content("Nulla id nulla odio.")
-        }
+            .text {
+                it.content("Donec non porttitor ipsum. Praesent et blandit nulla, quis ullamcorper enim. Curabitur nec rutrum justo. Nunc ac quam a ante consequat ullamcorper eget sit amet tortor. Donec convallis sagittis purus, a feugiat lacus tristique vitae. In a orci risus. Sed elit magna, vestibulum vitae orci sodales, consequat pharetra nisi. Vestibulum non scelerisque elit. Duis feugiat porttitor ante sit amet porta. Fusce at leo posuere, venenatis libero ut, varius dolor. Duis bibendum porta tincidunt.")
+            }
+            .text {
+                it.displayRuleRef(new DisplayRuleRef(displayLastSentenceRule.id))
+                it.content("Nulla id nulla odio.")
+            }
     }
     .build()
 
 // Paragraph that is displayed conditionally based on the value of the displayParagraphVariable.
 def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", DocumentObjectType.Block)
-    .internal(true)
+    .internal(false)
     .displayRuleRef(displayParagraphRule.id)
     .paragraph {
         it.styleRef(new ParagraphStyleRef(paragraphStyle.id))
-        .text {
-            it.content("Integer quis quam semper, accumsan neque at, pellentesque diam. Etiam in blandit dolor. Maecenas sit amet interdum augue, vel pellentesque erat. Suspendisse ut sem in justo rhoncus placerat vitae ut lacus. Etiam consequat bibendum justo ut posuere. Donec aliquam posuere nibh, vehicula pulvinar lectus dictum et. Nullam rhoncus ultrices ipsum et consectetur. Nam tincidunt id purus ac viverra. ")
-        }
+            .text {
+                it.content("Integer quis quam semper, accumsan neque at, pellentesque diam. Etiam in blandit dolor. Maecenas sit amet interdum augue, vel pellentesque erat. Suspendisse ut sem in justo rhoncus placerat vitae ut lacus. Etiam consequat bibendum justo ut posuere. Donec aliquam posuere nibh, vehicula pulvinar lectus dictum et. Nullam rhoncus ultrices ipsum et consectetur. Nam tincidunt id purus ac viverra. ")
+            }
     }
     .build()
 
 def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
-        .internal(true)
-        .firstMatch { fb ->
-            fb.case { cb ->
-                cb.name("Czech Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                    it.appendContent("Nashledanou.")
-                }.build()).displayRule(displayRuleStateCzechia.id)
-            }.case { cb ->
-                cb.name("French Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                    it.appendContent("Au revoir.")
-                }.build()).displayRule(displayRuleStateFrance.id)
-            }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Goodbye.") }.build())
-        }.build()
+    .internal(true)
+    .firstMatch { fb ->
+        fb.case { cb ->
+            cb.name("Czech Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                it.appendContent("Nashledanou.")
+            }.build()).displayRule(displayRuleStateCzechia.id)
+        }.case { cb ->
+            cb.name("French Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                it.appendContent("Au revoir.")
+            }.build()).displayRule(displayRuleStateFrance.id)
+        }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Goodbye.") }.build())
+    }.build()
 
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas
@@ -276,7 +284,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.width(contentWidth)
             it.height(Size.ofCentimeters(2))
         }
-        .content([new DocumentObjectRef(address.id)])
+            .documentObjectRef(address.id, displayAddressRule.id)
     }
     .flowArea {
         it.position {
@@ -284,8 +292,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.top(topMargin)
             it.width(logoWidth)
             it.height(logoHeight)
-        }
-        .content([new ImageRef(logo.id)])
+        }.imageRef(logo.id)
     }
     .flowArea {
         it.position {
@@ -294,11 +301,11 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.width(contentWidth)
             it.height(pageHeight - Size.ofCentimeters(4))
         }
-                .content([new DocumentObjectRef(paragraph1.id),
-                          new DocumentObjectRef(paragraph2.id),
-                          new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent(table) }.build(),
-                          new DocumentObjectRef(conditionalParagraph.id),
-                          new DocumentObjectRef(firstMatchBlock.id)])
+            .documentObjectRef(paragraph1.id)
+            .documentObjectRef(paragraph2.id)
+            .paragraph { it.styleRef(paragraphStyle.id).text { it.content(table) } }
+            .documentObjectRef(conditionalParagraph.id)
+            .documentObjectRef(firstMatchBlock.id)
     }
     .flowArea {
         it.position {
@@ -307,12 +314,12 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.width(contentWidth)
             it.height(Size.ofCentimeters(2))
         }
-        .content([new DocumentObjectRef(signature.id)])
+            .documentObjectRef(signature.id)
     }
     .build()
 
 def template = new DocumentObjectBuilder("template", DocumentObjectType.Template)
-    .content([new DocumentObjectRef(page.id)])
+    .documentObjectRef(page.id)
     .build()
 
 // Insert all content into the database to be used in the deploy task
@@ -325,7 +332,7 @@ for (item in [headingStyle, normalStyle]) {
 for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable]) {
     migration.variableRepository.upsert(item)
 }
-for (item in [displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {
+for (item in [displayAddressRule, displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {
     migration.displayRuleRepository.upsert(item)
 }
 for (item in [paragraphStyle]) {
@@ -333,14 +340,12 @@ for (item in [paragraphStyle]) {
 }
 
 migration.imageRepository.upsert(logo)
-migration.variableStructureRepository.upsert(
-    new VariableStructureBuilder("variableStructure")
-        .addVariable(displayHeaderVariable.id, "Data.displayHeader")
-        .addVariable(displayParagraphVariable.id, "Data.displayParagraph")
-        .addVariable(displayLastSentenceVariable.id, "Data.displayLastSentence")
-        .addVariable(nameVariable.id, "Data.name")
-        .addVariable(addressVariable.id, "Data.address")
-        .addVariable(cityVariable.id, "Data.city")
-        .addVariable(stateVariable.id, "Data.state")
-        .build()
-)
+migration.variableStructureRepository.upsert(new VariableStructureBuilder("variableStructure")
+    .addVariable(displayHeaderVariable.id, "Data.displayHeader")
+    .addVariable(displayParagraphVariable.id, "Data.displayParagraph")
+    .addVariable(displayLastSentenceVariable.id, "Data.displayLastSentence")
+    .addVariable(nameVariable.id, "Data.name")
+    .addVariable(addressVariable.id, "Data.address")
+    .addVariable(cityVariable.id, "Data.city")
+    .addVariable(stateVariable.id, "Data.state")
+    .build())

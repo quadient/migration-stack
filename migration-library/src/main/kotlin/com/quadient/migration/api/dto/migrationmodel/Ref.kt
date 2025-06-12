@@ -89,13 +89,16 @@ sealed interface ParagraphStyleDefOrRef {
     }
 }
 
-data class DocumentObjectRef(override val id: String) : Ref, DocumentContent, TextContent {
+data class DocumentObjectRef(override val id: String, val displayRuleRef: DisplayRuleRef? = null) : Ref,
+    DocumentContent,
+    TextContent {
     companion object {
-        fun fromModel(model: DocumentObjectModelRef) = DocumentObjectRef(model.id)
+        fun fromModel(model: DocumentObjectModelRef) =
+            DocumentObjectRef(model.id, model.displayRuleRef?.let { DisplayRuleRef.fromModel(it) })
     }
 
-    fun toDb() = DocumentObjectEntityRef(id)
-    fun toModel() = DocumentObjectModelRef(id)
+    fun toDb() = DocumentObjectEntityRef(id, displayRuleRef?.toDb())
+    fun toModel() = DocumentObjectModelRef(id, displayRuleRef?.toModel())
 }
 
 data class VariableRef(override val id: String) : Ref, TextContent {

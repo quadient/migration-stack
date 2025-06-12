@@ -1,7 +1,6 @@
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphModel
@@ -21,6 +20,7 @@ import com.quadient.migration.tools.aBlockModel
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDocObj
+import com.quadient.migration.tools.model.aDocumentObjectRef
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aTemplate
@@ -97,7 +97,7 @@ class InteractiveDeployClientTest {
             )
         )
         val template =
-            mockDocumentObject(aTemplate("3", listOf(DocumentObjectModelRef("block1"), DocumentObjectModelRef("block2"))))
+            mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("block1"), aDocumentObjectRef("block2"))))
 
         every { documentObjectRepository.list(any()) } returns listOf(externalBlock, template)
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
@@ -164,7 +164,7 @@ class InteractiveDeployClientTest {
         )
         aBlock("2", type = DocumentObjectType.Unsupported)
         val template =
-            mockDocumentObject(aTemplate("3", listOf(DocumentObjectModelRef("block1"), DocumentObjectModelRef("block2"))))
+            mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("block1"), aDocumentObjectRef("block2"))))
 
         every { documentObjectRepository.list(any()) } returns listOf(block, template)
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
@@ -242,7 +242,7 @@ class InteractiveDeployClientTest {
         val block = mockDocumentObject(
             aBlock(
                 "1", listOf(
-                    DocumentObjectModelRef(innerBlock.id),
+                    aDocumentObjectRef(innerBlock.id),
                     aParagraph(aText(ImageModelRef(image.id)))
                 )
             )
@@ -316,12 +316,12 @@ class InteractiveDeployClientTest {
     @Test
     fun `deployOrder is correct`() {
         val list = listOf(
-            aBlockModel("a", content = listOf(DocumentObjectModelRef("b"))),
-            aBlockModel("a2", content = listOf(DocumentObjectModelRef("b"))),
-            aBlockModel("a3", content = listOf(DocumentObjectModelRef("b"))),
-            aBlockModel("b", content = listOf(DocumentObjectModelRef("c"))),
+            aBlockModel("a", content = listOf(aDocumentObjectRef("b"))),
+            aBlockModel("a2", content = listOf(aDocumentObjectRef("b"))),
+            aBlockModel("a3", content = listOf(aDocumentObjectRef("b"))),
+            aBlockModel("b", content = listOf(aDocumentObjectRef("c"))),
             aBlockModel("c", content = listOf()),
-            aBlockModel("d", content = listOf(DocumentObjectModelRef("f"))),
+            aBlockModel("d", content = listOf(aDocumentObjectRef("f"))),
             aBlockModel("e", content = listOf()),
             aBlockModel("f", content = listOf()),
         )
@@ -334,12 +334,12 @@ class InteractiveDeployClientTest {
     @Test
     fun `deployOrder has missing object`() {
         val list = listOf(
-            aBlockModel("a", content = listOf(DocumentObjectModelRef("b"))),
-            aBlockModel("a2", content = listOf(DocumentObjectModelRef("b"))),
-            aBlockModel("a3", content = listOf(DocumentObjectModelRef("b"))),
-            aBlockModel("b", content = listOf(DocumentObjectModelRef("c"))),
+            aBlockModel("a", content = listOf(aDocumentObjectRef("b"))),
+            aBlockModel("a2", content = listOf(aDocumentObjectRef("b"))),
+            aBlockModel("a3", content = listOf(aDocumentObjectRef("b"))),
+            aBlockModel("b", content = listOf(aDocumentObjectRef("c"))),
             // c is missing
-            aBlockModel("d", content = listOf(DocumentObjectModelRef("f"))),
+            aBlockModel("d", content = listOf(aDocumentObjectRef("f"))),
             aBlockModel("e", content = listOf()),
             aBlockModel("f", content = listOf()),
         )
@@ -352,9 +352,9 @@ class InteractiveDeployClientTest {
     @Test
     fun `deployOrder fails on recursive dependency`() {
         val list = listOf(
-            aBlockModel("a", content = listOf(DocumentObjectModelRef("b"))),
-            aBlockModel("b", content = listOf(DocumentObjectModelRef("c"))),
-            aBlockModel("c", content = listOf(DocumentObjectModelRef("b"))),
+            aBlockModel("a", content = listOf(aDocumentObjectRef("b"))),
+            aBlockModel("b", content = listOf(aDocumentObjectRef("c"))),
+            aBlockModel("c", content = listOf(aDocumentObjectRef("b"))),
         )
 
         val result = assertThrows<RuntimeException> { subject.deployOrder(list) }
@@ -442,9 +442,9 @@ class InteractiveDeployClientTest {
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
         val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
-            aBlock(id = "1", content = listOf(DocumentObjectModelRef("4"))),
-            aBlock(id = "2", content = listOf(DocumentObjectModelRef("5"))),
-            aBlock(id = "3", content = listOf(DocumentObjectModelRef("6"))),
+            aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
+            aBlock(id = "2", content = listOf(aDocumentObjectRef("5"))),
+            aBlock(id = "3", content = listOf(aDocumentObjectRef("6"))),
         )
         every { documentObjectRepository.list(any()) } returns docObjects
 
@@ -460,15 +460,15 @@ class InteractiveDeployClientTest {
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
         val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
-            aBlock(id = "1", content = listOf(DocumentObjectModelRef("4"))),
-            aBlock(id = "2", content = listOf(DocumentObjectModelRef("5"))),
-            aBlock(id = "3", content = listOf(DocumentObjectModelRef("6"))),
+            aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
+            aBlock(id = "2", content = listOf(aDocumentObjectRef("5"))),
+            aBlock(id = "3", content = listOf(aDocumentObjectRef("6"))),
         )
         val dependencies = listOf(
             aBlock(id = "4"),
-            aBlock(id = "5", content = listOf(DocumentObjectModelRef("7"))),
-            aBlock(id = "6", content = listOf(DocumentObjectModelRef("7"))),
-            aBlock(id = "7", content = listOf(DocumentObjectModelRef("8"))),
+            aBlock(id = "5", content = listOf(aDocumentObjectRef("7"))),
+            aBlock(id = "6", content = listOf(aDocumentObjectRef("7"))),
+            aBlock(id = "7", content = listOf(aDocumentObjectRef("8"))),
             aBlock(id = "8", internal = true),
         )
         every { documentObjectRepository.list(any()) } returns docObjects
@@ -494,7 +494,7 @@ class InteractiveDeployClientTest {
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
         val toDeploy = listOf("1")
         val docObjects = listOf(
-            aBlock(id = "1", content = listOf(DocumentObjectModelRef("4"))),
+            aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
         )
         every { documentObjectRepository.list(any()) } returns docObjects
         every { documentObjectRepository.findModelOrFail(any()) } throws IllegalArgumentException("not found")
@@ -510,8 +510,8 @@ class InteractiveDeployClientTest {
     fun `deployDocumentObjects continues deployment when there is exception during document build`() {
         // given
         val innerBlock = aDocObj("B_2")
-        val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, listOf(DocumentObjectModelRef(innerBlock.id))))
-        val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(DocumentObjectModelRef(block.id))))
+        val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, listOf(aDocumentObjectRef(innerBlock.id))))
+        val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
 
         mockBasicSuccessfulIpsOperations()
         every { documentObjectRepository.findModel(innerBlock.id) } throws IllegalStateException("Not found")
@@ -555,7 +555,7 @@ class InteractiveDeployClientTest {
             )
         }
         val templates = List(1) {
-            mockDocumentObject(aTemplate(it.toString(), listOf(DocumentObjectModelRef("block$it"))))
+            mockDocumentObject(aTemplate(it.toString(), listOf(aDocumentObjectRef("block$it"))))
         }
         every { documentObjectRepository.list(any()) } returns blocks + templates
     }

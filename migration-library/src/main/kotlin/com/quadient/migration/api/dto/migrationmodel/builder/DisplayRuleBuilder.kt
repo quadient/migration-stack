@@ -41,9 +41,9 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
 }
 
 class DisplayRuleGroupBuilder() {
-    var operator: GroupOp? = null
-    var negation: Boolean? = null
-    val items = mutableListOf<BinaryOrGroup>()
+    private var operator: GroupOp = GroupOp.And
+    private var negation: Boolean = false
+    private val items = mutableListOf<BinaryOrGroup>()
 
     fun comparison(builder: BinaryExpressionBuilder.() -> Unit) = apply {
         val binaryExpression = BinaryExpressionBuilder().apply(builder).build()
@@ -62,17 +62,11 @@ class DisplayRuleGroupBuilder() {
         items.add(group.build())
     }
 
-    fun negated() = apply {
-        this.negation = true
-    }
+    fun operator(operator: GroupOp) = apply { this.operator = operator }
 
-    fun build(): Group {
-        return Group(
-            items = items,
-            operator = requireNotNull(operator),
-            negation = requireNotNull(negation)
-        )
-    }
+    fun negate() = apply { this.negation = true }
+
+    fun build() = Group(items = items, operator = operator, negation = negation)
 }
 
 class BinaryExpressionBuilder() {

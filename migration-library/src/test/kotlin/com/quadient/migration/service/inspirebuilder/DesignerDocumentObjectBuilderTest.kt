@@ -4,7 +4,6 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.FirstMatchModel
 import com.quadient.migration.data.FlowAreaModel
 import com.quadient.migration.data.ImageModel
@@ -34,6 +33,7 @@ import com.quadient.migration.tools.model.aCell
 import com.quadient.migration.tools.model.aVariable
 import com.quadient.migration.tools.model.aDisplayRule
 import com.quadient.migration.tools.model.aDocObj
+import com.quadient.migration.tools.model.aDocumentObjectRef
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aRow
@@ -106,7 +106,7 @@ class DesignerDocumentObjectBuilderTest {
                 "P_1", Page, listOf(
                     FlowAreaModel(
                         Position(20.millimeters(), 25.millimeters(), 160.millimeters(), 10.centimeters()),
-                        listOf(DocumentObjectModelRef(block.id))
+                        listOf(aDocumentObjectRef(block.id))
                     )
                 ), options = PageOptions(20.centimeters(), 25.centimeters())
             )
@@ -114,7 +114,7 @@ class DesignerDocumentObjectBuilderTest {
         val template = mockObj(
             aDocObj(
                 "T_1", Template, listOf(
-                    DocumentObjectModelRef(page.id), DocumentObjectModelRef(standaloneBlock.id)
+                    aDocumentObjectRef(page.id), aDocumentObjectRef(standaloneBlock.id)
                 )
             )
         )
@@ -172,7 +172,7 @@ class DesignerDocumentObjectBuilderTest {
                 )
             )
         )
-        val template = mockObj(aDocObj("T_1", Template, listOf(DocumentObjectModelRef(page.id))))
+        val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))))
 
         // when
         val result =
@@ -205,7 +205,7 @@ class DesignerDocumentObjectBuilderTest {
                 )
             )
         )
-        val template = mockObj(aDocObj("T_1", Template, listOf(DocumentObjectModelRef(page.id))))
+        val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))))
 
         // when
         val result =
@@ -234,10 +234,10 @@ class DesignerDocumentObjectBuilderTest {
         )
         val block = mockObj(
             aDocObj(
-                "B_1", Block, listOf(aParagraph(aText(StringModel("Hi")))), displayRuleRef = rule.id
+                "B_1", Block, listOf(aParagraph(aText(StringModel("Hi"))))
             )
         )
-        val template = mockObj(aDocObj("T_1", Template, listOf(DocumentObjectModelRef(block.id))))
+        val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(block.id, rule.id))))
 
         // when
         val result =
@@ -304,7 +304,7 @@ class DesignerDocumentObjectBuilderTest {
         val template = mockObj(
             aDocObj(
                 "T_1", Template, listOf(
-                    DocumentObjectModelRef(block.id), DocumentObjectModelRef(block.id)
+                    aDocumentObjectRef(block.id), aDocumentObjectRef(block.id)
                 )
             )
         )
@@ -327,12 +327,12 @@ class DesignerDocumentObjectBuilderTest {
             aDocObj(
                 "B_1", Block, listOf(
                     aParagraph(aText(StringModel("Hi"))),
-                    DocumentObjectModelRef(innerBlock.id),
+                    aDocumentObjectRef(innerBlock.id),
                     aParagraph(aText(StringModel("Bye")))
                 ), internal = true
             )
         )
-        val template = mockObj(aDocObj("T_1", Template, listOf(DocumentObjectModelRef(block.id))))
+        val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(block.id))))
 
         // when
         val result =
@@ -382,7 +382,7 @@ class DesignerDocumentObjectBuilderTest {
         val template = mockObj(
             aDocObj(
                 "T_1", Template, listOf(
-                    DocumentObjectModelRef(block1.id), DocumentObjectModelRef(block2.id)
+                    aDocumentObjectRef(block1.id), aDocumentObjectRef(block2.id)
                 )
             )
         )
@@ -438,7 +438,7 @@ class DesignerDocumentObjectBuilderTest {
                     FirstMatchModel(
                         cases = listOf(
                             FirstMatchModel.CaseModel(
-                                DisplayRuleModelRef(rule1.id), listOf(DocumentObjectModelRef(flow1.id)), null
+                                DisplayRuleModelRef(rule1.id), listOf(aDocumentObjectRef(flow1.id)), null
                             ), FirstMatchModel.CaseModel(
                                 DisplayRuleModelRef(rule2.id),
                                 listOf(aParagraph(aText(StringModel("flow 2 content")))),

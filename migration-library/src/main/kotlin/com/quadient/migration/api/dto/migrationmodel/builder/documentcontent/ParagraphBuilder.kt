@@ -1,6 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
@@ -69,6 +70,12 @@ class ParagraphBuilder {
         fun appendContent(content: TextContent) = apply { this.content.add(content) }
         fun appendContent(content: String) = apply { this.content.add(StringValue(content)) }
         fun content(content: List<TextContent>) = apply { this.content = content.toMutableList() }
+        fun documentObjectRef(documentObjectId: String) = apply {
+            content.add(DocumentObjectRef(documentObjectId, null))
+        }
+        fun documentObjectRef(documentObjectId: String, displayRuleId: String) = apply {
+            content.add(DocumentObjectRef(documentObjectId, DisplayRuleRef(displayRuleId)))
+        }
 
         fun firstMatch(builder: FirstMatchBuilder.() -> Unit) = apply {
             val firstMatchBuilder = FirstMatchBuilder().apply(builder)

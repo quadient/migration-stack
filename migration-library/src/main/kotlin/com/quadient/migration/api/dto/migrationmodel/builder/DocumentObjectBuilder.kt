@@ -134,6 +134,16 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
 
     /**
      * Add a reference to another document object to the document object.
+     * @param documentObjectId ID of the document object to reference.
+     * @param displayRuleId ID of the display rule to reference.
+     * @return This builder instance for method chaining.
+     */
+    fun documentObjectRef(documentObjectId: String, displayRuleId: String) = apply {
+        documentObjectRef(DocumentObjectRef(documentObjectId, DisplayRuleRef(displayRuleId)))
+    }
+
+    /**
+     * Add a reference to another document object to the document object.
      * @param ref Reference to the document object.
      * @return This builder instance for method chaining.
      */

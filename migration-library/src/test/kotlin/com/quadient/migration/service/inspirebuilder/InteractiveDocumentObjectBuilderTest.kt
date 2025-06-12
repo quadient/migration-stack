@@ -4,9 +4,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.FirstMatchModel
-import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphStyleModelRef
 import com.quadient.migration.data.StringModel
@@ -42,6 +40,7 @@ import com.quadient.migration.tools.model.aParaStyle
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aCell
 import com.quadient.migration.tools.model.aDocObj
+import com.quadient.migration.tools.model.aDocumentObjectRef
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aRow
 import com.quadient.migration.tools.model.aTemplate
@@ -134,7 +133,7 @@ class InteractiveDocumentObjectBuilderTest {
     fun `build template with reference to block results in direct external flow`() {
         // given
         val block = aBlock("1", listOf(aParagraph(aText(StringModel("Hello")))))
-        val template = aTemplate("2", listOf(DocumentObjectModelRef(block.id)))
+        val template = aTemplate("2", listOf(aDocumentObjectRef(block.id)))
 
         every { documentObjectRepository.findModelOrFail(block.id) } returns block
 
@@ -224,12 +223,12 @@ class InteractiveDocumentObjectBuilderTest {
 
         val section = aBlock(
             "5", type = DocumentObjectType.Section, content = listOf(
-                DocumentObjectModelRef(externalBlock.id),
+                aDocumentObjectRef(externalBlock.id),
                 aParagraph(aText(StringModel("In between"))),
-                DocumentObjectModelRef(internalBlock.id)
+                aDocumentObjectRef(internalBlock.id)
             ), internal = true
         )
-        val template = aTemplate("10", listOf(DocumentObjectModelRef(section.id)))
+        val template = aTemplate("10", listOf(aDocumentObjectRef(section.id)))
 
         every { documentObjectRepository.findModelOrFail(externalBlock.id) } returns externalBlock
         every { documentObjectRepository.findModelOrFail(internalBlock.id) } returns internalBlock
@@ -336,10 +335,8 @@ class InteractiveDocumentObjectBuilderTest {
         val displayRule =
             aDisplayRule(Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String))
 
-        val block = aBlock(
-            "1", listOf(aParagraph(aText(StringModel("Hello")))), displayRuleRef = DisplayRuleModelRef(displayRule.id)
-        )
-        val template = aTemplate("2", listOf(DocumentObjectModelRef(block.id)))
+        val block = aBlock("1", listOf(aParagraph(aText(StringModel("Hello")))))
+        val template = aTemplate("2", listOf(aDocumentObjectRef(block.id, displayRule.id)))
 
         every { documentObjectRepository.findModelOrFail(block.id) } returns block
         every { displayRuleRepository.findModelOrFail(displayRule.id) } returns displayRule
@@ -591,7 +588,7 @@ class InteractiveDocumentObjectBuilderTest {
         // given
         val unsupportedBlock = aBlock("1", type = DocumentObjectType.Unsupported)
         every { documentObjectRepository.findModelOrFail("block1") } returns unsupportedBlock
-        val template = aTemplate("10", listOf(DocumentObjectModelRef("block1")))
+        val template = aTemplate("10", listOf(aDocumentObjectRef("block1")))
 
         // when
         val result = subject.buildDocumentObject(template)
@@ -628,10 +625,8 @@ class InteractiveDocumentObjectBuilderTest {
             negation = true
         )
 
-        val block = aBlock(
-            "1", listOf(aParagraph(aText(StringModel("Hello")))), displayRuleRef = DisplayRuleModelRef(displayRule.id)
-        )
-        val template = aTemplate("2", listOf(DocumentObjectModelRef(block.id)))
+        val block = aBlock("1", listOf(aParagraph(aText(StringModel("Hello")))))
+        val template = aTemplate("2", listOf(aDocumentObjectRef(block.id, displayRule.id)))
 
         every { documentObjectRepository.findModelOrFail(block.id) } returns block
         every { variableRepository.findModel(variable.id) } returns variable
@@ -668,9 +663,9 @@ class InteractiveDocumentObjectBuilderTest {
                     aText(
                         listOf(
                             StringModel("Hello, "),
-                            DocumentObjectModelRef(internalBlock.id),
+                            aDocumentObjectRef(internalBlock.id),
                             StringModel(". How are you?"),
-                            DocumentObjectModelRef(externalBlock.id)
+                            aDocumentObjectRef(externalBlock.id)
                         )
                     )
                 )

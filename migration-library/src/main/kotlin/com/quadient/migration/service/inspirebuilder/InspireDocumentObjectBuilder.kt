@@ -2,6 +2,7 @@ package com.quadient.migration.service.inspirebuilder
 
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
+import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
@@ -190,25 +191,47 @@ abstract class InspireDocumentObjectBuilder(
         data class FirstMatch(val model: FirstMatchModel) : FlowModel
     }
 
-    protected fun buildDocumentContentAsSingleFlow(
+    protected fun List<Flow>.toSingleFlow(
         layout: Layout,
         variableStructure: VariableStructureModel,
-        content: List<DocumentContentModel>,
-        flowName: String? = null
+        flowName: String? = null,
+        displayRuleRef: DisplayRuleModelRef? = null,
     ): Flow {
-        val flows = buildDocumentContentAsFlows(layout, variableStructure, content, flowName)
-        return if (flows.size == 1) {
-            flows[0]
+        val singleFlow = if (this.size == 1) {
+            this[0]
         } else {
             val sectionFlow = layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
             flowName?.let { sectionFlow.setName(it) }
 
             val sectionFlowText = sectionFlow.addParagraph().addText()
 
-            flows.forEach { sectionFlowText.appendFlow(it) }
+            this.forEach { sectionFlowText.appendFlow(it) }
 
             sectionFlow
         }
+
+        return if (displayRuleRef == null) {
+            singleFlow
+        } else {
+            val displayRule = displayRuleRepository.findModelOrFail(displayRuleRef.id)
+            if (displayRule.definition == null) {
+                error("Display rule '${displayRuleRef.id}' definition is null.")
+            }
+
+            wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule.definition, singleFlow)
+        }
+    }
+
+    protected fun buildDocumentContentAsSingleFlow(
+        layout: Layout,
+        variableStructure: VariableStructureModel,
+        content: List<DocumentContentModel>,
+        flowName: String? = null,
+        displayRuleRef: DisplayRuleModelRef? = null,
+    ): Flow {
+        return buildDocumentContentAsFlows(layout, variableStructure, content, flowName).toSingleFlow(
+            layout, variableStructure, flowName, displayRuleRef
+        )
     }
 
     protected fun initVariableStructure(layout: Layout): VariableStructureModel {
@@ -416,16 +439,18 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         val flow = getFlowByName(layout, documentModel.nameOrId()) ?: if (documentModel.internal) {
-            buildDocumentContentAsSingleFlow(layout, variableStructure, documentModel.content, documentModel.nameOrId())
+            buildDocumentContentAsSingleFlow(
+                layout, variableStructure, documentModel.content, documentModel.nameOrId(), documentModel.displayRuleRef
+            )
         } else {
             layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)
                 .setLocation(getDocumentObjectPath(documentModel))
         }
 
-        if (documentModel.displayRuleRef != null) {
-            val displayRule = displayRuleRepository.findModelOrFail(documentModel.displayRuleRef.id)
+        if (documentObjectRef.displayRuleRef != null) {
+            val displayRule = displayRuleRepository.findModelOrFail(documentObjectRef.displayRuleRef.id)
             if (displayRule.definition == null) {
-                error("Display rule '${documentModel.displayRuleRef.id}' definition is null.")
+                error("Display rule '${documentObjectRef.displayRuleRef.id}' definition is null.")
             }
 
             return wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule.definition, flow)
