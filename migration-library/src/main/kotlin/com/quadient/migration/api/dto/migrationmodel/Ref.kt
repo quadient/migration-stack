@@ -90,8 +90,10 @@ sealed interface ParagraphStyleDefOrRef {
 }
 
 data class DocumentObjectRef(override val id: String, val displayRuleRef: DisplayRuleRef? = null) : Ref,
-    DocumentContent,
-    TextContent {
+    DocumentContent, TextContent {
+
+    constructor(id: String) : this(id, null)
+
     companion object {
         fun fromModel(model: DocumentObjectModelRef) =
             DocumentObjectRef(model.id, model.displayRuleRef?.let { DisplayRuleRef.fromModel(it) })
