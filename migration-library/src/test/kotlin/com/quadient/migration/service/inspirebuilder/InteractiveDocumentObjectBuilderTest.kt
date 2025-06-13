@@ -21,10 +21,9 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
-import com.quadient.migration.shared.BinOp
+import com.quadient.migration.shared.BinOp.*
 import com.quadient.migration.shared.DataType
-import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.DocumentObjectType.Block
+import com.quadient.migration.shared.DocumentObjectType.*
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.Literal
@@ -222,7 +221,7 @@ class InteractiveDocumentObjectBuilderTest {
         val internalBlock = aBlock("2", listOf(aParagraph(aText(StringModel("Sir")))), internal = true)
 
         val section = aBlock(
-            "5", type = DocumentObjectType.Section, content = listOf(
+            "5", type = Section, content = listOf(
                 aDocumentObjectRef(externalBlock.id),
                 aParagraph(aText(StringModel("In between"))),
                 aDocumentObjectRef(internalBlock.id)
@@ -330,10 +329,10 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `build template with external block under display rule wraps the block in condition flow`() {
+    fun `build template with external block using display rule wraps the block in condition flow`() {
         // given
         val displayRule =
-            aDisplayRule(Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String))
+            aDisplayRule(Literal("A", LiteralDataType.String), Equals, Literal("B", LiteralDataType.String))
 
         val block = aBlock("1", listOf(aParagraph(aText(StringModel("Hello")))))
         val template = aTemplate("2", listOf(aDocumentObjectRef(block.id, displayRule.id)))
@@ -376,7 +375,7 @@ class InteractiveDocumentObjectBuilderTest {
         val paraStyle = aParaStyle("P1", definition = aParaDef(10.millimeters()))
         val textStyle = aTextStyle("T1", definition = aTextDef(bold = true))
         val displayRule = aDisplayRule(
-            Literal(variable.id, LiteralDataType.Variable), BinOp.Equals, Literal("Jon", LiteralDataType.String)
+            Literal(variable.id, LiteralDataType.Variable), Equals, Literal("Jon", LiteralDataType.String)
         )
 
         val block = aBlock(
@@ -438,12 +437,12 @@ class InteractiveDocumentObjectBuilderTest {
 
         val paraDisplayRule = aDisplayRule(
             Literal(variable.id, LiteralDataType.Variable),
-            BinOp.GreaterOrEqualThan,
+            GreaterOrEqualThan,
             Literal("540", LiteralDataType.Number),
             id = "R_para"
         )
         val textDisplayRule = aDisplayRule(
-            Literal("A", LiteralDataType.String), BinOp.NotEquals, Literal("B", LiteralDataType.String), id = "R_text"
+            Literal("A", LiteralDataType.String), NotEquals, Literal("B", LiteralDataType.String), id = "R_text"
         )
 
         val block = aBlock(
@@ -513,7 +512,7 @@ class InteractiveDocumentObjectBuilderTest {
     fun `build block with table that has one row under display rule`() {
         // given
         val displayRule = aDisplayRule(
-            Literal("TRUE", LiteralDataType.Boolean), BinOp.Equals, Literal("FalSe", LiteralDataType.Boolean)
+            Literal("TRUE", LiteralDataType.Boolean), Equals, Literal("FalSe", LiteralDataType.Boolean)
         )
 
         val block = aBlock(
@@ -586,7 +585,7 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build of template skips unsupported block and template is created without it`() {
         // given
-        val unsupportedBlock = aBlock("1", type = DocumentObjectType.Unsupported)
+        val unsupportedBlock = aBlock("1", type = Unsupported)
         every { documentObjectRepository.findModelOrFail("block1") } returns unsupportedBlock
         val template = aTemplate("10", listOf(aDocumentObjectRef("block1")))
 
@@ -614,24 +613,24 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `build template with block under display rule with unmapped variable creates dummy display rule`() {
+    fun `build template with block using display rule with unmapped variable creates dummy display rule`() {
         // given
         val variable = aVariable("V_999", "DollarsInBank", dataType = DataType.Currency)
 
-        val displayRule = aDisplayRule(
-            Literal(variable.id, LiteralDataType.Variable),
-            BinOp.GreaterOrEqualThan,
-            Literal("25000", LiteralDataType.Number),
-            negation = true
+        val displayRule = mockRule(
+            aDisplayRule(
+                Literal(variable.id, LiteralDataType.Variable),
+                GreaterOrEqualThan,
+                Literal("25000", LiteralDataType.Number),
+                negation = true
+            )
         )
 
-        val block = aBlock("1", listOf(aParagraph(aText(StringModel("Hello")))))
+        val block = mockObj(aBlock("1", listOf(aParagraph(aText(StringModel("Hello"))))))
         val template = aTemplate("2", listOf(aDocumentObjectRef(block.id, displayRule.id)))
 
-        every { documentObjectRepository.findModelOrFail(block.id) } returns block
         every { variableRepository.findModel(variable.id) } returns variable
         every { variableStructureRepository.listAllModel() } returns listOf()
-        every { displayRuleRepository.findModelOrFail(displayRule.id) } returns displayRule
 
         // when
         val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
@@ -743,13 +742,13 @@ class InteractiveDocumentObjectBuilderTest {
         // given
         val rule1 = mockRule(
             aDisplayRule(
-                Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String), id = "R_1"
+                Literal("A", LiteralDataType.String), Equals, Literal("B", LiteralDataType.String), id = "R_1"
             )
         )
 
         val rule2 = mockRule(
             aDisplayRule(
-                Literal("C", LiteralDataType.String), BinOp.Equals, Literal("C", LiteralDataType.String), id = "R_2"
+                Literal("C", LiteralDataType.String), Equals, Literal("C", LiteralDataType.String), id = "R_2"
             )
         )
 
@@ -808,6 +807,62 @@ class InteractiveDocumentObjectBuilderTest {
 
         result["Flow"].last { it["Id"].textValue() == secondConditionFlowId }["FlowContent"]["P"]["T"][""].textValue()
             .shouldBeEqualTo("Jon")
+    }
+
+    @Test
+    fun `build of internal flow under display rule wraps in in condition flow`() {
+        // given
+        val rule = mockRule(
+            aDisplayRule(Literal("C", LiteralDataType.String), Equals, Literal("C", LiteralDataType.String))
+        )
+        val internalBlock = mockObj(
+            aDocObj(
+                "B_1", Block, listOf(aParagraph(aText(StringModel("Text")))), true, displayRuleRef = rule.id
+            )
+        )
+        val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(internalBlock.id)))
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
+        val condFlowId = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+
+        val condFlow = result["Flow"].last { it["Id"].textValue() == condFlowId }
+        condFlow["Type"].textValue().shouldBeEqualTo("Condition")
+
+        val innerFlow = result["Flow"].last { it["Id"].textValue() == condFlow["Condition"][""].textValue() }
+        innerFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text")
+    }
+
+    @Test
+    fun `external block with multiple flows under display rule is built to section flow wrapped in condition flow`() {
+        // given
+        val rule = mockRule(
+            aDisplayRule(Literal("C", LiteralDataType.String), Equals, Literal("C", LiteralDataType.String))
+        )
+        val innerBlock = mockObj(aDocObj("B_2", Block, listOf(aParagraph(aText(StringModel("Inner Text"))))))
+        val block = aDocObj(
+            "B_1", Block, listOf(
+                aDocumentObjectRef(innerBlock.id),
+                aParagraph(aText(StringModel("Text"))),
+            ), false, displayRuleRef = rule.id
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
+        val condFlow =
+            result["Flow"].last { it["Id"].textValue() == mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+        condFlow["Type"].textValue().shouldBeEqualTo("Condition")
+
+        val sectionFlow = result["Flow"].last { it["Id"].textValue() == condFlow["Condition"][""].textValue() }
+        sectionFlow["SectionFlow"].textValue().shouldBeEqualTo("True")
+        val sectionFlowRefs = sectionFlow["FlowContent"]["P"]["T"]["O"]
+        sectionFlowRefs.size().shouldBeEqualTo(2)
     }
 
     @Test

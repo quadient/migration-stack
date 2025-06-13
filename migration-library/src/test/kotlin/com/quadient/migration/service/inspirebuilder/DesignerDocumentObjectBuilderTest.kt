@@ -225,7 +225,7 @@ class DesignerDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `buildDocumentObject uses inline condition flow when block is under display rule`() {
+    fun `buildDocumentObject uses inline condition flow when block is used with display rule`() {
         // given
         val rule = mockRule(
             aDisplayRule(
@@ -486,6 +486,29 @@ class DesignerDocumentObjectBuilderTest {
 
         result["Flow"].last { it["Id"].textValue() == defaultContentFlowId }["FlowContent"]["P"]["T"][""].textValue()
             .shouldBeEqualTo("I am default")
+    }
+
+    @Test
+    fun `build block under display rule has its content wrapped in inline condition`() {
+        // given
+        val rule = mockRule(
+            aDisplayRule(Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String))
+        )
+
+        val block =
+            mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText(StringModel("Text")))), displayRuleRef = rule.id))
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val flowAreaFlowId = result["FlowArea"].last()["FlowId"].textValue()
+        val flowAreaFlow = result["Flow"].last { it["Id"].textValue() == flowAreaFlowId }
+
+        flowAreaFlow["Type"].textValue().shouldBeEqualTo("InlCond")
+
+        result["Flow"].last { it["Id"].textValue() == flowAreaFlow["Condition"][""].textValue() }["FlowContent"]["P"]["T"][""].textValue()
+            .shouldBeEqualTo("Text")
     }
 
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
