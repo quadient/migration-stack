@@ -20,4 +20,5 @@ println("Destroying all project data...")
 def migration = initMigration(this.binding.variables["args"])
 
 migration.repositories.forEach { it.deleteAll() }
+migration.statusTrackingRepository.deleteAll()
 migration.storage.deleteAll()

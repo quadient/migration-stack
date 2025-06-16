@@ -3,32 +3,31 @@ package com.quadient.migration.persistence
 import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
-import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
-import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.table.DocumentObjectTable
+import com.quadient.migration.api.repository.StatusTrackingRepository
+import com.quadient.migration.data.Active
+import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.tools.aBlockDto
 import com.quadient.migration.tools.aCell
-import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.aRow
 import com.quadient.migration.tools.aTable
 import com.quadient.migration.tools.model.aDocumentObjectInternalRepository
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfSize
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 @Postgres
 class DocumentObjectRepositoryTest {
     private val internalRepo = aDocumentObjectInternalRepository()
     private val repo = DocumentObjectRepository(internalRepo)
+    private val statusRepo = StatusTrackingRepository(internalRepo.projectName)
 
     @Test
     fun `roundtrip is correct`() {
@@ -64,6 +63,32 @@ class DocumentObjectRepositoryTest {
         val result = repo.listAll()
         assertEquals(1, result.size)
         assertEquals(input.id, result.first().id)
+    }
+
+    @Test
+    fun `upsert tracks active status for new objects and does not insert it again for existing objects`() {
+        val input = aBlockDto("myblock", listOf())
+
+        repo.upsert(input)
+        repo.upsert(input)
+
+        val result = statusRepo.find(input.id, ResourceType.DocumentObject)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
+    }
+
+    @Test
+    fun `upsert tracks active status for objects that changed from internal to external`() {
+        val input = aBlockDto("block", internal = true, content = listOf())
+        repo.upsert(input)
+
+        input.internal = false
+        repo.upsert(input)
+        val result = statusRepo.find(input.id, ResourceType.DocumentObject)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
     }
 
     @Test

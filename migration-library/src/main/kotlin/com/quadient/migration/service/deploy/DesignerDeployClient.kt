@@ -1,8 +1,14 @@
+@file:OptIn(ExperimentalUuidApi::class)
+
 package com.quadient.migration.service.deploy
 
+import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
+import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
+import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
@@ -12,14 +18,28 @@ import com.quadient.migration.shared.DocumentObjectType
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
+import kotlin.uuid.ExperimentalUuidApi
 
 class DesignerDeployClient(
     documentObjectRepository: DocumentObjectInternalRepository,
     imageRepository: ImageInternalRepository,
+    statusTrackingRepository: StatusTrackingRepository,
+    textStyleRepository: TextStyleInternalRepository,
+    paragraphStyleRepository: ParagraphStyleInternalRepository,
     documentObjectBuilder: DesignerDocumentObjectBuilder,
     ipsService: IpsService,
     storage: Storage,
-) : DeployClient(documentObjectRepository, imageRepository, documentObjectBuilder, ipsService, storage) {
+) : DeployClient(
+    documentObjectRepository,
+    imageRepository,
+    statusTrackingRepository,
+    textStyleRepository,
+    paragraphStyleRepository,
+    documentObjectBuilder,
+    ipsService,
+    storage,
+    InspireOutput.Designer,
+) {
 
     override fun shouldIncludeDependency(documentObject: DocumentObjectModel): Boolean {
         return documentObject.type == DocumentObjectType.Page || !documentObject.internal
@@ -88,21 +108,44 @@ class DesignerDeployClient(
         val orderedDocumentObject = deployOrder(documentObjects)
         deploymentResult += deployImages(orderedDocumentObject)
 
-        orderedDocumentObject.forEach {
+        for (it in orderedDocumentObject) {
+            val targetPath = documentObjectBuilder.getDocumentObjectPath(it)
+
+            if (!shouldDeployObject(it.id, ResourceType.DocumentObject, targetPath, deploymentResult)) {
+                logger.info("Skipping deployment of '${it.id}' as it is not marked for deployment.")
+                continue
+            }
+
             try {
                 val templateWfdXml = documentObjectBuilder.buildDocumentObject(it)
-                val targetPath = documentObjectBuilder.getDocumentObjectPath(it)
                 val xml2wfdResult = ipsService.xml2wfd(templateWfdXml, targetPath)
 
                 when (xml2wfdResult) {
                     OperationResult.Success -> {
                         logger.debug("Deployment of $targetPath is successful.")
                         deploymentResult.deployed.add(DeploymentInfo(it.id, ResourceType.DocumentObject, targetPath))
+                        statusTrackingRepository.deployed(
+                            id = it.id,
+                            deploymentId = deploymentId,
+                            timestamp = deploymentTimestamp,
+                            resourceType = ResourceType.DocumentObject,
+                            output = output,
+                            icmPath = targetPath,
+                        )
                     }
 
                     is OperationResult.Failure -> {
                         logger.error("Failed to deploy $targetPath.")
                         deploymentResult.errors.add(DeploymentError(it.id, xml2wfdResult.message))
+                        statusTrackingRepository.error(
+                            id = it.id,
+                            deploymentId = deploymentId,
+                            timestamp = deploymentTimestamp,
+                            resourceType = ResourceType.DocumentObject,
+                            output = output,
+                            icmPath = targetPath,
+                            message = xml2wfdResult.message
+                        )
                     }
                 }
             } catch (e: IllegalStateException) {

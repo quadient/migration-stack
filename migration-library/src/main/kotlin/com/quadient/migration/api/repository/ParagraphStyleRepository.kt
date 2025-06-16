@@ -9,6 +9,7 @@ import com.quadient.migration.data.ParagraphStyleModel
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.ParagraphStyleTable.definition
+import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import org.jetbrains.exposed.sql.selectAll
@@ -17,6 +18,8 @@ import org.jetbrains.exposed.sql.upsert
 
 class ParagraphStyleRepository(internalRepository: ParagraphStyleInternalRepository) :
     Repository<ParagraphStyle, ParagraphStyleModel>(internalRepository) {
+    val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
+
     override fun toDto(model: ParagraphStyleModel): ParagraphStyle {
         return ParagraphStyle(
             id = model.id,
@@ -44,6 +47,10 @@ class ParagraphStyleRepository(internalRepository: ParagraphStyleInternalReposit
                     ?.let { internalRepository.toModel(it) }
 
             val now = Clock.System.now()
+
+            if (existingItem == null) {
+                statusTrackingRepository.active(dto.id, ResourceType.ParagraphStyle)
+            }
 
             internalRepository.table.upsert(
                 internalRepository.table.id, internalRepository.table.projectName

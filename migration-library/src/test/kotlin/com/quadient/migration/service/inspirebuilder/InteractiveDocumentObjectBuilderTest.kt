@@ -873,7 +873,7 @@ class InteractiveDocumentObjectBuilderTest {
         )
 
         // when
-        val result = subject.buildStyles()
+        val result = subject.buildStyles(textStyleRepository.listAllModel(), paragraphStyleRepository.listAllModel())
 
         // then
         val textStyleDefinitions = xmlMapper.readTree(result.trimIndent())["Layout"]["Layout"]["TextStyle"]
@@ -895,7 +895,7 @@ class InteractiveDocumentObjectBuilderTest {
         val expectedValue = sizeInMs.toMeters()
 
         // when
-        val result = subject.buildStyles()
+        val result = subject.buildStyles(textStyleRepository.listAllModel(), paragraphStyleRepository.listAllModel())
 
         // then
         val textStyleDefinitions = xmlMapper.readTree(result.trimIndent())["Layout"]["Layout"]["TextStyle"]
@@ -924,7 +924,7 @@ class InteractiveDocumentObjectBuilderTest {
         )
 
         // when
-        val result = subject.buildStyles()
+        val result = subject.buildStyles(textStyleRepository.listAllModel(), paragraphStyleRepository.listAllModel())
 
         // then
         val textStyleDefinitions = xmlMapper.readTree(result.trimIndent())["Layout"]["Layout"]["ParaStyle"]

@@ -12,6 +12,7 @@ import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.Repository
+import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
@@ -33,6 +34,7 @@ import com.quadient.migration.persistence.table.DisplayRuleTable
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.ImageTable
 import com.quadient.migration.persistence.table.ParagraphStyleTable
+import com.quadient.migration.persistence.table.StatusTrackingTable
 import com.quadient.migration.persistence.table.TextStyleTable
 import com.quadient.migration.persistence.table.VariableStructureTable
 import com.quadient.migration.persistence.table.VariableTable
@@ -65,6 +67,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
     val variableStructureRepository: Repository<VariableStructure, VariableStructureModel>
     val displayRuleRepository: Repository<DisplayRule, DisplayRuleModel>
     val imageRepository: Repository<Image, ImageModel>
+    val statusTrackingRepository = StatusTrackingRepository(projectName)
 
     val icmClient: IcmClient = ipsService
     val ipsClient  = ipsService.client
@@ -93,7 +96,8 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                 ParagraphStyleTable,
                 VariableStructureTable,
                 DisplayRuleTable,
-                ImageTable
+                ImageTable,
+                StatusTrackingTable
             )
         }
 
@@ -158,6 +162,9 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
             InteractiveDeployClient(
                 documentObjectInternalRepository,
                 imageInternalRepository,
+                statusTrackingRepository,
+                textStyleInternalRepository,
+                paragraphStyleInternalRepository,
                 interactiveDocumentObjectBuilder,
                 ipsService,
                 storage,
@@ -178,6 +185,9 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
             DesignerDeployClient(
                 documentObjectInternalRepository,
                 imageInternalRepository,
+                statusTrackingRepository,
+                textStyleInternalRepository,
+                paragraphStyleInternalRepository,
                 designerDocumentObjectBuilder,
                 ipsService,
                 storage,

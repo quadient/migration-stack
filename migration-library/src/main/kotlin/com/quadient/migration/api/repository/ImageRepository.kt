@@ -11,6 +11,7 @@ import com.quadient.migration.persistence.table.ImageTable.imageType
 import com.quadient.migration.persistence.table.ImageTable.options
 import com.quadient.migration.persistence.table.ImageTable.sourcePath
 import com.quadient.migration.persistence.table.ImageTable.targetFolder
+import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
@@ -19,6 +20,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.upsert
 
 class ImageRepository(internalRepository: ImageInternalRepository) : Repository<Image, ImageModel>(internalRepository) {
+    val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
 
     override fun toDto(model: ImageModel): Image {
         return Image(
@@ -50,6 +52,10 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
                     ?.let { internalRepository.toModel(it) }
 
             val now = Clock.System.now()
+
+            if (existingItem == null) {
+                statusTrackingRepository.active(dto.id, ResourceType.Image)
+            }
 
             internalRepository.table.upsert(
                 internalRepository.table.id, internalRepository.table.projectName

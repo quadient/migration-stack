@@ -14,6 +14,7 @@ import com.quadient.migration.persistence.table.DocumentObjectTable.internal
 import com.quadient.migration.persistence.table.DocumentObjectTable.options
 import com.quadient.migration.persistence.table.DocumentObjectTable.targetFolder
 import com.quadient.migration.persistence.table.DocumentObjectTable.type
+import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.tools.concat
@@ -29,6 +30,7 @@ import org.jetbrains.exposed.sql.upsert
 
 class DocumentObjectRepository(internalRepository: DocumentObjectInternalRepository) :
     Repository<DocumentObject, DocumentObjectModel>(internalRepository) {
+    val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
 
     fun list(documentObjectFilter: DocumentObjectFilter): List<DocumentObject> {
         return internalRepository.list(filter(documentObjectFilter)).map(::toDto)
@@ -58,6 +60,11 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
             }
 
             val now = Clock.System.now()
+
+            if ((existingItem == null && dto.internal != true)
+                || (dto.internal == false && existingItem?.internal == true)) {
+                statusTrackingRepository.active(dto.id, ResourceType.DocumentObject)
+            }
 
             internalRepository.table.upsert(
                 internalRepository.table.id, internalRepository.table.projectName

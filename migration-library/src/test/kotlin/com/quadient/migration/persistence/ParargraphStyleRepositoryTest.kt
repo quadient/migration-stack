@@ -7,10 +7,13 @@ import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.StatusTrackingRepository
+import com.quadient.migration.data.Active
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.ParagraphStyleTable
+import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.TabType
@@ -22,12 +25,14 @@ import com.quadient.migration.tools.aParagraph
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfSize
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 @Postgres
 class ParagraphStyleRepositoryTest {
     private val repo = aParaStyleRepository()
     private val docRepo = aDocumentObjectRepository()
+    private val statusRepo = StatusTrackingRepository(aProjectConfig().name)
 
     @Test
     fun `roundtrip is correct`() {
@@ -66,5 +71,20 @@ class ParagraphStyleRepositoryTest {
 
         result.shouldBeOfSize(1)
         result.first().id.shouldBeEqualTo("parablock")
+    }
+
+    @Test
+    fun `upsert tracks active status for new objects and does not insert it again for existing objects`() {
+        val dto = ParagraphStyleBuilder("id").definition {
+            defaultTabSize(10.2.millimeters())
+        }.build()
+
+        repo.upsert(dto)
+        repo.upsert(dto)
+
+        val result = statusRepo.find(dto.id, ResourceType.ParagraphStyle)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
     }
 }

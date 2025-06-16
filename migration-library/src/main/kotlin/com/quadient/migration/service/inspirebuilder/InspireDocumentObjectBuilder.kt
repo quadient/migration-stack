@@ -116,16 +116,14 @@ abstract class InspireDocumentObjectBuilder(
         return successRow
     }
 
-    fun buildStyles(): String {
+    fun buildStyles(textStyles: List<TextStyleModel>, paragraphStyles: List<ParagraphStyleModel>): String {
         logger.debug("Starting to build style definition.")
 
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
 
-        buildTextStyles(
-            layout, textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel })
-        buildParagraphStyles(
-            layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
+        buildTextStyles(layout, textStyles)
+        buildParagraphStyles(layout, paragraphStyles)
 
         logger.debug("Successfully built style definition.")
         return builder.build()

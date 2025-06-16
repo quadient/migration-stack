@@ -22,6 +22,7 @@ data class MigConfig(val dbConfig: DbConfig, val inspireConfig: InspireConfig, v
     }
 }
 
+@Serializable
 enum class InspireOutput {
     Interactive, Designer, Evolve
 }

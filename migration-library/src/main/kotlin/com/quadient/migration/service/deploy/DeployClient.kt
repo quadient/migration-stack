@@ -1,34 +1,85 @@
+@file:OptIn(ExperimentalUuidApi::class)
+
 package com.quadient.migration.service.deploy
 
+import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.repository.StatusTrackingRepository
+import com.quadient.migration.data.Active
+import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.ImageModelRef
+import com.quadient.migration.data.ParagraphStyleDefinitionModel
 import com.quadient.migration.data.ParagraphStyleModelRef
+import com.quadient.migration.data.TextStyleDefinitionModel
 import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.data.VariableModelRef
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
+import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
+import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.ImageType
+import kotlinx.datetime.Clock
 import org.slf4j.LoggerFactory
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.nio.file.InvalidPathException
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 data class DocObjectWithRef(val obj: DocumentObjectModel, val documentObjectRefs: Set<String>)
 
-abstract class DeployClient(
+sealed class DeployClient(
     protected val documentObjectRepository: DocumentObjectInternalRepository,
     protected val imageRepository: ImageInternalRepository,
+    protected val statusTrackingRepository: StatusTrackingRepository,
+    protected val textStyleRepository: TextStyleInternalRepository,
+    protected val paragraphStyleRepository: ParagraphStyleInternalRepository,
     protected val documentObjectBuilder: InspireDocumentObjectBuilder,
     protected val ipsService: IpsService,
-    protected val storage: Storage
+    protected val storage: Storage,
+    protected val output: InspireOutput,
 ) {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
+    protected val deploymentId  = Uuid.random()
+    protected val deploymentTimestamp = Clock.System.now()
+
+    protected fun shouldDeployObject(
+        id: String,
+        resourceType: ResourceType,
+        targetPath: String,
+        deploymentResult: DeploymentResult
+    ): Boolean {
+        val currentStatus = statusTrackingRepository.findLastEventRelevantToOutput(id, resourceType, output)
+
+        return when (currentStatus) {
+            null -> {
+                logger.error("Not deploying '$targetPath' due to a missing status.")
+                deploymentResult.errors.add(DeploymentError(id, "Missing tracked status for document object"))
+                false
+            }
+
+            is Deployed -> {
+                logger.info("Already deployed: '$targetPath'.")
+                false
+            }
+
+            is Active -> {
+                logger.info("Deploying '$targetPath'.")
+                true
+            }
+
+            is com.quadient.migration.data.Error -> {
+                logger.info("Last attempt to deploy '$targetPath' failed with error: '${currentStatus.error}'. Trying again.")
+                true
+            }
+        }
+    }
 
     abstract fun deployDocumentObjects(documentObjectIds: List<String>, skipDependencies: Boolean): DeploymentResult
     abstract fun deployDocumentObjects(): DeploymentResult
@@ -39,14 +90,63 @@ abstract class DeployClient(
     fun deployDocumentObjects(documentObjectIds: List<String>) = deployDocumentObjects(documentObjectIds, false)
 
     fun deployStyles() {
+        val textStyles = textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel }
+        val paragraphStyles = paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel }
         val outputPath = documentObjectBuilder.getStyleDefinitionPath()
-        val xml2wfdResult = ipsService.xml2wfd(documentObjectBuilder.buildStyles(), outputPath)
-        if (xml2wfdResult == OperationResult.Success) {
-            logger.debug("Deployment of $outputPath is successful.")
-        } else {
-            logger.error("Failed to deploy $outputPath.")
-            ipsService.close()
-            return
+        val xml2wfdResult = ipsService.xml2wfd(documentObjectBuilder.buildStyles(textStyles, paragraphStyles), outputPath)
+
+        when (xml2wfdResult) {
+            is OperationResult.Success -> {
+                logger.debug("Deployment of $outputPath is successful.")
+                textStyles.forEach {
+                    statusTrackingRepository.deployed(
+                        id = it.id,
+                        deploymentId = deploymentId,
+                        timestamp = deploymentTimestamp,
+                        resourceType = ResourceType.TextStyle,
+                        icmPath = outputPath,
+                        output = output
+                    )
+                }
+                paragraphStyles.forEach {
+                    statusTrackingRepository.deployed(
+                        id = it.id,
+                        deploymentId = deploymentId,
+                        timestamp = deploymentTimestamp,
+                        resourceType = ResourceType.ParagraphStyle,
+                        icmPath = outputPath,
+                        output = output
+                    )
+                }
+            }
+
+            is OperationResult.Failure -> {
+                logger.error("Failed to deploy $outputPath.")
+                textStyles.forEach {
+                    statusTrackingRepository.error(
+                        it.id,
+                        deploymentId,
+                        deploymentTimestamp,
+                        ResourceType.TextStyle,
+                        outputPath,
+                        output,
+                        xml2wfdResult.message
+                    )
+                }
+                paragraphStyles.forEach {
+                    statusTrackingRepository.error(
+                        it.id,
+                        deploymentId,
+                        deploymentTimestamp,
+                        ResourceType.ParagraphStyle,
+                        outputPath,
+                        output,
+                        xml2wfdResult.message
+                    )
+                }
+                ipsService.close()
+                return
+            }
         }
 
         val approvalResult = ipsService.setProductionApprovalState(listOf(outputPath))
@@ -124,27 +224,61 @@ abstract class DeployClient(
             }
         }.distinct()
 
-        uniqueImageRefs.forEach { imageRef ->
+        for (imageRef in uniqueImageRefs) {
+            if (!shouldDeployObject(imageRef.id, ResourceType.Image, imageRef.id, deploymentResult)) {
+                logger.info("Skipping deployment of '${imageRef.id}' as it is not marked for deployment.")
+                continue
+            }
+
             val imageModel = imageRepository.findModel(imageRef.id)
             if (imageModel == null) {
                 val message = "Image '${imageRef.id}' not found."
                 logger.error(message)
                 deploymentResult.errors.add(DeploymentError(imageRef.id, message))
-                return@forEach
+                statusTrackingRepository.error(
+                    id = imageRef.id,
+                    deploymentId = deploymentId,
+                    timestamp = deploymentTimestamp,
+                    resourceType = ResourceType.Image,
+                    output = output,
+                    icmPath = null,
+                    message = message
+                )
+                continue
             }
+
+            val icmImagePath = documentObjectBuilder.getImagePath(imageModel)
 
             if (imageModel.imageType == ImageType.Unknown) {
                 val message = "Skipping deployment of image '${imageModel.nameOrId()}' due to unknown image type."
                 logger.warn(message)
                 deploymentResult.warnings.add(DeploymentWarning(imageRef.id, message))
-                return@forEach
+                statusTrackingRepository.error(
+                    id = imageRef.id,
+                    deploymentId = deploymentId,
+                    timestamp = deploymentTimestamp,
+                    resourceType = ResourceType.Image,
+                    output = output,
+                    icmPath = icmImagePath,
+                    message = message
+                )
+                continue
             }
 
             if (imageModel.sourcePath.isNullOrBlank()) {
                 val message = "Skipping deployment of image '${imageModel.nameOrId()}' due to missing source path."
                 logger.warn(message)
                 deploymentResult.warnings.add(DeploymentWarning(imageRef.id, message))
-                return@forEach
+                statusTrackingRepository.error(
+                    id = imageRef.id,
+                    deploymentId = deploymentId,
+                    timestamp = deploymentTimestamp,
+                    resourceType = ResourceType.Image,
+                    output = output,
+                    icmPath = icmImagePath,
+                    message = message
+                )
+                continue
             }
 
             logger.debug("Starting deployment of image '${imageModel.nameOrId()}'.")
@@ -153,22 +287,47 @@ abstract class DeployClient(
                 val message = "Error while reading image source data: ${readResult.errorMessage}."
                 logger.error(message)
                 deploymentResult.errors.add(DeploymentError(imageRef.id, message))
-                return@forEach
+                statusTrackingRepository.error(
+                    id = imageRef.id,
+                    deploymentId = deploymentId,
+                    timestamp = deploymentTimestamp,
+                    resourceType = ResourceType.Image,
+                    output = output,
+                    icmPath = icmImagePath,
+                    message = message
+                )
+                continue
             }
 
             val imageData = (readResult as ReadResult.Success).result
 
             logger.trace("Loaded image data of size ${imageData.size} from storage.")
 
-            val icmImagePath = documentObjectBuilder.getImagePath(imageModel)
             val uploadResult = ipsService.tryUpload(icmImagePath, imageData)
             if (uploadResult is OperationResult.Failure) {
                 deploymentResult.errors.add(DeploymentError(imageRef.id, uploadResult.message))
-                return@forEach
+                statusTrackingRepository.error(
+                    id = imageRef.id,
+                    deploymentId = deploymentId,
+                    timestamp = deploymentTimestamp,
+                    resourceType = ResourceType.Image,
+                    output = output,
+                    icmPath = icmImagePath,
+                    message = uploadResult.message
+                )
+                continue
             }
 
             logger.debug("Deployment of image '${imageModel.nameOrId()}' to '${icmImagePath}' is successful.")
             deploymentResult.deployed.add(DeploymentInfo(imageRef.id, ResourceType.Image, icmImagePath))
+            statusTrackingRepository.deployed(
+                id = imageRef.id,
+                deploymentId = deploymentId,
+                timestamp = deploymentTimestamp,
+                resourceType = ResourceType.Image,
+                output = output,
+                icmPath = icmImagePath,
+            )
         }
 
         return deploymentResult

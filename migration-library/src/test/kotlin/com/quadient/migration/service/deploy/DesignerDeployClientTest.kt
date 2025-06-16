@@ -1,16 +1,28 @@
+@file:OptIn(ExperimentalUuidApi::class)
+
 package com.quadient.migration.service.deploy
 
+import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.repository.StatusTrackingRepository
+import com.quadient.migration.data.Active
+import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.DocumentObjectModel
+import com.quadient.migration.data.Error
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.StringModel
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
+import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
+import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.tools.aActiveStatusEntity
+import com.quadient.migration.tools.aDeployedStatusEntity
+import com.quadient.migration.tools.aErrorStatusEntity
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
@@ -25,20 +37,36 @@ import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.spyk
 import io.mockk.verify
+import kotlinx.datetime.Clock
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.Test
 import kotlin.ByteArray
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class DesignerDeployClientTest {
     val documentObjectRepository = mockk<DocumentObjectInternalRepository>()
     val imageRepository = mockk<ImageInternalRepository>()
+    val textStyleRepository = mockk<TextStyleInternalRepository>()
+    val paragraphStyleRepository = mockk<ParagraphStyleInternalRepository>()
+    val statusTrackingRepository = mockk<StatusTrackingRepository>()
     val documentObjectBuilder = mockk<DesignerDocumentObjectBuilder>()
     val ipsService = mockk<IpsService>()
     val storage = mockk<Storage>()
 
-    private val subject =
-        DesignerDeployClient(documentObjectRepository, imageRepository, documentObjectBuilder, ipsService, storage)
+    private val subject = DesignerDeployClient(
+        documentObjectRepository,
+        imageRepository,
+        statusTrackingRepository,
+        textStyleRepository,
+        paragraphStyleRepository,
+        documentObjectBuilder,
+        ipsService,
+        storage
+    )
 
     @Test
     fun `deployDocumentObjects deploys complex structure template`() {
@@ -67,6 +95,8 @@ class DesignerDeployClientTest {
         )
         val template = mockObj(aTemplate("1", listOf(aDocumentObjectRef(page.id))))
 
+        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
         every { documentObjectRepository.list(any()) } returns listOf(template, externalBlock)
         every { ipsService.close() } just runs
 
@@ -260,6 +290,8 @@ class DesignerDeployClientTest {
         every { documentObjectRepository.findModel(innerBlock.id) } throws IllegalStateException("Not found")
         every { documentObjectRepository.list(any()) } returns listOf(template, block)
         every { documentObjectBuilder.buildDocumentObject(block) } throws IllegalStateException("Inner block not found")
+        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
 
         // when
         val result = subject.deployDocumentObjects()
@@ -281,14 +313,20 @@ class DesignerDeployClientTest {
         verify(exactly = 1) { ipsService.xml2wfd(any(), "icm://${template.nameOrId()}") }
     }
 
-    private fun mockImg(image: ImageModel): ImageModel {
+    private fun mockImg(image: ImageModel, success: Boolean = true): ImageModel {
         val imagePath = "icm://${image.nameOrId()}"
 
         every { documentObjectBuilder.getImagePath(image) } returns imagePath
         every { imageRepository.findModel(image.id) } returns image
         if (!image.sourcePath.isNullOrBlank()) {
             val byteArray = ByteArray(10)
-            every { storage.read(image.sourcePath) } returns byteArray
+            every { storage.read(image.sourcePath) } answers {
+                if (success) {
+                    byteArray
+                } else {
+                    throw Exception()
+                }
+            }
             every { ipsService.tryUpload(imagePath, byteArray) } returns OperationResult.Success
         }
 
@@ -307,5 +345,118 @@ class DesignerDeployClientTest {
             every { ipsService.xml2wfd(xml, outputPath) } returns OperationResult.Success
         }
         return documentObject
+    }
+
+    @Nested
+    inner class StatusTrackingTests {
+        @BeforeEach
+        fun setup() {
+            every { ipsService.close() } just runs
+            every { documentObjectBuilder.buildDocumentObject(any()) } returns ""
+            every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns  aDeployedStatusEntity("id")
+            every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatusEntity("id")
+            every { statusTrackingRepository.active(any(), any()) } returns aActiveStatusEntity("id")
+            every { documentObjectBuilder.getDocumentObjectPath(any()) } returns "icm://path"
+        }
+
+        @Test
+        fun `deployDocumentObjects does not do anything when all objects are deployed`() {
+            // given
+            val docObjects = listOf(
+                aDocObj("D_1", content = listOf(ImageModelRef("I_1"))),
+                aDocObj("D_2", content = listOf(ImageModelRef("I_2"))),
+                aDocObj("D_3", content = listOf(ImageModelRef("I_3"))),
+            )
+            givenObjectIsDeployed("D_1")
+            givenObjectIsDeployed("I_1")
+            givenObjectIsDeployed("D_2")
+            givenObjectIsDeployed("I_2")
+            givenObjectIsDeployed("D_3")
+            givenObjectIsDeployed("I_3")
+
+            // when
+            subject.deployDocumentObjectsInternal(docObjects)
+
+            // then
+            verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any()) }
+            verify(exactly = 0) { imageRepository.findModel(any()) }
+        }
+
+        @Test
+        fun `deployDocumentObjects skips deployed but deploys active and error`() {
+            // given
+            val docObjects = listOf(
+                aDocObj("D_1", content = listOf(ImageModelRef("I_1"))),
+                aDocObj("D_2", content = listOf(ImageModelRef("I_2"))),
+                aDocObj("D_3", content = listOf(ImageModelRef("I_3"))),
+            )
+            mockImg(aImage("I_1"))
+            mockImg(aImage("I_2"))
+            givenObjectIsDeployed("D_1")
+            givenObjectIsError("I_1")
+            givenObjectIsError("D_2")
+            givenObjectIsActive("I_2")
+            givenObjectIsActive("D_3")
+            givenObjectIsDeployed("I_3")
+            every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
+
+
+            // when
+            subject.deployDocumentObjectsInternal(docObjects)
+
+            // then
+            verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("D_2", any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("D_3", any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("I_1", any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("I_2", any(), any(), any(), any(), any()) }
+        }
+
+        @Test
+        fun `deployDocumentObjects records errors`() {
+            // given
+            val docObjects = listOf(aDocObj("D_1", content = listOf(ImageModelRef("I_1"))))
+            givenObjectIsActive("D_1")
+            givenObjectIsActive("I_1")
+            mockImg(aImage("I_1"), success = false)
+            every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Failure("oops")
+
+            // when
+            subject.deployDocumentObjectsInternal(docObjects)
+
+            // then
+            verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any()) }
+            verify(exactly = 1) { statusTrackingRepository.error("D_1", any(), any(), any(), any(), any(), "oops") }
+            verify(exactly = 1) { statusTrackingRepository.error("I_1", any(), any(), any(), any(), any(), any()) }
+        }
+
+        private fun givenObjectIsActive(id: String) {
+            every {
+                statusTrackingRepository.findLastEventRelevantToOutput(id, any(), any())
+            } returns Active()
+        }
+
+        private fun givenObjectIsError(id: String) {
+            every {
+                statusTrackingRepository.findLastEventRelevantToOutput(id, any(), any())
+            } returns Error(
+                output = InspireOutput.Designer,
+                deploymentId = Uuid.random(),
+                timestamp = Clock.System.now(),
+                icmPath = "icm://path",
+                error = "oops"
+            )
+        }
+
+        private fun givenObjectIsDeployed(id: String) {
+            every {
+                statusTrackingRepository.findLastEventRelevantToOutput(id, any(), any())
+            } returns Deployed(
+                output = InspireOutput.Designer,
+                deploymentId = Uuid.random(),
+                timestamp = Clock.System.now(),
+                icmPath = "icm://path"
+            )
+        }
     }
 }

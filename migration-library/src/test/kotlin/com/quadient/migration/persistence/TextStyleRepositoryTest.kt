@@ -3,15 +3,20 @@ package com.quadient.migration.persistence
 import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
+import com.quadient.migration.api.repository.StatusTrackingRepository
+import com.quadient.migration.data.Active
+import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.tools.*
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 @Postgres
 class TextStyleRepositoryTest {
     private val repo = aTextStyleRepository()
     private val docRepo = aDocumentObjectRepository()
+    private val statusRepo = StatusTrackingRepository(aProjectConfig().name)
 
     @Test
     fun `roundtrip is correct`() {
@@ -58,5 +63,20 @@ class TextStyleRepositoryTest {
 
         result.shouldBeOfSize(1)
         result.first().id.shouldBeEqualTo("parablock")
+    }
+
+    @Test
+    fun `upsert tracks active status for new objects and does not insert it again for existing objects`() {
+        val dto = TextStyleBuilder("someid").definition {
+            foregroundColor("#00FF00")
+        }.build()
+
+        repo.upsert(dto)
+        repo.upsert(dto)
+
+        val result = statusRepo.find(dto.id, ResourceType.TextStyle)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
     }
 }

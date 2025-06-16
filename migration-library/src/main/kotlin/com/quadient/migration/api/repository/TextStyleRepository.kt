@@ -9,6 +9,7 @@ import com.quadient.migration.data.TextStyleModel
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.TextStyleTable.definition
+import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import org.jetbrains.exposed.sql.selectAll
@@ -17,6 +18,8 @@ import org.jetbrains.exposed.sql.upsert
 
 class TextStyleRepository(internalRepository: TextStyleInternalRepository) :
     Repository<TextStyle, TextStyleModel>(internalRepository) {
+    val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
+
     override fun toDto(model: TextStyleModel): TextStyle {
         return TextStyle(
             id = model.id,
@@ -44,6 +47,10 @@ class TextStyleRepository(internalRepository: TextStyleInternalRepository) :
                     ?.let { internalRepository.toModel(it) }
 
             val now = Clock.System.now()
+
+            if (existingItem == null) {
+                statusTrackingRepository.active(dto.id, ResourceType.TextStyle)
+            }
 
             internalRepository.table.upsert(
                 internalRepository.table.id, internalRepository.table.projectName
