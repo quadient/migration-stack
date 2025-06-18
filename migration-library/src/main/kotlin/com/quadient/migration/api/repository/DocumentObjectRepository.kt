@@ -41,9 +41,8 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
     override fun findUsages(id: String): List<MigrationObject> {
         return transaction {
             DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq internalRepository.projectName }
-                .map { DocumentObjectTable.fromResultRow(it) }
-                .filter { it.collectRefs().any { it.id == id } }.map { DocumentObject.fromModel(it) }
-                .distinct()
+                .map { DocumentObjectTable.fromResultRow(it) }.filter { it.collectRefs().any { it.id == id } }
+                .map { DocumentObject.fromModel(it) }.distinct()
         }
     }
 
@@ -61,9 +60,12 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
 
             val now = Clock.System.now()
 
-            if ((existingItem == null && dto.internal != true)
-                || (dto.internal == false && existingItem?.internal == true)) {
-                statusTrackingRepository.active(dto.id, ResourceType.DocumentObject)
+            if ((existingItem == null && dto.internal != true) || (dto.internal == false && existingItem?.internal == true)) {
+                statusTrackingRepository.active(
+                    dto.id,
+                    ResourceType.DocumentObject,
+                    mapOf("type" to dto.type.toString())
+                )
             }
 
             internalRepository.table.upsert(

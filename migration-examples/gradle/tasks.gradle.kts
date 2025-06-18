@@ -13,6 +13,9 @@ val migrationTasks = listOf<MigTask>(
         "displayRuleReport", "migration report", "Generate display rule report", "common.report.DisplayRuleReport"
     ),
     MigTask(
+        "postDeployStatusTrackingReport", "migration report", "Generate post deploy report", "common.report.PostDeployStatusTrackingReport"
+    ),
+    MigTask(
         "validateAll", "migration deploy", "Run validation on all migration objects", "common.Validate"
     ),
     MigTask(

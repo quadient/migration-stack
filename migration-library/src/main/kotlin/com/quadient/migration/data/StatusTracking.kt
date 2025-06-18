@@ -15,16 +15,28 @@ sealed class StatusEvent()
 
 @Serializable
 @SerialName("Active")
-class Active(val timestamp: Instant = Clock.System.now()) : StatusEvent()
+class Active(
+    val timestamp: Instant = Clock.System.now(),
+    val data: Map<String, String> = emptyMap(),
+) : StatusEvent()
 
 @Serializable
 @SerialName("Deployed")
 class Deployed(
-    val deploymentId: Uuid, val timestamp: Instant, val output: InspireOutput, val icmPath: String?
+    val deploymentId: Uuid,
+    val timestamp: Instant,
+    val output: InspireOutput,
+    val icmPath: String?,
+    val data: Map<String, String> = emptyMap(),
 ) : StatusEvent()
 
 @Serializable
 @SerialName("Error")
 data class Error(
-    val deploymentId: Uuid, val timestamp: Instant, val output: InspireOutput, val icmPath: String?, val error: String
+    val deploymentId: Uuid,
+    val timestamp: Instant,
+    val output: InspireOutput,
+    val icmPath: String?,
+    val error: String,
+    val data: Map<String, String> = emptyMap(),
 ) : StatusEvent()

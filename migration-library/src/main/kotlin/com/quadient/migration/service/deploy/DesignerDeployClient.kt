@@ -131,6 +131,7 @@ class DesignerDeployClient(
                             resourceType = ResourceType.DocumentObject,
                             output = output,
                             icmPath = targetPath,
+                            data = mapOf("type" to it.type.toString()),
                         )
                     }
 
@@ -144,7 +145,8 @@ class DesignerDeployClient(
                             resourceType = ResourceType.DocumentObject,
                             output = output,
                             icmPath = targetPath,
-                            message = xml2wfdResult.message
+                            message = xml2wfdResult.message,
+                            data = mapOf("type" to it.type.toString()),
                         )
                     }
                 }

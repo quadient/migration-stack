@@ -10,7 +10,6 @@ import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.persistence.table.StatusTrackingEntity
 import com.quadient.migration.persistence.table.StatusTrackingTable
 import com.quadient.migration.service.deploy.ResourceType
-import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.jetbrains.exposed.dao.id.CompositeID
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -18,6 +17,12 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class StatusTrackingRepository(val projectName: String) {
+    fun listAll(): List<StatusTrackingEntity> {
+        return transaction {
+            StatusTrackingEntity.find { StatusTrackingTable.projectName eq projectName }.toList()
+        }
+    }
+
     fun find(id: String, resourceType: ResourceType): StatusTrackingEntity? {
         return transaction {
             StatusTrackingEntity.findById(CompositeID {
@@ -44,8 +49,8 @@ class StatusTrackingRepository(val projectName: String) {
         }
     }
 
-    fun active(id: String, resourceType: ResourceType): StatusTrackingEntity {
-        return upsert(id, resourceType, Active())
+    fun active(id: String, resourceType: ResourceType, data: Map<String, String> = emptyMap()): StatusTrackingEntity {
+        return upsert(id, resourceType, Active(data = data))
     }
 
     fun error(
@@ -55,9 +60,10 @@ class StatusTrackingRepository(val projectName: String) {
         resourceType: ResourceType,
         icmPath: String?,
         output: InspireOutput,
-        message: String
+        message: String,
+        data: Map<String, String> = emptyMap(),
     ): StatusTrackingEntity {
-        return upsert(id, resourceType, Error(deploymentId, timestamp, output, icmPath, message))
+        return upsert(id, resourceType, Error(deploymentId, timestamp, output, icmPath, message, data))
     }
 
     fun deployed(
@@ -66,9 +72,10 @@ class StatusTrackingRepository(val projectName: String) {
         timestamp: Instant,
         resourceType: ResourceType,
         icmPath: String?,
-        output: InspireOutput
+        output: InspireOutput,
+        data: Map<String, String> = emptyMap(),
     ): StatusTrackingEntity {
-        return upsert(id, resourceType, Deployed(deploymentId, timestamp, output, icmPath))
+        return upsert(id, resourceType, Deployed(deploymentId, timestamp, output, icmPath, data))
     }
 
     fun upsert(id: String, resourceType: ResourceType, event: StatusEvent): StatusTrackingEntity {

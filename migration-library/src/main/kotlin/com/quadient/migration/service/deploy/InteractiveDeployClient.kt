@@ -137,6 +137,7 @@ class InteractiveDeployClient(
                             resourceType = ResourceType.DocumentObject,
                             output = output,
                             icmPath = targetPath,
+                            data = mapOf("type" to it.type.toString())
                         )
                     }
 
@@ -150,7 +151,8 @@ class InteractiveDeployClient(
                             resourceType = ResourceType.DocumentObject,
                             output = output,
                             icmPath = targetPath,
-                            message = editResult.message
+                            message = editResult.message,
+                            data = mapOf("type" to it.type.toString())
                         )
                     }
                 }
