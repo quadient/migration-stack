@@ -25,14 +25,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check library
+      - name: Dependency check
         working-directory: ./${{ matrix.project }}
         run: |
           ./gradlew dependencyCheckAnalyze --info
 
-          cat ./build/reports/dependency-check-report.xml
-
-          echo "curl -X POST --insecure -F \"upload=@./build/reports/dependency-check-report.xml\" \"https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=${{ matrix.project }}&versionName=$VERSION\""
-
-          # curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
-          #   "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=${{ matrix.project }}&versionName=$VERSION"
+          curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
+            "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=${{ matrix.project }}&versionName=$VERSION"
