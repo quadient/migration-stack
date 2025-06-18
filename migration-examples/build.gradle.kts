@@ -1,5 +1,6 @@
 plugins {
     id("groovy")
+    id("org.owasp.dependencycheck") version "12.1.3"
 }
 
 group = "com.quadient"
@@ -16,7 +17,27 @@ configurations.all {
     }
 }
 
+dependencyCheck {
+    format = "XML"
+    nvd {
+        datafeedUrl = "https://osquality-api.quadient.group/scan/api/v2/nvdcache"
+        datafeedUser = "migration"
+        datafeedPassword = System.getenv("NVD_PW")
+            ?: throw IllegalStateException("NVD_PW environment variable is not set")
+    }
+}
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.owasp:dependency-check-gradle:12.1.3")
+    }
+}
+
 apply {
     from(file("gradle/dependencies.gradle"))
     from(file("gradle/tasks.gradle.kts"))
+    plugin("org.owasp.dependencycheck")
 }

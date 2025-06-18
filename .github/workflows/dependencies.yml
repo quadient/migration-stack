@@ -1,0 +1,38 @@
+name: Dependency check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  dependencies:
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [migration-library, migration-examples]
+
+    name: Dependency check ${{ matrix.project }}
+    runs-on: ubuntu-latest
+
+    env:
+      VERSION: latest
+      API_KEY: ${{ secrets.G_API_KEY }}
+      NVD_PW: ${{ secrets.G_NVD_PW }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check library
+        working-directory: ./${{ matrix.project }}
+        run: |
+          ./gradlew dependencyCheckAnalyze --info
+
+          cat ./build/reports/dependency-check-report.xml
+
+          echo "curl -X POST --insecure -F \"upload=@./build/reports/dependency-check-report.xml\" \"https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=${{ matrix.project }}&versionName=$VERSION\""
+
+          # curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
+          #   "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=${{ matrix.project }}&versionName=$VERSION"
