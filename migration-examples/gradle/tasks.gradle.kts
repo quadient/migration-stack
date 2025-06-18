@@ -78,6 +78,9 @@ val migrationTasks = listOf<MigTask>(
     MigTask(
         "destroy", "migration common", "Destroy database and storage", "common.Destroy", System.`in`
     ),
+    MigTask(
+        "activateAll", "migration common", "Make all objects Active", "common.ActivateAll"
+    ),
 )
 
 tasks {

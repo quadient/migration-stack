@@ -16,7 +16,6 @@ def dstFile = Paths.get("report", "${migration.projectConfig.name}-status-tracki
 
 def objects = migration.statusTrackingRepository.listAll()
 
-def mapper = new ObjectMapper()
 def file =  dstFile.toFile()
 file.createParentDirectories()
 file.withWriter { writer ->
@@ -25,13 +24,13 @@ file.withWriter { writer ->
         def lastEvent = object.statusEvents.last()
         switch (lastEvent) {
             case Active:
-                writer.writeLine("$object.resourceId,$object.resourceType,Active,${lastEvent.timestamp},,,,${mapper.writeValueAsString(lastEvent.data)}")
+                writer.writeLine("$object.resourceId,$object.resourceType,Active,${lastEvent.timestamp},,,,${lastEvent.data.collect { "$it.key:$it.value" }.join("; ")}")
                 break
             case Deployed:
-                writer.writeLine("$object.resourceId,$object.resourceType,Deployed,${lastEvent.timestamp},${lastEvent.deploymentId},${lastEvent.icmPath},,${mapper.writeValueAsString(lastEvent.data)}")
+                writer.writeLine("$object.resourceId,$object.resourceType,Deployed,${lastEvent.timestamp},${lastEvent.deploymentId},${lastEvent.icmPath},,${lastEvent.data.collect { "$it.key:$it.value" }.join("; ")}")
                 break
             case com.quadient.migration.data.Error:
-                writer.writeLine("$object.resourceId,$object.resourceType,Error,${lastEvent.timestamp},${lastEvent.deploymentId},${lastEvent.icmPath},,$lastEvent.error,${mapper.writeValueAsString(lastEvent.data)}")
+                writer.writeLine("$object.resourceId,$object.resourceType,Error,${lastEvent.timestamp},${lastEvent.deploymentId},${lastEvent.icmPath},,$lastEvent.error,${lastEvent.data.collect { "$it.key:$it.value" }.join("; ")}")
                 break
         }
     }
