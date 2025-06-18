@@ -25,7 +25,6 @@ dependencyCheck {
         datafeedUrl = "https://osquality-api.quadient.group/scan/api/v2/nvdcache"
         datafeedUser = "migration"
         datafeedPassword = System.getenv("NVD_PW")
-            ?: throw IllegalStateException("NVD_PW environment variable is not set")
     }
 }
 
