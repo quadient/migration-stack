@@ -8,11 +8,6 @@ jobs:
   dependencies:
     timeout-minutes: 30
 
-    strategy:
-      fail-fast: false
-      matrix:
-        project: [migration-library, migration-examples]
-
     name: Dependency check ${{ matrix.project }}
     runs-on: ubuntu-latest
 
@@ -25,10 +20,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Dependency check
-        working-directory: ./${{ matrix.project }}
+      - name: Dependency check migration-library
+        working-directory: ./migration-library
         run: |
           ./gradlew dependencyCheckAnalyze --info
 
           curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
-            "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=${{ matrix.project }}&versionName=$VERSION"
+            "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=migration-library&versionName=$VERSION"
+
+      - name: Dependency check migration-examples
+        working-directory: ./migration-examples
+        run: |
+          ./gradlew dependencyCheckAnalyze --info
+
+          curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
+            "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=migration-examples&versionName=$VERSION"
+
+      - name: Dependency check wfd-xml
+        working-directory: ./wfd-xml
+        run: |
+          ./gradlew dependencyCheckAggregate --info
+
+          curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
+            "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=wfd-xml&versionName=$VERSION"
