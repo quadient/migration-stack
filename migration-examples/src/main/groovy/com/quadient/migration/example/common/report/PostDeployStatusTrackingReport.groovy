@@ -1,6 +1,5 @@
 package com.quadient.migration.example.common.report
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.quadient.migration.api.Migration
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
@@ -24,13 +23,16 @@ file.withWriter { writer ->
         def lastEvent = object.statusEvents.last()
         switch (lastEvent) {
             case Active:
-                writer.writeLine("$object.resourceId,$object.resourceType,Active,${lastEvent.timestamp},,,,${lastEvent.data.collect { "$it.key:$it.value" }.join("; ")}")
+                writer.writeLine("\"$object.id\",$object.resourceType,Active,${lastEvent.timestamp},,,,${lastEvent.data.collect { "$it.key:$it.value" }.join("; ")}")
                 break
             case Deployed:
-                writer.writeLine("$object.resourceId,$object.resourceType,Deployed,${lastEvent.timestamp},${lastEvent.deploymentId},${lastEvent.icmPath},,${lastEvent.data.collect { "$it.key:$it.value" }.join("; ")}")
+                writer.writeLine("\"$object.id\",$object.resourceType,Deployed,${lastEvent.timestamp},${lastEvent.deploymentId},${lastEvent.icmPath},,${lastEvent.data.collect { "$it.key:$it.value" }.join("; ")}")
                 break
             case com.quadient.migration.data.Error:
-                writer.writeLine("$object.resourceId,$object.resourceType,Error,${lastEvent.timestamp},${lastEvent.deploymentId},${lastEvent.icmPath},,$lastEvent.error,${lastEvent.data.collect { "$it.key:$it.value" }.join("; ")}")
+                def sanitizedError = lastEvent.error
+                    .replaceAll("[\n\r]", " ")
+                    .replaceAll("\"", "'")
+                writer.writeLine("\"$object.id\",$object.resourceType,Error,${lastEvent.timestamp},${lastEvent.deploymentId},${lastEvent.icmPath},\"${sanitizedError}\",,${lastEvent.data.collect { "$it.key:$it.value" }.join("; ")}")
                 break
         }
     }

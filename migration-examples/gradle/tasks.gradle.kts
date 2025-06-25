@@ -6,6 +6,7 @@ data class MigTask(
     val description: String,
     val mainClassRelativePath: String,
     val stdIn: InputStream? = null,
+    val finalizedBy: String? = null,
 )
 
 val migrationTasks = listOf<MigTask>(
@@ -13,7 +14,13 @@ val migrationTasks = listOf<MigTask>(
         "displayRuleReport", "migration report", "Generate display rule report", "common.report.DisplayRuleReport"
     ),
     MigTask(
-        "postDeployStatusTrackingReport", "migration report", "Generate post deploy report", "common.report.PostDeployStatusTrackingReport"
+        "postDeployStatusTrackingReport",
+        "migration report",
+        "Generate post deploy report",
+        "common.report.PostDeployStatusTrackingReport"
+    ),
+    MigTask(
+        "postDeployReport", "migration report", "Generate post deploy report", "common.report.PostDeployReport"
     ),
     MigTask(
         "validateAll", "migration deploy", "Run validation on all migration objects", "common.Validate"
@@ -22,19 +29,24 @@ val migrationTasks = listOf<MigTask>(
         "deployStyles", "migration deploy", "Deploy styles", "common.DeployStyles"
     ),
     MigTask(
-        "deployAllDocumentObjects", "migration deploy", "Deploy document objects", "common.DeployDocumentObjects"
+        "deployAllDocumentObjects",
+        "migration deploy",
+        "Deploy document objects",
+        "common.DeployDocumentObjects",
+        finalizedBy = "postDeployReport"
+    ),
+    MigTask(
+        "deploySpecifiedDocumentObjects",
+        "migration deploy",
+        "Deploy document object ids",
+        "common.DeployDocumentObjectIds",
+        finalizedBy = "postDeployReport"
     ),
     MigTask(
         "exportDocumentObjectIds",
         "migration deploy",
         "Export document object ids to deploy",
         "common.ExportDocumentObjectIdsToDeploy"
-    ),
-    MigTask(
-        "deploySpecifiedDocumentObjects",
-        "migration deploy",
-        "Deploy document object ids",
-        "common.DeployDocumentObjectIds"
     ),
     MigTask(
         "paragraphStylesExport", "migration mapping", "Export paragraph styles", "common.mapping.ParagraphStylesExport"
@@ -73,7 +85,10 @@ val migrationTasks = listOf<MigTask>(
         "exampleImport", "migration example", "Import example", "example.Import"
     ),
     MigTask(
-        "acknowledgementLetterFromSource", "migration example", "acknowledgementLetterFromSource", "example.AcknowledgementLetterFromSource"
+        "acknowledgementLetterFromSource",
+        "migration example",
+        "acknowledgementLetterFromSource",
+        "example.AcknowledgementLetterFromSource"
     ),
     MigTask(
         "destroy", "migration common", "Destroy database and storage", "common.Destroy", System.`in`
@@ -93,6 +108,9 @@ tasks {
             args = project.findProperty("scriptArgs")?.toString()?.split(" ") ?: emptyList()
             if (it.stdIn != null) {
                 standardInput = it.stdIn
+            }
+            if (it.finalizedBy != null) {
+                finalizedBy(it.finalizedBy)
             }
         }
     }

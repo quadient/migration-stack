@@ -1,6 +1,8 @@
 package com.quadient.migration.persistence.table
 
+import com.quadient.migration.api.dto.migrationmodel.StatusTracking
 import com.quadient.migration.data.StatusEvent
+import com.quadient.migration.service.deploy.ResourceType
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.dao.CompositeEntity
 import org.jetbrains.exposed.dao.CompositeEntityClass
@@ -25,4 +27,13 @@ class StatusTrackingEntity(id: EntityID<CompositeID>): CompositeEntity(id) {
     val resourceType by StatusTrackingTable.resourceType
     val projectName by StatusTrackingTable.projectName
     var statusEvents by StatusTrackingTable.status_events
+
+    fun toDto(): StatusTracking {
+        return StatusTracking(
+            id = resourceId.value,
+            resourceType = ResourceType.valueOf(resourceType.value),
+            projectName = projectName.value,
+            statusEvents = statusEvents
+        )
+    }
 }

@@ -60,3 +60,9 @@ static <T> T deserialize(String value, Class<T> cls) {
         default: throw new RuntimeException("Unexpected type ${cls} for value ${value}")
     }
 }
+
+static String escapeJson(String value) {
+    return value.replaceAll("[\n\r]", " ")
+    .replaceAll("\"", "\\\"")
+    .replaceAll(",", ";")
+}
