@@ -1,0 +1,35 @@
+name: Trigger tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  dependencies:
+    timeout-minutes: 30
+
+    name: Trigger tests
+    runs-on: ubuntu-latest
+
+    env:
+      WH_SECRET: ${{ secrets.ADO_WH_SECRET }}
+      WH_NAME: ${{ secrets.ADO_WH_NAME }}
+      ORG: ${{ secrets.ADO_ORG }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Trigger tests
+        run: |
+          payload='{"resource":{}}'
+          checksum=$(echo -n "$payload" | openssl dgst -sha1 -hmac "$WH_SECRET" | awk '{print toupper($2)}')
+
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-WH-Checksum: $checksum" \
+            -d "$payload" \
+            "https://dev.azure.com/$ORG/_apis/public/distributedtask/webhooks/$WH_NAME?api-version=6.0-preview"
