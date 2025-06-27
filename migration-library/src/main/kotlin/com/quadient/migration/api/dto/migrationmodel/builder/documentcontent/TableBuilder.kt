@@ -14,9 +14,18 @@ class TableBuilder {
      * And all rows must have the same number of cells.
      */
     fun addRow() = Row().apply { rows.add(this) }
+
+    /**
+     * Add a column width to the table. Column widths are added in the order they are defined.
+     */
     fun addColumnWidth(minWidth: Size, percentWidth: Double) = apply {
         columnWidths.add(ColumnWidth(minWidth, percentWidth))
     }
+
+    /**
+     * Set the column widths for the table. This will replace any existing column widths.
+     * @param width The list of column widths to set.
+     */
     fun columnWidths(width: List<ColumnWidth>) = columnWidths.apply { clear() }.addAll(width)
 
     fun build(): Table {

@@ -9,7 +9,7 @@ def migration = initMigration(this.binding.variables["args"])
 def all = migration.statusTrackingRepository.listAll()
 for (status in all) {
     migration.statusTrackingRepository.active(
-        status.resourceId.toString(),
+        status.id.toString(),
         status.resourceType.toString() as ResourceType,
         [reason: "ActivateAll"]
     )
