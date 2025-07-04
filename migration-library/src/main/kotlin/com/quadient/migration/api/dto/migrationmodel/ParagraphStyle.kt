@@ -1,6 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.data.ParagraphStyleDefinitionModel
+import com.quadient.migration.data.ParagraphStyleModel
 import com.quadient.migration.data.TabModel
 import com.quadient.migration.data.TabsModel
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefinitionEntity
@@ -17,7 +18,17 @@ data class ParagraphStyle(
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
     var definition: ParagraphStyleDefOrRef,
-) : MigrationObject
+) : MigrationObject {
+    companion object {
+        fun fromModel(model: ParagraphStyleModel) = ParagraphStyle(
+            id = model.id,
+            name = model.name,
+            originLocations = model.originLocations,
+            customFields = CustomFieldMap(model.customFields.toMutableMap()),
+            definition = ParagraphStyleDefOrRef.fromModel(model.definition),
+        )
+    }
+}
 
 data class ParagraphStyleDefinition(
     var leftIndent: Size?,

@@ -20,9 +20,9 @@ import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuild
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.tools.aActiveStatusEntity
-import com.quadient.migration.tools.aDeployedStatusEntity
-import com.quadient.migration.tools.aErrorStatusEntity
+import com.quadient.migration.tools.aActiveStatus
+import com.quadient.migration.tools.aDeployedStatus
+import com.quadient.migration.tools.aErrorStatus
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
@@ -96,7 +96,7 @@ class DesignerDeployClientTest {
         val template = mockObj(aTemplate("1", listOf(aDocumentObjectRef(page.id))))
 
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { documentObjectRepository.list(any()) } returns listOf(template, externalBlock)
         every { ipsService.close() } just runs
 
@@ -291,7 +291,7 @@ class DesignerDeployClientTest {
         every { documentObjectRepository.list(any()) } returns listOf(template, block)
         every { documentObjectBuilder.buildDocumentObject(block) } throws IllegalStateException("Inner block not found")
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
 
         // when
         val result = subject.deployDocumentObjects()
@@ -353,9 +353,9 @@ class DesignerDeployClientTest {
         fun setup() {
             every { ipsService.close() } just runs
             every { documentObjectBuilder.buildDocumentObject(any()) } returns ""
-            every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns  aDeployedStatusEntity("id")
-            every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatusEntity("id")
-            every { statusTrackingRepository.active(any(), any()) } returns aActiveStatusEntity("id")
+            every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns  aDeployedStatus("id")
+            every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
+            every { statusTrackingRepository.active(any(), any()) } returns aActiveStatus("id")
             every { documentObjectBuilder.getDocumentObjectPath(any()) } returns "icm://path"
         }
 
@@ -406,10 +406,10 @@ class DesignerDeployClientTest {
 
             // then
             verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("D_2", any(), any(), any(), any(), any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("D_3", any(), any(), any(), any(), any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("I_1", any(), any(), any(), any(), any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("I_2", any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("D_2", any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("D_3", any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("I_1", any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("I_2", any(), any(), any(), any(), any(), any()) }
         }
 
         @Test
@@ -426,8 +426,8 @@ class DesignerDeployClientTest {
 
             // then
             verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any()) }
-            verify(exactly = 1) { statusTrackingRepository.error("D_1", any(), any(), any(), any(), any(), "oops") }
-            verify(exactly = 1) { statusTrackingRepository.error("I_1", any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.error("D_1", any(), any(), any(), any(), any(), "oops", any()) }
+            verify(exactly = 1) { statusTrackingRepository.error("I_1", any(), any(), any(), any(), any(), any(), any()) }
         }
 
         private fun givenObjectIsActive(id: String) {

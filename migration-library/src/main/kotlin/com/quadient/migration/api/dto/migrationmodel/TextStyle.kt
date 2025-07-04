@@ -1,6 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.data.TextStyleDefinitionModel
+import com.quadient.migration.data.TextStyleModel
 import com.quadient.migration.persistence.migrationmodel.TextStyleDefinitionEntity
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.Size
@@ -12,7 +13,17 @@ data class TextStyle(
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
     var definition: TextStyleDefOrRef,
-) : MigrationObject
+) : MigrationObject {
+    companion object {
+        fun fromModel(model: TextStyleModel) = TextStyle(
+            id = model.id,
+            name = model.name,
+            originLocations = model.originLocations,
+            customFields = CustomFieldMap(model.customFields.toMutableMap()),
+            definition = TextStyleDefOrRef.fromModel(model.definition),
+        )
+    }
+}
 
 data class TextStyleDefinition(
     var fontFamily: String? = null,

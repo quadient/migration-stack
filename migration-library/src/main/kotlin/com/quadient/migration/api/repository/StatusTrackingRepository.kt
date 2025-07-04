@@ -29,6 +29,10 @@ class StatusTrackingRepository(val projectName: String) {
         return find(id, resourceType)?.statusEvents?.lastOrNull()
     }
 
+    fun findEventsRelevantToOutput(id: String, resourceType: ResourceType, output: InspireOutput): List<StatusEvent> {
+        return internalRepository.findEventsRelevantToOutput(id, resourceType, output)
+    }
+
     fun findLastEventRelevantToOutput(id: String, resourceType: ResourceType, output: InspireOutput): StatusEvent? {
         return internalRepository.findLastEventRelevantToOutput(id, resourceType, output)
     }

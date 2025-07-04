@@ -34,6 +34,18 @@ class StatusTrackingInternalRepository(val projectName: String) {
         return find(id, resourceType)?.statusEvents?.lastOrNull()
     }
 
+    fun findEventsRelevantToOutput(id: String, resourceType: ResourceType, output: InspireOutput): List<StatusEvent> {
+        return transaction {
+            find(id, resourceType)?.statusEvents?.filter {
+                when (it) {
+                    is Active -> true
+                    is Deployed -> it.output == output
+                    is Error -> it.output == output
+                }
+            } ?: emptyList()
+        }
+    }
+
     fun findLastEventRelevantToOutput(id: String, resourceType: ResourceType, output: InspireOutput): StatusEvent? {
         return transaction {
             find(id, resourceType)?.statusEvents?.lastOrNull {

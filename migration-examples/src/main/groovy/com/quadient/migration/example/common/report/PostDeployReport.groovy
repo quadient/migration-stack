@@ -2,7 +2,6 @@ package com.quadient.migration.example.common.report
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.quadient.migration.api.Migration
-import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
@@ -14,10 +13,10 @@ import com.quadient.migration.api.dto.migrationmodel.Ref
 import com.quadient.migration.api.dto.migrationmodel.StatusTracking
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
-import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
+import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.service.deploy.ResourceType
 import groovy.transform.Field
@@ -33,15 +32,21 @@ def allObjects = migration.statusTrackingRepository
 def allEvents = allObjects
     .collect { it.statusEvents }
     .flatten()
-def lastDeploymentId = allEvents
+
+def nonActiveEvents = allEvents
     .findAll { it !instanceof Active }
     .sort { it.timestamp }
+if (nonActiveEvents.isEmpty()) {
+    println "No deployment events found."
+    return
+}
+def lastDeploymentId = nonActiveEvents
     .last()
     .deploymentId
 
 def deployedObjects = new ArrayList<StatusTrackingWithEvent>()
 for (obj in allObjects) {
-    def event = obj.statusEvents.find { it instanceof Deployed && it.deploymentId == lastDeploymentId }
+    def event = obj.statusEvents.find { (it instanceof Deployed || it instanceof com.quadient.migration.data.Error) && it.deploymentId == lastDeploymentId }
     if (event != null) {
         deployedObjects.add(new StatusTrackingWithEvent(statusTracking: obj, event: event))
     }
@@ -74,9 +79,7 @@ for (obj in deployedObjects) {
 }
 
 def documentObjectDependencies = new ArrayList<DocumentObject>()
-def variableDependencies = new ArrayList<Variable>()
 def imageDependencies = new ArrayList<Image>()
-def displayRuleDependencies = new ArrayList<DisplayRule>()
 def textStyleDependencies = new ArrayList<TextStyle>()
 def paragraphStyleDependencies = new ArrayList<ParagraphStyle>()
 def alreadyFoundRefs = new HashSet<Ref>()
@@ -97,10 +100,8 @@ while (!queue.isEmpty()) {
             }
             break
         case VariableRef:
-            variableDependencies.add(migration.variableRepository.find(ref.id))
             break
         case DisplayRuleRef:
-            displayRuleDependencies.add(migration.displayRuleRepository.find(ref.id))
             break
         case ImageRef:
             imageDependencies.add(migration.imageRepository.find(ref.id))
@@ -123,7 +124,7 @@ def mapper = new ObjectMapper()
 def file = dstFile.toFile()
 file.createParentDirectories()
 file.withWriter { writer ->
-    writer.writeLine("id,type,status,deployedAs,icmPath,content")
+    writer.writeLine("id,type,status,deployedAs,icmPath,errorMessage,content")
 
     // Directly deployed objects
     for (docObj in deployedDocumentObjects) {
@@ -134,6 +135,11 @@ file.withWriter { writer ->
         builder.append(docObj.event.class.simpleName).append(",")
         builder.append("Direct,")
         builder.append(docObj.event.icmPath).append(",")
+        if (docObj.event instanceof com.quadient.migration.data.Error) {
+            builder.append("\"${Csv.escapeJson(docObj.event.error)}\",")
+        } else {
+            builder.append(",")
+        }
         builder.append("\"${content}\"")
         writer.writeLine(builder.toString())
     }
@@ -144,6 +150,11 @@ file.withWriter { writer ->
         builder.append(img.event.class.simpleName).append(",")
         builder.append("Direct,")
         builder.append(img.event.icmPath).append(",")
+        if (img.event instanceof com.quadient.migration.data.Error) {
+            builder.append("\"${Csv.escapeJson(img.event.error)}\",")
+        } else {
+            builder.append(",")
+        }
         writer.writeLine(builder.toString())
     }
     for (textStyle in deployedTextStyles) {
@@ -154,6 +165,11 @@ file.withWriter { writer ->
         builder.append(textStyle.event.class.simpleName).append(",")
         builder.append("Direct,")
         builder.append(textStyle.event.icmPath).append(",")
+        if (textStyle.event instanceof com.quadient.migration.data.Error) {
+            builder.append("\"${Csv.escapeJson(textStyle.event.error)}\",")
+        } else {
+            builder.append(",")
+        }
         builder.append("\"${content}\"")
         writer.writeLine(builder.toString())
     }
@@ -165,6 +181,11 @@ file.withWriter { writer ->
         builder.append(paragraphStyle.event.class.simpleName).append(",")
         builder.append("Direct,")
         builder.append(paragraphStyle.event.icmPath).append(",")
+        if (paragraphStyle.event instanceof com.quadient.migration.data.Error) {
+            builder.append("\"${Csv.escapeJson(paragraphStyle.event.error)}\",")
+        } else {
+            builder.append(",")
+        }
         builder.append("\"${content}\"")
         writer.writeLine(builder.toString())
     }
@@ -175,35 +196,17 @@ file.withWriter { writer ->
         def content = Csv.escapeJson(mapper.writeValueAsString(docObj.content))
         builder.append(docObj.id).append(",")
         builder.append(docObj.type.toString()).append(",")
-        builder.append("-,")
-        builder.append("Dependency,,")
+        builder.append(",")
+        builder.append("Dependency,,,")
         builder.append("\"${content}\"")
-        writer.writeLine(builder.toString())
-    }
-    for (variable in variableDependencies) {
-        def builder = new StringBuilder()
-        builder.append(variable.id).append(",")
-        builder.append("Variable,")
-        builder.append("-,")
-        builder.append("Dependency,,")
         writer.writeLine(builder.toString())
     }
     for (img in imageDependencies) {
         def builder = new StringBuilder()
         builder.append(img.id).append(",")
         builder.append("Image,")
-        builder.append("-,")
-        builder.append("Dependency,,")
-        writer.writeLine(builder.toString())
-    }
-    for (displayRule in displayRuleDependencies) {
-        def builder = new StringBuilder()
-        def content = Csv.escapeJson(mapper.writeValueAsString(displayRule.definition))
-        builder.append(displayRule.id).append(",")
-        builder.append("DisplayRule,")
-        builder.append("-,")
-        builder.append("Dependency,,")
-        builder.append("\"${content}\"")
+        builder.append(",")
+        builder.append("Dependency,,,")
         writer.writeLine(builder.toString())
     }
     for (textStyle in textStyleDependencies) {
@@ -211,8 +214,8 @@ file.withWriter { writer ->
         def content = Csv.escapeJson(mapper.writeValueAsString(textStyle.definition))
         builder.append(textStyle.id).append(",")
         builder.append("TextStyle,")
-        builder.append("-,")
-        builder.append("Dependency,,")
+        builder.append(",")
+        builder.append("Dependency,,,")
         builder.append("\"${content}\"")
         writer.writeLine(builder.toString())
     }
@@ -221,8 +224,8 @@ file.withWriter { writer ->
         def content = Csv.escapeJson(mapper.writeValueAsString(paragraphStyle.definition))
         builder.append(paragraphStyle.id).append(",")
         builder.append("ParagraphStyle,")
-        builder.append("-,")
-        builder.append("Dependency,,")
+        builder.append(",")
+        builder.append("Dependency,,,")
         builder.append("\"${content}\"")
         writer.writeLine(builder.toString())
     }
@@ -230,11 +233,11 @@ file.withWriter { writer ->
 
 class StatusTrackingWithEvent {
     StatusTracking statusTracking
-    Deployed event
+    StatusEvent event
 }
 
 class ObjectWithStatus<T> {
     StatusTracking statusTracking
-    Deployed event
+    StatusEvent event
     T object
 }

@@ -12,6 +12,7 @@ import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphStyleDefinitionModel
 import com.quadient.migration.data.ParagraphStyleModelRef
+import com.quadient.migration.data.RefModel
 import com.quadient.migration.data.TextStyleDefinitionModel
 import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.data.VariableModelRef
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.nio.file.InvalidPathException
+import kotlin.reflect.KClass
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -46,54 +48,38 @@ sealed class DeployClient(
     protected val output: InspireOutput,
 ) {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
-    protected val deploymentId  = Uuid.random()
+    protected val deploymentId = Uuid.random()
     protected val deploymentTimestamp = Clock.System.now()
 
-    protected fun shouldDeployObject(
-        id: String,
-        resourceType: ResourceType,
-        targetPath: String,
-        deploymentResult: DeploymentResult
-    ): Boolean {
-        val currentStatus = statusTrackingRepository.findLastEventRelevantToOutput(id, resourceType, output)
-
-        return when (currentStatus) {
-            null -> {
-                logger.error("Not deploying '$targetPath' due to a missing status.")
-                deploymentResult.errors.add(DeploymentError(id, "Missing tracked status for document object"))
-                false
-            }
-
-            is Deployed -> {
-                logger.info("Already deployed: '$targetPath'.")
-                false
-            }
-
-            is Active -> {
-                logger.info("Deploying '$targetPath'.")
-                true
-            }
-
-            is com.quadient.migration.data.Error -> {
-                logger.info("Last attempt to deploy '$targetPath' failed with error: '${currentStatus.error}'. Trying again.")
-                true
-            }
-        }
-    }
-
-    abstract fun deployDocumentObjects(documentObjectIds: List<String>, skipDependencies: Boolean): DeploymentResult
-    abstract fun deployDocumentObjects(): DeploymentResult
+    abstract fun getAllDocumentObjectsToDeploy(): List<DocumentObjectModel>
+    abstract fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObjectModel>
+    abstract fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult
 
     abstract fun shouldIncludeDependency(documentObject: DocumentObjectModel): Boolean
     abstract fun shouldIncludeImage(documentObject: DocumentObjectModel): Boolean
 
+    fun deployDocumentObjects(): DeploymentResult {
+        return deployDocumentObjectsInternal(getAllDocumentObjectsToDeploy())
+    }
+
     fun deployDocumentObjects(documentObjectIds: List<String>) = deployDocumentObjects(documentObjectIds, false)
+    fun deployDocumentObjects(documentObjectIds: List<String>, skipDependencies: Boolean): DeploymentResult {
+        val documentObjects = getDocumentObjectsToDeploy(documentObjectIds)
+        return if (skipDependencies) {
+            deployDocumentObjectsInternal(documentObjects)
+        } else {
+            val dependencies = documentObjects.flatMap { it.findDependencies() }.filter { !it.internal }
+            deployDocumentObjectsInternal((documentObjects + dependencies).toSet().toList())
+        }
+    }
 
     fun deployStyles() {
         val textStyles = textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel }
-        val paragraphStyles = paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel }
+        val paragraphStyles =
+            paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel }
         val outputPath = documentObjectBuilder.getStyleDefinitionPath()
-        val xml2wfdResult = ipsService.xml2wfd(documentObjectBuilder.buildStyles(textStyles, paragraphStyles), outputPath)
+        val xml2wfdResult =
+            ipsService.xml2wfd(documentObjectBuilder.buildStyles(textStyles, paragraphStyles), outputPath)
 
         when (xml2wfdResult) {
             is OperationResult.Success -> {
@@ -333,6 +319,120 @@ sealed class DeployClient(
         return deploymentResult
     }
 
+    fun preFlightCheck(): DeploymentReport {
+        val objects = getAllDocumentObjectsToDeploy()
+        return preFlightCheckInternal(objects)
+    }
+
+    fun preFlightCheck(documentObjectIds: List<String>): DeploymentReport {
+        val objects = getDocumentObjectsToDeploy(documentObjectIds)
+        return preFlightCheckInternal(objects)
+    }
+
+    fun preFlightCheckInternal(objects: List<DocumentObjectModel>): DeploymentReport {
+        val report = DeploymentReport(deploymentId, mutableMapOf())
+
+        val queue: MutableList<RefModel> = mutableListOf()
+        val alreadyVisitedRefs = mutableSetOf<Pair<String, KClass<*>>>()
+
+        for (obj in objects) {
+            val deployKind = getDeployKind(obj.id, ResourceType.DocumentObject, output)
+            val icmPath = documentObjectBuilder.getDocumentObjectPath(obj)
+            report.addDocumentObject(obj.id, obj, icmPath = icmPath, deployKind = deployKind)
+            alreadyVisitedRefs.add(Pair(obj.id, DocumentObjectModelRef::class))
+            val refs = obj.collectRefs()
+            queue.addAll(refs)
+        }
+
+        while (!queue.isEmpty()) {
+            val ref = queue.removeFirst()
+
+            if (alreadyVisitedRefs.contains(Pair(ref.id, ref::class))) {
+                continue
+            }
+            alreadyVisitedRefs.add(Pair(ref.id, ref::class))
+
+            val resource = when (ref) {
+                is DocumentObjectModelRef -> {
+                    val obj = documentObjectRepository.findModelOrFail(ref.id)
+                    val deployKind = getDeployKind(obj.id, ResourceType.DocumentObject, output, obj.internal)
+                    val icmPath = if (!obj.internal) {
+                        documentObjectBuilder.getDocumentObjectPath(obj)
+                    } else {
+                        null
+                    }
+
+                    report.addDocumentObject(obj.id, obj, icmPath = icmPath, deployKind = deployKind)
+                    obj
+                }
+
+                is ImageModelRef -> {
+                    val img = imageRepository.findModelOrFail(ref.id)
+                    val deployKind = getDeployKind(ref.id, ResourceType.Image, output)
+                    val icmPath = documentObjectBuilder.getImagePath(img)
+
+                    report.addImage(img.id, img, icmPath = icmPath, deployKind = deployKind)
+                    img
+                }
+
+                is TextStyleModelRef -> {
+                    val style = textStyleRepository.findModelOrFail(ref.id)
+                    report.addTextStyle(
+                        id = style.id, icmPath = null, deployKind = DeployKind.Dependency, style = style
+                    )
+                    style
+                }
+
+                is ParagraphStyleModelRef -> {
+                    val style = paragraphStyleRepository.findModelOrFail(ref.id)
+                    report.addParagraphStyle(
+                        id = style.id, icmPath = null, deployKind = DeployKind.Dependency, style = style
+                    )
+                    style
+                }
+
+                is DisplayRuleModelRef -> null
+                is VariableModelRef -> null
+            }
+
+            if (resource != null) {
+                val refs = resource.collectRefs()
+                queue.addAll(refs)
+            }
+        }
+
+        return report
+    }
+
+    protected fun shouldDeployObject(
+        id: String, resourceType: ResourceType, targetPath: String?, deploymentResult: DeploymentResult
+    ): Boolean {
+        val currentStatus = statusTrackingRepository.findLastEventRelevantToOutput(id, resourceType, output)
+
+        return when (currentStatus) {
+            null -> {
+                logger.error("Not deploying '$targetPath' due to a missing status.")
+                deploymentResult.errors.add(DeploymentError(id, "Missing tracked status for document object"))
+                false
+            }
+
+            is Deployed -> {
+                logger.info("Already deployed: '$targetPath'.")
+                false
+            }
+
+            is Active -> {
+                logger.info("Deploying '$targetPath'.")
+                true
+            }
+
+            is com.quadient.migration.data.Error -> {
+                logger.info("Last attempt to deploy '$targetPath' failed with error: '${currentStatus.error}'. Trying again.")
+                true
+            }
+        }
+    }
+
     fun DocumentObjectModel.findDependencies(): List<DocumentObjectModel> {
         val dependencies = mutableListOf<DocumentObjectModel>()
         this.collectRefs().forEach { ref ->
@@ -367,6 +467,24 @@ sealed class DeployClient(
                     }
                 }
             }
+        }
+    }
+
+    private fun getDeployKind(id: String, resourceType: ResourceType, output: InspireOutput, internal: Boolean = false): DeployKind {
+        if (internal) {
+            return DeployKind.Dependency
+        }
+
+        val objectEvents = statusTrackingRepository.findEventsRelevantToOutput(id, resourceType, output)
+        return if (objectEvents.lastOrNull() is Active) {
+            val hasBeenDeployedBefore = objectEvents.any { it is Deployed }
+            if (hasBeenDeployedBefore) {
+                DeployKind.Overwrite
+            } else {
+                DeployKind.New
+            }
+        } else {
+            return DeployKind.Dependency
         }
     }
 
