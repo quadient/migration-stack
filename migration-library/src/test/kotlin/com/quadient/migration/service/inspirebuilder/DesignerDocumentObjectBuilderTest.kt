@@ -5,7 +5,7 @@ import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.FirstMatchModel
-import com.quadient.migration.data.FlowAreaModel
+import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.StringModel
@@ -104,7 +104,7 @@ class DesignerDocumentObjectBuilderTest {
         val page = mockObj(
             aDocObj(
                 "P_1", Page, listOf(
-                    FlowAreaModel(
+                    AreaModel(
                         Position(20.millimeters(), 25.millimeters(), 160.millimeters(), 10.centimeters()),
                         listOf(aDocumentObjectRef(block.id))
                     )
@@ -164,7 +164,7 @@ class DesignerDocumentObjectBuilderTest {
         val page = mockObj(
             aDocObj(
                 "P_1", Page, listOf(
-                    FlowAreaModel(
+                    AreaModel(
                         Position(60.millimeters(), 60.millimeters(), 10.centimeters(), 10.centimeters()), listOf(
                             ImageModelRef(image.id)
                         )
@@ -197,7 +197,7 @@ class DesignerDocumentObjectBuilderTest {
         val page = mockObj(
             aDocObj(
                 "P_1", Page, listOf(
-                    FlowAreaModel(
+                    AreaModel(
                         Position(60.millimeters(), 120.millimeters(), 20.centimeters(), 10.centimeters()), listOf(
                             ImageModelRef(imageModel.id)
                         )

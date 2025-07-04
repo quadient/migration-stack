@@ -5,7 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.FlowAreaBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 
@@ -66,13 +66,13 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     fun options(options: DocumentObjectOptions) = apply { this.options = options }
 
     /**
-     * Add a flow area to the document object.
-     * @param builder Builder function where receiver is a [FlowAreaBuilder].
+     * Add an area to the document object.
+     * @param builder Builder function where receiver is a [AreaBuilder].
      * @return This builder instance for method chaining.
      */
-    fun flowArea(builder: FlowAreaBuilder.() -> Unit) = apply {
-        val flowAreaBuilder = FlowAreaBuilder().apply(builder)
-        content = content + flowAreaBuilder.build()
+    fun area(builder: AreaBuilder.() -> Unit) = apply {
+        val areaBuilder = AreaBuilder().apply(builder)
+        content = content + areaBuilder.build()
     }
 
     /**

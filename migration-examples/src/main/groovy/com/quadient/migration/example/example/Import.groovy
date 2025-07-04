@@ -277,7 +277,7 @@ def paragraph1TopMargin = topMargin + Size.ofCentimeters(2)
 def signatureTopMargin = pageHeight - Size.ofCentimeters(3)
 def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
     .options(new PageOptions(pageWidth, pageHeight))
-    .flowArea {
+    .area {
         it.position {
             it.left(leftMargin)
             it.top(topMargin)
@@ -286,7 +286,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         }
             .documentObjectRef(address.id, displayAddressRule.id)
     }
-    .flowArea {
+    .area {
         it.position {
             it.left(leftMargin + contentWidth - logoWidth)
             it.top(topMargin)
@@ -294,7 +294,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.height(logoHeight)
         }.imageRef(logo.id)
     }
-    .flowArea {
+    .area {
         it.position {
             it.left(leftMargin)
             it.top(paragraph1TopMargin)
@@ -307,7 +307,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             .documentObjectRef(conditionalParagraph.id)
             .documentObjectRef(firstMatchBlock.id)
     }
-    .flowArea {
+    .area {
         it.position {
             it.left(leftMargin)
             it.top(signatureTopMargin)
