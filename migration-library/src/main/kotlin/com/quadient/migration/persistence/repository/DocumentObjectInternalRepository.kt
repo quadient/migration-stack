@@ -12,7 +12,7 @@ import com.quadient.migration.persistence.table.DocumentObjectTable.options
 import com.quadient.migration.persistence.table.DocumentObjectTable.targetFolder
 import com.quadient.migration.persistence.table.DocumentObjectTable.type
 import com.quadient.migration.shared.DocumentObjectType
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.v1.core.ResultRow
 
 class DocumentObjectInternalRepository(table: DocumentObjectTable, projectName: String) :
     InternalRepository<DocumentObjectModel>(table, projectName) {

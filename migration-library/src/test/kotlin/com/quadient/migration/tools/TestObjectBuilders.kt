@@ -62,8 +62,8 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import org.jetbrains.exposed.dao.id.CompositeID
-import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.dao.id.CompositeID
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 

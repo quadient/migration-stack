@@ -8,8 +8,8 @@ import com.quadient.migration.persistence.table.StatusTrackingEntity
 import com.quadient.migration.persistence.table.StatusTrackingTable
 import com.quadient.migration.service.deploy.ResourceType
 import kotlinx.datetime.Instant
-import org.jetbrains.exposed.dao.id.CompositeID
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.dao.id.CompositeID
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 

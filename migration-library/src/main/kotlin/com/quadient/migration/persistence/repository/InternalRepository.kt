@@ -3,10 +3,13 @@ package com.quadient.migration.persistence.repository
 import com.quadient.migration.data.MigrationObjectModel
 import com.quadient.migration.persistence.table.MigrationObjectTable
 import com.quadient.migration.tools.getOrPutOrNull
-import kotlinx.datetime.Clock
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 
 abstract class InternalRepository<T : MigrationObjectModel>(

@@ -15,9 +15,9 @@ import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.upsert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.upsert
 
 class ImageRepository(internalRepository: ImageInternalRepository) : Repository<Image, ImageModel>(internalRepository) {
     val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
@@ -38,9 +38,8 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
     override fun findUsages(id: String): List<MigrationObject> {
         return transaction {
             DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq internalRepository.projectName }
-                .map { DocumentObjectTable.fromResultRow(it) }
-                .filter { it.collectRefs().any { it.id == id } }.map { DocumentObject.fromModel(it) }
-                .distinct()
+                .map { DocumentObjectTable.fromResultRow(it) }.filter { it.collectRefs().any { it.id == id } }
+                .map { DocumentObject.fromModel(it) }.distinct()
         }
     }
 

@@ -9,7 +9,7 @@ import com.quadient.migration.persistence.table.DisplayRuleTable.lastUpdated
 import com.quadient.migration.persistence.table.DisplayRuleTable.name
 import com.quadient.migration.persistence.table.DisplayRuleTable.originLocations
 import com.quadient.migration.persistence.table.MigrationObjectTable
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.v1.core.ResultRow
 
 class DisplayRuleInternalRepository(
     table: MigrationObjectTable, projectName: String

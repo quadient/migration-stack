@@ -1,9 +1,9 @@
 package com.quadient.migration.persistence.table
 
 import kotlinx.serialization.json.Json
-import org.jetbrains.exposed.dao.id.IdTable
-import org.jetbrains.exposed.sql.json.jsonb
-import org.jetbrains.exposed.sql.kotlin.datetime.timestamp
+import org.jetbrains.exposed.v1.core.dao.id.IdTable
+import org.jetbrains.exposed.v1.datetime.timestamp
+import org.jetbrains.exposed.v1.json.jsonb
 
 abstract class MigrationObjectTable(name: String) : IdTable<String>(name) {
     override val id = varchar("id", 255).entityId()
