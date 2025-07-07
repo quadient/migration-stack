@@ -1,6 +1,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
 
 import java.nio.file.Paths
@@ -26,6 +27,12 @@ for (line in docObjectLines) {
     if (existingDocObject == null) {
         throw new Exception("DocumentObject with id ${values.get("id")} not found")
     }
+    def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(
+        existingDocObject.id,
+        ResourceType.DocumentObject,
+        migration.projectConfig.inspireOutput
+    )
+
     existingDocObject.name = Csv.deserialize(values.get("name"), String.class)
     existingDocObject.internal = Csv.deserialize(values.get("internal"), boolean)
     existingDocObject.baseTemplate = Csv.deserialize(values.get("baseTemplate"), String.class)
@@ -36,6 +43,11 @@ for (line in docObjectLines) {
         existingDocObject.type = type
     }
 
+    def csvStatus = values.get("status")
+    if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {
+        migration.statusTrackingRepository.active(existingDocObject.id, ResourceType.DocumentObject, [reason: "Manual"])
+    }
+
     migration.documentObjectRepository.upsert(existingDocObject)
 }
 for (line in imageLines) {
@@ -44,10 +56,19 @@ for (line in imageLines) {
     if (existingImage  == null) {
         throw new Exception("Image with id ${values.get("id")} not found")
     }
+    def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(
+        existingImage.id,
+        ResourceType.Image,
+        migration.projectConfig.inspireOutput
+    )
 
     existingImage.name = Csv.deserialize(values.get("name"), String.class)
     existingImage.sourcePath = Csv.deserialize(values.get("sourcePath"), String.class)
     existingImage.targetFolder = Csv.deserialize(values.get("targetFolder"), String.class)
 
+    def csvStatus = values.get("status")
+    if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {
+        migration.statusTrackingRepository.active(existingImage.id, ResourceType.Image, [reason: "Manual"])
+    }
     migration.imageRepository.upsert(existingImage)
 }

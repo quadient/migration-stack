@@ -40,15 +40,29 @@ if (nonActiveEvents.isEmpty()) {
     println "No deployment events found."
     return
 }
+def output = nonActiveEvents.last().output
 def lastDeploymentId = nonActiveEvents
     .last()
     .deploymentId
 
 def deployedObjects = new ArrayList<StatusTrackingWithEvent>()
 for (obj in allObjects) {
-    def event = obj.statusEvents.find { (it instanceof Deployed || it instanceof com.quadient.migration.data.Error) && it.deploymentId == lastDeploymentId }
-    if (event != null) {
-        deployedObjects.add(new StatusTrackingWithEvent(statusTracking: obj, event: event))
+    def deployedEvent
+    def isOverwrite = false
+    for (event in obj.statusEvents) {
+        if ((event instanceof Deployed || event instanceof com.quadient.migration.data.Error)
+            && event.deploymentId == lastDeploymentId) {
+            deployedEvent = event
+        }
+
+        if ((event instanceof Deployed || event instanceof com.quadient.migration.data.Error)
+            && event.deploymentId != lastDeploymentId && event.output == output) {
+            isOverwrite = true
+        }
+    }
+
+    if (deployedEvent != null) {
+        deployedObjects.add(new StatusTrackingWithEvent(statusTracking: obj, event: deployedEvent, isOverwrite: isOverwrite))
     }
 }
 
@@ -61,19 +75,19 @@ for (obj in deployedObjects) {
     switch (obj.statusTracking.resourceType) {
         case ResourceType.DocumentObject:
             def o = migration.documentObjectRepository.find(obj.statusTracking.id)
-            deployedDocumentObjects.add(new ObjectWithStatus(statusTracking: obj.statusTracking, event: obj.event, object: o))
+            deployedDocumentObjects.add(new ObjectWithStatus(statusTracking: obj.statusTracking, event: obj.event, object: o, isOverwrite: obj.isOverwrite))
             break
         case ResourceType.Image:
             def o = migration.imageRepository.find(obj.statusTracking.id)
-            deployedImages.add(new ObjectWithStatus(statusTracking: obj.statusTracking, event: obj.event, object: o))
+            deployedImages.add(new ObjectWithStatus(statusTracking: obj.statusTracking, event: obj.event, object: o, isOverwrite: obj.isOverwrite))
             break
         case ResourceType.TextStyle:
             def o = migration.textStyleRepository.find(obj.statusTracking.id)
-            deployedTextStyles.add(new ObjectWithStatus(statusTracking: obj.statusTracking, event: obj.event, object: o))
+            deployedTextStyles.add(new ObjectWithStatus(statusTracking: obj.statusTracking, event: obj.event, object: o, isOverwrite: obj.isOverwrite))
             break
         case ResourceType.ParagraphStyle:
             def o = migration.paragraphStyleRepository.find(obj.statusTracking.id)
-            deployedParagraphStyles.add(new ObjectWithStatus(statusTracking: obj.statusTracking, event: obj.event, object: o))
+            deployedParagraphStyles.add(new ObjectWithStatus(statusTracking: obj.statusTracking, event: obj.event, object: o, isOverwrite: obj.isOverwrite))
             break
     }
 }
@@ -124,7 +138,7 @@ def mapper = new ObjectMapper()
 def file = dstFile.toFile()
 file.createParentDirectories()
 file.withWriter { writer ->
-    writer.writeLine("id,type,status,deployedAs,icmPath,errorMessage,content")
+    writer.writeLine("id,type,status,deployedAs,internal,icmPath,errorMessage,content")
 
     // Directly deployed objects
     for (docObj in deployedDocumentObjects) {
@@ -133,7 +147,8 @@ file.withWriter { writer ->
         builder.append(docObj.object.id).append(",")
         builder.append(docObj.object.type.toString()).append(",")
         builder.append(docObj.event.class.simpleName).append(",")
-        builder.append("Direct,")
+        builder.append(docObj.isOverwrite ? "Overwrite," : "New,")
+        builder.append("${docObj.object.internal},")
         builder.append(docObj.event.icmPath).append(",")
         if (docObj.event instanceof com.quadient.migration.data.Error) {
             builder.append("\"${Csv.escapeJson(docObj.event.error)}\",")
@@ -148,7 +163,8 @@ file.withWriter { writer ->
         builder.append(img.object.id).append(",")
         builder.append("Image,")
         builder.append(img.event.class.simpleName).append(",")
-        builder.append("Direct,")
+        builder.append(img.isOverwrite ? "Overwrite," : "New,")
+        builder.append(",")
         builder.append(img.event.icmPath).append(",")
         if (img.event instanceof com.quadient.migration.data.Error) {
             builder.append("\"${Csv.escapeJson(img.event.error)}\",")
@@ -163,7 +179,8 @@ file.withWriter { writer ->
         builder.append(textStyle.object.id).append(",")
         builder.append("TextStyle,")
         builder.append(textStyle.event.class.simpleName).append(",")
-        builder.append("Direct,")
+        builder.append(textStyle.isOverwrite ? "Overwrite," : "New,")
+        builder.append(",")
         builder.append(textStyle.event.icmPath).append(",")
         if (textStyle.event instanceof com.quadient.migration.data.Error) {
             builder.append("\"${Csv.escapeJson(textStyle.event.error)}\",")
@@ -179,7 +196,8 @@ file.withWriter { writer ->
         builder.append(paragraphStyle.object.id).append(",")
         builder.append("ParagraphStyle,")
         builder.append(paragraphStyle.event.class.simpleName).append(",")
-        builder.append("Direct,")
+        builder.append(paragraphStyle.isOverwrite ? "Overwrite," : "New,")
+        builder.append(",")
         builder.append(paragraphStyle.event.icmPath).append(",")
         if (paragraphStyle.event instanceof com.quadient.migration.data.Error) {
             builder.append("\"${Csv.escapeJson(paragraphStyle.event.error)}\",")
@@ -197,7 +215,8 @@ file.withWriter { writer ->
         builder.append(docObj.id).append(",")
         builder.append(docObj.type.toString()).append(",")
         builder.append(",")
-        builder.append("Dependency,,,")
+        builder.append("Dependency,")
+        builder.append("${docObj.internal},,,")
         builder.append("\"${content}\"")
         writer.writeLine(builder.toString())
     }
@@ -206,7 +225,7 @@ file.withWriter { writer ->
         builder.append(img.id).append(",")
         builder.append("Image,")
         builder.append(",")
-        builder.append("Dependency,,,")
+        builder.append("Dependency,,,,")
         writer.writeLine(builder.toString())
     }
     for (textStyle in textStyleDependencies) {
@@ -215,7 +234,7 @@ file.withWriter { writer ->
         builder.append(textStyle.id).append(",")
         builder.append("TextStyle,")
         builder.append(",")
-        builder.append("Dependency,,,")
+        builder.append("Dependency,,,,")
         builder.append("\"${content}\"")
         writer.writeLine(builder.toString())
     }
@@ -225,7 +244,7 @@ file.withWriter { writer ->
         builder.append(paragraphStyle.id).append(",")
         builder.append("ParagraphStyle,")
         builder.append(",")
-        builder.append("Dependency,,,")
+        builder.append("Dependency,,,,")
         builder.append("\"${content}\"")
         writer.writeLine(builder.toString())
     }
@@ -234,10 +253,12 @@ file.withWriter { writer ->
 class StatusTrackingWithEvent {
     StatusTracking statusTracking
     StatusEvent event
+    Boolean isOverwrite
 }
 
 class ObjectWithStatus<T> {
     StatusTracking statusTracking
     StatusEvent event
     T object
+    Boolean isOverwrite
 }
