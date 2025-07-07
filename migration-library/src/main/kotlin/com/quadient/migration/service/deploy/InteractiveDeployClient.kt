@@ -16,10 +16,10 @@ import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBu
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
-import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.neq
+import org.jetbrains.exposed.v1.core.and
 import kotlin.uuid.ExperimentalUuidApi
 
 class InteractiveDeployClient(
@@ -52,7 +52,15 @@ class InteractiveDeployClient(
         return documentObject.internal
     }
 
-    override fun deployDocumentObjects(documentObjectIds: List<String>, skipDependencies: Boolean): DeploymentResult {
+    override fun getAllDocumentObjectsToDeploy(): List<DocumentObjectModel> {
+        return documentObjectRepository.list(
+            DocumentObjectTable.type neq DocumentObjectType.Unsupported.toString() and DocumentObjectTable.internal.eq(
+                false
+            )
+        ).let { deployOrder(it) }
+    }
+
+    override fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObjectModel> {
         val documentObjects = documentObjectRepository.list(DocumentObjectTable.id inList documentObjectIds)
         val unsupported = mutableListOf<String>()
         val internal = mutableListOf<String>()
@@ -80,33 +88,17 @@ class InteractiveDeployClient(
         }
         require(error.isEmpty()) { error }
 
-        return if (skipDependencies) {
-            deployDocumentObjectsInternal(documentObjects)
-        } else {
-            val dependencies = documentObjects.flatMap { it.findDependencies() }.filter { !it.internal }
-
-            deployDocumentObjectsInternal((documentObjects + dependencies).toSet().toList())
-        }
+        return documentObjects
     }
 
-    override fun deployDocumentObjects(): DeploymentResult {
-        val documentObjects = documentObjectRepository.list(
-            DocumentObjectTable.type neq DocumentObjectType.Unsupported.toString() and DocumentObjectTable.internal.eq(
-                false
-            )
-        ).let { deployOrder(it) }
-
-        return deployDocumentObjectsInternal(documentObjects)
-    }
-
-    fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult {
+    override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult {
         val deploymentResult = DeploymentResult()
 
         val orderedDocumentObject = deployOrder(documentObjects)
 
         deploymentResult += deployImages(orderedDocumentObject)
 
-        for(it in orderedDocumentObject)  {
+        for (it in orderedDocumentObject) {
             val targetPath = documentObjectBuilder.getDocumentObjectPath(it)
 
             if (!shouldDeployObject(it.id, ResourceType.DocumentObject, targetPath, deploymentResult)) {

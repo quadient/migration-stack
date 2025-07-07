@@ -4,11 +4,7 @@ import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.Ref
 import com.quadient.migration.data.MigrationObjectModel
 import com.quadient.migration.persistence.repository.InternalRepository
-import com.quadient.migration.persistence.table.DisplayRuleTable
 import com.quadient.migration.service.RefValidatable
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.transactions.transaction
 
 abstract class Repository<T : MigrationObject, K : MigrationObjectModel>(
     protected val internalRepository: InternalRepository<K>

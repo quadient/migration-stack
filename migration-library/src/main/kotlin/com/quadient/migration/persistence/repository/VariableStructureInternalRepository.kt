@@ -5,7 +5,7 @@ import com.quadient.migration.data.VariablePath
 import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.table.VariableStructureTable
 import com.quadient.migration.persistence.table.VariableStructureTable.structure
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.v1.core.ResultRow
 
 class VariableStructureInternalRepository(table: VariableStructureTable, projectName: String) :
     InternalRepository<VariableStructureModel>(table, projectName) {

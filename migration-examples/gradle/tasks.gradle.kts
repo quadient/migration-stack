@@ -10,6 +10,7 @@ data class MigTask(
 )
 
 val migrationTasks = listOf<MigTask>(
+    // Migration import
     MigTask(
         "displayRuleReport", "migration report", "Generate display rule report", "common.report.DisplayRuleReport"
     ),
@@ -22,6 +23,11 @@ val migrationTasks = listOf<MigTask>(
     MigTask(
         "postDeployReport", "migration report", "Generate post deploy report", "common.report.PostDeployReport"
     ),
+    MigTask(
+        "preFlightReport", "migration report", "Generate pre flight report", "common.report.PreFlightReport"
+    ),
+
+    // Migration deploy
     MigTask(
         "validateAll", "migration deploy", "Run validation on all migration objects", "common.Validate"
     ),
@@ -48,6 +54,8 @@ val migrationTasks = listOf<MigTask>(
         "Export document object ids to deploy",
         "common.ExportDocumentObjectIdsToDeploy"
     ),
+
+    // Migration mapping
     MigTask(
         "paragraphStylesExport", "migration mapping", "Export paragraph styles", "common.mapping.ParagraphStylesExport"
     ),
@@ -78,9 +86,13 @@ val migrationTasks = listOf<MigTask>(
         "Import document objects and images",
         "common.mapping.DocumentObjectsImagesImport"
     ),
+
+    // Migration docbook
     MigTask(
         "docbookImport", "migration docbook", "Import docbook", "docbook.DocBookImport"
     ),
+
+    // Migration example
     MigTask(
         "exampleImport", "migration example", "Import example", "example.Import"
     ),
@@ -90,6 +102,8 @@ val migrationTasks = listOf<MigTask>(
         "acknowledgementLetterFromSource",
         "example.AcknowledgementLetterFromSource"
     ),
+
+    // Migration common
     MigTask(
         "destroy", "migration common", "Destroy database and storage", "common.Destroy", System.`in`
     ),

@@ -4,7 +4,7 @@ import com.quadient.migration.data.ImageModel
 import com.quadient.migration.persistence.table.ImageTable
 import com.quadient.migration.persistence.table.MigrationObjectTable
 import com.quadient.migration.shared.ImageType
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.v1.core.ResultRow
 
 class ImageInternalRepository(
     table: MigrationObjectTable, projectName: String

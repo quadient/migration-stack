@@ -7,8 +7,8 @@ import com.quadient.migration.persistence.migrationmodel.DocumentContentEntity
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import kotlinx.serialization.json.Json
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.json.jsonb
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.json.jsonb
 
 object DocumentObjectTable : MigrationObjectTable("document_object") {
     val type = varchar("type", 50)

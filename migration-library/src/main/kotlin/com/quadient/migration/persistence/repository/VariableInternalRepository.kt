@@ -11,7 +11,7 @@ import com.quadient.migration.persistence.table.VariableTable.lastUpdated
 import com.quadient.migration.persistence.table.VariableTable.name
 import com.quadient.migration.persistence.table.VariableTable.originLocations
 import com.quadient.migration.shared.DataType
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.v1.core.ResultRow
 
 class VariableInternalRepository(table: MigrationObjectTable, projectName: String) :
     InternalRepository<VariableModel>(table, projectName) {

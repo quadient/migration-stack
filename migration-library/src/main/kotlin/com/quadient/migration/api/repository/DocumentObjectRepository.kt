@@ -19,14 +19,14 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.lowerCase
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.upsert
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.lowerCase
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.upsert
 
 class DocumentObjectRepository(internalRepository: DocumentObjectInternalRepository) :
     Repository<DocumentObject, DocumentObjectModel>(internalRepository) {
@@ -62,9 +62,7 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
 
             if ((existingItem == null && dto.internal != true) || (dto.internal == false && existingItem?.internal == true)) {
                 statusTrackingRepository.active(
-                    dto.id,
-                    ResourceType.DocumentObject,
-                    mapOf("type" to dto.type.toString())
+                    dto.id, ResourceType.DocumentObject, mapOf("type" to dto.type.toString())
                 )
             }
 

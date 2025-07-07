@@ -6,7 +6,7 @@ import com.quadient.migration.data.TextStyleModel
 import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.persistence.table.TextStyleTable
 import com.quadient.migration.persistence.table.TextStyleTable.definition
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.v1.core.ResultRow
 
 class TextStyleInternalRepository(table: TextStyleTable, projectName: String) :
     InternalRepository<TextStyleModel>(table, projectName) {

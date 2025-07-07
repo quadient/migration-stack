@@ -15,9 +15,9 @@ import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuild
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.v1.core.and
 import kotlin.uuid.ExperimentalUuidApi
 
 class DesignerDeployClient(
@@ -49,60 +49,7 @@ class DesignerDeployClient(
         return documentObject.internal || documentObject.type == DocumentObjectType.Page
     }
 
-    override fun deployDocumentObjects(documentObjectIds: List<String>, skipDependencies: Boolean): DeploymentResult {
-        val documentObjects = documentObjectRepository
-            .list(DocumentObjectTable.id inList documentObjectIds)
-        val invalidTypeIds = mutableListOf<String>()
-        val internal = mutableListOf<String>()
-        for (documentObject in documentObjects) {
-            when (documentObject.type) {
-                DocumentObjectType.Unsupported -> invalidTypeIds.add(documentObject.id)
-                DocumentObjectType.Page, DocumentObjectType.Template, DocumentObjectType.Block, DocumentObjectType.Section -> {}
-            }
-            if (documentObject.internal) {
-                internal.add(documentObject.id)
-            }
-        }
-
-        var error = ""
-        val notFoundDocObjects = documentObjectIds.filter { id ->
-            documentObjects.none { it.id == id }
-        }
-        if (notFoundDocObjects.isNotEmpty()) {
-            error += "The following document objects were not found: [${notFoundDocObjects.joinToString(", ")}]. "
-        }
-        if (internal.isNotEmpty()) {
-            error += "The following document objects are internal: [${internal.joinToString(", ")}]. "
-        }
-        if (invalidTypeIds.isNotEmpty()) {
-            error += "The following document objects cannot be deployed due to their type: [${invalidTypeIds.joinToString(", ")}]. "
-        }
-
-        require(error.isEmpty()) { error }
-
-        val documentObjectsWithoutPages = documentObjects.filter { it.type != DocumentObjectType.Page }
-        return if (skipDependencies) {
-            deployDocumentObjectsInternal(documentObjectsWithoutPages)
-        } else {
-            val dependencies = documentObjectsWithoutPages.flatMap { it.findDependencies() }.filter { !it.internal }
-
-            deployDocumentObjectsInternal((documentObjectsWithoutPages + dependencies).toSet().toList())
-        }
-    }
-
-    override fun deployDocumentObjects(): DeploymentResult {
-        val documentObjects = documentObjectRepository.list(
-            (DocumentObjectTable.type inList listOf(
-                DocumentObjectType.Template.toString(),
-                DocumentObjectType.Block.toString(),
-                DocumentObjectType.Section.toString()
-            ) and DocumentObjectTable.internal.eq(false))
-        )
-
-        return deployDocumentObjectsInternal(documentObjects)
-    }
-
-    fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult {
+    override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult {
         val deploymentResult = DeploymentResult()
 
         val orderedDocumentObject = deployOrder(documentObjects)
@@ -158,5 +105,54 @@ class DesignerDeployClient(
         ipsService.close()
 
         return deploymentResult
+    }
+
+    override fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObjectModel> {
+        val documentObjects = documentObjectRepository.list(DocumentObjectTable.id inList documentObjectIds)
+        val invalidTypeIds = mutableListOf<String>()
+        val internal = mutableListOf<String>()
+        for (documentObject in documentObjects) {
+            when (documentObject.type) {
+                DocumentObjectType.Unsupported -> invalidTypeIds.add(documentObject.id)
+                DocumentObjectType.Page, DocumentObjectType.Template, DocumentObjectType.Block, DocumentObjectType.Section -> {}
+            }
+            if (documentObject.internal) {
+                internal.add(documentObject.id)
+            }
+        }
+
+        var error = ""
+        val notFoundDocObjects = documentObjectIds.filter { id ->
+            documentObjects.none { it.id == id }
+        }
+        if (notFoundDocObjects.isNotEmpty()) {
+            error += "The following document objects were not found: [${notFoundDocObjects.joinToString(", ")}]. "
+        }
+        if (internal.isNotEmpty()) {
+            error += "The following document objects are internal: [${internal.joinToString(", ")}]. "
+        }
+        if (invalidTypeIds.isNotEmpty()) {
+            error += "The following document objects cannot be deployed due to their type: [${
+                invalidTypeIds.joinToString(
+                    ", "
+                )
+            }]. "
+        }
+
+        require(error.isEmpty()) { error }
+
+        val documentObjectsWithoutPages = documentObjects.filter { it.type != DocumentObjectType.Page }
+
+        return documentObjectsWithoutPages
+    }
+
+    override fun getAllDocumentObjectsToDeploy(): List<DocumentObjectModel> {
+        return documentObjectRepository.list(
+            (DocumentObjectTable.type inList listOf(
+                DocumentObjectType.Template.toString(),
+                DocumentObjectType.Block.toString(),
+                DocumentObjectType.Section.toString()
+            ) and DocumentObjectTable.internal.eq(false))
+        )
     }
 }

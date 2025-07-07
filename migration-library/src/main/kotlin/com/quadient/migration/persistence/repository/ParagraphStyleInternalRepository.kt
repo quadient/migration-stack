@@ -6,7 +6,7 @@ import com.quadient.migration.data.ParagraphStyleModel
 import com.quadient.migration.data.ParagraphStyleModelRef
 import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.persistence.table.ParagraphStyleTable.definition
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.v1.core.ResultRow
 
 class ParagraphStyleInternalRepository(table: ParagraphStyleTable, projectName: String) :
     InternalRepository<ParagraphStyleModel>(table, projectName) {

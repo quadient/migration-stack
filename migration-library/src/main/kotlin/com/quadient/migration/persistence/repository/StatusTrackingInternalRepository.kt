@@ -8,8 +8,8 @@ import com.quadient.migration.persistence.table.StatusTrackingEntity
 import com.quadient.migration.persistence.table.StatusTrackingTable
 import com.quadient.migration.service.deploy.ResourceType
 import kotlinx.datetime.Instant
-import org.jetbrains.exposed.dao.id.CompositeID
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.dao.id.CompositeID
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -32,6 +32,18 @@ class StatusTrackingInternalRepository(val projectName: String) {
 
     fun findLastEvent(id: String, resourceType: ResourceType): StatusEvent? {
         return find(id, resourceType)?.statusEvents?.lastOrNull()
+    }
+
+    fun findEventsRelevantToOutput(id: String, resourceType: ResourceType, output: InspireOutput): List<StatusEvent> {
+        return transaction {
+            find(id, resourceType)?.statusEvents?.filter {
+                when (it) {
+                    is Active -> true
+                    is Deployed -> it.output == output
+                    is Error -> it.output == output
+                }
+            } ?: emptyList()
+        }
     }
 
     fun findLastEventRelevantToOutput(id: String, resourceType: ResourceType, output: InspireOutput): StatusEvent? {

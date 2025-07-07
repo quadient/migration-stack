@@ -18,6 +18,7 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefOrRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.StatusTracking
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.api.dto.migrationmodel.Tabs
@@ -61,8 +62,8 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import org.jetbrains.exposed.dao.id.CompositeID
-import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.dao.id.CompositeID
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -283,6 +284,42 @@ fun aTextStyleDefinition(
     )
 }
 
+fun aDeployedStatusEvent(
+    deploymentId: Uuid = Uuid.random(),
+    icmPath: String = "icm://path",
+    timestamp: Instant = Clock.System.now(),
+    output: InspireOutput = InspireOutput.Designer
+): StatusEvent {
+    return Deployed(
+        deploymentId = deploymentId,
+        icmPath = icmPath,
+        timestamp = timestamp,
+        output = output
+    )
+}
+
+fun aActiveStatusEvent(
+    timestamp: Instant = Clock.System.now(),
+): StatusEvent {
+    return Active(timestamp = timestamp)
+}
+
+fun aErrorStatusEvent(
+    deploymentId: Uuid = Uuid.random(),
+    icmPath: String = "icm://path",
+    timestamp: Instant = Clock.System.now(),
+    output: InspireOutput = InspireOutput.Designer,
+    error: String = "oops"
+): StatusEvent {
+    return com.quadient.migration.data.Error(
+        deploymentId = deploymentId,
+        icmPath = icmPath,
+        timestamp = timestamp,
+        output = output,
+        error = error
+    )
+}
+
 fun aStatusEntity(
     id: String,
     resourceType: ResourceType = ResourceType.DocumentObject,
@@ -307,6 +344,14 @@ fun aActiveStatusEntity(
     return aStatusEntity(id, resourceType, projectName, listOf(Active()))
 }
 
+fun aActiveStatus(
+    id: String,
+    resourceType: ResourceType = ResourceType.DocumentObject,
+    projectName: String = "project",
+): StatusTracking {
+    return StatusTracking(id, projectName, resourceType, listOf(Active()))
+}
+
 fun aDeployedStatusEntity(
     id: String,
     resourceType: ResourceType = ResourceType.DocumentObject,
@@ -320,6 +365,23 @@ fun aDeployedStatusEntity(
         id,
         resourceType,
         projectName,
+        listOf(Deployed(deploymentId = deploymentId, icmPath = icmPath, timestamp = timestamp, output = output))
+    )
+}
+
+fun aDeployedStatus(
+    id: String,
+    resourceType: ResourceType = ResourceType.DocumentObject,
+    projectName: String = "project",
+    output: InspireOutput = InspireOutput.Designer,
+    icmPath: String = "icm://path",
+    timestamp: Instant = Clock.System.now(),
+    deploymentId: Uuid = Uuid.random()
+): StatusTracking {
+    return StatusTracking(
+        id,
+        projectName,
+        resourceType,
         listOf(Deployed(deploymentId = deploymentId, icmPath = icmPath, timestamp = timestamp, output = output))
     )
 }
@@ -349,6 +411,30 @@ fun aErrorStatusEntity(
     )
 }
 
+fun aErrorStatus(
+    id: String,
+    resourceType: ResourceType = ResourceType.DocumentObject,
+    projectName: String = "project",
+    output: InspireOutput = InspireOutput.Designer,
+    icmPath: String = "icm://path",
+    timestamp: Instant = Clock.System.now(),
+    deploymentId: Uuid = Uuid.random()
+): StatusTracking {
+    return StatusTracking(
+        id,
+        projectName,
+        resourceType,
+        listOf(
+            com.quadient.migration.data.Error(
+                deploymentId = deploymentId,
+                icmPath = icmPath,
+                timestamp = timestamp,
+                output = output,
+                error = "oops"
+            )
+        )
+    )
+}
 
 fun aDocumentObjectRepository() = DocumentObjectRepository(aDocumentObjectInternalRepository())
 fun aVariableRepository() = VariableRepository(aVariableInternalRepository())

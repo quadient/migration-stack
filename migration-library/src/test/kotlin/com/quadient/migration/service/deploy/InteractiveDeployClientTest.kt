@@ -25,10 +25,10 @@ import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.ImageType
-import com.quadient.migration.tools.aActiveStatusEntity
+import com.quadient.migration.tools.aActiveStatus
 import com.quadient.migration.tools.aBlockModel
-import com.quadient.migration.tools.aDeployedStatusEntity
-import com.quadient.migration.tools.aErrorStatusEntity
+import com.quadient.migration.tools.aDeployedStatus
+import com.quadient.migration.tools.aErrorStatus
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDocObj
@@ -85,7 +85,7 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { documentObjectRepository.findModel(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
 
         // when
         subject.deployDocumentObjects()
@@ -133,7 +133,7 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { documentObjectRepository.findModel(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
 
         mockBasicSuccessfulIpsOperations()
 
@@ -163,8 +163,8 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { documentObjectRepository.findModel(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
-        every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
 
         // when
         subject.deployDocumentObjects()
@@ -205,7 +205,7 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { documentObjectRepository.findModel(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
 
         mockBasicSuccessfulIpsOperations()
 
@@ -232,7 +232,7 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
 
         mockBasicSuccessfulIpsOperations()
         val expectedImageIcmPath = "icm://Interactive/$tenant/Resources/Images/defaultFolder/${image.sourcePath}"
@@ -263,8 +263,8 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { ipsService.upload(any(), any()) } just runs
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
-        every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
 
         mockBasicSuccessfulIpsOperations()
 
@@ -294,7 +294,7 @@ class InteractiveDeployClientTest {
         every { documentObjectRepository.findModel(innerBlock.id) } returns innerBlock
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
 
         mockBasicSuccessfulIpsOperations()
@@ -318,7 +318,7 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildStyles(any(), any()) } returns "<xml />"
 
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { textStyleRepository.listAllModel() } returns emptyList()
         every { paragraphStyleRepository.listAllModel() } returns emptyList()
         every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
@@ -345,7 +345,7 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildStyles(any(), any()) } returns "<xml />"
 
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { textStyleRepository.listAllModel() } returns emptyList()
         every { paragraphStyleRepository.listAllModel() } returns emptyList()
         every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Failure("Problem")
@@ -567,7 +567,7 @@ class InteractiveDeployClientTest {
 
         mockBasicSuccessfulIpsOperations()
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns aDeployedStatusEntity("id")
+        every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { documentObjectRepository.findModel(innerBlock.id) } throws IllegalStateException("Not found")
         every { documentObjectRepository.list(any()) } returns listOf(template, block)
         every { documentObjectBuilder.buildDocumentObject(block) } throws IllegalStateException("Inner block not found")
@@ -675,9 +675,9 @@ class InteractiveDeployClientTest {
         fun setup() {
             every { ipsService.close() } just runs
             every { documentObjectBuilder.buildDocumentObject(any()) } returns ""
-            every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any()) } returns  aDeployedStatusEntity("id")
-            every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatusEntity("id")
-            every { statusTrackingRepository.active(any(), any()) } returns aActiveStatusEntity("id")
+            every { statusTrackingRepository.deployed(any(), any(), any(), any(), any(), any(), any()) } returns  aDeployedStatus("id")
+            every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
+            every { statusTrackingRepository.active(any(), any()) } returns aActiveStatus("id")
             every { documentObjectBuilder.getDocumentObjectPath(any()) } returns "icm://path"
             every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
             every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
@@ -731,10 +731,10 @@ class InteractiveDeployClientTest {
 
             // then
             verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("D_2", any(), any(), any(), any(), any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("D_3", any(), any(), any(), any(), any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("I_1", any(), any(), any(), any(), any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("I_2", any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("D_2", any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("D_3", any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("I_1", any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.deployed("I_2", any(), any(), any(), any(), any(), any()) }
         }
 
         @Test
@@ -752,8 +752,8 @@ class InteractiveDeployClientTest {
 
             // then
             verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any()) }
-            verify(exactly = 1) { statusTrackingRepository.error("D_1", any(), any(), any(), any(), any(), "oops") }
-            verify(exactly = 1) { statusTrackingRepository.error("I_1", any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) { statusTrackingRepository.error("D_1", any(), any(), any(), any(), any(), "oops", any()) }
+            verify(exactly = 1) { statusTrackingRepository.error("I_1", any(), any(), any(), any(), any(), any(), any()) }
         }
 
         private fun givenObjectIsActive(id: String) {

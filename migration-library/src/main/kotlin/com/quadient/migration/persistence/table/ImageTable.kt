@@ -2,7 +2,7 @@ package com.quadient.migration.persistence.table
 
 import com.quadient.migration.shared.ImageOptions
 import kotlinx.serialization.json.Json
-import org.jetbrains.exposed.sql.json.jsonb
+import org.jetbrains.exposed.v1.json.jsonb
 
 object ImageTable : MigrationObjectTable("image") {
     val sourcePath = varchar("source_path", 255).nullable()

@@ -47,9 +47,9 @@ import com.quadient.migration.service.deploy.InteractiveDeployClient
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 
 class Migration(public val config: MigConfig, public val projectConfig: ProjectConfig) {
@@ -70,7 +70,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
     val statusTrackingRepository = StatusTrackingRepository(projectName)
 
     val icmClient: IcmClient = ipsService
-    val ipsClient  = ipsService.client
+    val ipsClient = ipsService.client
 
     val deployClient: DeployClient
 
@@ -145,54 +145,52 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
         )
 
         this.deployClient =
-            if (projectConfig.inspireOutput == InspireOutput.Interactive
-                || projectConfig.inspireOutput == InspireOutput.Evolve
-            ) {
-            val interactiveDocumentObjectBuilder = InteractiveDocumentObjectBuilder(
-                documentObjectInternalRepository,
-                textStyleInternalRepository,
-                paragraphStyleInternalRepository,
-                variableInternalRepository,
-                variableStructureInternalRepository,
-                displayRuleInternalRepository,
-                imageInternalRepository,
-                projectConfig
-            )
+            if (projectConfig.inspireOutput == InspireOutput.Interactive || projectConfig.inspireOutput == InspireOutput.Evolve) {
+                val interactiveDocumentObjectBuilder = InteractiveDocumentObjectBuilder(
+                    documentObjectInternalRepository,
+                    textStyleInternalRepository,
+                    paragraphStyleInternalRepository,
+                    variableInternalRepository,
+                    variableStructureInternalRepository,
+                    displayRuleInternalRepository,
+                    imageInternalRepository,
+                    projectConfig
+                )
 
-            InteractiveDeployClient(
-                documentObjectInternalRepository,
-                imageInternalRepository,
-                statusTrackingRepository,
-                textStyleInternalRepository,
-                paragraphStyleInternalRepository,
-                interactiveDocumentObjectBuilder,
-                ipsService,
-                storage,
-                projectConfig
-            )
-        } else {
-            val designerDocumentObjectBuilder = DesignerDocumentObjectBuilder(
-                documentObjectInternalRepository,
-                textStyleInternalRepository,
-                paragraphStyleInternalRepository,
-                variableInternalRepository,
-                variableStructureInternalRepository,
-                displayRuleInternalRepository,
-                imageInternalRepository,
-                projectConfig
-            )
+                InteractiveDeployClient(
+                    documentObjectInternalRepository,
+                    imageInternalRepository,
+                    statusTrackingRepository,
+                    textStyleInternalRepository,
+                    paragraphStyleInternalRepository,
+                    interactiveDocumentObjectBuilder,
+                    ipsService,
+                    storage,
+                    projectConfig
+                )
+            } else {
+                val designerDocumentObjectBuilder = DesignerDocumentObjectBuilder(
+                    documentObjectInternalRepository,
+                    textStyleInternalRepository,
+                    paragraphStyleInternalRepository,
+                    variableInternalRepository,
+                    variableStructureInternalRepository,
+                    displayRuleInternalRepository,
+                    imageInternalRepository,
+                    projectConfig
+                )
 
-            DesignerDeployClient(
-                documentObjectInternalRepository,
-                imageInternalRepository,
-                statusTrackingRepository,
-                textStyleInternalRepository,
-                paragraphStyleInternalRepository,
-                designerDocumentObjectBuilder,
-                ipsService,
-                storage,
-            )
-        }
+                DesignerDeployClient(
+                    documentObjectInternalRepository,
+                    imageInternalRepository,
+                    statusTrackingRepository,
+                    textStyleInternalRepository,
+                    paragraphStyleInternalRepository,
+                    designerDocumentObjectBuilder,
+                    ipsService,
+                    storage,
+                )
+            }
 
         logger.debug("Migration initialized")
     }
