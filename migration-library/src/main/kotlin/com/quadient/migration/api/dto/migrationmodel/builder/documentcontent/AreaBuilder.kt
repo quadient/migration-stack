@@ -12,6 +12,7 @@ import com.quadient.migration.shared.Position
 class AreaBuilder {
     private var content = mutableListOf<DocumentContent>()
     private var position: Position? = null
+    private var interactiveFlowName: String? = null
 
     /**
      * Appends the content of the flow area.
@@ -37,14 +38,20 @@ class AreaBuilder {
     /**
      * Set the position of the flow area using a builder function.
      * @param block a builder function to build the [Position].
-     * @return The constructed [Area] instance.
-     * @throws RuntimeException if position is not set.
      * @return The [AreaBuilder] instance for method chaining.
      */
     fun position(block: PositionBuilder.() -> Unit) = apply {
         val position = PositionBuilder().apply(block).build()
         this.position = position
     }
+
+    /**
+     * Set the name of Interactive flow defined in Base Template to which the content will flow.
+     * Main flow is used by default.
+     * @param interactiveFlowName Name of the Interactive flow defined in Base Template.
+     * @return The [AreaBuilder] instance for method chaining.
+     */
+    fun interactiveFlowName(interactiveFlowName: String) = apply { this.interactiveFlowName = interactiveFlowName }
 
     /**
      * Adds a reference to a document object by its ID to the content.
@@ -85,13 +92,13 @@ class AreaBuilder {
 
     /**
      * Builds the [Area] instance.
-     * @throws RuntimeException if position is not set.
      * @return The constructed [Area] instance.
      */
     fun build(): Area {
         return Area(
             content = content,
-            position = position ?: throw RuntimeException("Position is required in flow area")
+            position = position,
+            interactiveFlowName = interactiveFlowName,
         )
     }
 }

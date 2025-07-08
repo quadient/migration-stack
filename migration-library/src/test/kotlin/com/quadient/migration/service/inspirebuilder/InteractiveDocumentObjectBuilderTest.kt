@@ -21,6 +21,7 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.BinOp.*
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType.*
@@ -65,6 +66,7 @@ class InteractiveDocumentObjectBuilderTest {
     val displayRuleRepository = mockk<DisplayRuleInternalRepository>()
     val imageRepository = mockk<ImageInternalRepository>()
     val config = aProjectConfig()
+    val ipsService = mockk<IpsService>()
 
     private val subject = InteractiveDocumentObjectBuilder(
         documentObjectRepository,
@@ -75,6 +77,7 @@ class InteractiveDocumentObjectBuilderTest {
         displayRuleRepository,
         imageRepository,
         config,
+        ipsService,
     )
 
     private val xmlMapper = XmlMapper().also { it.findAndRegisterModules() }

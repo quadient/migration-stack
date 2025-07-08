@@ -4,11 +4,12 @@ import com.quadient.migration.data.AreaModel
 import com.quadient.migration.persistence.migrationmodel.AreaEntity
 import com.quadient.migration.shared.Position
 
-data class Area(val position: Position, val content: List<DocumentContent>) : DocumentContent {
+data class Area(val content: List<DocumentContent>, val position: Position?, val interactiveFlowName: String?) :
+    DocumentContent {
     companion object {
         fun fromModel(model: AreaModel): Area =
-            Area(model.position, model.content.map { DocumentContent.fromModelContent(it) })
+            Area(model.content.map { DocumentContent.fromModelContent(it) }, model.position, model.interactiveFlowName)
     }
 
-    fun toDb() = AreaEntity(position, content.toDb())
+    fun toDb() = AreaEntity(content.toDb(), position, interactiveFlowName)
 }

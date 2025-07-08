@@ -51,6 +51,8 @@ class DesignerDocumentObjectBuilder(
     imageRepository,
     projectConfig
 ) {
+    val defaultPosition = Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters())
+
     override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
         return "icm://${getFolder(projectConfig, documentObject.targetFolder)}${documentObject.nameOrId()}.wfd"
     }
@@ -154,10 +156,7 @@ class DesignerDocumentObjectBuilder(
 
         if (virtualAreaContent.isNotEmpty()) {
             buildArea(
-                layout, variableStructure, page, AreaModel(
-                    Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters()),
-                    virtualAreaContent
-                ), mainObject
+                layout, variableStructure, page, AreaModel(virtualAreaContent, defaultPosition, null), mainObject
             )
         }
     }
@@ -169,7 +168,7 @@ class DesignerDocumentObjectBuilder(
         areaModel: AreaModel,
         mainObject: DocumentObjectModel
     ) {
-        val position = areaModel.position
+        val position = areaModel.position ?: defaultPosition
 
         val content = areaModel.content
         if (content.size == 1 && content.first() is ImageModelRef) {

@@ -1,6 +1,10 @@
 package com.quadient.migration.service.inspirebuilder
 
+import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.data.AreaModel
+import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
@@ -12,8 +16,11 @@ import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
 import com.quadient.migration.service.getFolder
 import com.quadient.migration.service.imageExtension
+import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
+import kotlin.collections.find
 
 class InteractiveDocumentObjectBuilder(
     documentObjectRepository: DocumentObjectInternalRepository,
@@ -24,6 +31,7 @@ class InteractiveDocumentObjectBuilder(
     displayRuleRepository: DisplayRuleInternalRepository,
     imageRepository: ImageInternalRepository,
     projectConfig: ProjectConfig,
+    private val ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(
     documentObjectRepository,
     textStyleRepository,
@@ -34,6 +42,8 @@ class InteractiveDocumentObjectBuilder(
     imageRepository,
     projectConfig
 ) {
+    private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
+
     override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
         return "icm://Interactive/${projectConfig.interactiveTenant}/${documentObject.type.toInteractiveFolder()}/${
             getFolder(projectConfig, documentObject.targetFolder)
@@ -56,23 +66,59 @@ class InteractiveDocumentObjectBuilder(
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
 
-        val mainFlow = layout.addFlow().setId("Def.MainFlow").setType(Flow.Type.SIMPLE).setSectionFlow(true)
-        val mainFlowText = mainFlow.addParagraph().addText()
-
         val variableStructure = initVariableStructure(layout)
-        val flows = buildDocumentContentAsFlows(
-            layout, variableStructure, documentObject.content, documentObject.nameOrId()
-        )
 
-        if (documentObject.displayRuleRef == null) {
-            flows.forEach { mainFlowText.appendFlow(it) }
-        } else {
-            mainFlowText.appendFlow(
-                flows.toSingleFlow(layout, variableStructure, documentObject.nameOrId(), documentObject.displayRuleRef)
-            )
+        val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContentModel>>()
+
+        if (documentObject.type == DocumentObjectType.Template || documentObject.type == DocumentObjectType.Page) {
+            for (contentPart in documentObject.content) {
+                if (contentPart !is AreaModel || contentPart.interactiveFlowName.isNullOrBlank()) {
+                    val mainFlowWithContent = interactiveFlowsWithContent.getOrPut("Def.MainFlow") { mutableListOf() }
+                    mainFlowWithContent.add(contentPart)
+                } else {
+                    val interactiveFlowName = contentPart.interactiveFlowName
+
+                    val interactiveFlowNames = getBaseTemplateInteractiveFlows(
+                        documentObject.baseTemplate ?: projectConfig.baseTemplatePath
+                    ).map { it.lowercase() }
+                    val interactiveFlowIndex = interactiveFlowNames.indexOf(interactiveFlowName.lowercase())
+
+                    val interactiveFlowId = "Def.InteractiveFlow$interactiveFlowIndex"
+
+                    val interactiveFlowWithContent = interactiveFlowsWithContent.getOrPut(interactiveFlowId) { mutableListOf() }
+                    interactiveFlowWithContent.addAll(contentPart.content)
+                }
+            }
+        } else if (documentObject.type == DocumentObjectType.Block || documentObject.type == DocumentObjectType.Section) {
+            interactiveFlowsWithContent.put("Def.MainFlow", documentObject.content.toMutableList())
+        }
+
+        interactiveFlowsWithContent.forEach {
+            val interactiveFlowText =
+                layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).addParagraph().addText()
+
+            val contentFlows =
+                buildDocumentContentAsFlows(layout, variableStructure, it.value, documentObject.nameOrId())
+
+            if (documentObject.displayRuleRef == null) {
+                contentFlows.forEach { contentFlow -> interactiveFlowText.appendFlow(contentFlow) }
+            } else {
+                interactiveFlowText.appendFlow(
+                    contentFlows.toSingleFlow(
+                        layout, variableStructure, documentObject.nameOrId(), documentObject.displayRuleRef
+                    )
+                )
+            }
         }
 
         logger.debug("Successfully built document object '${documentObject.nameOrId()}'")
         return builder.buildLayoutDelta()
+    }
+
+    fun getBaseTemplateInteractiveFlows(baseTemplatePath: String): List<String> {
+        val baseTemplateXml = ipsService.wfd2xml(baseTemplatePath)
+        val baseTemplateXmlTree = xmlMapper.readTree(baseTemplateXml.trimIndent())
+        return baseTemplateXmlTree["Property"].find { it["Name"].textValue() == "InteractiveFlowsNames" }
+            ?.let { it["Value"].textValue() }?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
     }
 }
