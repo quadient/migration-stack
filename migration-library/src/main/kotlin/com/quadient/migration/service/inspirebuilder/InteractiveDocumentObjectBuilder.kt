@@ -42,7 +42,10 @@ class InteractiveDocumentObjectBuilder(
     imageRepository,
     projectConfig
 ) {
+    private val mainFlowId = "Def.MainFlow"
+
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
+    private val baseTemplatesInteractiveFlowNames = mutableMapOf<String, List<String>>()
 
     override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
         return "icm://Interactive/${projectConfig.interactiveTenant}/${documentObject.type.toInteractiveFolder()}/${
@@ -66,31 +69,36 @@ class InteractiveDocumentObjectBuilder(
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
 
+        val baseTemplatePath = documentObject.baseTemplate ?: projectConfig.baseTemplatePath
         val variableStructure = initVariableStructure(layout)
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContentModel>>()
+        if (documentObject.type == DocumentObjectType.Page) {
+            documentObject.content.forEach {
+                if (it is AreaModel && !it.interactiveFlowName.isNullOrBlank()) {
+                    val interactiveFlowId = if (it.interactiveFlowName.startsWith("Def.")) {
+                        it.interactiveFlowName
+                    } else {
+                        getInteractiveFlowIdByName(it.interactiveFlowName, baseTemplatePath)
+                    }
 
-        if (documentObject.type == DocumentObjectType.Template || documentObject.type == DocumentObjectType.Page) {
-            for (contentPart in documentObject.content) {
-                if (contentPart !is AreaModel || contentPart.interactiveFlowName.isNullOrBlank()) {
-                    val mainFlowWithContent = interactiveFlowsWithContent.getOrPut("Def.MainFlow") { mutableListOf() }
-                    mainFlowWithContent.add(contentPart)
+                    if (interactiveFlowId.isNullOrBlank()) {
+                        val errorMessage =
+                            "Failed to find interactive flow '${it.interactiveFlowName}' in base template '$baseTemplatePath'."
+                        logger.error(errorMessage)
+                        error(errorMessage)
+                    }
+
+                    val interactiveFlowContent =
+                        interactiveFlowsWithContent.getOrPut(interactiveFlowId) { mutableListOf() }
+                    interactiveFlowContent.addAll(it.content)
                 } else {
-                    val interactiveFlowName = contentPart.interactiveFlowName
-
-                    val interactiveFlowNames = getBaseTemplateInteractiveFlows(
-                        documentObject.baseTemplate ?: projectConfig.baseTemplatePath
-                    ).map { it.lowercase() }
-                    val interactiveFlowIndex = interactiveFlowNames.indexOf(interactiveFlowName.lowercase())
-
-                    val interactiveFlowId = "Def.InteractiveFlow$interactiveFlowIndex"
-
-                    val interactiveFlowWithContent = interactiveFlowsWithContent.getOrPut(interactiveFlowId) { mutableListOf() }
-                    interactiveFlowWithContent.addAll(contentPart.content)
+                    val interactiveFlowContent = interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }
+                    interactiveFlowContent.add(it)
                 }
             }
-        } else if (documentObject.type == DocumentObjectType.Block || documentObject.type == DocumentObjectType.Section) {
-            interactiveFlowsWithContent.put("Def.MainFlow", documentObject.content.toMutableList())
+        } else {
+            interactiveFlowsWithContent.put(mainFlowId, documentObject.content.toMutableList())
         }
 
         interactiveFlowsWithContent.forEach {
@@ -115,10 +123,35 @@ class InteractiveDocumentObjectBuilder(
         return builder.buildLayoutDelta()
     }
 
-    fun getBaseTemplateInteractiveFlows(baseTemplatePath: String): List<String> {
-        val baseTemplateXml = ipsService.wfd2xml(baseTemplatePath)
-        val baseTemplateXmlTree = xmlMapper.readTree(baseTemplateXml.trimIndent())
-        return baseTemplateXmlTree["Property"].find { it["Name"].textValue() == "InteractiveFlowsNames" }
-            ?.let { it["Value"].textValue() }?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
+    fun getInteractiveFlowIdByName(interactiveFlowName: String, baseTemplatePath: String): String? {
+        val baseTemplateInteractiveFlowNames = getBaseTemplateInteractiveFlowNames(baseTemplatePath)
+
+        val interactiveFlowIndex = baseTemplateInteractiveFlowNames.indexOf(interactiveFlowName)
+        return if (interactiveFlowIndex > -1) {
+            "Def.InteractiveFlow$interactiveFlowIndex"
+        } else {
+            null
+        }
+    }
+
+    fun getBaseTemplateInteractiveFlowNames(baseTemplatePath: String): List<String> {
+        val baseTemplateInteractiveFlowNames = baseTemplatesInteractiveFlowNames[baseTemplatePath]
+        if (baseTemplateInteractiveFlowNames != null) {
+            return baseTemplateInteractiveFlowNames
+        }
+
+        try {
+            val baseTemplateXml = ipsService.wfd2xml(baseTemplatePath)
+            val baseTemplateXmlTree = xmlMapper.readTree(baseTemplateXml.trimIndent())
+            val interactiveFlowNames =
+                baseTemplateXmlTree["Property"].find { it["Name"].textValue() == "InteractiveFlowsNames" }
+                    ?.let { it["Value"].textValue() }?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
+
+            baseTemplatesInteractiveFlowNames[baseTemplatePath] = interactiveFlowNames
+            return interactiveFlowNames
+        } catch (e: Exception) {
+            logger.warn("Failed to load interactive flow names from base template '${baseTemplatePath}'.", e)
+            return emptyList()
+        }
     }
 }

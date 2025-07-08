@@ -285,6 +285,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.height(Size.ofCentimeters(2))
         }
             .documentObjectRef(address.id, displayAddressRule.id)
+            .interactiveFlowName("EU Address")
     }
     .area {
         it.position {

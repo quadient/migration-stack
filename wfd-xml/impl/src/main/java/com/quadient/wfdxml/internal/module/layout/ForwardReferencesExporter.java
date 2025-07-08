@@ -45,23 +45,13 @@ public class ForwardReferencesExporter {
     private void exportTree(Tree tree, Boolean useExistingVariables) {
         for (Object c : tree.children) {
             NodeImpl child = (NodeImpl) c;
-            if (!rootDefNodes.contains(child) && !isWithoutForwardReference(child)) {
+            if (!rootDefNodes.contains(child) && child.getId() == null) {
                 writeForwardReferenceToExporter(child, tree, useExistingVariables);
             }
             if (child instanceof Tree) {
                 exportTree((Tree) child, useExistingVariables);
             }
         }
-    }
-
-    private final List<String> idsToSkip = List.of("Def.MainFlow");
-
-    private boolean isWithoutForwardReference(NodeImpl node) {
-        if (node.getId() == null) {
-            return false;
-        }
-
-        return idsToSkip.contains(node.getId());
     }
 
     private void writeForwardReferenceToExporter(NodeImpl node, Tree parent, Boolean useExistingVariables) {
