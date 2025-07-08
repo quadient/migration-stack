@@ -19,7 +19,7 @@ documentObjFile.createParentDirectories()
 imagesFile .createParentDirectories()
 
 documentObjFile.withWriter { writer ->
-    writer.writeLine("id,name,type,internal,baseTemplate,targetFolder,status")
+    writer.writeLine("id,name,type,internal,originLocation,baseTemplate,targetFolder,status")
     objects.each { obj ->
         def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(
             obj.id,
@@ -32,6 +32,7 @@ documentObjFile.withWriter { writer ->
         builder.append("," + Csv.serialize(obj.name))
         builder.append("," + Csv.serialize(obj.type))
         builder.append("," + Csv.serialize(obj.internal))
+        builder.append("," + Csv.serialize(obj.originLocations))
         builder.append("," + Csv.serialize(obj.baseTemplate))
         builder.append("," + Csv.serialize(obj.targetFolder))
         builder.append("," + Csv.serialize(status.class.simpleName))
@@ -41,7 +42,7 @@ documentObjFile.withWriter { writer ->
 }
 
 imagesFile.withWriter { writer ->
-    writer.writeLine("id,name,sourcePath,targetFolder,status")
+    writer.writeLine("id,name,sourcePath,originLocation,targetFolder,status")
     images.each { obj ->
         def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(
             obj.id,
@@ -53,6 +54,7 @@ imagesFile.withWriter { writer ->
         builder.append(Csv.serialize(obj.id))
         builder.append("," + Csv.serialize(obj.name))
         builder.append("," + Csv.serialize(obj.sourcePath))
+        builder.append("," + Csv.serialize(obj.originLocations))
         builder.append("," + Csv.serialize(obj.targetFolder))
         builder.append("," + Csv.serialize(status.class.simpleName))
 
