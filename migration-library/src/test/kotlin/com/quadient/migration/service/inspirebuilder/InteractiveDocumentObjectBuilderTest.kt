@@ -21,6 +21,7 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.BinOp.*
 import com.quadient.migration.shared.DataType
@@ -881,7 +882,13 @@ class InteractiveDocumentObjectBuilderTest {
             )
         )
 
-        every { ipsService.wfd2xml(config.baseTemplatePath) } returns "<Layout><Property><Name>InteractiveFlowsNames</Name><Value>FlowA\nInteractive flow name\nFlowC\n</Value></Property><Property><Name>SomeProp</Name><Value>SomePropValue</Value></Property></Layout>"
+        every {
+            ipsService.wfd2xml(
+                getBaseTemplateFullPath(
+                    config, null
+                )
+            )
+        } returns "<Layout><Property><Name>InteractiveFlowsNames</Name><Value>FlowA\nInteractive flow name\nFlowC\n</Value></Property><Property><Name>SomeProp</Name><Value>SomePropValue</Value></Property></Layout>"
 
         // when
         val result = subject.buildDocumentObject(page).let { xmlMapper.readTree(it.trimIndent()) }

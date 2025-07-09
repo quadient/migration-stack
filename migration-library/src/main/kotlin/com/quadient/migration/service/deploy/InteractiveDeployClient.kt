@@ -12,6 +12,7 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
@@ -111,7 +112,7 @@ class InteractiveDeployClient(
                 val runCommandType = it.type.toRunCommandType()
 
                 val editResult = ipsService.deployJld(
-                    baseTemplate = it.baseTemplate ?: projectConfig.baseTemplatePath,
+                    baseTemplate = getBaseTemplateFullPath(projectConfig, it.baseTemplate),
                     type = runCommandType,
                     moduleName = "DocumentLayout",
                     xmlContent = documentObjectXml,

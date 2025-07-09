@@ -14,6 +14,7 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.getFolder
 import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
@@ -69,7 +70,7 @@ class InteractiveDocumentObjectBuilder(
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
 
-        val baseTemplatePath = documentObject.baseTemplate ?: projectConfig.baseTemplatePath
+        val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
         val variableStructure = initVariableStructure(layout)
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContentModel>>()
