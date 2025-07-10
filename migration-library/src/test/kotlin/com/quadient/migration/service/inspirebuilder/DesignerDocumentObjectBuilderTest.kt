@@ -5,7 +5,6 @@ import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.FirstMatchModel
-import com.quadient.migration.data.FlowAreaModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.StringModel
@@ -39,6 +38,7 @@ import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aRow
 import com.quadient.migration.tools.model.aText
 import com.quadient.migration.tools.model.aVariableStructureModel
+import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
 import io.mockk.every
 import io.mockk.mockk
@@ -104,9 +104,9 @@ class DesignerDocumentObjectBuilderTest {
         val page = mockObj(
             aDocObj(
                 "P_1", Page, listOf(
-                    FlowAreaModel(
-                        Position(20.millimeters(), 25.millimeters(), 160.millimeters(), 10.centimeters()),
-                        listOf(aDocumentObjectRef(block.id))
+                    anArea(
+                        listOf(aDocumentObjectRef(block.id)),
+                        Position(20.millimeters(), 25.millimeters(), 160.millimeters(), 10.centimeters())
                     )
                 ), options = PageOptions(20.centimeters(), 25.centimeters())
             )
@@ -163,13 +163,13 @@ class DesignerDocumentObjectBuilderTest {
         val image = mockImg(aImage("Img_1", sourcePath = null))
         val page = mockObj(
             aDocObj(
-                "P_1", Page, listOf(
-                    FlowAreaModel(
-                        Position(60.millimeters(), 60.millimeters(), 10.centimeters(), 10.centimeters()), listOf(
-                            ImageModelRef(image.id)
-                        )
-                    ),
-                )
+                "P_1", Page,
+                listOf(
+                    anArea(
+                        listOf(ImageModelRef(image.id)),
+                        Position(60.millimeters(), 60.millimeters(), 10.centimeters(), 10.centimeters()),
+                    )
+                ),
             )
         )
         val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))))
@@ -197,10 +197,10 @@ class DesignerDocumentObjectBuilderTest {
         val page = mockObj(
             aDocObj(
                 "P_1", Page, listOf(
-                    FlowAreaModel(
-                        Position(60.millimeters(), 120.millimeters(), 20.centimeters(), 10.centimeters()), listOf(
+                    anArea(
+                        listOf(
                             ImageModelRef(imageModel.id)
-                        )
+                        ), Position(60.millimeters(), 120.millimeters(), 20.centimeters(), 10.centimeters())
                     ),
                 )
             )

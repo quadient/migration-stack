@@ -41,4 +41,6 @@ data class ParagraphEntity(
 }
 
 @Serializable
-data class FlowAreaEntity(val position: Position, val content: List<DocumentContentEntity>): DocumentContentEntity
+data class AreaEntity(
+    val content: List<DocumentContentEntity>, val position: Position?, val interactiveFlowName: String?
+) : DocumentContentEntity

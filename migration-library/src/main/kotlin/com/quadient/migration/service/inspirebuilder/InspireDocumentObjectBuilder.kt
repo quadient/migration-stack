@@ -7,7 +7,7 @@ import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.FirstMatchModel
-import com.quadient.migration.data.FlowAreaModel
+import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphModel
@@ -149,7 +149,7 @@ abstract class InspireDocumentObjectBuilder(
                 }
 
                 is DocumentObjectModelRef -> flowModels.add(FlowModel.DocumentObject(contentPart))
-                is FlowAreaModel -> mutableContent.addAll(idx + 1, contentPart.content)
+                is AreaModel -> mutableContent.addAll(idx + 1, contentPart.content)
                 is FirstMatchModel -> flowModels.add(FlowModel.FirstMatch(contentPart))
             }
             idx++

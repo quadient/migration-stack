@@ -19,7 +19,6 @@ import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.Size
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
-import static com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 
 Migration migration = initMigration(this.binding.variables["args"])
 
@@ -335,7 +334,7 @@ migration.documentObjectRepository.upsert(mainFlow)
 
 def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
     .options(new PageOptions(Size.ofMillimeters(210), Size.ofMillimeters(297)))
-    .flowArea {
+    .area {
         it.position {
             it.left(Size.ofMillimeters(0.53))
             it.top(Size.ofMillimeters(0))
@@ -344,7 +343,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         }
             .imageRef(headerImage.id)
     }
-    .flowArea {
+    .area {
         it.position {
             it.left(Size.ofMillimeters(20.47))
             it.top(Size.ofMillimeters(40))
@@ -353,7 +352,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         }
             .documentObjectRef(addressFlow.id)
     }
-    .flowArea {
+    .area {
         it.position {
             it.left(Size.ofMillimeters(20.21))
             it.top(Size.ofMillimeters(80.26))

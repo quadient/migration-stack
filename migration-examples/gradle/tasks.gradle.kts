@@ -72,6 +72,12 @@ val migrationTasks = listOf<MigTask>(
         "common.mapping.DocumentObjectsImagesExport"
     ),
     MigTask(
+        "areasExport",
+        "migration mapping",
+        "Export areas assigned to the appropriate pages and templates. Allows user to modify interactive flow name",
+        "common.mapping.AreasExport"
+    ),
+    MigTask(
         "paragraphStylesImport", "migration mapping", "Import paragraph styles", "common.mapping.ParagraphStylesImport"
     ),
     MigTask(
@@ -85,6 +91,12 @@ val migrationTasks = listOf<MigTask>(
         "migration mapping",
         "Import document objects and images",
         "common.mapping.DocumentObjectsImagesImport"
+    ),
+    MigTask(
+        "areasImport",
+        "migration mapping",
+        "Import areas with modified interactive flow names to their respective pages",
+        "common.mapping.AreasImport"
     ),
 
     // Migration docbook

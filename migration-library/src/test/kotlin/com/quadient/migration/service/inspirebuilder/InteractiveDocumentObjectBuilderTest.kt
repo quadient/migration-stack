@@ -21,6 +21,8 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.service.getBaseTemplateFullPath
+import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.BinOp.*
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType.*
@@ -48,6 +50,7 @@ import com.quadient.migration.tools.model.aTextDef
 import com.quadient.migration.tools.model.aTextStyle
 import com.quadient.migration.tools.model.aVariable
 import com.quadient.migration.tools.model.aVariableStructureModel
+import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
 import io.mockk.every
 import io.mockk.mockk
@@ -65,6 +68,7 @@ class InteractiveDocumentObjectBuilderTest {
     val displayRuleRepository = mockk<DisplayRuleInternalRepository>()
     val imageRepository = mockk<ImageInternalRepository>()
     val config = aProjectConfig()
+    val ipsService = mockk<IpsService>()
 
     private val subject = InteractiveDocumentObjectBuilder(
         documentObjectRepository,
@@ -75,6 +79,7 @@ class InteractiveDocumentObjectBuilderTest {
         displayRuleRepository,
         imageRepository,
         config,
+        ipsService,
     )
 
     private val xmlMapper = XmlMapper().also { it.findAndRegisterModules() }
@@ -863,6 +868,47 @@ class InteractiveDocumentObjectBuilderTest {
         sectionFlow["SectionFlow"].textValue().shouldBeEqualTo("True")
         val sectionFlowRefs = sectionFlow["FlowContent"]["P"]["T"]["O"]
         sectionFlowRefs.size().shouldBeEqualTo(2)
+    }
+
+    @Test
+    fun `build page with area interactive flow`() {
+        val page = aDocObj(
+            "P_1", Page, listOf(
+                anArea(
+                    listOf(aParagraph(aText("interactive flow text 1"))), interactiveFlowName = "Interactive flow name"
+                ), anArea(listOf(aParagraph(aText("main flow text 1")))), aParagraph(aText("main flow text 2")), anArea(
+                    listOf(aParagraph(aText("interactive flow text 2"))), interactiveFlowName = "Def.InteractiveFlow1"
+                ), anArea(listOf(aParagraph(aText("main flow text 3"))), interactiveFlowName = "Def.MainFlow")
+            )
+        )
+
+        every {
+            ipsService.wfd2xml(
+                getBaseTemplateFullPath(
+                    config, null
+                )
+            )
+        } returns "<Layout><Property><Name>InteractiveFlowsNames</Name><Value>FlowA\nInteractive flow name\nFlowC\n</Value></Property><Property><Name>SomeProp</Name><Value>SomePropValue</Value></Property></Layout>"
+
+        // when
+        val result = subject.buildDocumentObject(page).let { xmlMapper.readTree(it.trimIndent()) }
+
+        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
+        val mainFlowContentFlowId = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val mainFlowContentFlow = result["Flow"].last { it["Id"].textValue() == mainFlowContentFlowId }
+        val mainFlowParagraphs = mainFlowContentFlow["FlowContent"]["P"]
+        mainFlowParagraphs.size().shouldBeEqualTo(3)
+        mainFlowParagraphs[0]["T"][""].textValue().shouldBeEqualTo("main flow text 1")
+        mainFlowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("main flow text 2")
+        mainFlowParagraphs[2]["T"][""].textValue().shouldBeEqualTo("main flow text 3")
+
+        val interactiveFlow = result["Flow"].first { it["Id"].textValue() == "Def.InteractiveFlow1" }
+        val interactiveFlowContentFlowId = interactiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val interactiveFlowContentFlow = result["Flow"].last { it["Id"].textValue() == interactiveFlowContentFlowId }
+        val interactiveFlowParagraphs = interactiveFlowContentFlow["FlowContent"]["P"]
+        interactiveFlowParagraphs.size().shouldBeEqualTo(2)
+        interactiveFlowParagraphs[0]["T"][""].textValue().shouldBeEqualTo("interactive flow text 1")
+        interactiveFlowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("interactive flow text 2")
     }
 
     @Test

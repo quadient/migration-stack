@@ -3,7 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.FirstMatchModel
-import com.quadient.migration.data.FlowAreaModel
+import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphModel
 import com.quadient.migration.data.TableModel
@@ -16,7 +16,7 @@ sealed interface DocumentContent {
             is ParagraphModel -> Paragraph.fromModel(model)
             is DocumentObjectModelRef -> DocumentObjectRef.fromModel(model)
             is ImageModelRef -> ImageRef.fromModel(model)
-            is FlowAreaModel -> FlowArea.fromModel(model)
+            is AreaModel -> Area.fromModel(model)
             is FirstMatchModel -> FirstMatch.fromModel(model)
         }
     }
@@ -29,7 +29,7 @@ fun List<DocumentContent>.toDb(): List<DocumentContentEntity> {
             is Paragraph -> it.toDb()
             is DocumentObjectRef -> it.toDb()
             is ImageRef -> it.toDb()
-            is FlowArea -> it.toDb()
+            is Area -> it.toDb()
             is FirstMatch -> it.toDb()
         }
     }

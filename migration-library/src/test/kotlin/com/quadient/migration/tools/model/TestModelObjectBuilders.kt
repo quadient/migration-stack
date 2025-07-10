@@ -1,5 +1,6 @@
 package com.quadient.migration.tools.model
 
+import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentContentModel
@@ -12,6 +13,7 @@ import com.quadient.migration.data.ParagraphStyleDefOrRefModel
 import com.quadient.migration.data.ParagraphStyleDefinitionModel
 import com.quadient.migration.data.ParagraphStyleModel
 import com.quadient.migration.data.ParagraphStyleModelRef
+import com.quadient.migration.data.StringModel
 import com.quadient.migration.data.TableModel
 import com.quadient.migration.data.TabsModel
 import com.quadient.migration.data.TextContentModel
@@ -51,6 +53,7 @@ import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Literal
+import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.tools.aProjectConfig
@@ -113,6 +116,14 @@ fun aBlock(
         baseTemplate = baseTemplate,
         options = null,
     )
+}
+
+fun anArea(
+    content: List<DocumentContentModel>,
+    position: Position? = null,
+    interactiveFlowName: String? = null,
+): AreaModel {
+    return AreaModel(content, position, interactiveFlowName)
 }
 
 fun aTemplate(
@@ -304,6 +315,8 @@ fun aParagraph(
 fun aParagraph(
     content: TextModel, styleRef: String? = null, displayRuleRef: DisplayRuleModelRef? = null
 ): ParagraphModel = ParagraphModel(listOf(content), styleRef?.let { ParagraphStyleModelRef(it) }, displayRuleRef)
+
+fun aText(string: String): TextModel = TextModel(listOf(StringModel(string)), null, null)
 
 fun aText(
     content: List<TextContentModel> = listOf<TextContentModel>(),

@@ -4,7 +4,7 @@ import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
-import com.quadient.migration.data.FlowAreaModel
+import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphStyleDefinitionModel
@@ -51,6 +51,8 @@ class DesignerDocumentObjectBuilder(
     imageRepository,
     projectConfig
 ) {
+    val defaultPosition = Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters())
+
     override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
         return "icm://${getFolder(projectConfig, documentObject.targetFolder)}${documentObject.nameOrId()}.wfd"
     }
@@ -139,25 +141,22 @@ class DesignerDocumentObjectBuilder(
         options?.height?.let { page.setHeight(it.toMeters()) }
         options?.width?.let { page.setWidth(it.toMeters()) }
 
-        val flowAreaModels = mutableListOf<FlowAreaModel>()
-        val virtualFlowAreaContent = mutableListOf<DocumentContentModel>()
+        val areaModels = mutableListOf<AreaModel>()
+        val virtualAreaContent = mutableListOf<DocumentContentModel>()
 
         content.forEach {
-            if (it is FlowAreaModel) {
-                flowAreaModels.add(it)
+            if (it is AreaModel) {
+                areaModels.add(it)
             } else {
-                virtualFlowAreaContent.add(it)
+                virtualAreaContent.add(it)
             }
         }
 
-        flowAreaModels.forEach { buildArea(layout, variableStructure, page, it, mainObject) }
+        areaModels.forEach { buildArea(layout, variableStructure, page, it, mainObject) }
 
-        if (virtualFlowAreaContent.isNotEmpty()) {
+        if (virtualAreaContent.isNotEmpty()) {
             buildArea(
-                layout, variableStructure, page, FlowAreaModel(
-                    Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters()),
-                    virtualFlowAreaContent
-                ), mainObject
+                layout, variableStructure, page, AreaModel(virtualAreaContent, defaultPosition, null), mainObject
             )
         }
     }
@@ -166,12 +165,12 @@ class DesignerDocumentObjectBuilder(
         layout: Layout,
         variableStructure: VariableStructureModel,
         page: Page,
-        flowAreaModel: FlowAreaModel,
+        areaModel: AreaModel,
         mainObject: DocumentObjectModel
     ) {
-        val position = flowAreaModel.position
+        val position = areaModel.position ?: defaultPosition
 
-        val content = flowAreaModel.content
+        val content = areaModel.content
         if (content.size == 1 && content.first() is ImageModelRef) {
             val imageModel = imageRepository.findModelOrFail((content.first() as ImageModelRef).id)
 
@@ -192,7 +191,7 @@ class DesignerDocumentObjectBuilder(
                 .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlowToNextPage(true)
                 .setFlow(
                     buildDocumentContentAsSingleFlow(
-                        layout, variableStructure, flowAreaModel.content, displayRuleRef = mainObject.displayRuleRef
+                        layout, variableStructure, areaModel.content, displayRuleRef = mainObject.displayRuleRef
                     )
                 )
         }

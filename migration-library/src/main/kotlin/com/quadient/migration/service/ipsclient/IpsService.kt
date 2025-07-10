@@ -38,12 +38,29 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         return operationResult
     }
 
+    fun wfd2xml(wfdPath: String): String {
+        val resultLocation = "memory://${UUID.randomUUID()}"
+
+        val result = client.wfd2xml(wfdPath, resultLocation)
+        val operationResult = result.waitAndAckJobOrLogError(client)
+        if (operationResult is OperationResult.Failure) {
+            throw IpsClientException(operationResult.message)
+        }
+
+        val outputResult = client.download(resultLocation)
+        if (outputResult !is IpsResult.Ok) {
+            throw IpsClientException("Failed to download result xml: '$outputResult'")
+        }
+
+        client.remove(resultLocation).ifNotSuccess {
+            logger.error("Failed to cleanup wfdXml output memory: {}", it)
+        }
+
+        return String(outputResult.customData).trimIndent()
+    }
+
     fun deployJld(
-        baseTemplate: String,
-        type: String,
-        moduleName: String,
-        xmlContent: String,
-        outputPath: String
+        baseTemplate: String, type: String, moduleName: String, xmlContent: String, outputPath: String
     ): OperationResult {
         logger.debug("Starting deployment of $outputPath.")
 
@@ -107,7 +124,7 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         try {
             logger.debug(json)
             client.upload(pathsLocation, json.toByteArray()).ifNotSuccess {
-                val message ="Failed to upload paths.json $pathsLocation, $it"
+                val message = "Failed to upload paths.json $pathsLocation, $it"
                 logger.error(message)
                 return OperationResult.Failure(message)
             }
