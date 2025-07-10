@@ -14,8 +14,8 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding.variables["args"])
 
-def pageAreasFile = Paths.get("mapping", "${migration.projectConfig.name}-page-areas.csv").toFile()
-pageAreasFile.createParentDirectories()
+def areasFile = Paths.get("mapping", "${migration.projectConfig.name}-areas.csv").toFile()
+areasFile.createParentDirectories()
 
 def templatesAndPages = (migration.documentObjectRepository as DocumentObjectRepository).list(new DocumentObjectFilterBuilder().types([DocumentObjectType.Page, DocumentObjectType.Template]).build())
 def templates = templatesAndPages.findAll { it.type == DocumentObjectType.Template }
@@ -23,7 +23,7 @@ def pages = templatesAndPages.findAll { it.type == DocumentObjectType.Page }
 def pageIds = pages.collect { it.id }
 def usedPageIds = new ArrayList<String>()
 
-pageAreasFile.withWriter { writer ->
+areasFile.withWriter { writer ->
     writer.writeLine("id,name,type,interactiveFlowName,x,y,width,height,contentPreview")
     templates.each { template ->
         def templateBuilder = new StringBuilder()
