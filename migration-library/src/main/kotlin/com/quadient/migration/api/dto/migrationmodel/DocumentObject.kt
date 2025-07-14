@@ -3,6 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
+import kotlinx.datetime.Instant
 
 data class DocumentObject(
     override val id: String,
@@ -16,6 +17,8 @@ data class DocumentObject(
     var displayRuleRef: DisplayRuleRef? = null,
     var baseTemplate: String? = null,
     var options: DocumentObjectOptions? = null,
+    val created: Instant? = null,
+    val lastUpdated: Instant? = null,
 ) : MigrationObject {
     companion object {
         fun fromModel(model: DocumentObjectModel): DocumentObject {
@@ -31,6 +34,8 @@ data class DocumentObject(
                 displayRuleRef = model.displayRuleRef?.let(DisplayRuleRef::fromModel),
                 baseTemplate = model.baseTemplate,
                 options = model.options,
+                created = model.created,
+                lastUpdated = model.lastUpdated,
             )
         }
     }

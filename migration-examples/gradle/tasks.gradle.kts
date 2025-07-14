@@ -12,6 +12,9 @@ data class MigTask(
 val migrationTasks = listOf<MigTask>(
     // Migration import
     MigTask(
+        "modelComplexityReport", "migration report", "Generate complexity report", "common.report.ComplexityReport"
+    ),
+    MigTask(
         "displayRuleReport", "migration report", "Generate display rule report", "common.report.DisplayRuleReport"
     ),
     MigTask(
