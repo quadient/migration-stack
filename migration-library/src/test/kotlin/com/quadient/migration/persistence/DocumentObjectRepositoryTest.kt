@@ -50,6 +50,8 @@ class DocumentObjectRepositoryTest {
         repo.upsert(dto)
         val result = repo.listAll()
 
+        dto.lastUpdated = result.first().lastUpdated
+        dto.created = result.first().created
         result.first().content[2].shouldBeEqualTo(dto.content[2])
         result.first().shouldBeEqualTo(dto)
     }
@@ -140,6 +142,8 @@ class DocumentObjectRepositoryTest {
         repo.upsert(input)
         val result = repo.listAll()
 
+        input.lastUpdated = result.first().lastUpdated
+        input.created = result.first().created
         result.first().shouldBeEqualTo(input)
     }
 

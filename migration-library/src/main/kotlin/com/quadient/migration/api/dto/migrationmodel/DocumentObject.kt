@@ -17,8 +17,8 @@ data class DocumentObject(
     var displayRuleRef: DisplayRuleRef? = null,
     var baseTemplate: String? = null,
     var options: DocumentObjectOptions? = null,
-    val created: Instant? = null,
-    val lastUpdated: Instant? = null,
+    var created: Instant? = null,
+    var lastUpdated: Instant? = null,
 ) : MigrationObject {
     companion object {
         fun fromModel(model: DocumentObjectModel): DocumentObject {
