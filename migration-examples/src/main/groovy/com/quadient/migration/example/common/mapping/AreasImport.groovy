@@ -20,25 +20,28 @@ DocumentObject currentPage = null
 int areaIndex = 0
 for (line in fileLines) {
     def values = Csv.getCells(line, columnNames)
-    def type = Csv.deserialize(values.get("type"), String.class)
 
-    if (type == DocumentObjectType.Page.toString()) {
+    def pageId = Csv.deserialize(values.get("id"), String.class)
+
+    if (currentPage?.id != pageId) {
         if (currentPage != null) {
             migration.documentObjectRepository.upsert(currentPage)
         }
 
-        def id = Csv.deserialize(values.get("id"), String.class)
+        def pageModel = migration.documentObjectRepository.find(pageId)
+        if (!pageModel) {
+            throw new IllegalStateException("Page '${pageId}' not found.")
+        }
 
-        def pageModel = migration.documentObjectRepository.find(id)
         currentPage = pageModel
         areaIndex = 0
-    } else if (type == "Area") {
-        def currentArea = currentPage.content.findAll { it instanceof Area }[areaIndex] as Area
-        def interactiveFlowName = Csv.deserialize(values.get("interactiveFlowName"), String.class)
-        currentArea.interactiveFlowName = interactiveFlowName
-
-        areaIndex++
     }
+
+    def currentArea = currentPage.content.findAll { it instanceof Area }[areaIndex] as Area
+    def interactiveFlowName = Csv.deserialize(values.get("interactiveFlowName"), String.class)
+    currentArea.interactiveFlowName = interactiveFlowName
+
+    areaIndex++
 }
 
 if (currentPage != null) {
