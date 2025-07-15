@@ -72,18 +72,20 @@ String buildArea(Area area, DocumentObject page, DocumentObject template) {
     builder.append(Csv.serialize(area.content.collect {
         switch (it) {
             case DocumentObjectRef:
-                def name = documentObjectIdsToNames.get(it.id)
+                def id = it.id
+                def name = documentObjectIdsToNames.get(id)
                 if (name == null) {
-                    return "DocumentObjectRef(id=$it)"
+                    return "DocumentObjectRef(id=$id)"
                 } else {
-                    return "DocumentObjectRef(id=$it name=$name)"
+                    return "DocumentObjectRef(id=$id name=$name)"
                 }
             case ImageRef:
-                def name = imageIdsToNames.get(it.id)
+                def id = it.id
+                def name = imageIdsToNames.get(id)
                 if (name == null) {
-                    return "ImageRef(id=$it)"
+                    return "ImageRef(id=$id)"
                 } else {
-                    return "ImageRef(id=$it name=$name)"
+                    return "ImageRef(id=$id name=$name)"
                 }
             default:
                 return it.toString()
