@@ -33,7 +33,7 @@ static void exportTextStylesToCsv(List<ParagraphStyle> styles, List<String> defi
     def file = exportFilePath.toFile()
     file.createParentDirectories()
     file.withWriter { writer ->
-        writer.writeLine("id,name,targetId,${definitionOrder.join(",")}")
+        writer.writeLine("id,name,targetId,origin_locations,${definitionOrder.join(",")}")
 
         styles.each { style ->
             def definition = style.definition
@@ -42,10 +42,10 @@ static void exportTextStylesToCsv(List<ParagraphStyle> styles, List<String> defi
                 def definitionValues = definitionOrder.collect {
                     Csv.serialize(definition."${it}")
                 }.join(",")
-                writer.writeLine("${style.id},${style.name},,${definitionValues}")
+                writer.writeLine("${style.id},${style.name},,${Csv.serialize(style.originLocations)},${definitionValues}")
             } else if (definition instanceof ParagraphStyleRef) {
                 def definitionValues = definitionOrder.collect { "" }.join(",")
-                writer.writeLine("${style.id},${style.name},${definition.id},${definitionValues}")
+                writer.writeLine("${style.id},${style.name},${definition.id},${Csv.serialize(style.originLocations)},${definitionValues}")
             }
         }
     }
