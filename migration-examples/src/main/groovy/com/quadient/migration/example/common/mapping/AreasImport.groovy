@@ -21,7 +21,7 @@ int areaIndex = 0
 for (line in fileLines) {
     def values = Csv.getCells(line, columnNames)
 
-    def pageId = Csv.deserialize(values.get("id"), String.class)
+    def pageId = Csv.deserialize(values.get("pageId"), String.class)
 
     if (currentPage?.id != pageId) {
         if (currentPage != null) {
