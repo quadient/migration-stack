@@ -215,7 +215,7 @@ file.withWriter { writer ->
         builder.append(docObj.id).append(",")
         builder.append(docObj.type.toString()).append(",")
         builder.append(",")
-        builder.append("Dependency,")
+        builder.append(docObj.internal ? "Inline," : "Reused,")
         builder.append("${docObj.internal},,,")
         builder.append("\"${content}\"")
         writer.writeLine(builder.toString())
@@ -225,7 +225,7 @@ file.withWriter { writer ->
         builder.append(img.id).append(",")
         builder.append("Image,")
         builder.append(",")
-        builder.append("Dependency,,,,")
+        builder.append("Reused,,,,")
         writer.writeLine(builder.toString())
     }
     for (textStyle in textStyleDependencies) {
@@ -234,7 +234,7 @@ file.withWriter { writer ->
         builder.append(textStyle.id).append(",")
         builder.append("TextStyle,")
         builder.append(",")
-        builder.append("Dependency,,,,")
+        builder.append("Reused,,,,")
         builder.append("\"${content}\"")
         writer.writeLine(builder.toString())
     }
@@ -244,7 +244,7 @@ file.withWriter { writer ->
         builder.append(paragraphStyle.id).append(",")
         builder.append("ParagraphStyle,")
         builder.append(",")
-        builder.append("Dependency,,,,")
+        builder.append("Reused,,,,")
         builder.append("\"${content}\"")
         writer.writeLine(builder.toString())
     }

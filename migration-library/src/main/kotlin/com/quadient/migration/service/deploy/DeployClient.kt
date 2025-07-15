@@ -24,6 +24,7 @@ import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
+import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.ImageType
 import kotlinx.datetime.Clock
 import org.slf4j.LoggerFactory
@@ -42,7 +43,7 @@ sealed class DeployClient(
     protected val statusTrackingRepository: StatusTrackingRepository,
     protected val textStyleRepository: TextStyleInternalRepository,
     protected val paragraphStyleRepository: ParagraphStyleInternalRepository,
-    protected val documentObjectBuilder: InspireDocumentObjectBuilder,
+    val documentObjectBuilder: InspireDocumentObjectBuilder,
     protected val ipsService: IpsService,
     protected val storage: Storage,
     protected val output: InspireOutput,
@@ -336,7 +337,13 @@ sealed class DeployClient(
         val alreadyVisitedRefs = mutableSetOf<Pair<String, KClass<*>>>()
 
         for (obj in objects) {
-            val deployKind = getDeployKind(obj.id, ResourceType.DocumentObject, output)
+            val deployKind = getDeployKind(
+                id = obj.id,
+                resourceType = ResourceType.DocumentObject,
+                output = output,
+                internal = obj.internal,
+                isPage = obj.type == DocumentObjectType.Page
+            )
             val icmPath = documentObjectBuilder.getDocumentObjectPath(obj)
             report.addDocumentObject(obj.id, obj, icmPath = icmPath, deployKind = deployKind)
             alreadyVisitedRefs.add(Pair(obj.id, DocumentObjectModelRef::class))
@@ -355,8 +362,14 @@ sealed class DeployClient(
             val resource = when (ref) {
                 is DocumentObjectModelRef -> {
                     val obj = documentObjectRepository.findModelOrFail(ref.id)
-                    val deployKind = getDeployKind(obj.id, ResourceType.DocumentObject, output, obj.internal)
-                    val icmPath = if (!obj.internal) {
+                    val deployKind = getDeployKind(
+                        id = obj.id,
+                        resourceType = ResourceType.DocumentObject,
+                        output = output,
+                        internal = obj.internal,
+                        isPage = obj.type == DocumentObjectType.Page
+                    )
+                    val icmPath = if (deployKind != DeployKind.Inline) {
                         documentObjectBuilder.getDocumentObjectPath(obj)
                     } else {
                         null
@@ -378,7 +391,7 @@ sealed class DeployClient(
                 is TextStyleModelRef -> {
                     val style = textStyleRepository.findModelOrFail(ref.id)
                     report.addTextStyle(
-                        id = style.id, icmPath = null, deployKind = DeployKind.Dependency, style = style
+                        id = style.id, icmPath = null, deployKind = DeployKind.Inline, style = style
                     )
                     style
                 }
@@ -386,7 +399,7 @@ sealed class DeployClient(
                 is ParagraphStyleModelRef -> {
                     val style = paragraphStyleRepository.findModelOrFail(ref.id)
                     report.addParagraphStyle(
-                        id = style.id, icmPath = null, deployKind = DeployKind.Dependency, style = style
+                        id = style.id, icmPath = null, deployKind = DeployKind.Inline, style = style
                     )
                     style
                 }
@@ -470,9 +483,9 @@ sealed class DeployClient(
         }
     }
 
-    private fun getDeployKind(id: String, resourceType: ResourceType, output: InspireOutput, internal: Boolean = false): DeployKind {
+    private fun getDeployKind(id: String, resourceType: ResourceType, output: InspireOutput, internal: Boolean = false, isPage: Boolean = false): DeployKind {
         if (internal) {
-            return DeployKind.Dependency
+            return DeployKind.Inline
         }
 
         val objectEvents = statusTrackingRepository.findEventsRelevantToOutput(id, resourceType, output)
@@ -480,11 +493,13 @@ sealed class DeployClient(
             val hasBeenDeployedBefore = objectEvents.any { it is Deployed }
             if (hasBeenDeployedBefore) {
                 DeployKind.Overwrite
+            } else if (isPage && output == InspireOutput.Designer) {
+                DeployKind.Inline
             } else {
                 DeployKind.New
             }
         } else {
-            return DeployKind.Dependency
+            return DeployKind.Reused
         }
     }
 

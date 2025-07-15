@@ -14,7 +14,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 enum class DeployKind {
-    New, Overwrite, Dependency
+    New, Overwrite, Inline, Reused
 }
 
 sealed class DeploymentReportItem(

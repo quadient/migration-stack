@@ -82,8 +82,8 @@ class DeployClientTest {
         result.shouldContainNewDocumentObject("1")
         result.shouldContainNewDocumentObject("2")
         result.shouldContainNewDocumentObject("3")
-        result.shouldContainDependencyDocumentObject("4")
-        result.shouldContainDependencyDocumentObject("5")
+        result.shouldContainInlineDocumentObject("4")
+        result.shouldContainInlineDocumentObject("5")
         result.shouldContainChangedDocumentObject("6")
         result.shouldContainDependencyDocumentObject("7")
         result.shouldContainNewImage("1")
@@ -98,11 +98,11 @@ class DeployClientTest {
     }
 
     private fun DeploymentReport.shouldContainTextStyle(id: String) {
-        assertEquals(DeployKind.Dependency, this.items[Pair(id, ResourceType.TextStyle)]?.deployKind)
+        assertEquals(DeployKind.Inline, this.items[Pair(id, ResourceType.TextStyle)]?.deployKind)
     }
 
     private fun DeploymentReport.shouldContainParagraphStyle(id: String) {
-        assertEquals(DeployKind.Dependency, this.items[Pair(id, ResourceType.ParagraphStyle)]?.deployKind)
+        assertEquals(DeployKind.Inline, this.items[Pair(id, ResourceType.ParagraphStyle)]?.deployKind)
     }
 
     private fun DeploymentReport.shouldContainNewImage(id: String) {
@@ -114,7 +114,7 @@ class DeployClientTest {
     }
 
     private fun DeploymentReport.shouldContainDependencyImage(id: String) {
-        assertEquals(DeployKind.Dependency, this.items[Pair(id, ResourceType.Image)]?.deployKind)
+        assertEquals(DeployKind.Reused, this.items[Pair(id, ResourceType.Image)]?.deployKind)
     }
 
     private fun DeploymentReport.shouldContainNewDocumentObject(id: String) {
@@ -126,7 +126,11 @@ class DeployClientTest {
     }
 
     private fun DeploymentReport.shouldContainDependencyDocumentObject(id: String) {
-        assertEquals(DeployKind.Dependency, this.items[Pair(id, ResourceType.DocumentObject)]?.deployKind)
+        assertEquals(DeployKind.Reused, this.items[Pair(id, ResourceType.DocumentObject)]?.deployKind)
+    }
+
+    private fun DeploymentReport.shouldContainInlineDocumentObject(id: String) {
+        assertEquals(DeployKind.Inline, this.items[Pair(id, ResourceType.DocumentObject)]?.deployKind)
     }
 
     private fun givenNewImage(id: String) {
