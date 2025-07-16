@@ -56,6 +56,26 @@ class StatusTrackingRepository(val projectName: String) {
 
     fun deployed(
         id: String,
+        deploymentId: String,
+        timestamp: Long,
+        resourceType: ResourceType,
+        icmPath: String?,
+        output: InspireOutput,
+        data: Map<String, String> = emptyMap(),
+    ): StatusTracking {
+        return deployed(
+            id,
+            Uuid.parse(deploymentId),
+            Instant.fromEpochMilliseconds(timestamp),
+            resourceType,
+            icmPath,
+            output,
+            data
+        )
+    }
+
+    fun deployed(
+        id: String,
         deploymentId: Uuid,
         timestamp: Instant,
         resourceType: ResourceType,
