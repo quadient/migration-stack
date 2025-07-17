@@ -40,8 +40,7 @@ class ParagraphStyleDefinitionBuilder {
     var spaceAfter: Size? = null
     var alignment: Alignment = Alignment.Left
     var firstLineIndent: Size? = null
-    var lineSpacingValue: Size? = null
-    var lineSpacing: LineSpacing = LineSpacing.Additional
+    var lineSpacing: LineSpacing = LineSpacing.Additional(null)
     var keepWithNextParagraph: Boolean? = null
     var tabs: Tabs? = null
 
@@ -52,8 +51,19 @@ class ParagraphStyleDefinitionBuilder {
     fun leftIndent(leftIndent: Size?) = apply { this.leftIndent = leftIndent }
     fun alignment(alignment: Alignment) = apply { this.alignment = alignment }
     fun firstLineIndent(firstLineIndent: Size?) = apply { this.firstLineIndent = firstLineIndent }
-    fun lineSpacingValue(lineSpacingValue: Size?) = apply { this.lineSpacingValue = lineSpacingValue }
+
     fun lineSpacing(lineSpacing: LineSpacing) = apply { this.lineSpacing = lineSpacing }
+    fun additionalLineSpacing(size: Size) = apply { this.lineSpacing = LineSpacing.Additional(size) }
+    fun exactLineSpacing(size: Size) = apply { this.lineSpacing = LineSpacing.Exact(size) }
+    fun atLeastLineSpacing(size: Size) = apply { this.lineSpacing = LineSpacing.AtLeast(size) }
+    fun multipleOfLineSpacing(value: Double) = apply { this.lineSpacing = LineSpacing.MultipleOf(value) }
+    fun exactFromPreviousLineSpacing(size: Size) = apply { this.lineSpacing = LineSpacing.ExactFromPrevious(size) }
+    fun exactFromPreviousWithAdjustLegacyLineSpacing(size: Size) =
+        apply { this.lineSpacing = LineSpacing.ExactFromPreviousWithAdjustLegacy(size) }
+
+    fun exactFromPreviousWithAdjustLineSpacing(size: Size) =
+        apply { this.lineSpacing = LineSpacing.ExactFromPreviousWithAdjust(size) }
+
     fun keepWithNextParagraph(keepWithNextParagraph: Boolean?) =
         apply { this.keepWithNextParagraph = keepWithNextParagraph }
 
@@ -67,7 +77,6 @@ class ParagraphStyleDefinitionBuilder {
         spaceAfter = spaceAfter,
         alignment = alignment,
         firstLineIndent = firstLineIndent,
-        lineSpacingValue = lineSpacingValue,
         lineSpacing = lineSpacing,
         keepWithNextParagraph = keepWithNextParagraph,
         tabs = tabs,

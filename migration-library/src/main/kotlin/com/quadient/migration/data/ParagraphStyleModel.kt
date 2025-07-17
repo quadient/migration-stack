@@ -35,7 +35,6 @@ data class ParagraphStyleDefinitionModel(
     val spaceAfter: Size?,
     val alignment: Alignment,
     val firstLineIndent: Size?,
-    val lineSpacingValue: Size?,
     val lineSpacing: LineSpacing,
     val keepWithNextParagraph: Boolean?,
     val tabs: TabsModel?,
@@ -49,7 +48,6 @@ data class ParagraphStyleDefinitionModel(
             spaceAfter = entity.spaceAfter,
             alignment = entity.alignment,
             firstLineIndent = entity.firstLineIndent,
-            lineSpacingValue = entity.lineSpacingValue,
             lineSpacing = entity.lineSpacing,
             keepWithNextParagraph = entity.keepWithNextParagraph,
             tabs = entity.tabs?.let { TabsModel.fromDb(it) }

@@ -19,8 +19,6 @@ List<String> definitionOrder = ["leftIndent",
                                 "spaceAfter",
                                 "alignment",
                                 "firstLineIndent",
-                                "lineSpacingValue",
-                                "lineSpacing",
                                 "keepWithNextParagraph"]
 
 
@@ -33,13 +31,13 @@ static void exportTextStylesToCsv(List<ParagraphStyle> styles, List<String> defi
     def file = exportFilePath.toFile()
     file.createParentDirectories()
     file.withWriter { writer ->
-        writer.writeLine("id,name,targetId,origin_locations,${definitionOrder.join(",")}")
+        writer.writeLine("id,name,targetId,origin_locations,${definitionOrder.join(",")},lineSpacingType,lineSpacingValue")
 
         styles.each { style ->
             def definition = style.definition
 
             if (definition instanceof ParagraphStyleDefinition) {
-                def definitionValues = definitionOrder.collect {
+                def definitionValues = (definitionOrder + ["lineSpacing"]).collect {
                     Csv.serialize(definition."${it}")
                 }.join(",")
                 writer.writeLine("${style.id},${style.name},,${Csv.serialize(style.originLocations)},${definitionValues}")

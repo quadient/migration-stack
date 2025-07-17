@@ -28,6 +28,7 @@ import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType.*
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
+import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.Size
@@ -58,6 +59,7 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import javax.sound.sampled.Line
 
 class InteractiveDocumentObjectBuilderTest {
     val documentObjectRepository = mockk<DocumentObjectInternalRepository>()
@@ -963,7 +965,7 @@ class InteractiveDocumentObjectBuilderTest {
                     spaceBefore = Size.ofMillimeters(4),
                     spaceAfter = Size.ofMillimeters(6),
                     firstLineIndent = Size.ofCentimeters(0.8),
-                    lineSpacingValue = Size.ofCentimeters(1.5),
+                    lineSpacing = LineSpacing.Exact(Size.ofCentimeters(1.5)),
                     tabs = TabsModel(listOf(TabModel(Size.ofMillimeters(25), TabType.Left)), false)
                 )
             ),
@@ -985,6 +987,7 @@ class InteractiveDocumentObjectBuilderTest {
         textStyle["SpaceAfter"].textValue().shouldBeEqualTo("0.006")
         textStyle["FirstLineLeftIndent"].textValue().shouldBeEqualTo("0.0155")
         textStyle["LineSpacing"].textValue().shouldBeEqualTo("0.015")
+        textStyle["LineSpacingType"].textValue().shouldBeEqualTo("Exact")
     }
 
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {

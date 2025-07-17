@@ -44,8 +44,7 @@ class ParagraphStyleRepositoryTest {
             spaceBefore(9.9.millimeters())
             alignment(Alignment.JustifyRight)
             firstLineIndent(1.1.millimeters())
-            lineSpacing(LineSpacing.ExactFromPrevious)
-            lineSpacingValue(333.0.millimeters())
+            lineSpacing(LineSpacing.ExactFromPrevious(333.millimeters()))
             keepWithNextParagraph(true)
             tabs(
                 Tabs(
