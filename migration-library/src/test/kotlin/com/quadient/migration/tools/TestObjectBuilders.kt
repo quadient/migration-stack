@@ -224,8 +224,7 @@ fun aParagraphStyleDefinition(
     spaceAfter: Size? = null,
     alignment: Alignment = Alignment.Left,
     firstLineIndent: Size? = null,
-    lineSpacingValue: Size? = null,
-    lineSpacing: LineSpacing = LineSpacing.Additional,
+    lineSpacing: LineSpacing = LineSpacing.Additional(null),
     keepWithNextParagraph: Boolean? = null,
     tabs: Tabs? = null
 ): ParagraphStyleDefinition {
@@ -237,7 +236,6 @@ fun aParagraphStyleDefinition(
         spaceAfter = spaceAfter,
         alignment = alignment,
         firstLineIndent = firstLineIndent,
-        lineSpacingValue = lineSpacingValue,
         lineSpacing = lineSpacing,
         keepWithNextParagraph = keepWithNextParagraph,
         tabs = tabs
