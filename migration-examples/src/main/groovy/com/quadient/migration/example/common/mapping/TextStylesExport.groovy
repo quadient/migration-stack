@@ -44,10 +44,10 @@ static void exportTextStylesToCsv(List<TextStyle> styles, List<String> definitio
                         Csv.serialize(definition."${it}")
                     }
                 }.join(",")
-                writer.writeLine("${style.id},${style.name},,${Csv.serialize(style.originLocations)},${definitionValues}")
+                writer.writeLine("${Csv.serialize(style.id)},${Csv.serialize(style.name)},,${Csv.serialize(style.originLocations)},${definitionValues}")
             } else if (definition instanceof TextStyleRef) {
                 def definitionValues = definitionOrder.collect { "" }.join(",")
-                writer.writeLine("${style.id},${style.name},${definition.id},${Csv.serialize(style.originLocations)},${definitionValues}")
+                writer.writeLine("${Csv.serialize(style.id)},${Csv.serialize(style.name)},${Csv.serialize(definition.id)},${Csv.serialize(style.originLocations)},${definitionValues}")
             }
         }
     }

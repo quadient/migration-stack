@@ -40,10 +40,10 @@ static void exportTextStylesToCsv(List<ParagraphStyle> styles, List<String> defi
                 def definitionValues = (definitionOrder + ["lineSpacing"]).collect {
                     Csv.serialize(definition."${it}")
                 }.join(",")
-                writer.writeLine("${style.id},${style.name},,${Csv.serialize(style.originLocations)},${definitionValues}")
+                writer.writeLine("${Csv.serialize(style.id)},${Csv.serialize(style.name)},,${Csv.serialize(style.originLocations)},${definitionValues}")
             } else if (definition instanceof ParagraphStyleRef) {
                 def definitionValues = definitionOrder.collect { "" }.join(",")
-                writer.writeLine("${style.id},${style.name},${definition.id},${Csv.serialize(style.originLocations)},${definitionValues}")
+                writer.writeLine("${Csv.serialize(style.id)},${Csv.serialize(style.name)},${Csv.serialize(definition.id)},${Csv.serialize(style.originLocations)},${definitionValues}")
             }
         }
     }

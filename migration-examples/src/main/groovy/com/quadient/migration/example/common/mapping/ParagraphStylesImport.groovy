@@ -33,8 +33,8 @@ for (line in file) {
                 updateDefinitionField(definition, field, values)
             }
 
-            def style = new ParagraphStyleBuilder(values.get("id"))
-                .name(values.get("name"))
+            def style = new ParagraphStyleBuilder(Csv.deserialize(values.get("id"), String.class))
+                .name(Csv.deserialize(values.get("name"), String.class))
                 .definition(definition)
                 .build()
             migration.paragraphStyleRepository.upsert(style)
@@ -46,13 +46,13 @@ for (line in file) {
             for (field in definitionFields) {
                 updateDefinitionField(saved.definition as ParagraphStyleDefinition, field, values)
             }
-            saved.name = values.get("name")
+            saved.name = Csv.deserialize(values.get("name"), String.class)
             migration.paragraphStyleRepository.upsert(saved)
         }
     } else {
         if (saved == null) {
-            def style = new ParagraphStyleBuilder(values.get("id"))
-                .name(values.get("name"))
+            def style = new ParagraphStyleBuilder(Csv.deserialize(values.get("id"), String.class))
+                .name(Csv.deserialize(values.get("name"), String.class))
                 .styleRef(styleRefId)
                 .build()
             migration.paragraphStyleRepository.upsert(style)
@@ -61,7 +61,7 @@ for (line in file) {
                 saved.customFields.put("originalDefinition", saved.definition.toString())
             }
 
-            saved.name = values.get("name")
+            saved.name = Csv.deserialize(values.get("name"), String.class)
             saved.definition = new ParagraphStyleRef(styleRefId)
             migration.paragraphStyleRepository.upsert(saved)
         }
