@@ -29,6 +29,9 @@ val migrationTasks = listOf<MigTask>(
     MigTask(
         "preFlightReport", "migration report", "Generate pre flight report", "common.report.PreFlightReport"
     ),
+    MigTask(
+        "preFlightReportIds", "migration report", "Generate pre flight report", "common.report.PreFlightReportIds"
+    ),
 
     // Migration deploy
     MigTask(
