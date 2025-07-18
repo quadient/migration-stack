@@ -176,8 +176,12 @@ class IpsClient(private val host: String, private val port: Int, private val tim
         return connection.readResponse()
     }
 
-    fun wfd2xml(inputPath: String, outputPath: String): IpsResult<JobId, Unit, Unit, Unit> {
-        val command = """wfd2xml "$inputPath";"$outputPath""""
+    fun wfd2xml(inputPath: String, outputPath: String, interactiveRoot: String? = null): IpsResult<JobId, Unit, Unit, Unit> {
+        var command = """wfd2xml "$inputPath";"$outputPath""""
+
+        if (!interactiveRoot.isNullOrBlank()) {
+            command += ";-interactiveroot icm://Interactive/$interactiveRoot"
+        }
 
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
