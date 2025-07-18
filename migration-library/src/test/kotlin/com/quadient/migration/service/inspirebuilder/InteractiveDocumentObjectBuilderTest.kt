@@ -888,7 +888,7 @@ class InteractiveDocumentObjectBuilderTest {
             ipsService.wfd2xml(
                 getBaseTemplateFullPath(
                     config, null
-                ), config.interactiveTenant
+                )
             )
         } returns "<Layout><Property><Name>InteractiveFlowsNames</Name><Value>FlowA\nInteractive flow name\nFlowC\n</Value></Property><Property><Name>SomeProp</Name><Value>SomePropValue</Value></Property></Layout>"
 

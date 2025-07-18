@@ -38,10 +38,10 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         return operationResult
     }
 
-    fun wfd2xml(wfdPath: String, interactiveRoot: String? = null): String {
+    fun wfd2xml(wfdPath: String): String {
         val resultLocation = "memory://${UUID.randomUUID()}"
 
-        val result = client.wfd2xml(wfdPath, resultLocation, interactiveRoot)
+        val result = client.wfd2xml(wfdPath, resultLocation)
         val operationResult = result.waitAndAckJobOrLogError(client)
         if (operationResult is OperationResult.Failure) {
             throw IpsClientException(operationResult.message)

@@ -142,7 +142,7 @@ class InteractiveDocumentObjectBuilder(
         }
 
         try {
-            val baseTemplateXml = ipsService.wfd2xml(baseTemplatePath, projectConfig.interactiveTenant)
+            val baseTemplateXml = ipsService.wfd2xml(baseTemplatePath)
             val baseTemplateXmlTree = xmlMapper.readTree(baseTemplateXml.trimIndent())
             val interactiveFlowNames =
                 baseTemplateXmlTree["Property"].find { it["Name"].textValue() == "InteractiveFlowsNames" }
