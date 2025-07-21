@@ -24,13 +24,10 @@ val migrationTasks = listOf<MigTask>(
         "common.report.PostDeployStatusTrackingReport"
     ),
     MigTask(
-        "postDeployReport", "migration report", "Generate post deploy report", "common.report.PostDeployReport"
+        "progressReport", "migration report", "Generate progress report", "common.report.ProgressReport"
     ),
     MigTask(
-        "preFlightReport", "migration report", "Generate pre flight report", "common.report.PreFlightReport"
-    ),
-    MigTask(
-        "preFlightReportIds", "migration report", "Generate pre flight report", "common.report.PreFlightReportIds"
+        "progressReportIds", "migration report", "Generate progress report", "common.report.ProgressReportIds"
     ),
 
     // Migration deploy
@@ -45,14 +42,12 @@ val migrationTasks = listOf<MigTask>(
         "migration deploy",
         "Deploy document objects",
         "common.DeployDocumentObjects",
-        finalizedBy = "postDeployReport"
     ),
     MigTask(
         "deploySpecifiedDocumentObjects",
         "migration deploy",
         "Deploy document object ids",
         "common.DeployDocumentObjectIds",
-        finalizedBy = "postDeployReport"
     ),
     MigTask(
         "exportDocumentObjectIds",
