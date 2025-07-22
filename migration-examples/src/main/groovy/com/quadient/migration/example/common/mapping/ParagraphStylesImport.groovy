@@ -5,7 +5,10 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleDefinitionBuilder
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.shared.LineSpacing
+import com.quadient.migration.shared.Size
 
+import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 import java.nio.file.Paths
 
@@ -25,14 +28,15 @@ for (line in file) {
 
     if (styleRefId.empty) {
         if (saved == null) {
-            def style = new ParagraphStyleBuilder(values.get("id"))
-                    .name(values.get("name"))
-                    .definition {
-                        for (field in definitionFields) {
-                            it."$field.name"(Csv.deserialize(values.get(field.name), field.type))
-                        }
-                        it
-                    }.build()
+            def definition = new ParagraphStyleDefinitionBuilder().build()
+            for (field in definitionFields) {
+                updateDefinitionField(definition, field, values)
+            }
+
+            def style = new ParagraphStyleBuilder(Csv.deserialize(values.get("id"), String.class))
+                .name(Csv.deserialize(values.get("name"), String.class))
+                .definition(definition)
+                .build()
             migration.paragraphStyleRepository.upsert(style)
         } else {
             if (saved.definition instanceof ParagraphStyleRef) {
@@ -40,26 +44,46 @@ for (line in file) {
             }
 
             for (field in definitionFields) {
-                saved.definition."$field.name" = Csv.deserialize(values.get(field.name), field.type)
+                updateDefinitionField(saved.definition as ParagraphStyleDefinition, field, values)
             }
-            saved.name = values.get("name")
+            saved.name = Csv.deserialize(values.get("name"), String.class)
             migration.paragraphStyleRepository.upsert(saved)
         }
     } else {
         if (saved == null) {
-            def style = new ParagraphStyleBuilder(values.get("id"))
-                    .name(values.get("name"))
-                    .styleRef(styleRefId)
-                    .build()
+            def style = new ParagraphStyleBuilder(Csv.deserialize(values.get("id"), String.class))
+                .name(Csv.deserialize(values.get("name"), String.class))
+                .styleRef(styleRefId)
+                .build()
             migration.paragraphStyleRepository.upsert(style)
         } else {
             if (saved.definition instanceof ParagraphStyleDefinition) {
                 saved.customFields.put("originalDefinition", saved.definition.toString())
             }
 
-            saved.name = values.get("name")
+            saved.name = Csv.deserialize(values.get("name"), String.class)
             saved.definition = new ParagraphStyleRef(styleRefId)
             migration.paragraphStyleRepository.upsert(saved)
         }
+    }
+}
+
+private static void updateDefinitionField(ParagraphStyleDefinition paraStyleDefinition, Field definitionField, Map<String, String> values) {
+    if (definitionField.name == "lineSpacing") {
+        def lineSpacingType = values.get("lineSpacingType")
+        def lineSpacingValue = values.get("lineSpacingValue")
+
+        def arg
+        if (lineSpacingType == "MultipleOf") {
+            arg = lineSpacingValue.toDouble()
+        } else {
+            arg = Size.fromString(lineSpacingValue)
+        }
+
+        def clazz = LineSpacing.class.getDeclaredClasses().find { it.simpleName == lineSpacingType }
+        def lineSpacing = clazz.constructors[0].newInstance(arg) as LineSpacing
+        paraStyleDefinition.lineSpacing = lineSpacing
+    } else {
+        paraStyleDefinition."${definitionField.name}" = Csv.deserialize(values.get(definitionField.name), definitionField.type)
     }
 }

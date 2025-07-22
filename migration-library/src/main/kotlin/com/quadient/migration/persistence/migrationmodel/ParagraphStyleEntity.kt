@@ -15,7 +15,6 @@ data class ParagraphStyleDefinitionEntity(
     val spaceAfter: Size?,
     val alignment: Alignment,
     val firstLineIndent: Size?,
-    val lineSpacingValue: Size?,
     val lineSpacing: LineSpacing,
     val keepWithNextParagraph: Boolean?,
     val tabs: TabsEntity?,

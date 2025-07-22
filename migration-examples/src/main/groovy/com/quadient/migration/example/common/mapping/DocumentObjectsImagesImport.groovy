@@ -20,6 +20,9 @@ def imageLines = imagesFile.readLines()
 def docObjectColumnNames = docObjectLines.removeFirst().split(",")
 // id, name, sourcePath, icmFolderr
 def imageColumnNames = imageLines.removeFirst().split(",")
+def deploymentId = UUID.randomUUID().toString()
+def now = new Date().getTime()
+def output = migration.projectConfig.inspireOutput
 
 for (line in docObjectLines) {
     def values = Csv.getCells(line, docObjectColumnNames)
@@ -47,6 +50,9 @@ for (line in docObjectLines) {
     if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {
         migration.statusTrackingRepository.active(existingDocObject.id, ResourceType.DocumentObject, [reason: "Manual"])
     }
+    if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deploy") {
+        migration.statusTrackingRepository.deployed(existingDocObject.id, deploymentId, now, ResourceType.DocumentObject, null, output, [reason: "Manual"])
+    }
 
     migration.documentObjectRepository.upsert(existingDocObject)
 }
@@ -69,6 +75,9 @@ for (line in imageLines) {
     def csvStatus = values.get("status")
     if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {
         migration.statusTrackingRepository.active(existingImage.id, ResourceType.Image, [reason: "Manual"])
+    }
+    if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deploy") {
+        migration.statusTrackingRepository.deployed(existingImage.id, deploymentId, now, ResourceType.Image, null, output, [reason: "Manual"])
     }
     migration.imageRepository.upsert(existingImage)
 }

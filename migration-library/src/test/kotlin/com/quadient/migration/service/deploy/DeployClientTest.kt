@@ -18,6 +18,7 @@ import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.tools.aActiveStatusEvent
+import com.quadient.migration.tools.aDeployedStatus
 import com.quadient.migration.tools.aDeployedStatusEvent
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aBlock
@@ -25,12 +26,20 @@ import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParaStyle
 import com.quadient.migration.tools.model.aTextStyle
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldBeNull
+import com.quadient.migration.tools.shouldNotBeNull
+import com.quadient.migration.tools.shouldStartWith
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 
 class DeployClientTest {
@@ -62,83 +71,120 @@ class DeployClientTest {
     }
 
     @Test
-    fun `preflight report correctly handles all cases`() {
-        givenNewExternalDocumentObject("1", deps = listOf("2"), textStyles = listOf("3"), paragraphStyles = listOf("3"))
+    fun `progress report before first deploy`() {
+        every { statusTrackingRepository.listAll() } returns emptyList()
+
+        givenNewExternalDocumentObject("1", deps = listOf("2"))
         givenNewExternalDocumentObject("2", deps = listOf("3", "4"))
         givenNewExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"))
         givenInternalDocumentObject("4", deps = listOf("1", "5"))
         givenInternalDocumentObject("5", deps = listOf("6"))
-        givenChangedExternalDocumentObject(
-            "6", deps = listOf("7"), textStyles = listOf("2"), paragraphStyles = listOf("2")
-        )
-        givenExistingExternalDocumentObject("7", textStyles = listOf("1"), paragraphStyles = listOf("1"))
+        givenNewExternalDocumentObject("6", deps = listOf("7"))
+        givenNewExternalDocumentObject("7", deps = listOf())
         givenNewImage("1")
-        givenChangedImage("2")
-        givenExistingImage("3")
+        givenNewImage("2")
+        givenNewImage("3")
 
-        val result = subject.preFlightCheck()
+        val result = subject.progressReport()
 
-        result.items.size.shouldBeEqualTo(16)
-        result.shouldContainNewDocumentObject("1")
-        result.shouldContainNewDocumentObject("2")
-        result.shouldContainNewDocumentObject("3")
-        result.shouldContainDependencyDocumentObject("4")
-        result.shouldContainDependencyDocumentObject("5")
-        result.shouldContainChangedDocumentObject("6")
-        result.shouldContainDependencyDocumentObject("7")
-        result.shouldContainNewImage("1")
-        result.shouldContainChangedImage("2")
-        result.shouldContainDependencyImage("3")
-        result.shouldContainTextStyle("1")
-        result.shouldContainTextStyle("2")
-        result.shouldContainTextStyle("3")
-        result.shouldContainParagraphStyle("1")
-        result.shouldContainParagraphStyle("2")
-        result.shouldContainParagraphStyle("3")
+        result.items.size.shouldBeEqualTo(10)
+        for (i in arrayOf(1, 2, 3, 6, 7)) {
+            result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeNew()
+        }
+        for (i in arrayOf(4, 5)) {
+            result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeInline()
+        }
+        for (i in arrayOf(1, 2, 3)) {
+            result.items[Pair(i.toString(), ResourceType.Image)].shouldBeNew()
+        }
     }
 
-    private fun DeploymentReport.shouldContainTextStyle(id: String) {
-        assertEquals(DeployKind.Dependency, this.items[Pair(id, ResourceType.TextStyle)]?.deployKind)
+    @Test
+    fun `progress report after deploy`() {
+        val lastDeployTimestamp = Clock.System.now() - 1.days
+        every { statusTrackingRepository.listAll() } returns listOf(
+            aDeployedStatus("random", deploymentId = Uuid.random(), timestamp = lastDeployTimestamp),
+        )
+
+        val currentDeployTimestamp = Clock.System.now()
+
+        givenNewExternalDocumentObject("1", deps = listOf("2"))
+        givenChangedExternalDocumentObject("2", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp)
+        givenExistingExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"), deployTimestamp = currentDeployTimestamp)
+        givenInternalDocumentObject("4", deps = listOf("1", "5"))
+        givenInternalDocumentObject("5", deps = listOf("6"))
+        givenNewExternalDocumentObject("6", deps = listOf("7"))
+        givenNewExternalDocumentObject("7", deps = listOf())
+        givenNewImage("1")
+        givenChangedImage("2", deployTimestamp = currentDeployTimestamp)
+        givenNewImage("3")
+
+        val result = subject.progressReport()
+
+        result.items.size.shouldBeEqualTo(10)
+        for (i in arrayOf(1, 6, 7)) {
+            result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeNew()
+        }
+        for (i in arrayOf(2)) {
+            result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeOverwrite()
+        }
+        for (i in arrayOf(3)) {
+            result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeKept()
+        }
+        for (i in arrayOf(4, 5)) {
+            result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeInline()
+        }
+        for (i in arrayOf(1, 3)) {
+            result.items[Pair(i.toString(), ResourceType.Image)].shouldBeNew()
+        }
     }
 
-    private fun DeploymentReport.shouldContainParagraphStyle(id: String) {
-        assertEquals(DeployKind.Dependency, this.items[Pair(id, ResourceType.ParagraphStyle)]?.deployKind)
+    private fun ProgressReportItem?.shouldBeNew() {
+        this.shouldNotBeNull()
+        this?.nextIcmPath.shouldStartWith("icm://")
+        this?.deployKind.shouldBeEqualTo(DeployKind.Create)
+        this?.lastStatus.shouldBeEqualTo(LastStatus.None)
+        this?.deploymentId.shouldBeNull()
+        this?.deployTimestamp.shouldBeNull()
+        this?.errorMessage.shouldBeNull()
     }
 
-    private fun DeploymentReport.shouldContainNewImage(id: String) {
-        assertEquals(DeployKind.New, this.items[Pair(id, ResourceType.Image)]?.deployKind)
+    private fun ProgressReportItem?.shouldBeInline() {
+        this.shouldNotBeNull()
+        this?.nextIcmPath.shouldBeNull()
+        this?.deployKind.shouldBeEqualTo(DeployKind.Inline)
+        this?.lastStatus.shouldBeEqualTo(LastStatus.Inlined)
+        this?.deploymentId.shouldBeNull()
+        this?.deployTimestamp.shouldBeNull()
+        this?.errorMessage.shouldBeNull()
     }
 
-    private fun DeploymentReport.shouldContainChangedImage(id: String) {
-        assertEquals(DeployKind.Overwrite, this.items[Pair(id, ResourceType.Image)]?.deployKind)
+    private fun ProgressReportItem?.shouldBeOverwrite() {
+        this.shouldNotBeNull()
+        this?.nextIcmPath.shouldStartWith("icm://")
+        this?.deployKind.shouldBeEqualTo(DeployKind.Overwrite)
+        this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
+        this?.deploymentId.shouldNotBeNull()
+        this?.deployTimestamp.shouldNotBeNull()
+        this?.errorMessage.shouldBeNull()
     }
 
-    private fun DeploymentReport.shouldContainDependencyImage(id: String) {
-        assertEquals(DeployKind.Dependency, this.items[Pair(id, ResourceType.Image)]?.deployKind)
-    }
-
-    private fun DeploymentReport.shouldContainNewDocumentObject(id: String) {
-        assertEquals(DeployKind.New, this.items[Pair(id, ResourceType.DocumentObject)]?.deployKind)
-    }
-
-    private fun DeploymentReport.shouldContainChangedDocumentObject(id: String) {
-        assertEquals(DeployKind.Overwrite, this.items[Pair(id, ResourceType.DocumentObject)]?.deployKind)
-    }
-
-    private fun DeploymentReport.shouldContainDependencyDocumentObject(id: String) {
-        assertEquals(DeployKind.Dependency, this.items[Pair(id, ResourceType.DocumentObject)]?.deployKind)
+    private fun ProgressReportItem?.shouldBeKept() {
+        this.shouldNotBeNull()
+        this?.nextIcmPath.shouldStartWith("icm://")
+        this?.deployKind.shouldBeEqualTo(DeployKind.Keep)
+        this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
+        this?.deploymentId.shouldNotBeNull()
+        this?.deployTimestamp.shouldNotBeNull()
+        this?.errorMessage.shouldBeNull()
     }
 
     private fun givenNewImage(id: String) {
         givenImage(id = id, events = listOf(aActiveStatusEvent()))
     }
 
-    fun givenExistingImage(id: String) {
-        givenImage(id = id, events = listOf(aActiveStatusEvent(), aDeployedStatusEvent()))
-    }
-
-    private fun givenChangedImage(id: String) {
-        givenImage(id = id, events = listOf(aActiveStatusEvent(), aDeployedStatusEvent(), aActiveStatusEvent()))
+    private fun givenChangedImage(id: String, deployTimestamp: Instant) {
+        givenImage(id = id, events = listOf(aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds), aDeployedStatusEvent(timestamp = deployTimestamp), aActiveStatusEvent(timestamp = deployTimestamp + 1.seconds)))
     }
 
     private fun givenImage(id: String, events: List<StatusEvent> = listOf()) {
@@ -173,6 +219,7 @@ class DeployClientTest {
         imageDeps: List<String> = listOf(),
         textStyles: List<String> = listOf(),
         paragraphStyles: List<String> = listOf(),
+        deployTimestamp: Instant,
     ) {
         givenExternalDocumentObject(
             id = id,
@@ -180,7 +227,7 @@ class DeployClientTest {
             imageDeps = imageDeps,
             textStyles = textStyles,
             paragraphStyles = paragraphStyles,
-            events = listOf(aActiveStatusEvent(), aDeployedStatusEvent(), aActiveStatusEvent())
+            events = listOf(aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds), aDeployedStatusEvent(timestamp = deployTimestamp), aActiveStatusEvent(timestamp = deployTimestamp + 1.seconds))
         )
     }
 
@@ -190,6 +237,7 @@ class DeployClientTest {
         imageDeps: List<String> = listOf(),
         textStyles: List<String> = listOf(),
         paragraphStyles: List<String> = listOf(),
+        deployTimestamp: Instant,
     ) {
         givenExternalDocumentObject(
             id,
@@ -197,7 +245,7 @@ class DeployClientTest {
             imageDeps = imageDeps,
             textStyles = textStyles,
             paragraphStyles = paragraphStyles,
-            events = listOf(aActiveStatusEvent(), aDeployedStatusEvent())
+            events = listOf(aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds), aDeployedStatusEvent(timestamp = deployTimestamp, icmPath = "icm://$id.wfd"))
         )
     }
 

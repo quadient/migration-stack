@@ -18,13 +18,13 @@ def existingStructure = migration
 def file = dstFile.toFile()
 file.createParentDirectories()
 file.withWriter { writer ->
-    writer.writeLine("id,name,inspire_path,data_type")
+    writer.writeLine("id,name,origin_locations,inspire_path,data_type")
 
     for (variable in variables) {
         def path = ""
         if (existingStructure && existingStructure.structure.containsKey(variable.id)) {
             path = existingStructure.structure.get(variable.id)
         }
-        writer.writeLine("${Csv.serialize(variable.id)},${Csv.serialize(variable.name)},${path},${Csv.serialize(variable.dataType)}")
+        writer.writeLine("${Csv.serialize(variable.id)},${Csv.serialize(variable.name)},${Csv.serialize(variable.originLocations)},${path},${Csv.serialize(variable.dataType)}")
     }
 }

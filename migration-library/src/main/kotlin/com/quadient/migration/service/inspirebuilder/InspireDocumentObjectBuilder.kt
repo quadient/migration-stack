@@ -50,7 +50,7 @@ import com.quadient.wfdxml.api.layoutnodes.Font
 import com.quadient.wfdxml.api.layoutnodes.Image
 import com.quadient.wfdxml.api.layoutnodes.LocationType
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle
-import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType
+import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType.*
 import com.quadient.wfdxml.api.layoutnodes.TabulatorType
 import com.quadient.wfdxml.api.layoutnodes.data.Data
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
@@ -349,18 +349,25 @@ abstract class InspireDocumentObjectBuilder(
             paragraphStyle.setAlignType(alignType)
 
             definition.firstLineIndent?.let { paragraphStyle.setFirstLineLeftIndent(it.toMeters()) }
-            definition.lineSpacingValue?.let { paragraphStyle.setLineSpacingValue(it.toMeters()) }
 
-            val lineSpacingType = when (definition.lineSpacing) {
-                LineSpacing.Additional -> LineSpacingType.ADDITIONAL
-                LineSpacing.Exact -> LineSpacingType.EXACT
-                LineSpacing.AtLeast -> LineSpacingType.AT_LEAST
-                LineSpacing.MultipleOf -> LineSpacingType.MULTIPLE_OF
-                LineSpacing.ExactFromPreviousWithAdjustLegacy -> LineSpacingType.EXACT_FROM_PREVIOUS_WITH_ADJUST_OLD
-                LineSpacing.ExactFromPreviousWithAdjust -> LineSpacingType.EXACT_FROM_PREVIOUS_WITH_ADJUST
-                LineSpacing.ExactFromPrevious -> LineSpacingType.EXACT_FROM_PREVIOUS
+            val lineSpacing = definition.lineSpacing
+            val (lineSpacingType, lineSpacingValue) = when (lineSpacing) {
+                is LineSpacing.Additional -> Pair(ADDITIONAL, lineSpacing.size?.toMeters())
+                is LineSpacing.AtLeast -> Pair(AT_LEAST, lineSpacing.size?.toMeters())
+                is LineSpacing.Exact -> Pair(EXACT, lineSpacing.size?.toMeters())
+                is LineSpacing.ExactFromPrevious -> Pair(EXACT_FROM_PREVIOUS, lineSpacing.size?.toMeters())
+                is LineSpacing.ExactFromPreviousWithAdjust -> Pair(
+                    EXACT_FROM_PREVIOUS_WITH_ADJUST, lineSpacing.size?.toMeters()
+                )
+
+                is LineSpacing.ExactFromPreviousWithAdjustLegacy -> Pair(
+                    EXACT_FROM_PREVIOUS_WITH_ADJUST_OLD, lineSpacing.size?.toMeters()
+                )
+
+                is LineSpacing.MultipleOf -> Pair(MULTIPLE_OF, lineSpacing.value)
             }
             paragraphStyle.setLineSpacingType(lineSpacingType)
+            lineSpacingValue?.let { paragraphStyle.setLineSpacingValue(it) }
 
             definition.tabs?.let { tabsModel ->
                 paragraphStyle.setUseOutsideTabs(tabsModel.useOutsideTabs)

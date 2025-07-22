@@ -70,7 +70,7 @@ file.withWriter { writer ->
         writer.write("${Csv.serialize(obj.originLocations)},") // Origin locations
         writer.write("$obj.type,") // Type
         writer.write("[${usageMap.get(obj.id)?.join(";") ?: ""}],") // Used in
-        writer.write("${usageMap.get(obj.id)?.size() ?: ""},") // Used in count
+        writer.write("${usageMap.get(obj.id)?.size() ?: "0"},") // Used in count
         writer.write("$stats.internalObjectsCount,") // Internal objects count
         writer.write("[${stats.usedExternalObjects.join(";")}],") // External objects count
         writer.write("$stats.externalObjectsCount,") // External objects count

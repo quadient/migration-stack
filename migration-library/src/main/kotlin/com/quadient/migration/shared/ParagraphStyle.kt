@@ -8,8 +8,27 @@ enum class Alignment {
 }
 
 @Serializable
-enum class LineSpacing {
-    Additional, Exact, AtLeast, MultipleOf, ExactFromPreviousWithAdjustLegacy, ExactFromPreviousWithAdjust, ExactFromPrevious
+sealed class LineSpacing {
+    @Serializable
+    data class Additional(val size: Size?) : LineSpacing()
+
+    @Serializable
+    data class Exact(val size: Size?) : LineSpacing()
+
+    @Serializable
+    data class AtLeast(val size: Size?) : LineSpacing()
+
+    @Serializable
+    data class MultipleOf(val value: Double?) : LineSpacing()
+
+    @Serializable
+    data class ExactFromPreviousWithAdjustLegacy(val size: Size?) : LineSpacing()
+
+    @Serializable
+    data class ExactFromPreviousWithAdjust(val size: Size?) : LineSpacing()
+
+    @Serializable
+    data class ExactFromPrevious(val size: Size?) : LineSpacing()
 }
 
 @Serializable

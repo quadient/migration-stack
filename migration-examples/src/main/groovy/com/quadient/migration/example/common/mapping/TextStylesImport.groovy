@@ -25,8 +25,8 @@ for (line in file) {
 
     if (styleRefId.empty) {
         if (saved == null) {
-            def style = new TextStyleBuilder(values.get("id"))
-                    .name(values.get("name"))
+            def style = new TextStyleBuilder(Csv.deserialize(values.get("id"), String.class))
+                    .name(Csv.deserialize(values.get("name"), String.class))
                     .definition {
                         for (field in definitionFields) {
                             it."$field.name"(Csv.deserialize(values.get(field.name), field.type))
@@ -42,13 +42,13 @@ for (line in file) {
             for (field in definitionFields) {
                 saved.definition."$field.name" = Csv.deserialize(values.get(field.name), field.type)
             }
-            saved.name = values.get("name")
+            saved.name = Csv.deserialize(values.get("name"), String.class)
             migration.textStyleRepository.upsert(saved)
         }
     } else {
         if (saved == null) {
-            def style = new TextStyleBuilder(values.get("id"))
-                    .name(values.get("name"))
+            def style = new TextStyleBuilder(Csv.deserialize(values.get("id"), String.class))
+                    .name(Csv.deserialize(values.get("name"), String.class))
                     .styleRef(styleRefId)
                     .build()
             migration.textStyleRepository.upsert(style)
@@ -57,7 +57,7 @@ for (line in file) {
                 saved.customFields.put("originalDefinition", saved.definition.toString())
             }
 
-            saved.name = values.get("name")
+            saved.name = Csv.deserialize(values.get("name"), String.class)
             saved.definition = new TextStyleRef(styleRefId)
             migration.textStyleRepository.upsert(saved)
         }
