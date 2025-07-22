@@ -893,38 +893,40 @@ class InteractiveDocumentObjectBuilderTest {
                     config, null
                 )
             )
-        } returns """<Layout>
+        } returns """<Workflow>
             <Layout>
-                <Flow>
-                    <Id>79</Id>
-                    <Name>Letter Content</Name>
-                </Flow>
-                <Flow>
-                    <Id>80</Id>
-                    <Name>Flow BT 1</Name>
-                    <CustomProperty>{&quot;customName&quot;:&quot;Logo&quot;}</CustomProperty>
-                </Flow>
-                <Flow>
-                    <Id>81</Id>
-                    <Name>Flow BT 2</Name>
-                    <CustomProperty>{&quot;customName&quot;:&quot;Address Block&quot;}</CustomProperty>
-                </Flow>
-                <Pages>
-                    <InteractiveFlow>
-                        <FlowId>79</FlowId>
-                        <FlowType>Normal</FlowType>
-                    </InteractiveFlow>
-                    <InteractiveFlow>
-                        <FlowId>80</FlowId>
-                        <FlowType>Normal</FlowType>
-                    </InteractiveFlow>
-                    <InteractiveFlow>
-                        <FlowId>81</FlowId>
-                        <FlowType>Normal</FlowType>
-                    </InteractiveFlow>
-                </Pages>
+                <Layout>
+                    <Flow>
+                        <Id>79</Id>
+                        <Name>Letter Content</Name>
+                    </Flow>
+                    <Flow>
+                        <Id>80</Id>
+                        <Name>Flow BT 1</Name>
+                        <CustomProperty>{&quot;customName&quot;:&quot;Logo&quot;}</CustomProperty>
+                    </Flow>
+                    <Flow>
+                        <Id>81</Id>
+                        <Name>Flow BT 2</Name>
+                        <CustomProperty>{&quot;customName&quot;:&quot;Address Block&quot;}</CustomProperty>
+                    </Flow>
+                    <Pages>
+                        <InteractiveFlow>
+                            <FlowId>79</FlowId>
+                            <FlowType>Normal</FlowType>
+                        </InteractiveFlow>
+                        <InteractiveFlow>
+                            <FlowId>80</FlowId>
+                            <FlowType>Normal</FlowType>
+                        </InteractiveFlow>
+                        <InteractiveFlow>
+                            <FlowId>81</FlowId>
+                            <FlowType>Normal</FlowType>
+                        </InteractiveFlow>
+                    </Pages>
+                </Layout>
             </Layout>
-        </Layout>""".trimMargin()
+        </Workflow>""".trimMargin()
 
         // when
         val result = subject.buildDocumentObject(page).let { xmlMapper.readTree(it.trimIndent()) }
@@ -962,25 +964,27 @@ class InteractiveDocumentObjectBuilderTest {
                     config, null
                 )
             )
-        } returns """<Layout>
+        } returns """<Workflow>
             <Layout>
-                <Flow>
-                    <Id>79</Id>
-                    <Name>Letter Content</Name>
-                </Flow>
-                <Flow>
-                    <Id>80</Id>
-                    <Name>Flow BT 1</Name>
-                    <CustomProperty>{&quot;customName&quot;:&quot;Logo&quot;}</CustomProperty>
-                </Flow>
-                <Pages>
-                    <InteractiveFlow>
-                        <FlowId>80</FlowId>
-                        <FlowType>Normal</FlowType>
-                    </InteractiveFlow>
-                </Pages>
+                <Layout>
+                    <Flow>
+                        <Id>79</Id>
+                        <Name>Letter Content</Name>
+                    </Flow>
+                    <Flow>
+                        <Id>80</Id>
+                        <Name>Flow BT 1</Name>
+                        <CustomProperty>{&quot;customName&quot;:&quot;Logo&quot;}</CustomProperty>
+                    </Flow>
+                    <Pages>
+                        <InteractiveFlow>
+                            <FlowId>80</FlowId>
+                            <FlowType>Normal</FlowType>
+                        </InteractiveFlow>
+                    </Pages>
+                </Layout>
             </Layout>
-        </Layout>""".trimMargin()
+        </Workflow>""".trimMargin()
 
         // when
         val result = subject.buildDocumentObject(page).let { xmlMapper.readTree(it.trimIndent()) }

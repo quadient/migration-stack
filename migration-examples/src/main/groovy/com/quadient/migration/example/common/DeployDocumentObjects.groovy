@@ -5,7 +5,15 @@ import com.quadient.migration.example.common.util.ProgressReportWriter
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 def migration = initMigration(this.binding.variables["args"])
-migration.deployClient.deployDocumentObjects()
+def deploymentResult = migration.deployClient.deployDocumentObjects()
+
+if (deploymentResult.errors.size() > 0) {
+    println "Deployment errors: ["
+    deploymentResult.errors.each { error -> println "  ${error.id} - ${error.message}" }
+    println "]"
+} else {
+    println "No errors during deployment."
+}
 
 def report = migration.deployClient.progressReport()
 ProgressReportWriter.writeProgressReport(report, migration.projectConfig.name)

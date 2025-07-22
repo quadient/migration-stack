@@ -141,10 +141,11 @@ class InteractiveDocumentObjectBuilder(
         try {
             val baseTemplateXml = ipsService.wfd2xml(baseTemplatePath)
             val baseTemplateXmlTree = xmlMapper.readTree(baseTemplateXml.trimIndent())
+            val layoutXmlTree = baseTemplateXmlTree["Layout"]["Layout"]
 
             val interactiveFlowNamesToIds = mutableMapOf<String, String>()
 
-            val pagesInteractiveFlowNode = baseTemplateXmlTree["Layout"]["Pages"]["InteractiveFlow"]
+            val pagesInteractiveFlowNode = layoutXmlTree["Pages"]["InteractiveFlow"]
             val interactiveFlowIds = if (pagesInteractiveFlowNode is ArrayNode) {
                 pagesInteractiveFlowNode.map { it["FlowId"].textValue() }
             } else {
@@ -152,7 +153,7 @@ class InteractiveDocumentObjectBuilder(
             }
 
             interactiveFlowIds.forEachIndexed { i, it ->
-                val flowData = baseTemplateXmlTree["Layout"]["Flow"].first { flow -> flow["Id"].textValue() == it }
+                val flowData = layoutXmlTree["Flow"].first { flow -> flow["Id"].textValue() == it }
                 val flowName = flowData["Name"]
                 if (flowName != null) {
                     interactiveFlowNamesToIds[flowName.textValue()] = "Def.InteractiveFlow$i"
