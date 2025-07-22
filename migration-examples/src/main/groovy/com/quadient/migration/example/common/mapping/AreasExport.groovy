@@ -90,7 +90,7 @@ String buildArea(Area area, DocumentObject page, DocumentObject template) {
             default:
                 return it.toString()
         }
-    }.join(";")))
+    }.join(";").replace(",", " ")))
     return builder.toString()
 }
 
