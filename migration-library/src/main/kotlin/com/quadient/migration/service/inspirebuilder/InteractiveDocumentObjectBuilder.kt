@@ -1,5 +1,6 @@
 package com.quadient.migration.service.inspirebuilder
 
+import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.quadient.migration.api.ProjectConfig
@@ -21,7 +22,8 @@ import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
-import kotlin.collections.find
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 class InteractiveDocumentObjectBuilder(
     documentObjectRepository: DocumentObjectInternalRepository,
@@ -46,7 +48,7 @@ class InteractiveDocumentObjectBuilder(
     private val mainFlowId = "Def.MainFlow"
 
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
-    private val baseTemplatesInteractiveFlowNames = mutableMapOf<String, List<String>>()
+    private val baseTemplatesInteractiveFlowNamesToIds = mutableMapOf<String, Map<String, String>>()
 
     override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
         return "icm://Interactive/${projectConfig.interactiveTenant}/${documentObject.type.toInteractiveFolder()}/${
@@ -125,34 +127,55 @@ class InteractiveDocumentObjectBuilder(
     }
 
     fun getInteractiveFlowIdByName(interactiveFlowName: String, baseTemplatePath: String): String? {
-        val baseTemplateInteractiveFlowNames = getBaseTemplateInteractiveFlowNames(baseTemplatePath)
+        val baseTemplateInteractiveFlowNames = getBaseTemplateInteractiveFlowNamesToIds(baseTemplatePath)
 
-        val interactiveFlowIndex = baseTemplateInteractiveFlowNames.indexOf(interactiveFlowName)
-        return if (interactiveFlowIndex > -1) {
-            "Def.InteractiveFlow$interactiveFlowIndex"
-        } else {
-            null
-        }
+        return baseTemplateInteractiveFlowNames[interactiveFlowName]
     }
 
-    fun getBaseTemplateInteractiveFlowNames(baseTemplatePath: String): List<String> {
-        val baseTemplateInteractiveFlowNames = baseTemplatesInteractiveFlowNames[baseTemplatePath]
-        if (baseTemplateInteractiveFlowNames != null) {
-            return baseTemplateInteractiveFlowNames
+    fun getBaseTemplateInteractiveFlowNamesToIds(baseTemplatePath: String): Map<String, String> {
+        val baseTemplateInteractiveFlowNamesToIds = baseTemplatesInteractiveFlowNamesToIds[baseTemplatePath]
+        if (baseTemplateInteractiveFlowNamesToIds != null) {
+            return baseTemplateInteractiveFlowNamesToIds
         }
 
         try {
             val baseTemplateXml = ipsService.wfd2xml(baseTemplatePath)
             val baseTemplateXmlTree = xmlMapper.readTree(baseTemplateXml.trimIndent())
-            val interactiveFlowNames =
-                baseTemplateXmlTree["Property"].find { it["Name"].textValue() == "InteractiveFlowsNames" }
-                    ?.let { it["Value"].textValue() }?.split("\n")?.filter { it.isNotBlank() } ?: emptyList()
 
-            baseTemplatesInteractiveFlowNames[baseTemplatePath] = interactiveFlowNames
-            return interactiveFlowNames
+            val interactiveFlowNamesToIds = mutableMapOf<String, String>()
+
+            val pagesInteractiveFlowNode = baseTemplateXmlTree["Layout"]["Pages"]["InteractiveFlow"]
+            val interactiveFlowIds = if (pagesInteractiveFlowNode is ArrayNode) {
+                pagesInteractiveFlowNode.map { it["FlowId"].textValue() }
+            } else {
+                listOf(pagesInteractiveFlowNode["FlowId"].textValue())
+            }
+
+            interactiveFlowIds.forEachIndexed { i, it ->
+                val flowData = baseTemplateXmlTree["Layout"]["Flow"].first { flow -> flow["Id"].textValue() == it }
+                val flowName = flowData["Name"]
+                if (flowName != null) {
+                    interactiveFlowNamesToIds[flowName.textValue()] = "Def.InteractiveFlow$i"
+                }
+
+                val customProperty = flowData["CustomProperty"]
+                if (customProperty != null) {
+                    val customPropertyObject = Json.decodeFromString<CustomProperty>(customProperty.textValue())
+                    if (customPropertyObject.customName != null) {
+                        interactiveFlowNamesToIds[customPropertyObject.customName] = "Def.InteractiveFlow$i"
+                    }
+                }
+            }
+
+            return interactiveFlowNamesToIds
         } catch (e: Exception) {
             logger.warn("Failed to load interactive flow names from base template '${baseTemplatePath}'.", e)
-            return emptyList()
+            return emptyMap()
         }
     }
+
+    @Serializable
+    data class CustomProperty(
+        val customName: String? = null
+    )
 }

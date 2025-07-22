@@ -871,14 +871,17 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `build page with area interactive flow`() {
+    fun `build page with multiple areas with interactive flow`() {
         val page = aDocObj(
             "P_1", Page, listOf(
+                anArea(listOf(aParagraph(aText("interactive flow text 1"))), interactiveFlowName = "Logo"),
+                anArea(listOf(aParagraph(aText("main flow text 1")))),
+                aParagraph(aText("main flow text 2")),
                 anArea(
-                    listOf(aParagraph(aText("interactive flow text 1"))), interactiveFlowName = "Interactive flow name"
-                ), anArea(listOf(aParagraph(aText("main flow text 1")))), aParagraph(aText("main flow text 2")), anArea(
                     listOf(aParagraph(aText("interactive flow text 2"))), interactiveFlowName = "Def.InteractiveFlow1"
-                ), anArea(listOf(aParagraph(aText("main flow text 3"))), interactiveFlowName = "Def.MainFlow")
+                ),
+                anArea(listOf(aParagraph(aText("main flow text 3"))), interactiveFlowName = "Def.MainFlow"),
+                anArea(listOf(aParagraph(aText("interactive flow text 3"))), interactiveFlowName = "Flow BT 1")
             )
         )
 
@@ -888,7 +891,38 @@ class InteractiveDocumentObjectBuilderTest {
                     config, null
                 )
             )
-        } returns "<Layout><Property><Name>InteractiveFlowsNames</Name><Value>FlowA\nInteractive flow name\nFlowC\n</Value></Property><Property><Name>SomeProp</Name><Value>SomePropValue</Value></Property></Layout>"
+        } returns """<Layout>
+            <Layout>
+                <Flow>
+                    <Id>79</Id>
+                    <Name>Letter Content</Name>
+                </Flow>
+                <Flow>
+                    <Id>80</Id>
+                    <Name>Flow BT 1</Name>
+                    <CustomProperty>{&quot;customName&quot;:&quot;Logo&quot;}</CustomProperty>
+                </Flow>
+                <Flow>
+                    <Id>81</Id>
+                    <Name>Flow BT 2</Name>
+                    <CustomProperty>{&quot;customName&quot;:&quot;Address Block&quot;}</CustomProperty>
+                </Flow>
+                <Pages>
+                    <InteractiveFlow>
+                        <FlowId>79</FlowId>
+                        <FlowType>Normal</FlowType>
+                    </InteractiveFlow>
+                    <InteractiveFlow>
+                        <FlowId>80</FlowId>
+                        <FlowType>Normal</FlowType>
+                    </InteractiveFlow>
+                    <InteractiveFlow>
+                        <FlowId>81</FlowId>
+                        <FlowType>Normal</FlowType>
+                    </InteractiveFlow>
+                </Pages>
+            </Layout>
+        </Layout>""".trimMargin()
 
         // when
         val result = subject.buildDocumentObject(page).let { xmlMapper.readTree(it.trimIndent()) }
@@ -906,9 +940,53 @@ class InteractiveDocumentObjectBuilderTest {
         val interactiveFlowContentFlowId = interactiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
         val interactiveFlowContentFlow = result["Flow"].last { it["Id"].textValue() == interactiveFlowContentFlowId }
         val interactiveFlowParagraphs = interactiveFlowContentFlow["FlowContent"]["P"]
-        interactiveFlowParagraphs.size().shouldBeEqualTo(2)
+        interactiveFlowParagraphs.size().shouldBeEqualTo(3)
         interactiveFlowParagraphs[0]["T"][""].textValue().shouldBeEqualTo("interactive flow text 1")
         interactiveFlowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("interactive flow text 2")
+        interactiveFlowParagraphs[2]["T"][""].textValue().shouldBeEqualTo("interactive flow text 3")
+    }
+
+    @Test
+    fun `build page with single area with interactive flow`() {
+        val page = aDocObj(
+            "P_1", Page, listOf(
+                anArea(listOf(aParagraph(aText("interactive flow text 1"))), interactiveFlowName = "Logo")
+            )
+        )
+
+        every {
+            ipsService.wfd2xml(
+                getBaseTemplateFullPath(
+                    config, null
+                )
+            )
+        } returns """<Layout>
+            <Layout>
+                <Flow>
+                    <Id>79</Id>
+                    <Name>Letter Content</Name>
+                </Flow>
+                <Flow>
+                    <Id>80</Id>
+                    <Name>Flow BT 1</Name>
+                    <CustomProperty>{&quot;customName&quot;:&quot;Logo&quot;}</CustomProperty>
+                </Flow>
+                <Pages>
+                    <InteractiveFlow>
+                        <FlowId>80</FlowId>
+                        <FlowType>Normal</FlowType>
+                    </InteractiveFlow>
+                </Pages>
+            </Layout>
+        </Layout>""".trimMargin()
+
+        // when
+        val result = subject.buildDocumentObject(page).let { xmlMapper.readTree(it.trimIndent()) }
+
+        val interactiveFlow = result["Flow"].first { it["Id"].textValue() == "Def.InteractiveFlow0" }
+        val interactiveFlowContentFlowId = interactiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val interactiveFlowContentFlow = result["Flow"].last { it["Id"].textValue() == interactiveFlowContentFlowId }
+        interactiveFlowContentFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("interactive flow text 1")
     }
 
     @Test
