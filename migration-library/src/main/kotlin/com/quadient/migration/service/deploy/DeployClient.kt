@@ -611,9 +611,11 @@ sealed class DeployClient(
                 DeployKind.Create
             }
         } else if (lastEvent is Deployed && lastEvent.icmPath != nextIcmPath) {
-            return DeployKind.Create
+            DeployKind.Create
+        } else if (lastEvent is StatusError) {
+            DeployKind.Create
         } else {
-            return DeployKind.Keep
+            DeployKind.Keep
         }
     }
 
