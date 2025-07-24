@@ -549,11 +549,7 @@ sealed class DeployClient(
         } else if (previousDeployEvent != null) {
             when (lastEvent) {
                 is Active -> getLastStatus(id, previousDeployEvent, resourceType, output, internal, isPage)
-                is Deployed -> if (lastEvent.deploymentId == previousDeployEvent.id) {
-                    LastStatus.Overwritten(lastEvent.icmPath, lastEvent.deploymentId, lastEvent.timestamp)
-                } else {
-                    LastStatus.Unchanged(lastEvent.icmPath, lastEvent.deploymentId, lastEvent.timestamp)
-                }
+                is Deployed -> LastStatus.Overwritten(lastEvent.icmPath, lastEvent.deploymentId, lastEvent.timestamp)
                 is StatusError -> LastStatus.Error(lastEvent.icmPath, lastEvent.deploymentId, lastEvent.timestamp, lastEvent.error)
                 null -> unreachable("lastEvent should not be null because previousDeployEvent exists")
             }
