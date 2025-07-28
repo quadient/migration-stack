@@ -2,28 +2,28 @@ package com.quadient.migration.service
 
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.data.ImageModel
-import kotlin.text.removePrefix
+import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.isNullOrBlank
+import com.quadient.migration.shared.toIcmPath
 
-fun getFolder(projectConfig: ProjectConfig, icmFolder: String? = null): String {
-    val folder = when {
-        icmFolder != null -> icmFolder
-        !projectConfig.defaultTargetFolder.isNullOrBlank() -> projectConfig.defaultTargetFolder
-        else -> return ""
+fun resolveTargetDir(defaultTargetFolder: IcmPath? = null, specificTargetFolder: IcmPath? = null): IcmPath? {
+    return when {
+        !specificTargetFolder.isNullOrBlank() -> specificTargetFolder
+        !defaultTargetFolder.isNullOrBlank() -> defaultTargetFolder
+        else -> null
     }
-
-    return "${folder.removePrefix("/").removeSuffix("/")}/"
 }
 
-fun getBaseTemplateFullPath(config: ProjectConfig, documentObjectBaseTemplatePath: String?): String {
+fun getBaseTemplateFullPath(config: ProjectConfig, documentObjectBaseTemplatePath: String?): IcmPath {
     val baseTemplatePath = documentObjectBaseTemplatePath ?: config.baseTemplatePath
+    val path = baseTemplatePath.toIcmPath()
 
-    val normalizedPath = baseTemplatePath.replace("\\", "/").replace("vcs", "icm")
+    if (path.isAbsolute()) return path
 
-    val isFullPath = normalizedPath.startsWith("icm://")
-    if (isFullPath) return normalizedPath
-
-    val relativePath = normalizedPath.removePrefix("/").removeSuffix("/")
-    return "icm://Interactive/${config.interactiveTenant}/BaseTemplates/$relativePath"
+    return "icm://Interactive".toIcmPath()
+        .join(config.interactiveTenant)
+        .join("BaseTemplates")
+        .join(path)
 }
 
 fun imageExtension(image: ImageModel): String {

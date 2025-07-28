@@ -16,10 +16,12 @@ import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
 import com.quadient.migration.service.getBaseTemplateFullPath
-import com.quadient.migration.service.getFolder
 import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.orDefault
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import kotlinx.serialization.Serializable
@@ -51,19 +53,50 @@ class InteractiveDocumentObjectBuilder(
     private val baseTemplatesInteractiveFlowNamesToIds = mutableMapOf<String, Map<String, String>>()
 
     override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
-        return "icm://Interactive/${projectConfig.interactiveTenant}/${documentObject.type.toInteractiveFolder()}/${
-            getFolder(projectConfig, documentObject.targetFolder)
-        }${documentObject.nameOrId()}.jld"
+        val fileName = "${documentObject.nameOrId()}.jld"
+
+        if (documentObject.targetFolder?.isAbsolute() == true) {
+            return documentObject.targetFolder.join(fileName).toString()
+        }
+
+        val tenant = projectConfig.interactiveTenant
+        val documentObjectType = documentObject.type.toInteractiveFolder()
+
+        return IcmPath.root()
+            .join("Interactive")
+            .join(tenant)
+            .join(documentObjectType)
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, documentObject.targetFolder))
+            .join(fileName)
+            .toString()
     }
 
     override fun getImagePath(image: ImageModel): String {
-        return "icm://Interactive/${projectConfig.interactiveTenant}/Resources/Images/${
-            getFolder(projectConfig, image.targetFolder)
-        }${image.nameOrId()}${imageExtension(image)}"
+        val fileName = "${image.nameOrId()}${imageExtension(image)}"
+
+        if (image.targetFolder?.isAbsolute() == true) {
+            return image.targetFolder.join(fileName).toString()
+        }
+
+        val imageConfigPath = projectConfig.paths.images
+
+        return IcmPath.root()
+            .join("Interactive")
+            .join(projectConfig.interactiveTenant)
+            .join(imageConfigPath.orDefault("Resources/Images"))
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, image.targetFolder))
+            .join(fileName)
+            .toString()
     }
 
     override fun getStyleDefinitionPath(): String {
-        return "icm://Interactive/${projectConfig.interactiveTenant}/CompanyStyles/${getFolder(projectConfig)}${projectConfig.name}Styles.wfd"
+        return IcmPath.root()
+            .join("Interactive")
+            .join(projectConfig.interactiveTenant)
+            .join("CompanyStyles")
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder))
+            .join("${projectConfig.name}Styles.wfd")
+            .toString()
     }
 
     override fun buildDocumentObject(documentObject: DocumentObjectModel): String {
@@ -82,7 +115,7 @@ class InteractiveDocumentObjectBuilder(
                     val interactiveFlowId = if (it.interactiveFlowName.startsWith("Def.")) {
                         it.interactiveFlowName
                     } else {
-                        getInteractiveFlowIdByName(it.interactiveFlowName, baseTemplatePath)
+                        getInteractiveFlowIdByName(it.interactiveFlowName, baseTemplatePath.toString())
                     }
 
                     if (interactiveFlowId.isNullOrBlank()) {

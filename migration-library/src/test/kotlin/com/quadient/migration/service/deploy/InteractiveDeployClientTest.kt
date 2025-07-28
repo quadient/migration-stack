@@ -19,10 +19,10 @@ import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.service.Storage
-import com.quadient.migration.service.getFolder
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
+import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.tools.aActiveStatus
@@ -617,21 +617,15 @@ class InteractiveDeployClientTest {
     private fun mockDocumentObject(documentObject: DocumentObjectModel): DocumentObjectModel {
         val interactiveFolder = documentObject.type.toInteractiveFolder()
 
-        every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns "icm://Interactive/$tenant/$interactiveFolder/${
-            getFolder(
-                config, documentObject.targetFolder
-            )
-        }${documentObject.nameOrId()}.jld"
+        val dir = resolveTargetDir(config.defaultTargetFolder, documentObject.targetFolder)
+        every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns "icm://Interactive/$tenant/$interactiveFolder/$dir/${documentObject.nameOrId()}.jld"
 
         return documentObject
     }
 
     private fun mockImage(image: ImageModel, success: Boolean = true): ImageModel {
-        every { documentObjectBuilder.getImagePath(image) } returns "icm://Interactive/$tenant/Resources/Images/${
-            getFolder(
-                config
-            )
-        }${image.sourcePath}"
+        val dir = resolveTargetDir(config.defaultTargetFolder)
+        every { documentObjectBuilder.getImagePath(image) } returns "icm://Interactive/$tenant/Resources/Images/$dir/${image.sourcePath}"
 
         every { imageRepository.findModel(image.id) } returns if (success) { image } else { null }
         if (!image.sourcePath.isNullOrBlank()) {

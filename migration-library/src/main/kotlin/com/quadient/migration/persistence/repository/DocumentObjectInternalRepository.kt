@@ -12,6 +12,7 @@ import com.quadient.migration.persistence.table.DocumentObjectTable.options
 import com.quadient.migration.persistence.table.DocumentObjectTable.targetFolder
 import com.quadient.migration.persistence.table.DocumentObjectTable.type
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmPath
 import org.jetbrains.exposed.v1.core.ResultRow
 
 class DocumentObjectInternalRepository(table: DocumentObjectTable, projectName: String) :
@@ -23,7 +24,7 @@ class DocumentObjectInternalRepository(table: DocumentObjectTable, projectName: 
             type = DocumentObjectType.valueOf(row[type]),
             content = row[content]?.map(DocumentContentModel::fromDbContent) ?: emptyList(),
             internal = row[internal],
-            targetFolder = row[targetFolder],
+            targetFolder = row[targetFolder]?.let(IcmPath::from),
             originLocations = row[table.originLocations],
             customFields = row[table.customFields],
             created = row[table.created],

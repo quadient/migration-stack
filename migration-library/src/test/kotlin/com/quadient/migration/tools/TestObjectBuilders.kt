@@ -7,6 +7,7 @@ import com.quadient.migration.api.InspireConfig
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.IpsConfig
 import com.quadient.migration.api.MigConfig
+import com.quadient.migration.api.PathsConfig
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
@@ -48,6 +49,7 @@ import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SuperOrSubscript
@@ -107,7 +109,7 @@ fun aBlockModel(
         name = name ?: "block$id",
         type = type,
         internal = internal,
-        targetFolder = targetFolder,
+        targetFolder = targetFolder?.let(IcmPath::from),
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
         created = Clock.System.now(),
@@ -136,14 +138,21 @@ fun aInspireConfig(ipsConfig: IpsConfig = IpsConfig(host = "localhost", port = 3
 }
 
 fun aProjectConfig(
-    baseTemplatePath: String = "templatepath", interactiveTenant: String = "tenant", targetDefaultFolder: String? = null
+    baseTemplatePath: String = "templatepath",
+    interactiveTenant: String = "tenant",
+    targetDefaultFolder: String? = null,
+    paths: PathsConfig = PathsConfig(),
+    output: InspireOutput = InspireOutput.Interactive,
+    name: String = "name",
 ): ProjectConfig {
     return ProjectConfig(
-        name = "name",
+        name = name,
         baseTemplatePath = baseTemplatePath,
         inputDataPath = "inputpath",
         interactiveTenant = interactiveTenant,
-        defaultTargetFolder = targetDefaultFolder
+        defaultTargetFolder = targetDefaultFolder?.let(IcmPath::from),
+        paths = paths,
+        inspireOutput = output,
     )
 }
 

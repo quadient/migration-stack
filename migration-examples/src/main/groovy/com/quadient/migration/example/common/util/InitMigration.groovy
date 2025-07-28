@@ -4,6 +4,7 @@ import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.MigConfig
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.shared.IcmPath
 
 import java.nio.charset.StandardCharsets
 
@@ -20,10 +21,10 @@ static Migration initMigration(String[] args) {
     def baseTemplatePath = getValueOfArg("--base-template-path", argsList).orElse(fileProjectConfig.baseTemplatePath)
     def inputDataPath = getValueOfArg("--input-data-path", argsList).orElse(fileProjectConfig.inputDataPath)
     def interactiveTenant = getValueOfArg("--interactive-tenant", argsList).orElse(fileProjectConfig.interactiveTenant)
-    def defaultTargetFolder = getValueOfArg("--default-target-folder", argsList).orElse(fileProjectConfig.defaultTargetFolder)
+    def defaultTargetFolder = getValueOfArg("--default-target-folder", argsList).orElse(fileProjectConfig.defaultTargetFolder.toString())
     def inspireOutput = getValueOfArg("--inspire-output", argsList).orElse(fileProjectConfig.inspireOutput.toString())
 
-    def projectConfig = new ProjectConfig(projectName, baseTemplatePath, inputDataPath, interactiveTenant, defaultTargetFolder, InspireOutput.valueOf(inspireOutput), fileProjectConfig.context)
+    def projectConfig = new ProjectConfig(projectName, baseTemplatePath, inputDataPath, interactiveTenant, IcmPath.from(defaultTargetFolder), fileProjectConfig.paths, InspireOutput.valueOf(inspireOutput), fileProjectConfig.context)
     println("Preparing to start migration script with $projectConfig.")
 
     return new Migration(migConfig, projectConfig)

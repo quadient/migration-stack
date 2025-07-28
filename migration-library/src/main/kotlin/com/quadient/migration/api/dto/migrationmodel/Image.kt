@@ -24,7 +24,7 @@ data class Image(
                 sourcePath = model.sourcePath,
                 options = model.options,
                 imageType = model.imageType,
-                targetFolder = model.targetFolder
+                targetFolder = model.targetFolder?.toString()
             )
         }
     }

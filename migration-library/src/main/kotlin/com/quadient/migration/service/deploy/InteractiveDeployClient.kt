@@ -112,7 +112,7 @@ class InteractiveDeployClient(
                 val runCommandType = it.type.toRunCommandType()
 
                 val editResult = ipsService.deployJld(
-                    baseTemplate = getBaseTemplateFullPath(projectConfig, it.baseTemplate),
+                    baseTemplate = getBaseTemplateFullPath(projectConfig, it.baseTemplate).toString(),
                     type = runCommandType,
                     moduleName = "DocumentLayout",
                     xmlContent = documentObjectXml,

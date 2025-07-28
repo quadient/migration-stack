@@ -1,6 +1,9 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.PathsConfig
+import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModel
@@ -25,7 +28,9 @@ import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.BinOp.*
 import com.quadient.migration.shared.DataType
+import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.*
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
@@ -57,9 +62,11 @@ import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import javax.sound.sampled.Line
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 
 class InteractiveDocumentObjectBuilderTest {
     val documentObjectRepository = mockk<DocumentObjectInternalRepository>()
@@ -72,17 +79,7 @@ class InteractiveDocumentObjectBuilderTest {
     val config = aProjectConfig()
     val ipsService = mockk<IpsService>()
 
-    private val subject = InteractiveDocumentObjectBuilder(
-        documentObjectRepository,
-        textStyleRepository,
-        paragraphStyleRepository,
-        variableRepository,
-        variableStructureRepository,
-        displayRuleRepository,
-        imageRepository,
-        config,
-        ipsService,
-    )
+    private val subject = aSubject(config)
 
     private val xmlMapper = XmlMapper().also { it.findAndRegisterModules() }
 
@@ -90,6 +87,7 @@ class InteractiveDocumentObjectBuilderTest {
     fun setUp() {
         every { variableStructureRepository.listAllModel() } returns emptyList()
     }
+
 
     @Test
     fun `build of simple block with string and var ref that is not part of structure results in single flow with one paragraph and text`() {
@@ -891,7 +889,7 @@ class InteractiveDocumentObjectBuilderTest {
             ipsService.wfd2xml(
                 getBaseTemplateFullPath(
                     config, null
-                )
+                ).toString()
             )
         } returns """<Workflow>
             <Layout>
@@ -962,7 +960,7 @@ class InteractiveDocumentObjectBuilderTest {
             ipsService.wfd2xml(
                 getBaseTemplateFullPath(
                     config, null
-                )
+                ).toString()
             )
         } returns """<Workflow>
             <Layout>
@@ -1080,5 +1078,116 @@ class InteractiveDocumentObjectBuilderTest {
     private fun mockRule(rule: DisplayRuleModel): DisplayRuleModel {
         every { displayRuleRepository.findModelOrFail(rule.id) } returns rule
         return rule
+    }
+
+    private fun aSubject(config: ProjectConfig) = InteractiveDocumentObjectBuilder(
+        documentObjectRepository,
+        textStyleRepository,
+        paragraphStyleRepository,
+        variableRepository,
+        variableStructureRepository,
+        displayRuleRepository,
+        imageRepository,
+        config,
+        ipsService,
+    )
+
+    @Nested
+    inner class PathTest {
+
+        @ParameterizedTest
+        @CsvSource(
+            // projectCfg.paths ,targetFolder   ,defaultTargetFolder,expected
+            "               ,                   ,                   ,icm://Interactive/tenant/Resources/Images/Image_T_1.jpg",
+            "null           ,null               ,null               ,icm://Interactive/tenant/Resources/Images/Image_T_1.jpg",
+            "null           ,                   ,                   ,icm://Interactive/tenant/Resources/Images/Image_T_1.jpg",
+            "               ,null               ,                   ,icm://Interactive/tenant/Resources/Images/Image_T_1.jpg",
+            "               ,                   ,null               ,icm://Interactive/tenant/Resources/Images/Image_T_1.jpg",
+            "               ,relative           ,                   ,icm://Interactive/tenant/Resources/Images/relative/Image_T_1.jpg",
+            "               ,relative           ,null               ,icm://Interactive/tenant/Resources/Images/relative/Image_T_1.jpg",
+            "root           ,relative           ,                   ,icm://Interactive/tenant/root/relative/Image_T_1.jpg",
+            "root           ,relative           ,null               ,icm://Interactive/tenant/root/relative/Image_T_1.jpg",
+            "               ,icm://absolute/    ,                   ,icm://absolute/Image_T_1.jpg",
+            "/root/         ,icm://absolute/    ,                   ,icm://absolute/Image_T_1.jpg",
+            "               ,icm://absolute/    ,shouldIgnoreToo    ,icm://absolute/Image_T_1.jpg",
+            "shouldIgnore   ,icm://absolute/    ,shouldIgnoreToo    ,icm://absolute/Image_T_1.jpg",
+            "imagesConfig   ,                   ,                   ,icm://Interactive/tenant/imagesConfig/Image_T_1.jpg",
+            "/imagesConfig/ ,                   ,                   ,icm://Interactive/tenant/imagesConfig/Image_T_1.jpg",
+            "imagesConfig   ,subDir             ,                   ,icm://Interactive/tenant/imagesConfig/subDir/Image_T_1.jpg",
+            "imagesConfig   ,                   ,default            ,icm://Interactive/tenant/imagesConfig/default/Image_T_1.jpg",
+            "imagesConfig   ,subDir             ,default            ,icm://Interactive/tenant/imagesConfig/subDir/Image_T_1.jpg",
+            "               ,                   ,default            ,icm://Interactive/tenant/Resources/Images/default/Image_T_1.jpg",
+            "               ,subDir             ,shouldIgnore       ,icm://Interactive/tenant/Resources/Images/subDir/Image_T_1.jpg",
+        )
+        fun testImagesPath(imagesPath: String?, targetFolder: String?, defaultTargetFolder: String?, expected: String) {
+            val config = aProjectConfig(
+                output = InspireOutput.Interactive,
+                paths = PathsConfig(images = imagesPath.nullToNull()?.let(IcmPath::from)),
+                targetDefaultFolder = defaultTargetFolder.nullToNull(),
+                interactiveTenant = "tenant"
+            )
+            val pathTestSubject = aSubject(config)
+            val image = aImage("T_1", targetFolder = targetFolder.nullToNull())
+
+            val path = pathTestSubject.getImagePath(image)
+
+            path.shouldBeEqualTo(expected)
+        }
+
+        @ParameterizedTest
+        @CsvSource(
+            // targetFolder   ,defaultTargetFolder  ,expected
+            "                   ,                   ,icm://Interactive/tenant/Templates/T_1name.jld",
+            "null               ,                   ,icm://Interactive/tenant/Templates/T_1name.jld",
+            "                   ,null               ,icm://Interactive/tenant/Templates/T_1name.jld",
+            "null               ,null               ,icm://Interactive/tenant/Templates/T_1name.jld",
+            "relative           ,                   ,icm://Interactive/tenant/Templates/relative/T_1name.jld",
+            "relative           ,null               ,icm://Interactive/tenant/Templates/relative/T_1name.jld",
+            "relative           ,default            ,icm://Interactive/tenant/Templates/relative/T_1name.jld",
+            "icm://absolute/    ,                   ,icm://absolute/T_1name.jld",
+            "icm://absolute/    ,default            ,icm://absolute/T_1name.jld",
+            "                   ,default            ,icm://Interactive/tenant/Templates/default/T_1name.jld",
+            "null               ,default            ,icm://Interactive/tenant/Templates/default/T_1name.jld",
+        )
+        fun testDocumentObjectPath(targetFolder: String?, defaultTargetFolder: String?, expected: String) {
+            val config = aProjectConfig(
+                output = InspireOutput.Interactive,
+                targetDefaultFolder = defaultTargetFolder.nullToNull(),
+                interactiveTenant = "tenant"
+            )
+            val pathTestSubject = aSubject(config)
+            val image = aDocObj("T_1", type = DocumentObjectType.Template, targetFolder = targetFolder.nullToNull())
+
+            val path = pathTestSubject.getDocumentObjectPath(image)
+
+            path.shouldBeEqualTo(expected)
+        }
+
+        @ParameterizedTest
+        @CsvSource(
+            // defaultTargetFolder  ,expected
+            "                       ,icm://Interactive/tenant/CompanyStyles/projectNameStyles.wfd",
+            "null                   ,icm://Interactive/tenant/CompanyStyles/projectNameStyles.wfd",
+            "default                ,icm://Interactive/tenant/CompanyStyles/default/projectNameStyles.wfd",
+        )
+        fun testCompanyStylesPath(defaultTargetFolder: String?, expected: String) {
+            val config = aProjectConfig(
+                name = "projectName",
+                output = InspireOutput.Interactive,
+                targetDefaultFolder = defaultTargetFolder.nullToNull(),
+                interactiveTenant = "tenant"
+            )
+            val pathTestSubject = aSubject(config)
+
+            val path = pathTestSubject.getStyleDefinitionPath()
+
+            path.shouldBeEqualTo(expected)
+        }
+
+        private fun String?.nullToNull() = when (this?.trim()) {
+            "null" -> null
+            null -> ""
+            else -> this.trim()
+        }
     }
 }

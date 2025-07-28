@@ -6,6 +6,7 @@ import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.persistence.migrationmodel.DocumentContentEntity
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmPath
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.json.jsonb
@@ -26,7 +27,7 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
             type = DocumentObjectType.valueOf(result[type]),
             content = result[content]?.map(DocumentContentModel::fromDbContent) ?: emptyList(),
             internal = result[internal],
-            targetFolder = result[targetFolder],
+            targetFolder = result[targetFolder]?.let(IcmPath::from),
             originLocations = result[originLocations],
             customFields = result[customFields],
             created = result[created],

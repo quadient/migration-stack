@@ -49,6 +49,7 @@ import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.GroupOp
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
@@ -76,7 +77,7 @@ fun aDocObj(
         type = type,
         content = content,
         internal = internal,
-        targetFolder = targetFolder,
+        targetFolder = targetFolder?.let(IcmPath::from),
         originLocations = emptyList(),
         customFields = emptyMap<String, String>(),
         created = Clock.System.now(),
@@ -107,7 +108,7 @@ fun aBlock(
         type = type,
         content = content,
         internal = internal,
-        targetFolder = targetFolder,
+        targetFolder = targetFolder?.let(IcmPath::from),
         originLocations = originLocations,
         customFields = customFields,
         created = created,
@@ -355,7 +356,7 @@ fun aImage(
         sourcePath = sourcePath,
         imageType = imageType,
         options = options,
-        targetFolder = targetFolder
+        targetFolder = targetFolder?.let(IcmPath::from)
     )
 }
 

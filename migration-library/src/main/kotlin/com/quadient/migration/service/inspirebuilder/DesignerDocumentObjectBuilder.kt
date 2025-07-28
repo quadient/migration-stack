@@ -17,10 +17,11 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
-import com.quadient.migration.service.getFolder
 import com.quadient.migration.service.imageExtension
+import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.millimeters
@@ -54,15 +55,39 @@ class DesignerDocumentObjectBuilder(
     val defaultPosition = Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters())
 
     override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
-        return "icm://${getFolder(projectConfig, documentObject.targetFolder)}${documentObject.nameOrId()}.wfd"
+        val fileName = "${documentObject.nameOrId()}.wfd"
+
+        if (documentObject.targetFolder?.isAbsolute() == true) {
+            return documentObject.targetFolder.join(fileName).toString()
+        }
+
+        return IcmPath.root()
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, documentObject.targetFolder))
+            .join(fileName)
+            .toString()
     }
 
     override fun getImagePath(image: ImageModel): String {
-        return "icm://${getFolder(projectConfig, image.targetFolder)}${image.nameOrId()}${imageExtension(image)}"
+        val fileName = "${image.nameOrId()}${imageExtension(image)}"
+
+        if (image.targetFolder?.isAbsolute() == true) {
+            return image.targetFolder.join(fileName).toString()
+        }
+
+        val imageConfigPath = projectConfig.paths.images
+
+        return IcmPath.root()
+            .join(imageConfigPath)
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, image.targetFolder))
+            .join(fileName)
+            .toString()
     }
 
     override fun getStyleDefinitionPath(): String {
-        return "icm://${getFolder(projectConfig)}${projectConfig.name}Styles.wfd"
+       return IcmPath.root()
+               .join(resolveTargetDir(projectConfig.defaultTargetFolder))
+               .join("${projectConfig.name}Styles.wfd")
+               .toString()
     }
 
     override fun buildDocumentObject(documentObject: DocumentObjectModel): String {

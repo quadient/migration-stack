@@ -3,6 +3,7 @@ package com.quadient.migration.data
 import com.quadient.migration.service.RefValidatable
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmPath
 import kotlinx.datetime.Instant
 
 data class DocumentObjectModel(
@@ -11,7 +12,7 @@ data class DocumentObjectModel(
     val type: DocumentObjectType,
     val content: List<DocumentContentModel>,
     val internal: Boolean,
-    val targetFolder: String? = null,
+    val targetFolder: IcmPath? = null,
     override val originLocations: List<String>,
     override val customFields: Map<String, String>,
     override val created: Instant,

@@ -30,7 +30,7 @@ data class DocumentObject(
                 type = model.type,
                 content = model.content.map { DocumentContent.fromModelContent(it) },
                 internal = model.internal,
-                targetFolder = model.targetFolder,
+                targetFolder = model.targetFolder?.toString(),
                 displayRuleRef = model.displayRuleRef?.let(DisplayRuleRef::fromModel),
                 baseTemplate = model.baseTemplate,
                 options = model.options,

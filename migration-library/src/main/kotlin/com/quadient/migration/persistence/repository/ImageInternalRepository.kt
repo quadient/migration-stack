@@ -3,6 +3,7 @@ package com.quadient.migration.persistence.repository
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.persistence.table.ImageTable
 import com.quadient.migration.persistence.table.MigrationObjectTable
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import org.jetbrains.exposed.v1.core.ResultRow
 
@@ -19,7 +20,7 @@ class ImageInternalRepository(
             sourcePath = row[ImageTable.sourcePath],
             imageType = ImageType.valueOf(row[ImageTable.imageType]),
             options = row[ImageTable.options],
-            targetFolder = row[ImageTable.targetFolder]
+            targetFolder = row[ImageTable.targetFolder]?.let(IcmPath::from),
         )
     }
 }

@@ -1,6 +1,9 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.PathsConfig
+import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModel
@@ -20,7 +23,9 @@ import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
 import com.quadient.migration.shared.BinOp
+import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.*
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.PageOptions
@@ -43,7 +48,10 @@ import com.quadient.migration.tools.shouldBeEqualTo
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 
 class DesignerDocumentObjectBuilderTest {
     val documentObjectRepository = mockk<DocumentObjectInternalRepository>()
@@ -55,16 +63,7 @@ class DesignerDocumentObjectBuilderTest {
     val imageRepository = mockk<ImageInternalRepository>()
     val config = aProjectConfig(targetDefaultFolder = "defaultFolder")
 
-    private val subject = DesignerDocumentObjectBuilder(
-        documentObjectRepository,
-        textStyleRepository,
-        paragraphStyleRepository,
-        variableRepository,
-        variableStructureRepository,
-        displayRuleRepository,
-        imageRepository,
-        config,
-    )
+    private val subject = aSubject(config)
 
     private val xmlMapper = XmlMapper().also { it.findAndRegisterModules() }
 
@@ -73,18 +72,6 @@ class DesignerDocumentObjectBuilderTest {
         every { variableStructureRepository.listAllModel() } returns emptyList()
         every { textStyleRepository.listAllModel() } returns emptyList()
         every { paragraphStyleRepository.listAllModel() } returns emptyList()
-    }
-
-    @Test
-    fun `getDocumentObjectPath returns correct path`() {
-        // given
-        val template = aDocObj("T_1", Template, targetFolder = null)
-
-        // when
-        val path = subject.getDocumentObjectPath(template)
-
-        // then
-        path.shouldBeEqualTo("icm://${config.defaultTargetFolder}/${template.nameOrId()}.wfd")
     }
 
     @Test
@@ -529,5 +516,112 @@ class DesignerDocumentObjectBuilderTest {
     private fun mockVar(variable: VariableModel): VariableModel {
         every { variableRepository.findModelOrFail(variable.id) } returns variable
         return variable
+    }
+
+    private fun aSubject(config: ProjectConfig) = DesignerDocumentObjectBuilder(
+        documentObjectRepository,
+        textStyleRepository,
+        paragraphStyleRepository,
+        variableRepository,
+        variableStructureRepository,
+        displayRuleRepository,
+        imageRepository,
+        config,
+    )
+
+    @Nested
+    inner class PathTest {
+
+        @ParameterizedTest
+        @CsvSource(
+            // projectCfg.paths ,targetFolder   ,defaultTargetFolder,expected
+            "               ,                   ,                   ,icm://Image_T_1.jpg",
+            "null           ,null               ,null               ,icm://Image_T_1.jpg",
+            "null           ,                   ,                   ,icm://Image_T_1.jpg",
+            "               ,null               ,                   ,icm://Image_T_1.jpg",
+            "               ,                   ,null               ,icm://Image_T_1.jpg",
+            "               ,relative           ,                   ,icm://relative/Image_T_1.jpg",
+            "               ,relative           ,null               ,icm://relative/Image_T_1.jpg",
+            "root           ,relative           ,                   ,icm://root/relative/Image_T_1.jpg",
+            "root           ,relative           ,null               ,icm://root/relative/Image_T_1.jpg",
+            "               ,icm://absolute/    ,                   ,icm://absolute/Image_T_1.jpg",
+            "/root/         ,icm://absolute/    ,                   ,icm://absolute/Image_T_1.jpg",
+            "               ,icm://absolute/    ,shouldIgnoreToo    ,icm://absolute/Image_T_1.jpg",
+            "shouldIgnore   ,icm://absolute/    ,shouldIgnoreToo    ,icm://absolute/Image_T_1.jpg",
+            "imagesConfig   ,                   ,                   ,icm://imagesConfig/Image_T_1.jpg",
+            "/imagesConfig/ ,                   ,                   ,icm://imagesConfig/Image_T_1.jpg",
+            "imagesConfig   ,subDir             ,                   ,icm://imagesConfig/subDir/Image_T_1.jpg",
+            "imagesConfig   ,                   ,default            ,icm://imagesConfig/default/Image_T_1.jpg",
+            "imagesConfig   ,subDir             ,default            ,icm://imagesConfig/subDir/Image_T_1.jpg",
+            "               ,                   ,default            ,icm://default/Image_T_1.jpg",
+            "               ,subDir             ,shouldIgnore       ,icm://subDir/Image_T_1.jpg",
+        )
+        fun testImagesPath(imagesPath: String?, targetFolder: String?, defaultTargetFolder: String?, expected: String) {
+            val config = aProjectConfig(
+                output = InspireOutput.Designer,
+                paths = PathsConfig(images = imagesPath.nullToNull()?.let(IcmPath::from)),
+                targetDefaultFolder = defaultTargetFolder.nullToNull(),
+            )
+            val pathTestSubject = aSubject(config)
+            val image = aImage("T_1", targetFolder = targetFolder.nullToNull())
+
+            val path = pathTestSubject.getImagePath(image)
+
+            path.shouldBeEqualTo(expected)
+        }
+
+        @ParameterizedTest
+        @CsvSource(
+            // targetFolder   ,defaultTargetFolder  ,expected
+            "                   ,                   ,icm://T_1name.wfd",
+            "null               ,                   ,icm://T_1name.wfd",
+            "                   ,null               ,icm://T_1name.wfd",
+            "null               ,null               ,icm://T_1name.wfd",
+            "relative           ,                   ,icm://relative/T_1name.wfd",
+            "relative           ,null               ,icm://relative/T_1name.wfd",
+            "relative           ,default            ,icm://relative/T_1name.wfd",
+            "icm://absolute/    ,                   ,icm://absolute/T_1name.wfd",
+            "icm://absolute/    ,default            ,icm://absolute/T_1name.wfd",
+            "                   ,default            ,icm://default/T_1name.wfd",
+            "null               ,default            ,icm://default/T_1name.wfd",
+        )
+        fun testDocumentObjectPath(targetFolder: String?, defaultTargetFolder: String?, expected: String) {
+            val config = aProjectConfig(
+                output = InspireOutput.Designer,
+                targetDefaultFolder = defaultTargetFolder.nullToNull(),
+            )
+            val pathTestSubject = aSubject(config)
+            val image = aDocObj("T_1", type = DocumentObjectType.Template, targetFolder = targetFolder.nullToNull())
+
+            val path = pathTestSubject.getDocumentObjectPath(image)
+
+            path.shouldBeEqualTo(expected)
+        }
+
+        @ParameterizedTest
+        @CsvSource(
+            // defaultTargetFolder  ,expected
+            "                       ,icm://projectNameStyles.wfd",
+            "null                   ,icm://projectNameStyles.wfd",
+            "default                ,icm://default/projectNameStyles.wfd",
+        )
+        fun testCompanyStylesPath(defaultTargetFolder: String?, expected: String) {
+            val config = aProjectConfig(
+                name = "projectName",
+                output = InspireOutput.Designer,
+                targetDefaultFolder = defaultTargetFolder.nullToNull(),
+            )
+            val pathTestSubject = aSubject(config)
+
+            val path = pathTestSubject.getStyleDefinitionPath()
+
+            path.shouldBeEqualTo(expected)
+        }
+
+        private fun String?.nullToNull() = when (this?.trim()) {
+            "null" -> null
+            null -> ""
+            else -> this.trim()
+        }
     }
 }
