@@ -14,6 +14,7 @@ class SizeTest {
         Size.ofPoints(10) to Size.ofMillimeters(10 / Size.MM_TO_PT),
         Size.ofCentimeters(5) to Size.ofMillimeters(50),
         Size.ofMeters(18) to Size.ofMillimeters(18000),
+        Size.ofInches(1) to Size.ofMillimeters(25.4),
     ).map { (input, expected) -> dynamicTest("$input is equal to $expected") { input.shouldBeEqualTo(expected) } }
 
     @TestFactory
@@ -22,6 +23,7 @@ class SizeTest {
         Size.ofPoints(10).toCentimeters() to 10 / Size.MM_TO_PT / 10,
         Size.ofMeters(8).toPoints() to 8000 * Size.MM_TO_PT,
         Size.ofCentimeters(8).toCentimeters() to 8.0,
+        Size.ofInches(1).toMillimeters() to 25.4,
     ).map { (input, expected) -> dynamicTest("$input is equal to $expected") { input.shouldBeEqualTo(expected) } }
 
     @Test

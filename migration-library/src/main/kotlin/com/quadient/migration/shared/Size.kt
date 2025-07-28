@@ -13,7 +13,7 @@ class Size {
     val millimeters: Double
 
     enum class Unit {
-        Points, Millimeters, Centimeters, Meters
+        Points, Millimeters, Centimeters, Meters, Inches
     }
 
     companion object {
@@ -43,6 +43,12 @@ class Size {
         fun ofMeters(value: Long) = Size(value.toDouble(), Unit.Meters)
         @JvmStatic
         fun ofMeters(value: Int) = Size(value.toDouble(), Unit.Meters)
+        @JvmStatic
+        fun ofInches(value: Double)= Size(value, Unit.Inches)
+        @JvmStatic
+        fun ofInches(value: Long) = Size(value.toDouble(), Unit.Inches)
+        @JvmStatic
+        fun ofInches(value: Int) = Size(value.toDouble(), Unit.Inches)
 
         @JvmStatic
         fun fromString(input: String): Size {
@@ -51,6 +57,7 @@ class Size {
                 input.endsWith("cm") -> Pair(input.substringBefore("cm"), Unit.Centimeters)
                 input.endsWith("m") -> Pair(input.substringBefore("m"), Unit.Meters)
                 input.endsWith("pt") -> Pair(input.substringBefore("pt"), Unit.Points)
+                input.endsWith("in") -> Pair(input.substringBefore("in"), Unit.Inches)
                 else -> throw NumberFormatException("Invalid size format in $input")
             }
             return Size(value.toDouble(), unit)
@@ -64,6 +71,7 @@ class Size {
             Unit.Millimeters -> value
             Unit.Centimeters -> value * 10.0
             Unit.Meters -> value * 1000.0
+            Unit.Inches -> value * 25.4
         }
     }
 
@@ -73,6 +81,7 @@ class Size {
             Unit.Millimeters -> millimeters
             Unit.Centimeters -> millimeters / 10.0
             Unit.Meters -> millimeters / 1000.0
+            Unit.Inches -> millimeters / 25.4
         }
     }
 
@@ -82,6 +91,7 @@ class Size {
     fun toCentimeters() = to(Unit.Centimeters)
     fun toMeters() = to(Unit.Meters)
     fun toPoints() = to(Unit.Points)
+    fun toInches() = to(Unit.Inches)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -102,6 +112,7 @@ class Size {
             Unit.Millimeters -> "${toMillimeters()}mm"
             Unit.Centimeters -> "${toCentimeters()}cm"
             Unit.Meters -> "${toMeters()}m"
+            Unit.Inches -> "${toInches()}in"
         }
     }
 
@@ -143,6 +154,9 @@ fun Double.centimeters(): Size = Size.ofCentimeters(this)
 fun Long.meters(): Size = Size.ofMeters(this)
 fun Int.meters(): Size = Size.ofMeters(this)
 fun Double.meters(): Size = Size.ofMeters(this)
+fun Long.inches(): Size = Size.ofInches(this)
+fun Int.inches(): Size = Size.ofInches(this)
+fun Double.inches(): Size = Size.ofInches(this)
 
 object SizeSerializer : KSerializer<Size> {
     override val descriptor: SerialDescriptor =
