@@ -18,6 +18,7 @@ import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
 import com.quadient.migration.service.imageExtension
+import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
@@ -32,6 +33,16 @@ import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.module.Layout
+import org.w3c.dom.Document
+import org.w3c.dom.Element
+import org.w3c.dom.Node
+import org.xml.sax.InputSource
+import java.io.StringReader
+import java.io.StringWriter
+import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.transform.TransformerFactory.*
+import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamResult
 
 class DesignerDocumentObjectBuilder(
     documentObjectRepository: DocumentObjectInternalRepository,
@@ -42,6 +53,7 @@ class DesignerDocumentObjectBuilder(
     displayRuleRepository: DisplayRuleInternalRepository,
     imageRepository: ImageInternalRepository,
     projectConfig: ProjectConfig,
+    private val ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(
     documentObjectRepository,
     textStyleRepository,
@@ -126,11 +138,16 @@ class DesignerDocumentObjectBuilder(
         buildParagraphStyles(
             layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
 
-        return builder.build()
+        val documentObjectXml = builder.build()
+        return if (projectConfig.baseWfdPath.isNullOrBlank()) {
+            documentObjectXml
+        } else {
+            replaceLayoutInBaseWorkflow(documentObjectXml, projectConfig.baseWfdPath)
+        }
     }
 
     override fun wrapSuccessFlowInConditionFlow(
-        layout: Layout, variableStructure: VariableStructureModel, ruleDef: DisplayRuleDefinition, successFlow: Flow
+        layout: Layout, variableStructure: VariableStructureModel, ruleDef: DisplayRuleDefinition, successFlow: Flow,
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
             ruleDef.toScript(layout, variableStructure), successFlow
@@ -141,7 +158,7 @@ class DesignerDocumentObjectBuilder(
         layout: Layout,
         variableStructure: VariableStructureModel,
         ruleDef: DisplayRuleDefinition,
-        multipleRowSet: GeneralRowSet
+        multipleRowSet: GeneralRowSet,
     ): GeneralRowSet {
         val successRow = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
 
@@ -160,7 +177,7 @@ class DesignerDocumentObjectBuilder(
         name: String,
         content: List<DocumentContentModel>,
         mainObject: DocumentObjectModel,
-        options: PageOptions? = null
+        options: PageOptions? = null,
     ) {
         val page = layout.addPage().setName(name).setType(Pages.PageConditionType.SIMPLE)
         options?.height?.let { page.setHeight(it.toMeters()) }
@@ -221,4 +238,39 @@ class DesignerDocumentObjectBuilder(
                 )
         }
     }
+
+    fun replaceLayoutInBaseWorkflow(documentObjectXml: String, baseWfdPath: String): String {
+        val baseWorkflowDoc = ipsService.wfd2xml(baseWfdPath).toXmlDocument()
+        val documentObjectDoc = documentObjectXml.toXmlDocument()
+
+        val baseLayoutNode = baseWorkflowDoc.getElementsByTagName("Layout").item(0) as? Element
+            ?: error("Base workflow '$baseWfdPath' does not contain a Layout element.")
+        val baseInnerLayoutNode = baseLayoutNode.firstElementChildByTag("Layout")
+            ?: error("Base workflow '$baseWfdPath' does not contain an inner Layout element.")
+
+        val documentObjectInnerLayoutNode =
+            documentObjectDoc.getElementsByTagName("Layout").item(0)?.firstElementChildByTag("Layout")
+                ?.let { baseWorkflowDoc.importNode(it, true) }
+                ?: error("Document object does not contain an inner Layout element.")
+
+        baseLayoutNode.replaceChild(documentObjectInnerLayoutNode, baseInnerLayoutNode)
+        return baseWorkflowDoc.toXmlString()
+    }
+
+    private fun String.toXmlDocument(): Document =
+        DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(InputSource(StringReader(this)))
+
+    private fun Document.toXmlString(): String {
+        val result = StringWriter()
+        val transformer = newInstance().newTransformer()
+        transformer.transform(DOMSource(this), StreamResult(result))
+        return result.toString()
+    }
+
+    private fun Node.firstElementChildByTag(tag: String): Element? =
+        (0 until childNodes.length)
+            .asSequence()
+            .map { childNodes.item(it) }
+            .filterIsInstance<Element>()
+            .firstOrNull { it.tagName == tag }
 }

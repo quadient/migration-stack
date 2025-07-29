@@ -22,6 +22,7 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.*
@@ -61,6 +62,7 @@ class DesignerDocumentObjectBuilderTest {
     val variableStructureRepository = mockk<VariableStructureInternalRepository>()
     val displayRuleRepository = mockk<DisplayRuleInternalRepository>()
     val imageRepository = mockk<ImageInternalRepository>()
+    val ipsService = mockk<IpsService>()
     val config = aProjectConfig(targetDefaultFolder = "defaultFolder")
 
     private val subject = aSubject(config)
@@ -527,6 +529,7 @@ class DesignerDocumentObjectBuilderTest {
         displayRuleRepository,
         imageRepository,
         config,
+        ipsService,
     )
 
     @Nested

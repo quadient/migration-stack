@@ -23,8 +23,18 @@ static Migration initMigration(String[] args) {
     def interactiveTenant = getValueOfArg("--interactive-tenant", argsList).orElse(fileProjectConfig.interactiveTenant)
     def defaultTargetFolder = getValueOfArg("--default-target-folder", argsList).orElse(fileProjectConfig.defaultTargetFolder.toString())
     def inspireOutput = getValueOfArg("--inspire-output", argsList).orElse(fileProjectConfig.inspireOutput.toString())
+    def baseWfdPath = getValueOfArg("--base-wfd-path", argsList).orElse(fileProjectConfig.baseWfdPath)
 
-    def projectConfig = new ProjectConfig(projectName, baseTemplatePath, inputDataPath, interactiveTenant, IcmPath.from(defaultTargetFolder), fileProjectConfig.paths, InspireOutput.valueOf(inspireOutput), fileProjectConfig.context)
+    def projectConfig = new ProjectConfig(
+        projectName,
+        baseTemplatePath,
+        inputDataPath,
+        interactiveTenant,
+        IcmPath.from(defaultTargetFolder),
+        fileProjectConfig.paths,
+        InspireOutput.valueOf(inspireOutput),
+        baseWfdPath,
+        fileProjectConfig.context)
     println("Preparing to start migration script with $projectConfig.")
 
     return new Migration(migConfig, projectConfig)

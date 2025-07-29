@@ -178,7 +178,8 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                     variableStructureInternalRepository,
                     displayRuleInternalRepository,
                     imageInternalRepository,
-                    projectConfig
+                    projectConfig,
+                    ipsService,
                 )
 
                 DesignerDeployClient(

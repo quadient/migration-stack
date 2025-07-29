@@ -97,7 +97,7 @@ class DesignerDeployClient(
                         )
                     }
                 }
-            } catch (e: IllegalStateException) {
+            } catch (e: Exception) {
                 deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
             }
         }

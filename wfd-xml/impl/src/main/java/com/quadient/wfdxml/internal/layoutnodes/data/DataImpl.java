@@ -60,6 +60,7 @@ public class DataImpl extends Tree implements Data {
     private final HashMap<SystemVariables, VariableImpl> map = new HashMap<>();
     private VariableImpl systemVariableArray;
     private boolean dataImported = false;
+    private String repeatedBy = null;
 
     public DataImpl() {
         initDefaultVariables();
@@ -199,6 +200,9 @@ public class DataImpl extends Tree implements Data {
 
     @Override
     public void export(XmlExporter exporter) {
+        if (this.repeatedBy != null) {
+            exporter.addElementWithStringData("RepeatedBy", this.repeatedBy);
+        }
     }
 
     @Override
@@ -211,6 +215,12 @@ public class DataImpl extends Tree implements Data {
     @Override
     public VariableImpl findVariable(String... path) {
         return findVariable(asList(path), 0, children);
+    }
+
+    @Override
+    public Data setRepeatedBy(String id) {
+        this.repeatedBy = id;
+        return this;
     }
 
     private VariableImpl findVariable(List<String> path, int indexToFind, List<NodeImpl> children) {
