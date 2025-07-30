@@ -50,7 +50,7 @@ for (line in docObjectLines) {
     if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {
         migration.statusTrackingRepository.active(existingDocObject.id, ResourceType.DocumentObject, [reason: "Manual"])
     }
-    if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deploy") {
+    if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deployed") {
         migration.statusTrackingRepository.deployed(existingDocObject.id, deploymentId, now, ResourceType.DocumentObject, null, output, [reason: "Manual"])
     }
 
@@ -76,7 +76,7 @@ for (line in imageLines) {
     if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {
         migration.statusTrackingRepository.active(existingImage.id, ResourceType.Image, [reason: "Manual"])
     }
-    if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deploy") {
+    if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deployed") {
         migration.statusTrackingRepository.deployed(existingImage.id, deploymentId, now, ResourceType.Image, null, output, [reason: "Manual"])
     }
     migration.imageRepository.upsert(existingImage)

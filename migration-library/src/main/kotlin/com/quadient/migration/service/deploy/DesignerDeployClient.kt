@@ -50,7 +50,7 @@ class DesignerDeployClient(
     }
 
     override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult {
-        val deploymentResult = DeploymentResult()
+        val deploymentResult = DeploymentResult(deploymentId)
 
         val orderedDocumentObject = deployOrder(documentObjects)
         deploymentResult += deployImages(orderedDocumentObject)

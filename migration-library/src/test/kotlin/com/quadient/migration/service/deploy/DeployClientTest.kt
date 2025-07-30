@@ -110,6 +110,7 @@ class DeployClientTest {
 
         givenNewExternalDocumentObject("1", deps = listOf("2"))
         givenChangedExternalDocumentObject("2", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp)
+        givenChangedExternalDocumentObject("8", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp, icmPath = "icm://other.wfd")
         givenExistingExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"), deployTimestamp = currentDeployTimestamp)
         givenInternalDocumentObject("4", deps = listOf("1", "5"))
         givenInternalDocumentObject("5", deps = listOf("6"))
@@ -121,7 +122,7 @@ class DeployClientTest {
 
         val result = subject.progressReport()
 
-        result.items.size.shouldBeEqualTo(10)
+        result.items.size.shouldBeEqualTo(11)
         for (i in arrayOf(1, 6, 7)) {
             result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeNew()
         }
@@ -136,6 +137,9 @@ class DeployClientTest {
         }
         for (i in arrayOf(1, 3)) {
             result.items[Pair(i.toString(), ResourceType.Image)].shouldBeNew()
+        }
+        for (i in arrayOf(8)) {
+            result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeChangedPath()
         }
     }
 
@@ -173,6 +177,16 @@ class DeployClientTest {
         this.shouldNotBeNull()
         this?.nextIcmPath.shouldStartWith("icm://")
         this?.deployKind.shouldBeEqualTo(DeployKind.Keep)
+        this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
+        this?.deploymentId.shouldNotBeNull()
+        this?.deployTimestamp.shouldNotBeNull()
+        this?.errorMessage.shouldBeNull()
+    }
+
+    private fun ProgressReportItem?.shouldBeChangedPath() {
+        this.shouldNotBeNull()
+        this?.nextIcmPath.shouldStartWith("icm://")
+        this?.deployKind.shouldBeEqualTo(DeployKind.Create)
         this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
         this?.deploymentId.shouldNotBeNull()
         this?.deployTimestamp.shouldNotBeNull()
@@ -220,6 +234,7 @@ class DeployClientTest {
         textStyles: List<String> = listOf(),
         paragraphStyles: List<String> = listOf(),
         deployTimestamp: Instant,
+        icmPath: String = "icm://$id.wfd"
     ) {
         givenExternalDocumentObject(
             id = id,
@@ -227,7 +242,7 @@ class DeployClientTest {
             imageDeps = imageDeps,
             textStyles = textStyles,
             paragraphStyles = paragraphStyles,
-            events = listOf(aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds), aDeployedStatusEvent(timestamp = deployTimestamp), aActiveStatusEvent(timestamp = deployTimestamp + 1.seconds))
+            events = listOf(aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds), aDeployedStatusEvent(timestamp = deployTimestamp, icmPath = icmPath), aActiveStatusEvent(timestamp = deployTimestamp + 1.seconds))
         )
     }
 

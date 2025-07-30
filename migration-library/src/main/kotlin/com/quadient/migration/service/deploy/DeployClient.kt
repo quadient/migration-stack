@@ -204,7 +204,7 @@ sealed class DeployClient(
     }
 
     protected fun deployImages(documentObjects: List<DocumentObjectModel>): DeploymentResult {
-        val deploymentResult = DeploymentResult()
+        val deploymentResult = DeploymentResult(deploymentId)
 
         val uniqueImageRefs = documentObjects.flatMap {
             try {
@@ -324,18 +324,18 @@ sealed class DeployClient(
         return deploymentResult
     }
 
-    fun progressReport(): ProgressReport {
+    fun progressReport(deployId: Uuid? = null): ProgressReport {
         val objects = getAllDocumentObjectsToDeploy()
-        return progressReportInternal(objects)
+        return progressReportInternal(objects, deployId)
     }
 
-    fun progressReport(documentObjectIds: List<String>): ProgressReport {
+    fun progressReport(documentObjectIds: List<String>, deployId: Uuid? = null): ProgressReport {
         val objects = getDocumentObjectsToDeploy(documentObjectIds)
-        return progressReportInternal(objects)
+        return progressReportInternal(objects, deployId)
     }
 
-    fun progressReportInternal(objects: List<DocumentObjectModel>): ProgressReport {
-        val lastDeployment = getLastDeployEvent()
+    fun progressReportInternal(objects: List<DocumentObjectModel>, deployId: Uuid? = null): ProgressReport {
+        val lastDeployment = deployId?.let { LastDeployment(it, Clock.System.now()) } ?: getLastDeployEvent()
 
         val report = ProgressReport(deploymentId, mutableMapOf())
 
@@ -602,16 +602,16 @@ sealed class DeployClient(
         val objectEvents = statusTrackingRepository.findEventsRelevantToOutput(id, resourceType, output)
         val lastEvent = objectEvents.lastOrNull()
         return if (lastEvent is Active) {
-            val hasBeenDeployedBefore = objectEvents.any { it is Deployed }
-            if (hasBeenDeployedBefore) {
+            val lastDeployEvent = objectEvents.filterIsInstance<Deployed>().lastOrNull()
+            if (lastDeployEvent != null && lastDeployEvent.icmPath != nextIcmPath) {
+                DeployKind.Create
+            } else if (lastDeployEvent != null) {
                 DeployKind.Overwrite
             } else if (isPage && output == InspireOutput.Designer) {
                 DeployKind.Inline
             } else {
                 DeployKind.Create
             }
-        } else if (lastEvent is Deployed && lastEvent.icmPath != nextIcmPath) {
-            DeployKind.Create
         } else if (lastEvent is StatusError) {
             DeployKind.Create
         } else {

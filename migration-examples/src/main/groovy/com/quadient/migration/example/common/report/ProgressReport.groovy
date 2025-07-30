@@ -5,6 +5,6 @@ import com.quadient.migration.example.common.util.ProgressReportWriter
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 def migration = initMigration(this.binding.variables["args"])
-def report = migration.deployClient.progressReport()
+def report = migration.deployClient.progressReport(null)
 
 ProgressReportWriter.writeProgressReport(report, migration.projectConfig.name)

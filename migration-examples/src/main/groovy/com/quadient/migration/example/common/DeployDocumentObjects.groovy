@@ -15,5 +15,5 @@ if (deploymentResult.errors.size() > 0) {
     println "No errors during deployment."
 }
 
-def report = migration.deployClient.progressReport()
+def report = migration.deployClient.progressReport(null)
 ProgressReportWriter.writeProgressReport(report, migration.projectConfig.name)

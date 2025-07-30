@@ -417,7 +417,7 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects validates that no document objects are unsupported`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
+        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
         every { documentObjectRepository.list(any()) } returns listOf(
             aBlock(id = "1", type = DocumentObjectType.Unsupported),
             aBlock(id = "2", type = DocumentObjectType.Block),
@@ -433,7 +433,7 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects validates that no document objects are internal`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
+        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
         every { documentObjectRepository.list(any()) } returns listOf(
             aBlock(id = "1", internal = true),
             aBlock(id = "2", internal = true),
@@ -449,7 +449,7 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects validates that no document are missing`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
+        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
         every { documentObjectRepository.list(any()) } returns listOf(
             aBlock(id = "1"),
         )
@@ -463,7 +463,7 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects has all kinds of problems`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
+        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
         every { documentObjectRepository.list(any()) } returns listOf(
             aBlock(id = "1"),
             aBlock(id = "2", internal = true),
@@ -491,7 +491,7 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects without dependencies`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
+        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
         val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
@@ -509,7 +509,7 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects with recursive dependencies, deduplicates them and skips internal dependencies`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
+        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
         val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
@@ -543,7 +543,7 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects with dependencies when dependency is not found`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult()
+        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
         val toDeploy = listOf("1")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),

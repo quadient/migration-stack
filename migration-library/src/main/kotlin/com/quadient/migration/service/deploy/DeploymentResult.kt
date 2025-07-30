@@ -1,6 +1,12 @@
+@file:OptIn(ExperimentalUuidApi::class)
+
 package com.quadient.migration.service.deploy
 
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
+
 data class DeploymentResult(
+    val deploymentId: Uuid,
     val deployed: MutableList<DeploymentInfo> = mutableListOf(),
     val errors: MutableList<DeploymentError> = mutableListOf(),
     val warnings: MutableList<DeploymentWarning> = mutableListOf(),

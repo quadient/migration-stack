@@ -5,4 +5,7 @@ interactiveTenant = "StandardPackage"
 #defaultTargetFolder = ""
 inspireOutput = "Designer" # "Evolve", "Interactive", "Designer"
 
+[paths]
+#images = ""
+
 [context]
