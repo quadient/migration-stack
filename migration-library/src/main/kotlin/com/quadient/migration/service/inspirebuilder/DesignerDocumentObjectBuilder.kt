@@ -39,6 +39,7 @@ import org.w3c.dom.Node
 import org.xml.sax.InputSource
 import java.io.StringReader
 import java.io.StringWriter
+import java.util.concurrent.ConcurrentHashMap
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.TransformerFactory.*
 import javax.xml.transform.dom.DOMSource
@@ -64,6 +65,8 @@ class DesignerDocumentObjectBuilder(
     imageRepository,
     projectConfig
 ) {
+    private val sourceBaseTemplateCache = ConcurrentHashMap<String, String>()
+
     val defaultPosition = Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters())
 
     override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
@@ -73,10 +76,8 @@ class DesignerDocumentObjectBuilder(
             return documentObject.targetFolder.join(fileName).toString()
         }
 
-        return IcmPath.root()
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, documentObject.targetFolder))
-            .join(fileName)
-            .toString()
+        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder, documentObject.targetFolder))
+            .join(fileName).toString()
     }
 
     override fun getImagePath(image: ImageModel): String {
@@ -88,18 +89,13 @@ class DesignerDocumentObjectBuilder(
 
         val imageConfigPath = projectConfig.paths.images
 
-        return IcmPath.root()
-            .join(imageConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, image.targetFolder))
-            .join(fileName)
-            .toString()
+        return IcmPath.root().join(imageConfigPath)
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, image.targetFolder)).join(fileName).toString()
     }
 
     override fun getStyleDefinitionPath(): String {
-       return IcmPath.root()
-               .join(resolveTargetDir(projectConfig.defaultTargetFolder))
-               .join("${projectConfig.name}Styles.wfd")
-               .toString()
+        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder))
+            .join("${projectConfig.name}Styles.wfd").toString()
     }
 
     override fun buildDocumentObject(documentObject: DocumentObjectModel): String {
@@ -139,10 +135,10 @@ class DesignerDocumentObjectBuilder(
             layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
 
         val documentObjectXml = builder.build()
-        return if (projectConfig.baseWfdPath.isNullOrBlank()) {
+        return if (projectConfig.sourceBaseTemplatePath.isNullOrBlank()) {
             documentObjectXml
         } else {
-            replaceLayoutInBaseWorkflow(documentObjectXml, projectConfig.baseWfdPath)
+            enrichLayoutWithSourceBaseTemplate(documentObjectXml, projectConfig.sourceBaseTemplatePath)
         }
     }
 
@@ -208,7 +204,7 @@ class DesignerDocumentObjectBuilder(
         variableStructure: VariableStructureModel,
         page: Page,
         areaModel: AreaModel,
-        mainObject: DocumentObjectModel
+        mainObject: DocumentObjectModel,
     ) {
         val position = areaModel.position ?: defaultPosition
 
@@ -239,22 +235,26 @@ class DesignerDocumentObjectBuilder(
         }
     }
 
-    fun replaceLayoutInBaseWorkflow(documentObjectXml: String, baseWfdPath: String): String {
-        val baseWorkflowDoc = ipsService.wfd2xml(baseWfdPath).toXmlDocument()
+    fun enrichLayoutWithSourceBaseTemplate(documentObjectXml: String, sourceBaseTemplatePath: String): String {
+        val sourceBaseTemplateXml = sourceBaseTemplateCache.computeIfAbsent(sourceBaseTemplatePath) {
+            ipsService.wfd2xml(it)
+        }
+
+        val sourceBaseTemplateDoc = sourceBaseTemplateXml.toXmlDocument()
         val documentObjectDoc = documentObjectXml.toXmlDocument()
 
-        val baseLayoutNode = baseWorkflowDoc.getElementsByTagName("Layout").item(0) as? Element
-            ?: error("Base workflow '$baseWfdPath' does not contain a Layout element.")
-        val baseInnerLayoutNode = baseLayoutNode.firstElementChildByTag("Layout")
-            ?: error("Base workflow '$baseWfdPath' does not contain an inner Layout element.")
+        val sourceBaseLayoutNode = sourceBaseTemplateDoc.getElementsByTagName("Layout").item(0) as? Element
+            ?: error("Source base template '$sourceBaseTemplatePath' does not contain a Layout element.")
+        val sourceBaseInnerLayoutNode = sourceBaseLayoutNode.firstElementChildByTag("Layout")
+            ?: error("Source base template '$sourceBaseTemplatePath' does not contain an inner Layout element.")
 
         val documentObjectInnerLayoutNode =
             documentObjectDoc.getElementsByTagName("Layout").item(0)?.firstElementChildByTag("Layout")
-                ?.let { baseWorkflowDoc.importNode(it, true) }
+                ?.let { sourceBaseTemplateDoc.importNode(it, true) }
                 ?: error("Document object does not contain an inner Layout element.")
 
-        baseLayoutNode.replaceChild(documentObjectInnerLayoutNode, baseInnerLayoutNode)
-        return baseWorkflowDoc.toXmlString()
+        sourceBaseLayoutNode.replaceChild(documentObjectInnerLayoutNode, sourceBaseInnerLayoutNode)
+        return sourceBaseTemplateDoc.toXmlString()
     }
 
     private fun String.toXmlDocument(): Document =
@@ -268,9 +268,6 @@ class DesignerDocumentObjectBuilder(
     }
 
     private fun Node.firstElementChildByTag(tag: String): Element? =
-        (0 until childNodes.length)
-            .asSequence()
-            .map { childNodes.item(it) }
-            .filterIsInstance<Element>()
+        (0 until childNodes.length).asSequence().map { childNodes.item(it) }.filterIsInstance<Element>()
             .firstOrNull { it.tagName == tag }
 }

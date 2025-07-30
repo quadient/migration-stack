@@ -35,7 +35,7 @@ data class ProjectConfig(
     val defaultTargetFolder: IcmPath? = null,
     val paths: PathsConfig = PathsConfig(),
     val inspireOutput: InspireOutput = InspireOutput.Interactive,
-    val baseWfdPath: String? = null,
+    val sourceBaseTemplatePath: String? = null,
     val context: ContextMap = ContextMap(emptyMap()),
 ) {
     companion object {

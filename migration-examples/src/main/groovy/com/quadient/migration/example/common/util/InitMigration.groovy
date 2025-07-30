@@ -23,7 +23,7 @@ static Migration initMigration(String[] args) {
     def interactiveTenant = getValueOfArg("--interactive-tenant", argsList).orElse(fileProjectConfig.interactiveTenant)
     def defaultTargetFolder = getValueOfArg("--default-target-folder", argsList).orElse(fileProjectConfig.defaultTargetFolder.toString())
     def inspireOutput = getValueOfArg("--inspire-output", argsList).orElse(fileProjectConfig.inspireOutput.toString())
-    def baseWfdPath = getValueOfArg("--base-wfd-path", argsList).orElse(fileProjectConfig.baseWfdPath)
+    def sourceBaseTemplate = getValueOfArg("--source-base-template-path", argsList).orElse(fileProjectConfig.sourceBaseTemplatePath)
 
     def projectConfig = new ProjectConfig(
         projectName,
@@ -33,7 +33,7 @@ static Migration initMigration(String[] args) {
         IcmPath.from(defaultTargetFolder),
         fileProjectConfig.paths,
         InspireOutput.valueOf(inspireOutput),
-        baseWfdPath,
+        sourceBaseTemplate,
         fileProjectConfig.context)
     println("Preparing to start migration script with $projectConfig.")
 
