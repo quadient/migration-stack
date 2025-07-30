@@ -6,19 +6,17 @@ import com.quadient.migration.service.deploy.ReportedImage
 import java.nio.file.Paths
 import com.quadient.migration.service.deploy.ProgressReport as Report
 
-import java.time.Instant
-import java.time.temporal.ChronoUnit
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 // id, name, type, doc object type?, internal, last status(created, kept, overwritten, inlined, error),
 // next action(create, keep, overwrite, inline), next icm path, last icm path, error message, content,
 // deploy id, deploy timestamp
 
-static void writeProgressReport(Report report, String projectName) {
-    def now = Instant.now()
-            .truncatedTo(ChronoUnit.SECONDS).toString()
-            .replace('Z', '')
-            .replace(':', '-')
-    def dstFile = Paths.get("report", "${projectName}-progress-report-${now}.csv")
+static void writeDeploymentReport(Report report, String projectName) {
+    def now = LocalDateTime.now()
+    def filenameFriendly = now.format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmssSSS"))
+    def dstFile = Paths.get("report", "${projectName}-deployment-report-${filenameFriendly}.csv")
 
     def mapper = new ObjectMapper()
     def file = dstFile.toFile()

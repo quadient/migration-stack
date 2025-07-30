@@ -1,6 +1,6 @@
 package com.quadient.migration.example.common
 
-import com.quadient.migration.example.common.util.ProgressReportWriter
+import com.quadient.migration.example.common.util.DeploymentReportWriter
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
@@ -16,4 +16,4 @@ if (deploymentResult.errors.size() > 0) {
 }
 
 def report = migration.deployClient.progressReport(null)
-ProgressReportWriter.writeProgressReport(report, migration.projectConfig.name)
+DeploymentReportWriter.writeDeploymentReport(report, migration.projectConfig.name)

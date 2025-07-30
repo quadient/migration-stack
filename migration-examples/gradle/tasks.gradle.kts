@@ -24,10 +24,10 @@ val migrationTasks = listOf<MigTask>(
         "common.report.PostDeployStatusTrackingReport"
     ),
     MigTask(
-        "progressReport", "migration report", "Generate progress report", "common.report.ProgressReport"
+        "deploymentReport", "migration report", "Generate deployment report", "common.report.DeploymentReport"
     ),
     MigTask(
-        "progressReportIds", "migration report", "Generate progress report", "common.report.ProgressReportIds"
+        "deploymentReportIds", "migration report", "Generate deployment report", "common.report.DeploymentReportIds"
     ),
 
     // Migration deploy

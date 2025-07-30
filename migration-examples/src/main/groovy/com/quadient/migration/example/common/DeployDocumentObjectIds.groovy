@@ -1,6 +1,6 @@
 package com.quadient.migration.example.common
 
-import com.quadient.migration.example.common.util.ProgressReportWriter
+import com.quadient.migration.example.common.util.DeploymentReportWriter
 
 import java.nio.file.Paths
 
@@ -17,4 +17,4 @@ def documentObjects = Paths.get("deploy", "${migration.projectConfig.name}-docum
 migration.deployClient.deployDocumentObjects(documentObjects, false)
 
 def report = migration.deployClient.progressReport(documentObjects, null)
-ProgressReportWriter.writeProgressReport(report, migration.projectConfig.name)
+DeploymentReportWriter.writeDeploymentReport(report, migration.projectConfig.name)
