@@ -18,6 +18,7 @@ import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
 import com.quadient.migration.service.imageExtension
+import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
@@ -32,6 +33,17 @@ import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.module.Layout
+import org.w3c.dom.Document
+import org.w3c.dom.Element
+import org.w3c.dom.Node
+import org.xml.sax.InputSource
+import java.io.StringReader
+import java.io.StringWriter
+import java.util.concurrent.ConcurrentHashMap
+import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.transform.TransformerFactory.*
+import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamResult
 
 class DesignerDocumentObjectBuilder(
     documentObjectRepository: DocumentObjectInternalRepository,
@@ -42,6 +54,7 @@ class DesignerDocumentObjectBuilder(
     displayRuleRepository: DisplayRuleInternalRepository,
     imageRepository: ImageInternalRepository,
     projectConfig: ProjectConfig,
+    private val ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(
     documentObjectRepository,
     textStyleRepository,
@@ -52,6 +65,8 @@ class DesignerDocumentObjectBuilder(
     imageRepository,
     projectConfig
 ) {
+    private val sourceBaseTemplateCache = ConcurrentHashMap<String, String>()
+
     val defaultPosition = Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters())
 
     override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
@@ -61,10 +76,8 @@ class DesignerDocumentObjectBuilder(
             return documentObject.targetFolder.join(fileName).toString()
         }
 
-        return IcmPath.root()
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, documentObject.targetFolder))
-            .join(fileName)
-            .toString()
+        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder, documentObject.targetFolder))
+            .join(fileName).toString()
     }
 
     override fun getImagePath(image: ImageModel): String {
@@ -76,18 +89,13 @@ class DesignerDocumentObjectBuilder(
 
         val imageConfigPath = projectConfig.paths.images
 
-        return IcmPath.root()
-            .join(imageConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, image.targetFolder))
-            .join(fileName)
-            .toString()
+        return IcmPath.root().join(imageConfigPath)
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, image.targetFolder)).join(fileName).toString()
     }
 
     override fun getStyleDefinitionPath(): String {
-       return IcmPath.root()
-               .join(resolveTargetDir(projectConfig.defaultTargetFolder))
-               .join("${projectConfig.name}Styles.wfd")
-               .toString()
+        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder))
+            .join("${projectConfig.name}Styles.wfd").toString()
     }
 
     override fun buildDocumentObject(documentObject: DocumentObjectModel): String {
@@ -126,11 +134,16 @@ class DesignerDocumentObjectBuilder(
         buildParagraphStyles(
             layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
 
-        return builder.build()
+        val documentObjectXml = builder.build()
+        return if (projectConfig.sourceBaseTemplatePath.isNullOrBlank()) {
+            documentObjectXml
+        } else {
+            enrichLayoutWithSourceBaseTemplate(documentObjectXml, projectConfig.sourceBaseTemplatePath)
+        }
     }
 
     override fun wrapSuccessFlowInConditionFlow(
-        layout: Layout, variableStructure: VariableStructureModel, ruleDef: DisplayRuleDefinition, successFlow: Flow
+        layout: Layout, variableStructure: VariableStructureModel, ruleDef: DisplayRuleDefinition, successFlow: Flow,
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
             ruleDef.toScript(layout, variableStructure), successFlow
@@ -141,7 +154,7 @@ class DesignerDocumentObjectBuilder(
         layout: Layout,
         variableStructure: VariableStructureModel,
         ruleDef: DisplayRuleDefinition,
-        multipleRowSet: GeneralRowSet
+        multipleRowSet: GeneralRowSet,
     ): GeneralRowSet {
         val successRow = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
 
@@ -160,7 +173,7 @@ class DesignerDocumentObjectBuilder(
         name: String,
         content: List<DocumentContentModel>,
         mainObject: DocumentObjectModel,
-        options: PageOptions? = null
+        options: PageOptions? = null,
     ) {
         val page = layout.addPage().setName(name).setType(Pages.PageConditionType.SIMPLE)
         options?.height?.let { page.setHeight(it.toMeters()) }
@@ -191,7 +204,7 @@ class DesignerDocumentObjectBuilder(
         variableStructure: VariableStructureModel,
         page: Page,
         areaModel: AreaModel,
-        mainObject: DocumentObjectModel
+        mainObject: DocumentObjectModel,
     ) {
         val position = areaModel.position ?: defaultPosition
 
@@ -221,4 +234,40 @@ class DesignerDocumentObjectBuilder(
                 )
         }
     }
+
+    fun enrichLayoutWithSourceBaseTemplate(documentObjectXml: String, sourceBaseTemplatePath: String): String {
+        val sourceBaseTemplateXml = sourceBaseTemplateCache.computeIfAbsent(sourceBaseTemplatePath) {
+            ipsService.wfd2xml(it)
+        }
+
+        val sourceBaseTemplateDoc = sourceBaseTemplateXml.toXmlDocument()
+        val documentObjectDoc = documentObjectXml.toXmlDocument()
+
+        val sourceBaseLayoutNode = sourceBaseTemplateDoc.getElementsByTagName("Layout").item(0) as? Element
+            ?: error("Source base template '$sourceBaseTemplatePath' does not contain a Layout element.")
+        val sourceBaseInnerLayoutNode = sourceBaseLayoutNode.firstElementChildByTag("Layout")
+            ?: error("Source base template '$sourceBaseTemplatePath' does not contain an inner Layout element.")
+
+        val documentObjectInnerLayoutNode =
+            documentObjectDoc.getElementsByTagName("Layout").item(0)?.firstElementChildByTag("Layout")
+                ?.let { sourceBaseTemplateDoc.importNode(it, true) }
+                ?: error("Document object does not contain an inner Layout element.")
+
+        sourceBaseLayoutNode.replaceChild(documentObjectInnerLayoutNode, sourceBaseInnerLayoutNode)
+        return sourceBaseTemplateDoc.toXmlString()
+    }
+
+    private fun String.toXmlDocument(): Document =
+        DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(InputSource(StringReader(this)))
+
+    private fun Document.toXmlString(): String {
+        val result = StringWriter()
+        val transformer = newInstance().newTransformer()
+        transformer.transform(DOMSource(this), StreamResult(result))
+        return result.toString()
+    }
+
+    private fun Node.firstElementChildByTag(tag: String): Element? =
+        (0 until childNodes.length).asSequence().map { childNodes.item(it) }.filterIsInstance<Element>()
+            .firstOrNull { it.tagName == tag }
 }

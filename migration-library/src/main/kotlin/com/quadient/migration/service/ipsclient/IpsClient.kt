@@ -177,7 +177,7 @@ class IpsClient(private val host: String, private val port: Int, private val tim
     }
 
     fun wfd2xml(inputPath: String, outputPath: String): IpsResult<JobId, Unit, Unit, Unit> {
-        val command = """wfd2xml "$inputPath";"$outputPath""""
+        val command = """wfd2xml "$inputPath";"$outputPath"; -exportusedfiles false"""
 
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()

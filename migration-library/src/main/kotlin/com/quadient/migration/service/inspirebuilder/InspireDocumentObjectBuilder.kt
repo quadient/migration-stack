@@ -251,7 +251,11 @@ abstract class InspireDocumentObjectBuilder(
             buildVariablePathPart(it, variableTree)
         }
 
-        layout.data.importDataDefinition(workflowTreeDefinition)
+        val layoutData = layout.data
+        layoutData.importDataDefinition(workflowTreeDefinition)
+        if (variableTree.isNotEmpty()) {
+            layoutData.setRepeatedBy("Data.${variableTree.keys.first()}")
+        }
 
         return variableStructureModel
     }

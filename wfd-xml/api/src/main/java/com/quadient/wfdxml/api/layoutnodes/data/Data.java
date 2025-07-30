@@ -11,4 +11,6 @@ public interface Data {
     Variable addVariable();
 
     Variable findVariable(String... path);
+
+    Data setRepeatedBy(String id);
 }
