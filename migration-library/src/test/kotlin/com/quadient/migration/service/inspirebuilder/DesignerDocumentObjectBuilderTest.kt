@@ -46,8 +46,10 @@ import com.quadient.migration.tools.model.aText
 import com.quadient.migration.tools.model.aVariableStructureModel
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldNotBeNull
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -498,6 +500,83 @@ class DesignerDocumentObjectBuilderTest {
 
         result["Flow"].last { it["Id"].textValue() == flowAreaFlow["Condition"][""].textValue() }["FlowContent"]["P"]["T"][""].textValue()
             .shouldBeEqualTo("Text")
+    }
+
+    @Test
+    fun `build block using source base template enriches layout with other modules`() {
+        // given
+        val block = mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText("Text")))))
+        val config = aProjectConfig(sourceBaseTemplatePath = "icm://sourceBaseTemplate.wfd")
+
+        every { ipsService.wfd2xml("icm://sourceBaseTemplate.wfd") } returns """
+        <Workflow>
+          <Property>
+            <Name>AFPApplyMediumOrientation</Name>
+            <Value>1</Value>
+          </Property>
+          <Property>
+            <Name>AFPApplyPageTransformation</Name>
+            <Value>1</Value>
+          </Property>
+          <DataInput>
+            <Id>DataInput1</Id>
+            <Name>DataInput1</Name>
+            <ModulePos X="11" Y="12"/>
+          </DataInput>
+          <Layout>
+            <Id>Layout1</Id>
+            <Name>Layout1</Name>
+            <ModulePos X="45" Y="19"/>
+            <Layout>
+            </Layout>
+          </Layout>
+        </Workflow>
+        """.trimIndent()
+
+        // when
+        val subject = aSubject(config)
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        result["Property"].size().shouldBeEqualTo(2)
+        result["DataInput"].shouldNotBeNull()
+        val layout = result["Layout"]["Layout"]
+        layout["Flow"].last()["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text")
+    }
+
+    @Test
+    fun `loading of source base template is cached during single run`() {
+        // given
+        val block1 = mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText("Text")))))
+        val block2 = mockObj(aDocObj("B_2", Block, listOf(aParagraph(aText("Text")))))
+        val config = aProjectConfig(sourceBaseTemplatePath = "icm://sourceBaseTemplate.wfd")
+
+        every { ipsService.wfd2xml("icm://sourceBaseTemplate.wfd") } returns """
+        <Workflow>
+          <Property>
+            <Name>AFPApplyPageTransformation</Name>
+            <Value>1</Value>
+          </Property>
+          <DataInput>
+            <Id>DataInput1</Id>
+            <Name>DataInput1</Name>
+          </DataInput>
+          <Layout>
+            <Id>Layout1</Id>
+            <Name>Layout1</Name>
+            <Layout>
+            </Layout>
+          </Layout>
+        </Workflow>
+        """.trimIndent()
+
+        // when
+        val subject = aSubject(config)
+        subject.buildDocumentObject(block1)
+        subject.buildDocumentObject(block2)
+
+        // then
+        verify(exactly = 1) { ipsService.wfd2xml(any()) }
     }
 
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {

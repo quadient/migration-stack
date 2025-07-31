@@ -144,6 +144,7 @@ fun aProjectConfig(
     paths: PathsConfig = PathsConfig(),
     output: InspireOutput = InspireOutput.Interactive,
     name: String = "name",
+    sourceBaseTemplatePath: String? = null,
 ): ProjectConfig {
     return ProjectConfig(
         name = name,
@@ -153,6 +154,7 @@ fun aProjectConfig(
         defaultTargetFolder = targetDefaultFolder?.let(IcmPath::from),
         paths = paths,
         inspireOutput = output,
+        sourceBaseTemplatePath = sourceBaseTemplatePath,
     )
 }
 
