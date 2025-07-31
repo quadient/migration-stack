@@ -21,16 +21,23 @@ static Migration initMigration(String[] args) {
     def baseTemplatePath = getValueOfArg("--base-template-path", argsList).orElse(fileProjectConfig.baseTemplatePath)
     def inputDataPath = getValueOfArg("--input-data-path", argsList).orElse(fileProjectConfig.inputDataPath)
     def interactiveTenant = getValueOfArg("--interactive-tenant", argsList).orElse(fileProjectConfig.interactiveTenant)
-    def defaultTargetFolder = getValueOfArg("--default-target-folder", argsList).orElse(fileProjectConfig.defaultTargetFolder.toString())
+    def defaultTargetFolder = getValueOfArg("--default-target-folder", argsList).orElse(fileProjectConfig.defaultTargetFolder?.toString())
     def inspireOutput = getValueOfArg("--inspire-output", argsList).orElse(fileProjectConfig.inspireOutput.toString())
     def sourceBaseTemplate = getValueOfArg("--source-base-template-path", argsList).orElse(fileProjectConfig.sourceBaseTemplatePath)
+
+    def defFolder
+    if (defaultTargetFolder == null || defaultTargetFolder.isEmpty()) {
+        defFolder = null
+    } else {
+        defFolder = IcmPath.from(defaultTargetFolder)
+    }
 
     def projectConfig = new ProjectConfig(
         projectName,
         baseTemplatePath,
         inputDataPath,
         interactiveTenant,
-        IcmPath.from(defaultTargetFolder),
+        defFolder,
         fileProjectConfig.paths,
         InspireOutput.valueOf(inspireOutput),
         sourceBaseTemplate,
