@@ -253,7 +253,7 @@ abstract class InspireDocumentObjectBuilder(
 
         val layoutData = layout.data
         layoutData.importDataDefinition(workflowTreeDefinition)
-        if (variableTree.isNotEmpty()) {
+        if (variableTree.isNotEmpty() && variableTree.values.first() is ArrayVariable) {
             layoutData.setRepeatedBy("Data.${variableTree.keys.first()}")
         }
 

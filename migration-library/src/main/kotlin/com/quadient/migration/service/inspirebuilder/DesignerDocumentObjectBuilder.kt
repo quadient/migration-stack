@@ -28,11 +28,15 @@ import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.millimeters
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
+import com.quadient.wfdxml.api.layoutnodes.FlowArea
 import com.quadient.wfdxml.api.layoutnodes.Page
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.module.Layout
+import com.quadient.wfdxml.internal.layoutnodes.FlowAreaImpl
+import com.quadient.wfdxml.internal.layoutnodes.PageImpl
+import com.quadient.wfdxml.internal.layoutnodes.PagesImpl
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -133,6 +137,15 @@ class DesignerDocumentObjectBuilder(
             layout, textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel })
         buildParagraphStyles(
             layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
+
+        layout.addRoot().setAllowRuntimeModifications(true)
+
+        val firstPageWithFlowArea =
+            (layout.pages as PagesImpl).children.find { page -> (page as PageImpl).children.any { it is FlowArea } } as? PageImpl
+        if (firstPageWithFlowArea != null) {
+            val flowAreaFlow = (firstPageWithFlowArea.children.first() as FlowAreaImpl).flow
+            layout.pages.setMainFlow(flowAreaFlow)
+        }
 
         val documentObjectXml = builder.build()
         return if (projectConfig.sourceBaseTemplatePath.isNullOrBlank()) {
