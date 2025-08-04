@@ -58,6 +58,7 @@ import com.quadient.migration.tools.model.aVariable
 import com.quadient.migration.tools.model.aVariableStructureModel
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldBeNull
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions
@@ -331,6 +332,8 @@ class InteractiveDocumentObjectBuilderTest {
             .shouldBeEqualTo(clientsVar["Id"].textValue())
         variableDefinitions.first { it["Name"].textValue() == "Count" }["ParentId"].textValue()
             .shouldBeEqualTo(clientsVar["Id"].textValue())
+
+        result["Data"]["RepeatedBy"].textValue().shouldBeEqualTo("Data.Clients")
     }
 
     @Test
@@ -373,7 +376,7 @@ class InteractiveDocumentObjectBuilderTest {
         val variable = aVariable("V1", "ClientName")
         val variableStructure = aVariableStructureModel(
             structure = mapOf(
-                VariableModelRef(variable.id) to VariablePath("Data.Clients.Value"),
+                VariableModelRef(variable.id) to VariablePath("Data.Clients"),
             )
         )
 
@@ -417,7 +420,7 @@ class InteractiveDocumentObjectBuilderTest {
         val conditionFlow = result["Flow"].last { it["Id"].textValue() == conditionFlowRef }
         conditionFlow["Type"].textValue().shouldBeEqualTo("InlCond")
         val condition = conditionFlow["Condition"]
-        condition["Value"].textValue().shouldBeEqualTo("return (DATA.Clients.Current.ClientName==String('Jon'));")
+        condition["Value"].textValue().shouldBeEqualTo("return (DATA.Clients.ClientName==String('Jon'));")
         val finalFlowRef = condition[""].textValue()
 
         val finalFlow = result["Flow"].last { it["Id"].textValue() == finalFlowRef }
@@ -427,6 +430,8 @@ class InteractiveDocumentObjectBuilderTest {
         val finalFlowText = finalFlowPara["T"]
         finalFlowText["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.name}")
         finalFlowText[""].textValue().shouldBeEqualTo("Hello There")
+
+        result["Data"]["RepeatedBy"].shouldBeNull()
     }
 
     @Test

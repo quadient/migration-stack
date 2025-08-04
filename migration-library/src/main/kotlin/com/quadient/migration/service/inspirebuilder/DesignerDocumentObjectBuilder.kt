@@ -277,7 +277,11 @@ class DesignerDocumentObjectBuilder(
         val result = StringWriter()
         val transformer = newInstance().newTransformer()
         transformer.transform(DOMSource(this), StreamResult(result))
-        return result.toString()
+        return result.toString().replace(Regex("<Value>([\\s\\S]*?)</Value>")) { matchResult ->
+            val value = matchResult.groupValues[1]
+            val encoded = value.replace("\n", "&#xa;").replace("\r", "")
+            "<Value>$encoded</Value>"
+        }
     }
 
     private fun Node.firstElementChildByTag(tag: String): Element? =

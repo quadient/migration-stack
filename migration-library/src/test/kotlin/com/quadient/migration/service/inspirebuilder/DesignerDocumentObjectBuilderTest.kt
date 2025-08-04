@@ -146,6 +146,9 @@ class DesignerDocumentObjectBuilderTest {
             .shouldBeEqualTo(standaloneBlock.nameOrId())
         result["Flow"].last { it["Id"].textValue() == virtualFlowId }["ExternalLocation"].textValue()
             .shouldBeEqualTo("icm://${config.defaultTargetFolder}/${standaloneBlock.nameOrId()}.wfd")
+
+        result["Root"]["AllowRuntimeModifications"].textValue().shouldBeEqualTo("True")
+        result["Pages"]["MainFlow"].textValue().shouldBeEqualTo(flowId)
     }
 
     @Test
@@ -518,6 +521,10 @@ class DesignerDocumentObjectBuilderTest {
             <Name>AFPApplyPageTransformation</Name>
             <Value>1</Value>
           </Property>
+          <Property>
+            <Name>PreviewTypes</Name>
+            <Value>HtmlPreview&#xa;PagePreview&#xa;SMSPreview</Value>
+          </Property>
           <DataInput>
             <Id>DataInput1</Id>
             <Name>DataInput1</Name>
@@ -538,7 +545,9 @@ class DesignerDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        result["Property"].size().shouldBeEqualTo(2)
+        result["Property"].size().shouldBeEqualTo(3)
+        result["Property"].first { it["Name"].textValue() == "PreviewTypes" }["Value"].textValue()
+            .shouldBeEqualTo("HtmlPreview\nPagePreview\nSMSPreview")
         result["DataInput"].shouldNotBeNull()
         val layout = result["Layout"]["Layout"]
         layout["Flow"].last()["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text")
