@@ -25,6 +25,7 @@ import com.quadient.migration.data.VariableModel
 import com.quadient.migration.data.VariableModelRef
 import com.quadient.migration.data.VariablePath
 import com.quadient.migration.data.VariableStructureModel
+import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
@@ -70,6 +71,7 @@ fun aDocObj(
     targetFolder: String? = null,
     options: DocumentObjectOptions? = null,
     displayRuleRef: String? = null,
+    variableStructureModelRef: String? = null,
 ): DocumentObjectModel {
     return DocumentObjectModel(
         id = id,
@@ -83,6 +85,7 @@ fun aDocObj(
         created = Clock.System.now(),
         lastUpdated = Clock.System.now(),
         displayRuleRef = displayRuleRef?.let { DisplayRuleModelRef(it) },
+        variableStructureRef = variableStructureModelRef?.let { VariableStructureModelRef(it) },
         baseTemplate = null,
         options = options,
     )
@@ -258,13 +261,14 @@ fun aVariableStructureModel(
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
     structure: Map<VariableModelRef, VariablePath> = emptyMap(),
+    lastUpdated: Instant = Clock.System.now(),
 ): VariableStructureModel {
     return VariableStructureModel(
         id = id,
         name = name,
         originLocations = originLocations,
         customFields = customFields,
-        lastUpdated = Clock.System.now(),
+        lastUpdated = lastUpdated,
         created = Clock.System.now(),
         structure = structure
     )

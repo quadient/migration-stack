@@ -14,6 +14,7 @@ import com.quadient.migration.persistence.table.DocumentObjectTable.internal
 import com.quadient.migration.persistence.table.DocumentObjectTable.options
 import com.quadient.migration.persistence.table.DocumentObjectTable.targetFolder
 import com.quadient.migration.persistence.table.DocumentObjectTable.type
+import com.quadient.migration.persistence.table.DocumentObjectTable.variableStructureRef
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.PageOptions
@@ -81,6 +82,7 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
                 it[created] = existingItem?.created ?: now
                 it[lastUpdated] = now
                 it[displayRuleRef] = dto.displayRuleRef?.id
+                it[variableStructureRef] = dto.variableStructureRef?.id
                 it[baseTemplate] = dto.baseTemplate
                 it[options] = dto.options
             }

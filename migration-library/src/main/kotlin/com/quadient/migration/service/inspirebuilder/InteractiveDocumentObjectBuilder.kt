@@ -106,7 +106,7 @@ class InteractiveDocumentObjectBuilder(
         val layout = builder.addLayout()
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
-        val variableStructure = initVariableStructure(layout)
+        val variableStructure = initVariableStructure(layout, documentObject)
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContentModel>>()
         if (documentObject.type == DocumentObjectType.Page) {

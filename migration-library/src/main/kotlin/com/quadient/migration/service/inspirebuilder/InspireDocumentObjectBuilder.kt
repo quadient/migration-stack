@@ -232,14 +232,19 @@ abstract class InspireDocumentObjectBuilder(
         )
     }
 
-    protected fun initVariableStructure(layout: Layout): VariableStructureModel {
-        val variableStructureModel = variableStructureRepository.listAllModel().firstOrNull() ?: VariableStructureModel(
-            id = "defaultVariableStructure",
-            lastUpdated = Clock.System.now(),
-            created = Clock.System.now(),
-            structure = mutableMapOf(),
-            customFields = CustomFieldMap()
-        )
+    protected fun initVariableStructure(layout: Layout, documentObject: DocumentObjectModel): VariableStructureModel {
+        val documentObjectVariableStructure =
+            documentObject.variableStructureRef?.let { variableStructureRepository.findModelOrFail(it.id) }
+
+        val variableStructureModel =
+            documentObjectVariableStructure ?: variableStructureRepository.listAllModel().maxByOrNull { it.lastUpdated }
+            ?: VariableStructureModel(
+                id = "defaultVariableStructure",
+                lastUpdated = Clock.System.now(),
+                created = Clock.System.now(),
+                structure = mutableMapOf(),
+                customFields = CustomFieldMap()
+            )
 
         val normalizedVariablePaths =
             variableStructureModel.structure.map { (_, variablePath) -> removeDataFromVariablePath(variablePath.value) }

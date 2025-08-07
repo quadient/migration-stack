@@ -109,7 +109,7 @@ class DesignerDocumentObjectBuilder(
         val pageModels = mutableListOf<DocumentObjectModel>()
         val virtualPageContent = mutableListOf<DocumentContentModel>()
 
-        val variableStructure = initVariableStructure(layout)
+        val variableStructure = initVariableStructure(layout, documentObject)
         documentObject.content.forEach {
             if (it is DocumentObjectModelRef) {
                 val documentObjectModel = documentObjectRepository.findModelOrFail(it.id)

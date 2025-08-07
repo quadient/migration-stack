@@ -1,5 +1,6 @@
 package com.quadient.migration.example.common.mapping
 
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
@@ -40,6 +41,11 @@ for (line in docObjectLines) {
     existingDocObject.internal = Csv.deserialize(values.get("internal"), boolean)
     existingDocObject.baseTemplate = Csv.deserialize(values.get("baseTemplate"), String.class)
     existingDocObject.targetFolder = Csv.deserialize(values.get("targetFolder"), String.class)
+    def variableStructureId = Csv.deserialize(values.get("variableStructureId"), String.class)
+    if (variableStructureId != null) {
+        existingDocObject.variableStructureRef = new VariableStructureRef(variableStructureId)
+    }
+
     def type = Csv.deserialize(values.get("type"), DocumentObjectType.class)
     if (type != existingDocObject.type) {
         existingDocObject.options = null
