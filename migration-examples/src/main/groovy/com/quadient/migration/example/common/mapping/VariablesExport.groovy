@@ -7,8 +7,11 @@ import com.quadient.migration.example.common.util.Csv
 import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
+import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
 
 def migration = initMigration(this.binding.variables["args"])
+
+def argUserInput = (getValueOfArg("--variable-structure-name", this.binding.variables["args"] as List<String>)).orElseGet { null }
 
 def forbiddenChars = /[\\\/:\*\?"<>\|]/
 
@@ -16,13 +19,15 @@ def variables = migration.variableRepository.listAll()
 def variableStructures = migration.variableStructureRepository.listAll()
 def defaultVariableStructureName = constructDefaultName(variableStructures, migration)
 
-if (variableStructures.isEmpty()) {
-    println "No existing variable structures found."
-    println "Type a name of new variable structure (leave empty for default: ${defaultVariableStructureName}):"
-} else {
-    println "Existing variable structures for export:"
-    variableStructures.eachWithIndex { variableStructure, i -> println "${i + 1} - ${variableStructure.nameOrId()}" }
-    println "Either select a number of an existing variable structure, or type a name for a new variable structure (leave empty for default: ${defaultVariableStructureName}):"
+if (!argUserInput) {
+    if (variableStructures.isEmpty()) {
+        println "No existing variable structures found."
+        println "Type a name of new variable structure (leave empty for default: ${defaultVariableStructureName}):"
+    } else {
+        println "Existing variable structures for export:"
+        variableStructures.eachWithIndex { variableStructure, i -> println "${i + 1} - ${variableStructure.nameOrId()}" }
+        println "Either select a number of an existing variable structure, or type a name for a new variable structure (leave empty for default: ${defaultVariableStructureName}):"
+    }
 }
 
 def variableStructureName
@@ -30,7 +35,7 @@ def selectedVariableStructure
 def userInput
 
 while (true) {
-    userInput = System.in.newReader().readLine().trim()
+    userInput = argUserInput ?: System.in.newReader().readLine().trim()
     if (!userInput) {
         variableStructureName = defaultVariableStructureName
         println "No input provided. Generated new variable structure name: $variableStructureName"

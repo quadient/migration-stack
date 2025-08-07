@@ -7,6 +7,7 @@ import com.quadient.migration.example.common.util.Csv
 import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
+import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
 
 def migration = initMigration(this.binding.variables["args"])
 
@@ -18,28 +19,41 @@ if (csvFiles.isEmpty()) {
     System.exit(1)
 }
 
-println "Available CSV files for import:"
-csvFiles.eachWithIndex { file, i -> println "${i + 1} - ${file.name}" }
-println "Select a number of the CSV file to import:"
-
-def selectedFile
-while (true) {
-    def userInput = System.in.newReader().readLine().trim()
-    if (userInput.isInteger()) {
-        def idx = userInput.toInteger() - 1
-        if (idx >= 0 && idx < csvFiles.size()) {
-            selectedFile = csvFiles[idx]
-            println "Selected file: ${selectedFile.name}"
-            break
-        }
+def selectedFile = null
+def argUserInput = (getValueOfArg("--variable-structure-name", this.binding.variables["args"] as List<String>)).orElseGet { null }
+if (argUserInput) {
+    def csvName = argUserInput.toLowerCase().endsWith(".csv") ? argUserInput : "${argUserInput}.csv"
+    def csvFile = csvFiles.find { it.name.equalsIgnoreCase(csvName) }
+    if (csvFile) {
+        selectedFile = csvFile
+        println "Selected file: ${selectedFile.name}"
+    } else {
+        println "CSV file '${csvName}' not found in mapping/variables/. Please provide a valid file name."
+        System.exit(1)
     }
-    println "Invalid selection. Please enter a valid number:"
+} else {
+    println "Available CSV files for import:"
+    csvFiles.eachWithIndex { file, i -> println "${i + 1} - ${file.name}" }
+    println "Select a number of the CSV file to import:"
+
+    while (true) {
+        def userInput = System.in.newReader().readLine().trim()
+        if (userInput.isInteger()) {
+            def idx = userInput.toInteger() - 1
+            if (idx >= 0 && idx < csvFiles.size()) {
+                selectedFile = csvFiles[idx]
+                println "Selected file: ${selectedFile.name}"
+                break
+            }
+        }
+        println "Invalid selection. Please enter a valid number:"
+    }
 }
 
 def lines = selectedFile.readLines()
 def columnNames = lines.removeFirst().split(",")
 
-def builder = new VariableStructureBuilder(selectedFile.name.split("\\.")[0]  )
+def builder = new VariableStructureBuilder(selectedFile.name.split("\\.")[0])
 
 for (line in lines) {
     def values = Csv.getCells(line, columnNames)

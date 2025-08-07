@@ -8,6 +8,8 @@ import com.quadient.migration.shared.IcmPath
 
 import java.nio.charset.StandardCharsets
 
+import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
+
 static Migration initMigration(String[] args) {
     def classLoader = this.getClassLoader()
     def migConfig = MigConfig.read(classLoader.getResource('migration-config.toml').toURI())
@@ -50,18 +52,4 @@ static Migration initMigration(String[] args) {
 private static String getActiveProjectConfigFromFile(ClassLoader classLoader) {
     def activeProjectConfigStream = classLoader.getResourceAsStream('active-project-config')
     return activeProjectConfigStream == null ? "project-config.toml" : new String(activeProjectConfigStream.readAllBytes(), StandardCharsets.UTF_8)
-}
-
-private static Optional<String> getValueOfArg(String arg, List<String> args) {
-    def argIndex = args.findIndexOf { it == arg }
-    if (argIndex > -1) {
-        def argValue = args[argIndex + 1]
-        if (argValue == null) {
-            println("Value for arg '$arg' is not specified.")
-            return Optional.empty()
-        } else {
-            return Optional.of(argValue)
-        }
-    }
-    return Optional.empty()
 }
