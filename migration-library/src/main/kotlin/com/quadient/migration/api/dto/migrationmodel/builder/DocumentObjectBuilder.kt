@@ -5,6 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
@@ -15,6 +16,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     private var internal: Boolean = false
     private var targetFolder: String? = null
     private var displayRuleRef: DisplayRuleRef? = null
+    private var variableStructureRef: VariableStructureRef? = null
     private var baseTemplate: String? = null
     private var options: DocumentObjectOptions? = null
 
@@ -51,6 +53,12 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
      * @return This builder instance for method chaining.
      */
     fun displayRuleRef(ref: DisplayRuleRef) = apply { this.displayRuleRef = ref }
+    /**
+     * Add a reference to a variable structure to this document object.
+     * @param id ID of the variable structure to reference.
+     * @return This builder instance for method chaining.
+     */
+    fun variableStructureRef(id: String) = apply { this.variableStructureRef = VariableStructureRef(id) }
     /**
      * Override the default base template for this document object.
      * @param baseTemplate Path to the base template to use for this document object.

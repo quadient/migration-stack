@@ -10,11 +10,37 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding.variables["args"])
 
-def file = Paths.get("mapping", "${migration.projectConfig.name}-variables.csv").toFile()
-def lines = file.readLines()
+def variablesMappingDir = Paths.get("mapping", "variables").toFile()
+def csvFiles = variablesMappingDir.listFiles()?.findAll { it.name.toLowerCase().endsWith(".csv") } ?: []
+
+if (csvFiles.isEmpty()) {
+    println "No CSV files found in mapping/variables/. Cannot import variable structure."
+    System.exit(1)
+}
+
+println "Available CSV files for import:"
+csvFiles.eachWithIndex { file, i -> println "${i + 1} - ${file.name}" }
+println "Select a number of the CSV file to import:"
+
+def selectedFile
+while (true) {
+    def userInput = System.in.newReader().readLine().trim()
+    if (userInput.isInteger()) {
+        def idx = userInput.toInteger() - 1
+        if (idx >= 0 && idx < csvFiles.size()) {
+            selectedFile = csvFiles[idx]
+            println "Selected file: ${selectedFile.name}"
+            break
+        }
+    }
+    println "Invalid selection. Please enter a valid number:"
+}
+
+def lines = selectedFile.readLines()
 def columnNames = lines.removeFirst().split(",")
 
-def builder = new VariableStructureBuilder("$migration.projectConfig.name-datastructure")
+def builder = new VariableStructureBuilder(selectedFile.name.split("\\.")[0]  )
+
 for (line in lines) {
     def values = Csv.getCells(line, columnNames)
     builder.structure.put(values.get("id"), values.get("inspire_path"))

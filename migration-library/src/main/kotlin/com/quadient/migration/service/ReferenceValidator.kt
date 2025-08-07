@@ -7,6 +7,7 @@ import com.quadient.migration.data.ParagraphStyleModelRef
 import com.quadient.migration.data.RefModel
 import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.data.VariableModelRef
+import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
@@ -135,6 +136,18 @@ class ReferenceValidator(
                         validatedRefs.add(current)
                         alreadyValidRefs.add(current)
                         queue.addAll(image.collectRefs())
+                    } else {
+                        missingRefs.add(current)
+                    }
+                }
+
+                is VariableStructureModelRef -> {
+                    val variableStructure = variableStructureRepository.findModel(current.id)
+                    
+                    if (variableStructure != null) {
+                        validatedRefs.add(current)
+                        alreadyValidRefs.add(current)
+                        queue.addAll(variableStructure.collectRefs())
                     } else {
                         missingRefs.add(current)
                     }

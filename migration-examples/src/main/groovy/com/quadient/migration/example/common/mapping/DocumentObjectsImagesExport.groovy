@@ -19,7 +19,7 @@ documentObjFile.createParentDirectories()
 imagesFile .createParentDirectories()
 
 documentObjFile.withWriter { writer ->
-    writer.writeLine("id,name,type,internal,originLocation,baseTemplate,targetFolder,status")
+    writer.writeLine("id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status")
     objects.each { obj ->
         def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(
             obj.id,
@@ -35,6 +35,7 @@ documentObjFile.withWriter { writer ->
         builder.append("," + Csv.serialize(obj.originLocations))
         builder.append("," + Csv.serialize(obj.baseTemplate))
         builder.append("," + Csv.serialize(obj.targetFolder))
+        builder.append("," + Csv.serialize(obj.variableStructureRef?.id))
         builder.append("," + Csv.serialize(status.class.simpleName))
 
         writer.writeLine(builder.toString())

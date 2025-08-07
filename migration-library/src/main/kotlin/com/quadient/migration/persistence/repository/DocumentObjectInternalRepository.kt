@@ -3,6 +3,7 @@ package com.quadient.migration.persistence.repository
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModel
+import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.DocumentObjectTable.baseTemplate
 import com.quadient.migration.persistence.table.DocumentObjectTable.content
@@ -31,6 +32,7 @@ class DocumentObjectInternalRepository(table: DocumentObjectTable, projectName: 
             lastUpdated = row[table.lastUpdated],
             baseTemplate = row[baseTemplate],
             displayRuleRef = row[displayRuleRef]?.let { DisplayRuleModelRef(it) },
+            variableStructureRef = row[DocumentObjectTable.variableStructureRef]?.let { VariableStructureModelRef(it) },
             options = row[options]
         )
     }

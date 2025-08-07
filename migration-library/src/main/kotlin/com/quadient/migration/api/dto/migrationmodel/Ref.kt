@@ -15,6 +15,7 @@ import com.quadient.migration.data.TextStyleDefOrRefModel
 import com.quadient.migration.data.TextStyleDefinitionModel
 import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.data.VariableModelRef
+import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.migrationmodel.DisplayRuleEntityRef
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
@@ -22,6 +23,7 @@ import com.quadient.migration.persistence.migrationmodel.ParagraphStyleEntityRef
 import com.quadient.migration.persistence.migrationmodel.StringEntity
 import com.quadient.migration.persistence.migrationmodel.TextStyleEntityRef
 import com.quadient.migration.persistence.migrationmodel.VariableEntityRef
+import com.quadient.migration.persistence.migrationmodel.VariableStructureEntityRef
 
 sealed interface Ref {
     val id: String
@@ -34,6 +36,7 @@ sealed interface Ref {
             is ParagraphStyleModelRef -> ParagraphStyleRef.fromModel(model)
             is DisplayRuleModelRef -> DisplayRuleRef.fromModel(model)
             is ImageModelRef -> ImageRef.fromModel(model)
+            is VariableStructureModelRef -> VariableStructureRef.fromModel(model)
         }
     }
 }
@@ -146,6 +149,15 @@ data class ImageRef(override val id: String) : Ref, DocumentContent, TextContent
 
     fun toModel() = ImageModelRef(id)
     fun toDb() = ImageEntityRef(id)
+}
+
+data class VariableStructureRef(override val id: String) : Ref {
+    companion object {
+        fun fromModel(model: VariableStructureModelRef) = VariableStructureRef(model.id)
+    }
+
+    fun toModel() = VariableStructureModelRef(id)
+    fun toDb() = VariableStructureEntityRef(id)
 }
 
 data class StringValue(val value: String) : TextContent {
