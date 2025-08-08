@@ -36,6 +36,7 @@ import com.quadient.migration.shared.Binary
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Group
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Literal
@@ -80,6 +81,8 @@ abstract class InspireDocumentObjectBuilder(
     protected val projectConfig: ProjectConfig,
 ) {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
+
+    abstract fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String
 
     abstract fun getDocumentObjectPath(documentObject: DocumentObjectModel): String
 

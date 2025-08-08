@@ -52,24 +52,22 @@ class InteractiveDocumentObjectBuilder(
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
     private val baseTemplatesInteractiveFlowNamesToIds = mutableMapOf<String, Map<String, String>>()
 
-    override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
-        val fileName = "${documentObject.nameOrId()}.jld"
+    override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
+        val fileName = "$nameOrId.jld"
 
-        if (documentObject.targetFolder?.isAbsolute() == true) {
-            return documentObject.targetFolder.join(fileName).toString()
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName).toString()
         }
 
         val tenant = projectConfig.interactiveTenant
-        val documentObjectType = documentObject.type.toInteractiveFolder()
+        val documentObjectType = type.toInteractiveFolder()
 
-        return IcmPath.root()
-            .join("Interactive")
-            .join(tenant)
-            .join(documentObjectType)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, documentObject.targetFolder))
-            .join(fileName)
-            .toString()
+        return IcmPath.root().join("Interactive").join(tenant).join(documentObjectType)
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName).toString()
     }
+
+    override fun getDocumentObjectPath(documentObject: DocumentObjectModel) =
+        getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder)
 
     override fun getImagePath(image: ImageModel): String {
         val fileName = "${image.nameOrId()}${imageExtension(image)}"

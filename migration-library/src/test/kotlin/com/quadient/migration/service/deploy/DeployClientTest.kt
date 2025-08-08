@@ -67,6 +67,7 @@ class DeployClientTest {
     fun setup() {
         every { documentObjectBuilder.getProperty("projectConfig") } returns aProjectConfig()
         every { documentObjectBuilder.getDocumentObjectPath(any()) } answers { callOriginal() }
+        every { documentObjectBuilder.getDocumentObjectPath(any(), any(), any()) } answers { callOriginal() }
         every { documentObjectBuilder.getImagePath(any()) } answers { callOriginal() }
     }
 

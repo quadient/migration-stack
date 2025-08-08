@@ -73,16 +73,19 @@ class DesignerDocumentObjectBuilder(
 
     val defaultPosition = Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters())
 
-    override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
-        val fileName = "${documentObject.nameOrId()}.wfd"
+    override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
+        val fileName = "$nameOrId.wfd"
 
-        if (documentObject.targetFolder?.isAbsolute() == true) {
-            return documentObject.targetFolder.join(fileName).toString()
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName).toString()
         }
 
-        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder, documentObject.targetFolder))
-            .join(fileName).toString()
+        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName)
+            .toString()
     }
+
+    override fun getDocumentObjectPath(documentObject: DocumentObjectModel) =
+        getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder)
 
     override fun getImagePath(image: ImageModel): String {
         val fileName = "${image.nameOrId()}${imageExtension(image)}"
