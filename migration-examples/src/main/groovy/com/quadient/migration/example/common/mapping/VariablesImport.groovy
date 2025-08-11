@@ -20,7 +20,7 @@ if (csvFiles.isEmpty()) {
     System.exit(1)
 }
 
-def selectedFilePath = new Mapping().getVariablesMappingPath()
+def selectedFilePath = new Mapping().getVariablesMappingPath(this.binding.variables["args"])
 run(migration, selectedFilePath)
 
 static void run(Migration migration, Path path) {

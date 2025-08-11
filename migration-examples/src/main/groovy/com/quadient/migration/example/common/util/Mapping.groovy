@@ -11,7 +11,7 @@ static void mapProp(Object mapping, Object obj, String key, Object newValue) {
     }
 }
 
-Path getVariablesMappingPath() {
+Path getVariablesMappingPath(String[] args) {
     def variablesMappingDir = Paths.get("mapping", "variables").toFile()
     def csvFiles = variablesMappingDir.listFiles()?.findAll { it.name.toLowerCase().endsWith(".csv") } ?: []
 
@@ -21,7 +21,7 @@ Path getVariablesMappingPath() {
     }
 
     def selectedFile = null
-    def argUserInput = (getValueOfArg("--variable-structure-name", this.binding.variables["args"] as List<String>)).orElseGet { null }
+    def argUserInput = (getValueOfArg("--variable-structure-name", args as List<String>)).orElseGet { null }
     if (argUserInput) {
         def csvName = argUserInput.toLowerCase().endsWith(".csv") ? argUserInput : "${argUserInput}.csv"
         def csvFile = csvFiles.find { it.name.equalsIgnoreCase(csvName) }
