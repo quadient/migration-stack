@@ -22,6 +22,18 @@ class MappingRepository(
         return internalRepository.listAll().map { it.toDto() }
     }
 
+    fun applyAll(structureId: String) {
+        for (mapping in listAll()) {
+            when (mapping.mapping) {
+                is MappingItem.DocumentObject -> applyDocumentObjectMapping(mapping.id)
+                is MappingItem.Image -> applyImageMapping(mapping.id)
+                is MappingItem.TextStyle -> applyTextStyleMapping(mapping.id)
+                is MappingItem.ParagraphStyle -> applyParagraphStyleMapping(mapping.id)
+                is MappingItem.Variable -> applyVariableMapping(mapping.id, structureId)
+            }
+        }
+    }
+
     fun upsert(id: String, mapping: MappingItem): Mapping {
         return internalRepository.upsert(id, mapping.toDb()).toDto()
     }

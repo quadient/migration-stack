@@ -58,6 +58,9 @@ val migrationTasks = listOf<MigTask>(
 
     // Migration mapping
     MigTask(
+        "applyAllMappings", "migration mapping", "Apply all mappings", "common.mapping.ApplyAllMappings", System.`in`
+    ),
+    MigTask(
         "paragraphStylesExport", "migration mapping", "Export paragraph styles", "common.mapping.ParagraphStylesExport"
     ),
     MigTask(
