@@ -1,43 +1,10 @@
 package com.quadient.migration.api
 
-import com.quadient.migration.api.dto.migrationmodel.DisplayRule
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.Image
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
-import com.quadient.migration.api.dto.migrationmodel.TextStyle
-import com.quadient.migration.api.dto.migrationmodel.Variable
-import com.quadient.migration.api.dto.migrationmodel.VariableStructure
-import com.quadient.migration.api.repository.DisplayRuleRepository
-import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.ImageRepository
-import com.quadient.migration.api.repository.ParagraphStyleRepository
-import com.quadient.migration.api.repository.Repository
-import com.quadient.migration.api.repository.StatusTrackingRepository
-import com.quadient.migration.api.repository.TextStyleRepository
-import com.quadient.migration.api.repository.VariableRepository
-import com.quadient.migration.api.repository.VariableStructureRepository
-import com.quadient.migration.data.DisplayRuleModel
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.ImageModel
-import com.quadient.migration.data.ParagraphStyleModel
-import com.quadient.migration.data.TextStyleModel
-import com.quadient.migration.data.VariableModel
-import com.quadient.migration.data.VariableStructureModel
-import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
-import com.quadient.migration.persistence.repository.VariableInternalRepository
-import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
-import com.quadient.migration.persistence.table.DisplayRuleTable
-import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.ImageTable
-import com.quadient.migration.persistence.table.ParagraphStyleTable
-import com.quadient.migration.persistence.table.StatusTrackingTable
-import com.quadient.migration.persistence.table.TextStyleTable
-import com.quadient.migration.persistence.table.VariableStructureTable
-import com.quadient.migration.persistence.table.VariableTable
+import com.quadient.migration.api.dto.migrationmodel.*
+import com.quadient.migration.api.repository.*
+import com.quadient.migration.data.*
+import com.quadient.migration.persistence.repository.*
+import com.quadient.migration.persistence.table.*
 import com.quadient.migration.service.LocalStorage
 import com.quadient.migration.service.ReferenceValidator
 import com.quadient.migration.service.Storage
@@ -68,6 +35,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
     val displayRuleRepository: Repository<DisplayRule, DisplayRuleModel>
     val imageRepository: Repository<Image, ImageModel>
     val statusTrackingRepository = StatusTrackingRepository(projectName)
+    val mappingRepository: MappingRepository
 
     val icmClient: IcmClient = ipsService
     val ipsClient = ipsService.client
@@ -97,7 +65,8 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                 VariableStructureTable,
                 DisplayRuleTable,
                 ImageTable,
-                StatusTrackingTable
+                StatusTrackingTable,
+                MappingTable,
             )
         }
 
@@ -125,6 +94,16 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
         this.variableStructureRepository = variableStructureRepository
         this.displayRuleRepository = displayRuleRepository
         this.imageRepository = imageRepository
+
+        this.mappingRepository = MappingRepository(
+            projectName,
+            documentObjectRepository,
+            imageRepository,
+            textStyleRepository,
+            paragraphStyleRepository,
+            variableRepository,
+            variableStructureRepository
+        )
 
         repositories.add(variableRepository)
         repositories.add(documentObjectRepository)

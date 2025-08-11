@@ -21,4 +21,5 @@ def migration = initMigration(this.binding.variables["args"])
 
 migration.repositories.forEach { it.deleteAll() }
 migration.statusTrackingRepository.deleteAll()
+migration.mappingRepository.deleteAll()
 migration.storage.deleteAll()

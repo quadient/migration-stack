@@ -41,8 +41,8 @@ class TextStyleDefinitionBuilder {
     var interspacing: Size? = null
     var superOrSubscript: SuperOrSubscript = SuperOrSubscript.None
 
-    fun fontFamily(fontFamily: String) = apply { this.fontFamily = fontFamily }
-    fun size(size: Size) = apply { this.size = size }
+    fun fontFamily(fontFamily: String?) = apply { this.fontFamily = fontFamily }
+    fun size(size: Size?) = apply { this.size = size }
     fun bold(bold: Boolean) = apply { this.bold = bold }
     fun italic(italic: Boolean) = apply { this.italic = italic }
     fun underline(underline: Boolean) = apply { this.underline = underline }
@@ -50,7 +50,7 @@ class TextStyleDefinitionBuilder {
     fun superOrSubscript(superOrSubscript: SuperOrSubscript) = apply { this.superOrSubscript = superOrSubscript }
     fun superOrSubscript(superOrSubscript: String) =
         apply { this.superOrSubscript = SuperOrSubscript.valueOf(superOrSubscript) }
-    fun interspacing(interspacing: Size) = apply { this.interspacing = interspacing }
+    fun interspacing(interspacing: Size?) = apply { this.interspacing = interspacing }
 
     /**
      * @throws When any of the components are outside [0, 1] range
@@ -63,7 +63,7 @@ class TextStyleDefinitionBuilder {
      */
     fun foregroundColor(red: Int, green: Int, blue: Int) = apply { this.foregroundColor = Color(red, green, blue) }
     fun foregroundColor(hex: String) = apply { this.foregroundColor = Color.fromHex(hex) }
-    fun foregroundColor(hex: Color) = apply { this.foregroundColor = foregroundColor }
+    fun foregroundColor(color: Color) = apply { this.foregroundColor = color }
 
     fun build(): TextStyleDefinition {
         return TextStyleDefinition(

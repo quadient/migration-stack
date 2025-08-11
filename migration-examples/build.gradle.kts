@@ -40,3 +40,7 @@ apply {
     from(file("gradle/tasks.gradle.kts"))
     plugin("org.owasp.dependencycheck")
 }
+
+tasks.test {
+    useJUnitPlatform()
+}

@@ -64,6 +64,7 @@ static <T> T deserialize(String value, Class<T> cls) {
         case String: return value as T
         case Color: return Color.fromHex(value) as T
         case Size: return Size.fromString(value) as T
+        case Boolean:
         case boolean: if (value.toLowerCase() == "true") {
             return true as T
         } else if (value.toLowerCase() == "false") {

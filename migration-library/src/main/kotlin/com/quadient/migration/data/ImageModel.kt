@@ -6,7 +6,7 @@ import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import kotlinx.datetime.Instant
 
-class ImageModel(
+data class ImageModel(
     override val id: String,
     override val name: String?,
     override val originLocations: List<String>,

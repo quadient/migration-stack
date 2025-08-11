@@ -70,6 +70,7 @@ fun aDocObj(
     targetFolder: String? = null,
     options: DocumentObjectOptions? = null,
     displayRuleRef: String? = null,
+    baseTemplate: String? = null,
 ): DocumentObjectModel {
     return DocumentObjectModel(
         id = id,
@@ -83,7 +84,7 @@ fun aDocObj(
         created = Clock.System.now(),
         lastUpdated = Clock.System.now(),
         displayRuleRef = displayRuleRef?.let { DisplayRuleModelRef(it) },
-        baseTemplate = null,
+        baseTemplate = baseTemplate,
         options = options,
     )
 }
