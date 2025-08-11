@@ -2,6 +2,7 @@ import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.data.Active
 import com.quadient.migration.example.common.mapping.DocumentObjectsImagesExport
 import com.quadient.migration.shared.DocumentObjectType
@@ -23,29 +24,29 @@ class DocumentObjectsImagesMappingExportTest {
         def migration = Utils.mockMigration()
 
         when(migration.documentObjectRepository.listAll()).thenReturn([
-            new DocumentObject("empty", null, [], new CustomFieldMap([:]), DocumentObjectType.Block, [], false, null, null, null, null, null, null),
-            new DocumentObject("should not be listed because internal", null, [], new CustomFieldMap([:]), DocumentObjectType.Block, [], true, null, null, null, null, null, null),
-            new DocumentObject("full", "full", ["foo", "bar"], new CustomFieldMap([:]), DocumentObjectType.Page, [], false, "someDir", null, "tmpl.wfd", null, null, null),
-            new DocumentObject("overridden empty", null, [], new CustomFieldMap([:]), DocumentObjectType.Block, [], false, null, null, null, null, null, null),
-            new DocumentObject("overridden full", "full", ["foo", "bar"], new CustomFieldMap([:]), DocumentObjectType.Page, [], false, "someDir", null, "tmpl.wfd", null, null, null),
+            new DocumentObject("empty", null, [], new CustomFieldMap([:]), DocumentObjectType.Block, [], false, null, null, null, null, null, null, null),
+            new DocumentObject("should not be listed because internal", null, [], new CustomFieldMap([:]), DocumentObjectType.Block, [], true, null, null, null, null, null, null, null),
+            new DocumentObject("full", "full", ["foo", "bar"], new CustomFieldMap([:]), DocumentObjectType.Page, [], false, "someDir", null, new VariableStructureRef("struct"), "tmpl.wfd", null, null, null),
+            new DocumentObject("overridden empty", null, [], new CustomFieldMap([:]), DocumentObjectType.Block, [], false, null, null, null, null, null, null, null),
+            new DocumentObject("overridden full", "full", ["foo", "bar"], new CustomFieldMap([:]), DocumentObjectType.Page, [], false, "someDir", null, new VariableStructureRef("struct"),"tmpl.wfd", null, null, null),
         ])
 
         when(migration.statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any())).thenReturn(new Active())
         when(migration.mappingRepository.getDocumentObjectMapping(any()))
-                .thenReturn(new MappingItem.DocumentObject(null, null, null, null, null))
+                .thenReturn(new MappingItem.DocumentObject(null, null, null, null, null, null))
         when(migration.mappingRepository.getDocumentObjectMapping("overridden empty"))
-                .thenReturn(new MappingItem.DocumentObject("newName", true, "tmpl.wfd", "someDir", DocumentObjectType.Section))
+                .thenReturn(new MappingItem.DocumentObject("newName", true, "tmpl.wfd", "someDir", DocumentObjectType.Section, "new struct"))
         when(migration.mappingRepository.getDocumentObjectMapping("overridden full"))
-                .thenReturn(new MappingItem.DocumentObject("newName", true, "tmpl.wfd", "someDir", DocumentObjectType.Section))
+                .thenReturn(new MappingItem.DocumentObject("newName", true, "tmpl.wfd", "someDir", DocumentObjectType.Section, "new struct"))
 
         DocumentObjectsImagesExport.run(migration, mappingFile, Paths.get(dir.path, "images"))
 
         def expected = """\
-            id,name,type,internal,originLocation,baseTemplate,targetFolder,status
-            empty,,Block,false,[],,,Active
-            full,full,Page,false,[foo; bar],tmpl.wfd,someDir,Active
-            overridden empty,newName,Section,true,[],tmpl.wfd,someDir,Active
-            overridden full,newName,Section,true,[foo; bar],tmpl.wfd,someDir,Active
+            id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status
+            empty,,Block,false,[],,,,Active
+            full,full,Page,false,[foo; bar],tmpl.wfd,someDir,struct,Active
+            overridden empty,newName,Section,true,[],tmpl.wfd,someDir,new struct,Active
+            overridden full,newName,Section,true,[foo; bar],tmpl.wfd,someDir,new struct,Active
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text)
     }

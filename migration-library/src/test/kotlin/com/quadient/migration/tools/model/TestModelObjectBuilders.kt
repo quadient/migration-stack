@@ -88,7 +88,6 @@ fun aDocObj(
         displayRuleRef = displayRuleRef?.let { DisplayRuleModelRef(it) },
         baseTemplate = baseTemplate,
         variableStructureRef = variableStructureModelRef?.let { VariableStructureModelRef(it) },
-        baseTemplate = null,
         options = options,
     )
 }

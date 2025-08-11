@@ -33,6 +33,7 @@ class MappingRepository(
             baseTemplate = null,
             targetFolder = null,
             type = null,
+            variableStructureRef = null,
         )).toDto() as MappingItem.DocumentObject
     }
 
@@ -108,11 +109,11 @@ class MappingRepository(
         )).toDto() as MappingItem.Variable
     }
 
-    fun applyVariableMapping(id: String) {
+    fun applyVariableMapping(id: String, structureId: String) {
         val mapping = internalRepository.find<MappingItemEntity.Variable>(id)
         val variable = variableRepository.find(id)
-        val structure = variableStructureRepository.find("$projectName-datastructure") ?: VariableStructure(
-            id = "$projectName-datastructure",
+        val structure = variableStructureRepository.find(structureId) ?: VariableStructure(
+            id = structureId,
             name = null,
             originLocations = emptyList(),
             customFields = CustomFieldMap(),

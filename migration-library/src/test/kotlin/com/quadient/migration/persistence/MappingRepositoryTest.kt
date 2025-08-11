@@ -47,7 +47,7 @@ class MappingRepositoryTest {
         every { variableRepository.upsert(any()) } returns Unit
         repo.upsert("varId", MappingItem.Variable(name = "new name", dataType = null, inspirePath = "somePath"))
 
-        repo.applyVariableMapping("varId")
+        repo.applyVariableMapping("varId", "name-datastructure")
 
         verify { variableRepository.upsert(aVariable(id = "varId", name = "new name")) }
         verify {

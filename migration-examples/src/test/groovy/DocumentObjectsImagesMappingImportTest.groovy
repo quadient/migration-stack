@@ -3,6 +3,7 @@ import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.example.common.mapping.DocumentObjectsImagesImport
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.ImageType
@@ -22,26 +23,26 @@ class DocumentObjectsImagesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
         def input = """\
-            id,name,type,internal,originLocation,baseTemplate,targetFolder,status
-            unchanged,,Block,false,[],,,Active
-            kept,keptName,Block,false,[],,,Active
-            overridden,someName,Block,false,[],,,Active
+            id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status
+            unchanged,,Block,false,[],,,,Active
+            kept,keptName,Block,false,[],,,,Active
+            overridden,someName,Block,false,[],,,,Active
             """.stripIndent()
         mappingFile.toFile().write(input)
-        givenExistingDocumentObject(migration, "unchanged", null, false, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "unchanged", null, null, null, null, null)
-        givenExistingDocumentObject(migration, "kept", "someName", false, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "kept", "keptName", null, null, null, null)
-        givenExistingDocumentObject(migration, "overridden", "previousName", false, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "overridden", "previousName", null, null, null, null)
+        givenExistingDocumentObject(migration, "unchanged", null, false, null, null, null,null)
+        givenExistingDocumentObjectMapping(migration, "unchanged", null, null, null, null, null, null)
+        givenExistingDocumentObject(migration, "kept", "someName", false, null, null, null,null)
+        givenExistingDocumentObjectMapping(migration, "kept", "keptName", null, null, null, null, null)
+        givenExistingDocumentObject(migration, "overridden", "previousName", false, null, null, null,null)
+        givenExistingDocumentObjectMapping(migration, "overridden", "previousName", null, null, null, null, null)
 
         DocumentObjectsImagesImport.runDocumentObjects(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject("keptName", null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject("keptName", null, null, null, null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject("someName", null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject("someName", null, null, null, null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
 
@@ -50,26 +51,26 @@ class DocumentObjectsImagesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
         def input = """\
-            id,name,type,internal,originLocation,baseTemplate,targetFolder,status
-            unchanged,,Block,false,[],,,Active
-            kept,,Block,true,[],,,Active
-            overridden,,Block,true,[],,,Active
+            id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status
+            unchanged,,Block,false,[],,,,Active
+            kept,,Block,true,[],,,,Active
+            overridden,,Block,true,[],,,,Active
             """.stripIndent()
         mappingFile.toFile().write(input)
-        givenExistingDocumentObject(migration, "unchanged", null, false, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "unchanged", null, null, null, null, null)
-        givenExistingDocumentObject(migration, "kept", null, true, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "kept", null, true, null, null, null)
-        givenExistingDocumentObject(migration, "overridden", null, false, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "overridden", null, false, null, null, null)
+        givenExistingDocumentObject(migration, "unchanged", null, false, null, null, null, null)
+        givenExistingDocumentObjectMapping(migration, "unchanged", null, null, null, null, null, null)
+        givenExistingDocumentObject(migration, "kept", null, true, null, null, null, null)
+        givenExistingDocumentObjectMapping(migration, "kept", null, true, null, null, null, null)
+        givenExistingDocumentObject(migration, "overridden", null, false, null, null, null, null)
+        givenExistingDocumentObjectMapping(migration, "overridden", null, false, null, null, null, null)
 
         DocumentObjectsImagesImport.runDocumentObjects(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, true, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, true, null, null, null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, true, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, true, null, null, null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
 
@@ -78,26 +79,26 @@ class DocumentObjectsImagesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
         def input = """\
-            id,name,type,internal,originLocation,baseTemplate,targetFolder,status
-            unchanged,,Block,false,[],,,Active
-            kept,,Block,false,[],keptTemplate,,Active
-            overridden,,Block,false,[],overriddenTemplate,,Active
+            id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status
+            unchanged,,Block,false,[],,,,Active
+            kept,,Block,false,[],keptTemplate,,,Active
+            overridden,,Block,false,[],overriddenTemplate,,,Active
             """.stripIndent()
         mappingFile.toFile().write(input)
-        givenExistingDocumentObject(migration, "unchanged", null, false, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "unchanged", null, null, null, null, null)
-        givenExistingDocumentObject(migration, "kept", null, false, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "kept", null, null, "keptTemplate", null, null)
-        givenExistingDocumentObject(migration, "overridden", null, false, "previousTemplate", null, null)
-        givenExistingDocumentObjectMapping(migration, "overridden", null, null, "previousTemplate", null, null)
+        givenExistingDocumentObject(migration, "unchanged", null, false, null, null, null, null)
+        givenExistingDocumentObjectMapping(migration, "unchanged", null, null, null, null, null, null)
+        givenExistingDocumentObject(migration, "kept", null, false, null, null, null, null)
+        givenExistingDocumentObjectMapping(migration, "kept", null, null, "keptTemplate", null, null, null)
+        givenExistingDocumentObject(migration, "overridden", null, false, "previousTemplate", null, null, null)
+        givenExistingDocumentObjectMapping(migration, "overridden", null, null, "previousTemplate", null, null, null)
 
         DocumentObjectsImagesImport.runDocumentObjects(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, null, "keptTemplate", null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, null, "keptTemplate", null, null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, null, "overriddenTemplate", null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, null, "overriddenTemplate", null, null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
 
@@ -106,26 +107,54 @@ class DocumentObjectsImagesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
         def input = """\
-            id,name,type,internal,originLocation,baseTemplate,targetFolder,status
-            unchanged,,Block,false,[],,,Active
-            kept,,Block,false,[],,keptFolder,Active
-            overridden,,Block,false,[],,overriddenFolder,Active
+            id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status
+            unchanged,,Block,false,[],,,,Active
+            kept,,Block,false,[],,keptFolder,,Active
+            overridden,,Block,false,[],,overriddenFolder,,Active
             """.stripIndent()
         mappingFile.toFile().write(input)
-        givenExistingDocumentObject(migration, "unchanged", null, false, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "unchanged", null, null, null, null, null)
-        givenExistingDocumentObject(migration, "kept", null, false, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "kept", null, null, null, "keptFolder", null)
-        givenExistingDocumentObject(migration, "overridden", null, false, null, "previousFolder", null)
-        givenExistingDocumentObjectMapping(migration, "overridden", null, null, null, "previousFolder", null)
+        givenExistingDocumentObject(migration, "unchanged", null, false, null, null, null, null)
+        givenExistingDocumentObjectMapping(migration, "unchanged", null, null, null, null, null, null)
+        givenExistingDocumentObject(migration, "kept", null, false, null, null, null, null)
+        givenExistingDocumentObjectMapping(migration, "kept", null, null, null, "keptFolder", null, null)
+        givenExistingDocumentObject(migration, "overridden", null, false, null, "previousFolder", null, null)
+        givenExistingDocumentObjectMapping(migration, "overridden", null, null, null, "previousFolder", null, null)
 
         DocumentObjectsImagesImport.runDocumentObjects(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, null, null, "keptFolder", null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, null, null, "keptFolder", null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, null, null, "overriddenFolder", null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, null, null, "overriddenFolder", null, null))
+        verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
+    }
+
+    @Test
+    void overridesVariableStructureRef() {
+        def migration = Utils.mockMigration()
+        Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
+        def input = """\
+            id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status
+            unchanged,,Block,false,[],,,,Active
+            kept,,Block,false,[],,,keptVarStructure,Active
+            overridden,,Block,false,[],,,overriddenVarStructure,Active
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+        givenExistingDocumentObject(migration, "unchanged", null, false, null, null, null, null)
+        givenExistingDocumentObjectMapping(migration, "unchanged", null, null, null, null, null, null)
+        givenExistingDocumentObject(migration, "kept", null, false, null, null, null, "keptVarStructure")
+        givenExistingDocumentObjectMapping(migration, "kept", null, null, null, null, null, "keptVarStructure")
+        givenExistingDocumentObject(migration, "overridden", null, false, null, null, null,"previousVarStructure")
+        givenExistingDocumentObjectMapping(migration, "overridden", null, null, null,null,null,"overriddenVarStructure")
+
+        DocumentObjectsImagesImport.runDocumentObjects(migration, mappingFile)
+
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null,null,null,null,null,null))
+        verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null,null,null,null,null,"keptVarStructure"))
+        verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null,null,null,null,null,"overriddenVarStructure"))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
 
@@ -135,28 +164,29 @@ class DocumentObjectsImagesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
         def input = """\
-            id,name,type,internal,originLocation,baseTemplate,targetFolder,status
-            unchanged,,Block,false,[],,,Active
-            kept,,Template,false,[],,,Active
-            overridden,,Page,false,[],,,Active
+            id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status
+            unchanged,,Block,false,[],,,,Active
+            kept,,Template,false,[],,,,Active
+            overridden,,Page,false,[],,,,Active
             """.stripIndent()
         mappingFile.toFile().write(input)
-        givenExistingDocumentObject(migration, "unchanged", null, false, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "unchanged", null, null, null, null, null)
-        givenExistingDocumentObject(migration, "kept", null, false, null, null, null)
-        givenExistingDocumentObjectMapping(migration, "kept", null, null, null, null, DocumentObjectType.Template)
-        givenExistingDocumentObject(migration, "overridden", null, false, null, null, DocumentObjectType.Template)
-        givenExistingDocumentObjectMapping(migration, "overridden", null, null, null, null, DocumentObjectType.Section)
+        givenExistingDocumentObject(migration, "unchanged", null, false, null, null, null, null)
+        givenExistingDocumentObjectMapping(migration, "unchanged", null, null, null, null, null, null)
+        givenExistingDocumentObject(migration, "kept", null, false, null, null, null, null)
+        givenExistingDocumentObjectMapping(migration, "kept", null, null, null, null, DocumentObjectType.Template, null)
+        givenExistingDocumentObject(migration, "overridden", null, false, null, null, DocumentObjectType.Template, null)
+        givenExistingDocumentObjectMapping(migration, "overridden", null, null, null, null, DocumentObjectType.Section, null)
 
         DocumentObjectsImagesImport.runDocumentObjects(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, null, null, null, DocumentObjectType.Template))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, null, null, null, DocumentObjectType.Template, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, null, null, null, DocumentObjectType.Page))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, null, null, null, DocumentObjectType.Page, null))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
+
 
     @Test
     void overridesImageName() {
@@ -242,8 +272,8 @@ class DocumentObjectsImagesMappingImportTest {
         verify(migration.mappingRepository, times(1)).applyImageMapping("overridden")
     }
 
-    static void givenExistingDocumentObject(Migration mig, String id, String name, Boolean internal, String baseTemplate, String targetFolder, DocumentObjectType type) {
-        when(mig.documentObjectRepository.find(id)).thenReturn(new DocumentObject(id, name, [], new CustomFieldMap([:]), type ?: DocumentObjectType.Block, [], internal, targetFolder, null, baseTemplate, null, null, null))
+    static void givenExistingDocumentObject(Migration mig, String id, String name, Boolean internal, String baseTemplate, String targetFolder, DocumentObjectType type, String varStructureRef) {
+        when(mig.documentObjectRepository.find(id)).thenReturn(new DocumentObject(id, name, [], new CustomFieldMap([:]), type ?: DocumentObjectType.Block, [], internal, targetFolder, null, varStructureRef ? new VariableStructureRef(varStructureRef) : null, baseTemplate, null, null, null))
     }
 
     static void givenExistingDocumentObjectMapping(
@@ -253,10 +283,11 @@ class DocumentObjectsImagesMappingImportTest {
         Boolean internal,
         String baseTemplate,
         String targetFolder,
-        DocumentObjectType type
+        DocumentObjectType type,
+        String varStructureRef
     ) {
         when(mig.mappingRepository.getDocumentObjectMapping(id))
-            .thenReturn(new MappingItem.DocumentObject(name, internal, baseTemplate, targetFolder, type))
+            .thenReturn(new MappingItem.DocumentObject(name, internal, baseTemplate, targetFolder, type, varStructureRef))
     }
 
     static void givenExistingImage(Migration mig, String id, String name, String targetFolder, String sourcePath) {

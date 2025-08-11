@@ -43,6 +43,7 @@ sealed class MappingItemEntity {
         val internal: Boolean?,
         val baseTemplate: String?,
         val targetFolder: String?,
+        val variableStructureRef: String?,
         @SerialName("documentObjectType") val type: DocumentObjectType?,
     ) : MappingItemEntity() {
 
@@ -52,7 +53,9 @@ sealed class MappingItemEntity {
                 internal = internal ?: item.internal,
                 baseTemplate = baseTemplate ?: item.baseTemplate,
                 targetFolder = targetFolder ?: item.targetFolder,
-                type = type ?: item.type
+                type = type ?: item.type,
+                variableStructureRef = variableStructureRef?.let { VariableStructureRef(it) }
+                    ?: item.variableStructureRef
             )
         }
     }
@@ -254,7 +257,8 @@ sealed class MappingItemEntity {
                     internal = this.internal,
                     baseTemplate = this.baseTemplate,
                     targetFolder = this.targetFolder,
-                    type = this.type
+                    type = this.type,
+                    variableStructureRef = this.variableStructureRef,
                 )
             }
 

@@ -41,7 +41,7 @@ static void run(Migration migration, Path documentObjectsDstPath, Path imagesDst
             builder.append("," + Csv.serialize(obj.originLocations))
             builder.append("," + Csv.serialize(mapping.baseTemplate ?: obj.baseTemplate))
             builder.append("," + Csv.serialize(mapping.targetFolder ?: obj.targetFolder))
-            builder.append("," + Csv.serialize(obj.variableStructureRef?.id))
+            builder.append("," + Csv.serialize(mapping.variableStructureRef ?: obj.variableStructureRef?.id))
             builder.append("," + Csv.serialize(status.class.simpleName))
 
             writer.writeLine(builder.toString())

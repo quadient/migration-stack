@@ -14,6 +14,7 @@ sealed class MappingItem {
         var baseTemplate: String?,
         var targetFolder: String?,
         var type: DocumentObjectType?,
+        var variableStructureRef: String?,
     ) : MappingItem()
 
     data class Image(
@@ -69,7 +70,8 @@ sealed class MappingItem {
                     internal = this.internal,
                     baseTemplate = this.baseTemplate,
                     targetFolder = this.targetFolder,
-                    type = this.type
+                    type = this.type,
+                    variableStructureRef = this.variableStructureRef,
                 )
             }
 

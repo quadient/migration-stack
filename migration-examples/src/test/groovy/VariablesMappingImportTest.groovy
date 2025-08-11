@@ -39,13 +39,13 @@ class VariablesMappingImportTest {
         VariablesImport.run(migration, mappingFile)
 
         verify(migration.mappingRepository, times(1)).upsert("unchangedEmpty", new MappingItem.Variable(null, null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedEmpty")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedEmpty", "testProject-variables")
         verify(migration.mappingRepository, times(1)).upsert("unchangedPath", new MappingItem.Variable(null, null, "oldPath"))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedPath")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedPath", "testProject-variables")
         verify(migration.mappingRepository, times(1)).upsert("withPath", new MappingItem.Variable(null, null, "newPath"))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPath")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPath", "testProject-variables")
         verify(migration.mappingRepository, times(1)).upsert("withPathEmpty", new MappingItem.Variable(null, null, "newPath"))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPathEmpty")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPathEmpty", "testProject-variables")
     }
 
     @Test
@@ -69,11 +69,11 @@ class VariablesMappingImportTest {
         VariablesImport.run(migration, mappingFile)
 
         verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged", "testProject-variables")
         verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable(null, DataType.String, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept", "testProject-variables")
         verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable(null, DataType.Boolean, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden", "testProject-variables")
     }
 
     @Test
@@ -97,11 +97,11 @@ class VariablesMappingImportTest {
         VariablesImport.run(migration, mappingFile)
 
         verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged", "testProject-variables")
         verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable("someName", null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept", "testProject-variables")
         verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable("someName", null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden", "testProject-variables")
     }
 
     static void givenExistingVariable(Migration mig, String id, String name, DataType dataType, String inspirePath = null) {

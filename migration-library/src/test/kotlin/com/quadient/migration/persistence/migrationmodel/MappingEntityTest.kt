@@ -38,6 +38,7 @@ class MappingEntityTest {
                 baseTemplate = null,
                 targetFolder = null,
                 type = null,
+                variableStructureRef = null,
             )
             val dto = DocumentObject.fromModel(
                 aDocObj(
@@ -67,6 +68,7 @@ class MappingEntityTest {
                 baseTemplate = "new base",
                 targetFolder = "new folder",
                 type = DocumentObjectType.Block,
+                variableStructureRef = "new structure",
             )
             val dto = DocumentObject.fromModel(
                 aDocObj(
@@ -75,7 +77,8 @@ class MappingEntityTest {
                     internal = true,
                     baseTemplate = "base1",
                     targetFolder = "folder1",
-                    type = DocumentObjectType.Section
+                    type = DocumentObjectType.Section,
+                    variableStructureModelRef = "some structure",
                 )
             )
 
@@ -86,6 +89,7 @@ class MappingEntityTest {
             assertEquals(result.baseTemplate, "new base")
             assertEquals(result.targetFolder, "new folder")
             assertEquals(result.type, DocumentObjectType.Block)
+            assertEquals(result.variableStructureRef?.id, "new structure")
         }
     }
 

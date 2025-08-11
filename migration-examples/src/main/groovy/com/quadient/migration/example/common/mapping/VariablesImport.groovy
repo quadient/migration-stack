@@ -1,9 +1,9 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.shared.DataType
-import com.quadient.migration.example.common.util.Csv
 
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -78,8 +78,9 @@ static void run(Migration migration, Path path) {
 
         def dataType = Csv.deserialize(values.get("data_type"), DataType.class)
         Mapping.mapProp(mapping, variable, "dataType", dataType)
-//      apply  selectedFile.name.split("\\.")[0]
+
+        def structureName = path.fileName.toString().split("\\.")[0]
         migration.mappingRepository.upsert(id, mapping)
-        migration.mappingRepository.applyVariableMapping(id)
+        migration.mappingRepository.applyVariableMapping(id, structureName)
     }
 }

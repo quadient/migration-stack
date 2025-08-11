@@ -1,7 +1,6 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
-import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.example.common.util.Csv
 
@@ -62,22 +61,20 @@ while (true) {
     }
 }
 
-def fileName = variableStructureName.toLowerCase().endsWith(".csv")
-    ? variableStructureName
-    : "${variableStructureName}.csv"
+def fileName = variableStructureName.toLowerCase().endsWith(".csv") ? variableStructureName : "${variableStructureName}.csv"
 def exportFile = Paths.get("mapping", "variables", fileName)
 
 def file = exportFile.toFile()
 
 run(migration, file.toPath())
 
-static void run(Migration migration, Path dstFile) {
+static void run(Migration migration, Path filePath) {
     def variables = migration.variableRepository.listAll()
-    def existingStructure = migration
-            .variableStructureRepository
-            .find("$migration.projectConfig.name-datastructure")
 
-    def file = dstFile.toFile()
+    def structureName = filePath.fileName.toString().split("\\.")[0]
+    def existingStructure = migration.variableStructureRepository.find(structureName)
+
+    def file = filePath.toFile()
     file.createParentDirectories()
     file.withWriter { writer ->
         writer.writeLine("id,name,origin_locations,inspire_path,data_type")
