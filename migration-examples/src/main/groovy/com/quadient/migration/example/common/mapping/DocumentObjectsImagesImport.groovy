@@ -1,5 +1,6 @@
 package com.quadient.migration.example.common.mapping
 
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.Migration
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
@@ -55,6 +56,11 @@ static void runDocumentObjects(Migration migration, Path documentObjFilePath) {
 
         def newType = Csv.deserialize(values.get("type"), DocumentObjectType.class)
         Mapping.mapProp(existingMapping, existingDocObject, "type", newType)
+
+        def variableStructureId = Csv.deserialize(values.get("variableStructureId"), String.class)
+        if (variableStructureId != null) {
+            existingDocObject.variableStructureRef = new VariableStructureRef(variableStructureId)
+        }
 
         def csvStatus = values.get("status")
         if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {

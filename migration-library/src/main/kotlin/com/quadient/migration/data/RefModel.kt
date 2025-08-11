@@ -14,6 +14,7 @@ import com.quadient.migration.persistence.migrationmodel.TextStyleDefOrRefEntity
 import com.quadient.migration.persistence.migrationmodel.TextStyleDefinitionEntity
 import com.quadient.migration.persistence.migrationmodel.TextStyleEntityRef
 import com.quadient.migration.persistence.migrationmodel.VariableEntityRef
+import com.quadient.migration.persistence.migrationmodel.VariableStructureEntityRef
 
 sealed interface RefModel {
     val id: String
@@ -92,6 +93,12 @@ data class ImageModelRef(override val id: String) : RefModel, DocumentContentMod
 
     companion object {
         fun fromDb(entity: ImageEntityRef) = ImageModelRef(entity.id)
+    }
+}
+
+data class VariableStructureModelRef(override val id: String) : RefModel {
+    companion object {
+        fun fromDb(entity: VariableStructureEntityRef) = VariableStructureModelRef(entity.id)
     }
 }
 

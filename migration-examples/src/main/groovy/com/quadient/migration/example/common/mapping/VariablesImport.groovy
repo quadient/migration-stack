@@ -9,12 +9,50 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
+import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
 
 def migration = initMigration(this.binding.variables["args"])
 
-def file = Paths.get("mapping", "${migration.projectConfig.name}-variables.csv")
+def variablesMappingDir = Paths.get("mapping", "variables").toFile()
+def csvFiles = variablesMappingDir.listFiles()?.findAll { it.name.toLowerCase().endsWith(".csv") } ?: []
 
-run(migration, file)
+if (csvFiles.isEmpty()) {
+    println "No CSV files found in mapping/variables/. Cannot import variable structure."
+    System.exit(1)
+}
+
+def selectedFile = null
+def argUserInput = (getValueOfArg("--variable-structure-name", this.binding.variables["args"] as List<String>)).orElseGet { null }
+if (argUserInput) {
+    def csvName = argUserInput.toLowerCase().endsWith(".csv") ? argUserInput : "${argUserInput}.csv"
+    def csvFile = csvFiles.find { it.name.equalsIgnoreCase(csvName) }
+    if (csvFile) {
+        selectedFile = csvFile
+        println "Selected file: ${selectedFile.name}"
+    } else {
+        println "CSV file '${csvName}' not found in mapping/variables/. Please provide a valid file name."
+        System.exit(1)
+    }
+} else {
+    println "Available CSV files for import:"
+    csvFiles.eachWithIndex { file, i -> println "${i + 1} - ${file.name}" }
+    println "Select a number of the CSV file to import:"
+
+    while (true) {
+        def userInput = System.in.newReader().readLine().trim()
+        if (userInput.isInteger()) {
+            def idx = userInput.toInteger() - 1
+            if (idx >= 0 && idx < csvFiles.size()) {
+                selectedFile = csvFiles[idx]
+                println "Selected file: ${selectedFile.name}"
+                break
+            }
+        }
+        println "Invalid selection. Please enter a valid number:"
+    }
+}
+
+run(migration, selectedFile.toPath())
 
 static void run(Migration migration, Path path) {
     def lines = path.toFile().readLines()
@@ -40,7 +78,7 @@ static void run(Migration migration, Path path) {
 
         def dataType = Csv.deserialize(values.get("data_type"), DataType.class)
         Mapping.mapProp(mapping, variable, "dataType", dataType)
-
+//      apply  selectedFile.name.split("\\.")[0]
         migration.mappingRepository.upsert(id, mapping)
         migration.mappingRepository.applyVariableMapping(id)
     }

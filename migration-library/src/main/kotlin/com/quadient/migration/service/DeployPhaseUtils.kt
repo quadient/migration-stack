@@ -3,6 +3,7 @@ package com.quadient.migration.service
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.isNullOrBlank
 import com.quadient.migration.shared.toIcmPath
 
@@ -26,6 +27,8 @@ fun getBaseTemplateFullPath(config: ProjectConfig, documentObjectBaseTemplatePat
         .join(path)
 }
 
-fun imageExtension(image: ImageModel): String {
-    return image.imageType.extension() ?: image.sourcePath?.split('.')?.last() ?: image.name?.split('.')?.last() ?: ""
+fun imageExtension(image: ImageModel) = imageExtension(image.imageType, image.name, image.sourcePath)
+
+fun imageExtension(imageType: ImageType, name: String?, sourcePath: String?): String {
+    return imageType.extension() ?: sourcePath?.split('.')?.last() ?: name?.split('.')?.last() ?: ""
 }

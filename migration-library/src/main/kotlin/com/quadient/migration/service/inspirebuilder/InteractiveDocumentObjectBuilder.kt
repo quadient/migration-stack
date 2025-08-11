@@ -21,6 +21,7 @@ import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
@@ -52,30 +53,34 @@ class InteractiveDocumentObjectBuilder(
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
     private val baseTemplatesInteractiveFlowNamesToIds = mutableMapOf<String, Map<String, String>>()
 
-    override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
-        val fileName = "${documentObject.nameOrId()}.jld"
+    override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
+        val fileName = "$nameOrId.jld"
 
-        if (documentObject.targetFolder?.isAbsolute() == true) {
-            return documentObject.targetFolder.join(fileName).toString()
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName).toString()
         }
 
         val tenant = projectConfig.interactiveTenant
-        val documentObjectType = documentObject.type.toInteractiveFolder()
+        val documentObjectType = type.toInteractiveFolder()
 
-        return IcmPath.root()
-            .join("Interactive")
-            .join(tenant)
-            .join(documentObjectType)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, documentObject.targetFolder))
-            .join(fileName)
-            .toString()
+        return IcmPath.root().join("Interactive").join(tenant).join(documentObjectType)
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName).toString()
     }
 
-    override fun getImagePath(image: ImageModel): String {
-        val fileName = "${image.nameOrId()}${imageExtension(image)}"
+    override fun getDocumentObjectPath(documentObject: DocumentObjectModel) =
+        getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder)
 
-        if (image.targetFolder?.isAbsolute() == true) {
-            return image.targetFolder.join(fileName).toString()
+    override fun getImagePath(
+        id: String,
+        imageType: ImageType,
+        name: String?,
+        targetFolder: IcmPath?,
+        sourcePath: String?
+    ): String {
+        val fileName = "${name ?: id}${imageExtension(imageType, name, sourcePath)}"
+
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName).toString()
         }
 
         val imageConfigPath = projectConfig.paths.images
@@ -84,10 +89,13 @@ class InteractiveDocumentObjectBuilder(
             .join("Interactive")
             .join(projectConfig.interactiveTenant)
             .join(imageConfigPath.orDefault("Resources/Images"))
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, image.targetFolder))
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
             .join(fileName)
             .toString()
     }
+
+    override fun getImagePath(image: ImageModel) =
+        getImagePath(image.id, image.imageType, image.name, image.targetFolder, image.sourcePath)
 
     override fun getStyleDefinitionPath(): String {
         return IcmPath.root()
@@ -106,7 +114,7 @@ class InteractiveDocumentObjectBuilder(
         val layout = builder.addLayout()
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
-        val variableStructure = initVariableStructure(layout)
+        val variableStructure = initVariableStructure(layout, documentObject)
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContentModel>>()
         if (documentObject.type == DocumentObjectType.Page) {

@@ -64,7 +64,7 @@ val migrationTasks = listOf<MigTask>(
         "textStylesExport", "migration mapping", "Export text styles", "common.mapping.TextStylesExport"
     ),
     MigTask(
-        "variablesExport", "migration mapping", "Export variables", "common.mapping.VariablesExport"
+        "variablesExport", "migration mapping", "Export variables", "common.mapping.VariablesExport", System.`in`
     ),
     MigTask(
         "documentObjectsImagesExport",
@@ -85,7 +85,7 @@ val migrationTasks = listOf<MigTask>(
         "textStylesImport", "migration mapping", "Import text styles", "common.mapping.TextStylesImport"
     ),
     MigTask(
-        "variablesImport", "migration mapping", "Import variables", "common.mapping.VariablesImport"
+        "variablesImport", "migration mapping", "Import variables", "common.mapping.VariablesImport", System.`in`
     ),
     MigTask(
         "documentObjectsImagesImport",

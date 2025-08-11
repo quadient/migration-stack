@@ -15,8 +15,10 @@ import com.quadient.migration.data.TabModel
 import com.quadient.migration.data.TableModel
 import com.quadient.migration.data.TabsModel
 import com.quadient.migration.data.TextStyleModelRef
+import com.quadient.migration.data.VariableModel
 import com.quadient.migration.data.VariableModelRef
 import com.quadient.migration.data.VariablePath
+import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
@@ -58,8 +60,11 @@ import com.quadient.migration.tools.model.aVariable
 import com.quadient.migration.tools.model.aVariableStructureModel
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldBeNull
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.datetime.Instant
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -331,6 +336,8 @@ class InteractiveDocumentObjectBuilderTest {
             .shouldBeEqualTo(clientsVar["Id"].textValue())
         variableDefinitions.first { it["Name"].textValue() == "Count" }["ParentId"].textValue()
             .shouldBeEqualTo(clientsVar["Id"].textValue())
+
+        result["Data"]["RepeatedBy"].textValue().shouldBeEqualTo("Data.Clients")
     }
 
     @Test
@@ -373,7 +380,7 @@ class InteractiveDocumentObjectBuilderTest {
         val variable = aVariable("V1", "ClientName")
         val variableStructure = aVariableStructureModel(
             structure = mapOf(
-                VariableModelRef(variable.id) to VariablePath("Data.Clients.Value"),
+                VariableModelRef(variable.id) to VariablePath("Data.Clients"),
             )
         )
 
@@ -417,7 +424,7 @@ class InteractiveDocumentObjectBuilderTest {
         val conditionFlow = result["Flow"].last { it["Id"].textValue() == conditionFlowRef }
         conditionFlow["Type"].textValue().shouldBeEqualTo("InlCond")
         val condition = conditionFlow["Condition"]
-        condition["Value"].textValue().shouldBeEqualTo("return (DATA.Clients.Current.ClientName==String('Jon'));")
+        condition["Value"].textValue().shouldBeEqualTo("return (DATA.Clients.ClientName==String('Jon'));")
         val finalFlowRef = condition[""].textValue()
 
         val finalFlow = result["Flow"].last { it["Id"].textValue() == finalFlowRef }
@@ -427,6 +434,8 @@ class InteractiveDocumentObjectBuilderTest {
         val finalFlowText = finalFlowPara["T"]
         finalFlowText["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.name}")
         finalFlowText[""].textValue().shouldBeEqualTo("Hello There")
+
+        result["Data"]["RepeatedBy"].shouldBeNull()
     }
 
     @Test
@@ -1070,6 +1079,42 @@ class InteractiveDocumentObjectBuilderTest {
         textStyle["LineSpacingType"].textValue().shouldBeEqualTo("Exact")
     }
 
+    @Test
+    fun `block with unassigned variable structure uses the last updated one`() {
+        val variable = mockVar(aVariable("V_1"))
+        val variableStructureA = mockVarStructure(
+            aVariableStructureModel(
+                "VS_1", structure = mapOf(
+                    VariableModelRef(variable.id) to VariablePath("Data.Records.Value")
+                ), lastUpdated = Instant.parse("2020-01-02T03:04:05Z")
+            )
+        )
+        val variableStructureB = mockVarStructure(
+            aVariableStructureModel(
+                "VS_2", structure = mapOf(
+                    VariableModelRef(variable.id) to VariablePath("Data.Clients.Value")
+                ), lastUpdated = Instant.parse("2022-12-24T05:09:10Z")
+            )
+        )
+        every { variableStructureRepository.listAllModel() } returns listOf(variableStructureA, variableStructureB)
+
+        val block = mockObj(
+            aDocObj(
+                "B_1", Block, listOf(
+                    aParagraph(aText(listOf(StringModel("Text"), VariableModelRef(variable.id))))
+                )
+            )
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        verify(exactly = 0) { variableStructureRepository.findModelOrFail(any()) }
+        result["Variable"].first { it["Name"].textValue() == variable.nameOrId() }["ParentId"].textValue()
+            .shouldBeEqualTo("Data.Clients.Value")
+    }
+
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
         every { documentObjectRepository.findModelOrFail(documentObject.id) } returns documentObject
         return documentObject
@@ -1078,6 +1123,16 @@ class InteractiveDocumentObjectBuilderTest {
     private fun mockRule(rule: DisplayRuleModel): DisplayRuleModel {
         every { displayRuleRepository.findModelOrFail(rule.id) } returns rule
         return rule
+    }
+
+    private fun mockVar(variable: VariableModel): VariableModel {
+        every { variableRepository.findModelOrFail(variable.id) } returns variable
+        return variable
+    }
+
+    private fun mockVarStructure(variableStructure: VariableStructureModel): VariableStructureModel {
+        every { variableStructureRepository.findModelOrFail(variableStructure.id) } returns variableStructure
+        return variableStructure
     }
 
     private fun aSubject(config: ProjectConfig) = InteractiveDocumentObjectBuilder(

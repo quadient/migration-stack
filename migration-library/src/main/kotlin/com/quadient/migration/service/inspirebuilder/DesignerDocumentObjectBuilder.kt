@@ -23,16 +23,21 @@ import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.millimeters
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
+import com.quadient.wfdxml.api.layoutnodes.FlowArea
 import com.quadient.wfdxml.api.layoutnodes.Page
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.module.Layout
+import com.quadient.wfdxml.internal.layoutnodes.FlowAreaImpl
+import com.quadient.wfdxml.internal.layoutnodes.PageImpl
+import com.quadient.wfdxml.internal.layoutnodes.PagesImpl
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -69,29 +74,43 @@ class DesignerDocumentObjectBuilder(
 
     val defaultPosition = Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters())
 
-    override fun getDocumentObjectPath(documentObject: DocumentObjectModel): String {
-        val fileName = "${documentObject.nameOrId()}.wfd"
+    override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
+        val fileName = "$nameOrId.wfd"
 
-        if (documentObject.targetFolder?.isAbsolute() == true) {
-            return documentObject.targetFolder.join(fileName).toString()
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName).toString()
         }
 
-        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder, documentObject.targetFolder))
-            .join(fileName).toString()
+        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName)
+            .toString()
     }
 
-    override fun getImagePath(image: ImageModel): String {
-        val fileName = "${image.nameOrId()}${imageExtension(image)}"
+    override fun getDocumentObjectPath(documentObject: DocumentObjectModel) =
+        getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder)
 
-        if (image.targetFolder?.isAbsolute() == true) {
-            return image.targetFolder.join(fileName).toString()
+    override fun getImagePath(
+        id: String,
+        imageType: ImageType,
+        name: String?,
+        targetFolder: IcmPath?,
+        sourcePath: String?
+    ): String {
+        val fileName = "${name ?: id}${imageExtension(imageType, name, sourcePath)}"
+
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName).toString()
         }
 
         val imageConfigPath = projectConfig.paths.images
 
         return IcmPath.root().join(imageConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, image.targetFolder)).join(fileName).toString()
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
+            .join(fileName)
+            .toString()
     }
+
+    override fun getImagePath(image: ImageModel) =
+        getImagePath(image.id, image.imageType, image.name, image.targetFolder, image.sourcePath)
 
     override fun getStyleDefinitionPath(): String {
         return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder))
@@ -105,7 +124,7 @@ class DesignerDocumentObjectBuilder(
         val pageModels = mutableListOf<DocumentObjectModel>()
         val virtualPageContent = mutableListOf<DocumentContentModel>()
 
-        val variableStructure = initVariableStructure(layout)
+        val variableStructure = initVariableStructure(layout, documentObject)
         documentObject.content.forEach {
             if (it is DocumentObjectModelRef) {
                 val documentObjectModel = documentObjectRepository.findModelOrFail(it.id)
@@ -133,6 +152,15 @@ class DesignerDocumentObjectBuilder(
             layout, textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel })
         buildParagraphStyles(
             layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
+
+        layout.addRoot().setAllowRuntimeModifications(true)
+
+        val firstPageWithFlowArea =
+            (layout.pages as PagesImpl).children.find { page -> (page as PageImpl).children.any { it is FlowArea } } as? PageImpl
+        if (firstPageWithFlowArea != null) {
+            val flowAreaFlow = (firstPageWithFlowArea.children.first() as FlowAreaImpl).flow
+            layout.pages.setMainFlow(flowAreaFlow)
+        }
 
         val documentObjectXml = builder.build()
         return if (projectConfig.sourceBaseTemplatePath.isNullOrBlank()) {
@@ -264,7 +292,11 @@ class DesignerDocumentObjectBuilder(
         val result = StringWriter()
         val transformer = newInstance().newTransformer()
         transformer.transform(DOMSource(this), StreamResult(result))
-        return result.toString()
+        return result.toString().replace(Regex("<Value>([\\s\\S]*?)</Value>")) { matchResult ->
+            val value = matchResult.groupValues[1]
+            val encoded = value.replace("\n", "&#xa;").replace("\r", "")
+            "<Value>$encoded</Value>"
+        }
     }
 
     private fun Node.firstElementChildByTag(tag: String): Element? =

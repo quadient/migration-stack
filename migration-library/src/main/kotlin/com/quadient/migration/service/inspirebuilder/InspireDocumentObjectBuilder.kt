@@ -36,6 +36,7 @@ import com.quadient.migration.shared.Binary
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Group
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Literal
@@ -81,7 +82,13 @@ abstract class InspireDocumentObjectBuilder(
 ) {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
 
+    abstract fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String
+
     abstract fun getDocumentObjectPath(documentObject: DocumentObjectModel): String
+
+    abstract fun getImagePath(
+        id: String, imageType: ImageType, name: String?, targetFolder: IcmPath?, sourcePath: String?
+    ): String
 
     abstract fun getImagePath(image: ImageModel): String
 
@@ -232,14 +239,19 @@ abstract class InspireDocumentObjectBuilder(
         )
     }
 
-    protected fun initVariableStructure(layout: Layout): VariableStructureModel {
-        val variableStructureModel = variableStructureRepository.listAllModel().firstOrNull() ?: VariableStructureModel(
-            id = "defaultVariableStructure",
-            lastUpdated = Clock.System.now(),
-            created = Clock.System.now(),
-            structure = mutableMapOf(),
-            customFields = CustomFieldMap()
-        )
+    protected fun initVariableStructure(layout: Layout, documentObject: DocumentObjectModel): VariableStructureModel {
+        val documentObjectVariableStructure =
+            documentObject.variableStructureRef?.let { variableStructureRepository.findModelOrFail(it.id) }
+
+        val variableStructureModel =
+            documentObjectVariableStructure ?: variableStructureRepository.listAllModel().maxByOrNull { it.lastUpdated }
+            ?: VariableStructureModel(
+                id = "defaultVariableStructure",
+                lastUpdated = Clock.System.now(),
+                created = Clock.System.now(),
+                structure = mutableMapOf(),
+                customFields = CustomFieldMap()
+            )
 
         val normalizedVariablePaths =
             variableStructureModel.structure.map { (_, variablePath) -> removeDataFromVariablePath(variablePath.value) }
@@ -253,7 +265,7 @@ abstract class InspireDocumentObjectBuilder(
 
         val layoutData = layout.data
         layoutData.importDataDefinition(workflowTreeDefinition)
-        if (variableTree.isNotEmpty()) {
+        if (variableTree.isNotEmpty() && variableTree.values.first() is ArrayVariable) {
             layoutData.setRepeatedBy("Data.${variableTree.keys.first()}")
         }
 

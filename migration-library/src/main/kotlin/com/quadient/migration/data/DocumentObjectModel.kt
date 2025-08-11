@@ -18,6 +18,7 @@ data class DocumentObjectModel(
     override val created: Instant,
     val lastUpdated: Instant,
     val displayRuleRef: DisplayRuleModelRef? = null,
+    val variableStructureRef: VariableStructureModelRef? = null,
     val baseTemplate: String?,
     val options: DocumentObjectOptions?,
 ) : RefValidatable, MigrationObjectModel {

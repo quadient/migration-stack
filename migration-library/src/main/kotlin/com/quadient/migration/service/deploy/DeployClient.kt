@@ -18,6 +18,7 @@ import com.quadient.migration.data.RefModel
 import com.quadient.migration.data.TextStyleDefinitionModel
 import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.data.VariableModelRef
+import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
@@ -421,6 +422,7 @@ sealed class DeployClient(
                 is ParagraphStyleModelRef -> null
                 is DisplayRuleModelRef -> null
                 is VariableModelRef -> null
+                is VariableStructureModelRef -> null
             }
 
             if (resource != null) {
@@ -465,7 +467,7 @@ sealed class DeployClient(
         val dependencies = mutableListOf<DocumentObjectModel>()
         this.collectRefs().forEach { ref ->
             when (ref) {
-                is DisplayRuleModelRef, is TextStyleModelRef, is ParagraphStyleModelRef, is VariableModelRef -> {}
+                is DisplayRuleModelRef, is TextStyleModelRef, is ParagraphStyleModelRef, is VariableModelRef, is VariableStructureModelRef -> {}
                 is ImageModelRef -> {}
                 is DocumentObjectModelRef -> {
                     val model = documentObjectRepository.findModelOrFail(ref.id)
@@ -482,7 +484,7 @@ sealed class DeployClient(
     private fun DocumentObjectModel.getAllDocumentObjectImageRefs(): List<ImageModelRef> {
         return this.collectRefs().flatMap { ref ->
             when (ref) {
-                is DisplayRuleModelRef, is TextStyleModelRef, is ParagraphStyleModelRef, is VariableModelRef -> emptyList()
+                is DisplayRuleModelRef, is TextStyleModelRef, is ParagraphStyleModelRef, is VariableModelRef, is VariableStructureModelRef -> emptyList()
                 is ImageModelRef -> listOf(ref)
                 is DocumentObjectModelRef -> {
                     val model = documentObjectRepository.findModel(ref.id)

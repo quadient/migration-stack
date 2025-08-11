@@ -15,6 +15,7 @@ import com.quadient.migration.data.TableModel
 import com.quadient.migration.data.VariableModel
 import com.quadient.migration.data.VariableModelRef
 import com.quadient.migration.data.VariablePath
+import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
@@ -50,6 +51,7 @@ import com.quadient.migration.tools.shouldNotBeNull
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.datetime.Instant
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -146,6 +148,9 @@ class DesignerDocumentObjectBuilderTest {
             .shouldBeEqualTo(standaloneBlock.nameOrId())
         result["Flow"].last { it["Id"].textValue() == virtualFlowId }["ExternalLocation"].textValue()
             .shouldBeEqualTo("icm://${config.defaultTargetFolder}/${standaloneBlock.nameOrId()}.wfd")
+
+        result["Root"]["AllowRuntimeModifications"].textValue().shouldBeEqualTo("True")
+        result["Pages"]["MainFlow"].textValue().shouldBeEqualTo(flowId)
     }
 
     @Test
@@ -518,6 +523,10 @@ class DesignerDocumentObjectBuilderTest {
             <Name>AFPApplyPageTransformation</Name>
             <Value>1</Value>
           </Property>
+          <Property>
+            <Name>PreviewTypes</Name>
+            <Value>HtmlPreview&#xa;PagePreview&#xa;SMSPreview</Value>
+          </Property>
           <DataInput>
             <Id>DataInput1</Id>
             <Name>DataInput1</Name>
@@ -538,7 +547,9 @@ class DesignerDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        result["Property"].size().shouldBeEqualTo(2)
+        result["Property"].size().shouldBeEqualTo(3)
+        result["Property"].first { it["Name"].textValue() == "PreviewTypes" }["Value"].textValue()
+            .shouldBeEqualTo("HtmlPreview\nPagePreview\nSMSPreview")
         result["DataInput"].shouldNotBeNull()
         val layout = result["Layout"]["Layout"]
         layout["Flow"].last()["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text")
@@ -579,6 +590,45 @@ class DesignerDocumentObjectBuilderTest {
         verify(exactly = 1) { ipsService.wfd2xml(any()) }
     }
 
+    @Test
+    fun `block uses the assigned variable structure`() {
+        // given
+        val variable = mockVar(aVariable("V_1"))
+        val variableStructureA = mockVarStructure(
+            aVariableStructureModel(
+                "VS_1", structure = mapOf(
+                    VariableModelRef(variable.id) to VariablePath("Data.Records.Value")
+                ), lastUpdated = Instant.parse("2020-01-02T03:04:05Z")
+            )
+        )
+        val variableStructureB = mockVarStructure(
+            aVariableStructureModel(
+                "VS_2", structure = mapOf(
+                    VariableModelRef(variable.id) to VariablePath("Data.Clients.Value")
+                ), lastUpdated = Instant.parse("2022-12-24T05:09:10Z")
+            )
+        )
+        every { variableStructureRepository.listAllModel() } returns listOf(variableStructureA, variableStructureB)
+
+        val block = mockObj(
+            aDocObj(
+                "B_1", Block, listOf(
+                    aParagraph(aText(listOf(StringModel("Text"), VariableModelRef(variable.id))))
+                ), variableStructureModelRef = variableStructureA.id
+            )
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        verify(exactly = 1) { variableStructureRepository.findModelOrFail(variableStructureA.id) }
+        verify(exactly = 0) { variableStructureRepository.findModelOrFail(variableStructureB.id) }
+
+        result["Variable"].first { it["Name"].textValue() == variable.nameOrId() }["ParentId"].textValue()
+            .shouldBeEqualTo("Data.Records.Value")
+    }
+
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
         every { documentObjectRepository.findModelOrFail(documentObject.id) } returns documentObject
         return documentObject
@@ -597,6 +647,11 @@ class DesignerDocumentObjectBuilderTest {
     private fun mockVar(variable: VariableModel): VariableModel {
         every { variableRepository.findModelOrFail(variable.id) } returns variable
         return variable
+    }
+
+    private fun mockVarStructure(variableStructure: VariableStructureModel): VariableStructureModel {
+        every { variableStructureRepository.findModelOrFail(variableStructure.id) } returns variableStructure
+        return variableStructure
     }
 
     private fun aSubject(config: ProjectConfig) = DesignerDocumentObjectBuilder(
