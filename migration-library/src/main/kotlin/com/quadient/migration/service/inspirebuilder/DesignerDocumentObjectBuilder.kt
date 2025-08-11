@@ -158,7 +158,7 @@ class DesignerDocumentObjectBuilder(
         val firstPageWithFlowArea =
             (layout.pages as PagesImpl).children.find { page -> (page as PageImpl).children.any { it is FlowArea } } as? PageImpl
         if (firstPageWithFlowArea != null) {
-            val flowAreaFlow = (firstPageWithFlowArea.children.first() as FlowAreaImpl).flow
+            val flowAreaFlow = (firstPageWithFlowArea.children.first { it is FlowArea } as FlowAreaImpl).flow
             layout.pages.setMainFlow(flowAreaFlow)
         }
 
