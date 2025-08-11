@@ -21,6 +21,7 @@ import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
@@ -69,11 +70,17 @@ class InteractiveDocumentObjectBuilder(
     override fun getDocumentObjectPath(documentObject: DocumentObjectModel) =
         getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder)
 
-    override fun getImagePath(image: ImageModel): String {
-        val fileName = "${image.nameOrId()}${imageExtension(image)}"
+    override fun getImagePath(
+        id: String,
+        imageType: ImageType,
+        name: String?,
+        targetFolder: IcmPath?,
+        sourcePath: String?
+    ): String {
+        val fileName = "${name ?: id}${imageExtension(imageType, name, sourcePath)}"
 
-        if (image.targetFolder?.isAbsolute() == true) {
-            return image.targetFolder.join(fileName).toString()
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName).toString()
         }
 
         val imageConfigPath = projectConfig.paths.images
@@ -82,10 +89,13 @@ class InteractiveDocumentObjectBuilder(
             .join("Interactive")
             .join(projectConfig.interactiveTenant)
             .join(imageConfigPath.orDefault("Resources/Images"))
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, image.targetFolder))
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
             .join(fileName)
             .toString()
     }
+
+    override fun getImagePath(image: ImageModel) =
+        getImagePath(image.id, image.imageType, image.name, image.targetFolder, image.sourcePath)
 
     override fun getStyleDefinitionPath(): String {
         return IcmPath.root()

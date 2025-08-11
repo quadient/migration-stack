@@ -23,6 +23,7 @@ import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.millimeters
@@ -87,18 +88,29 @@ class DesignerDocumentObjectBuilder(
     override fun getDocumentObjectPath(documentObject: DocumentObjectModel) =
         getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder)
 
-    override fun getImagePath(image: ImageModel): String {
-        val fileName = "${image.nameOrId()}${imageExtension(image)}"
+    override fun getImagePath(
+        id: String,
+        imageType: ImageType,
+        name: String?,
+        targetFolder: IcmPath?,
+        sourcePath: String?
+    ): String {
+        val fileName = "${name ?: id}${imageExtension(imageType, name, sourcePath)}"
 
-        if (image.targetFolder?.isAbsolute() == true) {
-            return image.targetFolder.join(fileName).toString()
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName).toString()
         }
 
         val imageConfigPath = projectConfig.paths.images
 
         return IcmPath.root().join(imageConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, image.targetFolder)).join(fileName).toString()
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
+            .join(fileName)
+            .toString()
     }
+
+    override fun getImagePath(image: ImageModel) =
+        getImagePath(image.id, image.imageType, image.name, image.targetFolder, image.sourcePath)
 
     override fun getStyleDefinitionPath(): String {
         return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder))

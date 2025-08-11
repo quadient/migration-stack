@@ -69,6 +69,7 @@ class DeployClientTest {
         every { documentObjectBuilder.getDocumentObjectPath(any()) } answers { callOriginal() }
         every { documentObjectBuilder.getDocumentObjectPath(any(), any(), any()) } answers { callOriginal() }
         every { documentObjectBuilder.getImagePath(any()) } answers { callOriginal() }
+        every { documentObjectBuilder.getImagePath(any(), any(), any(), any(), any()) } answers { callOriginal() }
     }
 
     @Test

@@ -86,6 +86,10 @@ abstract class InspireDocumentObjectBuilder(
 
     abstract fun getDocumentObjectPath(documentObject: DocumentObjectModel): String
 
+    abstract fun getImagePath(
+        id: String, imageType: ImageType, name: String?, targetFolder: IcmPath?, sourcePath: String?
+    ): String
+
     abstract fun getImagePath(image: ImageModel): String
 
     abstract fun getStyleDefinitionPath(): String
