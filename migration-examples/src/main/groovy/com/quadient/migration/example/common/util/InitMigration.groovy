@@ -26,6 +26,7 @@ static Migration initMigration(String[] args) {
     def defaultTargetFolder = getValueOfArg("--default-target-folder", argsList).orElse(fileProjectConfig.defaultTargetFolder?.toString())
     def inspireOutput = getValueOfArg("--inspire-output", argsList).orElse(fileProjectConfig.inspireOutput.toString())
     def sourceBaseTemplate = getValueOfArg("--source-base-template-path", argsList).orElse(fileProjectConfig.sourceBaseTemplatePath)
+    def defaultVariableStructure = getValueOfArg("--default-variable-structure", argsList).orElse(fileProjectConfig.defaultVariableStructure)
 
     def defFolder
     if (defaultTargetFolder == null || defaultTargetFolder.isEmpty()) {
@@ -43,6 +44,7 @@ static Migration initMigration(String[] args) {
         fileProjectConfig.paths,
         InspireOutput.valueOf(inspireOutput),
         sourceBaseTemplate,
+        defaultVariableStructure,
         fileProjectConfig.context)
     println("Preparing to start migration script with $projectConfig.")
 

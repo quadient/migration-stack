@@ -145,6 +145,7 @@ fun aProjectConfig(
     output: InspireOutput = InspireOutput.Interactive,
     name: String = "name",
     sourceBaseTemplatePath: String? = null,
+    defaultVariableStructure: String? = null,
 ): ProjectConfig {
     return ProjectConfig(
         name = name,
@@ -155,6 +156,7 @@ fun aProjectConfig(
         paths = paths,
         inspireOutput = output,
         sourceBaseTemplatePath = sourceBaseTemplatePath,
+        defaultVariableStructure = defaultVariableStructure,
     )
 }
 

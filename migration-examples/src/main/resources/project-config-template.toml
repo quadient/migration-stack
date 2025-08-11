@@ -5,6 +5,7 @@ interactiveTenant = "StandardPackage"
 #defaultTargetFolder = ""
 inspireOutput = "Designer" # "Evolve", "Interactive", "Designer"
 #sourceBaseTemplatePath = "icm://<path to source base template>"
+#defaultVariableStructure = "<variable structure id>"
 
 [paths]
 #images = ""

@@ -279,16 +279,19 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with variable refs in variable structure with converted value based on type`() {
         // given
-        val longVar = aVariable("var1", "varName1", dataType = DataType.Integer64, defaultValue = "2025")
-        val currencyVar = aVariable("var2", "varName2", dataType = DataType.Currency, defaultValue = "249.99")
-        val boolVar = aVariable("var3", "varName3", dataType = DataType.Boolean, defaultValue = "TRUE")
-        val variableStructure = aVariableStructureModel(
-            structure = mapOf(
-                VariableModelRef(longVar.id) to VariablePath("Data.Clients.Value"),
-                VariableModelRef(currencyVar.id) to VariablePath("Data.Clients.Value"),
-                VariableModelRef(boolVar.id) to VariablePath("Data.Clients.Value")
+        val longVar = mockVar(aVariable("var1", "varName1", dataType = DataType.Integer64, defaultValue = "2025"))
+        val currencyVar = mockVar(aVariable("var2", "varName2", dataType = DataType.Currency, defaultValue = "249.99"))
+        val boolVar = mockVar(aVariable("var3", "varName3", dataType = DataType.Boolean, defaultValue = "TRUE"))
+        val variableStructure = mockVarStructure(
+            aVariableStructureModel(
+                structure = mapOf(
+                    VariableModelRef(longVar.id) to VariablePath("Data.Clients.Value"),
+                    VariableModelRef(currencyVar.id) to VariablePath("Data.Clients.Value"),
+                    VariableModelRef(boolVar.id) to VariablePath("Data.Clients.Value")
+                )
             )
         )
+        val config = aProjectConfig(defaultVariableStructure = variableStructure.id)
 
         val block = aBlock(
             "1", listOf(
@@ -301,12 +304,9 @@ class InteractiveDocumentObjectBuilderTest {
                 )
             )
         )
-        every { variableRepository.findModelOrFail(longVar.id) } returns longVar
-        every { variableRepository.findModelOrFail(currencyVar.id) } returns currencyVar
-        every { variableRepository.findModelOrFail(boolVar.id) } returns boolVar
-        every { variableStructureRepository.listAllModel() } returns listOf(variableStructure)
 
         // when
+        val subject = aSubject(config)
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
@@ -377,10 +377,12 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with styled paragraph and styled text under display rule wraps the text in inline condition flow`() {
         // given
-        val variable = aVariable("V1", "ClientName")
-        val variableStructure = aVariableStructureModel(
-            structure = mapOf(
-                VariableModelRef(variable.id) to VariablePath("Data.Clients"),
+        val variable = mockVar(aVariable("V1", "ClientName"))
+        val variableStructure = mockVarStructure(
+            aVariableStructureModel(
+                structure = mapOf(
+                    VariableModelRef(variable.id) to VariablePath("Data.Clients"),
+                )
             )
         )
 
@@ -399,14 +401,14 @@ class InteractiveDocumentObjectBuilderTest {
                 )
             )
         )
+        val config = aProjectConfig(defaultVariableStructure = variableStructure.id)
 
-        every { variableRepository.findModel(variable.id) } returns variable
-        every { variableStructureRepository.listAllModel() } returns listOf(variableStructure)
         every { displayRuleRepository.findModelOrFail(displayRule.id) } returns displayRule
         every { textStyleRepository.firstWithDefinitionModel(textStyle.id) } returns textStyle
         every { paragraphStyleRepository.firstWithDefinitionModel(paraStyle.id) } returns paraStyle
 
         // when
+        val subject = aSubject(config)
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
@@ -441,10 +443,13 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with styled paragraph under display rule and one of its texts under display rule wraps it in multiple condition flows`() {
         // given
-        val variable = aVariable("V1", "900_MailCount")
-        val variableStructure = aVariableStructureModel(
-            structure = mapOf(VariableModelRef(variable.id) to VariablePath("Data.1.Value"))
+        val variable = mockVar(aVariable("V1", "900_MailCount"))
+        val variableStructure = mockVarStructure(
+            aVariableStructureModel(
+                structure = mapOf(VariableModelRef(variable.id) to VariablePath("Data.1.Value"))
+            )
         )
+        val config = aProjectConfig(defaultVariableStructure = variableStructure.id)
 
         val textStyle = aTextStyle("T1", definition = aTextDef(bold = true))
         val paraStyle = aParaStyle("P1", definition = aParaDef(10.millimeters()))
@@ -459,7 +464,7 @@ class InteractiveDocumentObjectBuilderTest {
             Literal("A", LiteralDataType.String), NotEquals, Literal("B", LiteralDataType.String), id = "R_text"
         )
 
-        val block = aBlock(
+        val block = mockObj(aBlock(
             "1", listOf(
                 aParagraph(
                     listOf(
@@ -471,17 +476,15 @@ class InteractiveDocumentObjectBuilderTest {
                     ), ParagraphStyleModelRef(paraStyle.id), DisplayRuleModelRef(paraDisplayRule.id)
                 )
             )
-        )
+        ))
 
-        every { variableRepository.findModel(variable.id) } returns variable
-        every { variableStructureRepository.listAllModel() } returns listOf(variableStructure)
         every { displayRuleRepository.findModelOrFail(paraDisplayRule.id) } returns paraDisplayRule
         every { displayRuleRepository.findModelOrFail(textDisplayRule.id) } returns textDisplayRule
         every { textStyleRepository.firstWithDefinitionModel(textStyle.id) } returns textStyle
         every { paragraphStyleRepository.firstWithDefinitionModel(paraStyle.id) } returns paraStyle
-        every { documentObjectRepository.findModel(block.id) } returns block
 
         // when
+        val subject = aSubject(config)
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
@@ -629,7 +632,7 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build template with block using display rule with unmapped variable creates dummy display rule`() {
         // given
-        val variable = aVariable("V_999", "DollarsInBank", dataType = DataType.Currency)
+        val variable = mockVar(aVariable("V_999", "DollarsInBank", dataType = DataType.Currency))
 
         val displayRule = mockRule(
             aDisplayRule(
@@ -1080,23 +1083,19 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `block with unassigned variable structure uses the last updated one`() {
+    fun `block with unassigned variable structure uses the one specified in project config`() {
         val variable = mockVar(aVariable("V_1"))
         val variableStructureA = mockVarStructure(
             aVariableStructureModel(
-                "VS_1", structure = mapOf(
-                    VariableModelRef(variable.id) to VariablePath("Data.Records.Value")
-                ), lastUpdated = Instant.parse("2020-01-02T03:04:05Z")
+                "VS_1", structure = mapOf(VariableModelRef(variable.id) to VariablePath("Data.Records.Value"))
             )
         )
         val variableStructureB = mockVarStructure(
             aVariableStructureModel(
-                "VS_2", structure = mapOf(
-                    VariableModelRef(variable.id) to VariablePath("Data.Clients.Value")
-                ), lastUpdated = Instant.parse("2022-12-24T05:09:10Z")
+                "VS_2", structure = mapOf(VariableModelRef(variable.id) to VariablePath("Data.Clients.Value"))
             )
         )
-        every { variableStructureRepository.listAllModel() } returns listOf(variableStructureA, variableStructureB)
+        val config = aProjectConfig(defaultVariableStructure = variableStructureB.id)
 
         val block = mockObj(
             aDocObj(
@@ -1107,10 +1106,12 @@ class InteractiveDocumentObjectBuilderTest {
         )
 
         // when
+        val subject = aSubject(config)
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        verify(exactly = 0) { variableStructureRepository.findModelOrFail(any()) }
+        verify(exactly = 1) { variableStructureRepository.findModelOrFail(variableStructureB.id) }
+        verify(exactly = 0) { variableStructureRepository.findModelOrFail(variableStructureA.id) }
         result["Variable"].first { it["Name"].textValue() == variable.nameOrId() }["ParentId"].textValue()
             .shouldBeEqualTo("Data.Clients.Value")
     }

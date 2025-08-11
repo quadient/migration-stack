@@ -240,12 +240,10 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     protected fun initVariableStructure(layout: Layout, documentObject: DocumentObjectModel): VariableStructureModel {
-        val documentObjectVariableStructure =
-            documentObject.variableStructureRef?.let { variableStructureRepository.findModelOrFail(it.id) }
+        val variableStructureId = documentObject.variableStructureRef?.id ?: projectConfig.defaultVariableStructure
 
         val variableStructureModel =
-            documentObjectVariableStructure ?: variableStructureRepository.listAllModel().maxByOrNull { it.lastUpdated }
-            ?: VariableStructureModel(
+            variableStructureId?.let { variableStructureRepository.findModelOrFail(it) } ?: VariableStructureModel(
                 id = "defaultVariableStructure",
                 lastUpdated = Clock.System.now(),
                 created = Clock.System.now(),
@@ -738,11 +736,7 @@ abstract class InspireDocumentObjectBuilder(
     private fun variableToScript(
         id: String, layout: Layout, variableStructure: VariableStructureModel
     ): ScriptResult {
-        val variable = variableRepository.findModel(id)
-        if (variable == null) {
-            error("Variable $id not found")
-        }
-
+        val variable = variableRepository.findModelOrFail(id)
         val variablePath = variableStructure.structure[VariableModelRef(id)]?.value
         return if (variablePath == null) {
             ScriptResult.Failure(variable.nameOrId())

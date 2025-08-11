@@ -51,7 +51,6 @@ import com.quadient.migration.tools.shouldNotBeNull
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import kotlinx.datetime.Instant
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -382,15 +381,17 @@ class DesignerDocumentObjectBuilderTest {
                 )
             )
         )
-        every { variableStructureRepository.listAllModel() } returns listOf(
+        val varStructure = mockVarStructure(
             aVariableStructureModel(
                 structure = mapOf(
                     VariableModelRef(variable.id) to VariablePath("Data.Records.Value")
                 )
             )
         )
+        val config = aProjectConfig(defaultVariableStructure = varStructure.id)
 
         // when
+        val subject = aSubject(config)
         val result =
             subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
@@ -596,19 +597,16 @@ class DesignerDocumentObjectBuilderTest {
         val variable = mockVar(aVariable("V_1"))
         val variableStructureA = mockVarStructure(
             aVariableStructureModel(
-                "VS_1", structure = mapOf(
-                    VariableModelRef(variable.id) to VariablePath("Data.Records.Value")
-                ), lastUpdated = Instant.parse("2020-01-02T03:04:05Z")
+                "VS_1", structure = mapOf(VariableModelRef(variable.id) to VariablePath("Data.Records.Value"))
             )
         )
         val variableStructureB = mockVarStructure(
             aVariableStructureModel(
-                "VS_2", structure = mapOf(
-                    VariableModelRef(variable.id) to VariablePath("Data.Clients.Value")
-                ), lastUpdated = Instant.parse("2022-12-24T05:09:10Z")
+                "VS_2", structure = mapOf(VariableModelRef(variable.id) to VariablePath("Data.Clients.Value"))
             )
         )
         every { variableStructureRepository.listAllModel() } returns listOf(variableStructureA, variableStructureB)
+        val config = aProjectConfig(defaultVariableStructure = variableStructureB.id)
 
         val block = mockObj(
             aDocObj(
@@ -619,6 +617,7 @@ class DesignerDocumentObjectBuilderTest {
         )
 
         // when
+        val subject = aSubject(config)
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
