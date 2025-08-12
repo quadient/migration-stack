@@ -12,6 +12,8 @@ public interface TextStyle extends Node<TextStyle> {
 
     TextStyle setFontSize(double sizeInPoints);
 
+    TextStyle setFontSizeInMeters(double sizeInPoints);
+
     TextStyle setLineWidth(double width);
 
     TextStyle setBold(boolean bold);

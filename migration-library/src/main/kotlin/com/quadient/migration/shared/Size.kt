@@ -7,48 +7,51 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import java.math.BigDecimal
+import java.math.RoundingMode
 
 @Serializable(with = SizeSerializer::class)
 class Size {
-    val millimeters: Double
+    val millimeters: BigDecimal
 
     enum class Unit {
         Points, Millimeters, Centimeters, Meters, Inches
     }
 
     companion object {
-        const val MM_TO_PT = 72 / 25.4
+        const val MM_TO_PT = 72.0 / 25.4
+        private const val DIV_SCALE = 20
 
         @JvmStatic
         fun ofPoints(value: Double) = Size(value, Unit.Points)
         @JvmStatic
-        fun ofPoints(value: Long) = Size(value.toDouble(), Unit.Points)
+        fun ofPoints(value: Long) = Size(value.toBigDecimal(), Unit.Points)
         @JvmStatic
-        fun ofPoints(value: Int) = Size(value.toDouble(), Unit.Points)
+        fun ofPoints(value: Int) = Size(value.toBigDecimal(), Unit.Points)
         @JvmStatic
         fun ofMillimeters(value: Double) = Size(value, Unit.Millimeters)
         @JvmStatic
-        fun ofMillimeters(value: Long) = Size(value.toDouble(), Unit.Millimeters)
+        fun ofMillimeters(value: Long) = Size(value.toBigDecimal(), Unit.Millimeters)
         @JvmStatic
-        fun ofMillimeters(value: Int) = Size(value.toDouble(), Unit.Millimeters)
+        fun ofMillimeters(value: Int) = Size(value.toBigDecimal(), Unit.Millimeters)
         @JvmStatic
         fun ofCentimeters(value: Double) = Size(value, Unit.Centimeters)
         @JvmStatic
-        fun ofCentimeters(value: Long) = Size(value.toDouble(), Unit.Centimeters)
+        fun ofCentimeters(value: Long) = Size(value.toBigDecimal(), Unit.Centimeters)
         @JvmStatic
-        fun ofCentimeters(value: Int) = Size(value.toDouble(), Unit.Centimeters)
+        fun ofCentimeters(value: Int) = Size(value.toBigDecimal(), Unit.Centimeters)
         @JvmStatic
         fun ofMeters(value: Double) = Size(value, Unit.Meters)
         @JvmStatic
-        fun ofMeters(value: Long) = Size(value.toDouble(), Unit.Meters)
+        fun ofMeters(value: Long) = Size(value.toBigDecimal(), Unit.Meters)
         @JvmStatic
-        fun ofMeters(value: Int) = Size(value.toDouble(), Unit.Meters)
+        fun ofMeters(value: Int) = Size(value.toBigDecimal(), Unit.Meters)
         @JvmStatic
         fun ofInches(value: Double)= Size(value, Unit.Inches)
         @JvmStatic
-        fun ofInches(value: Long) = Size(value.toDouble(), Unit.Inches)
+        fun ofInches(value: Long) = Size(value.toBigDecimal(), Unit.Inches)
         @JvmStatic
-        fun ofInches(value: Int) = Size(value.toDouble(), Unit.Inches)
+        fun ofInches(value: Int) = Size(value.toBigDecimal(), Unit.Inches)
 
         @JvmStatic
         fun fromString(input: String): Size {
@@ -67,22 +70,32 @@ class Size {
 
     constructor(value: Double, unit: Unit) {
         millimeters = when (unit) {
-            Unit.Points -> value / MM_TO_PT
+            Unit.Points -> value.toBigDecimal().divide(MM_TO_PT.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN)
+            Unit.Millimeters -> value.toBigDecimal()
+            Unit.Centimeters -> (value * 10.0).toBigDecimal()
+            Unit.Meters -> (value * 1000.0).toBigDecimal()
+            Unit.Inches -> (value * 25.4).toBigDecimal()
+        }
+    }
+
+    constructor(value: BigDecimal, unit: Unit) {
+        millimeters = when (unit) {
+            Unit.Points -> value.divide(MM_TO_PT.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN)
             Unit.Millimeters -> value
-            Unit.Centimeters -> value * 10.0
-            Unit.Meters -> value * 1000.0
-            Unit.Inches -> value * 25.4
+            Unit.Centimeters -> value * 10.0.toBigDecimal()
+            Unit.Meters -> value * 1000.0.toBigDecimal()
+            Unit.Inches -> value * 25.4.toBigDecimal()
         }
     }
 
     fun to(unit: Unit): Double {
         return when (unit) {
-            Unit.Points -> millimeters * MM_TO_PT
-            Unit.Millimeters -> millimeters
-            Unit.Centimeters -> millimeters / 10.0
-            Unit.Meters -> millimeters / 1000.0
-            Unit.Inches -> millimeters / 25.4
-        }
+            Unit.Points -> (millimeters * MM_TO_PT.toBigDecimal()).setScale(4, RoundingMode.HALF_EVEN)
+            Unit.Millimeters -> millimeters.setScale(4, RoundingMode.HALF_EVEN)
+            Unit.Centimeters -> millimeters.divide(10.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN).setScale(5, RoundingMode.HALF_EVEN)
+            Unit.Meters -> millimeters.divide(1000.0.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN).setScale(7, RoundingMode.HALF_EVEN)
+            Unit.Inches -> millimeters.divide(25.4.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN).setScale(5, RoundingMode.HALF_EVEN)
+        }.toDouble()
     }
 
     fun to(unit: Long) = to(unit.toDouble())
@@ -97,7 +110,7 @@ class Size {
         if (this === other) return true
         if (other !is Size) return false
 
-        if (millimeters != other.millimeters) return false
+        if (millimeters.compareTo(other.millimeters) != 0) return false
 
         return true
     }
@@ -126,7 +139,7 @@ class Size {
 
     operator fun minus(other: Size): Size {
         val res = millimeters - other.millimeters
-        if (res < 0) {
+        if (res < BigDecimal.ZERO) {
             throw IllegalArgumentException("Size cannot be negative")
         }
 
@@ -134,11 +147,11 @@ class Size {
     }
 
     operator fun times(other: Double): Size {
-        return Size(millimeters * other, Unit.Millimeters)
+        return Size(millimeters * other.toBigDecimal(), Unit.Millimeters)
     }
 
     operator fun div(other: Double): Size {
-        return Size(millimeters / other, Unit.Millimeters)
+        return Size(millimeters.divide(other.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN), Unit.Millimeters)
     }
 }
 

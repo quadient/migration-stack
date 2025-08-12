@@ -324,7 +324,7 @@ abstract class InspireDocumentObjectBuilder(
                 }
             }
 
-            definition.size?.let { textStyle.setFontSize(definition.size.toPoints()) }
+            definition.size?.let { textStyle.setFontSizeInMeters(definition.size.toMeters()) }
             textStyle.setBold(definition.bold)
             textStyle.seItalic(definition.italic)
             textStyle.setUnderline(definition.underline)

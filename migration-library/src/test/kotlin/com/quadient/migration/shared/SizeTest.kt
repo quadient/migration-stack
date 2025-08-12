@@ -15,13 +15,13 @@ class SizeTest {
         Size.ofCentimeters(5) to Size.ofMillimeters(50),
         Size.ofMeters(18) to Size.ofMillimeters(18000),
         Size.ofInches(1) to Size.ofMillimeters(25.4),
-    ).map { (input, expected) -> dynamicTest("$input is equal to $expected") { input.shouldBeEqualTo(expected) } }
+    ).map { (input, expected) -> dynamicTest("$input is equal to $expected") { input.toMillimeters().shouldBeEqualTo(expected.toMillimeters()) } }
 
     @TestFactory
     fun `to value`() = listOf(
         Size.ofMillimeters(100).toMeters() to 0.1,
-        Size.ofPoints(10).toCentimeters() to 10 / Size.MM_TO_PT / 10,
-        Size.ofMeters(8).toPoints() to 8000 * Size.MM_TO_PT,
+        Size.ofPoints(10).toCentimeters() to 0.35278,
+        Size.ofMeters(8).toPoints() to 22677.1654,
         Size.ofCentimeters(8).toCentimeters() to 8.0,
         Size.ofInches(1).toMillimeters() to 25.4,
     ).map { (input, expected) -> dynamicTest("$input is equal to $expected") { input.shouldBeEqualTo(expected) } }

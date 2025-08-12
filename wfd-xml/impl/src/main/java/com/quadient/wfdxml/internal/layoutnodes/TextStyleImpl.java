@@ -179,6 +179,12 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
         return this;
     }
 
+    @Override
+    public TextStyleImpl setFontSizeInMeters(double size) {
+        this.fontSize = size;
+        return this;
+    }
+
     public double getLineWidth() {
         return lineWidth;
     }
