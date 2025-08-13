@@ -18,7 +18,7 @@ class VariablesMappingImportTest {
     @Test
     void overridesInspirePath() {
         def migration = Utils.mockMigration()
-        Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
+        Path mappingFile = Paths.get(dir.path, "testProject-variable-structure-test.csv")
         def input = """\
             id,name,origin_locations,inspire_path,data_type
             unchangedEmpty,,[],,String
@@ -39,19 +39,19 @@ class VariablesMappingImportTest {
         VariablesImport.run(migration, mappingFile)
 
         verify(migration.mappingRepository, times(1)).upsert("unchangedEmpty", new MappingItem.Variable(null, null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedEmpty", "testProject-variables")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedEmpty", "test")
         verify(migration.mappingRepository, times(1)).upsert("unchangedPath", new MappingItem.Variable(null, null, "oldPath"))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedPath", "testProject-variables")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedPath", "test")
         verify(migration.mappingRepository, times(1)).upsert("withPath", new MappingItem.Variable(null, null, "newPath"))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPath", "testProject-variables")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPath", "test")
         verify(migration.mappingRepository, times(1)).upsert("withPathEmpty", new MappingItem.Variable(null, null, "newPath"))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPathEmpty", "testProject-variables")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPathEmpty", "test")
     }
 
     @Test
     void overridesDataType() {
         def migration = Utils.mockMigration()
-        Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
+        Path mappingFile = Paths.get(dir.path, "testProject-variable-structure-test.csv")
         def input = """\
             id,name,origin_locations,inspire_path,data_type
             unchanged,,[],,String
@@ -69,17 +69,17 @@ class VariablesMappingImportTest {
         VariablesImport.run(migration, mappingFile)
 
         verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged", "testProject-variables")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged", "test")
         verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable(null, DataType.String, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept", "testProject-variables")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept", "test")
         verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable(null, DataType.Boolean, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden", "testProject-variables")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden", "test")
     }
 
     @Test
     void overridesName() {
         def migration = Utils.mockMigration()
-        Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
+        Path mappingFile = Paths.get(dir.path, "testProject-variable-structure-test.csv")
         def input = """\
             id,name,origin_locations,inspire_path,data_type
             unchanged,,[],,String
@@ -97,11 +97,11 @@ class VariablesMappingImportTest {
         VariablesImport.run(migration, mappingFile)
 
         verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged", "testProject-variables")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged", "test")
         verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable("someName", null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept", "testProject-variables")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept", "test")
         verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable("someName", null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden", "testProject-variables")
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden", "test")
     }
 
     static void givenExistingVariable(Migration mig, String id, String name, DataType dataType, String inspirePath = null) {

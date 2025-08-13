@@ -17,7 +17,7 @@ class VariablesMappingExportTest {
 
     @Test
     void allPossible() {
-        Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
+        Path mappingFile = Paths.get(dir.path, "testProject-variable-structure-test.csv")
         def migration = Utils.mockMigration()
 
         when(migration.variableRepository.listAll()).thenReturn([
@@ -46,7 +46,7 @@ overridden,overridden name,[foo; bar],override/path,Double
 
     @Test
     void emptyFileWhenNoVariables() {
-        Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
+        Path mappingFile = Paths.get(dir.path, "testProject-variable-structure-test.csv")
         def migration = Utils.mockMigration()
 
         when(migration.variableRepository.listAll()).thenReturn([])
