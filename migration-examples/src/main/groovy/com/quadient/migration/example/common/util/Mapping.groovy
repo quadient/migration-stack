@@ -11,30 +11,32 @@ static void mapProp(Object mapping, Object obj, String key, Object newValue) {
     }
 }
 
-Path getVariablesMappingPath(String[] args) {
-    def variablesMappingDir = Paths.get("mapping", "variables").toFile()
-    def csvFiles = variablesMappingDir.listFiles()?.findAll { it.name.toLowerCase().endsWith(".csv") } ?: []
+Path getVariablesMappingPath(String[] args, String projectName) {
+    def variablesMappingDir = Paths.get("mapping").toFile()
+    def csvFiles = variablesMappingDir.listFiles()?.findAll {
+        it.name.startsWith(variableStructureFileNamePrefix(projectName)) && it.name.toLowerCase().endsWith(".csv")
+    } ?: []
 
     if (csvFiles.isEmpty()) {
-        println "No CSV files found in mapping/variables/. Cannot import variable structure."
+        println "No CSV files found in mapping with matching pattern '${variableStructureFileNamePrefix(projectName)}<id>.csv'."
         System.exit(1)
     }
 
     def selectedFile = null
-    def argUserInput = (getValueOfArg("--variable-structure-name", args as List<String>)).orElseGet { null }
+    def argUserInput = (getValueOfArg("--variable-structure-id", args as List<String>)).orElseGet { null }
     if (argUserInput) {
-        def csvName = argUserInput.toLowerCase().endsWith(".csv") ? argUserInput : "${argUserInput}.csv"
-        def csvFile = csvFiles.find { it.name.equalsIgnoreCase(csvName) }
+        def fileName = variableStructureFileNameFromId(argUserInput, projectName)
+        def csvFile = csvFiles.find { it.name.equalsIgnoreCase(fileName) }
         if (csvFile) {
             selectedFile = csvFile
             println "Selected file: ${selectedFile.name}"
         } else {
-            println "CSV file '${csvName}' not found in mapping/variables/. Please provide a valid file name."
+            println "CSV file '${fileName}' not found in mapping. Please provide a valid file name."
             System.exit(1)
         }
     } else {
         println "Available CSV files for import:"
-        csvFiles.eachWithIndex { file, i -> println "${i + 1} - ${file.name}" }
+        csvFiles.eachWithIndex { file, i -> println "${i + 1}) ${file.name}" }
         println "Select a number of the CSV file to import:"
 
         while (true) {
@@ -52,4 +54,20 @@ Path getVariablesMappingPath(String[] args) {
     }
 
     return selectedFile.toPath()
+}
+
+static String variableStructureFileNamePrefix(String projectName) {
+    return "${projectName}-variable-structure-"
+}
+
+static String variableStructureFileNameFromId(String id, String projectName) {
+    return "${variableStructureFileNamePrefix(projectName)}${id}.csv"
+}
+
+static String variableStructureIdFromFileName(String fileName, String projectName) {
+    def prefix = variableStructureFileNamePrefix(projectName)
+    if (!fileName.startsWith(prefix) || !fileName.endsWith(".csv")) {
+        throw new IllegalArgumentException("Invalid variable structure file name: ${fileName}")
+    }
+    return fileName.substring(prefix.length(), fileName.length() - ".csv".length())
 }

@@ -6,21 +6,12 @@ import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.shared.DataType
 
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 def migration = initMigration(this.binding.variables["args"])
 
-def variablesMappingDir = Paths.get("mapping", "variables").toFile()
-def csvFiles = variablesMappingDir.listFiles()?.findAll { it.name.toLowerCase().endsWith(".csv") } ?: []
-
-if (csvFiles.isEmpty()) {
-    println "No CSV files found in mapping/variables/. Cannot import variable structure."
-    System.exit(1)
-}
-
-def selectedFilePath = new Mapping().getVariablesMappingPath(this.binding.variables["args"])
+def selectedFilePath = new Mapping().getVariablesMappingPath(this.binding.variables["args"], migration.projectConfig.name)
 run(migration, selectedFilePath)
 
 static void run(Migration migration, Path path) {
@@ -48,8 +39,8 @@ static void run(Migration migration, Path path) {
         def dataType = Csv.deserialize(values.get("data_type"), DataType.class)
         Mapping.mapProp(mapping, variable, "dataType", dataType)
 
-        def structureName = path.fileName.toString().split("\\.")[0]
+        def structureId = Mapping.variableStructureIdFromFileName(path.fileName.toString(), migration.projectConfig.name)
         migration.mappingRepository.upsert(id, mapping)
-        migration.mappingRepository.applyVariableMapping(id, structureName)
+        migration.mappingRepository.applyVariableMapping(id, structureId)
     }
 }

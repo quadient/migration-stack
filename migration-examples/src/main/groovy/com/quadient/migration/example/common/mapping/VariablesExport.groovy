@@ -3,6 +3,7 @@ package com.quadient.migration.example.common.mapping
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.example.common.util.Mapping
 
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -12,34 +13,33 @@ import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfAr
 
 def migration = initMigration(this.binding.variables["args"])
 
-def argUserInput = (getValueOfArg("--variable-structure-name", this.binding.variables["args"] as List<String>)).orElseGet { null }
+def argUserInput = (getValueOfArg("--variable-structure-id", this.binding.variables["args"] as List<String>)).orElseGet { null }
 
 def forbiddenChars = /[\\\/:\*\?"<>\|]/
 
-def variables = migration.variableRepository.listAll()
 def variableStructures = migration.variableStructureRepository.listAll()
-def defaultVariableStructureName = constructDefaultName(variableStructures, migration)
+def defaultVariableId = constructDefaultId(variableStructures)
 
 if (!argUserInput) {
     if (variableStructures.isEmpty()) {
         println "No existing variable structures found."
-        println "Type a name of new variable structure (leave empty for default: ${defaultVariableStructureName}):"
+        println "Type an id of new variable structure (leave empty for: ${defaultVariableId}):"
     } else {
         println "Existing variable structures for export:"
-        variableStructures.eachWithIndex { variableStructure, i -> println "${i + 1} - ${variableStructure.nameOrId()}" }
-        println "Either select a number of an existing variable structure, or type a name for a new variable structure (leave empty for default: ${defaultVariableStructureName}):"
+        variableStructures.eachWithIndex { variableStructure, i -> println "${i + 1}) ${variableStructure.id}" }
+        println "Either select a number of an existing variable structure, or type an id for a new variable structure (leave empty for: ${defaultVariableId}):"
     }
 }
 
-def variableStructureName
+def variableStructureId
 def selectedVariableStructure
 def userInput
 
 while (true) {
     userInput = argUserInput ?: System.in.newReader().readLine().trim()
     if (!userInput) {
-        variableStructureName = defaultVariableStructureName
-        println "No input provided. Generated new variable structure name: $variableStructureName"
+        variableStructureId = defaultVariableId
+        println "No input provided. Generated new variable structure : $variableStructureId"
         break
     } else if (userInput.isInteger()) {
         def i = userInput.toInteger() - 1
@@ -48,21 +48,21 @@ while (true) {
             continue
         }
         selectedVariableStructure = variableStructures[i]
-        variableStructureName = selectedVariableStructure.nameOrId()
-        println "Selected variable structure: $variableStructureName"
+        variableStructureId = selectedVariableStructure.id
+        println "Selected variable structure: $variableStructureId"
         break
     } else {
         if (userInput =~ forbiddenChars) {
-            println "Invalid name. Please avoid using these characters: \\ / : * ? \" < > |"
+            println "Invalid id. Please avoid using these characters: \\ / : * ? \" < > |"
             continue
         }
-        variableStructureName = userInput
+        variableStructureId = userInput
         break
     }
 }
 
-def fileName = variableStructureName.toLowerCase().endsWith(".csv") ? variableStructureName : "${variableStructureName}.csv"
-def exportFile = Paths.get("mapping", "variables", fileName)
+def fileName = Mapping.variableStructureFileNameFromId(variableStructureId, migration.projectConfig.name)
+def exportFile = Paths.get("mapping", fileName)
 
 def file = exportFile.toFile()
 
@@ -71,8 +71,8 @@ run(migration, file.toPath())
 static void run(Migration migration, Path filePath) {
     def variables = migration.variableRepository.listAll()
 
-    def structureName = filePath.fileName.toString().split("\\.")[0]
-    def existingStructure = migration.variableStructureRepository.find(structureName)
+    def structureId = Mapping.variableStructureIdFromFileName(filePath.fileName.toString(), migration.projectConfig.name)
+    def existingStructure = migration.variableStructureRepository.find(structureId)
 
     def file = filePath.toFile()
     file.createParentDirectories()
@@ -92,8 +92,8 @@ static void run(Migration migration, Path filePath) {
     }
 }
 
-static String constructDefaultName(List<VariableStructure> variableStructures, Migration migration) {
-    def baseName = "${migration.projectConfig.name}-variable-structure-"
+static String constructDefaultId(List<VariableStructure> variableStructures) {
+    def baseName = "default-"
     def number = 1
     def existingNames = variableStructures.collect { it.nameOrId() }
     while (existingNames.contains(baseName + number)) {
