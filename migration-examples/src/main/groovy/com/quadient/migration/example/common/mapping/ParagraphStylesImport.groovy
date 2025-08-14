@@ -105,16 +105,8 @@ private static void updateDefinitionField(Object paraStyleDefinition, Field defi
     if (definitionField.name == "lineSpacing") {
         def lineSpacingType = values.get("lineSpacingType")
         def lineSpacingValue = values.get("lineSpacingValue")
+        def lineSpacing = createLineSpacingInstance(lineSpacingType, lineSpacingValue)
 
-        def arg
-        if (lineSpacingType == "MultipleOf") {
-            arg = lineSpacingValue.toDouble()
-        } else {
-            arg = lineSpacingValue != null ? Size.fromString(lineSpacingValue) : null
-        }
-
-        def clazz = LineSpacing.class.getDeclaredClasses().find { it.simpleName == lineSpacingType }
-        def lineSpacing = clazz.constructors[0].newInstance([arg] as Object[]) as LineSpacing
         paraStyleDefinition.lineSpacing = lineSpacing
     } else {
         paraStyleDefinition."${definitionField.name}" = Csv.deserialize(values.get(definitionField.name), definitionField.type)
@@ -125,19 +117,23 @@ private static void mapDefinitionField(ParagraphStyleDefinition paraStyleDefinit
     if (definitionField.name == "lineSpacing") {
         def lineSpacingType = values.get("lineSpacingType")
         def lineSpacingValue = values.get("lineSpacingValue")
-
-        def arg
-        if (lineSpacingType == "MultipleOf") {
-            arg = lineSpacingValue.toDouble()
-        } else {
-            arg = lineSpacingValue != null ? Size.fromString(lineSpacingValue) : null
-        }
-
-        def clazz = LineSpacing.class.getDeclaredClasses().find { it.simpleName == lineSpacingType }
-        def lineSpacing = clazz.constructors[0].newInstance([arg] as Object[]) as LineSpacing
+        def lineSpacing = createLineSpacingInstance(lineSpacingType, lineSpacingValue)
 
         Mapping.mapProp(mapping, paraStyleDefinition, "lineSpacing", lineSpacing)
     } else {
         Mapping.mapProp(mapping, paraStyleDefinition, definitionField.name, Csv.deserialize(values.get(definitionField.name), definitionField.type))
+    }
+}
+
+static LineSpacing createLineSpacingInstance(String type, String value) {
+    switch (type) {
+        case "Additional" -> new LineSpacing.Additional(value ? Size.fromString(value) : null)
+        case "Exact" -> new LineSpacing.Exact(value ? Size.fromString(value) : null)
+        case "AtLeast" -> new LineSpacing.AtLeast(value ? Size.fromString(value) : null)
+        case "MultipleOf" -> new LineSpacing.MultipleOf(value ? Double.parseDouble(value) : null)
+        case "ExactFromPreviousWithAdjustLegacy" -> new LineSpacing.ExactFromPreviousWithAdjustLegacy(value ? Size.fromString(value) : null)
+        case "ExactFromPreviousWithAdjust" -> new LineSpacing.ExactFromPreviousWithAdjust(value ? Size.fromString(value) : null)
+        case "ExactFromPrevious" -> new LineSpacing.ExactFromPrevious(value ? Size.fromString(value) : null)
+        default -> throw new IllegalArgumentException("Unknown line spacing type: $type")
     }
 }

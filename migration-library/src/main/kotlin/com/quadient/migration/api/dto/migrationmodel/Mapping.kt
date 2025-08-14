@@ -17,6 +17,11 @@ sealed class MappingItem {
         var variableStructureRef: String?,
     ) : MappingItem()
 
+    data class Area(
+        override var name: String?,
+        var areas: MutableMap<Int, String>,
+    ) : MappingItem()
+
     data class Image(
         override var name: String?,
         var targetFolder: String?,
@@ -74,6 +79,8 @@ sealed class MappingItem {
                     variableStructureRef = this.variableStructureRef,
                 )
             }
+
+            is MappingItem.Area ->  MappingItemEntity.Area( name = this.name, areas = this.areas)
 
             is MappingItem.Image -> {
                 MappingItemEntity.Image(

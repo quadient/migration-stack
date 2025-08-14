@@ -1,5 +1,6 @@
 package com.quadient.migration.persistence.migrationmodel
 
+import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
@@ -23,6 +24,7 @@ import com.quadient.migration.tools.aVariable
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aVariableStructureModel
+import com.quadient.migration.tools.model.anArea
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -90,6 +92,35 @@ class MappingEntityTest {
             assertEquals(result.targetFolder, "new folder")
             assertEquals(result.type, DocumentObjectType.Block)
             assertEquals(result.variableStructureRef?.id, "new structure")
+        }
+    }
+
+    @Nested
+    inner class AreaTest {
+        @Test
+        fun `nothing changes with null mapping`() {
+            val mapping = MappingItemEntity.Area(name = null, areas = mutableMapOf())
+            val dto = DocumentObject.fromModel(
+                aDocObj("doc1", content = listOf(anArea(emptyList(), null, "Area 1"), anArea(emptyList(), null, "Area 2")))
+            )
+
+            val result = mapping.apply(dto)
+
+            assertEquals((result.content[0] as Area).interactiveFlowName, "Area 1")
+            assertEquals((result.content[1] as Area).interactiveFlowName, "Area 2")
+        }
+
+        @Test
+        fun `maps interactiveFlowName`() {
+            val mapping = MappingItemEntity.Area(name = null, areas = mutableMapOf(1 to "New Area Name"))
+            val dto = DocumentObject.fromModel(
+                aDocObj("doc1", content = listOf(anArea(emptyList(), null, "Area 1"), anArea(emptyList(), null, "Area 2")))
+            )
+
+            val result = mapping.apply(dto)
+
+            assertEquals((result.content[0] as Area).interactiveFlowName, "Area 1")
+            assertEquals((result.content[1] as Area).interactiveFlowName, "New Area Name")
         }
     }
 

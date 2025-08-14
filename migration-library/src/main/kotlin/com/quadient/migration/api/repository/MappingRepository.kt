@@ -30,6 +30,7 @@ class MappingRepository(
                 is MappingItem.TextStyle -> applyTextStyleMapping(mapping.id)
                 is MappingItem.ParagraphStyle -> applyParagraphStyleMapping(mapping.id)
                 is MappingItem.Variable -> applyVariableMapping(mapping.id, structureId)
+                is MappingItem.Area -> applyAreaMapping(mapping.id)
             }
         }
     }
@@ -57,6 +58,24 @@ class MappingRepository(
             return
         }
 
+
+        documentObjectRepository.upsert(mapping.apply(obj))
+    }
+
+    fun getAreaMapping(id: String): MappingItem.Area {
+        return (internalRepository.find<MappingItemEntity.Area>(id) ?: MappingItemEntity.Area(
+            name = null,
+            areas = mutableMapOf()
+        )).toDto() as MappingItem.Area
+    }
+
+    fun applyAreaMapping(id: String) {
+        val mapping = internalRepository.find<MappingItemEntity.Area>(id)
+        val obj = documentObjectRepository.find(id)
+
+        if (mapping == null || obj == null) {
+            return
+        }
 
         documentObjectRepository.upsert(mapping.apply(obj))
     }

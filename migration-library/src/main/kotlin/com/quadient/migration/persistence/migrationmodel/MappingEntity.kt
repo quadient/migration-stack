@@ -17,6 +17,7 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle as Paragraph
 import com.quadient.migration.api.dto.migrationmodel.TextStyle as TextStyleDto
 import com.quadient.migration.api.dto.migrationmodel.Variable as VariableDto
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure as VariableStructureDto
+import com.quadient.migration.api.dto.migrationmodel.Area as AreaDto
 
 class MappingEntity(id: EntityID<CompositeID>) : CompositeEntity(id) {
     companion object : CompositeEntityClass<MappingEntity>(MappingTable)
@@ -55,10 +56,31 @@ sealed class MappingItemEntity {
                 targetFolder = targetFolder ?: item.targetFolder,
                 type = type ?: item.type,
                 variableStructureRef = variableStructureRef?.let { VariableStructureRef(it) }
-                    ?: item.variableStructureRef
-            )
+                    ?: item.variableStructureRef)
         }
     }
+
+    @Serializable
+    data class Area(
+        override val name: String?, val areas: MutableMap<Int, String>
+    ) : MappingItemEntity() {
+        fun apply(item: DocumentObjectDto): DocumentObjectDto {
+            if (areas.isEmpty()) {
+                return item
+            }
+
+            var idx = 0
+            for (obj in item.content) {
+                if (obj is AreaDto && areas.contains(idx)) {
+                    obj.interactiveFlowName = areas[idx]
+                }
+                idx++
+            }
+
+            return item.copy(name = name ?: item.name, content = item.content)
+        }
+    }
+
 
     @Serializable
     data class Image(
@@ -261,6 +283,8 @@ sealed class MappingItemEntity {
                     variableStructureRef = this.variableStructureRef,
                 )
             }
+
+            is Area -> MappingItem.Area(name = this.name, areas = this.areas)
 
             is Image -> {
                 MappingItem.Image(
