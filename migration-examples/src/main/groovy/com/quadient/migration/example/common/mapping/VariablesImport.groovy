@@ -17,6 +17,8 @@ run(migration, selectedFilePath)
 static void run(Migration migration, Path path) {
     def lines = path.toFile().readLines()
     def columnNames = lines.removeFirst().split(",")
+    def structureId = Mapping.variableStructureIdFromFileName(path.fileName.toString(), migration.projectConfig.name)
+    def structureMapping = migration.mappingRepository.getVariableStructureMapping(structureId)
 
     for (line in lines) {
         def values = Csv.getCells(line, columnNames)
@@ -25,10 +27,8 @@ static void run(Migration migration, Path path) {
         def mapping = migration.mappingRepository.getVariableMapping(id)
 
         def inspirePath = values.get("inspire_path")
-        if (inspirePath != null && inspirePath != "") {
-            mapping.inspirePath = inspirePath
-        } else {
-            mapping.inspirePath = null
+        if (inspirePath != null && inspirePath != "" && inspirePath != structureMapping.mappings[id]) {
+            structureMapping.mappings[id] = inspirePath
         }
 
         def variable = migration.variableRepository.find(values.get("id"))
@@ -39,8 +39,10 @@ static void run(Migration migration, Path path) {
         def dataType = Csv.deserialize(values.get("data_type"), DataType.class)
         Mapping.mapProp(mapping, variable, "dataType", dataType)
 
-        def structureId = Mapping.variableStructureIdFromFileName(path.fileName.toString(), migration.projectConfig.name)
         migration.mappingRepository.upsert(id, mapping)
-        migration.mappingRepository.applyVariableMapping(id, structureId)
+        migration.mappingRepository.applyVariableMapping(id)
     }
+
+    migration.mappingRepository.upsert(structureId, structureMapping)
+    migration.mappingRepository.applyVariableStructureMapping(structureId)
 }

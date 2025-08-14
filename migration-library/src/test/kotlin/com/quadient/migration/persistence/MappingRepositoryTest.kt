@@ -45,18 +45,36 @@ class MappingRepositoryTest {
         every { variableStructureRepository.find(any()) } returns null
         every { variableStructureRepository.upsert(any()) } returns Unit
         every { variableRepository.upsert(any()) } returns Unit
-        repo.upsert("varId", MappingItem.Variable(name = "new name", dataType = null, inspirePath = "somePath"))
+        repo.upsert("varId", MappingItem.Variable(name = "new name", dataType = null))
 
-        repo.applyVariableMapping("varId", "name-datastructure")
+        repo.applyVariableMapping("varId")
 
         verify { variableRepository.upsert(aVariable(id = "varId", name = "new name")) }
+    }
+
+    @Test
+    fun `apply variable mapping structure`() {
+        every { variableStructureRepository.find("varStructId") } returns VariableStructure.fromModel(
+            aVariableStructureModel(id = "varStructId", name = null)
+        )
+        every { variableStructureRepository.upsert(any()) } returns Unit
+        repo.upsert("varStructId", MappingItem.VariableStructure(
+            name = "new name",
+            mappings = mutableMapOf("varId" to "somePath", "anotherVarId" to "anotherPath")
+        ))
+
+        repo.applyVariableStructureMapping("varStructId")
+
         verify {
             variableStructureRepository.upsert(
                 VariableStructure.fromModel(
                     aVariableStructureModel(
-                        id = "name-datastructure",
-                        name = null,
-                        structure = mapOf(VariableModelRef("varId") to VariablePath("somePath"))
+                        id = "varStructId", name = "new name", structure = mapOf(
+                            VariableModelRef("varId") to VariablePath("somePath"),
+                            VariableModelRef("anotherVarId") to VariablePath(
+                                "anotherPath"
+                            )
+                        )
                     )
                 )
             )

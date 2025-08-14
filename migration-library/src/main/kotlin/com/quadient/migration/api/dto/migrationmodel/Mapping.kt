@@ -64,7 +64,11 @@ sealed class MappingItem {
     data class Variable(
         override var name: String?,
         var dataType: DataType?,
-        var inspirePath: String?,
+    ) : MappingItem()
+
+    data class VariableStructure(
+        override var name: String?,
+        val mappings: MutableMap<String, String>?,
     ) : MappingItem()
 
     fun toDb(): MappingItemEntity {
@@ -145,7 +149,13 @@ sealed class MappingItem {
                 MappingItemEntity.Variable(
                     name = this.name,
                     dataType = dataType,
-                    inspirePath = this.inspirePath,
+                )
+            }
+
+            is MappingItem.VariableStructure -> {
+                MappingItemEntity.VariableStructure(
+                    name = this.name,
+                    mappings = mappings,
                 )
             }
         }

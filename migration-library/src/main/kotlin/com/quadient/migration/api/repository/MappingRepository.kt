@@ -22,15 +22,16 @@ class MappingRepository(
         return internalRepository.listAll().map { it.toDto() }
     }
 
-    fun applyAll(structureId: String) {
+    fun applyAll() {
         for (mapping in listAll()) {
             when (mapping.mapping) {
                 is MappingItem.DocumentObject -> applyDocumentObjectMapping(mapping.id)
                 is MappingItem.Image -> applyImageMapping(mapping.id)
                 is MappingItem.TextStyle -> applyTextStyleMapping(mapping.id)
                 is MappingItem.ParagraphStyle -> applyParagraphStyleMapping(mapping.id)
-                is MappingItem.Variable -> applyVariableMapping(mapping.id, structureId)
+                is MappingItem.Variable -> applyVariableMapping(mapping.id)
                 is MappingItem.Area -> applyAreaMapping(mapping.id)
+                is MappingItem.VariableStructure -> applyVariableStructureMapping(mapping.id)
             }
         }
     }
@@ -64,8 +65,7 @@ class MappingRepository(
 
     fun getAreaMapping(id: String): MappingItem.Area {
         return (internalRepository.find<MappingItemEntity.Area>(id) ?: MappingItemEntity.Area(
-            name = null,
-            areas = mutableMapOf()
+            name = null, areas = mutableMapOf()
         )).toDto() as MappingItem.Area
     }
 
@@ -136,29 +136,42 @@ class MappingRepository(
 
     fun getVariableMapping(id: String): MappingItem.Variable {
         return (internalRepository.find<MappingItemEntity.Variable>(id) ?: MappingItemEntity.Variable(
-            name = null, dataType = null, inspirePath = null
+            name = null, dataType = null
         )).toDto() as MappingItem.Variable
     }
 
-    fun applyVariableMapping(id: String, structureId: String) {
+    fun applyVariableMapping(id: String) {
         val mapping = internalRepository.find<MappingItemEntity.Variable>(id)
         val variable = variableRepository.find(id)
-        val structure = variableStructureRepository.find(structureId) ?: VariableStructure(
-            id = structureId,
+
+        if (mapping == null || variable == null) {
+            return
+        }
+
+        variableRepository.upsert(mapping.apply(variable))
+    }
+
+    fun getVariableStructureMapping(id: String): MappingItem.VariableStructure {
+        return (internalRepository.find<MappingItemEntity.VariableStructure>(id) ?: MappingItemEntity.VariableStructure(
+            name = null, mappings = mutableMapOf()
+        )).toDto() as MappingItem.VariableStructure
+    }
+
+    fun applyVariableStructureMapping(id: String) {
+        val mapping = internalRepository.find<MappingItemEntity.VariableStructure>(id)
+        val structure = variableStructureRepository.find(id) ?: VariableStructure(
+            id = id,
             name = null,
             originLocations = emptyList(),
             customFields = CustomFieldMap(),
             structure = mutableMapOf()
         )
 
-        if (mapping == null || variable == null) {
+        if (mapping == null) {
             return
         }
 
-        val (newVar, newStructure) = mapping.apply(variable, structure)
-
-        variableRepository.upsert(newVar)
-        variableStructureRepository.upsert(newStructure)
+        variableStructureRepository.upsert(mapping.apply(structure))
     }
 
     fun deleteAll() {

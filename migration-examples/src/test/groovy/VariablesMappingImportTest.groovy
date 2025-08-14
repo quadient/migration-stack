@@ -38,14 +38,20 @@ class VariablesMappingImportTest {
 
         VariablesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchangedEmpty", new MappingItem.Variable(null, null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedEmpty", "test")
-        verify(migration.mappingRepository, times(1)).upsert("unchangedPath", new MappingItem.Variable(null, null, "oldPath"))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedPath", "test")
-        verify(migration.mappingRepository, times(1)).upsert("withPath", new MappingItem.Variable(null, null, "newPath"))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPath", "test")
-        verify(migration.mappingRepository, times(1)).upsert("withPathEmpty", new MappingItem.Variable(null, null, "newPath"))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPathEmpty", "test")
+        verify(migration.mappingRepository, times(1)).upsert("unchangedEmpty", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedEmpty")
+        verify(migration.mappingRepository, times(1)).upsert("unchangedPath", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedPath")
+        verify(migration.mappingRepository, times(1)).upsert("withPath", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPath")
+        verify(migration.mappingRepository, times(1)).upsert("withPathEmpty", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("withPathEmpty")
+        verify(migration.mappingRepository, times(1)).upsert("test", new MappingItem.VariableStructure(null, [
+            "unchangedPath": "oldPath",
+            "withPath": "newPath",
+            "withPathEmpty": "newPath",
+        ]))
+        verify(migration.mappingRepository, times(1)).applyVariableStructureMapping("test")
     }
 
     @Test
@@ -68,12 +74,12 @@ class VariablesMappingImportTest {
 
         VariablesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged", "test")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable(null, DataType.String, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept", "test")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable(null, DataType.Boolean, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden", "test")
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged")
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable(null, DataType.String))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept")
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable(null, DataType.Boolean))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden")
     }
 
     @Test
@@ -96,12 +102,12 @@ class VariablesMappingImportTest {
 
         VariablesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged", "test")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable("someName", null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept", "test")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable("someName", null, null))
-        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden", "test")
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged")
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable("someName", null))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("kept")
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable("someName", null))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden")
     }
 
     static void givenExistingVariable(Migration mig, String id, String name, DataType dataType, String inspirePath = null) {
@@ -110,14 +116,20 @@ class VariablesMappingImportTest {
         )
     }
 
+    static Map<String, String> mappings = [:]
     static void givenExistingMapping(
-            Migration mig,
-            String id,
-            String name = null,
-            DataType dataType = DataType.String,
-            String inspirePath = null
+        Migration mig,
+        String variableId,
+        String name = null,
+        DataType dataType = DataType.String,
+        String inspirePath = null
     ) {
-        when(mig.mappingRepository.getVariableMapping(id)).thenReturn(new MappingItem.Variable(name, dataType, inspirePath))
+        if (!mappings.containsKey(variableId) && inspirePath != null && inspirePath != "") {
+            mappings[variableId] = inspirePath
+        }
+
+        when(mig.mappingRepository.getVariableMapping(variableId)).thenReturn(new MappingItem.Variable(name, dataType))
+        when(mig.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure(null, mappings))
     }
 }
 
