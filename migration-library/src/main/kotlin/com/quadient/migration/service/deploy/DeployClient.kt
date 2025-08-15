@@ -526,6 +526,7 @@ sealed class DeployClient(
             return LastStatus.Inlined
         }
         val objectEvents = statusTrackingRepository.findEventsRelevantToOutput(id, resourceType, output)
+            .filter { ev -> lastDeployment?.timestamp?.let { ev.timestamp <= it } ?: true  }
         val lastEvent = objectEvents.lastOrNull()
         val lastDeployEvent = objectEvents.lastOrNull { it is Deployed || it is StatusError }
         val previousDeployEvent = lastDeployEvent?.timestamp?.let { lastDeployTimestamp ->
