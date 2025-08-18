@@ -1,3 +1,7 @@
+//! ---
+//! category: migration deploy
+//! description: Deploys all document objects
+//! ---
 package com.quadient.migration.example.common
 
 import com.quadient.migration.example.common.util.DeploymentReportWriter

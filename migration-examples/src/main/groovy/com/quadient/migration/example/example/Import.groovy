@@ -1,3 +1,8 @@
+//! ---
+//! name: ExampleImport
+//! category: migration example
+//! description: Import technical example
+//! ---
 package com.quadient.migration.example.example
 
 import com.quadient.migration.api.Migration

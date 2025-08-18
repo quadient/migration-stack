@@ -1,3 +1,8 @@
+//! ---
+//! category: migration mapping
+//! description: Export paragraph styles
+//! target: gradle
+//! ---
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration

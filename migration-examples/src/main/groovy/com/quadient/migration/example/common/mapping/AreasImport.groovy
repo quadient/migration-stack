@@ -1,3 +1,8 @@
+//! ---
+//! category: migration mapping
+//! description: Import areas with modified interactive flow names to their respective pages
+//! target: gradle
+//! ---
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration

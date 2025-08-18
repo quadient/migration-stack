@@ -1,3 +1,7 @@
+//! ---
+//! category: migration deploy
+//! description: Run validation on all migration objects
+//! ---
 package com.quadient.migration.example.common
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration

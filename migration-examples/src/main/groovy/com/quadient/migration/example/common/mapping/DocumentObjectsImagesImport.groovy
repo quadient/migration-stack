@@ -1,3 +1,8 @@
+//! ---
+//! category: migration mapping
+//! description: Import document objects and images
+//! target: gradle
+//! ---
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef

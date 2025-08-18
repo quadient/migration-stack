@@ -1,3 +1,9 @@
+//! ---
+//! category: migration mapping
+//! description: Import variables
+//! target: gradle
+//! stdin: true
+//! ---
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration

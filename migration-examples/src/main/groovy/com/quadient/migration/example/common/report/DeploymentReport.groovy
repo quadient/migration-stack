@@ -1,3 +1,6 @@
+//! ---
+//! category: migration report
+//! ---
 package com.quadient.migration.example.common.report
 
 import com.quadient.migration.example.common.util.DeploymentReportWriter
