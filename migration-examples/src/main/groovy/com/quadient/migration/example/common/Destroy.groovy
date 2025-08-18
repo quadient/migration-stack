@@ -1,3 +1,9 @@
+//! ---
+//! category: migration common
+//! description: Destroys all project data
+//! stdin: true
+//! target: gradle
+//! ---
 package com.quadient.migration.example.common
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration

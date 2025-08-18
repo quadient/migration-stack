@@ -176,28 +176,27 @@ sealed class MappingItemEntity {
     data class Variable(
         override val name: String?,
         val dataType: DataType?,
-        val inspirePath: String?,
     ) : MappingItemEntity() {
-        fun apply(variable: VariableDto, structure: VariableStructureDto): Pair<VariableDto, VariableStructureDto> {
-            val variable = variable.copy(
-                name = name ?: variable.name,
-                dataType = dataType ?: variable.dataType,
+        fun apply(variable: VariableDto): VariableDto {
+            return variable.copy(
+                name = name ?: variable.name, dataType = dataType ?: variable.dataType,
             )
-
-            val structureDef = structure.structure.toMutableMap()
-            val structure = structure.copy(
-                structure = structureDef
-            )
-
-            if (!inspirePath.isNullOrEmpty()) {
-                structureDef[variable.id] = inspirePath
-            } else {
-                structureDef.remove(variable.id)
-            }
-
-            return Pair(variable, structure)
         }
     }
+
+    @Serializable
+    data class VariableStructure(
+        override var name: String?,
+        val mappings: MutableMap<String, String>?,
+    ) : MappingItemEntity() {
+        fun apply(item: VariableStructureDto): VariableStructureDto {
+            return item.copy(
+                name = name ?: item.name,
+                structure = mappings?.filter { it.value.isNotEmpty() } ?: mutableMapOf()
+            )
+        }
+    }
+
 
     @Serializable
     data class TextStyle(override val name: String?, val definition: Definition?) : MappingItemEntity() {
@@ -344,9 +343,11 @@ sealed class MappingItemEntity {
             }
 
             is Variable -> {
-                MappingItem.Variable(
-                    name = this.name, dataType = this.dataType, inspirePath = this.inspirePath
-                )
+                MappingItem.Variable(name = this.name, dataType = this.dataType)
+            }
+
+            is VariableStructure -> {
+                MappingItem.VariableStructure(name = this.name, mappings = this.mappings ?: mutableMapOf())
             }
         }
     }

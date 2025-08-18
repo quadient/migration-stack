@@ -1,3 +1,8 @@
+//! ---
+//! category: migration mapping
+//! description: Export areas assigned to the appropriate pages and templates. Allows user to modify interactive flow name
+//! target: gradle
+//! ---
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration

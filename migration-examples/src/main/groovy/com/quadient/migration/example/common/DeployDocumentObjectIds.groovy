@@ -1,3 +1,8 @@
+//! ---
+//! name: DeploySpecifiedDocumentObjects
+//! category: migration deploy
+//! description: Deploys selected document objects
+//! ---
 package com.quadient.migration.example.common
 
 import com.quadient.migration.example.common.util.DeploymentReportWriter

@@ -1,3 +1,7 @@
+//! ---
+//! category: migration docbook
+//! description: Import docbook example
+//! ---
 package com.quadient.migration.example.docbook
 
 import com.quadient.migration.api.Migration

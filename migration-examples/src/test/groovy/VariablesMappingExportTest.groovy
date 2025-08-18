@@ -25,10 +25,11 @@ class VariablesMappingExportTest {
             new Variable("full", "full name", ["foo", "bar"], new CustomFieldMap([foo: "bar", bar: "baz"]), DataType.Boolean, "default"),
             new Variable("overridden", "full name", ["foo", "bar"], new CustomFieldMap([foo: "bar", bar: "baz"]), DataType.Boolean, "default"),
         ])
-        when(migration.mappingRepository.getVariableMapping(any())).thenReturn(new MappingItem.Variable(null, null, null))
+        when(migration.mappingRepository.getVariableMapping(any())).thenReturn(new MappingItem.Variable(null, null))
         when(migration.mappingRepository.getVariableMapping("overridden")).thenReturn(
-            new MappingItem.Variable("overridden name", DataType.Double, "override/path")
+            new MappingItem.Variable("overridden name", DataType.Double)
         )
+        when(migration.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure("", ["overridden":"override/path"]))
 
         VariablesExport.run(migration, mappingFile)
 
@@ -50,7 +51,7 @@ overridden,overridden name,[foo; bar],override/path,Double
         def migration = Utils.mockMigration()
 
         when(migration.variableRepository.listAll()).thenReturn([])
-        when(migration.mappingRepository.getVariableMapping(any())).thenReturn(new MappingItem.Variable(null, null, null))
+        when(migration.mappingRepository.getVariableMapping(any())).thenReturn(new MappingItem.Variable(null, null))
 
         VariablesExport.run(migration, mappingFile)
 

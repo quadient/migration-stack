@@ -1,147 +1,123 @@
-import java.io.InputStream
+import kotlin.io.useLines
 
-data class MigTask(
-    val name: String,
-    val group: String,
-    val description: String,
-    val mainClassRelativePath: String,
-    val stdIn: InputStream? = null,
-    val finalizedBy: String? = null,
-)
-
-val migrationTasks = listOf<MigTask>(
-    // Migration import
-    MigTask(
-        "modelComplexityReport", "migration report", "Generate complexity report", "common.report.ComplexityReport"
-    ),
-    MigTask(
-        "displayRuleReport", "migration report", "Generate display rule report", "common.report.DisplayRuleReport"
-    ),
-    MigTask(
-        "postDeployStatusTrackingReport",
-        "migration report",
-        "Generate post deploy report",
-        "common.report.PostDeployStatusTrackingReport"
-    ),
-    MigTask(
-        "deploymentReport", "migration report", "Generate deployment report", "common.report.DeploymentReport"
-    ),
-    MigTask(
-        "deploymentReportIds", "migration report", "Generate deployment report", "common.report.DeploymentReportIds"
-    ),
-
-    // Migration deploy
-    MigTask(
-        "validateAll", "migration deploy", "Run validation on all migration objects", "common.Validate"
-    ),
-    MigTask(
-        "deployStyles", "migration deploy", "Deploy styles", "common.DeployStyles"
-    ),
-    MigTask(
-        "deployAllDocumentObjects",
-        "migration deploy",
-        "Deploy document objects",
-        "common.DeployDocumentObjects",
-    ),
-    MigTask(
-        "deploySpecifiedDocumentObjects",
-        "migration deploy",
-        "Deploy document object ids",
-        "common.DeployDocumentObjectIds",
-    ),
-    MigTask(
-        "exportDocumentObjectIds",
-        "migration deploy",
-        "Export document object ids to deploy",
-        "common.ExportDocumentObjectIdsToDeploy"
-    ),
-
-    // Migration mapping
-    MigTask(
-        "applyAllMappings", "migration mapping", "Apply all mappings", "common.mapping.ApplyAllMappings", System.`in`
-    ),
-    MigTask(
-        "paragraphStylesExport", "migration mapping", "Export paragraph styles", "common.mapping.ParagraphStylesExport"
-    ),
-    MigTask(
-        "textStylesExport", "migration mapping", "Export text styles", "common.mapping.TextStylesExport"
-    ),
-    MigTask(
-        "variablesExport", "migration mapping", "Export variables", "common.mapping.VariablesExport", System.`in`
-    ),
-    MigTask(
-        "documentObjectsImagesExport",
-        "migration mapping",
-        "Export document objects and images",
-        "common.mapping.DocumentObjectsImagesExport"
-    ),
-    MigTask(
-        "areasExport",
-        "migration mapping",
-        "Export areas assigned to the appropriate pages and templates. Allows user to modify interactive flow name",
-        "common.mapping.AreasExport"
-    ),
-    MigTask(
-        "paragraphStylesImport", "migration mapping", "Import paragraph styles", "common.mapping.ParagraphStylesImport"
-    ),
-    MigTask(
-        "textStylesImport", "migration mapping", "Import text styles", "common.mapping.TextStylesImport"
-    ),
-    MigTask(
-        "variablesImport", "migration mapping", "Import variables", "common.mapping.VariablesImport", System.`in`
-    ),
-    MigTask(
-        "documentObjectsImagesImport",
-        "migration mapping",
-        "Import document objects and images",
-        "common.mapping.DocumentObjectsImagesImport"
-    ),
-    MigTask(
-        "areasImport",
-        "migration mapping",
-        "Import areas with modified interactive flow names to their respective pages",
-        "common.mapping.AreasImport"
-    ),
-
-    // Migration docbook
-    MigTask(
-        "docbookImport", "migration docbook", "Import docbook", "docbook.DocBookImport"
-    ),
-
-    // Migration example
-    MigTask(
-        "exampleImport", "migration example", "Import example", "example.Import"
-    ),
-    MigTask(
-        "acknowledgementLetterFromSource",
-        "migration example",
-        "acknowledgementLetterFromSource",
-        "example.AcknowledgementLetterFromSource"
-    ),
-
-    // Migration common
-    MigTask(
-        "destroy", "migration common", "Destroy database and storage", "common.Destroy", System.`in`
-    ),
-    MigTask(
-        "activateAll", "migration common", "Make all objects Active", "common.ActivateAll"
-    ),
-)
-
-tasks {
-    migrationTasks.forEach {
-        register<JavaExec>(it.name) {
-            description = it.description
-            group = it.group
-            mainClass = "com.quadient.migration.example.${it.mainClassRelativePath}"
-            classpath = project.extensions.getByType<JavaPluginExtension>().sourceSets["main"].runtimeClasspath
-            args = project.findProperty("scriptArgs")?.toString()?.split(" ") ?: emptyList()
-            if (it.stdIn != null) {
-                standardInput = it.stdIn
+data class ScriptMetadata(
+    val name: String?,
+    val filename: String,
+    val displayName: String?,
+    val category: String,
+    val sourceFormat: String?,
+    val description: String?,
+    val pkg: String,
+    val needsStdin: Boolean,
+    val target: Target,
+) {
+    companion object {
+        fun fromString(input: List<String>, filename: String, packageName: String): ScriptMetadata {
+            val map = mutableMapOf<String, String>()
+            for (line in input) {
+                if (!line.contains(":")) {
+                    throw IllegalArgumentException("Invalid frontmatter line: $line")
+                }
+                val split = line.split(":", limit = 2)
+                map.put(split[0].trim(), split[1].trim())
             }
-            if (it.finalizedBy != null) {
-                finalizedBy(it.finalizedBy)
+
+            return ScriptMetadata(
+                filename = filename,
+                name = map["name"],
+                displayName = map["displayName"],
+                category = map["category"] ?: throw IllegalArgumentException("Missing 'category' in frontmatter"),
+                sourceFormat = map["sourceFormat"],
+                description = map["description"],
+                needsStdin = map["stdin"]?.toBoolean() ?: false,
+                target = map["target"]?.let { target -> Target.fromString(target.trim()) } ?: Target.All,
+                pkg = packageName,
+            )
+        }
+    }
+
+    enum class Target {
+        All, Gradle, App;
+
+        companion object {
+            fun fromString(input: String): Target {
+                return when (input.trim().lowercase()) {
+                    "all" -> All
+                    "gradle" -> Gradle
+                    "app" -> App
+                    else -> throw IllegalArgumentException("Unknown target: $input")
+                }
             }
         }
     }
+}
+
+val scripts = File("$rootDir/src/main/groovy")
+    .walk()
+    .asSequence()
+    .filter { it.isFile && it.extension == "groovy" }
+    .onEach { println("Parsing groovy file: ${it.name}") }
+    .map {
+        Pair(it.name, it.useLines { lines ->
+            lines
+                .takeWhile { line ->
+                    line.startsWith("//")
+                            || line.startsWith("package ")
+                            || line.isBlank()
+                }
+                .map { line -> line.removePrefix("//!").trim() }
+                .filter { line -> !line.startsWith("//") }
+                .toList()
+        })
+    }
+    .mapNotNull { (filename, input) ->
+        val lines = input.filter { !it.isBlank() }
+
+        if (lines.count() <= 3 || (lines[0].startsWith("package") && lines[1] != "---")) {
+            println("Skipping script '$filename' without frontmatter")
+            return@mapNotNull null
+        }
+
+        if (lines[lines.count() - 1].startsWith("package") && lines[lines.count() - 2] != "---") {
+            println("Skipping script '$filename' without frontmatter")
+            return@mapNotNull null
+        }
+
+        println("Parsing script frontmatter: $lines")
+        val (pkg, rest) = when {
+            lines.firstOrNull()?.startsWith("package ") ?: false -> {
+                lines.first().removePrefix("package ") to lines.drop(1)
+            }
+            lines.lastOrNull()?.startsWith("package ") ?: false -> {
+                lines.last().removePrefix("package ") to lines.dropLast(1)
+            }
+            else -> {
+                throw IllegalArgumentException("Invalid frontmatter, missing package declaration: ${lines.firstOrNull()}")
+            }
+        }
+
+        if (rest.firstOrNull() != "---" && rest.lastOrNull() != "---") {
+            throw IllegalArgumentException("Invalid frontmatter fences: ${rest.joinToString("\n")}")
+        }
+
+        ScriptMetadata.fromString(rest.drop(1).dropLast(1), filename, pkg)
+    }
+    .filter { it.target == ScriptMetadata.Target.All || it.target == ScriptMetadata.Target.Gradle }
+    .toList()
+
+tasks {
+    for (script in scripts) {
+        println(script)
+        register<JavaExec>(script.name ?: script.filename.removeSuffix(".groovy")) {
+            description = script.description ?: "Run script: ${script.name}"
+            group = script.category
+            mainClass = "${script.pkg}.${script.filename.removeSuffix(".groovy")}"
+            classpath = project.extensions.getByType<JavaPluginExtension>().sourceSets["main"].runtimeClasspath
+            args = project.findProperty("scriptArgs")?.toString()?.split(" ") ?: emptyList()
+            if (script.needsStdin) {
+                standardInput = System.`in`
+            }
+        }
+    }
+
 }

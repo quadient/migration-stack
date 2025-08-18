@@ -413,16 +413,13 @@ class MappingEntityTest {
             val mapping = MappingItemEntity.Variable(
                 name = null,
                 dataType = null,
-                inspirePath = null,
             )
             val dto = aVariable("var1", name = "Variable 1", dataType = DataType.String, defaultValue = "Default")
-            val structure = VariableStructure.fromModel(aVariableStructureModel())
 
-            val (resultVar, resultStructure) = mapping.apply(dto, structure)
+            val resultVar = mapping.apply(dto)
 
             assertEquals(resultVar.name, "Variable 1")
             assertEquals(resultVar.dataType, DataType.String)
-            assertEquals(resultStructure.structure.size, 0)
         }
 
         @Test
@@ -430,17 +427,13 @@ class MappingEntityTest {
             val mapping = MappingItemEntity.Variable(
                 name = "new name",
                 dataType = DataType.Double,
-                inspirePath = "new/inspire/path",
             )
             val dto = aVariable("var1", name = "Variable 1", dataType = DataType.String, defaultValue = "Default")
-            val structure = VariableStructure.fromModel(aVariableStructureModel())
 
-            val (resultVar, resultStructure) = mapping.apply(dto, structure)
+            val resultVar = mapping.apply(dto)
 
             assertEquals(resultVar.name, "new name")
             assertEquals(resultVar.dataType, DataType.Double)
-            assertEquals(resultStructure.structure.size, 1)
-            assertEquals(resultStructure.structure["var1"], "new/inspire/path")
         }
     }
 }

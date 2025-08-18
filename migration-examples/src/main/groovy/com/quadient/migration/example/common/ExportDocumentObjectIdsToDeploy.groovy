@@ -1,3 +1,7 @@
+//! ---
+//! category: migration deploy
+//! description: Export document object ids to deploy to a file
+//! ---
 package com.quadient.migration.example.common
 
 import com.quadient.migration.shared.DocumentObjectType

@@ -1,3 +1,7 @@
+//! ---
+//! category: migration example
+//! description: Import Acknowledgement Letter from Source example
+//! ---
 // This script assumes resources in the resources directory
 package com.quadient.migration.example.example
 
