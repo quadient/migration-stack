@@ -103,13 +103,7 @@ class DeployClientTest {
 
     @Test
     fun `progress report after deploy`() {
-        val lastDeployTimestamp = Clock.System.now() - 1.days
-        every { statusTrackingRepository.listAll() } returns listOf(
-            aDeployedStatus("random", deploymentId = Uuid.random(), timestamp = lastDeployTimestamp),
-        )
-
         val currentDeployTimestamp = Clock.System.now()
-
         givenNewExternalDocumentObject("1", deps = listOf("2"))
         givenChangedExternalDocumentObject("2", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp)
         givenChangedExternalDocumentObject("8", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp, icmPath = "icm://other.wfd")
@@ -121,6 +115,11 @@ class DeployClientTest {
         givenNewImage("1")
         givenChangedImage("2", deployTimestamp = currentDeployTimestamp)
         givenNewImage("3")
+
+        val lastDeployTimestamp = Clock.System.now()
+        every { statusTrackingRepository.listAll() } returns listOf(
+            aDeployedStatus("random", deploymentId = Uuid.random(), timestamp = lastDeployTimestamp),
+        )
 
         val result = subject.progressReport()
 
