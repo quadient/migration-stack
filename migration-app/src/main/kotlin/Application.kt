@@ -1,22 +1,19 @@
 package com.quadient.migration
 
+import com.quadient.migration.route.rootModule
 import io.ktor.server.application.*
-import io.ktor.server.http.content.*
-import io.ktor.server.netty.EngineMain
-import io.ktor.server.response.respondText
-import io.ktor.server.routing.get
-import io.ktor.server.routing.route
-import io.ktor.server.routing.routing
-import java.io.File
+import io.ktor.server.netty.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 fun main(args: Array<String>) {
     EngineMain.main(args)
 }
 
 fun Application.module() {
-    routing {
-        staticFiles("/", File("web/dist"))
+    val env = environment.config.getEnv()
 
+    routing {
         route("/api") {
             route("/settings") {
                 get {
@@ -33,4 +30,8 @@ fun Application.module() {
             }
         }
     }
+
+    rootModule()
+
+    log.info("Server started in ${env.name} mode")
 }
