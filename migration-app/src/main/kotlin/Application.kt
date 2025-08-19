@@ -18,8 +18,18 @@ fun Application.module() {
         staticFiles("/", File("web/dist"))
 
         route("/api") {
-            get("/hello") {
-                call.respondText("Hello from API!")
+            route("/settings") {
+                get {
+                    println("Received request for settings")
+                    call.respondText("Settings API Endpoint")
+                }
+            }
+
+            route("/tasks") {
+                get {
+                    println("Received request for tasks")
+                    call.respondText("Tasks API Endpoint")
+                }
             }
         }
     }
