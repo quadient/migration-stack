@@ -29,7 +29,7 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         }
 
         val result = client.xml2wfd(wfdXmlIpsLocation, outputPath)
-        val operationResult = result.waitAndAckJobOrLogError(client)
+        val operationResult = result.waitAndAckJobOrLogError()
 
         client.remove(wfdXmlIpsLocation).ifNotSuccess {
             logger.error("Failed to cleanup wfdXml input memory: {}", it)
@@ -42,7 +42,7 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         val resultLocation = "memory://${UUID.randomUUID()}"
 
         val result = client.wfd2xml(wfdPath, resultLocation)
-        val operationResult = result.waitAndAckJobOrLogError(client)
+        val operationResult = result.waitAndAckJobOrLogError()
         if (operationResult is OperationResult.Failure) {
             throw IpsClientException(operationResult.message)
         }
@@ -98,10 +98,10 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
                 }
 
                 val result = client.extractJld(openResult.workFlowId, outputPath, type)
-                return result.waitAndAckJobOrLogError(client)
+                return result.waitAndAckJobOrLogError()
             } finally {
                 client.close(openResult.workFlowId).ifOk { closeResult ->
-                    closeResult.waitAndAckJobOrLogError(client)
+                    closeResult.waitAndAckJobOrLogError()
                 }
                 client.ackJob(openResult.jobId).ifNotSuccess {
                     logger.error("Failed to ack open workflow: $it ")
@@ -151,13 +151,13 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
                     logger.error(message)
                     return OperationResult.Failure(message)
                 }
-                return client.run(openResult.workFlowId.toString(), args).waitAndAckJobOrLogError(this.client)
+                return client.run(openResult.workFlowId.toString(), args).waitAndAckJobOrLogError()
             } finally {
                 client.ackJob(openResult.jobId).ifNotSuccess {
                     logger.error("Failed to ack open workflow: $it ")
                 }
                 client.close(openResult.workFlowId).ifOk { closeResult ->
-                    closeResult.waitAndAckJobOrLogError(client)
+                    closeResult.waitAndAckJobOrLogError()
                 }.ifNotSuccess {
                     logger.error("Failed to close workflow: $it")
                 }
@@ -194,28 +194,45 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         return Result.success(uploadDest)
     }
 
-    private fun <W, S, C> IpsResult<JobId, W, S, C>.waitAndAckJobOrLogError(
-        client: IpsClient, onSuccess: (() -> Unit)? = null
-    ): OperationResult {
-        val waitAndAck = { jobId: JobId ->
-            client.waitForJob(jobId).ifNotSuccess {
-                logger.error("Waiting for job run to finish failed, {}", jobId)
-            }
-            val log = client.queryJobMessages(jobId)
-            logger.debug(log)
-            client.ackJob(jobId).ifNotSuccess {
-                logger.error("Failed to ack run workflow: $it ")
+    private fun waitAndAckAndGetProgressStatus(jobId: JobId): String? {
+        client.waitForJob(jobId).ifNotSuccess {
+            logger.error("Waiting for job run to finish failed, {}", jobId)
+        }
+        val log = client.queryJobMessages(jobId)
+        logger.debug(log)
+
+        val job = client.queryJobStatus(jobId)
+
+        client.ackJob(jobId).ifNotSuccess {
+            logger.error("Failed to ack run workflow: $it ")
+        }
+
+        job.ifOk {
+            val potentialProgressStatusPart = it.parts[6]
+            return if (potentialProgressStatusPart.startsWith("E")) {
+                null
+            } else {
+                potentialProgressStatusPart
             }
         }
+
+        return null
+    }
+
+    private fun <W, C> IpsResult<JobId, W, C>.waitAndAckJobOrLogError(): OperationResult {
         return when (this) {
             is IpsResult.Ok -> {
-                waitAndAck(this.jobId)
-                onSuccess?.let { it() }
+                val progressStatus = waitAndAckAndGetProgressStatus(this.jobId)
+                if (progressStatus?.startsWith("Aborted") == true) {
+                    val message = "Job finished with aborted progress status: '$progressStatus'"
+                    logger.error(message)
+                    return OperationResult.Failure(message)
+                }
                 OperationResult.Success
             }
 
             is IpsResult.Error -> {
-                waitAndAck(this.jobId)
+                waitAndAckAndGetProgressStatus(this.jobId)
                 val message = "Job failed. '$this'"
                 logger.error(message)
                 OperationResult.Failure(message)

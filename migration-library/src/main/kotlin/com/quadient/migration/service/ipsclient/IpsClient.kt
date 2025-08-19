@@ -23,49 +23,49 @@ class IpsClient(private val host: String, private val port: Int, private val tim
 
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
 
-    fun ackJob(jobId: JobId): IpsResult<Unit, Unit, Unit, Unit> {
+    fun ackJob(jobId: JobId): IpsResult<Unit, Unit, Unit> {
         val command = "ackj $jobId"
 
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
     }
 
-    fun run(wfdPath: String, args: List<String>): IpsResult<JobId, Unit, Unit, Unit> {
+    fun run(wfdPath: String, args: List<String>): IpsResult<JobId, Unit, Unit> {
         val command = "run $wfdPath${args.joinToString(prefix = " ", separator = " ")}"
 
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
     }
 
-    fun runw(wfdPath: String, args: List<String>): IpsResult<JobId, Unit, Unit, Unit> {
+    fun runw(wfdPath: String, args: List<String>): IpsResult<JobId, Unit, Unit> {
         val command = "runw $wfdPath${args.joinToString(prefix = " ", separator = " ")}"
 
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
     }
 
-    fun ping(): IpsResult<Unit, Unit, Unit, Unit> {
+    fun ping(): IpsResult<Unit, Unit, Unit> {
         val command = "ping"
 
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
     }
 
-    fun open(path: String): IpsResult<JobId, WorkFlowId, Unit, Unit> {
+    fun open(path: String): IpsResult<JobId, WorkFlowId, Unit> {
         val command = "open $path"
 
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
     }
 
-    fun close(workflowId: WorkFlowId): IpsResult<JobId, WorkFlowId, Unit, Unit> {
+    fun close(workflowId: WorkFlowId): IpsResult<JobId, WorkFlowId, Unit> {
         val command = "close $workflowId"
 
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
     }
 
-    fun upload(path: String, bytes: ByteArray): IpsResult<Unit, Unit, Unit, Unit> {
+    fun upload(path: String, bytes: ByteArray): IpsResult<Unit, Unit, Unit> {
         try {
             val command = "upload $path;${bytes.count()}"
             connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
@@ -87,7 +87,7 @@ class IpsClient(private val host: String, private val port: Int, private val tim
         }
     }
 
-    fun download(path: String): IpsResult<Unit, Unit, Unit, ByteArray> {
+    fun download(path: String): IpsResult<Unit, Unit, ByteArray> {
         try {
             val command = "download $path;"
             connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
@@ -111,7 +111,7 @@ class IpsClient(private val host: String, private val port: Int, private val tim
         }
     }
 
-    fun remove(path: String): IpsResult<Unit, Unit, Unit, Unit> {
+    fun remove(path: String): IpsResult<Unit, Unit, Unit> {
         val command = "remove $path;"
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
@@ -124,7 +124,7 @@ class IpsClient(private val host: String, private val port: Int, private val tim
     fun waitForJob(
         jobId: JobId,
         timeoutSeconds: Int = this.timeout.inWholeSeconds.toInt()
-    ): IpsResult<Unit, Unit, Unit, WaitForJobResult> {
+    ): IpsResult<Unit, Unit, WaitForJobResult> {
         val command = "wfj $jobId $timeoutSeconds;"
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         val response = connection.readLineWithTimeout(timeoutSeconds)
@@ -138,14 +138,14 @@ class IpsClient(private val host: String, private val port: Int, private val tim
     }
 
 
-    fun editWfd(workflowId: WorkFlowId, commandPath: String): IpsResult<Unit, Unit, Unit, Unit> {
+    fun editWfd(workflowId: WorkFlowId, commandPath: String): IpsResult<Unit, Unit, Unit> {
         val ipsMemLocation = "memory://${UUID.randomUUID()}"
 
         val command = "editf $workflowId $commandPath;${ipsMemLocation}"
 
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
 
-        val result: IpsResult<Unit, Unit, Unit, Unit> = connection.readResponse()
+        val result: IpsResult<Unit, Unit, Unit> = connection.readResponse()
         if (result !is IpsResult.Ok) {
             return result
         }
@@ -169,21 +169,21 @@ class IpsClient(private val host: String, private val port: Int, private val tim
         return result
     }
 
-    fun xml2wfd(inputPath: String, outputPath: String): IpsResult<JobId, Unit, Unit, Unit> {
+    fun xml2wfd(inputPath: String, outputPath: String): IpsResult<JobId, Unit, Unit> {
         val command = """xml2wfd "$inputPath";"$outputPath""""
 
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
     }
 
-    fun wfd2xml(inputPath: String, outputPath: String): IpsResult<JobId, Unit, Unit, Unit> {
+    fun wfd2xml(inputPath: String, outputPath: String): IpsResult<JobId, Unit, Unit> {
         val command = """wfd2xml "$inputPath";"$outputPath"; -exportusedfiles false"""
 
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
     }
 
-    fun extractJld(workflowId: WorkFlowId, outputPath: String, type: String): IpsResult<JobId, Unit, Unit, Unit> {
+    fun extractJld(workflowId: WorkFlowId, outputPath: String, type: String): IpsResult<JobId, Unit, Unit> {
         val command =
             """run $workflowId -e json -configDocumentLayout "eyJGaW5hbGl6ZURpc2Nvbm5lY3RlZFZhcmlhYmxlc0FzUmVmZXJlbmNlIjp0cnVlfQ==" -type $type -languageDocumentLayout en_us -f "$outputPath""""
 
@@ -200,7 +200,7 @@ class IpsClient(private val host: String, private val port: Int, private val tim
         return String(buf)
     }
 
-    fun queryJobStatus(jobId: JobId): IpsResult<JobId, WorkFlowId, JobStatus, Unit> {
+    fun queryJobStatus(jobId: JobId): IpsResult<JobId, WorkFlowId, Unit> {
         val command = "qj $jobId"
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
@@ -270,7 +270,7 @@ class IpsClient(private val host: String, private val port: Int, private val tim
             }
         }
 
-        fun <JId, WfId, Status, Custom> readResponse(): IpsResult<JId, WfId, Status, Custom> {
+        fun <JId, WfId, Custom> readResponse(): IpsResult<JId, WfId, Custom> {
             return try {
                 val response = IpsResponse(readLine())
                 return response.toIpsResult()
