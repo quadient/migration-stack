@@ -414,8 +414,8 @@ abstract class InspireDocumentObjectBuilder(
         return null
     }
 
-    protected fun buildImage(layout: Layout, imageModel: ImageModel): Image {
-        val image = layout.addImage().setName(imageModel.nameOrId())
+    protected fun getOrBuildImage(layout: Layout, imageModel: ImageModel): Image {
+        val image = getImageByName(layout, imageModel.nameOrId()) ?: layout.addImage().setName(imageModel.nameOrId())
             .setImageLocation(getImagePath(imageModel), LocationType.ICM)
 
         if (imageModel.options != null) {
@@ -549,7 +549,7 @@ abstract class InspireDocumentObjectBuilder(
             return
         }
 
-        text.appendImage(buildImage(layout, imageModel))
+        text.appendImage(getOrBuildImage(layout, imageModel))
     }
 
     private fun Text.appendVariable(
