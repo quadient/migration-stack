@@ -13,6 +13,8 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.ConnectException
@@ -25,26 +27,33 @@ fun Application.rootModule() {
         when (env) {
             Env.DEV -> {
                 log.info("Running in development mode, proxying requests to dev server")
+                val buildMutex = Mutex()
+
                 route("/{...}") {
                     get {
                         if (!tryProxyCall(client, call)) {
                             log.trace("Dev server not running, falling back to prebuilt artifacts")
 
-                            log.debug("Serving file for URI: ${call.request.uri}")
                             val file = call.request.toStaticFile()
-
                             if (!file.exists()) {
-                                log.debug("File not found, will try to build frontend")
-
-                                val error = tryBuildFe(call)
-                                if (error != null) {
-                                    log.error(error.message)
-                                    call.respond(HttpStatusCode.InternalServerError, error.message)
+                                if (buildMutex.isLocked) {
+                                    log.warn("Received concurrent request while FE is building")
+                                    call.respond(HttpStatusCode.InternalServerError, "FE is currently building, please try again in a moment.")
+                                    return@get
+                                } else {
+                                    buildMutex.withLock {
+                                        log.debug("File not found, will try to build frontend")
+                                        val error = tryBuildFe(call)
+                                        if (error != null) {
+                                            log.error(error.message)
+                                            call.respond(HttpStatusCode.InternalServerError, error.message)
+                                        }
+                                        log.debug("Successfully built frontend")
+                                    }
                                 }
-
-                                log.debug("Successfully built frontend")
                             }
 
+                            log.debug("Serving file for URI: ${call.request.uri}")
                             call.respondFile(file)
                         }
                     }
@@ -56,8 +65,6 @@ fun Application.rootModule() {
             }
         }
     }
-
-    log.info("Server started in ${env.name} mode")
 }
 
 private suspend fun Application.tryProxyCall(client: HttpClient, call: RoutingCall): Boolean {
