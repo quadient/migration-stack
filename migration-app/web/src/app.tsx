@@ -22,7 +22,7 @@ function AppLayout() {
                     <div className="text-xl font-bold tracking-tight">Asset Migration Console</div>
                     <SettingsDialog
                         trigger={
-                            <Button variant="outline" className="hover:bg-gray-100">
+                            <Button variant="outline">
                                 <SettingsIcon className="w-4 h-4 mr-2"/>
                                 Settings
                             </Button>
