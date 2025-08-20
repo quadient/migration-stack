@@ -15,6 +15,14 @@ application {
 }
 
 dependencies {
+    implementation("com.quadient:migration-library")
+    implementation("com.quadient:migration-examples")
+
+    implementation("io.insert-koin:koin-ktor:3.5.6")
+    implementation("io.insert-koin:koin-logger-slf4j:3.5.6")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+
     implementation("io.ktor:ktor-server-core-jvm:${ktor_version}")
     implementation("io.ktor:ktor-server-netty:${ktor_version}")
     implementation("io.ktor:ktor-server-core:${ktor_version}")
