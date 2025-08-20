@@ -5,6 +5,7 @@ val ktor_version: String by project
 plugins {
     kotlin("jvm") version "2.1.10"
     id("io.ktor.plugin") version "3.2.3"
+    kotlin("plugin.serialization") version "2.2.0"
 }
 
 group = "com.quadient.migration"
@@ -21,13 +22,13 @@ dependencies {
     implementation("io.insert-koin:koin-ktor:3.5.6")
     implementation("io.insert-koin:koin-logger-slf4j:3.5.6")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
-
     implementation("io.ktor:ktor-server-core-jvm:${ktor_version}")
     implementation("io.ktor:ktor-server-netty:${ktor_version}")
     implementation("io.ktor:ktor-server-core:${ktor_version}")
     implementation("io.ktor:ktor-client-core:${ktor_version}")
     implementation("io.ktor:ktor-client-cio:${ktor_version}")
+    implementation("io.ktor:ktor-server-content-negotiation:${ktor_version}")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:${ktor_version}")
 
     implementation("ch.qos.logback:logback-classic:${logback_version}")
     implementation("org.slf4j:slf4j-api:2.0.17")
