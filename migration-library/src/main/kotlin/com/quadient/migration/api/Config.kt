@@ -41,7 +41,7 @@ data class ProjectConfig(
     val inspireOutput: InspireOutput = InspireOutput.Interactive,
     val sourceBaseTemplatePath: String? = null,
     val defaultVariableStructure: String? = null,
-    val context: ContextMap? = ContextMap(emptyMap()),
+    val context: ContextMap = ContextMap(emptyMap()),
 ) {
     companion object {
         @JvmStatic
