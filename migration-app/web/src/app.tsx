@@ -39,9 +39,9 @@ function AppLayout() {
                         .filter((s) => s.category === "migration deploy")
                         .map((s) => {
                             return (
-                                <Card className="w-full max-w-sm h-100 border-gray-200">
+                                <Card key={s.filename} className="w-full max-w-sm h-100 border-gray-200">
                                     <CardHeader>
-                                        <CardTitle className="text-xl">{s.filename}</CardTitle>
+                                        <CardTitle className="text-xl">{s.filename.substring(0, 25)}</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <p>{s.description}</p>

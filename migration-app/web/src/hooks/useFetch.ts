@@ -13,7 +13,7 @@ type UseFetchResult<T> =
           status: "ok";
       };
 
-export function useFetch<T>(url: string, defaultValue: T): UseFetchResult<T> {
+export function useFetch<T>(url: string, defaultValue: T, requestInit?: RequestInit): UseFetchResult<T> {
     const [status, setStatus] = React.useState("loading");
     const [error, setError] = React.useState<unknown | null>(undefined);
     const [data, setData] = React.useState<T>(defaultValue);
@@ -21,20 +21,38 @@ export function useFetch<T>(url: string, defaultValue: T): UseFetchResult<T> {
     React.useEffect(() => {
         let cancelled = false;
         const controller = new AbortController();
-        fetch(url, { method: "GET", signal: controller.signal })
+        const init: RequestInit = requestInit ?? {};
+        init.signal = controller.signal;
+        if (!init.method) {
+            init.method == "GET";
+        }
+
+        fetch(url, init)
             .then((result) => {
+                if (cancelled) {
+                    return;
+                }
                 result
                     .json()
                     .then((json) => {
+                        if (cancelled) {
+                            return;
+                        }
                         setData(json);
                         setStatus("ok");
                     })
                     .catch((err) => {
+                        if (cancelled) {
+                            return;
+                        }
                         setStatus("error");
                         setError(err);
                     });
             })
             .catch((err) => {
+                if (cancelled) {
+                    return;
+                }
                 setStatus("error");
                 setError(err);
             });
