@@ -8,7 +8,11 @@ import java.io.File
 import java.net.URI
 
 @Serializable
-data class MigConfig(val dbConfig: DbConfig, val inspireConfig: InspireConfig, val storageRoot: String? = null) {
+data class MigConfig(
+    val dbConfig: DbConfig = DbConfig(),
+    val inspireConfig: InspireConfig = InspireConfig(),
+    val storageRoot: String? = null
+) {
     companion object {
         @JvmStatic
         fun fromString(input: String): MigConfig = Toml.decodeFromString(input)
@@ -52,7 +56,13 @@ data class ProjectConfig(
 }
 
 @Serializable
-data class DbConfig(val host: String, val port: Int, val dbName: String, val user: String, val password: String) {
+data class DbConfig(
+    val host: String = "localhost",
+    val port: Int = 5432,
+    val dbName: String = "migrationdb",
+    val user: String = "migrationadmin",
+    val password: String = "password"
+) {
     fun connectionString() = "jdbc:postgresql://$host:$port/$dbName"
 }
 

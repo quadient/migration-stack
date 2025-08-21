@@ -21,7 +21,11 @@ object ContextMapSerializer: KSerializer<ContextMap> {
         = MapSerializer(String.serializer(), ContextNode.serializer())
     override val descriptor: SerialDescriptor = surrogate.descriptor
 
-    override fun serialize(encoder: Encoder, value: ContextMap) {}
+    override fun serialize(encoder: Encoder, value: ContextMap) {
+//        if (value.map.isEmpty()) {
+//            return null
+//        }
+    }
 
     override fun deserialize(decoder: Decoder): ContextMap {
         return ContextMap(decoder.decodeSerializableValue(surrogate))

@@ -33,6 +33,7 @@ fun Application.module() {
         route("/api") {
             route("/settings") {
                 get {
+                    log.debug("Received request to get settings")
                     call.respond(settingsService.getSettings())
                 }
             }
