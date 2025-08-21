@@ -1,46 +1,47 @@
 export type Settings = {
-  projectConfig: ProjectConfig;
-  migrationConfig: MigrationConfig;
+    projectConfig: ProjectConfig;
+    migrationConfig: MigrationConfig;
 };
 
 export type MigrationConfig = {
-  dbConfig: DbConfig;
-  inspireConfig: InspireConfig;
-  storageRoot?: string | null;
+    dbConfig: DbConfig;
+    inspireConfig: InspireConfig;
+    storageRoot?: string | null;
 };
 
 export type DbConfig = {
-  host: string;
-  port: number;
-  dbName: string;
-  user: string;
-  password: string;
+    host: string;
+    port: number;
+    dbName: string;
+    user: string;
+    password: string;
 };
 
 export type InspireConfig = {
-  ipsConfig: IpsConfig;
+    ipsConfig: IpsConfig;
 };
 
 export type IpsConfig = {
-  host: string;
-  port: number;
-  timeoutSeconds: number;
+    host: string;
+    port: number;
+    timeoutSeconds: number;
 };
 
 export type ProjectConfig = {
-  name: string;
-  baseTemplatePath: string;
-  inputDataPath: string;
-  interactiveTenant: string;
-  defaultTargetFolder?: string | null;
-  paths: PathsConfig;
-  inspireOutput: InspireOutput;
-  sourceBaseTemplatePath?: string | null;
-  defaultVariableStructure?: string | null;
+    name: string;
+    baseTemplatePath: string;
+    inputDataPath: string;
+    interactiveTenant: string;
+    defaultTargetFolder?: string | null;
+    paths: PathsConfig;
+    inspireOutput: InspireOutput;
+    sourceBaseTemplatePath?: string | null;
+    defaultVariableStructure?: string | null;
 };
 
 export type PathsConfig = {
-  images?: string | null;
+    images?: string | null;
 };
 
-export type InspireOutput = "Interactive" | "Designer" | "Evolve";
+export const inspireOutputOptions = ["Designer", "Interactive", "Evolve"] as const;
+export type InspireOutput = (typeof inspireOutputOptions)[number];

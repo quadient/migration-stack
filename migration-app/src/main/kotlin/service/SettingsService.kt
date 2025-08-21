@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 class SettingsService {
     private var settings: Settings = initSettings()
 
-    fun initSettings(): Settings {
+    private fun initSettings(): Settings {
         val defaultProjectConfig = ProjectConfig("default-project", "", "", "StandardPackage")
         val defaultMigConfig = MigConfig()
 
