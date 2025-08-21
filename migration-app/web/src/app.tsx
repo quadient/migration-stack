@@ -1,17 +1,10 @@
-import {Button} from "@/components/ui/button"
-import {Settings as SettingsIcon} from "lucide-react"
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
-import SettingsDialog from "./dialogs/settingsDialog.tsx"
+import { Button } from "@/components/ui/button";
+import { Settings as SettingsIcon } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import SettingsDialog from "./dialogs/settingsDialog.tsx";
 
 function App() {
-    return (
-        <AppLayout/>
-    )
+    return <AppLayout />;
 }
 
 function AppLayout() {
@@ -23,33 +16,35 @@ function AppLayout() {
                     <SettingsDialog
                         trigger={
                             <Button variant="outline">
-                                <SettingsIcon className="w-4 h-4 mr-2"/>
+                                <SettingsIcon className="w-4 h-4 mr-2" />
                                 Settings
                             </Button>
-                        }>
-                    </SettingsDialog>
+                        }
+                    ></SettingsDialog>
                 </div>
-                <div className="text-gray-500 mt-2">
-                    Trigger processes for asset migration and deployment
-                </div>
+                <div className="text-gray-500 mt-2">Trigger processes for asset migration and deployment</div>
             </header>
             <main className="grid grid-cols-[1fr_2fr] flex-1 row-start-2 row-end-3">
-                <section className="p-4 flex justify-center"><ChartCard/></section>
+                <section className="p-4 flex justify-center">
+                    <ChartCard />
+                </section>
                 <section className="p-4 flex justify-center">Right Sectionn</section>
             </main>
         </div>
-    )
+    );
 }
 
 function ChartCard() {
-    return (<Card className="w-full max-w-sm h-100 border-gray-200">
-        <CardHeader>
-            <CardTitle className="text-xl">Assets Parsed</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <p>TODO later</p>
-        </CardContent>
-    </Card>)
+    return (
+        <Card className="w-full max-w-sm h-100 border-gray-200">
+            <CardHeader>
+                <CardTitle className="text-xl">Assets Parsed</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>TODO later</p>
+            </CardContent>
+        </Card>
+    );
 }
 
-export default App
+export default App;

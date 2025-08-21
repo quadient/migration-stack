@@ -1,14 +1,14 @@
-import {useEffect, useState} from "react";
-import type {JSX} from "react";
+import { useEffect, useState } from "react";
+import type { JSX } from "react";
 import {
     Dialog,
     DialogContent,
     DialogTrigger,
     DialogHeader,
     DialogTitle,
-    DialogDescription
-} from "@/components/ui/dialog.tsx"
-import type {ReactNode} from "react";
+    DialogDescription,
+} from "@/components/ui/dialog.tsx";
+import type { ReactNode } from "react";
 
 type SettingsDialogProps = {
     trigger: ReactNode;
@@ -20,20 +20,19 @@ type SettingsNode = {
     children?: SettingsNode[];
 };
 
-export default function SettingsDialog({trigger}: SettingsDialogProps) {
+export default function SettingsDialog({ trigger }: SettingsDialogProps) {
     const [settingsTree, setSettingsTree] = useState<SettingsNode[] | null>(null);
 
     useEffect(() => {
         fetchSettings()
-            .then(json => {
+            .then((json) => {
                 console.log("Fetched settings:", json);
                 setSettingsTree(buildSettingsTree(json));
             })
             .catch(() => {
-                    console.error("Failed to fetch or parse settings");
-                    setSettingsTree(null);
-                }
-            )
+                console.error("Failed to fetch or parse settings");
+                setSettingsTree(null);
+            });
     }, []);
 
     return (
@@ -46,18 +45,18 @@ export default function SettingsDialog({trigger}: SettingsDialogProps) {
                         Configure project settings and connection to services
                     </DialogDescription>
                 </DialogHeader>
-                {settingsTree && (<div>{renderSettingsTree(settingsTree)}</div>)}
+                {settingsTree && <div>{renderSettingsTree(settingsTree)}</div>}
             </DialogContent>
         </Dialog>
     );
 }
 
 function renderSettingsTree(nodes: SettingsNode[], level = 1): ReactNode {
-    return nodes.map(node => {
+    return nodes.map((node) => {
         if (node.children && node.children.length > 0) {
             const HeadingTag = `h${Math.min(level, 6)}` as keyof JSX.IntrinsicElements;
             return (
-                <div key={node.key} style={{marginLeft: (level - 1) * 16, marginTop: 8}}>
+                <div key={node.key} style={{ marginLeft: (level - 1) * 16, marginTop: 8 }}>
                     <HeadingTag>{node.key}</HeadingTag>
                     {renderSettingsTree(node.children, level + 1)}
                 </div>
@@ -66,13 +65,13 @@ function renderSettingsTree(nodes: SettingsNode[], level = 1): ReactNode {
             let inputType = "text";
             if (typeof node.value === "number") inputType = "number";
             return (
-                <div key={node.key} style={{marginLeft: (level - 1) * 16, marginTop: 4}}>
-                    <label style={{marginRight: 8}}>
+                <div key={node.key} style={{ marginLeft: (level - 1) * 16, marginTop: 4 }}>
+                    <label style={{ marginRight: 8 }}>
                         {node.key}:
                         <input
                             type={inputType}
-                            value={typeof node.value === "boolean" ? String(node.value) : node.value ?? ""}
-                            style={{marginLeft: 8}}
+                            value={typeof node.value === "boolean" ? String(node.value) : (node.value ?? "")}
+                            style={{ marginLeft: 8 }}
                             readOnly
                         />
                     </label>
@@ -93,7 +92,7 @@ async function fetchSettings(): Promise<any> {
 function buildSettingsTree(obj: any): SettingsNode[] {
     console.log("Building settings tree from object:", obj);
     return Object.entries(obj).map(([key, value]) => {
-        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+        if (value !== null && typeof value === "object" && !Array.isArray(value)) {
             return {
                 key: key,
                 children: buildSettingsTree(value),
