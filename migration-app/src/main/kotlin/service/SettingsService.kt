@@ -6,7 +6,9 @@ import com.quadient.migration.dto.SettingsResponse
 
 class SettingsService {
     fun getSettings(): SettingsResponse {
-        val defaultProjectConfig = ProjectConfig("<project-name>", "", "", "StandardPackage")
+        val defaultProjectConfig = ProjectConfig(
+            "default-project", "", "", "StandardPackage", context = null
+        )
         val defaultMigConfig = MigConfig()
 
         return SettingsResponse(defaultProjectConfig, defaultMigConfig)
