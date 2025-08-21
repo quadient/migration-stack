@@ -1,8 +1,10 @@
 package com.quadient.migration
 
 import com.quadient.migration.route.rootModule
+import com.quadient.migration.service.ScriptDiscoveryService
 import com.quadient.migration.service.Settings
 import com.quadient.migration.service.SettingsService
+import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
@@ -24,12 +26,13 @@ fun Application.module() {
     }
     install(Koin) {
         slf4jLogger()
-        modules(appModules)
+        modules(appModules(environment))
     }
 
     val env = environment.config.getEnv()
 
     val settingsService by inject<SettingsService>()
+    val scriptDiscoveryService by inject<ScriptDiscoveryService>()
 
     routing {
         route("/api") {
@@ -51,6 +54,24 @@ fun Application.module() {
                 get {
                     println("Received request for tasks")
                     call.respondText("Tasks API Endpoint")
+                }
+            }
+
+            route("/scripts") {
+                get {
+                    call.respond(scriptDiscoveryService.scripts)
+                }
+
+                route("/reload") {
+                    post {
+                        try {
+                            scriptDiscoveryService.loadScripts()
+                            call.respond(HttpStatusCode.OK)
+                        } catch (e: Exception) {
+                            log.error("Failed to reload scripts", e)
+                            call.respondText("Failed to reload scripts: ${e.message}", status = HttpStatusCode.InternalServerError)
+                        }
+                    }
                 }
             }
         }

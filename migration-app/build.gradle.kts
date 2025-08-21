@@ -15,6 +15,15 @@ application {
     mainClass = "io.ktor.server.netty.EngineMain"
 }
 
+tasks {
+    register<JavaExec>("runServer") {
+        mainClass = "io.ktor.server.netty.EngineMain"
+        classpath = sourceSets["main"].runtimeClasspath
+        group = "application"
+        workingDir = project.rootDir
+    }
+}
+
 dependencies {
     implementation("com.quadient:migration-library")
     implementation("com.quadient:migration-examples")
