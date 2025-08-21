@@ -71,6 +71,10 @@ function renderSettings(
     settings: Settings,
     setSettings: (value: ((prevState: Settings | null) => Settings | null) | Settings | null) => void,
 ): React.ReactNode {
+    const updateSettings = (key: string, value: string) => {
+        setSettings((prev) => (prev ? { ...prev, projectConfig: { ...prev.projectConfig, [key]: value } } : null));
+    };
+
     return (
         <div className="grid gap-5">
             <div className="font-bold">Project Settings</div>
@@ -79,38 +83,14 @@ function renderSettings(
                     <Label>Name</Label>
                     <Input
                         value={settings.projectConfig.name}
-                        onChange={(e) =>
-                            setSettings((prev) =>
-                                prev
-                                    ? {
-                                          ...prev,
-                                          projectConfig: {
-                                              ...prev.projectConfig,
-                                              name: e.target.value,
-                                          },
-                                      }
-                                    : null,
-                            )
-                        }
+                        onChange={(e) => updateSettings("name", e.target.value)}
                     />
                 </div>
                 <div className="grid gap-3">
                     <Label>Input data path</Label>
                     <Input
                         value={settings.projectConfig.inputDataPath}
-                        onChange={(e) =>
-                            setSettings((prev) =>
-                                prev
-                                    ? {
-                                          ...prev,
-                                          projectConfig: {
-                                              ...prev.projectConfig,
-                                              inputDataPath: e.target.value,
-                                          },
-                                      }
-                                    : null,
-                            )
-                        }
+                        onChange={(e) => updateSettings("inputDataPath", e.target.value)}
                     />
                 </div>
                 <div className="grid gap-3">
@@ -126,38 +106,14 @@ function renderSettings(
                             <Label>Tenant</Label>
                             <Input
                                 value={settings.projectConfig.interactiveTenant}
-                                onChange={(e) =>
-                                    setSettings((prev) =>
-                                        prev
-                                            ? {
-                                                  ...prev,
-                                                  projectConfig: {
-                                                      ...prev.projectConfig,
-                                                      interactiveTenant: e.target.value,
-                                                  },
-                                              }
-                                            : null,
-                                    )
-                                }
+                                onChange={(e) => updateSettings("interactiveTenant", e.target.value)}
                             />
                         </div>
                         <div className="grid gap-3">
                             <Label>Base template path</Label>
                             <Input
                                 value={settings.projectConfig.baseTemplatePath}
-                                onChange={(e) =>
-                                    setSettings((prev) =>
-                                        prev
-                                            ? {
-                                                  ...prev,
-                                                  projectConfig: {
-                                                      ...prev.projectConfig,
-                                                      baseTemplatePath: e.target.value,
-                                                  },
-                                              }
-                                            : null,
-                                    )
-                                }
+                                onChange={(e) => updateSettings("baseTemplatePath", e.target.value)}
                             />
                         </div>
                     </>
@@ -167,19 +123,7 @@ function renderSettings(
                         <Label>Source Base template path</Label>
                         <Input
                             value={settings.projectConfig.sourceBaseTemplatePath ?? ""}
-                            onChange={(e) =>
-                                setSettings((prev) =>
-                                    prev
-                                        ? {
-                                              ...prev,
-                                              projectConfig: {
-                                                  ...prev.projectConfig,
-                                                  sourceBaseTemplatePath: e.target.value,
-                                              },
-                                          }
-                                        : null,
-                                )
-                            }
+                            onChange={(e) => updateSettings("sourceBaseTemplatePath", e.target.value)}
                         />
                     </div>
                 )}
@@ -187,38 +131,14 @@ function renderSettings(
                     <Label>Default variable structure</Label>
                     <Input
                         value={settings.projectConfig.defaultVariableStructure ?? ""}
-                        onChange={(e) =>
-                            setSettings((prev) =>
-                                prev
-                                    ? {
-                                          ...prev,
-                                          projectConfig: {
-                                              ...prev.projectConfig,
-                                              defaultVariableStructure: e.target.value,
-                                          },
-                                      }
-                                    : null,
-                            )
-                        }
+                        onChange={(e) => updateSettings("defaultVariableStructure", e.target.value)}
                     />
                 </div>
                 <div className="grid gap-3">
                     <Label>Default target folder</Label>
                     <Input
                         value={settings.projectConfig.defaultTargetFolder ?? ""}
-                        onChange={(e) =>
-                            setSettings((prev) =>
-                                prev
-                                    ? {
-                                          ...prev,
-                                          projectConfig: {
-                                              ...prev.projectConfig,
-                                              defaultTargetFolder: e.target.value,
-                                          },
-                                      }
-                                    : null,
-                            )
-                        }
+                        onChange={(e) => updateSettings("defaultTargetFolder", e.target.value)}
                     />
                 </div>
                 <div className="font-normal">Paths</div>
