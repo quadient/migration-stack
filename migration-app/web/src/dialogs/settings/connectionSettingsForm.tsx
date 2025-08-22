@@ -82,6 +82,7 @@ export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormPr
             <Card>
                 <CardHeader>
                     <CardTitle>Database</CardTitle>
+                    <CardDescription>Database connection configuration</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6">
                     <div className="grid gap-3">
@@ -126,6 +127,7 @@ export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormPr
             <Card>
                 <CardHeader>
                     <CardTitle>Inspire Production Server</CardTitle>
+                    <CardDescription>Inspire Production Server configuration</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6">
                     <div className="grid gap-3">

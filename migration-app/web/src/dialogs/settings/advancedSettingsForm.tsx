@@ -13,6 +13,7 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
             <Card>
                 <CardHeader>
                     <CardTitle>Default Values</CardTitle>
+                    <CardDescription>Configure default values</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6">
                     <div className="grid gap-3">

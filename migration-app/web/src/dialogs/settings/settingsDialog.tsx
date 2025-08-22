@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import {
     Dialog,
+    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -16,14 +17,14 @@ import { Button } from "@/components/ui/button.tsx";
 import { ProjectSettingsForm } from "@/dialogs/settings/projectSettingsForm.tsx";
 import { ConnectionSettingsForm } from "@/dialogs/settings/connectionSettingsForm.tsx";
 import { AdvancedSettingsForm } from "@/dialogs/settings/advancedSettingsForm.tsx";
-import { useFetch } from "@/hooks/useFetch.ts";
+import { type UseFetchResult } from "@/hooks/useFetch.ts";
 
 type SettingsDialogProps = {
     trigger: ReactNode;
+    settingsResult: UseFetchResult<Settings | null>;
 };
 
-export default function SettingsDialog({ trigger }: SettingsDialogProps) {
-    const settingsResult = useFetch<Settings | null>("/api/settings", null);
+export default function SettingsDialog({ trigger, settingsResult }: SettingsDialogProps) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -66,6 +67,9 @@ export default function SettingsDialog({ trigger }: SettingsDialogProps) {
                             </ScrollArea>
                         </Tabs>
                         <DialogFooter className="mt-6">
+                            <DialogClose asChild>
+                                <Button variant="outline">Cancel</Button>
+                            </DialogClose>
                             <Button
                                 type={"submit"}
                                 onClick={() => {

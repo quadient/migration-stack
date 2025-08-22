@@ -1,6 +1,6 @@
 import React from "react";
 
-type UseFetchResult<T> =
+export type UseFetchResult<T> =
     | {
           status: "error";
           error: unknown;

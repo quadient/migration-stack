@@ -3,6 +3,8 @@ import { Settings as SettingsIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SettingsDialog from "./dialogs/settings/settingsDialog.tsx";
 import { useFetch } from "./hooks/useFetch.ts";
+import { Separator } from "@/components/ui/separator.tsx";
+import type { Settings } from "@/dialogs/settings/settingsTypes.tsx";
 
 function App() {
     return <AppLayout />;
@@ -11,44 +13,52 @@ function App() {
 type ScriptMetadata = { filename: string; category: string; description: string | undefined }[];
 
 function AppLayout() {
+    const settingsResult = useFetch<Settings | null>("/api/settings", null);
     const scriptsResult = useFetch<ScriptMetadata>("/api/scripts", []);
 
     return (
         <div className="min-h-screen grid grid-rows-[auto_1fr] px-[15%]">
-            <header className="p-8 row-start-1 row-end-2">
-                <div className="flex justify-between items-center">
-                    <div className="text-xl font-bold tracking-tight">Asset Migration Console</div>
-                    <SettingsDialog
-                        trigger={
-                            <Button variant="outline">
-                                <SettingsIcon className="w-4 h-4 mr-2" />
-                                Settings
-                            </Button>
-                        }
-                    ></SettingsDialog>
-                </div>
-                <div className="text-gray-500 mt-2">Trigger processes for asset migration and deployment</div>
-            </header>
-            <main className="grid grid-cols-[1fr_2fr] flex-1 row-start-2 row-end-3">
-                <section className="p-4 flex justify-center">
+            <div>
+                <header className="pt-8">
+                    <div className="flex justify-between items-center">
+                        <div className="text-xl font-bold tracking-tight">Asset Migration Console</div>
+                        <SettingsDialog
+                            settingsResult={settingsResult}
+                            trigger={
+                                <Button variant="outline">
+                                    <SettingsIcon className="w-4 h-4 mr-2" />
+                                    Settings
+                                </Button>
+                            }
+                        ></SettingsDialog>
+                    </div>
+                    <div className="text-gray-500 mt-2">Trigger processes for asset migration and deployment</div>
+                </header>
+                <Separator className="my-6" />
+            </div>
+            <main className="flex flex-1 min-h-0 gap-4">
+                <section className="flex-1 overflow-y-auto">
                     <ChartCard />
                 </section>
-                <section className="p-4 flex justify-center">Right Section</section>
-                {scriptsResult.status === "ok" &&
-                    scriptsResult.data
-                        .filter((s) => s.category === "migration deploy")
-                        .map((s) => {
-                            return (
-                                <Card key={s.filename} className="w-full max-w-sm h-100 border-gray-200">
-                                    <CardHeader>
-                                        <CardTitle className="text-xl">{s.filename.substring(0, 25)}</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p>{s.description}</p>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
+                <section className="flex-2 overflow-y-auto">
+                    <div className="flex flex-wrap gap-4">
+                        {scriptsResult.status === "ok" &&
+                            scriptsResult.data
+                                .filter((s) => s.category === "migration deploy")
+                                .map((s) => (
+                                    <Card
+                                        key={s.filename}
+                                    >
+                                        <CardHeader>
+                                            <CardTitle className="text-xl">{s.filename.substring(0, 25)}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <p>{s.description}</p>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                    </div>
+                </section>
             </main>
         </div>
     );
