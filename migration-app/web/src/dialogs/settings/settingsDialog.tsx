@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
     Dialog,
     DialogContent,
@@ -16,28 +16,15 @@ import { Button } from "@/components/ui/button.tsx";
 import { ProjectSettingsForm } from "@/dialogs/settings/projectSettingsForm.tsx";
 import { ConnectionSettingsForm } from "@/dialogs/settings/connectionSettingsForm.tsx";
 import { AdvancedSettingsForm } from "@/dialogs/settings/advancedSettingsForm.tsx";
-// import { useFetch } from "@/hooks/useFetch.ts";
+import { useFetch } from "@/hooks/useFetch.ts";
 
 type SettingsDialogProps = {
     trigger: ReactNode;
 };
 
 export default function SettingsDialog({ trigger }: SettingsDialogProps) {
-    // const settingsResult = useFetch<Settings | null>("/api/settings", null);
-
-    const [settings, setSettings] = useState<Settings | null>(null);
+    const settingsResult = useFetch<Settings | null>("/api/settings", null);
     const [open, setOpen] = useState(false);
-
-    console.log(settings);
-
-    useEffect(() => {
-        fetchSettings()
-            .then((json) => setSettings(json))
-            .catch(() => {
-                console.error("Failed to fetch or parse settings");
-                setSettings(null);
-            });
-    }, []);
 
     return (
         <Dialog modal open={open} onOpenChange={setOpen}>
@@ -49,37 +36,48 @@ export default function SettingsDialog({ trigger }: SettingsDialogProps) {
                         Configure project and connection settings
                     </DialogDescription>
                 </DialogHeader>
-                {settings && (
-                    <Tabs defaultValue="project">
-                        <TabsList>
-                            <TabsTrigger value="project">Project</TabsTrigger>
-                            <TabsTrigger value="connections">Connections</TabsTrigger>
-                            <TabsTrigger value="advanced">Advanced</TabsTrigger>
-                        </TabsList>
-                        <ScrollArea className="h-[500px] pr-4">
-                            <TabsContent value="project">
-                                <ProjectSettingsForm settings={settings} setSettings={setSettings} />
-                            </TabsContent>
-                            <TabsContent value="connections">
-                                <ConnectionSettingsForm settings={settings} setSettings={setSettings} />
-                            </TabsContent>
-                            <TabsContent value="advanced">
-                                <AdvancedSettingsForm settings={settings} setSettings={setSettings} />
-                            </TabsContent>
-                        </ScrollArea>
-                    </Tabs>
+                {settingsResult.status === "ok" && settingsResult.data && (
+                    <>
+                        <Tabs defaultValue="project">
+                            <TabsList>
+                                <TabsTrigger value="project">Project</TabsTrigger>
+                                <TabsTrigger value="connections">Connections</TabsTrigger>
+                                <TabsTrigger value="advanced">Advanced</TabsTrigger>
+                            </TabsList>
+                            <ScrollArea className="h-[500px] pr-4">
+                                <TabsContent value="project">
+                                    <ProjectSettingsForm
+                                        settings={settingsResult.data}
+                                        setSettings={settingsResult.setData}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="connections">
+                                    <ConnectionSettingsForm
+                                        settings={settingsResult.data}
+                                        setSettings={settingsResult.setData}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="advanced">
+                                    <AdvancedSettingsForm
+                                        settings={settingsResult.data}
+                                        setSettings={settingsResult.setData}
+                                    />
+                                </TabsContent>
+                            </ScrollArea>
+                        </Tabs>
+                        <DialogFooter className="mt-6">
+                            <Button
+                                type={"submit"}
+                                onClick={() => {
+                                    setOpen(false);
+                                    return onSaveChanges(settingsResult.data);
+                                }}
+                            >
+                                Save Changes
+                            </Button>
+                        </DialogFooter>
+                    </>
                 )}
-                <DialogFooter className="mt-6">
-                    <Button
-                        type={"submit"}
-                        onClick={() => {
-                            setOpen(false);
-                            return onSaveChanges(settings);
-                        }}
-                    >
-                        Save Changes
-                    </Button>
-                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
@@ -96,12 +94,4 @@ async function onSaveChanges(settings: Settings | null): Promise<void> {
     if (!response.ok) {
         throw new Error("Failed to save settings");
     }
-}
-
-async function fetchSettings(): Promise<Settings> {
-    const response = await fetch("/api/settings");
-    if (!response.ok) {
-        throw new Error("Failed to fetch settings");
-    }
-    return await response.json();
 }

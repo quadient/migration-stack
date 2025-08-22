@@ -10,6 +10,7 @@ type UseFetchResult<T> =
       }
     | {
           data: T;
+          setData: (value: ((prev: T) => T) | T) => void;
           status: "ok";
       };
 
@@ -63,5 +64,5 @@ export function useFetch<T>(url: string, defaultValue: T, requestInit?: RequestI
         };
     }, [url]);
 
-    return { data, error, status } as UseFetchResult<T>;
+    return { data, setData, error, status } as UseFetchResult<T>;
 }
