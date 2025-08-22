@@ -8,110 +8,84 @@ import {
     inspireOutputOptions,
     type ProjectConfig,
     type Settings,
+    type SettingsFormProps,
 } from "@/dialogs/settings/settingsTypes.tsx";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils.ts";
 import { Label } from "@/components/ui/label.tsx";
 import { Input } from "@/components/ui/input.tsx";
 
-type ProjectSettingsFormProps = {
-    settings: Settings;
-    setSettings: (value: ((prevState: Settings | null) => Settings | null) | Settings | null) => void;
-};
-
-export function ProjectSettingsForm({ settings, setSettings }: ProjectSettingsFormProps) {
+export function ProjectSettingsForm({ settings, setSettings }: SettingsFormProps) {
     const updateSettings = (key: keyof ProjectConfig, value: string) => {
         setSettings((prev) => (prev ? { ...prev, projectConfig: { ...prev.projectConfig, [key]: value } } : null));
     };
 
     return (
-        <div className="grid gap-5">
-            <div className="font-bold">Project Settings</div>
-            <div className="grid gap-4">
-                <div className="grid gap-3">
-                    <Label>Name</Label>
-                    <Input
-                        value={settings.projectConfig.name}
-                        onChange={(e) => updateSettings("name", e.target.value)}
-                    />
-                </div>
-                <div className="grid gap-3">
-                    <Label>Input data path</Label>
-                    <Input
-                        value={settings.projectConfig.inputDataPath}
-                        onChange={(e) => updateSettings("inputDataPath", e.target.value)}
-                    />
-                </div>
-                <div className="grid gap-3">
-                    <Label>Inspire output</Label>
-                    <InspireOutputCombobox
-                        currentValue={settings.projectConfig.inspireOutput}
-                        setSettings={setSettings}
-                    />
-                </div>
-                {settings.projectConfig.inspireOutput !== "Designer" && (
-                    <>
-                        <div className="grid gap-3">
-                            <Label>Tenant</Label>
-                            <Input
-                                value={settings.projectConfig.interactiveTenant}
-                                onChange={(e) => updateSettings("interactiveTenant", e.target.value)}
-                            />
-                        </div>
-                        <div className="grid gap-3">
-                            <Label>Base template path</Label>
-                            <Input
-                                value={settings.projectConfig.baseTemplatePath}
-                                onChange={(e) => updateSettings("baseTemplatePath", e.target.value)}
-                            />
-                        </div>
-                    </>
-                )}
-                {settings.projectConfig.inspireOutput === "Designer" && (
+        <div className="grid gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>General</CardTitle>
+                    <CardDescription>Basic project configuration</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-6">
                     <div className="grid gap-3">
-                        <Label>Source Base template path</Label>
+                        <Label>Name</Label>
                         <Input
-                            value={settings.projectConfig.sourceBaseTemplatePath ?? ""}
-                            onChange={(e) => updateSettings("sourceBaseTemplatePath", e.target.value)}
+                            value={settings.projectConfig.name}
+                            onChange={(e) => updateSettings("name", e.target.value)}
                         />
                     </div>
-                )}
-                <div className="grid gap-3">
-                    <Label>Default variable structure</Label>
-                    <Input
-                        value={settings.projectConfig.defaultVariableStructure ?? ""}
-                        onChange={(e) => updateSettings("defaultVariableStructure", e.target.value)}
-                    />
-                </div>
-                <div className="grid gap-3">
-                    <Label>Default target folder</Label>
-                    <Input
-                        value={settings.projectConfig.defaultTargetFolder ?? ""}
-                        onChange={(e) => updateSettings("defaultTargetFolder", e.target.value)}
-                    />
-                </div>
-                <div className="font-normal border-b pb-5 mb-10">Paths</div>
-                <div className="grid gap-3">
-                    <Label>Images</Label>
-                    <Input
-                        value={settings.projectConfig.paths.images ?? ""}
-                        onChange={(e) =>
-                            setSettings((prev) =>
-                                prev
-                                    ? {
-                                          ...prev,
-                                          projectConfig: {
-                                              ...prev.projectConfig,
-                                              paths: {
-                                                  images: e.target.value,
-                                              },
-                                          },
-                                      }
-                                    : null,
-                            )
-                        }
-                    />
-                </div>
-            </div>
+                    <div className="grid gap-3">
+                        <Label>Input data path</Label>
+                        <Input
+                            value={settings.projectConfig.inputDataPath}
+                            onChange={(e) => updateSettings("inputDataPath", e.target.value)}
+                        />
+                    </div>
+                    <div className="grid gap-3">
+                        <Label>Inspire output</Label>
+                        <InspireOutputCombobox
+                            currentValue={settings.projectConfig.inspireOutput}
+                            setSettings={setSettings}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>{`${settings.projectConfig.inspireOutput} Output`}</CardTitle>
+                    <CardDescription>{`Inspire ${settings.projectConfig.inspireOutput} specific configuration`}</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-6">
+                    {settings.projectConfig.inspireOutput !== "Designer" && (
+                        <>
+                            <div className="grid gap-3">
+                                <Label>Tenant</Label>
+                                <Input
+                                    value={settings.projectConfig.interactiveTenant}
+                                    onChange={(e) => updateSettings("interactiveTenant", e.target.value)}
+                                />
+                            </div>
+                            <div className="grid gap-3">
+                                <Label>Base template path</Label>
+                                <Input
+                                    value={settings.projectConfig.baseTemplatePath}
+                                    onChange={(e) => updateSettings("baseTemplatePath", e.target.value)}
+                                />
+                            </div>
+                        </>
+                    )}
+                    {settings.projectConfig.inspireOutput === "Designer" && (
+                        <div className="grid gap-3">
+                            <Label>Source Base template path</Label>
+                            <Input
+                                value={settings.projectConfig.sourceBaseTemplatePath ?? ""}
+                                onChange={(e) => updateSettings("sourceBaseTemplatePath", e.target.value)}
+                            />
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }

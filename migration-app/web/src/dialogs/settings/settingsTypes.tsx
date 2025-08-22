@@ -1,3 +1,8 @@
+export type SettingsFormProps = {
+    settings: Settings;
+    setSettings: (value: ((prevState: Settings | null) => Settings | null) | Settings | null) => void;
+}
+
 export type Settings = {
     projectConfig: ProjectConfig;
     migrationConfig: MigrationConfig;
