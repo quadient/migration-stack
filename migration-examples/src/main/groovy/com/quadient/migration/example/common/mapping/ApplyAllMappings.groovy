@@ -1,5 +1,5 @@
 //! ---
-//! category: migration mapping
+//! category: Mapping
 //! description: Applies all mappings
 //! target: gradle
 //! ---

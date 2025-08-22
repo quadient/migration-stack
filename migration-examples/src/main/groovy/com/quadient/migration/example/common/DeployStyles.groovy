@@ -1,5 +1,5 @@
 //! ---
-//! category: migration mapping
+//! category: Deployment
 //! description: Deploy style definition
 //! ---
 package com.quadient.migration.example.common

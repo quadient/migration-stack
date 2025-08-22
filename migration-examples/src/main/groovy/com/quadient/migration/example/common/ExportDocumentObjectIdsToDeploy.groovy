@@ -1,5 +1,5 @@
 //! ---
-//! category: migration deploy
+//! category: Utils
 //! description: Export document object ids to deploy to a file
 //! ---
 package com.quadient.migration.example.common

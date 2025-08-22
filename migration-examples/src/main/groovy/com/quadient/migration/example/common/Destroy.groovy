@@ -1,5 +1,5 @@
 //! ---
-//! category: migration common
+//! category: Utils
 //! description: Destroys all project data
 //! stdin: true
 //! target: gradle

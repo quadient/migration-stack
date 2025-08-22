@@ -74,7 +74,6 @@ class ScriptDiscoveryService(scriptsDir: String?) {
 
 @Serializable
 data class ScriptMetadata(
-    val name: String?,
     val filename: String,
     val displayName: String?,
     val category: String,
@@ -98,7 +97,6 @@ data class ScriptMetadata(
 
             return ScriptMetadata(
                 filename = filename,
-                name = map["name"],
                 displayName = map["displayName"],
                 order = map["order"]?.toIntOrNull(),
                 category = map["category"] ?: throw IllegalArgumentException("Missing 'category' in frontmatter"),

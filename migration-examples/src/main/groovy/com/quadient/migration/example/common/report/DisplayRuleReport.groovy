@@ -1,5 +1,5 @@
 //! ---
-//! category: migration report
+//! category: Report
 //! ---
 package com.quadient.migration.example.common.report
 

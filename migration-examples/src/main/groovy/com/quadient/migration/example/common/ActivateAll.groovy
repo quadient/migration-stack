@@ -1,7 +1,6 @@
 package com.quadient.migration.example.common
 //! ---
-//! name: ActivateAll
-//! category: migration common
+//! category: Utils
 //! ---
 
 import com.quadient.migration.service.deploy.ResourceType

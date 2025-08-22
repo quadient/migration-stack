@@ -1,5 +1,5 @@
 //! ---
-//! category: migration deploy
+//! category: Deployment
 //! description: Deploys all document objects
 //! ---
 package com.quadient.migration.example.common

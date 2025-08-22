@@ -1,6 +1,7 @@
 //! ---
-//! category: migration docbook
+//! category: Parser
 //! description: Import docbook example
+//! sourceFormat: DocBook
 //! ---
 package com.quadient.migration.example.docbook
 

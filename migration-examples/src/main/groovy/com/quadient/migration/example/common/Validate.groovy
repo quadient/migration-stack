@@ -1,5 +1,5 @@
 //! ---
-//! category: migration deploy
+//! category: Utils
 //! description: Run validation on all migration objects
 //! ---
 package com.quadient.migration.example.common

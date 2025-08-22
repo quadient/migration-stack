@@ -106,7 +106,7 @@ function InspireOutputCombobox({ currentValue, setSettings }: InspireOutputCombo
                     <ChevronsUpDown className="opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0">
+            <PopoverContent className="p-0 w-100">
                 <Command>
                     <CommandList>
                         <CommandGroup>

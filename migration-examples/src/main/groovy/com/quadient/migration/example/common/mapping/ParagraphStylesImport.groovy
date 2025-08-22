@@ -1,5 +1,5 @@
 //! ---
-//! category: migration mapping
+//! category: Mapping
 //! description: Import paragraph styles
 //! target: gradle
 //! ---

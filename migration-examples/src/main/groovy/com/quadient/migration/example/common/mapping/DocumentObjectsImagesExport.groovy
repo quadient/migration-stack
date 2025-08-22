@@ -1,5 +1,5 @@
 //! ---
-//! category: migration mapping
+//! category: Mapping
 //! description: Export document objects and images
 //! target: gradle
 //! ---
