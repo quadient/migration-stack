@@ -59,7 +59,7 @@ fun Application.module() {
 
             route("/scripts") {
                 get {
-                    call.respond(scriptDiscoveryService.scripts)
+                    call.respond(scriptDiscoveryService.getScripts())
                 }
 
                 route("/reload") {

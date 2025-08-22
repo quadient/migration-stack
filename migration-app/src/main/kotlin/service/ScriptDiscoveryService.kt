@@ -1,6 +1,7 @@
 package com.quadient.migration.service
 
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.Serializable
 import java.io.File
 
@@ -9,12 +10,16 @@ class ScriptDiscoveryService(scriptsDir: String?) {
     val semaphore = Semaphore(1)
 
     private var _scripts: List<ScriptMetadata>? = null
-    val scripts: List<ScriptMetadata>
-        get() = _scripts ?: loadScripts()
 
-    fun loadScripts(): List<ScriptMetadata> {
+    suspend fun getScripts(): List<ScriptMetadata> {
+        return _scripts ?: loadScripts()
+    }
+
+    suspend fun loadScripts(): List<ScriptMetadata> {
         if (!semaphore.tryAcquire()) {
-            return _scripts ?: emptyList()
+            return semaphore.withPermit {
+                _scripts ?: emptyList()
+            }
         }
 
         val scripts = File(scriptsDir).walk().filter { it.isFile && it.extension == "groovy" }
