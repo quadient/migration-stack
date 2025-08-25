@@ -24,9 +24,9 @@ export default function App() {
                                     Settings
                                 </Button>
                             }
-                        ></SettingsDialog>
+                        />
                     </div>
-                    <div className="text-gray-500 mt-2">Trigger processes for asset migration and deployment</div>
+                    <div className="text-muted-foreground">Trigger processes for asset migration and deployment</div>
                 </header>
                 <Separator className="my-6" />
             </div>
