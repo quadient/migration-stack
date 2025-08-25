@@ -28,7 +28,7 @@ import com.quadient.migration.shared.Size
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 import static com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 
-Migration migration = initMigration(this.binding.variables["args"])
+Migration migration = initMigration(this.binding)
 
 def pageWidth = Size.ofMillimeters(148)
 def pageHeight = Size.ofMillimeters(210)

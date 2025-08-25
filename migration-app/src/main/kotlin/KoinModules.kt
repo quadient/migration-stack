@@ -1,12 +1,16 @@
 package com.quadient.migration
 
+import com.quadient.migration.service.GroovyService
 import com.quadient.migration.service.ScriptDiscoveryService
-import org.koin.dsl.module
 import com.quadient.migration.service.SettingsService
-import io.ktor.server.application.ApplicationEnvironment
-import io.ktor.server.config.tryGetString
+import io.ktor.server.application.*
+import io.ktor.server.config.*
+import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.module
 
 fun appModules(env: ApplicationEnvironment) = module {
-    single { SettingsService() }
-    single { ScriptDiscoveryService(env.config.tryGetString("scripts-dir")) }
+    single<ApplicationConfig> { env.config }
+    singleOf(::SettingsService)
+    singleOf(::ScriptDiscoveryService)
+    singleOf(::GroovyService)
 }

@@ -10,7 +10,13 @@ import java.nio.charset.StandardCharsets
 
 import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
 
-static Migration initMigration(String[] args) {
+static Migration initMigration(Binding binding) {
+    if (binding.variables["migration"]) {
+        return binding.variables["migration"]
+    }
+
+    String[] args = binding.variables["args"]
+
     def classLoader = this.getClassLoader()
     def migConfig = MigConfig.read(classLoader.getResource('migration-config.toml').toURI())
 

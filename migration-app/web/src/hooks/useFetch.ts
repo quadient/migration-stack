@@ -39,7 +39,7 @@ export function useFetch<T>(url: string, requestInit?: RequestInit): UseFetchRes
                         if (cancelled) {
                             return;
                         }
-                        setData(json);
+                        setData(json as T);
                         setStatus("ok");
                     })
                     .catch((err) => {

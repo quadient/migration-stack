@@ -18,7 +18,7 @@ import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-@Field Migration migration = initMigration(this.binding.variables["args"])
+@Field Migration migration = initMigration(this.binding)
 
 def areasFile = Paths.get("mapping", "${migration.projectConfig.name}-areas.csv")
 

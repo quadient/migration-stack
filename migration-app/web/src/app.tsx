@@ -17,6 +17,7 @@ function App() {
 type ScriptMetadata = {
     filename: string;
     category: string;
+    path: string;
     sourceFormat: string | undefined;
     description: string | undefined;
 }[];
@@ -29,9 +30,7 @@ function AppLayout() {
 
     const sourceFormats =
         scriptsResult.status === "ok"
-            ? (Array.from(
-                  new Set(scriptsResult.data.map((script) => script.sourceFormat).filter((script) => script!!)),
-              ) as string[])
+            ? [...new Set(scriptsResult.data.map((script) => script.sourceFormat).filter(Boolean))]
             : undefined;
 
     return (

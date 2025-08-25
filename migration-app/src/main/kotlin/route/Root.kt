@@ -47,6 +47,7 @@ fun Application.rootModule() {
                                         if (error != null) {
                                             log.error(error.message)
                                             call.respond(HttpStatusCode.InternalServerError, error.message)
+                                            return@get
                                         }
                                         log.debug("Successfully built frontend")
                                     }

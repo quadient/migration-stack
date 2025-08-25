@@ -17,7 +17,7 @@ import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-def migration = initMigration(this.binding.variables["args"])
+def migration = initMigration(this.binding)
 
 def documentObjFilePath = Paths.get("mapping", "${migration.projectConfig.name}-document-objects.csv")
 def imagesFilePath = Paths.get("mapping", "${migration.projectConfig.name}-images.csv")

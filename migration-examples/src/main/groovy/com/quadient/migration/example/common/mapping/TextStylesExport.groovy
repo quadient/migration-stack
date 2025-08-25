@@ -17,7 +17,7 @@ import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-def migration = initMigration(this.binding.variables["args"])
+def migration = initMigration(this.binding)
 
 @Field
 static List<String> definitionOrder = ["fontFamily",

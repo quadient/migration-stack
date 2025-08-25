@@ -15,7 +15,7 @@ import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-@Field Migration migration = initMigration(this.binding.variables["args"])
+@Field Migration migration = initMigration(this.binding)
 
 def dstFile = Paths.get("report", "${migration.projectConfig.name}-display-rules-report.csv")
 

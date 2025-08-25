@@ -8,7 +8,7 @@ import com.quadient.migration.example.common.util.DeploymentReportWriter
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-def migration = initMigration(this.binding.variables["args"])
+def migration = initMigration(this.binding)
 deploymentResult = migration.deployClient.deployDocumentObjects()
 
 if (deploymentResult.errors.size() > 0) {

@@ -17,7 +17,7 @@ import java.nio.file.Paths
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
 
-def migration = initMigration(this.binding.variables["args"])
+def migration = initMigration(this.binding)
 
 def argUserInput = (getValueOfArg("--variable-structure-id", this.binding.variables["args"] as List<String>)).orElseGet { null }
 

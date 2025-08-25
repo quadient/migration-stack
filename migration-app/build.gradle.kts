@@ -42,6 +42,8 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:${logback_version}")
     implementation("org.slf4j:slf4j-api:2.0.17")
 
+    implementation("org.apache.groovy:groovy-all:5.0.0-rc-1")
+
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
 }

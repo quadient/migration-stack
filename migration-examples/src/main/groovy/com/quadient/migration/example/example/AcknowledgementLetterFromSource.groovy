@@ -26,7 +26,7 @@ import com.quadient.migration.shared.Size
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-Migration migration = initMigration(this.binding.variables["args"])
+Migration migration = initMigration(this.binding)
 
 def headerImageFile = this.class.getClassLoader().getResource('exampleResources/acknowledgementLetterFromSource/header_crop.png')
 migration.storage.write("header_crop.png", headerImageFile.bytes)

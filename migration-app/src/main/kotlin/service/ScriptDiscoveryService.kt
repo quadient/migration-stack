@@ -1,12 +1,16 @@
 package com.quadient.migration.service
 
+import com.quadient.migration.api.Migration
+import com.quadient.migration.getScriptDir
+import io.ktor.server.config.ApplicationConfig
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.Serializable
+import org.slf4j.LoggerFactory
 import java.io.File
 
-class ScriptDiscoveryService(scriptsDir: String?) {
-    val scriptsDir = scriptsDir ?: "../migration-examples/src/main/groovy"
+class ScriptDiscoveryService(val cfg: ApplicationConfig) {
+    private val log = LoggerFactory.getLogger(Migration::class.java)!!
     val semaphore = Semaphore(1)
 
     private var _scripts: List<ScriptMetadata>? = null
@@ -22,28 +26,28 @@ class ScriptDiscoveryService(scriptsDir: String?) {
             }
         }
 
-        val scripts = File(scriptsDir).walk().filter { it.isFile && it.extension == "groovy" }
-                .onEach { println("Parsing groovy file: ${it.name}") }.map {
-                    Pair(it.name, it.useLines { lines ->
+        val scripts = File(cfg.getScriptDir()).walk().filter { it.isFile && it.extension == "groovy" }
+                .onEach { log.trace("Parsing groovy file: ${it.name}") }.map {
+                    LoadedScriptFile(it.name, it.absolutePath, it.useLines { lines ->
                         lines.takeWhile { line ->
                                 line.startsWith("//") || line.startsWith("package ") || line.isBlank()
                             }.map { line -> line.removePrefix("//!").trim() }.filter { line -> !line.startsWith("//") }
                             .toList()
                     })
-                }.mapNotNull { (filename, input) ->
+                }.mapNotNull { (filename, absolutePath, input) ->
                     val lines = input.filter { !it.isBlank() }
 
                     if (lines.count() <= 3 || (lines[0].startsWith("package") && lines[1] != "---")) {
-                        println("Skipping script '$filename' without frontmatter")
+                        log.trace("Skipping script '$filename' without frontmatter")
                         return@mapNotNull null
                     }
 
                     if (lines[lines.count() - 1].startsWith("package") && lines[lines.count() - 2] != "---") {
-                        println("Skipping script '$filename' without frontmatter")
+                        log.trace("Skipping script '$filename' without frontmatter")
                         return@mapNotNull null
                     }
 
-                    println("Parsing script frontmatter: $lines")
+                    log.trace("Parsing script module frontmatter: {}", lines)
                     val (pkg, rest) = when {
                         lines.firstOrNull()?.startsWith("package ") ?: false -> {
                             lines.first().removePrefix("package ") to lines.drop(1)
@@ -54,15 +58,18 @@ class ScriptDiscoveryService(scriptsDir: String?) {
                         }
 
                         else -> {
-                            throw IllegalArgumentException("Invalid frontmatter, missing package declaration: ${lines.firstOrNull()}")
+                            log.error("Invalid frontmatter, missing package declaration: ${lines.firstOrNull()}")
+                            return@mapNotNull null
                         }
                     }
 
                     if (rest.firstOrNull() != "---" && rest.lastOrNull() != "---") {
-                        throw IllegalArgumentException("Invalid frontmatter fences: ${rest.joinToString("\n")}")
+                        log.error("Invalid frontmatter fences: ${rest.joinToString("\n")}")
+                        return@mapNotNull null
                     }
 
-                    ScriptMetadata.fromString(rest.drop(1).dropLast(1), filename, pkg)
+                    log.debug("Successfully parsed script module $filename")
+                    ScriptMetadata.fromString(rest.drop(1).dropLast(1), filename, absolutePath, pkg)
                 }.filter { it.target == ScriptMetadata.Target.All || it.target == ScriptMetadata.Target.App }
                 .toList()
 
@@ -70,11 +77,14 @@ class ScriptDiscoveryService(scriptsDir: String?) {
         semaphore.release()
         return scripts
     }
+
+    data class LoadedScriptFile(val filename: String, val absolutePath: String, val content: List<String>)
 }
 
 @Serializable
 data class ScriptMetadata(
     val filename: String,
+    val path: String,
     val displayName: String?,
     val category: String,
     val sourceFormat: String?,
@@ -85,7 +95,7 @@ data class ScriptMetadata(
     val order: Int?
 ) {
     companion object {
-        fun fromString(input: List<String>, filename: String, packageName: String): ScriptMetadata {
+        fun fromString(input: List<String>, filename: String, path: String, packageName: String): ScriptMetadata {
             val map = mutableMapOf<String, String>()
             for (line in input) {
                 if (!line.contains(":")) {
@@ -97,6 +107,7 @@ data class ScriptMetadata(
 
             return ScriptMetadata(
                 filename = filename,
+                path = path,
                 displayName = map["displayName"],
                 order = map["order"]?.toIntOrNull(),
                 category = map["category"] ?: throw IllegalArgumentException("Missing 'category' in frontmatter"),
