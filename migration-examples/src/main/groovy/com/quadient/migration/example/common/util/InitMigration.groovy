@@ -5,10 +5,15 @@ import com.quadient.migration.api.MigConfig
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.shared.IcmPath
+import groovy.transform.Field
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.nio.charset.StandardCharsets
 
 import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
+
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 static Migration initMigration(Binding binding) {
     if (binding.variables["migration"]) {
@@ -52,7 +57,7 @@ static Migration initMigration(Binding binding) {
         sourceBaseTemplate,
         defaultVariableStructure,
         fileProjectConfig.context)
-    println("Preparing to start migration script with $projectConfig.")
+    log.info("Preparing to start migration script with $projectConfig.")
 
     return new Migration(migConfig, projectConfig)
 }

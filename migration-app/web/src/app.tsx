@@ -112,8 +112,21 @@ function AppLayout() {
                                     <CardHeader>
                                         <CardTitle className="text-xl">{s.filename.substring(0, 25)}</CardTitle>
                                     </CardHeader>
-                                    <CardContent>
-                                        <p>{s.description}</p>
+                                    <CardContent
+                                        onClick={async () => {
+                                            const result = await fetch("/api/scripts/run", {
+                                                method: "POST",
+                                                headers: {
+                                                    "Content-Type": "application/json",
+                                                },
+                                                body: JSON.stringify({
+                                                    path: s.path,
+                                                }),
+                                            });
+                                            console.log(await result.text());
+                                        }}
+                                    >
+                                        <p>Sup bro{s.description}</p>
                                     </CardContent>
                                 </Card>
                             ))}

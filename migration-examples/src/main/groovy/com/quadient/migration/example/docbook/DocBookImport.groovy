@@ -15,30 +15,31 @@ import com.quadient.migration.shared.DocumentObjectType
 import groovy.transform.Field
 import groovy.xml.XmlSlurper
 import groovy.xml.slurpersupport.GPathResult
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 @Field Migration migration = initMigration(this.binding)
 
 List<File> xmlFiles = new File(migration.projectConfig.inputDataPath).listFiles().findAll {
     it.isFile() && it.name.endsWith('.xml')
 }
 
-println(xmlFiles.size())
+log.info "Found ${xmlFiles.size()} XML files to process."
 imageId = 1
 
 xmlFiles.each {
-    println(it)
+    log.info "Processing XML file: ${it.name}"
     parseTemplate(it)
 }
 
 def parseTemplate(File xmlFile) {
     List<DocumentObject> blocks = new ArrayList<DocumentObject>()
-
-    println "Parsing XML file: ${xmlFile.name}"
 
     String templateId = xmlFile.name[0..xmlFile.name.lastIndexOf('.') - 1]
     String source = xmlFile.name

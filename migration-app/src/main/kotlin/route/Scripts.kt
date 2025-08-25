@@ -53,7 +53,7 @@ fun Application.scriptsModule() {
                     when (val result = groovyService.runScript(script!!, migration)) {
                         is GroovyResult.Ok -> {
                             log.debug("stdout: '{}', stderr: '{}'", result.stdout, result.stderr)
-                            call.respond(RunScriptResponse(result.stdout, result.stderr))
+                            call.respond(RunScriptResponse(result.stdout.lines(), result.stderr.lines()))
                         }
 
                         is GroovyResult.Err -> {
@@ -88,4 +88,4 @@ fun Application.scriptsModule() {
 data class RunScriptRequest(val path: String)
 
 @Serializable
-data class RunScriptResponse(val stdout: String, val stderr: String)
+data class RunScriptResponse(val stdout: List<String>, val stderr: List<String>)
