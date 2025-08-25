@@ -4,17 +4,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SettingsDialog from "./dialogs/settings/settingsDialog.tsx";
 import { useFetch } from "./hooks/useFetch.ts";
 import { Separator } from "@/components/ui/separator.tsx";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
+import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command.tsx";
 import type { Settings } from "@/dialogs/settings/settingsTypes.tsx";
+import { useState } from "react";
 
 function App() {
     return <AppLayout />;
 }
 
-type ScriptMetadata = { filename: string; category: string; description: string | undefined }[];
+type ScriptMetadata = {
+    filename: string;
+    category: string;
+    sourceFormat: string | undefined;
+    description: string | undefined;
+}[];
 
 function AppLayout() {
-    const settingsResult = useFetch<Settings | null>("/api/settings", null);
-    const scriptsResult = useFetch<ScriptMetadata>("/api/scripts", []);
+    const settingsResult = useFetch<Settings>("/api/settings");
+    const scriptsResult = useFetch<ScriptMetadata>("/api/scripts");
+    const [formatComboOpen, setFormatComboOpen] = useState(false);
+    const [selectedFormat, setSelectedFormat] = useState<string | undefined>(undefined);
+
+    const sourceFormats =
+        scriptsResult.status === "ok"
+            ? (Array.from(
+                  new Set(scriptsResult.data.map((script) => script.sourceFormat).filter((script) => script!!)),
+              ) as string[])
+            : undefined;
 
     return (
         <div className="min-h-screen grid grid-rows-[auto_1fr] px-[15%]">
@@ -40,23 +58,66 @@ function AppLayout() {
                 <section className="flex-1 overflow-y-auto">
                     <ChartCard />
                 </section>
-                <section className="flex-2 overflow-y-auto">
+                <section className="flex-2 overflow-y-auto gap-4">
+                    <div className="flex">
+                        <div className="flex flex-1 text-lg font-semibold">Parse</div>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={formatComboOpen}
+                                    className="w-75 justify-between font-normal"
+                                >
+                                    {selectedFormat ?? "Select Source Format"}
+                                    <ChevronsUpDown className="opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-75 p-0">
+                                {sourceFormats && (
+                                    <Command>
+                                        <CommandList>
+                                            <CommandGroup>
+                                                {sourceFormats.map((sourceFormat) => (
+                                                    <CommandItem
+                                                        key={sourceFormat}
+                                                        value={sourceFormat}
+                                                        onSelect={(newValue) => {
+                                                            if (newValue === selectedFormat) return;
+                                                            setSelectedFormat(newValue);
+                                                            setFormatComboOpen(false);
+                                                        }}
+                                                    >
+                                                        {sourceFormat}
+                                                        <Check
+                                                            className={
+                                                                "ml-auto " +
+                                                                (selectedFormat === sourceFormat
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0")
+                                                            }
+                                                        />
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                )}
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                     <div className="flex flex-wrap gap-4">
                         {scriptsResult.status === "ok" &&
-                            scriptsResult.data
-                                .filter((s) => s.category === "migration deploy")
-                                .map((s) => (
-                                    <Card
-                                        key={s.filename}
-                                    >
-                                        <CardHeader>
-                                            <CardTitle className="text-xl">{s.filename.substring(0, 25)}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <p>{s.description}</p>
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                            scriptsResult.data.map((s) => (
+                                <Card key={s.filename}>
+                                    <CardHeader>
+                                        <CardTitle className="text-xl">{s.filename.substring(0, 25)}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <p>{s.description}</p>
+                                    </CardContent>
+                                </Card>
+                            ))}
                     </div>
                 </section>
             </main>

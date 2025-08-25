@@ -1,6 +1,6 @@
 export type SettingsFormProps = {
     settings: Settings;
-    setSettings: (value: ((prevState: Settings | null) => Settings | null) | Settings | null) => void;
+    setSettings: (value: ((prevState: Settings) => Settings) | Settings) => void;
 }
 
 export type Settings = {

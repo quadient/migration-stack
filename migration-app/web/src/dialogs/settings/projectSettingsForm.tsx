@@ -1,7 +1,7 @@
 import * as React from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { Button } from "@/components/ui/button.tsx";
 import { Check, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command.tsx";
 import {
     type InspireOutput,
@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input.tsx";
 
 export function ProjectSettingsForm({ settings, setSettings }: SettingsFormProps) {
     const updateSettings = (key: keyof ProjectConfig, value: string) => {
-        setSettings((prev) => (prev ? { ...prev, projectConfig: { ...prev.projectConfig, [key]: value } } : null));
+        setSettings((prev) => ({ ...prev, projectConfig: { ...prev.projectConfig, [key]: value } }));
     };
 
     return (
@@ -92,7 +92,7 @@ export function ProjectSettingsForm({ settings, setSettings }: SettingsFormProps
 
 type InspireOutputComboboxProps = {
     currentValue: InspireOutput;
-    setSettings: (value: ((prevState: Settings | null) => Settings | null) | Settings | null) => void;
+    setSettings: (value: ((prevState: Settings) => Settings) | Settings) => void;
 };
 
 function InspireOutputCombobox({ currentValue, setSettings }: InspireOutputComboboxProps) {
@@ -117,17 +117,13 @@ function InspireOutputCombobox({ currentValue, setSettings }: InspireOutputCombo
                                     onSelect={(newValue) => {
                                         if (newValue === currentValue) return;
 
-                                        setSettings((prev) =>
-                                            prev
-                                                ? {
-                                                      ...prev,
-                                                      projectConfig: {
-                                                          ...prev.projectConfig,
-                                                          inspireOutput: newValue as InspireOutput,
-                                                      },
-                                                  }
-                                                : null,
-                                        );
+                                        setSettings((prev) => ({
+                                            ...prev,
+                                            projectConfig: {
+                                                ...prev.projectConfig,
+                                                inspireOutput: newValue as InspireOutput,
+                                            },
+                                        }));
 
                                         setOpen(false);
                                     }}

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input.tsx";
 
 export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProps) {
     const updateSettings = (key: keyof ProjectConfig, value: string) => {
-        setSettings((prev) => (prev ? { ...prev, projectConfig: { ...prev.projectConfig, [key]: value } } : null));
+        setSettings((prev) => ({ ...prev, projectConfig: { ...prev.projectConfig, [key]: value } }));
     };
 
     return (
@@ -45,19 +45,15 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                         <Input
                             value={settings.projectConfig.paths.images ?? ""}
                             onChange={(e) =>
-                                setSettings((prev) =>
-                                    prev
-                                        ? {
-                                              ...prev,
-                                              projectConfig: {
-                                                  ...prev.projectConfig,
-                                                  paths: {
-                                                      images: e.target.value,
-                                                  },
-                                              },
-                                          }
-                                        : null,
-                                )
+                                setSettings((prev) => ({
+                                    ...prev,
+                                    projectConfig: {
+                                        ...prev.projectConfig,
+                                        paths: {
+                                            images: e.target.value,
+                                        },
+                                    },
+                                }))
                             }
                         />
                     </div>

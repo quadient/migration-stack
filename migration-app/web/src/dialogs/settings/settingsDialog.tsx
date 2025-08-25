@@ -21,7 +21,7 @@ import { type UseFetchResult } from "@/hooks/useFetch.ts";
 
 type SettingsDialogProps = {
     trigger: ReactNode;
-    settingsResult: UseFetchResult<Settings | null>;
+    settingsResult: UseFetchResult<Settings>;
 };
 
 export default function SettingsDialog({ trigger, settingsResult }: SettingsDialogProps) {

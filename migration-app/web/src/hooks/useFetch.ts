@@ -14,10 +14,10 @@ export type UseFetchResult<T> =
           status: "ok";
       };
 
-export function useFetch<T>(url: string, defaultValue: T, requestInit?: RequestInit): UseFetchResult<T> {
+export function useFetch<T>(url: string, requestInit?: RequestInit): UseFetchResult<T> {
     const [status, setStatus] = React.useState("loading");
     const [error, setError] = React.useState<unknown | null>(undefined);
-    const [data, setData] = React.useState<T>(defaultValue);
+    const [data, setData] = React.useState<T | undefined>(undefined);
 
     React.useEffect(() => {
         let cancelled = false;
@@ -25,7 +25,7 @@ export function useFetch<T>(url: string, defaultValue: T, requestInit?: RequestI
         const init: RequestInit = requestInit ?? {};
         init.signal = controller.signal;
         if (!init.method) {
-            init.method == "GET";
+            init.method = "GET";
         }
 
         fetch(url, init)

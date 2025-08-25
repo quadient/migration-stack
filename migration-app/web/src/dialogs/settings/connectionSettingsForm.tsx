@@ -12,54 +12,42 @@ export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormPr
     const migrationConfig = settings.migrationConfig;
 
     const updateMigrationConfig = (key: keyof MigrationConfig, value: any) => {
-        setSettings((prev) =>
-            prev
-                ? {
-                      ...prev,
-                      migrationConfig: {
-                          ...prev.migrationConfig,
-                          [key]: value,
-                      },
-                  }
-                : null,
-        );
+        setSettings((prev) => ({
+            ...prev,
+            migrationConfig: {
+                ...prev.migrationConfig,
+                [key]: value,
+            },
+        }));
     };
 
     const updateDbConfig = (key: keyof DbConfig, value: any) => {
-        setSettings((prev) =>
-            prev
-                ? {
-                      ...prev,
-                      migrationConfig: {
-                          ...prev.migrationConfig,
-                          dbConfig: {
-                              ...prev.migrationConfig.dbConfig,
-                              [key]: value,
-                          },
-                      },
-                  }
-                : null,
-        );
+        setSettings((prev) => ({
+            ...prev,
+            migrationConfig: {
+                ...prev.migrationConfig,
+                dbConfig: {
+                    ...prev.migrationConfig.dbConfig,
+                    [key]: value,
+                },
+            },
+        }));
     };
 
     const updateIpsConfig = (key: keyof IpsConfig, value: any) => {
-        setSettings((prev) =>
-            prev
-                ? {
-                      ...prev,
-                      migrationConfig: {
-                          ...prev.migrationConfig,
-                          inspireConfig: {
-                              ...prev.migrationConfig.inspireConfig,
-                              ipsConfig: {
-                                  ...prev.migrationConfig.inspireConfig.ipsConfig,
-                                  [key]: value,
-                              },
-                          },
-                      },
-                  }
-                : null,
-        );
+        setSettings((prev) => ({
+            ...prev,
+            migrationConfig: {
+                ...prev.migrationConfig,
+                inspireConfig: {
+                    ...prev.migrationConfig.inspireConfig,
+                    ipsConfig: {
+                        ...prev.migrationConfig.inspireConfig.ipsConfig,
+                        [key]: value,
+                    },
+                },
+            },
+        }));
     };
 
     return (
