@@ -115,16 +115,15 @@ function InspireOutputCombobox({ currentValue, setSettings }: InspireOutputCombo
                                     key={outputOption}
                                     value={outputOption}
                                     onSelect={(newValue) => {
-                                        if (newValue === currentValue) return;
-
-                                        setSettings((prev) => ({
-                                            ...prev,
-                                            projectConfig: {
-                                                ...prev.projectConfig,
-                                                inspireOutput: newValue as InspireOutput,
-                                            },
-                                        }));
-
+                                        if (newValue !== currentValue) {
+                                            setSettings((prev) => ({
+                                                ...prev,
+                                                projectConfig: {
+                                                    ...prev.projectConfig,
+                                                    inspireOutput: newValue as InspireOutput,
+                                                },
+                                            }));
+                                        }
                                         setOpen(false);
                                     }}
                                 >
