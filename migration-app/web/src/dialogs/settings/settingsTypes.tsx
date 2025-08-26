@@ -6,6 +6,7 @@ export type SettingsFormProps = {
 export type Settings = {
     projectConfig: ProjectConfig;
     migrationConfig: MigrationConfig;
+    sourceFormat?: string;
 };
 
 export type MigrationConfig = {

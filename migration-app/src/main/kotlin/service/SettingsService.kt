@@ -27,4 +27,5 @@ class SettingsService {
 data class Settings(
     val projectConfig: ProjectConfig,
     val migrationConfig: MigConfig,
+    val sourceFormat: String? = null,
 )

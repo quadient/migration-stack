@@ -1,4 +1,4 @@
-import { EmptyCard } from "@/utils/emptyCard.tsx";
+import { EmptyCard } from "@/common/emptyCard.tsx";
 import { FileCog } from "lucide-react";
 
 export default function ChartsSection() {

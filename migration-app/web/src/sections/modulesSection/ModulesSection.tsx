@@ -1,17 +1,12 @@
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command.tsx";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState } from "react";
-import { useFetch, type UseFetchResult } from "@/hooks/useFetch.ts";
 import { FileCog, Rocket, Play, LoaderCircle, FileText } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { EmptyCard } from "@/utils/emptyCard.tsx";
+import { EmptyCard } from "@/common/emptyCard.tsx";
 import LogsDialog from "@/dialogs/logs/logsDialog.tsx";
 
-type ModuleMetadata = {
+export type ModuleMetadata = {
     filename: string;
     category: string;
     path: string;
@@ -33,131 +28,71 @@ export type ScriptRunResultsMap = Map<string, RunResult>;
 type SetRunResults = (value: (prev: ScriptRunResultsMap) => ScriptRunResultsMap) => void;
 
 type ModulesSectionProp = {
+    modules: ModuleMetadata[];
+    sourceFormat: string | undefined;
     scriptRunResults: ScriptRunResultsMap;
     setScriptRunResults: SetRunResults;
 };
 
-export default function ModulesSection({ scriptRunResults, setScriptRunResults }: ModulesSectionProp) {
-    const [selectedFormat, setSelectedFormat] = useState<string | undefined>(undefined);
-
-    const modulesResult = useFetch<ModuleMetadata[]>("/api/scripts");
-
-    const sourceFormats = getSourceFormats(modulesResult);
-
+export default function ModulesSection({
+    modules,
+    sourceFormat,
+    scriptRunResults,
+    setScriptRunResults,
+}: ModulesSectionProp) {
     return (
         <ScrollArea className="flex-2">
-            {modulesResult.status === "ok" && (
-                <div className="flex gap-6">
-                    <div className="flex flex-col flex-1 gap-4">
-                        <div className="flex items-center h-8 gap-4">
-                            <div className="text-lg font-semibold">Parse</div>
-                            <SourceFormatCombobox
-                                selectedFormat={selectedFormat}
-                                setSelectedFormat={setSelectedFormat}
-                                sourceFormats={sourceFormats}
-                            />
-                        </div>
-                        <div className="flex flex-row gap-4 flex-wrap">
-                            {selectedFormat ? (
-                                modulesResult.data
-                                    .filter(
-                                        (module) =>
-                                            module.category === "Parser" && module.sourceFormat === selectedFormat,
-                                    )
-                                    .map((module) => (
-                                        <ModuleCard
-                                            key={module.path}
-                                            module={module}
-                                            icon={FileCog}
-                                            runResult={scriptRunResults.get(module.path)}
-                                            setRunResults={setScriptRunResults}
-                                        />
-                                    ))
-                            ) : (
-                                <EmptyCard icon={FileCog} message={"Select source format to see available parsers"} />
-                            )}
-                        </div>
+            <div className="flex gap-6">
+                <div className="flex flex-col flex-1 gap-4">
+                    <div className="flex items-center h-8 gap-4">
+                        <div className="text-lg font-semibold">Parse</div>
                     </div>
-                    <div className="flex flex-col flex-1 gap-4">
-                        <div className="flex items-center h-8 gap-4">
-                            <div className="text-lg font-semibold">Deploy</div>
-                        </div>
-                        <div className="flex flex-row gap-4 flex-wrap">
-                            {modulesResult.data
+                    <div className="flex flex-row gap-4 flex-wrap">
+                        {sourceFormat ? (
+                            modules
                                 .filter(
-                                    (module) =>
-                                        module.category === "Deployment" &&
-                                        module.filename === "DeployDocumentObjects.groovy",
+                                    (module) => module.category === "Parser" && module.sourceFormat === sourceFormat,
                                 )
-                                .map((module) => {
-                                    return (
-                                        <ModuleCard
-                                            key={module.path}
-                                            module={module}
-                                            icon={Rocket}
-                                            runResult={scriptRunResults.get(module.path)}
-                                            setRunResults={setScriptRunResults}
-                                        />
-                                    );
-                                })}
-                        </div>
+                                .map((module) => (
+                                    <ModuleCard
+                                        key={module.path}
+                                        module={module}
+                                        icon={FileCog}
+                                        runResult={scriptRunResults.get(module.path)}
+                                        setRunResults={setScriptRunResults}
+                                    />
+                                ))
+                        ) : (
+                            <EmptyCard icon={FileCog} message={"Select source format to see available parsers"} />
+                        )}
                     </div>
                 </div>
-            )}
+                <div className="flex flex-col flex-1 gap-4">
+                    <div className="flex items-center h-8 gap-4">
+                        <div className="text-lg font-semibold">Deploy</div>
+                    </div>
+                    <div className="flex flex-row gap-4 flex-wrap">
+                        {modules
+                            .filter(
+                                (module) =>
+                                    module.category === "Deployment" &&
+                                    module.filename === "DeployDocumentObjects.groovy",
+                            )
+                            .map((module) => {
+                                return (
+                                    <ModuleCard
+                                        key={module.path}
+                                        module={module}
+                                        icon={Rocket}
+                                        runResult={scriptRunResults.get(module.path)}
+                                        setRunResults={setScriptRunResults}
+                                    />
+                                );
+                            })}
+                    </div>
+                </div>
+            </div>
         </ScrollArea>
-    );
-}
-
-type SourceFormatComboboxProps = {
-    selectedFormat: string | undefined;
-    setSelectedFormat: (format: string) => void;
-    sourceFormats: string[] | undefined;
-};
-
-function SourceFormatCombobox({ selectedFormat, setSelectedFormat, sourceFormats }: SourceFormatComboboxProps) {
-    const [open, setOpen] = useState(false);
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    className="w-60 justify-between font-normal"
-                >
-                    {selectedFormat ?? "Select Source Format"}
-                    <ChevronsUpDown className="opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-50 p-0">
-                {sourceFormats && (
-                    <Command>
-                        <CommandList>
-                            <CommandGroup>
-                                {sourceFormats.map((sourceFormat) => (
-                                    <CommandItem
-                                        key={sourceFormat}
-                                        value={sourceFormat}
-                                        onSelect={(newValue) => {
-                                            if (newValue !== selectedFormat) {
-                                                setSelectedFormat(newValue);
-                                            }
-                                            setOpen(false);
-                                        }}
-                                    >
-                                        {sourceFormat}
-                                        <Check
-                                            className={`ml-auto ${selectedFormat === sourceFormat ? "opacity-100" : "opacity-0"}`}
-                                        />
-                                    </CommandItem>
-                                ))}
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                )}
-            </PopoverContent>
-        </Popover>
     );
 }
 
@@ -244,10 +179,4 @@ async function handleExecuteModule(module: ModuleMetadata, setRunResults: SetRun
 
 function getName(module: ModuleMetadata): string {
     return module.displayName || module.filename.replace(".groovy", "");
-}
-
-function getSourceFormats(scriptsResult: UseFetchResult<ModuleMetadata[]>): string[] | undefined {
-    return scriptsResult.status === "ok"
-        ? ([...new Set(scriptsResult.data.map((script) => script.sourceFormat).filter(Boolean))] as string[])
-        : undefined;
 }

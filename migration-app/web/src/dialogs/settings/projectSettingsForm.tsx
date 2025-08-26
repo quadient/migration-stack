@@ -1,4 +1,3 @@
-import * as React from "react";
 import { Button } from "@/components/ui/button.tsx";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.tsx";
@@ -11,11 +10,15 @@ import {
     type SettingsFormProps,
 } from "@/dialogs/settings/settingsTypes.tsx";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils.ts";
 import { Label } from "@/components/ui/label.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import { useState } from "react";
 
-export function ProjectSettingsForm({ settings, setSettings }: SettingsFormProps) {
+export function ProjectSettingsForm({
+    settings,
+    setSettings,
+    sourceFormats,
+}: SettingsFormProps & { sourceFormats?: string[] }) {
     const updateSettings = (key: keyof ProjectConfig, value: string) => {
         setSettings((prev) => ({ ...prev, projectConfig: { ...prev.projectConfig, [key]: value } }));
     };
@@ -43,10 +46,32 @@ export function ProjectSettingsForm({ settings, setSettings }: SettingsFormProps
                         />
                     </div>
                     <div className="grid gap-3">
+                        <Label>Source format</Label>
+                        <SettingsCombobox
+                            currentValue={settings.sourceFormat}
+                            onChange={(newValue) => {
+                                setSettings((prev: Settings) => ({
+                                    ...prev,
+                                    sourceFormat: newValue,
+                                }));
+                            }}
+                            options={sourceFormats}
+                        />
+                    </div>
+                    <div className="grid gap-3">
                         <Label>Inspire output</Label>
-                        <InspireOutputCombobox
+                        <SettingsCombobox
                             currentValue={settings.projectConfig.inspireOutput}
-                            setSettings={setSettings}
+                            onChange={(newValue) => {
+                                setSettings((prev: Settings) => ({
+                                    ...prev,
+                                    projectConfig: {
+                                        ...prev.projectConfig,
+                                        inspireOutput: newValue as InspireOutput,
+                                    },
+                                }));
+                            }}
+                            options={[...inspireOutputOptions]}
                         />
                     </div>
                 </CardContent>
@@ -90,55 +115,54 @@ export function ProjectSettingsForm({ settings, setSettings }: SettingsFormProps
     );
 }
 
-type InspireOutputComboboxProps = {
-    currentValue: InspireOutput;
-    setSettings: (value: ((prevState: Settings) => Settings) | Settings) => void;
+type SourceFormatComboboxProps = {
+    currentValue?: string;
+    onChange: (value: string) => void;
+    options: string[] | undefined;
 };
 
-function InspireOutputCombobox({ currentValue, setSettings }: InspireOutputComboboxProps) {
-    const [open, setOpen] = React.useState(false);
+function SettingsCombobox({ currentValue, onChange, options }: SourceFormatComboboxProps) {
+    const [open, setOpen] = useState(false);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" aria-expanded={open} className="justify-between font-normal">
-                    {currentValue}
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-100 justify-between font-normal"
+                >
+                    {currentValue ?? "Select value"}
                     <ChevronsUpDown className="opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0 w-100">
-                <Command>
-                    <CommandList>
-                        <CommandGroup>
-                            {inspireOutputOptions.map((outputOption) => (
-                                <CommandItem
-                                    key={outputOption}
-                                    value={outputOption}
-                                    onSelect={(newValue) => {
-                                        if (newValue !== currentValue) {
-                                            setSettings((prev) => ({
-                                                ...prev,
-                                                projectConfig: {
-                                                    ...prev.projectConfig,
-                                                    inspireOutput: newValue as InspireOutput,
-                                                },
-                                            }));
-                                        }
-                                        setOpen(false);
-                                    }}
-                                >
-                                    {outputOption}
-                                    <Check
-                                        className={cn(
-                                            "ml-auto",
-                                            currentValue === outputOption ? "opacity-100" : "opacity-0",
-                                        )}
-                                    />
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
+            <PopoverContent className="w-100 p-0">
+                {options && (
+                    <Command>
+                        <CommandList>
+                            <CommandGroup>
+                                {options.map((option) => (
+                                    <CommandItem
+                                        key={option}
+                                        value={option}
+                                        onSelect={(newValue) => {
+                                            if (newValue !== currentValue) {
+                                                onChange(newValue);
+                                            }
+                                            setOpen(false);
+                                        }}
+                                    >
+                                        {option}
+                                        <Check
+                                            className={`ml-auto ${currentValue === option ? "opacity-100" : "opacity-0"}`}
+                                        />
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                )}
             </PopoverContent>
         </Popover>
     );

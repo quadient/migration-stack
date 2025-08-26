@@ -22,9 +22,10 @@ import { type UseFetchResult } from "@/hooks/useFetch.ts";
 type SettingsDialogProps = {
     trigger: ReactNode;
     settingsResult: UseFetchResult<Settings>;
+    sourceFormats: string[] | undefined;
 };
 
-export default function SettingsDialog({ trigger, settingsResult }: SettingsDialogProps) {
+export default function SettingsDialog({ trigger, settingsResult, sourceFormats }: SettingsDialogProps) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -50,6 +51,7 @@ export default function SettingsDialog({ trigger, settingsResult }: SettingsDial
                                     <ProjectSettingsForm
                                         settings={settingsResult.data}
                                         setSettings={settingsResult.setData}
+                                        sourceFormats={sourceFormats}
                                     />
                                 </TabsContent>
                                 <TabsContent value="connections">

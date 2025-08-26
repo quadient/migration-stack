@@ -1,16 +1,23 @@
 import { Button } from "@/components/ui/button";
 import { Settings as SettingsIcon } from "lucide-react";
 import SettingsDialog from "./dialogs/settings/settingsDialog.tsx";
-import { useFetch } from "./hooks/useFetch.ts";
+import { useFetch, type UseFetchResult } from "./hooks/useFetch.ts";
 import { Separator } from "@/components/ui/separator.tsx";
 import type { Settings } from "@/dialogs/settings/settingsTypes.tsx";
-import ModulesSection, { type ScriptRunResultsMap } from "@/sections/modulesSection/ModulesSection.tsx";
+import ModulesSection, {
+    type ModuleMetadata,
+    type ScriptRunResultsMap,
+} from "@/sections/modulesSection/ModulesSection.tsx";
 import ChartsSection from "@/sections/chartsSection/ChartsSection.tsx";
 import { useState } from "react";
 
 export default function App() {
+    const modulesResult = useFetch<ModuleMetadata[]>("/api/scripts");
     const settingsResult = useFetch<Settings>("/api/settings");
+
     const [scriptRunResults, setScriptRunResults] = useState<ScriptRunResultsMap>(new Map());
+
+    const sourceFormats = getSourceFormats(modulesResult);
 
     return (
         <div className="grid grid-rows-[auto_1fr] min-h-screen max-h-screen px-[15%]">
@@ -26,6 +33,7 @@ export default function App() {
                                     Settings
                                 </Button>
                             }
+                            sourceFormats={sourceFormats}
                         />
                     </div>
                     <div className="text-muted-foreground">Trigger processes for asset migration and deployment</div>
@@ -34,8 +42,21 @@ export default function App() {
             </div>
             <main className="flex flex-1 min-h-0 gap-4">
                 <ChartsSection />
-                <ModulesSection scriptRunResults={scriptRunResults} setScriptRunResults={setScriptRunResults} />
+                {modulesResult.status === "ok" && settingsResult.status === "ok" && (
+                    <ModulesSection
+                        modules={modulesResult.data}
+                        sourceFormat={settingsResult.data.sourceFormat}
+                        scriptRunResults={scriptRunResults}
+                        setScriptRunResults={setScriptRunResults}
+                    />
+                )}
             </main>
         </div>
     );
+}
+
+function getSourceFormats(scriptsResult: UseFetchResult<ModuleMetadata[]>): string[] | undefined {
+    return scriptsResult.status === "ok"
+        ? ([...new Set(scriptsResult.data.map((script) => script.sourceFormat).filter(Boolean))] as string[])
+        : undefined;
 }
