@@ -6,9 +6,10 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import { useFetch, type UseFetchResult } from "@/hooks/useFetch.ts";
-import { FileCog, Rocket, Play, LoaderCircle } from "lucide-react";
+import { FileCog, Rocket, Play, LoaderCircle, FileText } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { EmptyCard } from "@/utils/emptyCard.tsx";
+import LogsDialog from "@/dialogs/logs/logsDialog.tsx";
 
 type ModuleMetadata = {
     filename: string;
@@ -19,20 +20,21 @@ type ModuleMetadata = {
     description: string | undefined;
 };
 
-export type ScriptRunResult = {
+export type RunResult = {
     path: string;
+    name: string;
     status: "running" | "success" | "error";
     lastUpdated: Date;
     logs: string[];
 };
 
-export type ScriptRunResultsMap = Map<string, ScriptRunResult>;
+export type ScriptRunResultsMap = Map<string, RunResult>;
 
-type SetScriptRunResults = (value: (prev: ScriptRunResultsMap) => ScriptRunResultsMap) => void;
+type SetRunResults = (value: (prev: ScriptRunResultsMap) => ScriptRunResultsMap) => void;
 
 type ModulesSectionProp = {
     scriptRunResults: ScriptRunResultsMap;
-    setScriptRunResults: SetScriptRunResults;
+    setScriptRunResults: SetRunResults;
 };
 
 export default function ModulesSection({ scriptRunResults, setScriptRunResults }: ModulesSectionProp) {
@@ -67,8 +69,8 @@ export default function ModulesSection({ scriptRunResults, setScriptRunResults }
                                             key={module.path}
                                             module={module}
                                             icon={FileCog}
-                                            scriptRunResult={scriptRunResults.get(module.path)}
-                                            setScriptRunResults={setScriptRunResults}
+                                            runResult={scriptRunResults.get(module.path)}
+                                            setRunResults={setScriptRunResults}
                                         />
                                     ))
                             ) : (
@@ -93,8 +95,8 @@ export default function ModulesSection({ scriptRunResults, setScriptRunResults }
                                             key={module.path}
                                             module={module}
                                             icon={Rocket}
-                                            scriptRunResult={scriptRunResults.get(module.path)}
-                                            setScriptRunResults={setScriptRunResults}
+                                            runResult={scriptRunResults.get(module.path)}
+                                            setRunResults={setScriptRunResults}
                                         />
                                     );
                                 })}
@@ -162,12 +164,11 @@ function SourceFormatCombobox({ selectedFormat, setSelectedFormat, sourceFormats
 type ModuleCardProps = {
     module: ModuleMetadata;
     icon: LucideIcon;
-    scriptRunResult: ScriptRunResult | undefined;
-    setScriptRunResults: SetScriptRunResults;
+    runResult: RunResult | undefined;
+    setRunResults: SetRunResults;
 };
 
-function ModuleCard({ module, icon: Icon, scriptRunResult, setScriptRunResults }: ModuleCardProps) {
-    const name = module.displayName || module.filename.replace(".groovy", "");
+function ModuleCard({ module, icon: Icon, runResult, setRunResults }: ModuleCardProps) {
     return (
         <Card className="w-full max-w-sm min-w-75 h-75 flex flex-col" key={module.filename}>
             <CardHeader>
@@ -175,17 +176,29 @@ function ModuleCard({ module, icon: Icon, scriptRunResult, setScriptRunResults }
                     <div className="bg-muted rounded-xl p-2.5">
                         <Icon className="w-6 h-6" />
                     </div>
-                    {name}
+                    {getName(module)}
                 </CardTitle>
             </CardHeader>
             <CardContent className="text-muted-foreground">{module.description}</CardContent>
-            <CardFooter className="flex justify-center mt-auto">
-                <Button
-                    className="w-50"
-                    type={"submit"}
-                    onClick={() => handleExecuteModule(module.path, setScriptRunResults)}
-                >
-                    {scriptRunResult?.status === "running" ? (
+            <CardFooter className="flex flex-col gap-4 justify-center mt-auto">
+                {(runResult?.status === "success" || runResult?.status === "error") && (
+                    <div className="flex justify-between items-center w-full">
+                        <div className="text-muted-foreground text-xs">
+                            {`Last run: ${runResult.lastUpdated.toLocaleString()}`}
+                        </div>
+                        <LogsDialog
+                            trigger={
+                                <Button className="text-muted-foreground text-xs" variant={"ghost"}>
+                                    <FileText className="text-muted-foreground" />
+                                    View logs
+                                </Button>
+                            }
+                            runResult={runResult}
+                        />
+                    </div>
+                )}
+                <Button className="w-50" type={"submit"} onClick={() => handleExecuteModule(module, setRunResults)}>
+                    {runResult?.status === "running" ? (
                         <>
                             <LoaderCircle className="animate-spin" />
                             Processing...
@@ -202,9 +215,12 @@ function ModuleCard({ module, icon: Icon, scriptRunResult, setScriptRunResults }
     );
 }
 
-async function handleExecuteModule(path: string, setScriptRunResults: SetScriptRunResults): Promise<void> {
-    setScriptRunResults((prev) =>
-        new Map(prev).set(path, { path, status: "running", lastUpdated: new Date(), logs: [] }),
+async function handleExecuteModule(module: ModuleMetadata, setRunResults: SetRunResults): Promise<void> {
+    const path = module.path;
+    const name = getName(module);
+
+    setRunResults((prev) =>
+        new Map(prev).set(path, { path, name, status: "running", lastUpdated: new Date(), logs: [] }),
     );
 
     try {
@@ -215,15 +231,19 @@ async function handleExecuteModule(path: string, setScriptRunResults: SetScriptR
         });
         const { logs } = await response.json();
 
-        setScriptRunResults((prev) =>
-            new Map(prev).set(path, { path, status: "success", lastUpdated: new Date(), logs }),
+        setRunResults((prev) =>
+            new Map(prev).set(path, { path, name, status: "success", lastUpdated: new Date(), logs }),
         );
     } catch (error) {
         console.error("Error executing module:", error);
-        setScriptRunResults((prev) =>
-            new Map(prev).set(path, { path, status: "error", lastUpdated: new Date(), logs: [String(error)] }),
+        setRunResults((prev) =>
+            new Map(prev).set(path, { path, name, status: "error", lastUpdated: new Date(), logs: [String(error)] }),
         );
     }
+}
+
+function getName(module: ModuleMetadata): string {
+    return module.displayName || module.filename.replace(".groovy", "");
 }
 
 function getSourceFormats(scriptsResult: UseFetchResult<ModuleMetadata[]>): string[] | undefined {

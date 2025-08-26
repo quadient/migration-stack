@@ -33,7 +33,7 @@ export default function SettingsDialog({ trigger, settingsResult }: SettingsDial
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Settings</DialogTitle>
-                    <DialogDescription className="text-gray-500">
+                    <DialogDescription className="text-muted-foreground">
                         Configure project and connection settings
                     </DialogDescription>
                 </DialogHeader>
