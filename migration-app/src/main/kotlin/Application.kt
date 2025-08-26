@@ -46,7 +46,6 @@ fun Application.module() {
                     call.respondText("Settings saved successfully")
                 }
             }
-
         }
     }
 
