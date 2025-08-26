@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.t
 
 export default function ChartsSection() {
     return (
-        <section className="flex-1 overflow-y-auto">
+        <section className="flex-1 min-h-0 overflow-y-auto">
             <ChartCard />
         </section>
     );

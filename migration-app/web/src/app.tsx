@@ -11,7 +11,7 @@ export default function App() {
     const settingsResult = useFetch<Settings>("/api/settings");
 
     return (
-        <div className="min-h-screen grid grid-rows-[auto_1fr] px-[15%]">
+        <div className="grid grid-rows-[auto_1fr] min-h-screen max-h-screen px-[15%]">
             <div>
                 <header className="pt-8">
                     <div className="flex justify-between items-center">

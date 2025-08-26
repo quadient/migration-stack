@@ -3,9 +3,12 @@ import { Button } from "@/components/ui/button.tsx";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command.tsx";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card.tsx";
-import React, { useState } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState } from "react";
 import { useFetch, type UseFetchResult } from "@/hooks/useFetch.ts";
 import { FileCog, Rocket, Play, LoaderCircle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { EmptyCard } from "@/utils/emptyCard.tsx";
 
 type ModuleMetadata = {
     filename: string;
@@ -24,36 +27,52 @@ export default function ModulesSection() {
     const sourceFormats = getSourceFormats(modulesResult);
 
     return (
-        <section className="flex-2 overflow-y-auto">
+        <ScrollArea className="flex-2">
             {modulesResult.status === "ok" && (
-                <div className="grid gap-4">
-                    <div className="flex justify-between items-center">
-                        <div className="flex flex-1 text-lg font-semibold">Parse</div>
-                        <SourceFormatCombobox
-                            selectedFormat={selectedFormat}
-                            setSelectedFormat={setSelectedFormat}
-                            sourceFormats={sourceFormats}
-                        />
-                    </div>
-                    {!!selectedFormat && (
-                        <ModuleRow
-                            modules={modulesResult.data.filter(
-                                (module) => module.category === "Parser" && module.sourceFormat === selectedFormat,
+                <div className="flex gap-6">
+                    <div className="flex flex-col flex-1 gap-4">
+                        <div className="flex items-center h-8 gap-4">
+                            <div className="text-lg font-semibold">Parse</div>
+                            <SourceFormatCombobox
+                                selectedFormat={selectedFormat}
+                                setSelectedFormat={setSelectedFormat}
+                                sourceFormats={sourceFormats}
+                            />
+                        </div>
+                        <div className="flex flex-row gap-4 flex-wrap">
+                            {selectedFormat ? (
+                                modulesResult.data
+                                    .filter(
+                                        (module) =>
+                                            module.category === "Parser" && module.sourceFormat === selectedFormat,
+                                    )
+                                    .map((module) => {
+                                        return <ModuleCard module={module} icon={FileCog} />;
+                                    })
+                            ) : (
+                                <EmptyCard icon={FileCog} message={"Select source format to see available parsers"} />
                             )}
-                            icon={<FileCog className="w-6 h-6" />}
-                        />
-                    )}
-                    <div className="flex flex-1 text-lg font-semibold">Deploy</div>
-                    <ModuleRow
-                        modules={modulesResult.data.filter(
-                            (module) =>
-                                module.category === "Deployment" && module.filename === "DeployDocumentObjects.groovy",
-                        )}
-                        icon={<Rocket className="w-6 h-6" />}
-                    />
+                        </div>
+                    </div>
+                    <div className="flex flex-col flex-1 gap-4">
+                        <div className="flex items-center h-8 gap-4">
+                            <div className="text-lg font-semibold">Deploy</div>
+                        </div>
+                        <div className="flex flex-row gap-4 flex-wrap">
+                            {modulesResult.data
+                                .filter(
+                                    (module) =>
+                                        module.category === "Deployment" &&
+                                        module.filename === "DeployDocumentObjects.groovy",
+                                )
+                                .map((module) => {
+                                    return <ModuleCard module={module} icon={Rocket} />;
+                                })}
+                        </div>
+                    </div>
                 </div>
             )}
-        </section>
+        </ScrollArea>
     );
 }
 
@@ -73,13 +92,13 @@ function SourceFormatCombobox({ selectedFormat, setSelectedFormat, sourceFormats
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-75 justify-between font-normal"
+                    className="w-50 justify-between font-normal"
                 >
                     {selectedFormat ?? "Select Source Format"}
                     <ChevronsUpDown className="opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-75 p-0">
+            <PopoverContent className="w-50 p-0">
                 {sourceFormats && (
                     <Command>
                         <CommandList>
@@ -113,17 +132,7 @@ function SourceFormatCombobox({ selectedFormat, setSelectedFormat, sourceFormats
     );
 }
 
-function ModuleRow({ modules, icon }: { modules: ModuleMetadata[]; icon: React.ReactNode }) {
-    return (
-        <div className="flex flex-wrap gap-4">
-            {modules.map((module) => {
-                return <ModuleCard module={module} icon={icon} />;
-            })}
-        </div>
-    );
-}
-
-function ModuleCard({ module, icon }: { module: ModuleMetadata; icon: React.ReactNode }) {
+function ModuleCard({ module, icon: Icon }: { module: ModuleMetadata; icon: LucideIcon }) {
     const [running, setRunning] = useState(false);
 
     const name = module.displayName || module.filename.replace(".groovy", "");
@@ -131,7 +140,9 @@ function ModuleCard({ module, icon }: { module: ModuleMetadata; icon: React.Reac
         <Card className="w-full max-w-sm h-75 flex flex-col" key={module.filename}>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg font-normal">
-                    <div className="bg-muted rounded-xl p-[10px]">{icon}</div>
+                    <div className="bg-muted rounded-xl p-2.5">
+                        <Icon className="w-6 h-6" />
+                    </div>
                     {name}
                 </CardTitle>
             </CardHeader>
