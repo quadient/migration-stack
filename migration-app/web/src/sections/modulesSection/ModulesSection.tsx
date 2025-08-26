@@ -19,7 +19,23 @@ type ModuleMetadata = {
     description: string | undefined;
 };
 
-export default function ModulesSection() {
+export type ScriptRunResult = {
+    path: string;
+    status: "running" | "success" | "error";
+    lastUpdated: Date;
+    logs: string[];
+};
+
+export type ScriptRunResultsMap = Map<string, ScriptRunResult>;
+
+type SetScriptRunResults = (value: (prev: ScriptRunResultsMap) => ScriptRunResultsMap) => void;
+
+type ModulesSectionProp = {
+    scriptRunResults: ScriptRunResultsMap;
+    setScriptRunResults: SetScriptRunResults;
+};
+
+export default function ModulesSection({ scriptRunResults, setScriptRunResults }: ModulesSectionProp) {
     const [selectedFormat, setSelectedFormat] = useState<string | undefined>(undefined);
 
     const modulesResult = useFetch<ModuleMetadata[]>("/api/scripts");
@@ -46,9 +62,15 @@ export default function ModulesSection() {
                                         (module) =>
                                             module.category === "Parser" && module.sourceFormat === selectedFormat,
                                     )
-                                    .map((module) => {
-                                        return <ModuleCard module={module} icon={FileCog} />;
-                                    })
+                                    .map((module) => (
+                                        <ModuleCard
+                                            key={module.path}
+                                            module={module}
+                                            icon={FileCog}
+                                            scriptRunResult={scriptRunResults.get(module.path)}
+                                            setScriptRunResults={setScriptRunResults}
+                                        />
+                                    ))
                             ) : (
                                 <EmptyCard icon={FileCog} message={"Select source format to see available parsers"} />
                             )}
@@ -66,7 +88,15 @@ export default function ModulesSection() {
                                         module.filename === "DeployDocumentObjects.groovy",
                                 )
                                 .map((module) => {
-                                    return <ModuleCard module={module} icon={Rocket} />;
+                                    return (
+                                        <ModuleCard
+                                            key={module.path}
+                                            module={module}
+                                            icon={Rocket}
+                                            scriptRunResult={scriptRunResults.get(module.path)}
+                                            setScriptRunResults={setScriptRunResults}
+                                        />
+                                    );
                                 })}
                         </div>
                     </div>
@@ -92,7 +122,7 @@ function SourceFormatCombobox({ selectedFormat, setSelectedFormat, sourceFormats
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-50 justify-between font-normal"
+                    className="w-60 justify-between font-normal"
                 >
                     {selectedFormat ?? "Select Source Format"}
                     <ChevronsUpDown className="opacity-50" />
@@ -116,10 +146,7 @@ function SourceFormatCombobox({ selectedFormat, setSelectedFormat, sourceFormats
                                     >
                                         {sourceFormat}
                                         <Check
-                                            className={
-                                                "ml-auto " +
-                                                (selectedFormat === sourceFormat ? "opacity-100" : "opacity-0")
-                                            }
+                                            className={`ml-auto ${selectedFormat === sourceFormat ? "opacity-100" : "opacity-0"}`}
                                         />
                                     </CommandItem>
                                 ))}
@@ -132,12 +159,17 @@ function SourceFormatCombobox({ selectedFormat, setSelectedFormat, sourceFormats
     );
 }
 
-function ModuleCard({ module, icon: Icon }: { module: ModuleMetadata; icon: LucideIcon }) {
-    const [running, setRunning] = useState(false);
+type ModuleCardProps = {
+    module: ModuleMetadata;
+    icon: LucideIcon;
+    scriptRunResult: ScriptRunResult | undefined;
+    setScriptRunResults: SetScriptRunResults;
+};
 
+function ModuleCard({ module, icon: Icon, scriptRunResult, setScriptRunResults }: ModuleCardProps) {
     const name = module.displayName || module.filename.replace(".groovy", "");
     return (
-        <Card className="w-full max-w-sm h-75 flex flex-col" key={module.filename}>
+        <Card className="w-full max-w-sm min-w-75 h-75 flex flex-col" key={module.filename}>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg font-normal">
                     <div className="bg-muted rounded-xl p-2.5">
@@ -148,8 +180,12 @@ function ModuleCard({ module, icon: Icon }: { module: ModuleMetadata; icon: Luci
             </CardHeader>
             <CardContent className="text-muted-foreground">{module.description}</CardContent>
             <CardFooter className="flex justify-center mt-auto">
-                <Button className="w-50" type={"submit"} onClick={() => handleExecuteModule(module.path, setRunning)}>
-                    {running ? (
+                <Button
+                    className="w-50"
+                    type={"submit"}
+                    onClick={() => handleExecuteModule(module.path, setScriptRunResults)}
+                >
+                    {scriptRunResult?.status === "running" ? (
                         <>
                             <LoaderCircle className="animate-spin" />
                             Processing...
@@ -166,25 +202,32 @@ function ModuleCard({ module, icon: Icon }: { module: ModuleMetadata; icon: Luci
     );
 }
 
+async function handleExecuteModule(path: string, setScriptRunResults: SetScriptRunResults): Promise<void> {
+    setScriptRunResults((prev) =>
+        new Map(prev).set(path, { path, status: "running", lastUpdated: new Date(), logs: [] }),
+    );
+
+    try {
+        const response = await fetch("/api/scripts/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path }),
+        });
+        const { logs } = await response.json();
+
+        setScriptRunResults((prev) =>
+            new Map(prev).set(path, { path, status: "success", lastUpdated: new Date(), logs }),
+        );
+    } catch (error) {
+        console.error("Error executing module:", error);
+        setScriptRunResults((prev) =>
+            new Map(prev).set(path, { path, status: "error", lastUpdated: new Date(), logs: [String(error)] }),
+        );
+    }
+}
+
 function getSourceFormats(scriptsResult: UseFetchResult<ModuleMetadata[]>): string[] | undefined {
     return scriptsResult.status === "ok"
         ? ([...new Set(scriptsResult.data.map((script) => script.sourceFormat).filter(Boolean))] as string[])
         : undefined;
-}
-
-async function handleExecuteModule(path: string, setRunning: (value: boolean) => void): Promise<void> {
-    setRunning(true);
-    try {
-        await fetch("/api/scripts/run", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ path: path }),
-        });
-    } catch (error) {
-        console.error("Error executing module:", error);
-    } finally {
-        setRunning(false);
-    }
 }
