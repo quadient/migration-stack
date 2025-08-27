@@ -1,8 +1,11 @@
 package com.quadient.migration
 
+import com.quadient.migration.api.Migration
+import com.quadient.migration.dto.StatisticsResponse
 import com.quadient.migration.route.rootModule
 import com.quadient.migration.route.scriptsModule
 import com.quadient.migration.service.*
+import com.quadient.migration.shared.DocumentObjectType
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
@@ -44,6 +47,24 @@ fun Application.module() {
                     val settings = call.receive<Settings>()
                     settingsService.setSettings(settings)
                     call.respondText("Settings saved successfully")
+                }
+            }
+
+            route("/statistics") {
+                get {
+                    val settings = settingsService.getSettings()
+
+                    try {
+                        val migration = Migration(settings.migrationConfig, settings.projectConfig)
+
+                        val documentObjects = migration.documentObjectRepository.listAll()
+                        val (unsupported, supported) = documentObjects.partition { it.type === DocumentObjectType.Unsupported }
+
+                        call.respond(StatisticsResponse(unsupported.size, supported.size))
+                    } catch (e: IllegalArgumentException) {
+                        log.warn("Cannot create migration instance: ${e.message}")
+                        call.respond(StatisticsResponse(null, null))
+                    }
                 }
             }
         }

@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button.tsx";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card.tsx";
+import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileCog, Rocket, Play, LoaderCircle, FileText } from "lucide-react";
+import { FileCog, Rocket, Play, LoaderCircle, FileText, CircleCheckBig, CircleX } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { EmptyCard } from "@/common/emptyCard.tsx";
 import LogsDialog from "@/dialogs/logs/logsDialog.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
 
 export type ModuleMetadata = {
     filename: string;
@@ -15,10 +16,12 @@ export type ModuleMetadata = {
     description: string | undefined;
 };
 
+type RunStatus = "running" | "success" | "error";
+
 export type RunResult = {
     path: string;
     name: string;
-    status: "running" | "success" | "error";
+    status: RunStatus;
     lastUpdated: Date;
     logs: string[];
 };
@@ -107,12 +110,17 @@ function ModuleCard({ module, icon: Icon, runResult, setRunResults }: ModuleCard
     return (
         <Card className="w-full max-w-sm min-w-75 h-75 flex flex-col" key={module.filename}>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg font-normal">
+                <CardTitle className="flex items-center gap-2 text-lg font-normal max-w-50">
                     <div className="bg-muted rounded-xl p-2.5">
                         <Icon className="w-6 h-6" />
                     </div>
                     {getName(module)}
                 </CardTitle>
+                {!!runResult && (
+                    <CardAction>
+                        <StatusBadge runStatus={runResult.status} />
+                    </CardAction>
+                )}
             </CardHeader>
             <CardContent className="text-muted-foreground">{module.description}</CardContent>
             <CardFooter className="flex flex-col gap-4 justify-center mt-auto">
@@ -150,6 +158,39 @@ function ModuleCard({ module, icon: Icon, runResult, setRunResults }: ModuleCard
     );
 }
 
+function StatusBadge({ runStatus }: { runStatus: RunStatus }) {
+    if (runStatus === "running") {
+        return (
+            <Badge className="bg-blue-100 text-blue-800">
+                <>
+                    <LoaderCircle className="animate-spin" />
+                    Running
+                </>
+            </Badge>
+        );
+    } else if (runStatus === "success") {
+        return (
+            <Badge className="bg-green-100 text-green-800">
+                <>
+                    <CircleCheckBig />
+                    Success
+                </>
+            </Badge>
+        );
+    } else if (runStatus === "error") {
+        return (
+            <Badge className="bg-red-100 text-red-800">
+                <>
+                    <CircleX />
+                    Error
+                </>
+            </Badge>
+        );
+    } else {
+        return null;
+    }
+}
+
 async function handleExecuteModule(module: ModuleMetadata, setRunResults: SetRunResults): Promise<void> {
     const path = module.path;
     const name = getName(module);
@@ -164,6 +205,15 @@ async function handleExecuteModule(module: ModuleMetadata, setRunResults: SetRun
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ path }),
         });
+        if (!response.ok) {
+            const errorMessage = await response.text();
+            const errorLog = `Module execution failed. Http status: ${response.status}. Error message: ${errorMessage}.`;
+            setRunResults((prev) =>
+                new Map(prev).set(path, { path, name, status: "error", lastUpdated: new Date(), logs: [errorLog] }),
+            );
+            return;
+        }
+
         const { logs } = await response.json();
 
         setRunResults((prev) =>

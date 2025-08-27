@@ -1,4 +1,4 @@
-import React from "react";
+import React, { type DependencyList } from "react";
 
 export type UseFetchResult<T> =
     | {
@@ -14,7 +14,7 @@ export type UseFetchResult<T> =
           status: "ok";
       };
 
-export function useFetch<T>(url: string, requestInit?: RequestInit): UseFetchResult<T> {
+export function useFetch<T>(url: string, requestInit?: RequestInit, deps?: DependencyList): UseFetchResult<T> {
     const [status, setStatus] = React.useState("loading");
     const [error, setError] = React.useState<unknown | null>(undefined);
     const [data, setData] = React.useState<T | undefined>(undefined);
@@ -62,7 +62,7 @@ export function useFetch<T>(url: string, requestInit?: RequestInit): UseFetchRes
             controller.abort();
             cancelled = true;
         };
-    }, [url]);
+    }, [url, ...(deps ?? [])]);
 
     return { data, setData, error, status } as UseFetchResult<T>;
 }

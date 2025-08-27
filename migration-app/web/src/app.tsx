@@ -8,7 +8,7 @@ import ModulesSection, {
     type ModuleMetadata,
     type ScriptRunResultsMap,
 } from "@/sections/modulesSection/ModulesSection.tsx";
-import ChartsSection from "@/sections/chartsSection/ChartsSection.tsx";
+import ChartsSection, { type TypeStatistics } from "@/sections/chartsSection/ChartsSection.tsx";
 import { useState } from "react";
 
 export default function App() {
@@ -16,6 +16,8 @@ export default function App() {
     const settingsResult = useFetch<Settings>("/api/settings");
 
     const [scriptRunResults, setScriptRunResults] = useState<ScriptRunResultsMap>(new Map());
+
+    const statisticsResult = useFetch<TypeStatistics>("/api/statistics", undefined, [scriptRunResults]);
 
     const sourceFormats = getSourceFormats(modulesResult);
 
@@ -41,7 +43,7 @@ export default function App() {
                 <Separator className="my-6" />
             </div>
             <main className="flex flex-1 min-h-0 gap-4">
-                <ChartsSection />
+                <ChartsSection statisticsResult={statisticsResult} />
                 {modulesResult.status === "ok" && settingsResult.status === "ok" && (
                     <ModulesSection
                         modules={modulesResult.data}
