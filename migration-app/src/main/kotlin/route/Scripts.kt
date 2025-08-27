@@ -1,10 +1,7 @@
 package com.quadient.migration.route
 
 import com.quadient.migration.logging.Logging
-import com.quadient.migration.service.GroovyService
-import com.quadient.migration.service.RunScriptResult
-import com.quadient.migration.service.ScriptDiscoveryService
-import com.quadient.migration.service.SettingsService
+import com.quadient.migration.service.*
 import com.quadient.migration.withPermitOrElse
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -19,6 +16,7 @@ fun Application.scriptsModule() {
     val settingsService by inject<SettingsService>()
     val scriptDiscoveryService by inject<ScriptDiscoveryService>()
     val groovyService by inject<GroovyService>()
+    val scriptJobService by inject<ScriptJobService>()
     val logging by inject<Logging>()
 
     val semaphore = Semaphore(1)
@@ -48,26 +46,35 @@ fun Application.scriptsModule() {
 
                         return@post
                     }) {
+                        val job = scriptJobService.create(script.path)
                         val (result, logs) = logging.capture(script.path) {
                             groovyService.runScript(script, settingsService.getSettings())
                         }
+                        job.appendLogs(logs)
 
                         when (result) {
                             is RunScriptResult.Ok -> {
+                                scriptJobService.store(job.success())
                                 call.respond(
                                     HttpStatusCode.OK, RunScriptResponse(
-                                        result = ScriptResult.SUCCESS, logs = logs, error = null
+                                        jobId = job.id.toString(),
+                                        result = ScriptResult.SUCCESS,
+                                        logs = logs,
+                                        error = null
                                     )
                                 )
                             }
 
                             is RunScriptResult.Err -> {
+                                val message = result.ex.message ?: "Unknown error"
                                 log.error("Script execution failed", result.ex)
+                                scriptJobService.store(job.error(message))
                                 call.respond(
                                     HttpStatusCode.OK, RunScriptResponse(
+                                        jobId = job.id.toString(),
                                         result = ScriptResult.ERROR,
                                         logs = logs,
-                                        error = result.ex.message ?: "Unknown error"
+                                        error = message
                                     )
                                 )
                             }
@@ -97,7 +104,7 @@ fun Application.scriptsModule() {
 data class RunScriptRequest(val path: String)
 
 @Serializable
-data class RunScriptResponse(val result: ScriptResult, val logs: List<String>, val error: String?)
+data class RunScriptResponse(val jobId: String, val result: ScriptResult, val logs: List<String>, val error: String?)
 
 @Serializable
 enum class ScriptResult {
