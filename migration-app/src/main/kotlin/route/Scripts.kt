@@ -38,34 +38,44 @@ fun Application.scriptsModule() {
                         return@post
                     }
 
-                    call.respondOutputStream(contentType = ContentType.Text.Plain) {
+                    semaphore.withPermitOrElse(onUnavailable = {
+                        call.respondText(
+                            "Another script module is currently running, please try again later.",
+                            status = HttpStatusCode.TooManyRequests
+                        )
+
+                        return@post
+                    }) {
                         val job = scriptJobService.create(script.path)
-                        val writer = this.bufferedWriter()
+                        call.response.header("job-id", job.id.toString())
+                        call.respondOutputStream(contentType = ContentType.Text.Plain) {
+                            val writer = this.bufferedWriter()
 
-                        val result = logging.capture(script.path, {
-                            job.appendLog(it)
-                            writer.write(it)
-                            writer.write("\n")
-                            writer.flush()
-                        }) {
-                            groovyService.runScript(script, settingsService.getSettings())
-                        }
-
-                        when (result) {
-                            is RunScriptResult.Ok -> {
-                                writer.write("result=success\n")
-                                scriptJobService.store(job.success())
+                            val result = logging.capture(script.path, {
+                                job.appendLog(it)
+                                writer.write(it)
+                                writer.write("\n")
+                                writer.flush()
+                            }) {
+                                groovyService.runScript(script, settingsService.getSettings())
                             }
 
-                            is RunScriptResult.Err -> {
-                                val message = result.ex.message ?: "Unknown error"
-                                log.error("Script execution failed", result.ex)
-                                writer.write("result=error,error=$message\n")
-                                scriptJobService.store(job.error(message))
-                            }
-                        }
+                            when (result) {
+                                is RunScriptResult.Ok -> {
+                                    writer.write("id=${job.id};result=success\n")
+                                    scriptJobService.store(job.success())
+                                }
 
-                        writer.close()
+                                is RunScriptResult.Err -> {
+                                    val message = result.ex.message ?: "Unknown error"
+                                    log.error("Script execution failed", result.ex)
+                                    writer.write("id=${job.id};result=error;error=$message\n")
+                                    scriptJobService.store(job.error(message))
+                                }
+                            }
+
+                            writer.close()
+                        }
                     }
                 }
             }
