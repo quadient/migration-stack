@@ -30,9 +30,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     install(ContentNegotiation) {
-        json(Json {
-            explicitNulls = false
-        })
+        json()
     }
     install(Koin) {
         slf4jLogger()
@@ -97,7 +95,7 @@ fun Application.module() {
                 }
 
                 route("/list") {
-                    get() {
+                    get {
                         val scriptPath = call.request.queryParameters["scriptPath"]
                         val jobs = if (scriptPath == null) {
                             scriptJobService.list()
