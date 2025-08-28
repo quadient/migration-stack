@@ -116,7 +116,7 @@ function ModuleCard({ module, icon: Icon, job, setJobs }: ModuleCardProps) {
             </CardHeader>
             <CardContent className="text-muted-foreground">{module.description}</CardContent>
             <CardFooter className="flex flex-col gap-4 justify-center mt-auto">
-                {(!!job) && (
+                {!!job && (
                     <div className="flex justify-between items-center w-full">
                         <div className="text-muted-foreground text-xs">
                             {`Last run: ${new Date(job.lastUpdated).toLocaleString()}`}
@@ -207,7 +207,7 @@ async function handleExecuteModule(
             console.log(line);
 
             if (line.startsWith("result=")) {
-                const resultValue = line.substring("result=".length).split(",")[0];
+                const resultValue = line.substring("result=".length).split(";")[0];
                 const status: RunStatus = resultValue === "success" ? "SUCCESS" : "ERROR";
 
                 setJobs((prev) =>
