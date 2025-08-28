@@ -21,11 +21,21 @@ class Logging {
         logbackLogger.addAppender(appender)
     }
 
-    suspend fun <T> capture(id: String, block: suspend () -> T): ResultWithLogs<T> {
+    suspend fun <T> capture(id: String, f: suspend () -> T): ResultWithLogs<T> {
         return try {
-            ResultWithLogs(runWithMdc(mdcId, id, block), appender.map[id] ?: emptyList())
+            ResultWithLogs(runWithMdc(mdcId, id, f), appender.map[id] ?: emptyList())
         } finally {
             appender.map.remove(id)
+        }
+    }
+
+    suspend fun <T> capture(id: String, onLog: (String) -> Unit, f: suspend () -> T): T {
+        return try {
+            appender.onLogCallbacks[id] = onLog
+            runWithMdc(mdcId, id, f)
+        } finally {
+            appender.map.remove(id)
+            appender.onLogCallbacks.remove(id)
         }
     }
 }

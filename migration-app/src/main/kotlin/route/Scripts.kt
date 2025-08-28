@@ -27,6 +27,49 @@ fun Application.scriptsModule() {
                 call.respond(scriptDiscoveryService.getScripts())
             }
 
+            route("/runs") {
+                post {
+                    val body = call.receive<RunScriptRequest>()
+                    val scripts = scriptDiscoveryService.getScripts()
+                    val script = scripts.firstOrNull { it.path == body.path }
+
+                    if (script == null) {
+                        call.respondText("Script not found", status = HttpStatusCode.NotFound)
+                        return@post
+                    }
+
+                    call.respondOutputStream(contentType = ContentType.Text.Plain) {
+                        val job = scriptJobService.create(script.path)
+                        val writer = this.bufferedWriter()
+
+                        val result = logging.capture(script.path, {
+                            job.appendLog(it)
+                            writer.write(it)
+                            writer.write("\n")
+                            writer.flush()
+                        }) {
+                            groovyService.runScript(script, settingsService.getSettings())
+                        }
+
+                        when (result) {
+                            is RunScriptResult.Ok -> {
+                                writer.write("result=success\n")
+                                scriptJobService.store(job.success())
+                            }
+
+                            is RunScriptResult.Err -> {
+                                val message = result.ex.message ?: "Unknown error"
+                                log.error("Script execution failed", result.ex)
+                                writer.write("result=error,error=$message\n")
+                                scriptJobService.store(job.error(message))
+                            }
+                        }
+
+                        writer.close()
+                    }
+                }
+            }
+
             route("/run") {
                 post {
                     val body = call.receive<RunScriptRequest>()

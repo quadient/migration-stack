@@ -10,10 +10,14 @@ import java.util.concurrent.ConcurrentHashMap
 
 class PerIdInMemoryAppender(private val id: String) : AppenderBase<ILoggingEvent>() {
     val map = ConcurrentHashMap<String, ConcurrentMutableList<String>>()
+    val onLogCallbacks = ConcurrentHashMap<String, (String) -> Unit>()
 
     override fun append(event: ILoggingEvent) {
-        map.getOrPut(event.mdcPropertyMap[id] ?: return) { ConcurrentMutableList() }
-            .add("${event.date} ${event.level} ${event.message}")
+        val id = event.mdcPropertyMap[id] ?: return
+        val log = "${event.date} ${event.level} ${event.message}"
+
+        onLogCallbacks.get(id)?.invoke(log)
+        map.getOrPut(id) { ConcurrentMutableList() }.add(log)
     }
 
     val ILoggingEvent.date: LocalDateTime

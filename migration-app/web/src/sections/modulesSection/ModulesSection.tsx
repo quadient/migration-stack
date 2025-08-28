@@ -200,11 +200,17 @@ async function handleExecuteModule(module: ModuleMetadata, setRunResults: SetRun
     );
 
     try {
-        const response = await fetch("/api/scripts/run", {
+        const response = await fetch("/api/scripts/runs", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ path }),
         });
+
+        // for await (const line of readLines(response.body!!)) {
+        //     console.log(line);
+        // }
+        // return;
+
         if (!response.ok) {
             const errorMessage = await response.text();
             const errorLog = `Module execution failed. Http status: ${response.status}. Error message: ${errorMessage}.`;
@@ -214,7 +220,7 @@ async function handleExecuteModule(module: ModuleMetadata, setRunResults: SetRun
             return;
         }
 
-        const { logs } = await response.json();
+        const { logs } = (await response.json()) as { logs: string[] };
 
         setRunResults((prev) =>
             new Map(prev).set(path, { path, name, status: "success", lastUpdated: new Date(), logs }),
@@ -224,6 +230,32 @@ async function handleExecuteModule(module: ModuleMetadata, setRunResults: SetRun
         setRunResults((prev) =>
             new Map(prev).set(path, { path, name, status: "error", lastUpdated: new Date(), logs: [String(error)] }),
         );
+    }
+}
+
+async function* readLines(stream: ReadableStream<Uint8Array>) {
+    const reader = stream.getReader();
+    let last = "";
+    try {
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) {
+                if (last !== "") {
+                    yield last;
+                }
+                break;
+            }
+            last += new TextDecoder().decode(value);
+            const parts = last.split("\n");
+
+            for (let i = 0; i < parts.length - 1; i += 1) {
+                yield parts[i];
+            }
+
+            last = parts[parts.length - 1];
+        }
+    } finally {
+        reader.releaseLock();
     }
 }
 
