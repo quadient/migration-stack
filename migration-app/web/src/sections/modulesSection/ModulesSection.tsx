@@ -9,9 +9,9 @@ import { Badge } from "@/components/ui/badge.tsx";
 import type { SuccessFetchResult } from "@/hooks/useFetch.ts";
 
 export type ModuleMetadata = {
+    id: string;
     filename: string;
     category: string;
-    path: string;
     displayName: string | undefined;
     sourceFormat: string | undefined;
     description: string | undefined;
@@ -20,7 +20,7 @@ export type ModuleMetadata = {
 type RunStatus = "RUNNING" | "SUCCESS" | "ERROR";
 
 export type Job = {
-    path: string;
+    moduleId: string;
     status: RunStatus;
     lastUpdated: Date;
     logs: string[] | undefined;
@@ -48,10 +48,10 @@ export default function ModulesSection({ modules, sourceFormat, jobsResult }: Mo
                                 )
                                 .map((module) => (
                                     <ModuleCard
-                                        key={module.path}
+                                        key={module.id}
                                         module={module}
                                         icon={FileCog}
-                                        job={jobsResult.data.find((it: Job) => it.path === module.path)}
+                                        job={jobsResult.data.find((it: Job) => it.moduleId === module.id)}
                                         setJobs={jobsResult.setData}
                                     />
                                 ))
@@ -74,10 +74,10 @@ export default function ModulesSection({ modules, sourceFormat, jobsResult }: Mo
                             .map((module) => {
                                 return (
                                     <ModuleCard
-                                        key={module.path}
+                                        key={module.id}
                                         module={module}
                                         icon={Rocket}
-                                        job={jobsResult.data.find((it: Job) => it.path === module.path)}
+                                        job={jobsResult.data.find((it: Job) => it.moduleId === module.id)}
                                         setJobs={jobsResult.setData}
                                     />
                                 );
@@ -188,18 +188,18 @@ async function handleExecuteModule(
     module: ModuleMetadata,
     setJobs: (value: ((prev: Job[]) => Job[]) | Job[]) => void,
 ): Promise<void> {
-    const path = module.path;
+    const id = module.id;
 
     try {
         const response = await fetch("/api/scripts/runs", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path }),
+            body: JSON.stringify({ id }),
         });
         setJobs((prev) => {
-            const newJob: Job = { path, status: "RUNNING", lastUpdated: new Date(), logs: [] };
-            return prev.some((job) => job.path === path)
-                ? prev.map((job) => (job.path === path ? newJob : job))
+            const newJob: Job = { moduleId: id, status: "RUNNING", lastUpdated: new Date(), logs: [] };
+            return prev.some((job) => job.moduleId === id)
+                ? prev.map((job) => (job.moduleId === id ? newJob : job))
                 : [...prev, newJob];
         });
 
@@ -211,11 +211,11 @@ async function handleExecuteModule(
                 const status: RunStatus = resultValue === "success" ? "SUCCESS" : "ERROR";
 
                 setJobs((prev) =>
-                    prev.map((it) => (it.path === path ? { ...it, status: status, lastUpdated: new Date() } : it)),
+                    prev.map((it) => (it.moduleId === id ? { ...it, status: status, lastUpdated: new Date() } : it)),
                 );
             } else {
                 setJobs((prev) =>
-                    prev.map((it) => (it.path === path ? { ...it, logs: [...(it.logs ?? []), line] } : it)),
+                    prev.map((it) => (it.moduleId === id ? { ...it, logs: [...(it.logs ?? []), line] } : it)),
                 );
             }
         }

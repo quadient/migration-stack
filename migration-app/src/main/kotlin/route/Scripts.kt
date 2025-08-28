@@ -31,7 +31,7 @@ fun Application.scriptsModule() {
                 post {
                     val body = call.receive<RunScriptRequest>()
                     val scripts = scriptDiscoveryService.getScripts()
-                    val script = scripts.firstOrNull { it.path == body.path }
+                    val script = scripts.firstOrNull { it.id == body.id }
 
                     if (script == null) {
                         call.respondText("Script not found", status = HttpStatusCode.NotFound)
@@ -46,12 +46,12 @@ fun Application.scriptsModule() {
 
                         return@post
                     }) {
-                        val job = scriptJobService.create(script.path)
+                        val job = scriptJobService.create(script.id)
                         call.response.header("job-id", job.id.toString())
                         call.respondOutputStream(contentType = ContentType.Text.Plain) {
                             val writer = this.bufferedWriter()
 
-                            val result = logging.capture(script.path, {
+                            val result = logging.capture(script.id.toString(), {
                                 job.appendLog(it)
                                 writer.write(it)
                                 writer.write("\n")
@@ -84,7 +84,7 @@ fun Application.scriptsModule() {
                 post {
                     val body = call.receive<RunScriptRequest>()
                     val scripts = scriptDiscoveryService.getScripts()
-                    val script = scripts.firstOrNull { it.path == body.path }
+                    val script = scripts.firstOrNull { it.id == body.id }
 
                     if (script == null) {
                         call.respondText("Script not found", status = HttpStatusCode.NotFound)
@@ -99,8 +99,8 @@ fun Application.scriptsModule() {
 
                         return@post
                     }) {
-                        val job = scriptJobService.create(script.path)
-                        val (result, logs) = logging.capture(script.path) {
+                        val job = scriptJobService.create(script.id)
+                        val (result, logs) = logging.capture(script.id.toString()) {
                             groovyService.runScript(script, settingsService.getSettings())
                         }
                         job.appendLogs(logs)
@@ -154,7 +154,7 @@ fun Application.scriptsModule() {
 }
 
 @Serializable
-data class RunScriptRequest(val path: String)
+data class RunScriptRequest(val id: ScriptId)
 
 @Serializable
 data class RunScriptResponse(val jobId: String, val result: ScriptResult, val logs: List<String>, val error: String?)

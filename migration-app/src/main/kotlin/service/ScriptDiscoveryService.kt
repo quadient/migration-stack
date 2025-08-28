@@ -8,6 +8,7 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import java.io.File
+import kotlin.io.encoding.Base64
 
 class ScriptDiscoveryService(val cfg: ApplicationConfig) {
     private val log = LoggerFactory.getLogger(Migration::class.java)!!
@@ -82,7 +83,14 @@ class ScriptDiscoveryService(val cfg: ApplicationConfig) {
 }
 
 @Serializable
+@JvmInline
+value class ScriptId(val value: String) {
+    override fun toString(): String = value
+}
+
+@Serializable
 data class ScriptMetadata(
+    val id: ScriptId,
     val filename: String,
     val path: String,
     val displayName: String?,
@@ -105,7 +113,10 @@ data class ScriptMetadata(
                 map[split[0].trim()] = split[1].trim()
             }
 
+            val id = Base64.encode((map["category"] + map["sourceFormat"] + filename).toByteArray())
+
             return ScriptMetadata(
+                id = ScriptId(id),
                 filename = filename,
                 path = path,
                 displayName = map["displayName"],

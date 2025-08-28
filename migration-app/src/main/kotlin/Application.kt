@@ -96,11 +96,12 @@ fun Application.module() {
 
                 route("/list") {
                     get {
-                        val scriptPath = call.request.queryParameters["scriptPath"]
-                        val jobs = if (scriptPath == null) {
+                        val moduleId = call.request.queryParameters["moduleId"]
+                        val jobs = if (moduleId  == null) {
                             scriptJobService.list()
                         } else {
-                            scriptJobService.list().filter { it.path == scriptPath }
+                            val id = ScriptId(moduleId)
+                            scriptJobService.list().filter { it.scriptId == id }
                         }
 
                         call.respond(jobs.map { it.toResponseWithoutLogs() })
