@@ -6,15 +6,19 @@ import { Separator } from "@/components/ui/separator.tsx";
 import type { Settings } from "@/dialogs/settings/settingsTypes.tsx";
 import ModulesSection, { type Job, type ModuleMetadata } from "@/sections/modulesSection/ModulesSection.tsx";
 import ChartsSection, { type TypeStatistics } from "@/sections/chartsSection/ChartsSection.tsx";
+import { useMemo } from "react";
 
 export default function App() {
     const modulesResult = useFetch<ModuleMetadata[]>("/api/scripts");
     const settingsResult = useFetch<Settings>("/api/settings");
     const jobsResult = useFetch<Job[]>("/api/job/list");
 
-    const jobsData = jobsResult.status === "ok" ? jobsResult.data : [];
+    const jobsMemo = useMemo(
+        () => JSON.stringify((jobsResult.status === "ok" ? jobsResult.data : []).map((it) => it.lastUpdated)),
+        [jobsResult],
+    );
 
-    const statisticsResult = useFetch<TypeStatistics>("/api/statistics", undefined, [jobsData]);
+    const statisticsResult = useFetch<TypeStatistics>("/api/statistics", undefined, [jobsMemo]);
 
     const sourceFormats = getSourceFormats(modulesResult);
 
