@@ -8,14 +8,15 @@ import {
 } from "@/components/ui/dialog.tsx";
 import { ScrollArea } from "@/components/ui/scroll-area.tsx";
 import { type ReactNode, useState } from "react";
-import type { RunResult } from "@/sections/modulesSection/ModulesSection.tsx";
+import type { Job } from "@/sections/modulesSection/ModulesSection.tsx";
 
 type LogsDialogProps = {
     trigger: ReactNode;
-    runResult: RunResult;
+    moduleName: string;
+    job: Job;
 };
 
-export default function LogsDialog({ trigger, runResult }: LogsDialogProps) {
+export default function LogsDialog({ trigger, moduleName, job }: LogsDialogProps) {
     const [open, setOpen] = useState(false);
 
     return (
@@ -23,13 +24,13 @@ export default function LogsDialog({ trigger, runResult }: LogsDialogProps) {
             <DialogTrigger asChild>{trigger}</DialogTrigger>
             <DialogContent style={{ width: "90%", height: "90%" }} className="sm:max-w-full p-10">
                 <DialogHeader>
-                    <DialogTitle>{`${runResult.name} - Execution Log`}</DialogTitle>
+                    <DialogTitle>{`${moduleName} - Execution Log`}</DialogTitle>
                     <DialogDescription className="text-muted-foreground">
                         Detailed log output from the last process execution
                     </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="break-all overflow-y-auto pr-4">
-                    {runResult.logs.map((log, idx) => (
+                    {job.logs?.map((log, idx) => (
                         <div key={idx} className="text-sm" style={{ marginBottom: "4px" }}>
                             {log}
                         </div>

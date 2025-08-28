@@ -1,5 +1,11 @@
 import React, { type DependencyList } from "react";
 
+export type SuccessFetchResult<T> = {
+    data: T;
+    setData: (value: ((prev: T) => T) | T) => void;
+    status: "ok";
+};
+
 export type UseFetchResult<T> =
     | {
           status: "error";
@@ -8,11 +14,7 @@ export type UseFetchResult<T> =
     | {
           status: "loading";
       }
-    | {
-          data: T;
-          setData: (value: ((prev: T) => T) | T) => void;
-          status: "ok";
-      };
+    | SuccessFetchResult<T>;
 
 export function useFetch<T>(url: string, requestInit?: RequestInit, deps?: DependencyList): UseFetchResult<T> {
     const [status, setStatus] = React.useState("loading");

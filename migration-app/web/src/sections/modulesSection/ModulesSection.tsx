@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import { EmptyCard } from "@/common/emptyCard.tsx";
 import LogsDialog from "@/dialogs/logs/logsDialog.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
+import type { SuccessFetchResult } from "@/hooks/useFetch.ts";
 
 export type ModuleMetadata = {
     filename: string;
@@ -16,33 +17,22 @@ export type ModuleMetadata = {
     description: string | undefined;
 };
 
-type RunStatus = "running" | "success" | "error";
+type RunStatus = "RUNNING" | "SUCCESS" | "ERROR";
 
-export type RunResult = {
+export type Job = {
     path: string;
-    name: string;
     status: RunStatus;
     lastUpdated: Date;
-    logs: string[];
+    logs: string[] | undefined;
 };
-
-export type ScriptRunResultsMap = Map<string, RunResult>;
-
-type SetRunResults = (value: (prev: ScriptRunResultsMap) => ScriptRunResultsMap) => void;
 
 type ModulesSectionProp = {
     modules: ModuleMetadata[];
     sourceFormat: string | undefined;
-    scriptRunResults: ScriptRunResultsMap;
-    setScriptRunResults: SetRunResults;
+    jobsResult: SuccessFetchResult<Job[]>;
 };
 
-export default function ModulesSection({
-    modules,
-    sourceFormat,
-    scriptRunResults,
-    setScriptRunResults,
-}: ModulesSectionProp) {
+export default function ModulesSection({ modules, sourceFormat, jobsResult }: ModulesSectionProp) {
     return (
         <ScrollArea className="flex-2">
             <div className="flex gap-6">
@@ -61,8 +51,8 @@ export default function ModulesSection({
                                         key={module.path}
                                         module={module}
                                         icon={FileCog}
-                                        runResult={scriptRunResults.get(module.path)}
-                                        setRunResults={setScriptRunResults}
+                                        job={jobsResult.data.find((it: Job) => it.path === module.path)}
+                                        setJobs={jobsResult.setData}
                                     />
                                 ))
                         ) : (
@@ -87,8 +77,8 @@ export default function ModulesSection({
                                         key={module.path}
                                         module={module}
                                         icon={Rocket}
-                                        runResult={scriptRunResults.get(module.path)}
-                                        setRunResults={setScriptRunResults}
+                                        job={jobsResult.data.find((it: Job) => it.path === module.path)}
+                                        setJobs={jobsResult.setData}
                                     />
                                 );
                             })}
@@ -102,32 +92,34 @@ export default function ModulesSection({
 type ModuleCardProps = {
     module: ModuleMetadata;
     icon: LucideIcon;
-    runResult: RunResult | undefined;
-    setRunResults: SetRunResults;
+    job: Job | undefined;
+    setJobs: (value: ((prevState: Job[]) => Job[]) | Job[]) => void;
 };
 
-function ModuleCard({ module, icon: Icon, runResult, setRunResults }: ModuleCardProps) {
+function ModuleCard({ module, icon: Icon, job, setJobs }: ModuleCardProps) {
+    const name = getName(module);
+
     return (
         <Card className="w-full max-w-sm min-w-75 h-75 flex flex-col" key={module.filename}>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg font-normal max-w-50">
+                <CardTitle className="flex items-center gap-2 font-normal max-w-3/5 break-words text-ellipsis leading-snug">
                     <div className="bg-muted rounded-xl p-2.5">
                         <Icon className="w-6 h-6" />
                     </div>
-                    {getName(module)}
+                    {name}
                 </CardTitle>
-                {!!runResult && (
+                {!!job && (
                     <CardAction>
-                        <StatusBadge runStatus={runResult.status} />
+                        <StatusBadge runStatus={job.status} />
                     </CardAction>
                 )}
             </CardHeader>
             <CardContent className="text-muted-foreground">{module.description}</CardContent>
             <CardFooter className="flex flex-col gap-4 justify-center mt-auto">
-                {(runResult?.status === "success" || runResult?.status === "error") && (
+                {(!!job) && (
                     <div className="flex justify-between items-center w-full">
                         <div className="text-muted-foreground text-xs">
-                            {`Last run: ${runResult.lastUpdated.toLocaleString()}`}
+                            {`Last run: ${new Date(job.lastUpdated).toLocaleString()}`}
                         </div>
                         <LogsDialog
                             trigger={
@@ -136,12 +128,13 @@ function ModuleCard({ module, icon: Icon, runResult, setRunResults }: ModuleCard
                                     View logs
                                 </Button>
                             }
-                            runResult={runResult}
+                            moduleName={name}
+                            job={job}
                         />
                     </div>
                 )}
-                <Button className="w-50" type={"submit"} onClick={() => handleExecuteModule(module, setRunResults)}>
-                    {runResult?.status === "running" ? (
+                <Button className="w-50" type={"submit"} onClick={() => handleExecuteModule(module, setJobs)}>
+                    {job?.status === "RUNNING" ? (
                         <>
                             <LoaderCircle className="animate-spin" />
                             Processing...
@@ -159,7 +152,7 @@ function ModuleCard({ module, icon: Icon, runResult, setRunResults }: ModuleCard
 }
 
 function StatusBadge({ runStatus }: { runStatus: RunStatus }) {
-    if (runStatus === "running") {
+    if (runStatus === "RUNNING") {
         return (
             <Badge className="bg-blue-100 text-blue-800">
                 <>
@@ -168,7 +161,7 @@ function StatusBadge({ runStatus }: { runStatus: RunStatus }) {
                 </>
             </Badge>
         );
-    } else if (runStatus === "success") {
+    } else if (runStatus === "SUCCESS") {
         return (
             <Badge className="bg-green-100 text-green-800">
                 <>
@@ -177,7 +170,7 @@ function StatusBadge({ runStatus }: { runStatus: RunStatus }) {
                 </>
             </Badge>
         );
-    } else if (runStatus === "error") {
+    } else if (runStatus === "ERROR") {
         return (
             <Badge className="bg-red-100 text-red-800">
                 <>
@@ -191,45 +184,43 @@ function StatusBadge({ runStatus }: { runStatus: RunStatus }) {
     }
 }
 
-async function handleExecuteModule(module: ModuleMetadata, setRunResults: SetRunResults): Promise<void> {
+async function handleExecuteModule(
+    module: ModuleMetadata,
+    setJobs: (value: ((prev: Job[]) => Job[]) | Job[]) => void,
+): Promise<void> {
     const path = module.path;
-    const name = getName(module);
-
-    setRunResults((prev) =>
-        new Map(prev).set(path, { path, name, status: "running", lastUpdated: new Date(), logs: [] }),
-    );
 
     try {
-        const response = await fetch("/api/scripts/run", {
+        const response = await fetch("/api/scripts/runs", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ path }),
         });
+        setJobs((prev) => {
+            const newJob: Job = { path, status: "RUNNING", lastUpdated: new Date(), logs: [] };
+            return prev.some((job) => job.path === path)
+                ? prev.map((job) => (job.path === path ? newJob : job))
+                : [...prev, newJob];
+        });
 
-        // for await (const line of readLines(response.body!!)) {
-        //     console.log(line);
-        // }
-        // return;
+        for await (const line of readLines(response.body!!)) {
+            console.log(line);
 
-        if (!response.ok) {
-            const errorMessage = await response.text();
-            const errorLog = `Module execution failed. Http status: ${response.status}. Error message: ${errorMessage}.`;
-            setRunResults((prev) =>
-                new Map(prev).set(path, { path, name, status: "error", lastUpdated: new Date(), logs: [errorLog] }),
-            );
-            return;
+            if (line.startsWith("result=")) {
+                const resultValue = line.substring("result=".length).split(",")[0];
+                const status: RunStatus = resultValue === "success" ? "SUCCESS" : "ERROR";
+
+                setJobs((prev) =>
+                    prev.map((it) => (it.path === path ? { ...it, status: status, lastUpdated: new Date() } : it)),
+                );
+            } else {
+                setJobs((prev) =>
+                    prev.map((it) => (it.path === path ? { ...it, logs: [...(it.logs ?? []), line] } : it)),
+                );
+            }
         }
-
-        const { logs } = (await response.json()) as { logs: string[] };
-
-        setRunResults((prev) =>
-            new Map(prev).set(path, { path, name, status: "success", lastUpdated: new Date(), logs }),
-        );
     } catch (error) {
         console.error("Error executing module:", error);
-        setRunResults((prev) =>
-            new Map(prev).set(path, { path, name, status: "error", lastUpdated: new Date(), logs: [String(error)] }),
-        );
     }
 }
 

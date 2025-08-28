@@ -131,7 +131,7 @@ function SettingsCombobox({ currentValue, onChange, options }: SourceFormatCombo
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-100 justify-between font-normal"
+                    className="w-full justify-between font-normal"
                 >
                     {currentValue ?? "Select value"}
                     <ChevronsUpDown className="opacity-50" />

@@ -4,20 +4,17 @@ import SettingsDialog from "./dialogs/settings/settingsDialog.tsx";
 import { useFetch, type UseFetchResult } from "./hooks/useFetch.ts";
 import { Separator } from "@/components/ui/separator.tsx";
 import type { Settings } from "@/dialogs/settings/settingsTypes.tsx";
-import ModulesSection, {
-    type ModuleMetadata,
-    type ScriptRunResultsMap,
-} from "@/sections/modulesSection/ModulesSection.tsx";
+import ModulesSection, { type Job, type ModuleMetadata } from "@/sections/modulesSection/ModulesSection.tsx";
 import ChartsSection, { type TypeStatistics } from "@/sections/chartsSection/ChartsSection.tsx";
-import { useState } from "react";
 
 export default function App() {
     const modulesResult = useFetch<ModuleMetadata[]>("/api/scripts");
     const settingsResult = useFetch<Settings>("/api/settings");
+    const jobsResult = useFetch<Job[]>("/api/job/list");
 
-    const [scriptRunResults, setScriptRunResults] = useState<ScriptRunResultsMap>(new Map());
+    const jobsData = jobsResult.status === "ok" ? jobsResult.data : [];
 
-    const statisticsResult = useFetch<TypeStatistics>("/api/statistics", undefined, [scriptRunResults]);
+    const statisticsResult = useFetch<TypeStatistics>("/api/statistics", undefined, [jobsData]);
 
     const sourceFormats = getSourceFormats(modulesResult);
 
@@ -44,12 +41,11 @@ export default function App() {
             </div>
             <main className="flex flex-1 min-h-0 gap-4">
                 <ChartsSection statisticsResult={statisticsResult} />
-                {modulesResult.status === "ok" && settingsResult.status === "ok" && (
+                {modulesResult.status === "ok" && settingsResult.status === "ok" && jobsResult.status === "ok" && (
                     <ModulesSection
                         modules={modulesResult.data}
                         sourceFormat={settingsResult.data.sourceFormat}
-                        scriptRunResults={scriptRunResults}
-                        setScriptRunResults={setScriptRunResults}
+                        jobsResult={jobsResult}
                     />
                 )}
             </main>

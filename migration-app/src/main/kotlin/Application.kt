@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalUuidApi::class)
+@file:OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
 
 package com.quadient.migration
 
@@ -17,10 +17,10 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import org.koin.ktor.ext.inject
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
+import kotlin.time.ExperimentalTime
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -117,23 +117,30 @@ fun Application.module() {
 }
 
 @Serializable
-data class JobResponse(val id: String, val status: Status, val logs: List<String>?, val error: String?)
+data class JobResponse(
+    val id: String,
+    val path: String,
+    val status: Status,
+    val lastUpdated: String,
+    val logs: List<String>?,
+    val error: String?
+)
 
 private fun Job.toResponse(): JobResponse {
     val id = this.id.toString()
     return when (this) {
-        is Job.Running -> JobResponse(id, Status.RUNNING, logs, null)
-        is Job.Success -> JobResponse(id, Status.SUCCESS, logs, null)
-        is Job.Error -> JobResponse(id, Status.ERROR, logs, error)
+        is Job.Running -> JobResponse(id, path, Status.RUNNING, lastUpdated.toString(), logs, null)
+        is Job.Success -> JobResponse(id, path, Status.SUCCESS, lastUpdated.toString(), logs, null)
+        is Job.Error -> JobResponse(id, path, Status.ERROR, lastUpdated.toString(), logs, error)
     }
 }
 
 private fun Job.toResponseWithoutLogs(): JobResponse {
     val id = this.id.toString()
     return when (this) {
-        is Job.Running -> JobResponse(id, Status.RUNNING, null, null)
-        is Job.Success -> JobResponse(id, Status.SUCCESS, null, null)
-        is Job.Error -> JobResponse(id, Status.ERROR, null, error)
+        is Job.Running -> JobResponse(id, path, Status.RUNNING, lastUpdated.toString(), null, null)
+        is Job.Success -> JobResponse(id, path, Status.SUCCESS, lastUpdated.toString(), null, null)
+        is Job.Error -> JobResponse(id, path, Status.ERROR, lastUpdated.toString(), null, error)
     }
 }
 
