@@ -21,7 +21,7 @@ export default function LogsDialog({ trigger, runResult }: LogsDialogProps) {
     return (
         <Dialog modal open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="sm:max-w-11/12 max-w-11/12 h-11/12 flex flex-col p-10">
+            <DialogContent style={{ width: "90%", height: "90%" }} className="sm:max-w-full p-10">
                 <DialogHeader>
                     <DialogTitle>{`${runResult.name} - Execution Log`}</DialogTitle>
                     <DialogDescription className="text-muted-foreground">
