@@ -200,7 +200,7 @@ async function handleExecuteModule(module: ModuleMetadata, setRunResults: SetRun
     );
 
     try {
-        const response = await fetch("/api/scripts/runs", {
+        const response = await fetch("/api/scripts/run", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ path }),
