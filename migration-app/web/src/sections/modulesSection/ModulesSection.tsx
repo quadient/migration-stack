@@ -36,7 +36,7 @@ export default function ModulesSection({ modules, sourceFormat, jobsResult }: Mo
                                         key={module.id}
                                         module={module}
                                         icon={FileCog}
-                                        job={jobsResult.data.find((it: Job) => it.moduleId === module.id)}
+                                        job={getLatestJobForModule(jobsResult, module)}
                                         setJobs={jobsResult.setData}
                                     />
                                 ))
@@ -62,7 +62,7 @@ export default function ModulesSection({ modules, sourceFormat, jobsResult }: Mo
                                         key={module.id}
                                         module={module}
                                         icon={Rocket}
-                                        job={jobsResult.data.find((it: Job) => it.moduleId === module.id)}
+                                        job={getLatestJobForModule(jobsResult, module)}
                                         setJobs={jobsResult.setData}
                                     />
                                 );
@@ -72,6 +72,12 @@ export default function ModulesSection({ modules, sourceFormat, jobsResult }: Mo
             </div>
         </ScrollArea>
     );
+}
+
+function getLatestJobForModule(jobsResult: SuccessFetchResult<Job[]>, module: ModuleMetadata) {
+    return jobsResult.data
+        .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
+        .find((it: Job) => it.moduleId === module.id);
 }
 
 type ModuleCardProps = {
