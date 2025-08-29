@@ -76,8 +76,11 @@ export default function ModulesSection({ modules, sourceFormat, jobsResult }: Mo
 
 function getLatestJobForModule(jobsResult: SuccessFetchResult<Job[]>, module: ModuleMetadata) {
     return jobsResult.data
-        .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime())
-        .find((it: Job) => it.moduleId === module.id);
+        .filter((job) => job.moduleId === module.id)
+        .reduce(
+            (latest, job) => (!latest || new Date(job.lastUpdated) > new Date(latest.lastUpdated) ? job : latest),
+            undefined as Job | undefined,
+        );
 }
 
 type ModuleCardProps = {
