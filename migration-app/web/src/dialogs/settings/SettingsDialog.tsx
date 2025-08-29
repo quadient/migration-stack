@@ -18,16 +18,21 @@ import { ProjectSettingsForm } from "@/dialogs/settings/ProjectSettingsForm.tsx"
 import { ConnectionSettingsForm } from "@/dialogs/settings/ConnectionSettingsForm.tsx";
 import { AdvancedSettingsForm } from "@/dialogs/settings/AdvancedSettingsForm.tsx";
 
-import type { UseFetchResult } from "@/hooks/useFetch.ts";
-
 type SettingsDialogProps = {
     trigger: ReactNode;
-    settingsResult: UseFetchResult<Settings>;
     sourceFormats: string[] | undefined;
+    loadedSettings: Settings;
+    setLoadedSettings: (value: ((prev: Settings) => Settings) | Settings) => void;
 };
 
-export default function SettingsDialog({ trigger, settingsResult, sourceFormats }: SettingsDialogProps) {
+export default function SettingsDialog({
+    trigger,
+    sourceFormats,
+    loadedSettings,
+    setLoadedSettings,
+}: SettingsDialogProps) {
     const [open, setOpen] = useState(false);
+    const [settings, setSettings] = useState(loadedSettings);
 
     return (
         <Dialog modal open={open} onOpenChange={setOpen}>
@@ -39,58 +44,53 @@ export default function SettingsDialog({ trigger, settingsResult, sourceFormats 
                         Configure project and connection settings
                     </DialogDescription>
                 </DialogHeader>
-                {settingsResult.status === "ok" && settingsResult.data && (
-                    <>
-                        <Tabs defaultValue="project">
-                            <TabsList>
-                                <TabsTrigger value="project">Project</TabsTrigger>
-                                <TabsTrigger value="connections">Connections</TabsTrigger>
-                                <TabsTrigger value="advanced">Advanced</TabsTrigger>
-                            </TabsList>
-                            <ScrollArea className="h-[500px] pr-4">
-                                <TabsContent value="project">
-                                    <ProjectSettingsForm
-                                        settings={settingsResult.data}
-                                        setSettings={settingsResult.setData}
-                                        sourceFormats={sourceFormats}
-                                    />
-                                </TabsContent>
-                                <TabsContent value="connections">
-                                    <ConnectionSettingsForm
-                                        settings={settingsResult.data}
-                                        setSettings={settingsResult.setData}
-                                    />
-                                </TabsContent>
-                                <TabsContent value="advanced">
-                                    <AdvancedSettingsForm
-                                        settings={settingsResult.data}
-                                        setSettings={settingsResult.setData}
-                                    />
-                                </TabsContent>
-                            </ScrollArea>
-                        </Tabs>
-                        <DialogFooter className="mt-6">
-                            <DialogClose asChild>
-                                <Button variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button
-                                type={"submit"}
-                                onClick={() => {
-                                    setOpen(false);
-                                    return onSaveChanges(settingsResult.data);
-                                }}
-                            >
-                                Save Changes
-                            </Button>
-                        </DialogFooter>
-                    </>
-                )}
+                <>
+                    <Tabs defaultValue="project">
+                        <TabsList>
+                            <TabsTrigger value="project">Project</TabsTrigger>
+                            <TabsTrigger value="connections">Connections</TabsTrigger>
+                            <TabsTrigger value="advanced">Advanced</TabsTrigger>
+                        </TabsList>
+                        <ScrollArea className="h-[500px] pr-4">
+                            <TabsContent value="project">
+                                <ProjectSettingsForm
+                                    settings={settings}
+                                    setSettings={setSettings}
+                                    sourceFormats={sourceFormats}
+                                />
+                            </TabsContent>
+                            <TabsContent value="connections">
+                                <ConnectionSettingsForm settings={settings} setSettings={setSettings} />
+                            </TabsContent>
+                            <TabsContent value="advanced">
+                                <AdvancedSettingsForm settings={settings} setSettings={setSettings} />
+                            </TabsContent>
+                        </ScrollArea>
+                    </Tabs>
+                    <DialogFooter className="mt-6">
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button
+                            type={"submit"}
+                            onClick={() => {
+                                setOpen(false);
+                                return onSaveChanges(settings, setLoadedSettings);
+                            }}
+                        >
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </>
             </DialogContent>
         </Dialog>
     );
 }
 
-async function onSaveChanges(settings: Settings | null): Promise<void> {
+async function onSaveChanges(
+    settings: Settings | null,
+    setLoadedSettings: (value: ((prev: Settings) => Settings) | Settings) => void,
+): Promise<void> {
     if (!settings) return;
 
     const response = await fetch("/api/settings", {
@@ -100,5 +100,7 @@ async function onSaveChanges(settings: Settings | null): Promise<void> {
     });
     if (!response.ok) {
         throw new Error("Failed to save settings");
+    } else {
+        setLoadedSettings(settings);
     }
 }

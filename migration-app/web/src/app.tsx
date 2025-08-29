@@ -15,12 +15,17 @@ export default function App() {
     const settingsResult = useFetch<Settings>("/api/settings");
     const jobsResult = useFetch<Job[]>("/api/job/list");
 
+    const settingsMemo = useMemo(
+        () => (settingsResult.status === "ok" ? settingsResult.data.projectConfig.name : undefined),
+        [settingsResult],
+    );
+
     const jobsMemo = useMemo(
         () => JSON.stringify((jobsResult.status === "ok" ? jobsResult.data : []).map((it) => it.lastUpdated)),
         [jobsResult],
     );
 
-    const statisticsResult = useFetch<TypeStatistics>("/api/statistics", undefined, [jobsMemo]);
+    const statisticsResult = useFetch<TypeStatistics>("/api/statistics", undefined, [jobsMemo, settingsMemo]);
 
     const sourceFormats = getSourceFormats(modulesResult);
 
@@ -30,16 +35,19 @@ export default function App() {
                 <header className="pt-8">
                     <div className="flex justify-between items-center">
                         <div className="text-xl font-bold tracking-tight">Asset Migration Console</div>
-                        <SettingsDialog
-                            settingsResult={settingsResult}
-                            trigger={
-                                <Button variant="outline">
-                                    <SettingsIcon className="w-4 h-4 mr-2" />
-                                    Settings
-                                </Button>
-                            }
-                            sourceFormats={sourceFormats}
-                        />
+                        {settingsResult.status === "ok" && (
+                            <SettingsDialog
+                                loadedSettings={settingsResult.data}
+                                setLoadedSettings={settingsResult.setData}
+                                trigger={
+                                    <Button variant="outline">
+                                        <SettingsIcon className="w-4 h-4 mr-2" />
+                                        Settings
+                                    </Button>
+                                }
+                                sourceFormats={sourceFormats}
+                            />
+                        )}
                     </div>
                     <div className="text-muted-foreground">Trigger processes for asset migration and deployment</div>
                 </header>
