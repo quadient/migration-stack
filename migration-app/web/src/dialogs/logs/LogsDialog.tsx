@@ -52,12 +52,19 @@ function LogDialogOpenContent({ moduleName, job, setJobs }: LogDialogBaseProps) 
     });
 
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
-        if (!scrollAreaRef.current) {
+        const viewport = scrollAreaRef?.current?.querySelector("[data-radix-scroll-area-viewport]");
+
+        if (!viewport) {
             return;
         }
 
-        const viewport = scrollAreaRef.current.querySelector("[data-radix-scroll-area-viewport]");
+        viewport.scrollTop = viewport.scrollHeight;
+    }, []);
+
+    useEffect(() => {
+        const viewport = scrollAreaRef?.current?.querySelector("[data-radix-scroll-area-viewport]");
         if (!viewport) {
             return;
         }
