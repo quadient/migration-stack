@@ -2,6 +2,7 @@ package com.quadient.migration.route
 
 import com.quadient.migration.logging.Logging
 import com.quadient.migration.service.*
+import com.quadient.migration.tryWriteLine
 import com.quadient.migration.withPermitOrElse
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -46,6 +47,7 @@ fun Application.scriptsModule() {
 
                         return@post
                     }) {
+
                         val job = scriptJobService.create(script.id)
                         call.response.header("job-id", job.id.toString())
                         call.respondOutputStream(contentType = ContentType.Text.Plain) {
@@ -53,23 +55,21 @@ fun Application.scriptsModule() {
 
                             val result = logging.capture(script.id.toString(), {
                                 job.appendLog(it)
-                                writer.write(it)
-                                writer.write("\n")
-                                writer.flush()
+                                writer.tryWriteLine(it)
                             }) {
                                 groovyService.dispatchScript(script, settingsService.getSettings())
                             }
 
                             when (result) {
                                 is RunScriptResult.Ok -> {
-                                    writer.write("id=${job.id};result=success\n")
+                                    writer.tryWriteLine("id=${job.id};result=success\n")
                                     scriptJobService.store(job.success())
                                 }
 
                                 is RunScriptResult.Err -> {
                                     val message = result.ex.message ?: "Unknown error"
                                     log.error("Script execution failed", result.ex)
-                                    writer.write("id=${job.id};result=error;error=$message\n")
+                                    writer.tryWriteLine("id=${job.id};result=error;error=$message\n")
                                     scriptJobService.store(job.error(message))
                                 }
                             }

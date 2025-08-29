@@ -16,7 +16,7 @@ class PerIdInMemoryAppender(private val id: String) : AppenderBase<ILoggingEvent
         val id = event.mdcPropertyMap[id] ?: return
         val log = "${event.date} ${event.level} ${event.message}"
 
-        onLogCallbacks.get(id)?.invoke(log)
+        onLogCallbacks[id]?.invoke(log)
         map.getOrPut(id) { ConcurrentMutableList() }.add(log)
     }
 
