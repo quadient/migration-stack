@@ -17,7 +17,8 @@ import { Button } from "@/components/ui/button.tsx";
 import { ProjectSettingsForm } from "@/dialogs/settings/projectSettingsForm.tsx";
 import { ConnectionSettingsForm } from "@/dialogs/settings/connectionSettingsForm.tsx";
 import { AdvancedSettingsForm } from "@/dialogs/settings/advancedSettingsForm.tsx";
-import { type UseFetchResult } from "@/hooks/useFetch.ts";
+
+import type { UseFetchResult } from "@/hooks/useFetch.ts";
 
 type SettingsDialogProps = {
     trigger: ReactNode;

@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import { EmptyCard } from "@/common/emptyCard.tsx";
 import LogsDialog from "@/dialogs/logs/logsDialog.tsx";
 import { Badge } from "@/components/ui/badge.tsx";
+
 import type { SuccessFetchResult } from "@/hooks/useFetch.ts";
 
 export type ModuleMetadata = {
@@ -20,6 +21,7 @@ export type ModuleMetadata = {
 type RunStatus = "RUNNING" | "SUCCESS" | "ERROR";
 
 export type Job = {
+    id: string;
     moduleId: string;
     status: RunStatus;
     lastUpdated: Date;
@@ -130,6 +132,7 @@ function ModuleCard({ module, icon: Icon, job, setJobs }: ModuleCardProps) {
                             }
                             moduleName={name}
                             job={job}
+                            setJobs={setJobs}
                         />
                     </div>
                 )}
@@ -188,34 +191,38 @@ async function handleExecuteModule(
     module: ModuleMetadata,
     setJobs: (value: ((prev: Job[]) => Job[]) | Job[]) => void,
 ): Promise<void> {
-    const id = module.id;
+    const moduleId = module.id;
 
     try {
         const response = await fetch("/api/scripts/runs", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id }),
+            body: JSON.stringify({ id: moduleId }),
         });
+        const jobId = response.headers.get("job-id");
+        if (!jobId) {
+            console.error("No job ID returned from server");
+            return;
+        }
+
         setJobs((prev) => {
-            const newJob: Job = { moduleId: id, status: "RUNNING", lastUpdated: new Date(), logs: [] };
-            return prev.some((job) => job.moduleId === id)
-                ? prev.map((job) => (job.moduleId === id ? newJob : job))
+            const newJob: Job = { id: jobId, moduleId: moduleId, status: "RUNNING", lastUpdated: new Date(), logs: [] };
+            return prev.some((job) => job.moduleId === moduleId)
+                ? prev.map((job) => (job.moduleId === moduleId ? newJob : job))
                 : [...prev, newJob];
         });
 
         for await (const line of readLines(response.body!!)) {
-            console.log(line);
-
-            if (line.startsWith("result=")) {
-                const resultValue = line.substring("result=".length).split(";")[0];
-                const status: RunStatus = resultValue === "success" ? "SUCCESS" : "ERROR";
-
+            if (isFinishLine(line, jobId)) {
+                const status = getJobStatusFromFinishLine(line);
                 setJobs((prev) =>
-                    prev.map((it) => (it.moduleId === id ? { ...it, status: status, lastUpdated: new Date() } : it)),
+                    prev.map((it) =>
+                        it.moduleId === moduleId ? { ...it, status: status, lastUpdated: new Date() } : it,
+                    ),
                 );
             } else {
                 setJobs((prev) =>
-                    prev.map((it) => (it.moduleId === id ? { ...it, logs: [...(it.logs ?? []), line] } : it)),
+                    prev.map((it) => (it.moduleId === moduleId ? { ...it, logs: [...(it.logs ?? []), line] } : it)),
                 );
             }
         }
@@ -252,4 +259,16 @@ async function* readLines(stream: ReadableStream<Uint8Array>) {
 
 function getName(module: ModuleMetadata): string {
     return module.displayName || module.filename.replace(".groovy", "");
+}
+
+function isFinishLine(line: string, jobId: string): boolean {
+    return line.startsWith(`id=${jobId};`);
+}
+
+function getJobStatusFromFinishLine(line: string): RunStatus {
+    const finishLineParts = line.split(";");
+    const resultKey = "result";
+    const resultPart = finishLineParts.find((it) => it.startsWith(resultKey));
+    const resultValue = resultPart?.substring(resultKey.length + 1);
+    return resultValue === "success" ? "SUCCESS" : "ERROR";
 }

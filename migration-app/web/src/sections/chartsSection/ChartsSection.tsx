@@ -1,7 +1,7 @@
 import { EmptyCard } from "@/common/emptyCard.tsx";
 import { FileCog } from "lucide-react";
-import type { UseFetchResult } from "@/hooks/useFetch.ts";
 import { Card } from "@/components/ui/card.tsx";
+import type { UseFetchResult } from "@/hooks/useFetch.ts";
 
 export type TypeStatistics = {
     unsupportedCount: number | null;

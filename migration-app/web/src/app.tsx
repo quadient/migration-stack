@@ -1,12 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Settings as SettingsIcon } from "lucide-react";
 import SettingsDialog from "./dialogs/settings/settingsDialog.tsx";
-import { useFetch, type UseFetchResult } from "./hooks/useFetch.ts";
 import { Separator } from "@/components/ui/separator.tsx";
 import type { Settings } from "@/dialogs/settings/settingsTypes.tsx";
 import ModulesSection, { type Job, type ModuleMetadata } from "@/sections/modulesSection/ModulesSection.tsx";
 import ChartsSection, { type TypeStatistics } from "@/sections/chartsSection/ChartsSection.tsx";
 import { useMemo } from "react";
+import { useFetch, type UseFetchResult } from "@/hooks/useFetch.ts";
 
 export default function App() {
     const modulesResult = useFetch<ModuleMetadata[]>("/api/scripts");
