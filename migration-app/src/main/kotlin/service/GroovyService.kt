@@ -3,11 +3,17 @@ package com.quadient.migration.service
 import com.quadient.migration.api.Migration
 import groovy.lang.Binding
 import groovy.lang.GroovyShell
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.Writer
 
 class GroovyService() {
+    suspend fun dispatchScript(script: ScriptMetadata, settings: Settings) = withContext(Dispatchers.IO) {
+        runScript(script, settings)
+    }
+
     fun runScript(script: ScriptMetadata, settings: Settings): RunScriptResult {
         return try {
             val migration = Migration(settings.migrationConfig, settings.projectConfig)

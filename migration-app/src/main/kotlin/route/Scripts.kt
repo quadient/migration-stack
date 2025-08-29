@@ -57,7 +57,7 @@ fun Application.scriptsModule() {
                                 writer.write("\n")
                                 writer.flush()
                             }) {
-                                groovyService.runScript(script, settingsService.getSettings())
+                                groovyService.dispatchScript(script, settingsService.getSettings())
                             }
 
                             when (result) {
@@ -101,7 +101,7 @@ fun Application.scriptsModule() {
                     }) {
                         val job = scriptJobService.create(script.id)
                         val (result, logs) = logging.capture(script.id.toString()) {
-                            groovyService.runScript(script, settingsService.getSettings())
+                            groovyService.dispatchScript(script, settingsService.getSettings())
                         }
                         job.appendLogs(logs)
 
