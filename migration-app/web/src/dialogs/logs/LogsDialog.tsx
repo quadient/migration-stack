@@ -8,7 +8,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog.tsx";
 import { ScrollArea } from "@/components/ui/scroll-area.tsx";
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import { useRequest } from "@/hooks/useRequest.ts";
 import { Card, CardContent } from "@/components/ui/card.tsx";
 import type { Job } from "@/types/job.ts";
@@ -51,6 +51,23 @@ function LogDialogOpenContent({ moduleName, job, setJobs }: LogDialogBaseProps) 
         condition: job.logs === undefined,
     });
 
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = () => {
+        if (!scrollAreaRef.current) {
+            return;
+        }
+
+        const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+            viewport.scrollTop = viewport.scrollHeight;
+        }
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [job?.logs]);
+
     return (
         <>
             <DialogHeader>
@@ -61,7 +78,7 @@ function LogDialogOpenContent({ moduleName, job, setJobs }: LogDialogBaseProps) 
             </DialogHeader>
             <Card className="flex flex-col h-full w-full overflow-hidden py-2">
                 <CardContent className="flex flex-1 overflow-hidden px-2">
-                    <ScrollArea style={{ overflowWrap: "break-word", wordBreak: "break-word" }} className="pr-4">
+                    <ScrollArea ref={scrollAreaRef} style={{ overflowWrap: "break-word", wordBreak: "break-word" }} className="pr-4">
                         {job.logs?.map((log, idx) => (
                             <div key={idx} className="text-sm" style={{ marginBottom: "4px" }}>
                                 {log}
