@@ -1,5 +1,6 @@
 import {
     Dialog,
+    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -13,6 +14,7 @@ import { useRequest } from "@/hooks/useRequest.ts";
 import { Card, CardContent } from "@/components/ui/card.tsx";
 import type { Job } from "@/types/job.ts";
 import { StatusBadge } from "@/common/StatusBadge.tsx";
+import { Button } from "@/components/ui/button.tsx";
 
 type LogsDialogProps = LogDialogBaseProps & {
     trigger: ReactNode;
@@ -30,7 +32,7 @@ export default function LogsDialog({ trigger, moduleName, job, setJobs, open, se
     return (
         <Dialog modal open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent style={{ width: "90%", height: "90%" }} className="grid grid-rows-[auto_1fr] sm:max-w-full">
+            <DialogContent className="h-11/12 w-11/12 grid grid-rows-[auto_1fr] sm:max-w-full">
                 <LogDialogOpenContent
                     moduleName={moduleName}
                     job={job}
@@ -91,16 +93,21 @@ function LogDialogOpenContent({ moduleName, job, setJobs }: LogDialogBaseProps) 
                         style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
                         className="pr-4"
                     >
-                        {job.logs?.map((log, idx) => (
-                            <div key={idx} className="text-sm" style={{ marginBottom: "4px" }}>
-                                {log}
-                            </div>
-                        ))}
+                        <div tabIndex={0}>
+                            {job.logs?.map((log, idx) => (
+                                <div key={idx} className="text-sm mb-1 pl-[1em] indent-[-1em]">
+                                    {log}
+                                </div>
+                            ))}
+                        </div>
                     </ScrollArea>
                 </CardContent>
             </Card>
-            <DialogFooter className="sm:justify-start">
+            <DialogFooter className="sm:justify-between">
                 <StatusBadge runStatus={job.status} />
+                <DialogClose asChild>
+                    <Button variant="outline">Cancel</Button>
+                </DialogClose>
             </DialogFooter>
         </>
     );
