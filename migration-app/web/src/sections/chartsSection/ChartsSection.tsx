@@ -1,4 +1,4 @@
-import { EmptyCard } from "@/common/emptyCard.tsx";
+import { EmptyCard } from "@/common/EmptyCard.tsx";
 import { FileCog } from "lucide-react";
 import { Card } from "@/components/ui/card.tsx";
 import type { UseFetchResult } from "@/hooks/useFetch.ts";

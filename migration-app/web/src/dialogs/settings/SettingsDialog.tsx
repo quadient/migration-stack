@@ -12,11 +12,11 @@ import {
 } from "@/components/ui/dialog.tsx";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { type Settings } from "@/dialogs/settings/settingsTypes.tsx";
+import { type Settings } from "@/dialogs/settings/settingsTypes.ts";
 import { Button } from "@/components/ui/button.tsx";
-import { ProjectSettingsForm } from "@/dialogs/settings/projectSettingsForm.tsx";
-import { ConnectionSettingsForm } from "@/dialogs/settings/connectionSettingsForm.tsx";
-import { AdvancedSettingsForm } from "@/dialogs/settings/advancedSettingsForm.tsx";
+import { ProjectSettingsForm } from "@/dialogs/settings/ProjectSettingsForm.tsx";
+import { ConnectionSettingsForm } from "@/dialogs/settings/ConnectionSettingsForm.tsx";
+import { AdvancedSettingsForm } from "@/dialogs/settings/AdvancedSettingsForm.tsx";
 
 import type { UseFetchResult } from "@/hooks/useFetch.ts";
 

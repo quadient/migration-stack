@@ -1,32 +1,15 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button.tsx";
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card.tsx";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileCog, Rocket, Play, LoaderCircle, FileText, CircleCheckBig, CircleX } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { EmptyCard } from "@/common/emptyCard.tsx";
-import LogsDialog from "@/dialogs/logs/logsDialog.tsx";
-import { Badge } from "@/components/ui/badge.tsx";
-
+import { FileCog, FileText, LoaderCircle, Play, Rocket } from "lucide-react";
+import { EmptyCard } from "@/common/EmptyCard.tsx";
+import LogsDialog from "@/dialogs/logs/LogsDialog.tsx";
 import type { SuccessFetchResult } from "@/hooks/useFetch.ts";
-
-export type ModuleMetadata = {
-    id: string;
-    filename: string;
-    category: string;
-    displayName: string | undefined;
-    sourceFormat: string | undefined;
-    description: string | undefined;
-};
-
-type RunStatus = "RUNNING" | "SUCCESS" | "ERROR";
-
-export type Job = {
-    id: string;
-    moduleId: string;
-    status: RunStatus;
-    lastUpdated: Date;
-    logs: string[] | undefined;
-};
+import type { ModuleMetadata } from "@/types/moduleMetadata.ts";
+import type { Job, RunStatus } from "@/types/job.ts";
+import { StatusBadge } from "@/common/StatusBadge.tsx";
 
 type ModulesSectionProp = {
     modules: ModuleMetadata[];
@@ -99,6 +82,8 @@ type ModuleCardProps = {
 };
 
 function ModuleCard({ module, icon: Icon, job, setJobs }: ModuleCardProps) {
+    const [logDialogOpen, setLogDialogOpen] = useState(false);
+
     const name = getName(module);
 
     return (
@@ -133,14 +118,21 @@ function ModuleCard({ module, icon: Icon, job, setJobs }: ModuleCardProps) {
                             moduleName={name}
                             job={job}
                             setJobs={setJobs}
+                            open={logDialogOpen}
+                            setOpen={setLogDialogOpen}
                         />
                     </div>
                 )}
-                <Button className="w-50" type={"submit"} onClick={() => handleExecuteModule(module, setJobs)}>
+                <Button
+                    className="w-50"
+                    type={"submit"}
+                    disabled={job?.status === "RUNNING"}
+                    onClick={() => handleExecuteModule(module, setJobs, setLogDialogOpen)}
+                >
                     {job?.status === "RUNNING" ? (
                         <>
                             <LoaderCircle className="animate-spin" />
-                            Processing...
+                            Executing...
                         </>
                     ) : (
                         <>
@@ -154,42 +146,10 @@ function ModuleCard({ module, icon: Icon, job, setJobs }: ModuleCardProps) {
     );
 }
 
-function StatusBadge({ runStatus }: { runStatus: RunStatus }) {
-    if (runStatus === "RUNNING") {
-        return (
-            <Badge className="bg-blue-100 text-blue-800">
-                <>
-                    <LoaderCircle className="animate-spin" />
-                    Running
-                </>
-            </Badge>
-        );
-    } else if (runStatus === "SUCCESS") {
-        return (
-            <Badge className="bg-green-100 text-green-800">
-                <>
-                    <CircleCheckBig />
-                    Success
-                </>
-            </Badge>
-        );
-    } else if (runStatus === "ERROR") {
-        return (
-            <Badge className="bg-red-100 text-red-800">
-                <>
-                    <CircleX />
-                    Error
-                </>
-            </Badge>
-        );
-    } else {
-        return null;
-    }
-}
-
 async function handleExecuteModule(
     module: ModuleMetadata,
     setJobs: (value: ((prev: Job[]) => Job[]) | Job[]) => void,
+    setLogDialogOpen: (value: boolean) => void,
 ): Promise<void> {
     const moduleId = module.id;
 
@@ -211,6 +171,7 @@ async function handleExecuteModule(
                 ? prev.map((job) => (job.moduleId === moduleId ? newJob : job))
                 : [...prev, newJob];
         });
+        setLogDialogOpen(true);
 
         for await (const line of readLines(response.body!!)) {
             if (isFinishLine(line, jobId)) {

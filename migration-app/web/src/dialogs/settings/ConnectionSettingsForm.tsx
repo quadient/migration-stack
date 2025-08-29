@@ -5,7 +5,7 @@ import {
     type IpsConfig,
     type MigrationConfig,
     type SettingsFormProps,
-} from "@/dialogs/settings/settingsTypes.tsx";
+} from "@/dialogs/settings/settingsTypes.ts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormProps) {

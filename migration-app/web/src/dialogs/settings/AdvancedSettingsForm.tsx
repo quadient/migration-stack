@@ -1,4 +1,4 @@
-import { type ProjectConfig, type SettingsFormProps } from "@/dialogs/settings/settingsTypes.tsx";
+import { type ProjectConfig, type SettingsFormProps } from "@/dialogs/settings/settingsTypes.ts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label.tsx";
 import { Input } from "@/components/ui/input.tsx";
