@@ -58,7 +58,7 @@ function LogDialogOpenContent({ moduleName, job, setJobs }: LogDialogBaseProps) 
             return;
         }
 
-        const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        const viewport = scrollAreaRef.current.querySelector("[data-radix-scroll-area-viewport]");
         if (viewport) {
             viewport.scrollTop = viewport.scrollHeight;
         }
@@ -78,7 +78,11 @@ function LogDialogOpenContent({ moduleName, job, setJobs }: LogDialogBaseProps) 
             </DialogHeader>
             <Card className="flex flex-col h-full w-full overflow-hidden py-2">
                 <CardContent className="flex flex-1 overflow-hidden px-2">
-                    <ScrollArea ref={scrollAreaRef} style={{ overflowWrap: "break-word", wordBreak: "break-word" }} className="pr-4">
+                    <ScrollArea
+                        ref={scrollAreaRef}
+                        style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+                        className="pr-4"
+                    >
                         {job.logs?.map((log, idx) => (
                             <div key={idx} className="text-sm" style={{ marginBottom: "4px" }}>
                                 {log}
