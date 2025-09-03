@@ -52,7 +52,7 @@ data class ScriptMetadata(
 
 val scripts: List<ScriptMetadata> =
     File("$rootDir/src/main/groovy").walk().asSequence().filter { it.isFile && it.extension == "groovy" }
-        .onEach { println("Parsing groovy file: ${it.name}") }.map {
+        .onEach { logger.debug("Parsing groovy file: ${it.name}") }.map {
             Pair(it.name, it.useLines { lines ->
                 lines.takeWhile { line ->
                     line.startsWith("//") || line.startsWith("package ") || line.isBlank()
@@ -62,16 +62,16 @@ val scripts: List<ScriptMetadata> =
             val lines = input.filter { !it.isBlank() }
 
             if (lines.count() <= 3 || (lines[0].startsWith("package") && lines[1] != "---")) {
-                println("Skipping script '$filename' without frontmatter")
+                logger.debug("Skipping script '$filename' without frontmatter")
                 return@mapNotNull null
             }
 
             if (lines[lines.count() - 1].startsWith("package") && lines[lines.count() - 2] != "---") {
-                println("Skipping script '$filename' without frontmatter")
+                logger.debug("Skipping script '$filename' without frontmatter")
                 return@mapNotNull null
             }
 
-            println("Parsing script frontmatter: $lines")
+            logger.debug("Parsing script frontmatter: $lines")
             val (pkg, rest) = when {
                 lines.firstOrNull()?.startsWith("package ") ?: false -> {
                     lines.first().removePrefix("package ") to lines.drop(1)
