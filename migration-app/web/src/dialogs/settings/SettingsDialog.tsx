@@ -18,6 +18,7 @@ import { parse } from "toml";
 import { ProjectSettingsForm } from "@/dialogs/settings/ProjectSettingsForm.tsx";
 import { ConnectionSettingsForm } from "@/dialogs/settings/ConnectionSettingsForm.tsx";
 import { AdvancedSettingsForm } from "@/dialogs/settings/AdvancedSettingsForm.tsx";
+import { Upload } from "lucide-react";
 
 type SettingsDialogProps = {
     trigger: ReactNode;
@@ -69,7 +70,7 @@ export default function SettingsDialog({
                         </ScrollArea>
                     </Tabs>
                     <DialogFooter className="flex mt-6 sm:justify-between">
-                        <FileUploadButton />
+                        <FileUploadButton settings={settings} setSettings={setSettings} />
                         <div className="flex gap-4">
                             <DialogClose asChild>
                                 <Button variant="outline">Cancel</Button>
@@ -91,7 +92,13 @@ export default function SettingsDialog({
     );
 }
 
-function FileUploadButton() {
+function FileUploadButton({
+    settings,
+    setSettings,
+}: {
+    settings: Settings;
+    setSettings: (value: ((prev: Settings) => Settings) | Settings) => void;
+}) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,21 +112,26 @@ function FileUploadButton() {
 
         try {
             const fileContent = await file.text();
-            console.log("file.text():", fileContent);
-            const parsed = parse(fileContent); // Deserialize TOML → JS object
-            console.log("parse():", parsed);
-            // setConfig(parsed);
-            // console.log("Parsed TOML config:", parsed);
+            const parsedFileContent = parse(fileContent);
+            const configType = detectConfigType(parsedFileContent, settings);
+            if (!configType) {
+                console.error("No matching fields found.");
+                return;
+            }
+
+            const wrappedFileContent = { [configType]: parsedFileContent } as Partial<Settings>;
+
+            setSettings((prev) => deepMerge(prev, wrappedFileContent));
         } catch (err) {
-            console.error("Error parsing TOML:", err);
-            alert("Failed to parse TOML file");
+            console.error("Error parsing .toml file:", err);
         }
     };
 
     return (
         <div className="flex items-center gap-2">
-            <Button variant="default" onClick={() => fileInputRef.current?.click()}>
-                Upload File
+            <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                <Upload />
+                Import Settings
             </Button>
             <input type="file" accept=".toml" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
         </div>
@@ -142,4 +154,44 @@ async function onSaveChanges(
     } else {
         setLoadedSettings(settings);
     }
+}
+
+function detectConfigType(uploadedSettings: Record<string, any>, currentSettings: Settings): keyof Settings | null {
+    const uploadedSettingsKeys = Object.keys(uploadedSettings);
+    const currentProjectKeys = Object.keys(currentSettings.projectConfig);
+    const currentMigrationKeys = Object.keys(currentSettings.migrationConfig);
+
+    for (const key of uploadedSettingsKeys) {
+        if (currentProjectKeys.includes(key)) return "projectConfig";
+        if (currentMigrationKeys.includes(key)) return "migrationConfig";
+    }
+
+    return null;
+}
+
+function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+    const result: T = { ...target };
+
+    for (const key in source) {
+        const sourceValue = source[key];
+        const targetValue = target[key];
+
+        if (sourceValue === undefined || sourceValue === null) {
+            continue;
+        }
+
+        if (
+            typeof sourceValue === "object" &&
+            !Array.isArray(sourceValue) &&
+            typeof targetValue === "object" &&
+            targetValue !== null &&
+            targetValue !== undefined
+        ) {
+            result[key] = deepMerge(targetValue, sourceValue);
+        } else {
+            result[key] = sourceValue as T[Extract<keyof T, string>];
+        }
+    }
+
+    return result;
 }
