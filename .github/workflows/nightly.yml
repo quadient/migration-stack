@@ -35,6 +35,6 @@ jobs:
       - name: Publish artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: migration-app-${{ env.MIG_VERSION }}.zip
-          path: migration-app/build/dist/migration-app-*.zip
+          name: migration-app-${{ env.MIG_VERSION }}
+          path: migration-app/build/tmp/dist
 
