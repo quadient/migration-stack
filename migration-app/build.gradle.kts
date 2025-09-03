@@ -77,6 +77,16 @@ tasks {
         into(workDir)
     }
 
+    register<Exec>("installFrontendDependencies") {
+        workingDir = File("${rootProject.rootDir}/web")
+
+        if (OperatingSystem.current().isWindows) {
+            commandLine("npm.cmd", "install")
+        } else {
+            commandLine("npm", "install")
+        }
+    }
+
     register<Exec>("buildFrontend") {
         workingDir = File("${rootProject.rootDir}/web")
 
@@ -85,6 +95,8 @@ tasks {
         } else {
             commandLine("npm", "run", "build")
         }
+
+        dependsOn("installFrontendDependencies")
     }
 
     register<Copy>("copyFrontend") {

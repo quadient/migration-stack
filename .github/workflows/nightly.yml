@@ -1,4 +1,4 @@
-name: Unit tests
+name: Nightly build
 
 on:
   schedule:
