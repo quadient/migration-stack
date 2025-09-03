@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import React, { type ReactNode, useRef } from "react";
 import { useState } from "react";
 import {
     Dialog,
@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type Settings } from "@/dialogs/settings/settingsTypes.ts";
 import { Button } from "@/components/ui/button.tsx";
+import { parse } from "toml";
 import { ProjectSettingsForm } from "@/dialogs/settings/ProjectSettingsForm.tsx";
 import { ConnectionSettingsForm } from "@/dialogs/settings/ConnectionSettingsForm.tsx";
 import { AdvancedSettingsForm } from "@/dialogs/settings/AdvancedSettingsForm.tsx";
@@ -67,23 +68,61 @@ export default function SettingsDialog({
                             </TabsContent>
                         </ScrollArea>
                     </Tabs>
-                    <DialogFooter className="mt-6">
-                        <DialogClose asChild>
-                            <Button variant="outline">Cancel</Button>
-                        </DialogClose>
-                        <Button
-                            type={"submit"}
-                            onClick={() => {
-                                setOpen(false);
-                                return onSaveChanges(settings, setLoadedSettings);
-                            }}
-                        >
-                            Save Changes
-                        </Button>
+                    <DialogFooter className="flex mt-6 sm:justify-between">
+                        <FileUploadButton />
+                        <div className="flex gap-4">
+                            <DialogClose asChild>
+                                <Button variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button
+                                type={"submit"}
+                                onClick={() => {
+                                    setOpen(false);
+                                    return onSaveChanges(settings, setLoadedSettings);
+                                }}
+                            >
+                                Save Changes
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </>
             </DialogContent>
         </Dialog>
+    );
+}
+
+function FileUploadButton() {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.name.endsWith(".toml")) {
+            console.error(`File '${file.name}' is not a .toml file.`);
+            return;
+        }
+
+        try {
+            const fileContent = await file.text();
+            console.log("file.text():", fileContent);
+            const parsed = parse(fileContent); // Deserialize TOML → JS object
+            console.log("parse():", parsed);
+            // setConfig(parsed);
+            // console.log("Parsed TOML config:", parsed);
+        } catch (err) {
+            console.error("Error parsing TOML:", err);
+            alert("Failed to parse TOML file");
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-2">
+            <Button variant="default" onClick={() => fileInputRef.current?.click()}>
+                Upload File
+            </Button>
+            <input type="file" accept=".toml" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+        </div>
     );
 }
 

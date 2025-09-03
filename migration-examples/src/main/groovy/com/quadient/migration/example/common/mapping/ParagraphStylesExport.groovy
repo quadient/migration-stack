@@ -15,7 +15,7 @@ import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-def migration = initMigration(this.binding.variables["args"])
+def migration = initMigration(this.binding)
 
 def exportFilePath = Paths.get("mapping", "${migration.projectConfig.name}-paragraph-styles.csv")
 run(migration, exportFilePath)

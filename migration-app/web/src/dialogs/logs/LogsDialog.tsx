@@ -103,7 +103,7 @@ function LogDialogOpenContent({ moduleName, job, setJobs }: LogDialogBaseProps) 
                     </ScrollArea>
                 </CardContent>
             </Card>
-            <DialogFooter className="sm:justify-between">
+            <DialogFooter className="sm:justify-between items-center">
                 <StatusBadge runStatus={job.status} />
                 <DialogClose asChild>
                     <Button variant="outline">Cancel</Button>
