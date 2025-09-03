@@ -53,7 +53,7 @@ export default function App() {
                 </header>
                 <Separator className="my-6" />
             </div>
-            <main className="flex flex-1 min-h-0 gap-4">
+            <main className="flex flex-1 justify-center min-h-0 gap-4">
                 <ChartsSection statisticsResult={statisticsResult} />
                 {modulesResult.status === "ok" && settingsResult.status === "ok" && jobsResult.status === "ok" && (
                     <ModulesSection

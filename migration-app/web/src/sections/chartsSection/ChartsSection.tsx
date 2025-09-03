@@ -23,7 +23,7 @@ type ChartsSectionProps = {
 
 export default function ChartsSection({ statisticsResult }: ChartsSectionProps) {
     return (
-        <section className="flex-1 min-h-0 overflow-y-auto">
+        <section className="flex flex-1 justify-center min-h-0 overflow-y-auto">
             {statisticsResult.status === "ok" &&
             statisticsResult.data.supportedCount !== undefined &&
             statisticsResult.data.supportedCount !== null &&
