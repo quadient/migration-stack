@@ -55,6 +55,11 @@ tasks {
     val workDir = "${layout.buildDirectory.get()}/tmp/dist"
     val distDir = "${layout.buildDirectory.get()}/dist"
 
+    register("printVersion") {
+        group = "distribution"
+        println(project.version)
+    }
+
     shadowJar {
         destinationDirectory = File(workDir)
         archiveFileName = "app.jar"
