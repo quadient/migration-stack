@@ -10,4 +10,5 @@ fun ApplicationConfig.getEnv() = when (propertyOrNull("ktor.development")?.getAs
     null -> Env.DEV
 }
 
-fun ApplicationConfig.getScriptDir() = tryGetString("scripts-dir") ?: "../migration-examples/src/main/groovy"
+fun ApplicationConfig.getScriptDir() = tryGetString("scripts-dir") ?: "modules"
+fun ApplicationConfig.getFeDir() = tryGetString("fe-dir") ?: "web"

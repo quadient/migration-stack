@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# Starts the migration application.
+# This script assumens that java 21 is installed and available in PATH.
+
+SCRIPT_PATH=$(
+    cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+    pwd -P
+)
+APP_PATH=$(dirname "$SCRIPT_PATH")
+
+pushd "$APP_PATH" || exit
+
+java -jar app.jar -config=application.conf

@@ -2,6 +2,7 @@ package com.quadient.migration.route
 
 import com.quadient.migration.Env
 import com.quadient.migration.getEnv
+import com.quadient.migration.getFeDir
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -34,7 +35,7 @@ fun Application.rootModule() {
                         if (!tryProxyCall(client, call)) {
                             log.trace("Dev server not running, falling back to prebuilt artifacts")
 
-                            val file = call.request.toStaticFile()
+                            val file = call.request.toStaticFile(environment.config.getFeDir())
                             if (!file.exists()) {
                                 if (buildMutex.isLocked) {
                                     log.warn("Received concurrent request while FE is building")
@@ -62,7 +63,7 @@ fun Application.rootModule() {
             }
 
             Env.PROD -> {
-                staticFiles("/", File("web/dist"))
+                staticFiles("/", File(environment.config.getFeDir()))
             }
         }
     }
@@ -120,12 +121,11 @@ private suspend fun Application.tryBuildFe(call: RoutingCall): Error? {
     }
 }
 
-private fun RoutingRequest.toStaticFile() = File(
+private fun RoutingRequest.toStaticFile(feDir: String) = File(
     if (this.uri == "/") {
-        "web/dist/index.html"
+        "$feDir/index.html"
     } else {
-        // TODO prevent path traversal
-        "web/dist${this.uri}"
+        "$feDir${this.uri}"
     }
 )
 
