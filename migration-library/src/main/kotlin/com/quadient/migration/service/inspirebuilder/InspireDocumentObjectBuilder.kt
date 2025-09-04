@@ -727,7 +727,7 @@ abstract class InspireDocumentObjectBuilder(
     private fun Literal.toScript(layout: Layout, variableStructure: VariableStructureModel): ScriptResult {
         return when (dataType) {
             LiteralDataType.Variable -> variableToScript(value, layout, variableStructure)
-            LiteralDataType.String -> ScriptResult.Success("String('$value')")
+            LiteralDataType.String -> ScriptResult.Success("String('${value.replace("\\", "\\\\").replace("\"", "\\\"")}')")
             LiteralDataType.Number -> ScriptResult.Success(value)
             LiteralDataType.Boolean -> ScriptResult.Success(value.lowercase().toBooleanStrict().toString())
         }
