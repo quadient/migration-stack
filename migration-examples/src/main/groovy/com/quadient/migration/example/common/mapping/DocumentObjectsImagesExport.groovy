@@ -7,17 +7,17 @@ package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.ResourceType
 
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 def migration = initMigration(this.binding)
 
-def docObjPath = Paths.get("mapping", "${migration.projectConfig.name}-document-objects.csv")
-def imagesPath = Paths.get("mapping", "${migration.projectConfig.name}-images.csv")
+def docObjPath = Mapping.csvPath(binding, migration.projectConfig.name, "document-objects")
+def imagesPath = Mapping.csvPath(binding, migration.projectConfig.name, "images")
 
 run(migration, docObjPath, imagesPath)
 

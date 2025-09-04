@@ -10,17 +10,17 @@ import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectFilterBuilder
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.shared.DocumentObjectType
 import groovy.transform.Field
 
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 @Field Migration migration = initMigration(this.binding)
 
-def areasFile = Paths.get("mapping", "${migration.projectConfig.name}-areas.csv")
+def areasFile = Mapping.csvPath(binding, migration.projectConfig.name, "areas")
 
 run(migration, areasFile)
 

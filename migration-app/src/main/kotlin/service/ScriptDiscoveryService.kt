@@ -1,17 +1,15 @@
 package com.quadient.migration.service
 
-import com.quadient.migration.api.Migration
 import com.quadient.migration.getScriptDir
+import com.quadient.migration.log
 import io.ktor.server.config.ApplicationConfig
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.Serializable
-import org.slf4j.LoggerFactory
 import java.io.File
 import kotlin.io.encoding.Base64
 
 class ScriptDiscoveryService(val cfg: ApplicationConfig) {
-    private val log = LoggerFactory.getLogger(Migration::class.java)!!
     val semaphore = Semaphore(1)
 
     private var _scripts: List<ScriptMetadata>? = null

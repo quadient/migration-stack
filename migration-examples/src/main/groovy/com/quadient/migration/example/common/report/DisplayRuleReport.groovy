@@ -8,16 +8,16 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Ref
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.example.common.util.PathUtil
 import groovy.transform.Field
 
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 @Field Migration migration = initMigration(this.binding)
 
-def dstFile = Paths.get("report", "${migration.projectConfig.name}-display-rules-report.csv")
+def dstFile  = PathUtil.dataDirPath(binding, "report", "${migration.projectConfig.name}-display-rules-report.csv")
 
 @Field static HashMap<String, DocObjAndRefs> docObjWithRefsCache = new HashMap()
 def allObjects = migration.documentObjectRepository.listAll()

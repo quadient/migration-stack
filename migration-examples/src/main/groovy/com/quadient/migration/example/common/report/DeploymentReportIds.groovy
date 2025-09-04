@@ -18,4 +18,4 @@ def documentObjects = Paths.get("deploy", "${migration.projectConfig.name}-docum
     .toList()
 
 def report = migration.deployClient.progressReport(documentObjects, null)
-DeploymentReportWriter.writeDeploymentReport(report, migration.projectConfig.name)
+DeploymentReportWriter.writeDeploymentReport(binding, report, migration.projectConfig.name)

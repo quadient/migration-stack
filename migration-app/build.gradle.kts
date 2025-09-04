@@ -41,6 +41,9 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation:${ktor_version}")
     implementation("io.ktor:ktor-serialization-kotlinx-json:${ktor_version}")
 
+    // Update only after ktor migrates to kotlinx-serialization 1.9.0
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
+
     implementation("ch.qos.logback:logback-classic:${logback_version}")
     implementation("org.slf4j:slf4j-api:2.0.17")
 

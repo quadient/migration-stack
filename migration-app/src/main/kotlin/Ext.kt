@@ -4,8 +4,6 @@ import kotlinx.coroutines.sync.Semaphore
 import org.slf4j.LoggerFactory
 import java.io.BufferedWriter
 
-val log = LoggerFactory.getLogger("Ext")!!
-
 suspend inline fun <T> Semaphore.withPermitOrElse(
     onUnavailable: suspend () -> Unit, action: suspend () -> T
 ): T? {
@@ -29,3 +27,7 @@ fun BufferedWriter.tryWriteLine(text: String) {
         log.warn("Failed to write to output stream", ex)
     }
 }
+
+val loggerCache = mutableMapOf<Class<*>, org.slf4j.Logger>()
+val Any.log: org.slf4j.Logger
+    get() = loggerCache.getOrPut(this::class.java) { LoggerFactory.getLogger(this::class.java)!! }

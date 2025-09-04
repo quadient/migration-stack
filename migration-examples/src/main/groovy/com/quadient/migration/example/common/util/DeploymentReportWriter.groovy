@@ -13,10 +13,10 @@ import java.time.format.DateTimeFormatter
 // next action(create, keep, overwrite, inline), next icm path, last icm path, error message, content,
 // deploy id, deploy timestamp
 
-static void writeDeploymentReport(Report report, String projectName) {
+static void writeDeploymentReport(Binding binding, Report report, String projectName) {
     def now = LocalDateTime.now()
     def filenameFriendly = now.format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmssSSS"))
-    def dstFile = Paths.get("report", "${projectName}-deployment-report-${filenameFriendly}.csv")
+    def dstFile  = PathUtil.dataDirPath(binding, "report", "${projectName}-deployment-report-${filenameFriendly}.csv")
 
     def mapper = new ObjectMapper()
     def file = dstFile.toFile()

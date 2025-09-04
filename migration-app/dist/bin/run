@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Starts the migration application.
-# This script assumens that java 21 is installed and available in PATH.
+# This script assumes that java 21 is installed and available in PATH.
 
 SCRIPT_PATH=$(
     cd "$(dirname "${BASH_SOURCE[0]}")" || exit

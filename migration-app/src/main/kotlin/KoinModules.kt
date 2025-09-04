@@ -1,6 +1,7 @@
 package com.quadient.migration
 
 import com.quadient.migration.logging.Logging
+import com.quadient.migration.service.FileStorageService
 import com.quadient.migration.service.GroovyService
 import com.quadient.migration.service.ScriptDiscoveryService
 import com.quadient.migration.service.ScriptJobService
@@ -17,4 +18,5 @@ fun appModules(env: ApplicationEnvironment) = module {
     singleOf(::GroovyService)
     singleOf(::Logging)
     singleOf(::ScriptJobService)
+    singleOf(::FileStorageService)
 }

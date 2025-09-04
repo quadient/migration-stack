@@ -6,6 +6,7 @@ package com.quadient.migration.example.common.report
 import com.quadient.migration.api.Migration
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
+import com.quadient.migration.example.common.util.PathUtil
 import groovy.transform.Field
 
 import java.nio.file.Paths
@@ -14,7 +15,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 @Field Migration migration = initMigration(this.binding)
 
-def dstFile = Paths.get("report", "${migration.projectConfig.name}-status-tracking-report.csv")
+def dstFile = PathUtil.dataDirPath(binding, "report", "${migration.projectConfig.name}-status-tracking-report.csv")
 
 def objects = migration.statusTrackingRepository.listAll()
 

@@ -10,4 +10,4 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 def migration = initMigration(this.binding)
 def report = migration.deployClient.progressReport(null)
 
-DeploymentReportWriter.writeDeploymentReport(report, migration.projectConfig.name)
+DeploymentReportWriter.writeDeploymentReport(binding, report, migration.projectConfig.name)

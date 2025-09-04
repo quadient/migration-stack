@@ -5,14 +5,13 @@
 package com.quadient.migration.example.common
 
 import com.quadient.migration.example.common.util.DeploymentReportWriter
-
-import java.nio.file.Paths
+import com.quadient.migration.example.common.util.PathUtil
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 def migration = initMigration(this.binding)
 
-def documentObjects = Paths.get("deploy", "${migration.projectConfig.name}-document-objects")
+def documentObjects = PathUtil.dataDirPath(binding, "deploy", "${migration.projectConfig.name}-document-objects")
         .toFile()
         .text
         .lines()
@@ -21,4 +20,4 @@ def documentObjects = Paths.get("deploy", "${migration.projectConfig.name}-docum
 migration.deployClient.deployDocumentObjects(documentObjects, false)
 
 def report = migration.deployClient.progressReport(documentObjects, null)
-DeploymentReportWriter.writeDeploymentReport(report, migration.projectConfig.name)
+DeploymentReportWriter.writeDeploymentReport(binding, report, migration.projectConfig.name)

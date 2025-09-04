@@ -5,7 +5,6 @@
 //! ---
 package com.quadient.migration.example.common.mapping
 
-import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.Migration
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
@@ -13,17 +12,16 @@ import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
 
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 def migration = initMigration(this.binding)
 
-def documentObjFilePath = Paths.get("mapping", "${migration.projectConfig.name}-document-objects.csv")
-def imagesFilePath = Paths.get("mapping", "${migration.projectConfig.name}-images.csv")
+def docObjPath  = Mapping.csvPath(binding, migration.projectConfig.name, "document-objects")
+def imagesPath  = Mapping.csvPath(binding, migration.projectConfig.name, "images")
 
-runDocumentObjects(migration, documentObjFilePath)
-runImages(migration, imagesFilePath)
+runDocumentObjects(migration, docObjPath)
+runImages(migration, imagesPath)
 
 static void runDocumentObjects(Migration migration, Path documentObjFilePath) {
     def deploymentId = UUID.randomUUID().toString()

@@ -17,15 +17,14 @@ import com.quadient.migration.example.common.util.Mapping
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 def migration = initMigration(this.binding)
 
-def file = Paths.get("mapping", "${migration.projectConfig.name}-text-styles.csv")
+def exportFilePath = Mapping.csvPath(binding, migration.projectConfig.name, "text-styles")
 
-run(migration, file)
+run(migration, exportFilePath )
 
 static void run(Migration migration, Path path) {
     def file = path.toFile().readLines()

@@ -9,15 +9,15 @@ import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.example.common.util.Mapping
 
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 def migration = initMigration(this.binding)
 
-def exportFilePath = Paths.get("mapping", "${migration.projectConfig.name}-paragraph-styles.csv")
+def exportFilePath = Mapping.csvPath(binding, migration.projectConfig.name, "paragraph-styles")
 run(migration, exportFilePath)
 
 static void run(Migration migration, Path exportFilePath) {

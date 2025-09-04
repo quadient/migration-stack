@@ -22,4 +22,4 @@ if (deploymentResult.errors.size() > 0) {
 }
 
 def report = migration.deployClient.progressReport(null)
-DeploymentReportWriter.writeDeploymentReport(report, migration.projectConfig.name)
+DeploymentReportWriter.writeDeploymentReport(binding, report, migration.projectConfig.name)
