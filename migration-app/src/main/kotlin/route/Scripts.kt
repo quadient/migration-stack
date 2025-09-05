@@ -68,7 +68,6 @@ fun Application.scriptsModule() {
 
                                 is RunScriptResult.Err -> {
                                     val message = result.ex.message ?: "Unknown error"
-                                    log.error("Script execution failed", result.ex)
                                     writer.tryWriteLine("id=${job.id};result=error;error=$message\n")
                                     scriptJobService.store(job.error(message))
                                 }

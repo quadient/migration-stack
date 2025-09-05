@@ -30,6 +30,7 @@ class GroovyService(val fileStorageService: FileStorageService) {
 
             RunScriptResult.Ok()
         } catch (ex: Exception) {
+            log.error("Script execution failed: ${ex.stackTraceToString()}")
             RunScriptResult.Err(ex)
         }
     }
