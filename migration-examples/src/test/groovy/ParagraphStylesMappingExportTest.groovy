@@ -63,14 +63,14 @@ class ParagraphStylesMappingExportTest {
             empty with targetId,,other,[],,,,,,,,,
             full,full,,[foo; bar],25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm
             full with targetId,full,other,[foo; bar],,,,,,,,,
-            empty overridden by def,newName,,[],50.8mm,50.8mm,50.8mm,50.8mm,50.8mm,Right,50.8mm,true,ExactFromPrevious,50.8mm
-            empty overridden by ref,newName,new other,[],,,,,,,,,
-            empty with targetId overridden by def,newName,,[],50.8mm,50.8mm,50.8mm,50.8mm,50.8mm,Right,50.8mm,true,ExactFromPrevious,50.8mm
-            empty with targetId overridden by ref,newName,new other,[],,,,,,,,,
-            full overridden by def,newName,,[],50.8mm,50.8mm,50.8mm,50.8mm,50.8mm,Right,50.8mm,true,ExactFromPrevious,50.8mm
-            full overridden by ref,newName,new other,[],,,,,,,,,
-            full with targetId overridden by def,newName,,[],50.8mm,50.8mm,50.8mm,50.8mm,50.8mm,Right,50.8mm,true,ExactFromPrevious,50.8mm
-            full with targetId overridden by ref,newName,new other,[],,,,,,,,,
+            empty overridden by def,,,[],,,,,,Left,,,Additional,0.0mm
+            empty overridden by ref,,,[],,,,,,Left,,,Additional,0.0mm
+            empty with targetId overridden by def,,other,[],,,,,,,,,
+            empty with targetId overridden by ref,,other,[],,,,,,,,,
+            full overridden by def,,,[],25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm
+            full overridden by ref,,other,[],,,,,,,,,
+            full with targetId overridden by def,,other,[],,,,,,,,,
+            full with targetId overridden by ref,,other,[],,,,,,,,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text)
     }

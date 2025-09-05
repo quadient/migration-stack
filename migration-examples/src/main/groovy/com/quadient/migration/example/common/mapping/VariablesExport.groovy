@@ -79,7 +79,6 @@ static void run(Migration migration, Path filePath) {
 
     def structureId = Mapping.variableStructureIdFromFileName(filePath.fileName.toString(), migration.projectConfig.name)
     def existingStructure = migration.variableStructureRepository.find(structureId)
-    def structureMapping = migration.mappingRepository.getVariableStructureMapping(structureId)
 
     def file = filePath.toFile()
     file.createParentDirectories()
@@ -87,14 +86,13 @@ static void run(Migration migration, Path filePath) {
         writer.writeLine("id,name,origin_locations,inspire_path,data_type")
 
         for (variable in variables) {
-            def mapping = migration.mappingRepository.getVariableMapping(variable.id)
-            def inspirePath = structureMapping?.mappings?.get(variable.id) ?: existingStructure?.structure?.get(variable.id) ?: ""
+            def inspirePath = existingStructure?.structure?.get(variable.id) ?: ""
 
             writer.write("${Csv.serialize(variable.id)},")
-            writer.write("${Csv.serialize(mapping?.name ?: variable.name)},")
+            writer.write("${Csv.serialize(variable.name)},")
             writer.write("${Csv.serialize(variable.originLocations)},")
             writer.write("${Csv.serialize(inspirePath)},")
-            writer.write("${Csv.serialize(mapping?.dataType ?: variable.dataType)}")
+            writer.write("${Csv.serialize(variable.dataType)}")
             writer.writeLine("")
         }
     }
