@@ -637,9 +637,13 @@ abstract class InspireDocumentObjectBuilder(
 
             rowModel.cells.forEach { cellModel ->
                 val cellFlow = buildDocumentContentAsSingleFlow(layout, variableStructure, cellModel.content)
+                val cellSimpleFlow = if (cellFlow.type === Flow.Type.SELECT_BY_INLINE_CONDITION) {
+                    layout.addFlow().setType(Flow.Type.SIMPLE).also { it.addParagraph().addText().appendFlow(cellFlow) }
+                } else cellFlow
+
                 row.addCell(
                     layout.addCell().setSpanLeft(cellModel.mergeLeft).setSpanUp(cellModel.mergeUp)
-                        .setFlowToNextPage(true).setFlow(cellFlow)
+                        .setFlowToNextPage(true).setFlow(cellSimpleFlow)
                 )
             }
         }
