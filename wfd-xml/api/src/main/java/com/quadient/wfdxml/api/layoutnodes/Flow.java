@@ -10,6 +10,8 @@ public interface Flow extends Node<Flow> {
 
     Flow setSectionFlow(boolean sectionFlow);
 
+    Type getType();
+
     Flow setType(Type type);
 
     Flow setVariable(Variable variable);

@@ -65,7 +65,6 @@ import com.quadient.migration.tools.shouldBeNull
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import kotlinx.datetime.Instant
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -1020,6 +1019,81 @@ class InteractiveDocumentObjectBuilderTest {
         val interactiveFlowContentFlowId = interactiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
         val interactiveFlowContentFlow = result["Flow"].last { it["Id"].textValue() == interactiveFlowContentFlowId }
         interactiveFlowContentFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("interactive flow text 1")
+    }
+    @Test
+    fun `first match in cell is wrapped in simple flow`() {
+        // given
+        val rule1 = mockRule(
+            aDisplayRule(
+                Literal("A", LiteralDataType.String), Equals, Literal("A", LiteralDataType.String), id = "rule1"
+            )
+        )
+        val rule2 = mockRule(
+            aDisplayRule(
+                Literal("B", LiteralDataType.String), Equals, Literal("B", LiteralDataType.String), id = "rule2"
+            )
+        )
+        val firstMatch = FirstMatchModel(
+            cases = listOf(
+                FirstMatchModel.CaseModel(
+                    displayRuleRef = DisplayRuleModelRef(rule1.id),
+                    content = listOf(aParagraph(aText(StringModel("first case")))),
+                    name = "First"
+                ),
+                FirstMatchModel.CaseModel(
+                    displayRuleRef = DisplayRuleModelRef(rule2.id),
+                    content = listOf(aParagraph(aText(StringModel("second case")))),
+                    name = "Second"
+                )
+            ),
+            default = listOf(aParagraph(aText(StringModel("default case"))))
+        )
+        val block = aBlock(
+            "B1", listOf(
+                TableModel(
+                    rows = listOf(
+                        aRow(
+                            listOf(
+                                aCell(firstMatch)
+                            )
+                        )
+                    ), columnWidths = listOf()
+                )
+            )
+        )
+
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val cellNode = result["Cell"].last()
+        val cellFlow = result["Flow"].last { it["Id"].textValue() == cellNode["FlowId"].textValue() }
+        cellFlow["Type"].textValue().shouldBeEqualTo("Simple")
+
+        val inlineCondFlowId = cellFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val inlineCondFlow = result["Flow"].last { it["Id"].textValue() == inlineCondFlowId }
+        inlineCondFlow["Type"].textValue().shouldBeEqualTo("InlCond")
+
+        val conditions = inlineCondFlow["Condition"]
+        conditions.size().shouldBeEqualTo(2)
+
+        val firstCaseFlowId = conditions[0][""].textValue()
+        val firstCase = result["Flow"].last { it["Id"].textValue() == firstCaseFlowId }
+
+        val firstCaseFlow = result["Flow"].last { it["Id"].textValue() == firstCase["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+        firstCaseFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("first case")
+
+        val secondCaseFlowId = conditions[1][""].textValue()
+        val secondCase = result["Flow"].last { it["Id"].textValue() == secondCaseFlowId }
+
+        val secondCaseFlow = result["Flow"].last { it["Id"].textValue() == secondCase["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+        secondCaseFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("second case")
+
+        val default = result["Flow"].last { it["Id"].textValue() == inlineCondFlow["Default"].textValue() }
+
+        val defaultFlow = result["Flow"].last { it["Id"].textValue() == default["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+        defaultFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("default case")
     }
 
     @Test

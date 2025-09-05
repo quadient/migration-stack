@@ -96,6 +96,29 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
     }
 
     @Override
+    public Flow.Type getType() {
+        return switch (type) {
+            case SIMPLE -> Flow.Type.SIMPLE;
+            case INTEGER -> Flow.Type.SELECT_BY_INTEGER;
+            case INTERVAL -> Flow.Type.SELECT_BY_INTERVAL;
+            case CONDITION -> Flow.Type.SELECT_BY_CONDITION;
+            case REPEATED -> Flow.Type.REPEATED;
+            case EXTERNAL -> Flow.Type.EXTERNAL;
+            case TEXT -> Flow.Type.SELECT_BY_TEXT;
+            case INL_COND -> Flow.Type.SELECT_BY_INLINE_CONDITION;
+            case FIRST_FITTING -> Flow.Type.FIRST_FITTING;
+            case FIRST_FITTING_AUTO -> Flow.Type.FIRST_FITTING_AUTO;
+            case VARIABLE_FORMATTED -> Flow.Type.VARIABLE_FORMATTED;
+            case OVERFLOWABLE_VARIABLE_FORMATTED -> Flow.Type.OVERFLOWABLE_VARIABLE_FORMATTED;
+            case CONTEXT -> Flow.Type.SELECT_BY_CONTENT;
+            case LANGUAGE -> Flow.Type.SELECT_BY_LANGUAGE;
+            case DIRECT_EXTERNAL -> Flow.Type.DIRECT_EXTERNAL;
+            case DYNAMIC_EXTERNAL -> Flow.Type.DYNAMIC_EXTERNAL;
+            case STRING -> Flow.Type.SELECT_BY_STRING;
+        };
+    }
+
+    @Override
     public FlowImpl setType(Flow.Type type) {
         switch (type) {
             case SIMPLE:
