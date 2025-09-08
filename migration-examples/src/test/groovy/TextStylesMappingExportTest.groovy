@@ -60,14 +60,14 @@ class TextStylesMappingExportTest {
             empty with targetId,,other,[],,,,,,,,,
             full,full,,[foo; bar],Arial,#ff0000,72.0pt,true,true,true,true,Superscript,10.0mm
             full with targetId,full,other,[foo; bar],,,,,,,,,
-            empty overridden by def,newName,,[],Iosevka,#00ff00,144.0pt,true,true,true,true,Subscript,20.0mm
-            empty overridden by ref,newName,new other,[],,,,,,,,,
-            empty with targetId overridden by def,newName,,[],Iosevka,#00ff00,144.0pt,true,true,true,true,Subscript,20.0mm
-            empty with targetId overridden by ref,newName,new other,[],,,,,,,,,
-            full overridden by def,newName,,[],Iosevka,#00ff00,144.0pt,true,true,true,true,Subscript,20.0mm
-            full overridden by ref,newName,new other,[],,,,,,,,,
-            full with targetId overridden by def,newName,,[],Iosevka,#00ff00,144.0pt,true,true,true,true,Subscript,20.0mm
-            full with targetId overridden by ref,newName,new other,[],,,,,,,,,
+            empty overridden by def,,,[],,,,false,false,false,false,None,
+            empty overridden by ref,,,[],,,,false,false,false,false,None,
+            empty with targetId overridden by def,,other,[],,,,,,,,,
+            empty with targetId overridden by ref,,other,[],,,,,,,,,
+            full overridden by def,,,[],Arial,#ff0000,72.0pt,true,true,true,true,Superscript,10.0mm
+            full overridden by ref,,other,[],,,,,,,,,
+            full with targetId overridden by def,,other,[],,,,,,,,,
+            full with targetId overridden by ref,,other,[],,,,,,,,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text)
     }

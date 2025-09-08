@@ -65,14 +65,13 @@ static void run(Migration migration, Path path) {
 }
 
 static String buildArea(Migration migration, Number idx, Area area, DocumentObject page, DocumentObject template) {
-    def mapping = migration.mappingRepository.getAreaMapping(page.id)
 
     def builder = new StringBuilder()
     builder.append(Csv.serialize(template?.id) + ",")
     builder.append(Csv.serialize(template?.name) + ",")
     builder.append(Csv.serialize(page.id) + ",")
     builder.append(Csv.serialize(page.name) + ",")
-    builder.append(Csv.serialize(mapping?.areas?.get(idx) ?: area.interactiveFlowName) + ",")
+    builder.append(Csv.serialize(area.interactiveFlowName) + ",")
     builder.append(Csv.serialize(area.position.x) + ",")
     builder.append(Csv.serialize(area.position.y) + ",")
     builder.append(Csv.serialize(area.position.width) + ",")

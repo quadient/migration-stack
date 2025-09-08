@@ -31,7 +31,6 @@ static void run(Migration migration, Path documentObjectsDstPath, Path imagesDst
     documentObjectsDstPath.toFile().withWriter { writer ->
         writer.writeLine("id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status")
         objects.each { obj ->
-            def mapping = migration.mappingRepository.getDocumentObjectMapping(obj.id)
             def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(
                     obj.id,
                     ResourceType.DocumentObject,
@@ -40,13 +39,13 @@ static void run(Migration migration, Path documentObjectsDstPath, Path imagesDst
 
             def builder = new StringBuilder()
             builder.append(Csv.serialize(obj.id))
-            builder.append("," + Csv.serialize(mapping.name ?: obj.name))
-            builder.append("," + Csv.serialize(mapping.type ?: obj.type))
-            builder.append("," + Csv.serialize(mapping.internal ?: obj.internal))
+            builder.append("," + Csv.serialize(obj.name))
+            builder.append("," + Csv.serialize(obj.type))
+            builder.append("," + Csv.serialize(obj.internal))
             builder.append("," + Csv.serialize(obj.originLocations))
-            builder.append("," + Csv.serialize(mapping.baseTemplate ?: obj.baseTemplate))
-            builder.append("," + Csv.serialize(mapping.targetFolder ?: obj.targetFolder))
-            builder.append("," + Csv.serialize(mapping.variableStructureRef ?: obj.variableStructureRef?.id))
+            builder.append("," + Csv.serialize(obj.baseTemplate))
+            builder.append("," + Csv.serialize(obj.targetFolder))
+            builder.append("," + Csv.serialize(obj.variableStructureRef?.id))
             builder.append("," + Csv.serialize(status.class.simpleName))
 
             writer.writeLine(builder.toString())
@@ -65,10 +64,10 @@ static void run(Migration migration, Path documentObjectsDstPath, Path imagesDst
 
             def builder = new StringBuilder()
             builder.append(Csv.serialize(obj.id))
-            builder.append("," + Csv.serialize(mapping?.name ?: obj.name))
-            builder.append("," + Csv.serialize(mapping?.sourcePath ?: obj.sourcePath))
+            builder.append("," + Csv.serialize(obj.name))
+            builder.append("," + Csv.serialize(obj.sourcePath))
             builder.append("," + Csv.serialize(obj.originLocations))
-            builder.append("," + Csv.serialize(mapping?.targetFolder ?: obj.targetFolder))
+            builder.append("," + Csv.serialize(obj.targetFolder))
             builder.append("," + Csv.serialize(status.class.simpleName))
 
             writer.writeLine(builder.toString())

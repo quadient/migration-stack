@@ -7,32 +7,30 @@ enum class IpsResponseStatus { Ok, Error }
 // and thus eliminate the risk of misuse. If any of this is set wrong
 // it should be considered a bug in IpsClient
 @Suppress("UNCHECKED_CAST")
-sealed class IpsResult<JId, WfId, Status, Custom> {
-    data class Ok<JId, WfId, Status, Custom>(private val response: IpsResponse, private val data: Custom? = null) :
-        IpsResult<JId, WfId, Status, Custom>() {
+sealed class IpsResult<JId, WfId, Custom> {
+    data class Ok<JId, WfId, Custom>(private val response: IpsResponse, private val data: Custom? = null) :
+        IpsResult<JId, WfId, Custom>() {
         val parts = response.parts
         val jobId = response.jobId as JId
         val workFlowId = response.workflowId as WfId
-        val jobStatus = response.jobStatus as Status
         val customData: Custom = data as Custom
     }
 
-    data class Error<JId, WfId, Status, Custom>(private val response: IpsResponse) :
-        IpsResult<JId, WfId, Status, Custom>() {
+    data class Error<JId, WfId, Custom>(private val response: IpsResponse) :
+        IpsResult<JId, WfId, Custom>() {
         val parts = response.parts
         val jobId = response.jobId as JId
         val workflowId = response.workflowId as WfId
-        val jobStatus = response.jobStatus as Status
     }
 
-    data class Exception<JId, WfId, Status, Custom>(val throwable: IpsClientException) :
-        IpsResult<JId, WfId, Status, Custom>() {
+    data class Exception<JId, WfId, Custom>(val throwable: IpsClientException) :
+        IpsResult<JId, WfId, Custom>() {
         override fun toString(): String {
             return this.throwable.stackTraceToString()
         }
     }
 
-    fun throwIfNotOk(customMessage: String? = null): Ok<JId, WfId, Status, Custom> {
+    fun throwIfNotOk(customMessage: String? = null): Ok<JId, WfId, Custom> {
         if (this !is Ok) {
             throw IpsClientException("${customMessage ?: "IpsResult is not Ok"} - $this")
         }
@@ -42,25 +40,25 @@ sealed class IpsResult<JId, WfId, Status, Custom> {
     fun isOk() = this is Ok
     fun isNotOk() = this !is Ok
 
-    inline fun ifOk(block: (Ok<JId, WfId, Status, Custom>) -> Unit) = this.also {
+    inline fun ifOk(block: (Ok<JId, WfId, Custom>) -> Unit) = this.also {
         if (this is Ok) {
             block(this)
         }
     }
 
-    inline fun ifNotException(block: (Ok<JId, WfId, Status, Custom>) -> Unit) = this.also {
+    inline fun ifNotException(block: (Ok<JId, WfId, Custom>) -> Unit) = this.also {
         if (this is Ok) {
             block(this)
         }
     }
 
-//    fun ifNotException(block: (Error<JId, WfId, Status, Custom>) -> Unit) = this.also {
+//    fun ifNotException(block: (Error<JId, WfId, Custom>) -> Unit) = this.also {
 //        if (this is Error) {
 //            block(this)
 //        }
 //    }
 
-    inline fun ifNotSuccess(block: (IpsResult<JId, WfId, Status, Custom>) -> Unit) = this.also {
+    inline fun ifNotSuccess(block: (IpsResult<JId, WfId, Custom>) -> Unit) = this.also {
         if (this is Error || this is Exception) {
             block(this)
         }
@@ -79,7 +77,6 @@ data class IpsResponse(private val response: String) {
 
     val jobId = parts.getOrNull(1)?.toIntOrNull()?.run { JobId(this) }
     val workflowId = parts.getOrNull(2)?.toIntOrNull()?.run { WorkFlowId(this) }
-    val jobStatus = parts.getOrNull(5)?.let { JobStatus.valueOf(it) }
 }
 
 @JvmInline
@@ -96,14 +93,10 @@ open class IpsClientException(message: String, cause: Throwable? = null) : Excep
 class IpsFailedWriteException(command: String, cause: Throwable? = null) :
     IpsClientException("Failed to send IPS command. Command: '$command'", cause)
 
-fun <JId, WfId, Status, Custom> IpsClientException.toIpsResult() = IpsResult.Exception<JId, WfId, Status, Custom>(this)
-fun <JId, WfId, Status, Custom> IpsResponse.toIpsResult() = when (status) {
-    IpsResponseStatus.Ok -> IpsResult.Ok<JId, WfId, Status, Custom>(this)
-    IpsResponseStatus.Error -> IpsResult.Error<JId, WfId, Status, Custom>(this)
-}
-
-enum class JobStatus {
-    Working, Finished, Aborted, Failed
+fun <JId, WfId, Custom> IpsClientException.toIpsResult() = IpsResult.Exception<JId, WfId, Custom>(this)
+fun <JId, WfId, Custom> IpsResponse.toIpsResult() = when (status) {
+    IpsResponseStatus.Ok -> IpsResult.Ok<JId, WfId, Custom>(this)
+    IpsResponseStatus.Error -> IpsResult.Error<JId, WfId, Custom>(this)
 }
 
 enum class WaitForJobResult {

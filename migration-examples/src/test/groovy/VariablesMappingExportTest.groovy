@@ -39,7 +39,7 @@ class VariablesMappingExportTest {
 """id,name,origin_locations,inspire_path,data_type
 empty,,[],,String
 full,full name,[foo; bar],,Boolean
-overridden,overridden name,[foo; bar],override/path,Double
+overridden,full name,[foo; bar],,Boolean
 """
 
         Assertions.assertEquals(expectedResult, text)

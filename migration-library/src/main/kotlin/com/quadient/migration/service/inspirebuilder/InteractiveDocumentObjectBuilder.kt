@@ -48,6 +48,7 @@ class InteractiveDocumentObjectBuilder(
     imageRepository,
     projectConfig
 ) {
+    private val lenientJson = Json { ignoreUnknownKeys = true }
     private val mainFlowId = "Def.MainFlow"
 
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
@@ -202,13 +203,14 @@ class InteractiveDocumentObjectBuilder(
 
                 val customProperty = flowData["CustomProperty"]
                 if (customProperty != null) {
-                    val customPropertyObject = Json.decodeFromString<CustomProperty>(customProperty.textValue())
+                    val customPropertyObject = lenientJson.decodeFromString<CustomProperty>(customProperty.textValue())
                     if (customPropertyObject.customName != null) {
                         interactiveFlowNamesToIds[customPropertyObject.customName] = "Def.InteractiveFlow$i"
                     }
                 }
             }
 
+            baseTemplatesInteractiveFlowNamesToIds[baseTemplatePath] = interactiveFlowNamesToIds
             return interactiveFlowNamesToIds
         } catch (e: Exception) {
             logger.warn("Failed to load interactive flow names from base template '${baseTemplatePath}'.", e)

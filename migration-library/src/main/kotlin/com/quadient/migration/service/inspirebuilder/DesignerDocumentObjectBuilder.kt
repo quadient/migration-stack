@@ -244,7 +244,7 @@ class DesignerDocumentObjectBuilder(
             if (imagePlaceholder == null) {
                 page.addImageArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
                     .setWidth(position.width.toMeters()).setHeight(position.height.toMeters())
-                    .setImage(buildImage(layout, imageModel))
+                    .setImage(getOrBuildImage(layout, imageModel))
             } else {
                 val flow = layout.addFlow()
                 flow.addParagraph().addText().appendText(imagePlaceholder)

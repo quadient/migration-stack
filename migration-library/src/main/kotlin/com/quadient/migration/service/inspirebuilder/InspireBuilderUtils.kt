@@ -1,11 +1,14 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.quadient.wfdxml.api.layoutnodes.Flow
+import com.quadient.wfdxml.api.layoutnodes.Image
 import com.quadient.migration.shared.DataType as DataTypeModel
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.Variable
 import com.quadient.wfdxml.api.module.Layout
+import com.quadient.wfdxml.internal.Group
 import com.quadient.wfdxml.internal.layoutnodes.FlowImpl
+import com.quadient.wfdxml.internal.layoutnodes.ImageImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.VariableImpl
 import com.quadient.wfdxml.internal.module.layout.LayoutImpl
@@ -69,9 +72,14 @@ fun buildVariableTree(paths: List<String>): Map<String, VariablePathPart> {
     return root
 }
 
+fun getImageByName(layout: Layout, imageName: String?): Image? {
+    val imageGroup = (layout as LayoutImpl).children.find { it.name == "Images" } as Group
+    return imageGroup.children.find { (it as ImageImpl).name == imageName } as? Image
+}
+
 fun getFlowByName(layout: Layout, flowName: String?): Flow? {
     val flowGroup =
-        (layout as LayoutImpl).children.find { it.name == "Flows" } as com.quadient.wfdxml.internal.Group
+        (layout as LayoutImpl).children.find { it.name == "Flows" } as Group
     return flowGroup.children.find { (it as FlowImpl).name == flowName } as? Flow
 }
 

@@ -414,8 +414,8 @@ abstract class InspireDocumentObjectBuilder(
         return null
     }
 
-    protected fun buildImage(layout: Layout, imageModel: ImageModel): Image {
-        val image = layout.addImage().setName(imageModel.nameOrId())
+    protected fun getOrBuildImage(layout: Layout, imageModel: ImageModel): Image {
+        val image = getImageByName(layout, imageModel.nameOrId()) ?: layout.addImage().setName(imageModel.nameOrId())
             .setImageLocation(getImagePath(imageModel), LocationType.ICM)
 
         if (imageModel.options != null) {
@@ -549,7 +549,7 @@ abstract class InspireDocumentObjectBuilder(
             return
         }
 
-        text.appendImage(buildImage(layout, imageModel))
+        text.appendImage(getOrBuildImage(layout, imageModel))
     }
 
     private fun Text.appendVariable(
@@ -731,7 +731,7 @@ abstract class InspireDocumentObjectBuilder(
     private fun Literal.toScript(layout: Layout, variableStructure: VariableStructureModel): ScriptResult {
         return when (dataType) {
             LiteralDataType.Variable -> variableToScript(value, layout, variableStructure)
-            LiteralDataType.String -> ScriptResult.Success("String('$value')")
+            LiteralDataType.String -> ScriptResult.Success("String('${value.replace("\\", "\\\\").replace("\"", "\\\"")}')")
             LiteralDataType.Number -> ScriptResult.Success(value)
             LiteralDataType.Boolean -> ScriptResult.Success(value.lowercase().toBooleanStrict().toString())
         }

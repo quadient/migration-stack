@@ -15,7 +15,7 @@ class Size {
     val millimeters: BigDecimal
 
     enum class Unit {
-        Points, Millimeters, Centimeters, Meters, Inches
+        Points, Millimeters, Centimeters, Decimeters, Meters, Inches
     }
 
     companion object {
@@ -34,6 +34,12 @@ class Size {
         fun ofMillimeters(value: Long) = Size(value.toBigDecimal(), Unit.Millimeters)
         @JvmStatic
         fun ofMillimeters(value: Int) = Size(value.toBigDecimal(), Unit.Millimeters)
+        @JvmStatic
+        fun ofDecimeters(value: Double) = Size(value, Unit.Decimeters)
+        @JvmStatic
+        fun ofDecimeters(value: Long) = Size(value.toBigDecimal(), Unit.Decimeters)
+        @JvmStatic
+        fun ofDecimeters(value: Int) = Size(value.toBigDecimal(), Unit.Decimeters)
         @JvmStatic
         fun ofCentimeters(value: Double) = Size(value, Unit.Centimeters)
         @JvmStatic
@@ -55,14 +61,21 @@ class Size {
 
         @JvmStatic
         fun fromString(input: String): Size {
+            val len = input.length
             val (value, unit) = when {
-                input.endsWith("mm") -> Pair(input.substringBefore("mm"), Unit.Millimeters)
-                input.endsWith("cm") -> Pair(input.substringBefore("cm"), Unit.Centimeters)
-                input.endsWith("m") -> Pair(input.substringBefore("m"), Unit.Meters)
-                input.endsWith("pt") -> Pair(input.substringBefore("pt"), Unit.Points)
-                input.endsWith("in") -> Pair(input.substringBefore("in"), Unit.Inches)
+                input.endsWith("mm") -> Pair(input.take(len - 2), Unit.Millimeters)
+                input.endsWith("cm") -> Pair(input.take(len - 2), Unit.Centimeters)
+                input.endsWith("dm") -> Pair(input.take(len - 2), Unit.Decimeters)
+                input.endsWith("m") -> Pair(input.take(len - 1), Unit.Meters)
+                input.endsWith("pt") -> Pair(input.take(len - 2), Unit.Points)
+                input.endsWith("in") -> Pair(input.take(len - 2), Unit.Inches)
                 else -> throw NumberFormatException("Invalid size format in $input")
             }
+
+            if (!value.matches("^[\\d.]+$".toRegex())) {
+                throw NumberFormatException("Invalid size format in $input")
+            }
+
             return Size(value.toDouble(), unit)
         }
 
@@ -73,6 +86,7 @@ class Size {
             Unit.Points -> value.toBigDecimal().divide(MM_TO_PT.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN)
             Unit.Millimeters -> value.toBigDecimal()
             Unit.Centimeters -> (value * 10.0).toBigDecimal()
+            Unit.Decimeters -> (value * 100.0).toBigDecimal()
             Unit.Meters -> (value * 1000.0).toBigDecimal()
             Unit.Inches -> (value * 25.4).toBigDecimal()
         }
@@ -83,6 +97,7 @@ class Size {
             Unit.Points -> value.divide(MM_TO_PT.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN)
             Unit.Millimeters -> value
             Unit.Centimeters -> value * 10.0.toBigDecimal()
+            Unit.Decimeters -> value * 100.0.toBigDecimal()
             Unit.Meters -> value * 1000.0.toBigDecimal()
             Unit.Inches -> value * 25.4.toBigDecimal()
         }
@@ -93,6 +108,7 @@ class Size {
             Unit.Points -> (millimeters * MM_TO_PT.toBigDecimal()).setScale(4, RoundingMode.HALF_EVEN)
             Unit.Millimeters -> millimeters.setScale(4, RoundingMode.HALF_EVEN)
             Unit.Centimeters -> millimeters.divide(10.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN).setScale(5, RoundingMode.HALF_EVEN)
+            Unit.Decimeters -> millimeters.divide(100.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN).setScale(6, RoundingMode.HALF_EVEN)
             Unit.Meters -> millimeters.divide(1000.0.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN).setScale(7, RoundingMode.HALF_EVEN)
             Unit.Inches -> millimeters.divide(25.4.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN).setScale(5, RoundingMode.HALF_EVEN)
         }.toDouble()
@@ -102,6 +118,7 @@ class Size {
 
     fun toMillimeters() = to(Unit.Millimeters)
     fun toCentimeters() = to(Unit.Centimeters)
+    fun toDecimeters() = to(Unit.Decimeters)
     fun toMeters() = to(Unit.Meters)
     fun toPoints() = to(Unit.Points)
     fun toInches() = to(Unit.Inches)
@@ -123,6 +140,7 @@ class Size {
         return when (unit) {
             Unit.Points -> "${toPoints()}pt"
             Unit.Millimeters -> "${toMillimeters()}mm"
+            Unit.Decimeters -> "${toDecimeters()}dm"
             Unit.Centimeters -> "${toCentimeters()}cm"
             Unit.Meters -> "${toMeters()}m"
             Unit.Inches -> "${toInches()}in"
@@ -161,6 +179,9 @@ fun Double.points(): Size = Size.ofPoints(this)
 fun Long.millimeters(): Size = Size.ofMillimeters(this)
 fun Int.millimeters(): Size = Size.ofMillimeters(this)
 fun Double.millimeters(): Size = Size.ofMillimeters(this)
+fun Long.decimeters(): Size = Size.ofDecimeters(this)
+fun Int.decimeters(): Size = Size.ofDecimeters(this)
+fun Double.decimeters(): Size = Size.ofDecimeters(this)
 fun Long.centimeters(): Size = Size.ofCentimeters(this)
 fun Int.centimeters(): Size = Size.ofCentimeters(this)
 fun Double.centimeters(): Size = Size.ofCentimeters(this)

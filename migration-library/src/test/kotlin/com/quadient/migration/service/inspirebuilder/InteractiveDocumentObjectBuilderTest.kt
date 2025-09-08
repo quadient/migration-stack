@@ -8,6 +8,7 @@ import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.FirstMatchModel
+import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphStyleModelRef
 import com.quadient.migration.data.StringModel
@@ -729,6 +730,22 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `build template with two blocks referencing same image results in single image definition`() {
+        // given
+        val image = mockImage(aImage("Dog"))
+        val block1 = mockObj(aBlock("1", listOf(ImageModelRef(image.id)), internal = true))
+        val block2 = mockObj(aBlock("2", listOf(ImageModelRef(image.id)), internal = true))
+
+        val template = aTemplate("3", listOf(aDocumentObjectRef(block1.id), aDocumentObjectRef(block2.id)))
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        result["Image"].filter { it["Name"]?.textValue() == image.nameOrId() }.size.shouldBeEqualTo(1)
+    }
+
+    @Test
     fun `build block with unknown image and image with missing source path renders placeholder texts instead`() {
         // given
         val catImage = aImage("Cat", imageType = ImageType.Unknown)
@@ -1193,6 +1210,11 @@ class InteractiveDocumentObjectBuilderTest {
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
         every { documentObjectRepository.findModelOrFail(documentObject.id) } returns documentObject
         return documentObject
+    }
+
+    private fun mockImage(image: ImageModel): ImageModel {
+        every { imageRepository.findModelOrFail(image.id) } returns image
+        return image
     }
 
     private fun mockRule(rule: DisplayRuleModel): DisplayRuleModel {

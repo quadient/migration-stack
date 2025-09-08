@@ -45,8 +45,8 @@ class DocumentObjectsImagesMappingExportTest {
             id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status
             empty,,Block,false,[],,,,Active
             full,full,Page,false,[foo; bar],tmpl.wfd,someDir,struct,Active
-            overridden empty,newName,Section,true,[],tmpl.wfd,someDir,new struct,Active
-            overridden full,newName,Section,true,[foo; bar],tmpl.wfd,someDir,new struct,Active
+            overridden empty,,Block,false,[],,,,Active
+            overridden full,full,Page,false,[foo; bar],tmpl.wfd,someDir,struct,Active
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text)
     }
@@ -78,8 +78,8 @@ class DocumentObjectsImagesMappingExportTest {
             id,name,sourcePath,originLocation,targetFolder,status
             empty,,,[],,Active
             full,full,sourcePath,[foo; bar],targetDir,Active
-            overridden empty,newName,newSourcePath,[],newTargetDir,Active
-            overridden full,newName,newSourcePath,[foo; bar],newTargetDir,Active
+            overridden empty,,,[],,Active
+            overridden full,full,sourcePath,[foo; bar],targetDir,Active
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text)
     }
