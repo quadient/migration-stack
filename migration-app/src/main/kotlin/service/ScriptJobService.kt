@@ -52,7 +52,6 @@ class ScriptJobService(val settings: SettingsService, val fileStorageService: Fi
     }
 }
 
-@Serializable
 sealed interface Job {
     val id: JobId
     val scriptId: ScriptId
@@ -67,7 +66,6 @@ sealed interface Job {
         this.logs.addAll(logs)
     }
 
-    @Serializable
     data class Running(
         override val id: JobId, override val scriptId: ScriptId,
         override val logs: MutableList<String>,
@@ -82,14 +80,12 @@ sealed interface Job {
         }
     }
 
-    @Serializable
     data class Success(
         override val id: JobId, override val scriptId: ScriptId,
         override val logs: MutableList<String>,
         override val lastUpdated: Instant
     ) : Job
 
-    @Serializable
     data class Error(
         override val id: JobId, override val scriptId: ScriptId,
         override val logs: MutableList<String>,
@@ -99,7 +95,6 @@ sealed interface Job {
 }
 
 @JvmInline
-@Serializable
 value class JobId(val id: Uuid) {
     override fun toString(): String = id.toString()
 }

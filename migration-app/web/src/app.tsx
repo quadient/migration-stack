@@ -13,12 +13,13 @@ import type { Job } from "@/types/job.ts";
 export default function App() {
     const modulesResult = useFetch<ModuleMetadata[]>("/api/scripts");
     const settingsResult = useFetch<Settings>("/api/settings");
-    const jobsResult = useFetch<Job[]>("/api/job/list");
 
     const settingsMemo = useMemo(
         () => (settingsResult.status === "ok" ? settingsResult.data.projectConfig.name : undefined),
         [settingsResult],
     );
+
+    const jobsResult = useFetch<Job[]>("/api/job/list", undefined, [settingsMemo]);
 
     const jobsMemo = useMemo(
         () => JSON.stringify((jobsResult.status === "ok" ? jobsResult.data : []).map((it) => it.lastUpdated)),

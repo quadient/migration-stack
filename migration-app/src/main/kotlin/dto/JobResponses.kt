@@ -5,10 +5,8 @@ package com.quadient.migration.dto
 import com.quadient.migration.service.Job
 import com.quadient.migration.service.JobId
 import com.quadient.migration.service.ScriptId
-import kotlinx.serialization.Serializable
 import kotlin.time.ExperimentalTime
 
-@Serializable
 data class JobResponse(
     val id: JobId,
     val moduleId: ScriptId,
@@ -18,7 +16,6 @@ data class JobResponse(
     val error: String?
 )
 
-@Serializable
 data class JobListResponse(
     val id: JobId,
     val moduleId: ScriptId,
@@ -43,7 +40,6 @@ fun Job.toResponseWithoutLogs(): JobListResponse {
     }
 }
 
-@Serializable
 enum class Status {
     RUNNING, SUCCESS, ERROR
 }

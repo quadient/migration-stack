@@ -44,6 +44,7 @@ dependencies {
 
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.2")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2")
 
     // Update only after ktor migrates to kotlinx-serialization 1.9.0
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
