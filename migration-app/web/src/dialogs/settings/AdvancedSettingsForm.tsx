@@ -59,6 +59,39 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                     </div>
                 </CardContent>
             </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Context</CardTitle>
+                    <CardDescription>Custom values map for parse modules</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid gap-3">
+                        <Input
+                            value={JSON.stringify(settings.projectConfig.context)}
+                            onChange={(e) => {
+                                let value = e.target.value;
+                                let parsed: Record<string, any> = {};
+                                try {
+                                    parsed = (value.trim() === "" ? {} : JSON.parse(value)) as Record<string, any>;
+                                    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+                                        console.warn("Invalid context value", value);
+                                        return;
+                                    }
+                                    setSettings((prev) => ({
+                                        ...prev,
+                                        projectConfig: {
+                                            ...prev.projectConfig,
+                                            context: parsed,
+                                        },
+                                    }));
+                                } catch (err) {
+                                    console.warn("Invalid context value", value, err);
+                                }
+                            }}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

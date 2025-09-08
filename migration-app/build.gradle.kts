@@ -40,6 +40,10 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:${ktor_version}")
     implementation("io.ktor:ktor-server-content-negotiation:${ktor_version}")
     implementation("io.ktor:ktor-serialization-kotlinx-json:${ktor_version}")
+    implementation("io.ktor:ktor-serialization-jackson:${ktor_version}")
+
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.2")
 
     // Update only after ktor migrates to kotlinx-serialization 1.9.0
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")

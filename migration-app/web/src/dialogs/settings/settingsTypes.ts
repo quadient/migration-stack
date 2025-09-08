@@ -43,6 +43,7 @@ export type ProjectConfig = {
     inspireOutput: InspireOutput;
     sourceBaseTemplatePath?: string | null;
     defaultVariableStructure?: string | null;
+    context: Record<string, any>;
 };
 
 export type PathsConfig = {

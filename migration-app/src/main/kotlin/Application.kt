@@ -8,7 +8,7 @@ import com.quadient.migration.route.scriptsModule
 import com.quadient.migration.service.Settings
 import com.quadient.migration.service.SettingsService
 import com.quadient.migration.shared.DocumentObjectType
-import io.ktor.serialization.kotlinx.json.*
+import io.ktor.serialization.jackson.jackson
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
@@ -25,7 +25,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     install(ContentNegotiation) {
-        json()
+        jackson()
     }
     install(Koin) {
         slf4jLogger()

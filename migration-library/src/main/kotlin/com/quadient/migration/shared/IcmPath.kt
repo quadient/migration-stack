@@ -1,22 +1,26 @@
 package com.quadient.migration.shared
 
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
+import com.fasterxml.jackson.core.JsonGenerator
+import com.fasterxml.jackson.core.JsonParser
+import com.fasterxml.jackson.databind.DeserializationContext
+import com.fasterxml.jackson.databind.JsonDeserializer
+import com.fasterxml.jackson.databind.JsonSerializer
+import com.fasterxml.jackson.databind.SerializerProvider
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import com.fasterxml.jackson.databind.annotation.JsonSerialize
 
 @ConsistentCopyVisibility
-@Serializable(with = IcmPathSerializer::class)
-data class IcmPath private constructor(internal val path: String) {
+@JsonSerialize(using = IcmPath.JacksonSerializer::class)
+@JsonDeserialize(using = IcmPath.JacksonDeserializer::class)
+data class IcmPath private constructor(val path: String) {
     companion object {
         private const val SCHEMA = "icm://"
 
         @JvmStatic
         fun from(path: String): IcmPath {
-            return IcmPath(path.replace("vcs:", "icm:").removePrefix("/").removeSuffix("/").replace("\\", "/"))
+            return IcmPath(
+                path.replace("vcs:", "icm:").removePrefix("/").removeSuffix("/").replace("\\", "/")
+            )
         }
 
         fun root(): IcmPath {
@@ -54,6 +58,18 @@ data class IcmPath private constructor(internal val path: String) {
     operator fun plus(other: String?): IcmPath {
         return this.join(other)
     }
+
+    object JacksonSerializer : JsonSerializer<IcmPath>() {
+        override fun serialize(value: IcmPath, gen: JsonGenerator, serializers: SerializerProvider) {
+            gen.writeString(value.toString())
+        }
+    }
+
+    object JacksonDeserializer : JsonDeserializer<IcmPath>() {
+        override fun deserialize(p: JsonParser, ctxt: DeserializationContext): IcmPath {
+            return from(p.valueAsString)
+        }
+    }
 }
 
 fun IcmPath?.isNullOrBlank(): Boolean {
@@ -74,16 +90,3 @@ fun IcmPath?.orDefault(default: String): IcmPath {
 }
 
 fun String.toIcmPath() = IcmPath.from(this)
-
-object IcmPathSerializer : KSerializer<IcmPath> {
-    override val descriptor: SerialDescriptor =
-        PrimitiveSerialDescriptor("com.quadient.migration.shared.IcmPath", PrimitiveKind.STRING)
-
-    override fun serialize(encoder: Encoder, value: IcmPath) {
-        encoder.encodeString(value.toString())
-    }
-
-    override fun deserialize(decoder: Decoder): IcmPath {
-        return IcmPath.from(decoder.decodeString())
-    }
-}

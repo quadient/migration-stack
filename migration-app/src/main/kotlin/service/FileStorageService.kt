@@ -1,22 +1,26 @@
 package com.quadient.migration.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.quadient.migration.getAppDataDir
 import com.quadient.migration.getModulesDataDir
 import com.quadient.migration.log
 import io.ktor.server.config.*
 import kotlinx.io.files.FileNotFoundException
-import kotlinx.serialization.json.Json
 import java.io.InputStream
 import java.nio.file.Path
 import kotlin.io.path.Path
 
 class FileStorageService(val config: ApplicationConfig) {
+    val objectMapper = ObjectMapper().registerKotlinModule()
+
     inline fun <reified T> readAppJson(vararg subpaths: String): T? {
-        return loadAppFile(*subpaths)?.let { Json.decodeFromString(it.reader().readText()) }
+        return loadAppFile(*subpaths)?.let { objectMapper.readValue<T>(it.reader().readText()) }
     }
 
     inline fun <reified T> writeAppJson(content: T, vararg subpaths: String) {
-        val content = Json.encodeToString(content)
+        val content = objectMapper.writeValueAsString(content)
         writeAppFile(content.toByteArray(), *subpaths)
     }
 
@@ -38,12 +42,15 @@ class FileStorageService(val config: ApplicationConfig) {
     }
 
     inline fun <reified T> readModuleJson(vararg subpaths: String): T? {
-        return loadModuleFile(*subpaths)?.let { Json.decodeFromString(it.reader().readText()) }
+        return loadModuleFile(*subpaths)?.let {
+            val text = it.reader().readText()
+            objectMapper.readValue<T>(text)
+        }
     }
 
     inline fun <reified T> writeModuleJson(content: T, vararg subpaths: String) {
-        val content = Json.encodeToString(content)
-        writeAppFile(content.toByteArray(), *subpaths)
+        val content = objectMapper.writeValueAsString(content)
+        writeModuleFile(content, *subpaths)
     }
 
     fun loadModuleFile(vararg subpaths: String): InputStream? {

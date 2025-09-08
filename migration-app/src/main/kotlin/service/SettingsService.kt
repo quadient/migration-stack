@@ -2,7 +2,6 @@ package com.quadient.migration.service
 
 import com.quadient.migration.api.MigConfig
 import com.quadient.migration.api.ProjectConfig
-import kotlinx.serialization.Serializable
 
 private const val STORAGE_FILE = "settings.json"
 
@@ -30,7 +29,6 @@ class SettingsService(val fileStorageService: FileStorageService) {
     }
 }
 
-@Serializable
 data class Settings(
     val projectConfig: ProjectConfig,
     val migrationConfig: MigConfig,
