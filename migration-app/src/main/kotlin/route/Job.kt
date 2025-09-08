@@ -12,8 +12,8 @@ import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.koin.ktor.ext.inject
+import java.util.UUID
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 fun Application.jobModule() {
     val scriptJobService by inject<ScriptJobService>()
@@ -27,7 +27,7 @@ fun Application.jobModule() {
                     return@get
                 }
 
-                val id = Uuid.parse(reqId)
+                val id = UUID.fromString(reqId)
                 val job = scriptJobService.get(JobId(id))
 
                 if (job == null) {

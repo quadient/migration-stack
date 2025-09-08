@@ -2,15 +2,17 @@
 
 package com.quadient.migration.service
 
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
-import kotlinx.serialization.Serializable
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonSubTypes
+import com.fasterxml.jackson.annotation.JsonTypeInfo
+import com.fasterxml.jackson.annotation.JsonValue
+import java.time.Instant
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.name
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 typealias Jobs = ConcurrentHashMap<String, ConcurrentHashMap<JobId, Job>>
 
@@ -20,7 +22,7 @@ class ScriptJobService(val settings: SettingsService, val fileStorageService: Fi
         get() = jobs.getOrPut(settings.activeProject) { ConcurrentHashMap() }
 
     fun create(id: ScriptId): Job.Running {
-        return Job.Running(JobId(Uuid.random()), id, mutableListOf(), Clock.System.now()).also { store(it) }
+        return Job.Running(JobId(UUID.randomUUID()), id, mutableListOf(), Instant.now()).also { store(it) }
     }
 
     fun store(job: Job) {
@@ -52,6 +54,14 @@ class ScriptJobService(val settings: SettingsService, val fileStorageService: Fi
     }
 }
 
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type"
+)
+@JsonSubTypes(
+    JsonSubTypes.Type(value = Job.Running::class, name = "Running"),
+    JsonSubTypes.Type(value = Job.Success::class, name = "Success"),
+    JsonSubTypes.Type(value = Job.Error::class, name = "Error"),
+)
 sealed interface Job {
     val id: JobId
     val scriptId: ScriptId
@@ -66,28 +76,31 @@ sealed interface Job {
         this.logs.addAll(logs)
     }
 
-    data class Running(
-        override val id: JobId, override val scriptId: ScriptId,
+    data class Running @JsonCreator constructor(
+        override val id: JobId,
+        override val scriptId: ScriptId,
         override val logs: MutableList<String>,
         override val lastUpdated: Instant
     ) : Job {
         fun error(error: String): Error {
-            return Error(id, scriptId, logs, error, Clock.System.now())
+            return Error(id, scriptId, logs, error, Instant.now())
         }
 
         fun success(): Success {
-            return Success(id, scriptId, logs, Clock.System.now())
+            return Success(id, scriptId, logs, Instant.now())
         }
     }
 
-    data class Success(
-        override val id: JobId, override val scriptId: ScriptId,
+    data class Success @JsonCreator constructor(
+        override val id: JobId,
+        override val scriptId: ScriptId,
         override val logs: MutableList<String>,
         override val lastUpdated: Instant
     ) : Job
 
-    data class Error(
-        override val id: JobId, override val scriptId: ScriptId,
+    data class Error @JsonCreator constructor(
+        override val id: JobId,
+        override val scriptId: ScriptId,
         override val logs: MutableList<String>,
         val error: String,
         override val lastUpdated: Instant
@@ -95,6 +108,7 @@ sealed interface Job {
 }
 
 @JvmInline
-value class JobId(val id: Uuid) {
+value class JobId @JsonCreator constructor(val id: UUID) {
+    @JsonValue
     override fun toString(): String = id.toString()
 }
