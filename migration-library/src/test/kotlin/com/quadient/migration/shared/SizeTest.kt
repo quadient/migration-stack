@@ -64,4 +64,11 @@ class SizeTest {
         val ex = assertThrows<NumberFormatException> { Size.fromString("10mmm") }
         ex.message.shouldBeEqualTo("Invalid size format in 10mmm")
     }
+
+    @Test
+    fun `negative number with space in string deserialized correctly`() {
+        val negativeSize = Size.fromString("-10 cm")
+
+        negativeSize.shouldBeEqualTo(Size.ofMillimeters(-100))
+    }
 }
