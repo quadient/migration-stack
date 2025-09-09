@@ -58,4 +58,6 @@ jobs:
           allowUpdates: true
           prerelease: true
           draft: false
+          removeArtifacts: true
+          tag: tip
           artifacts: migration-app/build/dist/*.zip
