@@ -6,6 +6,8 @@ on:
   push:
     tags:
     - 'tip'
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -46,11 +48,11 @@ jobs:
           version=$(./gradlew -q :migration-app:printVersion)
           echo "MIG_VERSION=$version" >> "$GITHUB_ENV"
 
-      - name: Publish artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: migration-app-${{ env.MIG_VERSION }}
-          path: migration-app/build/tmp/dist
+      # - name: Publish artifacts
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: migration-app-${{ env.MIG_VERSION }}
+      #     path: migration-app/build/tmp/dist
 
       - name: Release
         uses: ncipollo/release-action@v1
@@ -60,4 +62,8 @@ jobs:
           draft: false
           removeArtifacts: true
           tag: tip
+          name: Migration Tip (Nightly)
           artifacts: migration-app/build/dist/*.zip
+          body: |
+            This is a branch tip build of migration-stack.
+            We recommend using a tagged release for stability.
