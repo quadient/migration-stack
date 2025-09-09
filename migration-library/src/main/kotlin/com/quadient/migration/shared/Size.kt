@@ -61,20 +61,18 @@ class Size {
 
         @JvmStatic
         fun fromString(input: String): Size {
-            val cleansedInput = input.replace("\\s".toRegex(), "")
-
-            val len = cleansedInput.length
+            val len = input.length
             val (value, unit) = when {
-                cleansedInput.endsWith("mm") -> Pair(cleansedInput.take(len - 2), Unit.Millimeters)
-                cleansedInput.endsWith("cm") -> Pair(cleansedInput.take(len - 2), Unit.Centimeters)
-                cleansedInput.endsWith("dm") -> Pair(cleansedInput.take(len - 2), Unit.Decimeters)
-                cleansedInput.endsWith("m") -> Pair(cleansedInput.take(len - 1), Unit.Meters)
-                cleansedInput.endsWith("pt") -> Pair(cleansedInput.take(len - 2), Unit.Points)
-                cleansedInput.endsWith("in") -> Pair(cleansedInput.take(len - 2), Unit.Inches)
+                input.endsWith("mm") -> Pair(input.take(len - 2), Unit.Millimeters)
+                input.endsWith("cm") -> Pair(input.take(len - 2), Unit.Centimeters)
+                input.endsWith("dm") -> Pair(input.take(len - 2), Unit.Decimeters)
+                input.endsWith("m") -> Pair(input.take(len - 1), Unit.Meters)
+                input.endsWith("pt") -> Pair(input.take(len - 2), Unit.Points)
+                input.endsWith("in") -> Pair(input.take(len - 2), Unit.Inches)
                 else -> throw NumberFormatException("Invalid size format in $input")
             }
 
-            if (!value.matches("^-?[\\d.]+$".toRegex())) {
+            if (!value.matches("^-?[\\d.]+ ?$".toRegex())) {
                 throw NumberFormatException("Invalid size format in $input")
             }
 

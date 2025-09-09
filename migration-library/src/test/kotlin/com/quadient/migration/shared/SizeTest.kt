@@ -35,6 +35,7 @@ class SizeTest {
         Size.fromString("1m") to Size.ofMeters(1),
         Size.fromString("1in") to Size.ofInches(1),
         Size.fromString("1pt") to Size.ofPoints(1),
+        Size.fromString("-10 cm") to Size.ofMillimeters(-100),
     ).map { (input, expected) -> dynamicTest("$input is equal to $expected") { input.shouldBeEqualTo(expected) } }
 
 
@@ -63,12 +64,5 @@ class SizeTest {
     fun `invalid format throws`() {
         val ex = assertThrows<NumberFormatException> { Size.fromString("10mmm") }
         ex.message.shouldBeEqualTo("Invalid size format in 10mmm")
-    }
-
-    @Test
-    fun `negative number with space in string deserialized correctly`() {
-        val negativeSize = Size.fromString("-10 cm")
-
-        negativeSize.shouldBeEqualTo(Size.ofMillimeters(-100))
     }
 }
