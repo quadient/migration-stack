@@ -16,7 +16,7 @@ if ($args[0] -eq "stop") {
         docker run -d `
             --name migration-postgre `
             -p 5432:5432 `
-            -e POSTGRES_USER=migrationadmin`
+            -e POSTGRES_USER=migrationadmin `
             -e POSTGRES_PASSWORD="password" `
             -e POSTGRES_DB="migrationdb" `
             -e PGDATA=/var/lib/postgresql/data/pgdata `

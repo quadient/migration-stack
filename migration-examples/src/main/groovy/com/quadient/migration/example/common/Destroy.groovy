@@ -1,5 +1,5 @@
 //! ---
-//! category: migration common
+//! category: Utils
 //! description: Destroys all project data
 //! stdin: true
 //! target: gradle
@@ -23,7 +23,7 @@ if (answer != "y") {
 }
 
 println("Destroying all project data...")
-def migration = initMigration(this.binding.variables["args"])
+def migration = initMigration(this.binding)
 
 migration.repositories.forEach { it.deleteAll() }
 migration.statusTrackingRepository.deleteAll()

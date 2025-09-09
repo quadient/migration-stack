@@ -1,5 +1,5 @@
 //! ---
-//! category: migration mapping
+//! category: Mapping
 //! description: Export text styles
 //! target: gradle
 //! ---
@@ -9,15 +9,15 @@ import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.shared.Size
 import groovy.transform.Field
 
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-def migration = initMigration(this.binding.variables["args"])
+def migration = initMigration(this.binding)
 
 @Field
 static List<String> definitionOrder = ["fontFamily",
@@ -30,7 +30,7 @@ static List<String> definitionOrder = ["fontFamily",
                                        "superOrSubscript",
                                        "interspacing"]
 
-def exportFilePath = Paths.get("mapping/${migration.projectConfig.name}-text-styles.csv")
+def exportFilePath = Mapping.csvPath(binding, migration.projectConfig.name, "text-styles")
 run(migration, exportFilePath)
 
 static void run(Migration migration, Path dstPath) {

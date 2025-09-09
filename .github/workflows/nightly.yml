@@ -1,6 +1,8 @@
-name: Unit tests
+name: Nightly build
 
 on:
+  schedule:
+    - cron: '0 2 * * *'
   workflow_dispatch:
 
 jobs:
@@ -25,8 +27,14 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew :migration-app:buildDistZip
 
+      - name: Get version
+        run: |
+          version=$(./gradlew -q :migration-app:printVersion)
+          echo "MIG_VERSION=$version" >> "$GITHUB_ENV"
+
       - name: Publish artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: rmpc-${{ matrix.target }}
-          path: migration-app/build/dist
+          name: migration-app-${{ env.MIG_VERSION }}
+          path: migration-app/build/tmp/dist
+

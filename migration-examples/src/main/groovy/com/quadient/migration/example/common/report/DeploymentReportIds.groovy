@@ -1,5 +1,5 @@
 //! ---
-//! category: migration report
+//! category: Report
 //! ---
 package com.quadient.migration.example.common.report
 
@@ -9,7 +9,7 @@ import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-def migration = initMigration(this.binding.variables["args"])
+def migration = initMigration(this.binding)
 
 def documentObjects = Paths.get("deploy", "${migration.projectConfig.name}-document-objects")
     .toFile()
@@ -18,4 +18,4 @@ def documentObjects = Paths.get("deploy", "${migration.projectConfig.name}-docum
     .toList()
 
 def report = migration.deployClient.progressReport(documentObjects, null)
-DeploymentReportWriter.writeDeploymentReport(report, migration.projectConfig.name)
+DeploymentReportWriter.writeDeploymentReport(binding, report, migration.projectConfig.name)

@@ -1,17 +1,22 @@
 package com.quadient.migration.api
 
-import com.akuleshov7.ktoml.Toml
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.toml.TomlFactory
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.quadient.migration.shared.IcmPath
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import java.io.File
 import java.net.URI
 
-@Serializable
-data class MigConfig(val dbConfig: DbConfig, val inspireConfig: InspireConfig, val storageRoot: String? = null) {
+data class MigConfig(
+    val dbConfig: DbConfig = DbConfig(),
+    val inspireConfig: InspireConfig = InspireConfig(),
+    val storageRoot: String? = null
+) {
     companion object {
+        val objectMapper = ObjectMapper(TomlFactory()).registerKotlinModule()
+
         @JvmStatic
-        fun fromString(input: String): MigConfig = Toml.decodeFromString(input)
+        fun fromString(input: String): MigConfig = objectMapper.readValue(input, MigConfig::class.java)
 
         @JvmStatic
         fun read(path: String): MigConfig = fromString(File(path).readText())
@@ -21,12 +26,10 @@ data class MigConfig(val dbConfig: DbConfig, val inspireConfig: InspireConfig, v
     }
 }
 
-@Serializable
 enum class InspireOutput {
     Interactive, Designer, Evolve
 }
 
-@Serializable
 data class ProjectConfig(
     val name: String,
     val baseTemplatePath: String,
@@ -37,11 +40,13 @@ data class ProjectConfig(
     val inspireOutput: InspireOutput = InspireOutput.Interactive,
     val sourceBaseTemplatePath: String? = null,
     val defaultVariableStructure: String? = null,
-    val context: ContextMap = ContextMap(emptyMap()),
+    val context: Map<String, Any> = emptyMap(),
 ) {
     companion object {
+        val objectMapper = ObjectMapper(TomlFactory()).registerKotlinModule()
+
         @JvmStatic
-        fun fromString(input: String): ProjectConfig = Toml.decodeFromString(input)
+        fun fromString(input: String): ProjectConfig = objectMapper.readValue(input, ProjectConfig::class.java)
 
         @JvmStatic
         fun read(path: String): ProjectConfig = fromString(File(path).readText())
@@ -51,16 +56,18 @@ data class ProjectConfig(
     }
 }
 
-@Serializable
-data class DbConfig(val host: String, val port: Int, val dbName: String, val user: String, val password: String) {
+data class DbConfig(
+    val host: String = "localhost",
+    val port: Int = 5432,
+    val dbName: String = "migrationdb",
+    val user: String = "migrationadmin",
+    val password: String = "password"
+) {
     fun connectionString() = "jdbc:postgresql://$host:$port/$dbName"
 }
 
-@Serializable
 data class InspireConfig(val ipsConfig: IpsConfig = IpsConfig())
 
-@Serializable
 data class IpsConfig(val host: String = "localhost", val port: Int = 30354, val timeoutSeconds: Int = 120)
 
-@Serializable
 data class PathsConfig(val images: IcmPath? = null)

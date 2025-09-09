@@ -1,7 +1,6 @@
 import kotlin.io.useLines
 
 data class ScriptMetadata(
-    val name: String?,
     val filename: String,
     val displayName: String?,
     val category: String,
@@ -24,7 +23,6 @@ data class ScriptMetadata(
 
             return ScriptMetadata(
                 filename = filename,
-                name = map["name"],
                 displayName = map["displayName"],
                 category = map["category"] ?: throw IllegalArgumentException("Missing 'category' in frontmatter"),
                 sourceFormat = map["sourceFormat"],
@@ -52,65 +50,59 @@ data class ScriptMetadata(
     }
 }
 
-val scripts = File("$rootDir/src/main/groovy")
-    .walk()
-    .asSequence()
-    .filter { it.isFile && it.extension == "groovy" }
-    .onEach { println("Parsing groovy file: ${it.name}") }
-    .map {
-        Pair(it.name, it.useLines { lines ->
-            lines
-                .takeWhile { line ->
-                    line.startsWith("//")
-                            || line.startsWith("package ")
-                            || line.isBlank()
+val scripts: List<ScriptMetadata> =
+    File("$rootDir/src/main/groovy").walk().asSequence().filter { it.isFile && it.extension == "groovy" }
+        .onEach { logger.debug("Parsing groovy file: ${it.name}") }.map {
+            Pair(it.name, it.useLines { lines ->
+                lines.takeWhile { line ->
+                    line.startsWith("//") || line.startsWith("package ") || line.isBlank()
+                }.map { line -> line.removePrefix("//!").trim() }.filter { line -> !line.startsWith("//") }.toList()
+            })
+        }.mapNotNull { (filename, input) ->
+            val lines = input.filter { !it.isBlank() }
+
+            if (lines.count() <= 3 || (lines[0].startsWith("package") && lines[1] != "---")) {
+                logger.debug("Skipping script '$filename' without frontmatter")
+                return@mapNotNull null
+            }
+
+            if (lines[lines.count() - 1].startsWith("package") && lines[lines.count() - 2] != "---") {
+                logger.debug("Skipping script '$filename' without frontmatter")
+                return@mapNotNull null
+            }
+
+            logger.debug("Parsing script frontmatter: $lines")
+            val (pkg, rest) = when {
+                lines.firstOrNull()?.startsWith("package ") ?: false -> {
+                    lines.first().removePrefix("package ") to lines.drop(1)
                 }
-                .map { line -> line.removePrefix("//!").trim() }
-                .filter { line -> !line.startsWith("//") }
-                .toList()
-        })
-    }
-    .mapNotNull { (filename, input) ->
-        val lines = input.filter { !it.isBlank() }
 
-        if (lines.count() <= 3 || (lines[0].startsWith("package") && lines[1] != "---")) {
-            println("Skipping script '$filename' without frontmatter")
-            return@mapNotNull null
-        }
+                lines.lastOrNull()?.startsWith("package ") ?: false -> {
+                    lines.last().removePrefix("package ") to lines.dropLast(1)
+                }
 
-        if (lines[lines.count() - 1].startsWith("package") && lines[lines.count() - 2] != "---") {
-            println("Skipping script '$filename' without frontmatter")
-            return@mapNotNull null
-        }
-
-        println("Parsing script frontmatter: $lines")
-        val (pkg, rest) = when {
-            lines.firstOrNull()?.startsWith("package ") ?: false -> {
-                lines.first().removePrefix("package ") to lines.drop(1)
+                else -> {
+                    throw IllegalArgumentException("Invalid frontmatter, missing package declaration: ${lines.firstOrNull()}")
+                }
             }
-            lines.lastOrNull()?.startsWith("package ") ?: false -> {
-                lines.last().removePrefix("package ") to lines.dropLast(1)
-            }
-            else -> {
-                throw IllegalArgumentException("Invalid frontmatter, missing package declaration: ${lines.firstOrNull()}")
-            }
-        }
 
-        if (rest.firstOrNull() != "---" && rest.lastOrNull() != "---") {
-            throw IllegalArgumentException("Invalid frontmatter fences: ${rest.joinToString("\n")}")
-        }
+            if (rest.firstOrNull() != "---" && rest.lastOrNull() != "---") {
+                throw IllegalArgumentException("Invalid frontmatter fences: ${rest.joinToString("\n")}")
+            }
 
-        ScriptMetadata.fromString(rest.drop(1).dropLast(1), filename, pkg)
-    }
-    .filter { it.target == ScriptMetadata.Target.All || it.target == ScriptMetadata.Target.Gradle }
-    .toList()
+            ScriptMetadata.fromString(rest.drop(1).dropLast(1), filename, pkg)
+        }.filter { it.target == ScriptMetadata.Target.All || it.target == ScriptMetadata.Target.Gradle }.toList()
 
 tasks {
     for (script in scripts) {
-        println(script)
-        register<JavaExec>(script.name ?: script.filename.removeSuffix(".groovy")) {
-            description = script.description ?: "Run script: ${script.name}"
-            group = script.category
+        val groupValue = "Migration ${if (script.category.lowercase() == "parser") {
+            val sourceFormat = script.sourceFormat ?: "Other"
+            "${script.category} - $sourceFormat"
+        } else script.category}"
+
+        register<JavaExec>(script.filename.removeSuffix(".groovy")) {
+            description = script.description
+            group = groupValue
             mainClass = "${script.pkg}.${script.filename.removeSuffix(".groovy")}"
             classpath = project.extensions.getByType<JavaPluginExtension>().sourceSets["main"].runtimeClasspath
             args = project.findProperty("scriptArgs")?.toString()?.split(" ") ?: emptyList()
@@ -119,5 +111,4 @@ tasks {
             }
         }
     }
-
 }

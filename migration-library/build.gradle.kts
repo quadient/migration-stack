@@ -80,8 +80,10 @@ dependencies {
     implementation("com.akuleshov7:ktoml-core:0.6.0")
     implementation("com.akuleshov7:ktoml-file:0.6.0")
 
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.2")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.18.2")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-toml:2.18.2")
 
     testImplementation("io.mockk:mockk:${mockkVersion}")
 

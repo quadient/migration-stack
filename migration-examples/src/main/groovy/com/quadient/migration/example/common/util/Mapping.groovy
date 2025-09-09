@@ -11,6 +11,10 @@ static void mapProp(Object mapping, Object obj, String key, Object newValue) {
     }
 }
 
+static Path csvPath(Binding binding, String projectName, String mapping) {
+    return PathUtil.dataDirPath(binding, "mapping", "${projectName}-${mapping}.csv")
+}
+
 Path getVariablesMappingPath(String[] args, String projectName) {
     def variablesMappingDir = Paths.get("mapping").toFile()
     def csvFiles = variablesMappingDir.listFiles()?.findAll {

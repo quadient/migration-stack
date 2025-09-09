@@ -1,5 +1,5 @@
 //! ---
-//! category: migration mapping
+//! category: Mapping
 //! description: Import areas with modified interactive flow names to their respective pages
 //! target: gradle
 //! ---
@@ -10,14 +10,14 @@ import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.example.common.util.Mapping
 
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-def migration = initMigration(this.binding.variables["args"])
-def areasFile = Paths.get("mapping", "${migration.projectConfig.name}-areas.csv")
+def migration = initMigration(this.binding)
+def areasFile = Mapping.csvPath(binding, migration.projectConfig.name, "areas")
 
 run(migration, areasFile)
 

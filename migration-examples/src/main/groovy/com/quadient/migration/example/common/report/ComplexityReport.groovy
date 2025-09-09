@@ -1,22 +1,20 @@
 //! ---
-//! name: ModelComplexityReport
-//! category: migration report
+//! category: Report
 //! ---
 package com.quadient.migration.example.common.report
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.example.common.util.PathUtil
 import com.quadient.migration.service.deploy.ResourceType
 import groovy.transform.Field
 
-import java.nio.file.Paths
-
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-@Field Migration migration = initMigration(this.binding.variables["args"])
+@Field Migration migration = initMigration(this.binding)
 
-def dstFile = Paths.get("report", "${migration.projectConfig.name}-complexity-report.csv")
+def dstFile  = PathUtil.dataDirPath(binding, "report", "${migration.projectConfig.name}-complexity-report.csv")
 
 def header = ["Id",
               "Name",

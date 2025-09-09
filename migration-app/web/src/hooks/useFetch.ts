@@ -1,0 +1,70 @@
+import React, { type DependencyList } from "react";
+
+export type SuccessFetchResult<T> = {
+    data: T;
+    setData: (value: ((prev: T) => T) | T) => void;
+    status: "ok";
+};
+
+export type UseFetchResult<T> =
+    | {
+          status: "error";
+          error: unknown;
+      }
+    | {
+          status: "loading";
+      }
+    | SuccessFetchResult<T>;
+
+export function useFetch<T>(url: string, requestInit?: RequestInit, deps?: DependencyList): UseFetchResult<T> {
+    const [status, setStatus] = React.useState("loading");
+    const [error, setError] = React.useState<unknown | null>(undefined);
+    const [data, setData] = React.useState<T | undefined>(undefined);
+
+    React.useEffect(() => {
+        let cancelled = false;
+        const controller = new AbortController();
+        const init: RequestInit = requestInit ?? {};
+        init.signal = controller.signal;
+        if (!init.method) {
+            init.method = "GET";
+        }
+
+        fetch(url, init)
+            .then((result) => {
+                if (cancelled) {
+                    return;
+                }
+                result
+                    .json()
+                    .then((json) => {
+                        if (cancelled) {
+                            return;
+                        }
+                        setData(json as T);
+                        setStatus("ok");
+                    })
+                    .catch((err) => {
+                        if (cancelled) {
+                            return;
+                        }
+                        setStatus("error");
+                        setError(err);
+                    });
+            })
+            .catch((err) => {
+                if (cancelled) {
+                    return;
+                }
+                setStatus("error");
+                setError(err);
+            });
+
+        return () => {
+            controller.abort();
+            cancelled = true;
+        };
+    }, [url, ...(deps ?? [])]);
+
+    return { data, setData, error, status } as UseFetchResult<T>;
+}

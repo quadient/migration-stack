@@ -1,14 +1,13 @@
 package com.quadient.migration.example.common
 //! ---
-//! name: ActivateAll
-//! category: migration common
+//! category: Utils
 //! ---
 
 import com.quadient.migration.service.deploy.ResourceType
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
-def migration = initMigration(this.binding.variables["args"])
+def migration = initMigration(this.binding)
 
 def all = migration.statusTrackingRepository.listAll()
 for (status in all) {
