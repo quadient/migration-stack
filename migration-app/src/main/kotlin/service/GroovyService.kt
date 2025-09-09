@@ -23,6 +23,7 @@ class GroovyService(val fileStorageService: FileStorageService, val config: Appl
 
     fun runScript(script: ScriptMetadata, settings: Settings): RunScriptResult {
         return try {
+            log.debug("Running script: ${script.path}")
             val migration = Migration(settings.migrationConfig, settings.projectConfig)
 
             val binding = Binding()
