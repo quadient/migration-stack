@@ -3,7 +3,14 @@ name: Nightly build
 on:
   schedule:
     - cron: '0 2 * * *'
+  push:
+    tags:
+    - 'tip'
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   nightly:
@@ -16,6 +23,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Tag ref
+        run: |
+          git config user.name "github-actions"
+          git tag -fa tip -m "Continuous Release" ${GITHUB_SHA}
+          git push --force origin tip
+
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
@@ -38,3 +52,10 @@ jobs:
           name: migration-app-${{ env.MIG_VERSION }}
           path: migration-app/build/tmp/dist
 
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          prerelease: true
+          draft: false
+          artifacts: migration-app/build/dist/*.zip
