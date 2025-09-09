@@ -82,7 +82,7 @@ tasks {
         from("${rootProject.rootDir.parent}/migration-examples/src/main/groovy/com/quadient/migration/example") {
             include("**/*.groovy")
         }
-        into("$workDir/modules")
+        into("$workDir/modules/com/quadient/migration/example")
     }
 
     register<Copy>("copyDist") {
