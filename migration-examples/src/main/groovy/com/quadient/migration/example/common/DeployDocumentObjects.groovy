@@ -13,7 +13,9 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 def start = System.currentTimeMillis()
-def deploymentResult = migration.deployClient.deployDocumentObjects()
+
+// keep without def to be present in binding as output for additional validation
+deploymentResult = migration.deployClient.deployDocumentObjects()
 @Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 def report = migration.deployClient.progressReport(null)
