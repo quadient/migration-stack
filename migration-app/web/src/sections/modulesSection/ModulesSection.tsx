@@ -31,6 +31,12 @@ export default function ModulesSection({ modules, sourceFormat, jobsResult }: Mo
                                 .filter(
                                     (module) => module.category === "Parser" && module.sourceFormat === sourceFormat,
                                 )
+                                .sort((a, b) => {
+                                    if (a.order === undefined && b.order === undefined) return 0;
+                                    if (a.order === undefined) return 1;
+                                    if (b.order === undefined) return -1;
+                                    return a.order - b.order;
+                                })
                                 .map((module) => (
                                     <ModuleCard
                                         key={module.id}
@@ -56,6 +62,12 @@ export default function ModulesSection({ modules, sourceFormat, jobsResult }: Mo
                                     module.category === "Deployment" &&
                                     module.filename === "DeployDocumentObjects.groovy",
                             )
+                            .sort((a, b) => {
+                                if (a.order === undefined && b.order === undefined) return 0;
+                                if (a.order === undefined) return 1;
+                                if (b.order === undefined) return -1;
+                                return a.order - b.order;
+                            })
                             .map((module) => {
                                 return (
                                     <ModuleCard
@@ -96,7 +108,7 @@ function ModuleCard({ module, icon: Icon, job, setJobs }: ModuleCardProps) {
     const name = getName(module);
 
     return (
-        <Card className="w-full max-w-sm min-w-75 h-75 flex flex-col" key={module.filename}>
+        <Card className="w-full max-w-sm min-w-75 min-h-75 flex flex-col" key={module.id}>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 font-normal max-w-3/5 break-words text-ellipsis leading-snug">
                     <div className="bg-muted rounded-xl p-2.5">

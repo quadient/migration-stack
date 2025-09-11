@@ -5,4 +5,5 @@ export type ModuleMetadata = {
     displayName: string | undefined;
     sourceFormat: string | undefined;
     description: string | undefined;
+    order: number | undefined;
 };
