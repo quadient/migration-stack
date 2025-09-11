@@ -28,7 +28,9 @@ jobs:
 
       - name: Tag ref
         run: |
-          git config user.name "github-actions"
+          # https://github.com/actions/checkout/pull/1707
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -fa tip -m "Continuous Release" ${GITHUB_SHA}
           git push --force origin tip
 
