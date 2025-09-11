@@ -120,6 +120,7 @@ class DesignerDocumentObjectBuilder(
     override fun buildDocumentObject(documentObject: DocumentObjectModel): String {
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
+        layout.name = "DocumentLayout"
 
         val pageModels = mutableListOf<DocumentObjectModel>()
         val virtualPageContent = mutableListOf<DocumentContentModel>()
