@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Deploy Specified Document Objects
 //! category: Deployment
-//! description: Deploys selected document objects
+//! description: Deploys document objects whose IDs are listed in the 'deploy/<project-name>-document-objects'
 //! ---
 package com.quadient.migration.example.common
 
@@ -21,7 +22,9 @@ def documentObjects = PathUtil.dataDirPath(binding, "deploy", "${migration.proje
         .toList()
 
 def start = System.currentTimeMillis()
-def deploymentResult = migration.deployClient.deployDocumentObjects(documentObjects, false)
+
+// keep without def to be present in binding as output for additional validation
+deploymentResult = migration.deployClient.deployDocumentObjects(documentObjects, false)
 @Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 def report = migration.deployClient.progressReport(documentObjects, null)

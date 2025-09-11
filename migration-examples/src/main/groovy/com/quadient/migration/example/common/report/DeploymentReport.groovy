@@ -1,5 +1,7 @@
 //! ---
+//! displayName: Deployment Report
 //! category: Report
+//! description: Creates a CSV report with deployment progress and status information for the migration project.
 //! ---
 package com.quadient.migration.example.common.report
 

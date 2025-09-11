@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Export Document Object IDs
 //! category: Utils
-//! description: Export document object ids to deploy to a file
+//! description: Export document object ids to file 'deploy/<project-name>-document-objects'. the specified IDs are then processed in various tasks (deployment, report, etc.)
 //! ---
 package com.quadient.migration.example.common
 

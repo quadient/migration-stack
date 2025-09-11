@@ -1,5 +1,7 @@
 //! ---
+//! displayName: Specified Objects Deployment Report
 //! category: Report
+//! description: Creates a CSV report with deployment progress and status information for the migration project. Only the IDs listed in the 'deploy/<project-name>-document-objects' are taken into account.
 //! ---
 package com.quadient.migration.example.common.report
 

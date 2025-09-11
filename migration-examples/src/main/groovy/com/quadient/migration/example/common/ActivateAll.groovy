@@ -1,5 +1,7 @@
 package com.quadient.migration.example.common
 //! ---
+//! displayName: Activate All
+//! description: Sets tracking status of all assets to active so they can be deployed again
 //! category: Utils
 //! ---
 

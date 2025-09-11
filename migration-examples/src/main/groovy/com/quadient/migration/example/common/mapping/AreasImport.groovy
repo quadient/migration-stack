@@ -1,4 +1,5 @@
 //! ---
+//! displayName: Import Areas
 //! category: Mapping
 //! description: Import areas with modified interactive flow names to their respective pages
 //! target: gradle

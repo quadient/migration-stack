@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Import Document Objects And Images
 //! category: Mapping
-//! description: Import document objects and images
+//! description: Imports document objects and image details from CSV files into the migration project, applying any updates made to the columns during editing.
 //! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping

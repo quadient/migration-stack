@@ -1,5 +1,7 @@
 //! ---
+//! displayName: Complexity Report
 //! category: Report
+//! description: Creates a CSV report with statistics on document objects in the migration project, including usage, references, and content metrics for each object.
 //! ---
 package com.quadient.migration.example.common.report
 
@@ -14,7 +16,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 @Field Migration migration = initMigration(this.binding)
 
-def dstFile  = PathUtil.dataDirPath(binding, "report", "${migration.projectConfig.name}-complexity-report.csv")
+def dstFile = PathUtil.dataDirPath(binding, "report", "${migration.projectConfig.name}-complexity-report.csv")
 
 def header = ["Id",
               "Name",
@@ -58,14 +60,14 @@ file.withWriter { writer ->
     Map<String, Set<String>> usageMap = [:]
 
     List<Tuple2<DocumentObject, Stats>> objectsWithStats
-        = externalDocumentObjects.collect { Tuple.tuple(it, new Stats(migration, usageMap).collect(it)) }.toList()
+            = externalDocumentObjects.collect { Tuple.tuple(it, new Stats(migration, usageMap).collect(it)) }.toList()
 
     for (objWithStats in objectsWithStats) {
         def obj = objWithStats.getV1()
         def stats = objWithStats.getV2()
         def lastStatus = migration.statusTrackingRepository.findLastEventRelevantToOutput(obj.id,
-            ResourceType.DocumentObject,
-            migration.projectConfig.inspireOutput)
+                ResourceType.DocumentObject,
+                migration.projectConfig.inspireOutput)
 
         writer.write("$obj.id,") // Id
         writer.write("$obj.name,") // Name

@@ -1,7 +1,7 @@
 //! ---
 //! displayName: Acknowledgement Letter
 //! category: Parser
-//! description: Import Acknowledgement Letter from Source example
+//! description: Import Migration objects of Acknowledgement Letter from Source example
 //! sourceFormat: Vital example
 //! ---
 // This script assumes resources in the resources directory

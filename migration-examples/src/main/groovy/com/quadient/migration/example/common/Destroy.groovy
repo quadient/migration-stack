@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Delete All
 //! category: Utils
-//! description: Destroys all project data
+//! description: Deleted all project data from database and storage
 //! stdin: true
 //! target: gradle
 //! ---

@@ -1,4 +1,5 @@
 //! ---
+//! displayName: Post-deploy Status Tracking Report
 //! category: Report
 //! ---
 package com.quadient.migration.example.common.report

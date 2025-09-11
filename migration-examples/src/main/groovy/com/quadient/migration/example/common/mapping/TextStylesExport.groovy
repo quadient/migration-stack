@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Export Text Styles
 //! category: Mapping
-//! description: Export text styles
+//! description: Creates a CSV report with text style definitions from the migration project. Each row allows you to either modify the style’s properties directly or link the style to another style using the targetId column. The updated CSV can be edited and later imported to update style mappings in the project.
 //! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping

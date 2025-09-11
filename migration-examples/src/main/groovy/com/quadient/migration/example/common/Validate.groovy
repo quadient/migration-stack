@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Validate References
 //! category: Utils
-//! description: Run validation on all migration objects
+//! description: Validates references on all migration objects. Task fails if any referenced object is missing
 //! ---
 package com.quadient.migration.example.common
 

@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Deploy Styles
 //! category: Deployment
-//! description: Deploy style definition
+//! description: Deploys text and paragraph style to external style definition
 //! ---
 package com.quadient.migration.example.common
 

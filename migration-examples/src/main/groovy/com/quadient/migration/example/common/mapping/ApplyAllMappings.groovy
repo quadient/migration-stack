@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Apply All Mappings
 //! category: Mapping
-//! description: Applies all mappings
+//! description: Applies all mappings to their respective Migration objects
 //! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping

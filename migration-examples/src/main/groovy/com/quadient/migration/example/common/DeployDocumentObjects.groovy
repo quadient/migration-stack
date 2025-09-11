@@ -1,4 +1,5 @@
 //! ---
+//! displayName: Deploy Document Objects
 //! category: Deployment
 //! description: Deploys all document objects
 //! ---

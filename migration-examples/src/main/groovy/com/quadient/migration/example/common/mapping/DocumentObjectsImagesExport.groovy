@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Export Document Objects And Images
 //! category: Mapping
-//! description: Export document objects and images
+//! description: Creates CSV files with document object and image details from the migration project. The generated CSV columns can be updated and later imported back into the database using a dedicated import task.
 //! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping

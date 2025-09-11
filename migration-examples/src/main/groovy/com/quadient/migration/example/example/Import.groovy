@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Migration Model Example
 //! category: Parser
-//! description: Import technical example
+//! description: Import Migration objects of technical example
 //! sourceFormat: Migration model example
 //! ---
 package com.quadient.migration.example.example

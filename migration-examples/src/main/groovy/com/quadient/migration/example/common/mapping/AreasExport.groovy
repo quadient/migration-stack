@@ -1,4 +1,5 @@
 //! ---
+//! displayName: Export Areas
 //! category: Mapping
 //! description: Export areas assigned to the appropriate pages and templates. Allows user to modify interactive flow name
 //! target: gradle

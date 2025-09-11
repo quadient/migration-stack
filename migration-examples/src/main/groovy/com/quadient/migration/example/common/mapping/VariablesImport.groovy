@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Import Variable Structure
 //! category: Mapping
-//! description: Import variables
+//! description: Imports variable structure from specified CSV files. The import is interactive, prompting the user to select variable structure CSV to import.
 //! target: gradle
 //! stdin: true
 //! ---

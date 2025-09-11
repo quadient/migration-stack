@@ -1,6 +1,7 @@
 //! ---
+//! displayName: Parse DocBook
 //! category: Parser
-//! description: Import docbook example
+//! description: Processes XML files located in the folder specified by the project settings. Each DocBook XML file is parsed, extracting section blocks, paragraphs, inline images, and variables. The parsed content is then transformed into Migration objects and saved to the database, enabling further migration or transformation workflows.
 //! sourceFormat: DocBook
 //! ---
 package com.quadient.migration.example.docbook

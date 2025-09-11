@@ -1,5 +1,7 @@
 //! ---
+//! displayName: Display Rule Report
 //! category: Report
+//! description: Creates a CSV report with information on display rules in the migration project, including usage, translation status, errors, and origin details for each rule.
 //! ---
 package com.quadient.migration.example.common.report
 
