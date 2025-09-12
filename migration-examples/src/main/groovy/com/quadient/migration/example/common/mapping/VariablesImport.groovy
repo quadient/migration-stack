@@ -23,7 +23,7 @@ run(migration, selectedFilePath)
 
 static void run(Migration migration, Path path) {
     def lines = path.toFile().readLines()
-    def columnNames = lines.removeFirst().split(",")
+    def columnNames = Csv.parseColumnNames(lines.removeFirst())
     def structureId = Mapping.variableStructureIdFromFileName(path.fileName.toString(), migration.projectConfig.name)
     def structureMapping = migration.mappingRepository.getVariableStructureMapping(structureId)
 

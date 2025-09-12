@@ -24,7 +24,7 @@ run(migration, areasFile)
 
 static void run(Migration migration, Path path) {
     def fileLines = path.toFile().readLines()
-    def columnNames = fileLines.removeFirst().split(",")
+    def columnNames = Csv.parseColumnNames(fileLines.removeFirst())
 
     DocumentObject currentPage = null
     def areas = null

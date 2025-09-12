@@ -30,7 +30,7 @@ static void runDocumentObjects(Migration migration, Path documentObjFilePath) {
     def docObjectLines = documentObjFilePath.toFile().readLines()
 
     // id, name, internal, baseTemplate, icmFolder
-    def docObjectColumnNames = docObjectLines.removeFirst().split(",")
+    def docObjectColumnNames = Csv.parseColumnNames(docObjectLines.removeFirst())
     def output = migration.projectConfig.inspireOutput
 
     for (line in docObjectLines) {
@@ -86,7 +86,7 @@ static void runImages(Migration migration, Path imagesFilePath) {
     def output = migration.projectConfig.inspireOutput
     def imageLines = imagesFilePath.toFile().readLines()
     // id, name, sourcePath, icmFolder
-    def imageColumnNames = imageLines.removeFirst().split(",")
+    def imageColumnNames  = Csv.parseColumnNames(imageLines.removeFirst())
 
     for (line in imageLines) {
         def values = Csv.getCells(line, imageColumnNames)

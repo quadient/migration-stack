@@ -32,7 +32,7 @@ run(migration, exportFilePath)
 
 static void run(Migration migration, Path path) {
     def file = path.toFile().readLines()
-    def columnNames = file.removeFirst().split(",")
+    def columnNames = Csv.parseColumnNames(file.removeFirst())
 
     def definitionFields = ParagraphStyleDefinition.declaredFields.findAll { !it.synthetic && !Modifier.isStatic(it.getModifiers()) }
     for (line in file) {

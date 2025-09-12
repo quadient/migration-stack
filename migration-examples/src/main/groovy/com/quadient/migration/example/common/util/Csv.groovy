@@ -10,22 +10,88 @@ static String serialize(Object obj) {
     return serialize(obj, Size.Unit.Millimeters)
 }
 
-static Map<String, String> getCells(String line, String[] columnNames) {
+static List<String> split(String line) {
+    if (line == null) return []
+    if (line.empty) return [""]
+
+    List<String> columns = []
+    int i = 0
+    def inQuotes = false
+    def inQuotedField = false
+    def currentField = new StringBuilder()
+
+    while (i < line.length()) {
+        def c = line.charAt(i) as Character
+        def next = i < line.length() - 1 ? line.charAt(i + 1) : null
+
+        if (inQuotes) {
+            // Escaped quote by another quote as specified by RFC4180
+            if (c == '"' && next == '"') {
+                currentField << '"'
+                i++ // Increment to skip the next quote
+            } else if (c == '"') {
+                // End of quoted field
+                inQuotes = false
+            } else {
+                currentField << c
+            }
+        } else {
+            // Field boundary
+            if (c == ",") {
+                inQuotedField = false
+                columns.add(currentField.toString())
+                currentField.setLength(0)
+            } else if (currentField.length() == 0 && c == '"' && !inQuotedField) {
+                // Start of a quoted field
+                inQuotes = true
+                inQuotedField = true
+            } else {
+                currentField << c
+            }
+        }
+
+        i++
+    }
+
+    columns.add(currentField.toString())
+
+    return columns
+}
+
+static Map<String, String> getCells(String line, List<String> columnNames) {
     if (!line) return new HashMap<String, String>()
 
-    def columns = line.split(",").toList()
+    def columns = split(line)
     def values = new HashMap<String, String>()
-    for (i in 0..<columnNames.length) {
+    for (i in 0..<columnNames.size()) {
         values.put(columnNames[i], columns[i])
     }
 
     return values
 }
 
+static List<String> parseColumnNames(String line) {
+    if (!line || line.empty) return []
+
+    // Migration scripts never use semicolons as delimiters or in the column names.
+    // Assume that the CSV uses semicolons as delimiters if any semicolon is found in the header line.
+    if (line.contains(";")) {
+        throw new IllegalArgumentException("Column names should be separated by commas, not semicolons")
+    }
+
+    return split(line)
+}
+
 static String serialize(Object obj, Size.Unit unitOverride) {
     switch (obj) {
         case null: return ""
-        case String: return obj
+        case String: {
+            def result = obj.replace("\"", "\"\"")
+            if (result.contains(",") || result.contains("\n") || result.contains("\r")) {
+                result = "\"" + result + "\""
+            }
+            return result
+        }
         case Double: return obj.toString()
         case Color: return obj.toHex()
         case Size: return obj.toString(unitOverride)

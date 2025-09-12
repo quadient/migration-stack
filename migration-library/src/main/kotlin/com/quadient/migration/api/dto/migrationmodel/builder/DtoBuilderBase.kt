@@ -20,7 +20,7 @@ abstract class DtoBuilderBase<T : MigrationObject, K : DtoBuilderBase<T, K>>(
      * @param name The name to set.
      * @return The builder instance for method chaining.
      */
-    fun name(name: String): K {
+    fun name(name: String?): K {
         this.name = name
         return this as K
     }
