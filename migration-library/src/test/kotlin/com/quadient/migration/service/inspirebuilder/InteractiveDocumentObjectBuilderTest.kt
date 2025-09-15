@@ -1070,6 +1070,8 @@ class InteractiveDocumentObjectBuilderTest {
         val cellNode = result["Cell"].last()
         val cellFlow = result["Flow"].last { it["Id"].textValue() == cellNode["FlowId"].textValue() }
         cellFlow["Type"].textValue().shouldBeEqualTo("Simple")
+        cellFlow["SectionFlow"].textValue().shouldBeEqualTo("True")
+        cellFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
 
         val inlineCondFlowId = cellFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
         val inlineCondFlow = result["Flow"].last { it["Id"].textValue() == inlineCondFlowId }

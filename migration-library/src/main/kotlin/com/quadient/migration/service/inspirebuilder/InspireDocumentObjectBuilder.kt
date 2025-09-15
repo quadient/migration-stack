@@ -636,14 +636,16 @@ abstract class InspireDocumentObjectBuilder(
             }
 
             rowModel.cells.forEach { cellModel ->
-                val cellFlow = buildDocumentContentAsSingleFlow(layout, variableStructure, cellModel.content)
-                val cellSimpleFlow = if (cellFlow.type === Flow.Type.SELECT_BY_INLINE_CONDITION) {
-                    layout.addFlow().setType(Flow.Type.SIMPLE).also { it.addParagraph().addText().appendFlow(cellFlow) }
-                } else cellFlow
+                val cellContentFlow = buildDocumentContentAsSingleFlow(layout, variableStructure, cellModel.content)
+                val cellFlow = if (cellContentFlow.type === Flow.Type.SELECT_BY_INLINE_CONDITION) {
+                    layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
+                        .setWebEditingType(Flow.WebEditingType.SECTION)
+                        .also { it.addParagraph().addText().appendFlow(cellContentFlow) }
+                } else cellContentFlow
 
                 row.addCell(
                     layout.addCell().setSpanLeft(cellModel.mergeLeft).setSpanUp(cellModel.mergeUp)
-                        .setFlowToNextPage(true).setFlow(cellSimpleFlow)
+                        .setFlowToNextPage(true).setFlow(cellFlow)
                 )
             }
         }
@@ -731,7 +733,12 @@ abstract class InspireDocumentObjectBuilder(
     private fun Literal.toScript(layout: Layout, variableStructure: VariableStructureModel): ScriptResult {
         return when (dataType) {
             LiteralDataType.Variable -> variableToScript(value, layout, variableStructure)
-            LiteralDataType.String -> ScriptResult.Success("String('${value.replace("\\", "\\\\").replace("\"", "\\\"")}')")
+            LiteralDataType.String -> ScriptResult.Success(
+                "String('${
+                    value.replace("\\", "\\\\").replace("\"", "\\\"")
+                }')"
+            )
+
             LiteralDataType.Number -> ScriptResult.Success(value)
             LiteralDataType.Boolean -> ScriptResult.Success(value.lowercase().toBooleanStrict().toString())
         }
