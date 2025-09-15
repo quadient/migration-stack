@@ -14,6 +14,7 @@ import com.quadient.migration.service.deploy.InteractiveDeployClient
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
+import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -56,19 +57,11 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
             password = config.dbConfig.password
         )
 
-        transaction {
-            SchemaUtils.create(
-                VariableTable,
-                DocumentObjectTable,
-                TextStyleTable,
-                ParagraphStyleTable,
-                VariableStructureTable,
-                DisplayRuleTable,
-                ImageTable,
-                StatusTrackingTable,
-                MappingTable,
-            )
-        }
+        Flyway.configure()
+            .dataSource(config.dbConfig.connectionString(), config.dbConfig.user, config.dbConfig.password)
+            .locations("classpath:com/quadient/migration/persistence/upgrade")
+            .load()
+            .migrate()
 
         val documentObjectInternalRepository = DocumentObjectInternalRepository(DocumentObjectTable, projectName)
         val imageInternalRepository = ImageInternalRepository(ImageTable, projectName)

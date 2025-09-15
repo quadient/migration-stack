@@ -62,6 +62,8 @@ dependencies {
     implementation("com.quadient.wfdxml:wfd-xml-impl")
 
     implementation("org.postgresql:postgresql:$postgresVersion")
+    implementation("org.flywaydb:flyway-core:11.12.0")
+    implementation("org.flywaydb:flyway-database-postgresql:11.12.0")
 
     // exposed
     implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
