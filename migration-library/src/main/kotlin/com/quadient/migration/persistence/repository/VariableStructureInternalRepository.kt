@@ -1,7 +1,6 @@
 package com.quadient.migration.persistence.repository
 
 import com.quadient.migration.data.VariableModelRef
-import com.quadient.migration.data.VariablePath
 import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.table.VariableStructureTable
 import com.quadient.migration.persistence.table.VariableStructureTable.structure
@@ -16,7 +15,7 @@ class VariableStructureInternalRepository(table: VariableStructureTable, project
             customFields = row[table.customFields],
             lastUpdated = row[table.lastUpdated],
             created = row[table.created],
-            structure = row[structure].map { (key, value) -> VariableModelRef(key) to VariablePath(value) }.toMap(),
+            structure = row[structure].map { (key, value) -> VariableModelRef(key) to value }.toMap(),
             originLocations = row[table.originLocations]
         )
     }

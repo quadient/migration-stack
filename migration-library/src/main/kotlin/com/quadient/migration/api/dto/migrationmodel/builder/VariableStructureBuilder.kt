@@ -1,9 +1,10 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.shared.VariablePathAndName
 
 class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, VariableStructureBuilder>(id) {
-    var structure = mutableMapOf<String, String>()
+    var structure = mutableMapOf<String, VariablePathAndName>()
 
     /**
      * Adds a variable to the structure with the given name and path.
