@@ -1,0 +1,54 @@
+name: Nightly build
+
+on:
+  push:
+    tags:
+    - 'v*.*.*'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  nightly:
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    name: Build nightly
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Read release tag
+        run: |
+          if [ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]; then
+              echo "RELEASE_TAG=master" >> "$GITHUB_ENV"
+          else
+              echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}"  >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Fetch tags
+        run: |
+          git fetch --tags -f
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'oracle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build with Gradle
+        run: ./gradlew :migration-app:buildDistZip
+
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          prerelease: false
+          draft: true
+          artifacts: migration-app/build/dist/*.zip
