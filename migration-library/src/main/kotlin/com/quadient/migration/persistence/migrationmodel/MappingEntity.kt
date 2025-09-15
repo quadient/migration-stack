@@ -192,7 +192,7 @@ sealed class MappingItemEntity {
         fun apply(item: VariableStructureDto): VariableStructureDto {
             return item.copy(
                 name = name ?: item.name,
-                structure = mappings?.filter { it.value.isNotEmpty() } ?: mutableMapOf()
+                structure = mappings?.filter { it.value.isNotEmpty() } ?: item.structure  ?: mutableMapOf()
             )
         }
     }
