@@ -49,33 +49,32 @@ class V2__variable_structure_upgrade : BaseJavaMigration() {
 
     private fun migrateVariableStructureMapping(connection: Connection) {
         val selectStmt =
-            connection.prepareStatement("SELECT resource_id, mapping FROM mapping WHERE type = 'VariableStructure'")
-        val updateStmt = connection.prepareStatement("UPDATE mapping SET mapping = ?::jsonb WHERE resource_id = ?")
+            connection.prepareStatement("SELECT id, mappings FROM mapping WHERE type = 'VariableStructure'")
+        val updateStmt = connection.prepareStatement("UPDATE mapping SET mappings = ?::jsonb WHERE id = ?")
 
         selectStmt.use { sel ->
             val rs = sel.executeQuery()
             while (rs.next()) {
-            val resourceId = rs.getString("resource_id")
-                val mappingJson = rs.getString("mapping")
+                val variableStructureId = rs.getString("id")
+                val outerMappingsJson = rs.getString("mappings")
 
                 try {
-                    val mapping: MutableMap<String, Any?> = mapper.readValue(mappingJson)
+                    val outerMappings: MutableMap<String, Any?> = mapper.readValue(outerMappingsJson)
 
-                    @Suppress("UNCHECKED_CAST")
-                    val mappings = mapping["mappings"] as? MutableMap<String, String>
-                    if (mappings != null) {
-                        val newMappings = mappings.mapValues { (_, path) ->
+                    @Suppress("UNCHECKED_CAST") val innerMappings = outerMappings["mappings"] as? MutableMap<String, String>
+                    if (innerMappings != null) {
+                        val newInnerMappings = innerMappings.mapValues { (_, path) ->
                             VariablePathData(path, null)
                         }
-                        mapping["mappings"] = newMappings
-                        val newJson = mapper.writeValueAsString(mapping)
+                        outerMappings["mappings"] = newInnerMappings
+                        val newJson = mapper.writeValueAsString(outerMappings)
 
                         updateStmt.setString(1, newJson)
-                    updateStmt.setString(2, resourceId)
+                        updateStmt.setString(2, variableStructureId)
                         updateStmt.addBatch()
                     }
                 } catch (ex: Exception) {
-                    System.err.println("Error migrating mapping resource_id=$resourceId: ${ex.message}")
+                    System.err.println("Error migrating mapping id=$variableStructureId: ${ex.message}")
                 }
             }
             rs.close()
