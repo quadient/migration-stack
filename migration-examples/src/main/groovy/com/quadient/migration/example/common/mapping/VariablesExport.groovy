@@ -87,10 +87,12 @@ static void run(Migration migration, Path filePath) {
         writer.writeLine("id,name,origin_locations,inspire_path,data_type")
 
         for (variable in variables) {
-            def inspirePath = existingStructure?.structure?.get(variable.id) ?: ""
+            def variablePathData = existingStructure?.structure?.get(variable.id)
+            def variableName = variablePathData?.name
+            def inspirePath = variablePathData?.path
 
             writer.write("${Csv.serialize(variable.id)},")
-            writer.write("${Csv.serialize(variable.name)},")
+            writer.write("${Csv.serialize(variableName)},")
             writer.write("${Csv.serialize(variable.originLocations)},")
             writer.write("${Csv.serialize(inspirePath)},")
             writer.write("${Csv.serialize(variable.dataType)}")
