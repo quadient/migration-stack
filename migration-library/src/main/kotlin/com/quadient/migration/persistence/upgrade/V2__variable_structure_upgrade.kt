@@ -19,7 +19,7 @@ class V2__variable_structure_upgrade : BaseJavaMigration() {
 
     private fun migrateVariableStructureModel(connection: Connection) {
         val selectStmt = connection.prepareStatement("SELECT id, structure FROM variable_structure")
-        val updateStmt = connection.prepareStatement("UPDATE variable_structure SET structure = ? WHERE id = ?")
+        val updateStmt = connection.prepareStatement("UPDATE variable_structure SET structure = ?::jsonb WHERE id = ?")
 
         selectStmt.use { sel ->
             val rs = sel.executeQuery()
@@ -49,31 +49,33 @@ class V2__variable_structure_upgrade : BaseJavaMigration() {
 
     private fun migrateVariableStructureMapping(connection: Connection) {
         val selectStmt =
-            connection.prepareStatement("SELECT id, mappings FROM mapping WHERE type = 'VariableStructure'")
-        val updateStmt = connection.prepareStatement("UPDATE mapping SET mappings = ? WHERE id = ?")
+            connection.prepareStatement("SELECT resource_id, mapping FROM mapping WHERE type = 'VariableStructure'")
+        val updateStmt = connection.prepareStatement("UPDATE mapping SET mapping = ?::jsonb WHERE resource_id = ?")
 
         selectStmt.use { sel ->
             val rs = sel.executeQuery()
             while (rs.next()) {
-                val id = rs.getString("id")
-                val mappingsJson = rs.getString("mappings")
-                if (mappingsJson.isNullOrBlank()) {
-                    System.err.println("Skipping mapping id=$id: mappings is null/blank")
-                    continue
-                }
+            val resourceId = rs.getString("resource_id")
+                val mappingJson = rs.getString("mapping")
 
                 try {
-                    val mappings: Map<String, String> = mapper.readValue(mappingsJson)
-                    val newMappings = mappings.mapValues { (_, path) ->
-                        VariablePathData(path, null)
-                    }
-                    val newJson = mapper.writeValueAsString(newMappings)
+                    val mapping: MutableMap<String, Any?> = mapper.readValue(mappingJson)
 
-                    updateStmt.setString(1, newJson)
-                    updateStmt.setString(2, id)
-                    updateStmt.addBatch()
+                    @Suppress("UNCHECKED_CAST")
+                    val mappings = mapping["mappings"] as? MutableMap<String, String>
+                    if (mappings != null) {
+                        val newMappings = mappings.mapValues { (_, path) ->
+                            VariablePathData(path, null)
+                        }
+                        mapping["mappings"] = newMappings
+                        val newJson = mapper.writeValueAsString(mapping)
+
+                        updateStmt.setString(1, newJson)
+                    updateStmt.setString(2, resourceId)
+                        updateStmt.addBatch()
+                    }
                 } catch (ex: Exception) {
-                    System.err.println("Error migrating mapping id=$id: ${ex.message}")
+                    System.err.println("Error migrating mapping resource_id=$resourceId: ${ex.message}")
                 }
             }
             rs.close()
