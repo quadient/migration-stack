@@ -187,12 +187,13 @@ sealed class MappingItemEntity {
     @Serializable
     data class VariableStructure(
         override var name: String?,
-        val mappings: MutableMap<String, String>?,
+        val mappings: MutableMap<String, VariablePathData>?,
     ) : MappingItemEntity() {
         fun apply(item: VariableStructureDto): VariableStructureDto {
             return item.copy(
                 name = name ?: item.name,
-                structure = mappings?.filter { it.value.isNotEmpty() } ?: item.structure  ?: mutableMapOf()
+                structure = mappings?.filter { !it.value.name.isNullOrBlank() || !it.value.path.isBlank() }
+                    ?: mutableMapOf()
             )
         }
     }

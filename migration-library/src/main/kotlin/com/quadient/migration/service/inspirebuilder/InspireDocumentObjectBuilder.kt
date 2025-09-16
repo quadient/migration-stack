@@ -251,10 +251,8 @@ abstract class InspireDocumentObjectBuilder(
                 customFields = CustomFieldMap()
             )
 
-        val normalizedVariablePaths = variableStructureModel.structure.map { (_, variablePathAndName) ->
-            removeDataFromVariablePath(
-                variablePathAndName.path
-            )
+        val normalizedVariablePaths = variableStructureModel.structure.map { (_, variablePathData) ->
+            removeDataFromVariablePath(variablePathData.path)
         }.filter { it.isNotBlank() }
 
         val variableTree = buildVariableTree(normalizedVariablePaths)

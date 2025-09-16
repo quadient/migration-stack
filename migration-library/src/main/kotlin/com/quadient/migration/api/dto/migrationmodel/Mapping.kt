@@ -68,7 +68,7 @@ sealed class MappingItem {
 
     data class VariableStructure(
         override var name: String?,
-        val mappings: MutableMap<String, String>?,
+        val mappings: MutableMap<String, VariablePathData>?,
     ) : MappingItem()
 
     fun toDb(): MappingItemEntity {

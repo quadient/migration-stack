@@ -14,7 +14,6 @@ import com.quadient.migration.data.StringModel
 import com.quadient.migration.data.TableModel
 import com.quadient.migration.data.VariableModel
 import com.quadient.migration.data.VariableModelRef
-import com.quadient.migration.data.VariablePath
 import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
@@ -32,6 +31,7 @@ import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.Position
+import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.shared.centimeters
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.tools.aProjectConfig
@@ -384,7 +384,7 @@ class DesignerDocumentObjectBuilderTest {
         val varStructure = mockVarStructure(
             aVariableStructureModel(
                 structure = mapOf(
-                    VariableModelRef(variable.id) to VariablePath("Data.Records.Value")
+                    VariableModelRef(variable.id) to VariablePathData("Data.Records.Value")
                 )
             )
         )
@@ -597,12 +597,12 @@ class DesignerDocumentObjectBuilderTest {
         val variable = mockVar(aVariable("V_1"))
         val variableStructureA = mockVarStructure(
             aVariableStructureModel(
-                "VS_1", structure = mapOf(VariableModelRef(variable.id) to VariablePath("Data.Records.Value"))
+                "VS_1", structure = mapOf(VariableModelRef(variable.id) to VariablePathData("Data.Records.Value"))
             )
         )
         val variableStructureB = mockVarStructure(
             aVariableStructureModel(
-                "VS_2", structure = mapOf(VariableModelRef(variable.id) to VariablePath("Data.Clients.Value"))
+                "VS_2", structure = mapOf(VariableModelRef(variable.id) to VariablePathData("Data.Clients.Value"))
             )
         )
         every { variableStructureRepository.listAllModel() } returns listOf(variableStructureA, variableStructureB)
