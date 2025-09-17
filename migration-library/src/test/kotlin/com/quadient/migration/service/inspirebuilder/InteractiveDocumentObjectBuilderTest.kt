@@ -286,7 +286,7 @@ class InteractiveDocumentObjectBuilderTest {
             aVariableStructureModel(
                 structure = mapOf(
                     VariableModelRef(longVar.id) to VariablePathData("Data.Clients.Value"),
-                    VariableModelRef(currencyVar.id) to VariablePathData("Data.Clients.Value"),
+                    VariableModelRef(currencyVar.id) to VariablePathData("Data.Clients.Value", "Money"),
                     VariableModelRef(boolVar.id) to VariablePathData("Data.Clients.Value")
                 )
             )
@@ -323,7 +323,7 @@ class InteractiveDocumentObjectBuilderTest {
         longVarContent["VarType"].textValue().shouldBeEqualTo("Int64")
         longVarContent["Content"].textValue().shouldBeEqualTo("2025")
 
-        val currencyVarId = variableDefinitions.first { it["Name"].textValue() == "varName2" }["Id"].textValue()
+        val currencyVarId = variableDefinitions.first { it["Name"].textValue() == "Money" }["Id"].textValue()
         variableDefinitions.last { it["Id"].textValue() == currencyVarId }["Content"].textValue()
             .shouldBeEqualTo("249.99")
 
@@ -381,7 +381,7 @@ class InteractiveDocumentObjectBuilderTest {
         val variableStructure = mockVarStructure(
             aVariableStructureModel(
                 structure = mapOf(
-                    VariableModelRef(variable.id) to VariablePathData("Data.Clients"),
+                    VariableModelRef(variable.id) to VariablePathData("Data.Clients", "Client Name"),
                 )
             )
         )
@@ -412,6 +412,9 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
+        result["Variable"].first { it["ParentId"]?.textValue() == "Data.Clients" }["Name"].textValue()
+            .shouldBeEqualTo("Client Name")
+
         val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
         val topSimpleFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
 
@@ -426,7 +429,7 @@ class InteractiveDocumentObjectBuilderTest {
         val conditionFlow = result["Flow"].last { it["Id"].textValue() == conditionFlowRef }
         conditionFlow["Type"].textValue().shouldBeEqualTo("InlCond")
         val condition = conditionFlow["Condition"]
-        condition["Value"].textValue().shouldBeEqualTo("return (DATA.Clients.ClientName==String('Jon'));")
+        condition["Value"].textValue().shouldBeEqualTo("return (DATA.Clients.Client Name==String('Jon'));")
         val finalFlowRef = condition[""].textValue()
 
         val finalFlow = result["Flow"].last { it["Id"].textValue() == finalFlowRef }

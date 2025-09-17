@@ -4,6 +4,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class VariablePathData(
-    val path: String,
-    val name: String? = null,
+    var path: String,
+    var name: String? = null,
 )
