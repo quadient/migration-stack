@@ -1,4 +1,4 @@
-name: Nightly build
+name: Release
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: write
 
-    name: Build nightly
+    name: Release
     runs-on: ubuntu-latest
 
     steps:
