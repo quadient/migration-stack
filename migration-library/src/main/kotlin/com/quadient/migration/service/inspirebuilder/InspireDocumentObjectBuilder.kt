@@ -757,7 +757,7 @@ abstract class InspireDocumentObjectBuilder(
 
             getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path)
 
-            ScriptResult.Success((variablePathData.path.split(".") + variableModel.nameOrId()).joinToString(".") { pathPart ->
+            ScriptResult.Success((variablePathData.path.split(".") + variableName).joinToString(".") { pathPart ->
                 when (pathPart.lowercase()) {
                     "value" -> "Current"
                     "data" -> "DATA"
