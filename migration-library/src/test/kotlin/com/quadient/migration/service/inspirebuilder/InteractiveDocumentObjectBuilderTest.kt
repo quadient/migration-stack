@@ -18,7 +18,6 @@ import com.quadient.migration.data.TabsModel
 import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.data.VariableModel
 import com.quadient.migration.data.VariableModelRef
-import com.quadient.migration.data.VariablePath
 import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
@@ -41,6 +40,7 @@ import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.TabType
+import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDisplayRule
@@ -285,9 +285,9 @@ class InteractiveDocumentObjectBuilderTest {
         val variableStructure = mockVarStructure(
             aVariableStructureModel(
                 structure = mapOf(
-                    VariableModelRef(longVar.id) to VariablePath("Data.Clients.Value"),
-                    VariableModelRef(currencyVar.id) to VariablePath("Data.Clients.Value"),
-                    VariableModelRef(boolVar.id) to VariablePath("Data.Clients.Value")
+                    VariableModelRef(longVar.id) to VariablePathData("Data.Clients.Value"),
+                    VariableModelRef(currencyVar.id) to VariablePathData("Data.Clients.Value", "Money"),
+                    VariableModelRef(boolVar.id) to VariablePathData("Data.Clients.Value")
                 )
             )
         )
@@ -323,7 +323,7 @@ class InteractiveDocumentObjectBuilderTest {
         longVarContent["VarType"].textValue().shouldBeEqualTo("Int64")
         longVarContent["Content"].textValue().shouldBeEqualTo("2025")
 
-        val currencyVarId = variableDefinitions.first { it["Name"].textValue() == "varName2" }["Id"].textValue()
+        val currencyVarId = variableDefinitions.first { it["Name"].textValue() == "Money" }["Id"].textValue()
         variableDefinitions.last { it["Id"].textValue() == currencyVarId }["Content"].textValue()
             .shouldBeEqualTo("249.99")
 
@@ -381,7 +381,7 @@ class InteractiveDocumentObjectBuilderTest {
         val variableStructure = mockVarStructure(
             aVariableStructureModel(
                 structure = mapOf(
-                    VariableModelRef(variable.id) to VariablePath("Data.Clients"),
+                    VariableModelRef(variable.id) to VariablePathData("Data.Clients", "Client Name"),
                 )
             )
         )
@@ -412,6 +412,9 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
+        result["Variable"].first { it["ParentId"]?.textValue() == "Data.Clients" }["Name"].textValue()
+            .shouldBeEqualTo("Client Name")
+
         val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
         val topSimpleFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
 
@@ -426,7 +429,7 @@ class InteractiveDocumentObjectBuilderTest {
         val conditionFlow = result["Flow"].last { it["Id"].textValue() == conditionFlowRef }
         conditionFlow["Type"].textValue().shouldBeEqualTo("InlCond")
         val condition = conditionFlow["Condition"]
-        condition["Value"].textValue().shouldBeEqualTo("return (DATA.Clients.ClientName==String('Jon'));")
+        condition["Value"].textValue().shouldBeEqualTo("return (DATA.Clients.Client Name==String('Jon'));")
         val finalFlowRef = condition[""].textValue()
 
         val finalFlow = result["Flow"].last { it["Id"].textValue() == finalFlowRef }
@@ -446,7 +449,7 @@ class InteractiveDocumentObjectBuilderTest {
         val variable = mockVar(aVariable("V1", "900_MailCount"))
         val variableStructure = mockVarStructure(
             aVariableStructureModel(
-                structure = mapOf(VariableModelRef(variable.id) to VariablePath("Data.1.Value"))
+                structure = mapOf(VariableModelRef(variable.id) to VariablePathData("Data.1.Value"))
             )
         )
         val config = aProjectConfig(defaultVariableStructure = variableStructure.id)
@@ -1180,12 +1183,12 @@ class InteractiveDocumentObjectBuilderTest {
         val variable = mockVar(aVariable("V_1"))
         val variableStructureA = mockVarStructure(
             aVariableStructureModel(
-                "VS_1", structure = mapOf(VariableModelRef(variable.id) to VariablePath("Data.Records.Value"))
+                "VS_1", structure = mapOf(VariableModelRef(variable.id) to VariablePathData("Data.Records.Value"))
             )
         )
         val variableStructureB = mockVarStructure(
             aVariableStructureModel(
-                "VS_2", structure = mapOf(VariableModelRef(variable.id) to VariablePath("Data.Clients.Value"))
+                "VS_2", structure = mapOf(VariableModelRef(variable.id) to VariablePathData("Data.Clients.Value"))
             )
         )
         val config = aProjectConfig(defaultVariableStructure = variableStructureB.id)

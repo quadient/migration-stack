@@ -23,7 +23,6 @@ import com.quadient.migration.data.TextStyleModel
 import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.data.VariableModel
 import com.quadient.migration.data.VariableModelRef
-import com.quadient.migration.data.VariablePath
 import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
@@ -58,6 +57,7 @@ import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SuperOrSubscript
+import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.tools.aProjectConfig
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -261,7 +261,7 @@ fun aVariableStructureModel(
     name: String? = "variableStructureName",
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
-    structure: Map<VariableModelRef, VariablePath> = emptyMap(),
+    structure: Map<VariableModelRef, VariablePathData> = emptyMap(),
     lastUpdated: Instant = Clock.System.now(),
 ): VariableStructureModel {
     return VariableStructureModel(

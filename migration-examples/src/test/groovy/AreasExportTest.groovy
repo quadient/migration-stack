@@ -48,7 +48,7 @@ class AreasExportTest {
             full tmpl,,full page,,test flow5,0.0mm,0.0mm,0.0mm,0.0mm,
             ,,unreferenced page,,test flow,0.0mm,0.0mm,0.0mm,0.0mm,
             """.stripIndent()
-        Assertions.assertEquals(expected, mappingFile.toFile().text)
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
 
     static Area createArea(String flowName) {

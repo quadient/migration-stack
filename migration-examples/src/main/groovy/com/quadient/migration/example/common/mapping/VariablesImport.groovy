@@ -11,6 +11,7 @@ import com.quadient.migration.api.Migration
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.shared.DataType
+import com.quadient.migration.shared.VariablePathData
 
 import java.nio.file.Path
 
@@ -31,20 +32,25 @@ static void run(Migration migration, Path path) {
         def values = Csv.getCells(line, columnNames)
         def id = values.get("id")
 
-        def mapping = migration.mappingRepository.getVariableMapping(id)
+        def variablePathData = structureMapping.mappings[id] ?: new VariablePathData("", null)
 
-        def inspirePath = values.get("inspire_path")
-        if (inspirePath != null && inspirePath != "" && inspirePath != structureMapping.mappings[id]) {
-            structureMapping.mappings[id] = inspirePath
+        def newName = Csv.deserialize(values.get("name"), String.class)
+        if (newName != null) {
+            variablePathData.name = newName
         }
 
-        def variable = migration.variableRepository.find(values.get("id"))
+        def inspirePath = Csv.deserialize(values.get("inspire_path"), String.class)
+        if (inspirePath != null) {
+            variablePathData.path = inspirePath
+        }
 
-        def newName = values.get("name")
-        Mapping.mapProp(mapping, variable, "name", newName)
+        if (variablePathData.name != null || variablePathData.path != "") {
+            structureMapping.mappings[id] = variablePathData
+        }
 
+        def mapping = migration.mappingRepository.getVariableMapping(id)
         def dataType = Csv.deserialize(values.get("data_type"), DataType.class)
-        Mapping.mapProp(mapping, variable, "dataType", dataType)
+        Mapping.mapProp(mapping, migration.variableRepository.find(id), "dataType", dataType)
 
         migration.mappingRepository.upsert(id, mapping)
         migration.mappingRepository.applyVariableMapping(id)

@@ -5,7 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.repository.*
 import com.quadient.migration.data.VariableModelRef
-import com.quadient.migration.data.VariablePath
+import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.aVariable
 import com.quadient.migration.tools.model.aVariableStructureModel
@@ -59,8 +59,9 @@ class MappingRepositoryTest {
         )
         every { variableStructureRepository.upsert(any()) } returns Unit
         repo.upsert("varStructId", MappingItem.VariableStructure(
-            name = "new name",
-            mappings = mutableMapOf("varId" to "somePath", "anotherVarId" to "anotherPath")
+            name = "new name", mappings = mutableMapOf(
+                "varId" to VariablePathData("somePath"), "anotherVarId" to VariablePathData("anotherPath")
+            )
         ))
 
         repo.applyVariableStructureMapping("varStructId")
@@ -70,10 +71,8 @@ class MappingRepositoryTest {
                 VariableStructure.fromModel(
                     aVariableStructureModel(
                         id = "varStructId", name = "new name", structure = mapOf(
-                            VariableModelRef("varId") to VariablePath("somePath"),
-                            VariableModelRef("anotherVarId") to VariablePath(
-                                "anotherPath"
-                            )
+                            VariableModelRef("varId") to VariablePathData("somePath"),
+                            VariableModelRef("anotherVarId") to VariablePathData("anotherPath")
                         )
                     )
                 )

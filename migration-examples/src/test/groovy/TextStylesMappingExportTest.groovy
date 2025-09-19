@@ -69,6 +69,6 @@ class TextStylesMappingExportTest {
             full with targetId overridden by def,,other,[],,,,,,,,,
             full with targetId overridden by ref,,other,[],,,,,,,,,
             """.stripIndent()
-        Assertions.assertEquals(expected, mappingFile.toFile().text)
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
 }

@@ -251,9 +251,9 @@ abstract class InspireDocumentObjectBuilder(
                 customFields = CustomFieldMap()
             )
 
-        val normalizedVariablePaths =
-            variableStructureModel.structure.map { (_, variablePath) -> removeDataFromVariablePath(variablePath.value) }
-                .filter { it.isNotBlank() }
+        val normalizedVariablePaths = variableStructureModel.structure.map { (_, variablePathData) ->
+            removeDataFromVariablePath(variablePathData.path)
+        }.filter { it.isNotBlank() }
 
         val variableTree = buildVariableTree(normalizedVariablePaths)
 
@@ -557,11 +557,12 @@ abstract class InspireDocumentObjectBuilder(
     ): Text {
         val variableModel = variableRepository.findModelOrFail(ref.id)
 
-        val variablePath = variableStructure.structure[ref]?.value
-        if (variablePath.isNullOrBlank()) {
+        val variablePathData = variableStructure.structure[ref]
+        if (variablePathData == null) {
             this.appendText("""$${variableModel.nameOrId()}$""")
         } else {
-            this.appendVariable(getOrCreateVariable(layout.data, variableModel, variablePath))
+            val variableName = variablePathData.name ?: variableModel.nameOrId()
+            this.appendVariable(getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path))
         }
 
         return this
@@ -747,14 +748,16 @@ abstract class InspireDocumentObjectBuilder(
     private fun variableToScript(
         id: String, layout: Layout, variableStructure: VariableStructureModel
     ): ScriptResult {
-        val variable = variableRepository.findModelOrFail(id)
-        val variablePath = variableStructure.structure[VariableModelRef(id)]?.value
-        return if (variablePath == null) {
-            ScriptResult.Failure(variable.nameOrId())
+        val variableModel = variableRepository.findModelOrFail(id)
+        val variablePathData = variableStructure.structure[VariableModelRef(id)]
+        return if (variablePathData == null) {
+            ScriptResult.Failure(variableModel.nameOrId())
         } else {
-            getOrCreateVariable(layout.data, variable, variablePath)
+            val variableName = variablePathData.name ?: variableModel.nameOrId()
 
-            ScriptResult.Success((variablePath.split(".") + variable.nameOrId()).joinToString(".") { pathPart ->
+            getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path)
+
+            ScriptResult.Success((variablePathData.path.split(".") + variableName).joinToString(".") { pathPart ->
                 when (pathPart.lowercase()) {
                     "value" -> "Current"
                     "data" -> "DATA"
@@ -764,9 +767,11 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun getOrCreateVariable(data: Data, variableModel: VariableModel, variablePath: String): Variable {
-        val variable = getVariable(data as DataImpl, variableModel.nameOrId(), variablePath)
-        return variable ?: data.addVariable().setName(variableModel.nameOrId()).setKind(VariableKind.DISCONNECTED)
+    private fun getOrCreateVariable(
+        data: Data, variableName: String, variableModel: VariableModel, variablePath: String
+    ): Variable {
+        val variable = getVariable(data as DataImpl, variableName, variablePath)
+        return variable ?: data.addVariable().setName(variableName).setKind(VariableKind.DISCONNECTED)
             .setDataType(getDataType(variableModel.dataType)).setExistingParentId(variablePath)
             .setValueIfAvailable(variableModel)
     }

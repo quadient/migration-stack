@@ -22,7 +22,7 @@ class VariableStructureRepository(internalRepository: VariableStructureInternalR
             name = model.name,
             originLocations = model.originLocations,
             customFields = CustomFieldMap(model.customFields.toMutableMap()),
-            structure = model.structure.map { (key, value) -> key.id to value.value }.toMap(),
+            structure = model.structure.map { (key, value) -> key.id to value }.toMap(),
         )
     }
 
