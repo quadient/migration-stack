@@ -48,7 +48,7 @@ class DocumentObjectsImagesMappingExportTest {
             overridden empty,,Block,false,[],,,,Active
             overridden full,full,Page,false,[foo; bar],tmpl.wfd,someDir,struct,Active
             """.stripIndent()
-        Assertions.assertEquals(expected, mappingFile.toFile().text)
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
 
     @Test
@@ -81,6 +81,6 @@ class DocumentObjectsImagesMappingExportTest {
             overridden empty,,,[],,Active
             overridden full,full,sourcePath,[foo; bar],targetDir,Active
             """.stripIndent()
-        Assertions.assertEquals(expected, mappingFile.toFile().text)
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
 }
