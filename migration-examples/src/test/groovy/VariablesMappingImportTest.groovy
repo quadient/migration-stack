@@ -21,23 +21,23 @@ class VariablesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject-variable-structure-test.csv")
         def input = """\
-            id,name,origin_locations,inspire_path,data_type
-            unchangedEmpty,,[],,String
-            unchangedPath,,[],oldPath,String
-            withPath,,[],newPath,String
-            withPathEmpty,,[],newPath,String
+            id,name,data_type,inspire_path,inspire_name,origin_locations
+            unchangedEmpty,,String,,,[]
+            unchangedPath,,String,oldPath,,[]
+            withPath,,String,newPath,,[]
+            withPathEmpty,,String,newPath,,[]
             """.stripIndent()
         mappingFile.toFile().write(input)
 
         Map<String, VariablePathData> mappings = [:]
         givenExistingVariable(migration, "unchangedEmpty", null, DataType.String, null)
-        givenExistingMapping(migration, "unchangedEmpty", null, null, null, mappings)
+        givenExistingMapping(migration, "unchangedEmpty", null, null, null, null, mappings)
         givenExistingVariable(migration, "unchangedPath", null, DataType.String, "oldPath")
-        givenExistingMapping(migration, "unchangedPath", null, null, "oldPath", mappings)
+        givenExistingMapping(migration, "unchangedPath", null, null, "oldPath", null, mappings)
         givenExistingVariable(migration, "withPath", null, DataType.String, "existingPath")
-        givenExistingMapping(migration, "withPath", null, null, "existingPath", mappings)
+        givenExistingMapping(migration, "withPath", null, null, "existingPath", null, mappings)
         givenExistingVariable(migration, "withPathEmpty", null, DataType.String, null)
-        givenExistingMapping(migration, "withPathEmpty", null, null, "existingPath", mappings)
+        givenExistingMapping(migration, "withPathEmpty", null, null, "existingPath", null, mappings)
 
         VariablesImport.run(migration, mappingFile)
 
@@ -60,10 +60,10 @@ class VariablesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject-variable-structure-test.csv")
         def input = """\
-            id,name,origin_locations,inspire_path,data_type
-            unchanged,,[],,String
-            kept,,[],,String
-            overridden,,[],,Boolean
+            id,name,data_type,inspire_path,inspire_name,origin_locations
+            unchanged,,String,,,[]
+            kept,,String,,,[]
+            overridden,,Boolean,,,[]
             """.stripIndent()
         mappingFile.toFile().write(input)
 
@@ -71,9 +71,9 @@ class VariablesMappingImportTest {
         givenExistingVariable(migration, "unchanged", null, DataType.String, null)
         givenExistingMapping(migration, "unchanged", null, null, null, mappings)
         givenExistingVariable(migration, "kept", null, DataType.String, null)
-        givenExistingMapping(migration, "kept", null, DataType.String, null, mappings)
+        givenExistingMapping(migration, "kept", null, DataType.String, null, null, mappings)
         givenExistingVariable(migration, "overridden", null, DataType.String, null)
-        givenExistingMapping(migration, "overridden", null, DataType.Currency, null, mappings)
+        givenExistingMapping(migration, "overridden", null, DataType.Currency, null, null, mappings)
 
         VariablesImport.run(migration, mappingFile)
 
@@ -90,31 +90,30 @@ class VariablesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject-variable-structure-test.csv")
         def input = """\
-            id,name,origin_locations,inspire_path,data_type
-            unchanged,,[],,String
-            kept,someName,[],,String
-            overridden,someName,[],,String
+            id,name,data_type,inspire_path,inspire_name,origin_locations
+            unchanged,,String,,,[]
+            kept,someName,String,,,[]
+            overridden,Overridden name,String,,Overridden in structure,[]
             """.stripIndent()
         mappingFile.toFile().write(input)
 
         Map<String, VariablePathData> mappings = [:]
         givenExistingVariable(migration, "unchanged", null, null, null)
-        givenExistingMapping(migration, "unchanged", null, null, null, mappings)
+        givenExistingMapping(migration, "unchanged", null, null, null, null, mappings)
         givenExistingVariable(migration, "kept", "someName", null, null)
-        givenExistingMapping(migration, "kept", "someName", null, null, mappings)
+        givenExistingMapping(migration, "kept", "someName", null, null, null, mappings)
         givenExistingVariable(migration, "overridden", null, null, null)
-        givenExistingMapping(migration, "overridden", null, null, null, mappings)
+        givenExistingMapping(migration, "overridden", null, null, null, null, mappings)
 
         VariablesImport.run(migration, mappingFile)
 
         verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, null))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable("someName", null))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable("Overridden name", null))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden")
-        verify(migration.mappingRepository, times(1)).upsert("test", new MappingItem.VariableStructure(null, ["kept"      : new VariablePathData("", "someName"),
-                                                                                                              "overridden": new VariablePathData("", "someName"),]))
+        verify(migration.mappingRepository, times(1)).upsert("test", new MappingItem.VariableStructure(null, ["overridden": new VariablePathData("", "Overridden in structure"),]))
     }
 
     static void givenExistingVariable(Migration mig, String id, String name, DataType dataType, String inspirePath = null) {
@@ -126,12 +125,13 @@ class VariablesMappingImportTest {
                                      String name = null,
                                      DataType dataType = DataType.String,
                                      String inspirePath = null,
+                                     String inspireName = null,
                                      Map<String, VariablePathData> mappings) {
         if (!mappings.containsKey(variableId) && inspirePath != null && inspirePath != "") {
-            mappings[variableId] = new VariablePathData(inspirePath, name)
+            mappings[variableId] = new VariablePathData(inspirePath, inspireName)
         }
 
-        when(mig.mappingRepository.getVariableMapping(variableId)).thenReturn(new MappingItem.Variable(null, dataType))
+        when(mig.mappingRepository.getVariableMapping(variableId)).thenReturn(new MappingItem.Variable(name, dataType))
         when(mig.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure(null, mappings))
     }
 }

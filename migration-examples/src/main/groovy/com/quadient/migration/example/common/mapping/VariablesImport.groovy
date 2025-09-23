@@ -30,11 +30,11 @@ static void run(Migration migration, Path path) {
 
     for (line in lines) {
         def values = Csv.getCells(line, columnNames)
-        def id = values.get("id")
+        def id = Csv.deserialize(values.get("id"), String.class)
 
         def variablePathData = structureMapping.mappings[id] ?: new VariablePathData("", null)
 
-        def newName = Csv.deserialize(values.get("name"), String.class)
+        def newName = Csv.deserialize(values.get("inspire_name"), String.class)
         if (newName != null) {
             variablePathData.name = newName
         }
@@ -49,8 +49,12 @@ static void run(Migration migration, Path path) {
         }
 
         def mapping = migration.mappingRepository.getVariableMapping(id)
+
+        def variable = migration.variableRepository.find(id)
         def dataType = Csv.deserialize(values.get("data_type"), DataType.class)
-        Mapping.mapProp(mapping, migration.variableRepository.find(id), "dataType", dataType)
+        Mapping.mapProp(mapping, variable, "dataType", dataType)
+        def variableName = Csv.deserialize(values.get("name"), String.class)
+        Mapping.mapProp(mapping, variable, "name", variableName)
 
         migration.mappingRepository.upsert(id, mapping)
         migration.mappingRepository.applyVariableMapping(id)

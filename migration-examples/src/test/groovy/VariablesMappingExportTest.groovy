@@ -35,10 +35,10 @@ class VariablesMappingExportTest {
         def text = mappingFile.toFile().text
 
         def expectedResult =
-                """id,name,origin_locations,inspire_path,data_type
-empty,,[],,String
-full,,[foo; bar],,Boolean
-overridden,,[foo; bar],,Boolean
+                """id,name,data_type,inspire_path,inspire_name,origin_locations
+empty,,String,,,[],
+full,full name,Boolean,,,[foo; bar],
+overridden,full name,Boolean,,,[foo; bar],
 """
 
         Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
@@ -56,7 +56,7 @@ overridden,,[foo; bar],,Boolean
 
         def text = mappingFile.toFile().text
 
-        def expectedResult = "id,name,origin_locations,inspire_path,data_type\n"
+        def expectedResult = "id,name,data_type,inspire_path,inspire_name,origin_locations\n"
 
         Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
     }

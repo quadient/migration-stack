@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - variable structure allows to override variable names that has priority over default variable name
 
 ### Changed
-- Name mapping in variables import/export scripts is represented in the variable structure instead of the variable  
+- New mapping column in variables import/export scripts called `inspire_name` allows to override variable name in the current variable structure  
 
 ### Removed
 
