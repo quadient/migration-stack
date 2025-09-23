@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Removed
+
+## [17.0.2] - 2025-09-23
+
+### Added
 - variable structure allows to override variable names that has priority over default variable name
 
 ### Changed
@@ -20,5 +28,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v0.0.1...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.2...HEAD
+[17.0.2]: https://github.com/quadient/migration-stack/releases/tag/v17.0.2
 [0.0.1]: https://github.com/quadient/migration-stack/releases/tag/v0.0.1
