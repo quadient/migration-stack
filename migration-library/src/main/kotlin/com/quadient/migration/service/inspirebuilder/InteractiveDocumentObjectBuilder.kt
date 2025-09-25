@@ -108,6 +108,18 @@ class InteractiveDocumentObjectBuilder(
             .toString()
     }
 
+    override fun getFontPath(fontName: String): String {
+        val lastDot = fontName.lastIndexOf('.')
+        val fontNameWithExtension = if (lastDot > -1) fontName else "$fontName.ttf"
+
+        return IcmPath.root()
+            .join("Interactive")
+            .join(projectConfig.interactiveTenant)
+            .join("Resources/Fonts")
+            .join(fontNameWithExtension)
+            .toString()
+    }
+
     override fun buildDocumentObject(documentObject: DocumentObjectModel): String {
         logger.debug("Starting to build document object '${documentObject.nameOrId()}'.")
 

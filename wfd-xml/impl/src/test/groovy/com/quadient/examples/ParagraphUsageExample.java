@@ -2,17 +2,12 @@ package com.quadient.examples;
 
 import com.quadient.examples.data.ExampleContent;
 import com.quadient.wfdxml.WfdXmlBuilder;
-import com.quadient.wfdxml.api.layoutnodes.Color;
-import com.quadient.wfdxml.api.layoutnodes.FillStyle;
-import com.quadient.wfdxml.api.layoutnodes.Flow;
-import com.quadient.wfdxml.api.layoutnodes.FlowArea;
-import com.quadient.wfdxml.api.layoutnodes.Font;
-import com.quadient.wfdxml.api.layoutnodes.Page;
-import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle;
-import com.quadient.wfdxml.api.layoutnodes.TextStyle;
+import com.quadient.wfdxml.api.layoutnodes.*;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.api.layoutnodes.tables.BorderStyle;
 import com.quadient.wfdxml.api.module.Layout;
+
+import java.nio.file.Paths;
 
 import static com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.AlignType.JUSTIFY_lEFT;
 import static com.quadient.wfdxml.api.layoutnodes.TabulatorType.LEFT;
@@ -61,8 +56,8 @@ public class ParagraphUsageExample extends WorkflowUsageExample {
                 .setRGB(255, 204, 0)
                 .setName("Gold");
 
-        Font centaurFont = layout.addFont()
-                .setFontFromDiskLocation(fontPath);
+        Font centaurFont = layout.addFont().setName(Paths.get(fontPath).getFileName().toString());
+        centaurFont.addSubfont().setLocation(fontPath, LocationType.DISK);
 
         Variable urlVariable = layout.getData()
                 .addVariable()

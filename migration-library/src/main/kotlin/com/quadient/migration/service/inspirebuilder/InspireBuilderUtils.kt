@@ -1,6 +1,7 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.quadient.wfdxml.api.layoutnodes.Flow
+import com.quadient.wfdxml.api.layoutnodes.Font
 import com.quadient.wfdxml.api.layoutnodes.Image
 import com.quadient.migration.shared.DataType as DataTypeModel
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
@@ -8,6 +9,7 @@ import com.quadient.wfdxml.api.layoutnodes.data.Variable
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.Group
 import com.quadient.wfdxml.internal.layoutnodes.FlowImpl
+import com.quadient.wfdxml.internal.layoutnodes.FontImpl
 import com.quadient.wfdxml.internal.layoutnodes.ImageImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.VariableImpl
@@ -81,6 +83,11 @@ fun getFlowByName(layout: Layout, flowName: String?): Flow? {
     val flowGroup =
         (layout as LayoutImpl).children.find { it.name == "Flows" } as Group
     return flowGroup.children.find { (it as FlowImpl).name == flowName } as? Flow
+}
+
+fun getFontByName(layout: Layout, fontName: String): Font? {
+    val fontGroup = (layout as LayoutImpl).children.find { it.name == "Fonts" } as Group
+    return fontGroup.children.find { (it as FontImpl).name == fontName } as? Font
 }
 
 fun getVariable(data: DataImpl, name: String, parentPath: String): Variable? {

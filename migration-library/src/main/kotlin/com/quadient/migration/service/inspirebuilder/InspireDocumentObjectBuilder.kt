@@ -58,6 +58,7 @@ import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.Variable
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.layoutnodes.flow.Text
+import com.quadient.wfdxml.api.layoutnodes.font.SubFont
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.Table
@@ -66,6 +67,7 @@ import com.quadient.wfdxml.internal.data.WorkFlowTreeDefinition
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeOptionality
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.SUB_TREE
+import com.quadient.wfdxml.internal.layoutnodes.font.SubFontImpl
 import kotlinx.datetime.Clock
 import org.slf4j.LoggerFactory
 import com.quadient.migration.shared.DataType as DataTypeModel
@@ -93,6 +95,8 @@ abstract class InspireDocumentObjectBuilder(
     abstract fun getImagePath(image: ImageModel): String
 
     abstract fun getStyleDefinitionPath(): String
+
+    abstract fun getFontPath(fontName: String): String
 
     abstract fun buildDocumentObject(documentObject: DocumentObjectModel): String
 
@@ -287,8 +291,21 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
+    private fun upsertSubFont(font: Font, isBold: Boolean, isItalic: Boolean): SubFont {
+        val subFontName = SubFontImpl.buildName(isBold, isItalic)
+
+        font.subFonts.removeAll { SubFontImpl.buildName(it.isBold, it.isItalic) == subFontName }
+
+        return font.addSubfont().setBold(isBold).setItalic(isItalic).setFontIndex(font.subFonts.size)
+            .setLocation(getFontPath(font.name), LocationType.ICM)
+    }
+
     protected fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyleModel>) {
-        val usedFonts = mutableMapOf<String, Font>()
+        val arialFont = getFontByName(layout, "Arial")
+        require(arialFont != null) { "Layout must contain Arial font." }
+        upsertSubFont(arialFont, isBold = false, isItalic = false)
+
+        val usedFonts = mutableMapOf("Arial" to arialFont)
         val usedColorFillStyles = mutableMapOf<String, Pair<Color, FillStyle>>()
 
         textStyleModels.forEach { styleModel ->
@@ -296,15 +313,18 @@ abstract class InspireDocumentObjectBuilder(
 
             val textStyle = layout.addTextStyle().setName(styleModel.nameOrId())
 
-            if (definition.fontFamily != null) {
+            if (!definition.fontFamily.isNullOrBlank()) {
                 val usedFont = usedFonts[definition.fontFamily]
-                if (usedFont != null || definition.fontFamily == "Arial") {
-                    textStyle.setFont(usedFonts[definition.fontFamily])
-                } else {
-                    val newFont = layout.addFont().setFont(definition.fontFamily)
-                    usedFonts.put(definition.fontFamily, newFont)
-                    textStyle.setFont(newFont)
+                val font = if (usedFont != null) usedFont else {
+                    val newFont = layout.addFont().setName(definition.fontFamily).setFontName(definition.fontFamily)
+                    usedFonts[definition.fontFamily] = newFont
+                    newFont
                 }
+                textStyle.setFont(font)
+
+                val subFont = upsertSubFont(font, definition.bold, definition.italic)
+
+                textStyle.setSubFont(subFont)
             }
 
             if (definition.foregroundColor != null) {

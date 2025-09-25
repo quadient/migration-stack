@@ -117,6 +117,13 @@ class DesignerDocumentObjectBuilder(
             .join("${projectConfig.name}Styles.wfd").toString()
     }
 
+    override fun getFontPath(fontName: String): String {
+        val lastDot = fontName.lastIndexOf('.')
+        val fontNameWithExtension = if (lastDot > -1) fontName else "$fontName.ttf"
+
+        return IcmPath.root().join(fontNameWithExtension).toString()
+    }
+
     override fun buildDocumentObject(documentObject: DocumentObjectModel): String {
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()

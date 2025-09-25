@@ -5,8 +5,10 @@ import com.quadient.wfdxml.api.layoutnodes.Font;
 import com.quadient.wfdxml.api.layoutnodes.LineStyle;
 import com.quadient.wfdxml.api.layoutnodes.TextStyle;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
+import com.quadient.wfdxml.api.layoutnodes.font.SubFont;
 import com.quadient.wfdxml.api.layoutnodes.tables.BorderStyle;
 import com.quadient.wfdxml.internal.NodeImpl;
+import com.quadient.wfdxml.internal.layoutnodes.font.SubFontImpl;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 
 public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
@@ -19,6 +21,7 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
     private final boolean isVisible = true;
     private FillStyle fillStyle;
     private Font font;
+    private SubFont subFont;
     private BorderStyle borderStyle;
     private Variable urlLink;
     private String ancestorId = "Def.TextStyle";
@@ -106,6 +109,10 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
         if (font != null) {
             exporter.addElementWithIface("FontId", font);
         }
+        if (subFont != null) {
+            exporter.addElementWithStringData("SubFont", SubFontImpl.buildName(subFont.isBold(), subFont.isItalic()));
+        }
+
         exporter.addElementWithBoolData("Bold", isBold)
                 .addElementWithBoolData("Italic", isItalic)
                 .addElementWithBoolData("Underline", isUnderline)
@@ -140,6 +147,12 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
     @Override
     public TextStyleImpl setFont(Font font) {
         this.font = font;
+        return this;
+    }
+
+    @Override
+    public TextStyle setSubFont(SubFont subFont) {
+        this.subFont = subFont;
         return this;
     }
 

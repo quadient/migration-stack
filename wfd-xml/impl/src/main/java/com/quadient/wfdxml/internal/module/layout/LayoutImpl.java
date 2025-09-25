@@ -89,6 +89,7 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
 
         Group defFontGroup = createObjectGroup("Fonts", "Def.FontGroup", DN_FONT_GROUP);
         FontImpl defFont = new FontImpl();
+        defFont.addSubfont();
         addDefaultNode(defFont, "Arial", "Def.Font", DN_FONT, defFontGroup);
 
         Group defTextStyleGroup = createObjectGroup("TextStyles", "Def.TextStyleGroup", DN_TEXTSTYLE_GROUP);

@@ -2,14 +2,11 @@ package com.quadient.examples;
 
 import com.quadient.examples.data.ExampleContent;
 import com.quadient.wfdxml.WfdXmlBuilder;
-import com.quadient.wfdxml.api.layoutnodes.Flow;
-import com.quadient.wfdxml.api.layoutnodes.FlowArea;
-import com.quadient.wfdxml.api.layoutnodes.NumberedList;
-import com.quadient.wfdxml.api.layoutnodes.Page;
-import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle;
-import com.quadient.wfdxml.api.layoutnodes.TextStyle;
+import com.quadient.wfdxml.api.layoutnodes.*;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.api.module.Layout;
+
+import java.nio.file.Paths;
 
 import static com.quadient.wfdxml.api.layoutnodes.NumberedList.ListConversionType.REPEATED_ALPHABETIC;
 import static com.quadient.wfdxml.api.layoutnodes.NumberedList.ListConversionType.ROMAN_NUMBER;
@@ -300,11 +297,9 @@ public class ListsUsageExample extends WorkflowUsageExample {
         char windingsEmptyCircle = 109;
         char windingsFullSquare = 110;
 
-        TextStyle bulletTextStyle = layout.addTextStyle()
-                .setFont(
-                        layout.addFont()
-                                .setFontFromDiskLocation(fontPath)
-                );
+        Font font = layout.addFont().setName(Paths.get(fontPath).getFileName().toString());
+        font.addSubfont().setLocation(fontPath, LocationType.DISK);
+        TextStyle bulletTextStyle = layout.addTextStyle().setFont(font);
 
         ParagraphStyle bulletParagraph = layout.addBulletParagraph(
                 bulletTextStyle,
