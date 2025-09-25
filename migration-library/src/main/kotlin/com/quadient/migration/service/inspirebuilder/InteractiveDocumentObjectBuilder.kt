@@ -110,7 +110,7 @@ class InteractiveDocumentObjectBuilder(
 
     override fun getFontPath(fontName: String): String {
         val lastDot = fontName.lastIndexOf('.')
-        val fontNameWithExtension = if (lastDot > -1) fontName else "$fontName.ttf"
+        val fontNameWithExtension = if (lastDot > -1) fontName else "$fontName.TTF"
 
         return IcmPath.root()
             .join("Interactive")

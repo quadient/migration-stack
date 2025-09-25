@@ -296,7 +296,7 @@ abstract class InspireDocumentObjectBuilder(
 
         font.subFonts.removeAll { SubFontImpl.buildName(it.isBold, it.isItalic) == subFontName }
 
-        return font.addSubfont().setBold(isBold).setItalic(isItalic).setFontIndex(font.subFonts.size)
+        return font.addSubfont().setBold(isBold).setItalic(isItalic)
             .setLocation(getFontPath(font.name), LocationType.ICM)
     }
 
