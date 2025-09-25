@@ -1,5 +1,6 @@
 name = "<project name>"
 baseTemplatePath = "icm://Interactive/StandardPackage/BaseTemplates/LetterheadBaseTemplate.wfd"
+#styleDefinitionPath = "icm://Interactive/StandardPackage/CompanyStyles/<project-name>Styles.wfd"
 inputDataPath = "<path to input data>"
 interactiveTenant = "StandardPackage"
 #defaultTargetFolder = ""

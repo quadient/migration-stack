@@ -99,6 +99,14 @@ class InteractiveDocumentObjectBuilder(
         getImagePath(image.id, image.imageType, image.name, image.targetFolder, image.sourcePath)
 
     override fun getStyleDefinitionPath(): String {
+        val styleDefConfigPath = projectConfig.styleDefinitionPath
+
+        if (styleDefConfigPath != null && !styleDefConfigPath.isAbsolute()) {
+            throw IllegalArgumentException("The configured style definition path '${styleDefConfigPath}' is not absolute.")
+        } else if (styleDefConfigPath != null) {
+            return styleDefConfigPath.toString()
+        }
+
         return IcmPath.root()
             .join("Interactive")
             .join(projectConfig.interactiveTenant)
@@ -108,7 +116,7 @@ class InteractiveDocumentObjectBuilder(
             .toString()
     }
 
-    override fun buildDocumentObject(documentObject: DocumentObjectModel): String {
+    override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String {
         logger.debug("Starting to build document object '${documentObject.nameOrId()}'.")
 
         val builder = WfdXmlBuilder()

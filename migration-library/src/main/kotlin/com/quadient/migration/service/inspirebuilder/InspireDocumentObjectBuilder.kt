@@ -94,7 +94,7 @@ abstract class InspireDocumentObjectBuilder(
 
     abstract fun getStyleDefinitionPath(): String
 
-    abstract fun buildDocumentObject(documentObject: DocumentObjectModel): String
+    abstract fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String
 
     protected open fun wrapSuccessFlowInConditionFlow(
         layout: Layout, variableStructure: VariableStructureModel, ruleDef: DisplayRuleDefinition, successFlow: Flow

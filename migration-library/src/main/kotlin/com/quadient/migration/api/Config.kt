@@ -33,6 +33,7 @@ enum class InspireOutput {
 data class ProjectConfig(
     val name: String,
     val baseTemplatePath: String,
+    val styleDefinitionPath: IcmPath? = null,
     val inputDataPath: String,
     val interactiveTenant: String,
     val defaultTargetFolder: IcmPath? = null,

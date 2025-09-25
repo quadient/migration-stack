@@ -49,6 +49,7 @@ static Migration initMigration(Binding binding) {
     def projectConfig = new ProjectConfig(
         projectName,
         baseTemplatePath,
+        fileProjectConfig.styleDefinitionPath,
         inputDataPath,
         interactiveTenant,
         defFolder,

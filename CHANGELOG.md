@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 - variable structure allows to override variable names that has priority over default variable name
+- `styleDefinitionPath` to project config, allows to specify which style definition to use or deploy
 
 ### Changed
 - New mapping column in variables import/export scripts called `inspire_name` allows to override variable name in the current variable structure  

@@ -99,6 +99,8 @@ class DesignerDeployClientTest {
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { documentObjectRepository.list(any()) } returns listOf(template, externalBlock)
         every { ipsService.close() } just runs
+        every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd"
+        every { ipsService.fileExists(any()) } returns false
 
         // when
         subject.deployDocumentObjects()
@@ -289,9 +291,11 @@ class DesignerDeployClientTest {
         every { ipsService.close() } just runs
         every { documentObjectRepository.findModel(innerBlock.id) } throws IllegalStateException("Not found")
         every { documentObjectRepository.list(any()) } returns listOf(template, block)
-        every { documentObjectBuilder.buildDocumentObject(block) } throws IllegalStateException("Inner block not found")
+        every { documentObjectBuilder.buildDocumentObject(block, any()) } throws IllegalStateException("Inner block not found")
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd"
+        every { ipsService.fileExists(any()) } returns false
 
         // when
         val result = subject.deployDocumentObjects()
@@ -340,7 +344,7 @@ class DesignerDeployClientTest {
             val xml = "<xml>${documentObject.nameOrId()}</xml>"
             val outputPath = "icm://${documentObject.nameOrId()}"
 
-            every { documentObjectBuilder.buildDocumentObject(documentObject) } returns xml
+            every { documentObjectBuilder.buildDocumentObject(documentObject, any()) } returns xml
             every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns outputPath
             every { ipsService.xml2wfd(xml, outputPath) } returns OperationResult.Success
         }
@@ -352,7 +356,7 @@ class DesignerDeployClientTest {
         @BeforeEach
         fun setup() {
             every { ipsService.close() } just runs
-            every { documentObjectBuilder.buildDocumentObject(any()) } returns ""
+            every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns ""
             every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns  aDeployedStatus("id")
             every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
             every { statusTrackingRepository.active(any(), any()) } returns aActiveStatus("id")
@@ -378,7 +382,7 @@ class DesignerDeployClientTest {
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any()) }
+            verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any(), any()) }
             verify(exactly = 0) { imageRepository.findModel(any()) }
         }
 
@@ -399,13 +403,15 @@ class DesignerDeployClientTest {
             givenObjectIsActive("D_3")
             givenObjectIsDeployed("I_3")
             every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
+            every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd"
+            every { ipsService.fileExists(any()) } returns false
 
 
             // when
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any()) }
+            verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.deployed("D_2", any<Uuid>(), any(), any(), any(), any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.deployed("D_3", any<Uuid>(), any(), any(), any(), any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.deployed("I_1", any<Uuid>(), any(), any(), any(), any(), any()) }
@@ -420,12 +426,14 @@ class DesignerDeployClientTest {
             givenObjectIsActive("I_1")
             mockImg(aImage("I_1"), success = false)
             every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Failure("oops")
+            every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd"
+            every { ipsService.fileExists(any()) } returns false
 
             // when
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any()) }
+            verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.error("D_1", any(), any(), any(), any(), any(), "oops", any()) }
             verify(exactly = 1) { statusTrackingRepository.error("I_1", any(), any(), any(), any(), any(), any(), any()) }
         }
