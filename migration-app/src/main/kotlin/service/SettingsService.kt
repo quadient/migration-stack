@@ -2,6 +2,7 @@ package com.quadient.migration.service
 
 import com.quadient.migration.api.MigConfig
 import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.shared.toIcmPath
 
 private const val STORAGE_FILE = "settings.json"
 
@@ -13,7 +14,7 @@ class SettingsService(val fileStorageService: FileStorageService) {
     private fun initSettings(): Settings {
         fileStorageService.readAppJson<Settings>(STORAGE_FILE)?.let { return it }
 
-        val defaultProjectConfig = ProjectConfig("default-project", "", "", "StandardPackage")
+        val defaultProjectConfig = ProjectConfig("default-project", "", "".toIcmPath(), "", "StandardPackage")
         val defaultMigConfig = MigConfig()
 
         return Settings(defaultProjectConfig, defaultMigConfig)
