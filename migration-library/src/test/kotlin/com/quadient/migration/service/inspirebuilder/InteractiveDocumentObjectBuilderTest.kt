@@ -430,7 +430,7 @@ class InteractiveDocumentObjectBuilderTest {
         val conditionFlow = result["Flow"].last { it["Id"].textValue() == conditionFlowRef }
         conditionFlow["Type"].textValue().shouldBeEqualTo("InlCond")
         val condition = conditionFlow["Condition"]
-        condition["Value"].textValue().shouldBeEqualTo("return (DATA.Clients.Client Name==String('Jon'));")
+        condition["Value"].textValue().shouldBeEqualTo("return (DATA.Clients.Client_Name==String('Jon'));")
         val finalFlowRef = condition[""].textValue()
 
         val finalFlow = result["Flow"].last { it["Id"].textValue() == finalFlowRef }

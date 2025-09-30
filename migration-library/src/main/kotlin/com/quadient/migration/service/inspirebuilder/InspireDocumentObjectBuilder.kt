@@ -761,7 +761,7 @@ abstract class InspireDocumentObjectBuilder(
                 when (pathPart.lowercase()) {
                     "value" -> "Current"
                     "data" -> "DATA"
-                    else -> if (pathPart.first().isDigit()) "_$pathPart" else pathPart
+                    else -> sanitizeVariablePart(if (pathPart.first().isDigit()) "_$pathPart" else pathPart)
                 }
             })
         }

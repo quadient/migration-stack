@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Removed
 
+### Fixed
+Some chars (.,:?!- etc.) in variable names/paths are now correctly transformed to underscore (_) when used in display rule scripts (condition flows) 
+
 ## [17.0.2] - 2025-09-23
 
 ### Added

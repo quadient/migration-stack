@@ -89,3 +89,9 @@ fun getVariable(data: DataImpl, name: String, parentPath: String): Variable? {
         variable.name == name && variable.existingParentId == parentPath
     } as? Variable
 }
+
+private val disallowedCharsRegex = Regex("[\\s\\-()?!.:;]")
+
+fun sanitizeVariablePart(part: String): String {
+    return part.replace(disallowedCharsRegex, "_")
+}
