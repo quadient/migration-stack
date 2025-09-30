@@ -4,6 +4,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.quadient.migration.api.IcmClient
 import com.quadient.migration.api.IpsConfig
+import com.quadient.migration.service.inspirebuilder.FontKey
 import com.quadient.migration.tools.surroundWith
 import org.slf4j.LoggerFactory
 import java.io.Closeable
@@ -133,6 +134,26 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
             client.remove(pathsLocation).ifNotSuccess {
                 logger.error("Failed to cleanup paths.json memory: {}", it)
             }
+        }
+    }
+
+    fun gatherFontData(fontRootFolder: String): Map<FontKey, String> {
+        val resultLocation = "memory://${UUID.randomUUID()}"
+
+        val result =
+            runWfd("gatherFontData.wfd", listOf("-f", resultLocation, "-fontRootFolderFontRootFolder", fontRootFolder))
+        if (result !is OperationResult.Success) {
+            throw IpsClientException("Failed to gather font data from root folder: $fontRootFolder")
+        }
+
+        val resultXml = client.download(resultLocation).throwIfNotOk()
+        val resultXmlTree = xmlMapper.readTree(String(resultXml.customData))
+        val fontDataString = resultXmlTree["fontData"].textValue()
+        val fontDataStringList = fontDataString.split(";")
+
+        return fontDataStringList.associate {
+            val fontDataParts = it.split(",")
+            FontKey(fontDataParts[0], fontDataParts[1]) to fontDataParts[2]
         }
     }
 

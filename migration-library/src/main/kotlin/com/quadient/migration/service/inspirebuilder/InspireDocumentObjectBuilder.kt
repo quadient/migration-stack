@@ -67,9 +67,9 @@ import com.quadient.wfdxml.internal.data.WorkFlowTreeDefinition
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeOptionality
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.SUB_TREE
-import com.quadient.wfdxml.internal.layoutnodes.font.SubFontImpl
 import kotlinx.datetime.Clock
 import org.slf4j.LoggerFactory
+import java.util.concurrent.ConcurrentHashMap
 import com.quadient.migration.shared.DataType as DataTypeModel
 
 abstract class InspireDocumentObjectBuilder(
@@ -84,6 +84,8 @@ abstract class InspireDocumentObjectBuilder(
 ) {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
 
+    protected val fontDataCache = ConcurrentHashMap<FontKey, String>()
+
     abstract fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String
 
     abstract fun getDocumentObjectPath(documentObject: DocumentObjectModel): String
@@ -96,7 +98,7 @@ abstract class InspireDocumentObjectBuilder(
 
     abstract fun getStyleDefinitionPath(): String
 
-    abstract fun getFontPath(fontName: String): String
+    abstract fun getFontRootFolder(): String
 
     abstract fun buildDocumentObject(documentObject: DocumentObjectModel): String
 
@@ -151,8 +153,7 @@ abstract class InspireDocumentObjectBuilder(
         var idx = 0
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
-            val contentPart = mutableContent[idx]
-            when (contentPart) {
+            when (val contentPart = mutableContent[idx]) {
                 is TableModel, is ParagraphModel, is ImageModelRef -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
@@ -292,12 +293,16 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun upsertSubFont(font: Font, isBold: Boolean, isItalic: Boolean): SubFont {
-        val subFontName = SubFontImpl.buildName(isBold, isItalic)
+        val subFontName = buildFontName(isBold, isItalic)
 
-        font.subFonts.removeAll { SubFontImpl.buildName(it.isBold, it.isItalic) == subFontName }
+        font.subFonts.removeAll { it.name == subFontName }
 
-        return font.addSubfont().setBold(isBold).setItalic(isItalic)
-            .setLocation(getFontPath(font.name), LocationType.ICM)
+        val fontLocation = fontDataCache[FontKey(font.name, subFontName)]
+            ?: IcmPath.from(getFontRootFolder()).join("${font.name}.ttf").toString()
+
+        return font.addSubfont().setName(subFontName).setBold(isBold).setItalic(isItalic).setLocation(
+            fontLocation, LocationType.ICM
+        )
     }
 
     protected fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyleModel>) {
@@ -339,7 +344,7 @@ abstract class InspireDocumentObjectBuilder(
                         definition.foregroundColor.blue()
                     )
                     val newFillStyle = layout.addFillStyle().setColor(newColor)
-                    usedColorFillStyles.put(colorId, Pair(newColor, newFillStyle))
+                    usedColorFillStyles[colorId] = Pair(newColor, newFillStyle)
                     textStyle.setFillStyle(newFillStyle)
                 }
             }
@@ -592,9 +597,7 @@ abstract class InspireDocumentObjectBuilder(
         if (paragraphModel.styleRef == null) return null
 
         val paraStyleModel = paragraphStyleRepository.firstWithDefinitionModel(paragraphModel.styleRef.id)
-        if (paraStyleModel == null) {
-            error("Paragraph style definition for ${paragraphModel.styleRef.id} not found.")
-        }
+            ?: error("Paragraph style definition for ${paragraphModel.styleRef.id} not found.")
 
         return paraStyleModel
     }
@@ -603,9 +606,7 @@ abstract class InspireDocumentObjectBuilder(
         if (textModel.styleRef == null) return null
 
         val textStyleModel = textStyleRepository.firstWithDefinitionModel(textModel.styleRef.id)
-        if (textStyleModel == null) {
-            error("Text style definition for ${textModel.styleRef.id} not found.")
-        }
+            ?: error("Text style definition for ${textModel.styleRef.id} not found.")
 
         return textStyleModel
     }

@@ -110,7 +110,7 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
             exporter.addElementWithIface("FontId", font);
         }
         if (subFont != null) {
-            exporter.addElementWithStringData("SubFont", SubFontImpl.buildName(subFont.isBold(), subFont.isItalic()));
+            exporter.addElementWithStringData("SubFont", subFont.getName());
         }
 
         exporter.addElementWithBoolData("Bold", isBold)

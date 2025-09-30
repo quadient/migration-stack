@@ -70,4 +70,4 @@ data class InspireConfig(val ipsConfig: IpsConfig = IpsConfig())
 
 data class IpsConfig(val host: String = "localhost", val port: Int = 30354, val timeoutSeconds: Int = 120)
 
-data class PathsConfig(val images: IcmPath? = null)
+data class PathsConfig(val images: IcmPath? = null, val fonts: IcmPath? = null)

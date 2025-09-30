@@ -3,7 +3,6 @@ package com.quadient.migration.service.inspirebuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Font
 import com.quadient.wfdxml.api.layoutnodes.Image
-import com.quadient.migration.shared.DataType as DataTypeModel
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.Variable
 import com.quadient.wfdxml.api.module.Layout
@@ -14,6 +13,7 @@ import com.quadient.wfdxml.internal.layoutnodes.ImageImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.VariableImpl
 import com.quadient.wfdxml.internal.module.layout.LayoutImpl
+import com.quadient.migration.shared.DataType as DataTypeModel
 
 fun getDataType(dataType: DataTypeModel): DataType {
     return when (dataType) {
@@ -96,3 +96,24 @@ fun getVariable(data: DataImpl, name: String, parentPath: String): Variable? {
         variable.name == name && variable.existingParentId == parentPath
     } as? Variable
 }
+
+fun buildFontName(bold: Boolean, italic: Boolean): String {
+    if (bold && italic) {
+        return "Bold Italic"
+    }
+
+    if (bold) {
+        return "Bold"
+    }
+
+    if (italic) {
+        return "Italic"
+    }
+
+    return "Regular"
+}
+
+data class FontKey(
+    val fontName: String,
+    val subFontName: String,
+)

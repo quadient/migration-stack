@@ -7,9 +7,13 @@ public interface SubFont {
 
     SubFont setLocation(String location, LocationType locationType);
 
+    SubFont setName(String name);
+
     SubFont setItalic(boolean italic);
 
     SubFont setBold(boolean bold);
+
+    String getName();
 
     boolean isItalic();
 

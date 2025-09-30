@@ -117,11 +117,10 @@ class DesignerDocumentObjectBuilder(
             .join("${projectConfig.name}Styles.wfd").toString()
     }
 
-    override fun getFontPath(fontName: String): String {
-        val lastDot = fontName.lastIndexOf('.')
-        val fontNameWithExtension = if (lastDot > -1) fontName else "$fontName.TTF"
+    override fun getFontRootFolder(): String {
+        val fontConfigPath = projectConfig.paths.fonts
 
-        return IcmPath.root().join(fontNameWithExtension).toString()
+        return IcmPath.root().join(fontConfigPath).toString()
     }
 
     override fun buildDocumentObject(documentObject: DocumentObjectModel): String {
@@ -132,7 +131,11 @@ class DesignerDocumentObjectBuilder(
         val pageModels = mutableListOf<DocumentObjectModel>()
         val virtualPageContent = mutableListOf<DocumentContentModel>()
 
+        if (fontDataCache.isEmpty()) {
+            fontDataCache.putAll(ipsService.gatherFontData(getFontRootFolder()))
+        }
         val variableStructure = initVariableStructure(layout, documentObject)
+
         documentObject.content.forEach {
             if (it is DocumentObjectModelRef) {
                 val documentObjectModel = documentObjectRepository.findModelOrFail(it.id)

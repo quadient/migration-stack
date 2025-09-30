@@ -8,6 +8,7 @@ import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 public class SubFontImpl implements SubFont, XmlExportable {
     private int fontIndex = 0;
     private String fontLocation = "FONT_DIR,Arial.TTF";
+    private String name = "Regular";
     private boolean bold = false;
     private boolean italic = false;
 
@@ -33,6 +34,12 @@ public class SubFontImpl implements SubFont, XmlExportable {
     }
 
     @Override
+    public SubFont setName(String name) {
+        this.name = name;
+        return this;
+    }
+
+    @Override
     public SubFont setItalic(boolean italic) {
         this.italic = italic;
         return this;
@@ -41,6 +48,11 @@ public class SubFontImpl implements SubFont, XmlExportable {
     public SubFontImpl setBold(boolean bold) {
         this.bold = bold;
         return this;
+    }
+
+    @Override
+    public String getName() {
+        return name;
     }
 
     public String getFontLocation() {
@@ -57,26 +69,6 @@ public class SubFontImpl implements SubFont, XmlExportable {
 
     @Override
     public void export(XmlExporter exporter) {
-        exporter.addStringAttribute("Name", buildName(bold, italic))
-                .addBoolAttribute("Bold", bold)
-                .addBoolAttribute("Italic", italic)
-                .addElementWithInt64Data("FontIndex", fontIndex)
-                .addElementWithStringData("FontLocation", fontLocation);
-    }
-
-    public static String buildName(boolean bold, boolean italic) {
-        if (bold && italic) {
-            return "Bold Italic";
-        }
-
-        if (bold) {
-            return "Bold";
-        }
-
-        if (italic) {
-            return "Italic";
-        }
-
-        return "Regular";
+        exporter.addStringAttribute("Name", name).addBoolAttribute("Bold", bold).addBoolAttribute("Italic", italic).addElementWithInt64Data("FontIndex", fontIndex).addElementWithStringData("FontLocation", fontLocation);
     }
 }

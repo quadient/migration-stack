@@ -108,16 +108,11 @@ class InteractiveDocumentObjectBuilder(
             .toString()
     }
 
-    override fun getFontPath(fontName: String): String {
-        val lastDot = fontName.lastIndexOf('.')
-        val fontNameWithExtension = if (lastDot > -1) fontName else "$fontName.TTF"
+    override fun getFontRootFolder(): String {
+        val fontConfigPath = projectConfig.paths.fonts
 
-        return IcmPath.root()
-            .join("Interactive")
-            .join(projectConfig.interactiveTenant)
-            .join("Resources/Fonts")
-            .join(fontNameWithExtension)
-            .toString()
+        return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant)
+            .join(fontConfigPath.orDefault("Resources/Fonts")).toString()
     }
 
     override fun buildDocumentObject(documentObject: DocumentObjectModel): String {
@@ -127,6 +122,10 @@ class InteractiveDocumentObjectBuilder(
         val layout = builder.addLayout()
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
+
+        if (fontDataCache.isEmpty()) {
+            fontDataCache.putAll(ipsService.gatherFontData(getFontRootFolder()))
+        }
         val variableStructure = initVariableStructure(layout, documentObject)
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContentModel>>()
