@@ -26,6 +26,11 @@ dependencyCheck {
         datafeedUser = "migration"
         datafeedPassword = System.getenv("NVD_PW")
     }
+    analyzers {
+        ossIndex {
+            enabled = false
+        }
+    }
 }
 
 buildscript {
