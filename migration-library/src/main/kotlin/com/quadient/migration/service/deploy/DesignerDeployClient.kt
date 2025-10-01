@@ -65,8 +65,11 @@ class DesignerDeployClient(
 
             val styleDefPath = try {
                 val styleDefPath = documentObjectBuilder.getStyleDefinitionPath()
-                ipsService.fileExists(styleDefPath)
-                styleDefPath
+                if (ipsService.fileExists(styleDefPath)) {
+                    styleDefPath
+                } else {
+                    null
+                }
             } catch (e: Exception) {
                 throw RuntimeException("Failed to check for style definition existence", e)
             }
