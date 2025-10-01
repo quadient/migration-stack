@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label.tsx";
 import { Input } from "@/components/ui/input.tsx";
 
 export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProps) {
-    const updateSettings = (key: keyof ProjectConfig, value: string) => {
+    const updateSettings = (key: keyof ProjectConfig, value: string | undefined) => {
         setSettings((prev) => ({ ...prev, projectConfig: { ...prev.projectConfig, [key]: value } }));
     };
 
@@ -17,18 +17,29 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                 </CardHeader>
                 <CardContent className="grid gap-6">
                     <div className="grid gap-3">
-                        <Label>Target Folder</Label>
+                        <Label>Target folder</Label>
                         <Input
                             value={settings.projectConfig.defaultTargetFolder ?? ""}
-                            onChange={(e) => updateSettings("defaultTargetFolder", e.target.value)}
+                            onChange={(e) => updateSettings("defaultTargetFolder", e.target.value || undefined)}
                         />
                     </div>
                     <div className="grid gap-3">
                         <div className="grid gap-3">
-                            <Label>Variable Structure ID</Label>
+                            <Label>Variable structure ID</Label>
                             <Input
                                 value={settings.projectConfig.defaultVariableStructure ?? ""}
-                                onChange={(e) => updateSettings("defaultVariableStructure", e.target.value)}
+                                onChange={(e) =>
+                                    updateSettings("defaultVariableStructure", e.target.value || undefined)
+                                }
+                            />
+                        </div>
+                    </div>
+                    <div className="grid gap-3">
+                        <div className="grid gap-3">
+                            <Label>Style definition path</Label>
+                            <Input
+                                value={settings.projectConfig.styleDefinitionPath ?? ""}
+                                onChange={(e) => updateSettings("styleDefinitionPath", e.target.value || undefined)}
                             />
                         </div>
                     </div>
@@ -39,7 +50,7 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                     <CardTitle>Paths</CardTitle>
                     <CardDescription>Override default paths in content manager</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="grid gap-6">
                     <div className="grid gap-3">
                         <Label>Images</Label>
                         <Input
@@ -50,7 +61,24 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                                     projectConfig: {
                                         ...prev.projectConfig,
                                         paths: {
-                                            images: e.target.value,
+                                            images: e.target.value || undefined,
+                                        },
+                                    },
+                                }))
+                            }
+                        />
+                    </div>
+                    <div className="grid gap-3">
+                        <Label>Fonts</Label>
+                        <Input
+                            value={settings.projectConfig.paths.fonts ?? ""}
+                            onChange={(e) =>
+                                setSettings((prev) => ({
+                                    ...prev,
+                                    projectConfig: {
+                                        ...prev.projectConfig,
+                                        paths: {
+                                            fonts: e.target.value || undefined,
                                         },
                                     },
                                 }))

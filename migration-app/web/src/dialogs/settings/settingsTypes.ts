@@ -12,7 +12,7 @@ export type Settings = {
 export type MigrationConfig = {
     dbConfig: DbConfig;
     inspireConfig: InspireConfig;
-    storageRoot?: string | null;
+    storageRoot?: string | undefined;
 };
 
 export type DbConfig = {
@@ -36,18 +36,20 @@ export type IpsConfig = {
 export type ProjectConfig = {
     name: string;
     baseTemplatePath: string;
+    styleDefinitionPath: string | undefined;
     inputDataPath: string;
     interactiveTenant: string;
-    defaultTargetFolder?: string | null;
+    defaultTargetFolder?: string | undefined;
     paths: PathsConfig;
     inspireOutput: InspireOutput;
-    sourceBaseTemplatePath?: string | null;
-    defaultVariableStructure?: string | null;
+    sourceBaseTemplatePath?: string | undefined;
+    defaultVariableStructure?: string | undefined;
     context: Record<string, any>;
 };
 
 export type PathsConfig = {
-    images?: string | null;
+    images?: string | undefined;
+    fonts?: string | undefined;
 };
 
 export const inspireOutputOptions = ["Designer", "Interactive", "Evolve"] as const;

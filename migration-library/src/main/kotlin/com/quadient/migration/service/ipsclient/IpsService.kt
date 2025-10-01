@@ -149,7 +149,7 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         val resultXml = client.download(resultLocation).throwIfNotOk()
         val resultXmlTree = xmlMapper.readTree(String(resultXml.customData))
         val fontDataString = resultXmlTree["fontData"].textValue()
-        val fontDataStringList = fontDataString.split(";")
+        val fontDataStringList = fontDataString.split(";").filter { it.isNotBlank() }
 
         return fontDataStringList.associate {
             val fontDataParts = it.split(",")
