@@ -117,3 +117,9 @@ data class FontKey(
     val fontName: String,
     val subFontName: String,
 )
+
+private val disallowedCharsRegex = Regex("[\\s\\-()?!.:;]")
+
+fun sanitizeVariablePart(part: String): String {
+    return part.replace(disallowedCharsRegex, "_")
+}

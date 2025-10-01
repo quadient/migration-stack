@@ -1,10 +1,10 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
-import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphStyleDefinitionModel
@@ -46,7 +46,7 @@ import java.io.StringReader
 import java.io.StringWriter
 import java.util.concurrent.ConcurrentHashMap
 import javax.xml.parsers.DocumentBuilderFactory
-import javax.xml.transform.TransformerFactory.*
+import javax.xml.transform.TransformerFactory.newInstance
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 
@@ -113,6 +113,14 @@ class DesignerDocumentObjectBuilder(
         getImagePath(image.id, image.imageType, image.name, image.targetFolder, image.sourcePath)
 
     override fun getStyleDefinitionPath(): String {
+        val styleDefinitionPath = projectConfig.styleDefinitionPath
+
+        if (styleDefinitionPath != null && !styleDefinitionPath.isAbsolute()) {
+            throw IllegalArgumentException("The configured style definition path '${styleDefinitionPath}' is not absolute.")
+        } else if (styleDefinitionPath != null) {
+            return styleDefinitionPath.toString()
+        }
+
         return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder))
             .join("${projectConfig.name}Styles.wfd").toString()
     }
@@ -123,7 +131,7 @@ class DesignerDocumentObjectBuilder(
         return IcmPath.root().join(fontConfigPath).toString()
     }
 
-    override fun buildDocumentObject(documentObject: DocumentObjectModel): String {
+    override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String {
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
         layout.name = "DocumentLayout"
@@ -159,12 +167,15 @@ class DesignerDocumentObjectBuilder(
             buildPage(layout, variableStructure, "Virtual Page", virtualPageContent, documentObject)
         }
 
+        val root = layout.addRoot().setAllowRuntimeModifications(true)
+        if (styleDefinitionPath != null) {
+            root.setExternalStylesLayout(styleDefinitionPath)
+        }
+
         buildTextStyles(
             layout, textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel })
         buildParagraphStyles(
             layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
-
-        layout.addRoot().setAllowRuntimeModifications(true)
 
         val firstPageWithFlowArea =
             (layout.pages as PagesImpl).children.find { page -> (page as PageImpl).children.any { it is FlowArea } } as? PageImpl

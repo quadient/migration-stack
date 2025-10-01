@@ -100,7 +100,7 @@ abstract class InspireDocumentObjectBuilder(
 
     abstract fun getFontRootFolder(): String
 
-    abstract fun buildDocumentObject(documentObject: DocumentObjectModel): String
+    abstract fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String
 
     protected open fun wrapSuccessFlowInConditionFlow(
         layout: Layout, variableStructure: VariableStructureModel, ruleDef: DisplayRuleDefinition, successFlow: Flow
@@ -782,7 +782,7 @@ abstract class InspireDocumentObjectBuilder(
                 when (pathPart.lowercase()) {
                     "value" -> "Current"
                     "data" -> "DATA"
-                    else -> if (pathPart.first().isDigit()) "_$pathPart" else pathPart
+                    else -> sanitizeVariablePart(if (pathPart.first().isDigit()) "_$pathPart" else pathPart)
                 }
             })
         }

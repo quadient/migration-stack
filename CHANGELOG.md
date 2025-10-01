@@ -8,14 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+- Styles validation against style definition and corresponding gradle tasks
+
 ### Changed
 
 ### Removed
+
+### Fixed
+Some chars (.,:?!- etc.) in variable names/paths are now correctly transformed to underscore (_) when used in display rule scripts (condition flows) 
 
 ## [17.0.2] - 2025-09-23
 
 ### Added
 - variable structure allows to override variable names that has priority over default variable name
+- `styleDefinitionPath` to project config, allows to specify which style definition to use or deploy
 
 ### Changed
 - New mapping column in variables import/export scripts called `inspire_name` allows to override variable name in the current variable structure  

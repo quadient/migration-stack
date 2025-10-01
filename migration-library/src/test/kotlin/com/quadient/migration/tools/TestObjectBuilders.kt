@@ -146,10 +146,12 @@ fun aProjectConfig(
     name: String = "name",
     sourceBaseTemplatePath: String? = null,
     defaultVariableStructure: String? = null,
+    styleDefinitionPath: IcmPath? = null,
 ): ProjectConfig {
     return ProjectConfig(
         name = name,
         baseTemplatePath = baseTemplatePath,
+        styleDefinitionPath = styleDefinitionPath,
         inputDataPath = "inputpath",
         interactiveTenant = interactiveTenant,
         defaultTargetFolder = targetDefaultFolder?.let(IcmPath::from),

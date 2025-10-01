@@ -8,16 +8,16 @@ import com.quadient.migration.persistence.table.*
 import com.quadient.migration.service.LocalStorage
 import com.quadient.migration.service.ReferenceValidator
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.StylesValidator
 import com.quadient.migration.service.deploy.DeployClient
 import com.quadient.migration.service.deploy.DesignerDeployClient
 import com.quadient.migration.service.deploy.InteractiveDeployClient
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
+import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.SchemaUtils
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.LoggerFactory
 
 class Migration(public val config: MigConfig, public val projectConfig: ProjectConfig) {
@@ -39,11 +39,11 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
     val mappingRepository: MappingRepository
 
     val icmClient: IcmClient = ipsService
-    val ipsClient = ipsService.client
 
     val deployClient: DeployClient
 
     val referenceValidator: ReferenceValidator
+    val stylesValidator: StylesValidator
     val storage: Storage by lazy {
         require(config.storageRoot != null) { "'storageRoot' must be configured in order to use the storage" }
         LocalStorage(config.storageRoot, projectName)
@@ -116,9 +116,10 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
             imageInternalRepository,
         )
 
+        val inspireDocumentObjectBuilder: InspireDocumentObjectBuilder
         this.deployClient =
             if (projectConfig.inspireOutput == InspireOutput.Interactive || projectConfig.inspireOutput == InspireOutput.Evolve) {
-                val interactiveDocumentObjectBuilder = InteractiveDocumentObjectBuilder(
+                inspireDocumentObjectBuilder = InteractiveDocumentObjectBuilder(
                     documentObjectInternalRepository,
                     textStyleInternalRepository,
                     paragraphStyleInternalRepository,
@@ -136,13 +137,13 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                     statusTrackingRepository,
                     textStyleInternalRepository,
                     paragraphStyleInternalRepository,
-                    interactiveDocumentObjectBuilder,
+                    inspireDocumentObjectBuilder,
                     ipsService,
                     storage,
                     projectConfig
                 )
             } else {
-                val designerDocumentObjectBuilder = DesignerDocumentObjectBuilder(
+                inspireDocumentObjectBuilder  = DesignerDocumentObjectBuilder(
                     documentObjectInternalRepository,
                     textStyleInternalRepository,
                     paragraphStyleInternalRepository,
@@ -160,11 +161,20 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                     statusTrackingRepository,
                     textStyleInternalRepository,
                     paragraphStyleInternalRepository,
-                    designerDocumentObjectBuilder,
+                    inspireDocumentObjectBuilder,
                     ipsService,
                     storage,
                 )
             }
+
+        this.stylesValidator = StylesValidator(
+            documentObjectInternalRepository,
+            textStyleInternalRepository,
+            paragraphStyleInternalRepository,
+            inspireDocumentObjectBuilder,
+            deployClient,
+            ipsService
+        )
 
         logger.debug("Migration initialized")
     }

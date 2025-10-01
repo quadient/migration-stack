@@ -7,6 +7,7 @@ import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 public class RootImpl implements Root, XmlExportable {
 
     private boolean allowRuntimeModifications = false;
+    private String externalStylesLayoutVcsLocation = null;
 
     @Override
     public Root setAllowRuntimeModifications(boolean allowRuntimeModifications) {
@@ -15,7 +16,16 @@ public class RootImpl implements Root, XmlExportable {
     }
 
     @Override
+    public Root setExternalStylesLayout(String vcsLocation) {
+        this.externalStylesLayoutVcsLocation = vcsLocation;
+        return this;
+    }
+
+    @Override
     public void export(XmlExporter exporter) {
         exporter.addElementWithBoolData("AllowRuntimeModifications", allowRuntimeModifications);
+        if (externalStylesLayoutVcsLocation != null) {
+            exporter.addElementWithStringData("ExternalStylesLayout", "VCSLocation," + externalStylesLayoutVcsLocation);
+        }
     }
 }
