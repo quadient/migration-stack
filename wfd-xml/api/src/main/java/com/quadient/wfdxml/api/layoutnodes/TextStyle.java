@@ -2,6 +2,7 @@ package com.quadient.wfdxml.api.layoutnodes;
 
 import com.quadient.wfdxml.api.Node;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
+import com.quadient.wfdxml.api.layoutnodes.font.SubFont;
 import com.quadient.wfdxml.api.layoutnodes.tables.BorderStyle;
 
 public interface TextStyle extends Node<TextStyle> {
@@ -9,6 +10,8 @@ public interface TextStyle extends Node<TextStyle> {
     TextStyle setFillStyle(FillStyle fillStyle);
 
     TextStyle setFont(Font font);
+
+    TextStyle setSubFont(SubFont subFont);
 
     TextStyle setFontSize(double sizeInPoints);
 

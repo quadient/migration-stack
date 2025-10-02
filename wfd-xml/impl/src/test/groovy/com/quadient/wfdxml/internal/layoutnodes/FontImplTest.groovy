@@ -1,5 +1,6 @@
 package com.quadient.wfdxml.internal.layoutnodes
 
+import com.quadient.wfdxml.api.layoutnodes.LocationType
 import com.quadient.wfdxml.internal.xml.export.XmlExporter
 import spock.lang.Specification
 
@@ -11,6 +12,7 @@ class FontImplTest extends Specification {
     def "font serialization"() {
         given:
         FontImpl font = new FontImpl()
+        font.addSubfont()
 
         when:
         font.export(exporter)
@@ -26,18 +28,18 @@ class FontImplTest extends Specification {
     def "font allSet serialization"() {
         given:
         FontImpl font = new FontImpl()
-                .setFont("Gigi")
-                .setBold(true)
-                .setItalic(true)
+        font.setName("Gigi").setFontName("Gigi").addSubfont().setName("Bold Italic").setBold(true).setItalic(true).setLocation("Gigi", LocationType.FONT)
+
         when:
         font.export(exporter)
 
         then:
         String expected = """ 
-            <SubFont Name="Regular" Bold="True" Italic="True">
+            <FontName>Gigi</FontName>
+            <SubFont Name="Bold Italic" Bold="True" Italic="True">
                 <FontIndex>0</FontIndex>
                 <FontLocation>FONT_DIR,Gigi.TTF</FontLocation>
-            </SubFont> """
+            </SubFont>"""
 
         assertXmlEqualsWrapRoot(exporter.buildString(), expected)
     }
@@ -45,28 +47,11 @@ class FontImplTest extends Specification {
     def "font disk location font with specific name"() {
         when:
         FontImpl font = new FontImpl()
-                .setFontFromDiskLocation("C:/test directory/test font.ttf")
                 .setName("My Custom Font Name") as FontImpl
+        font.addSubfont().setLocation("C:/test directory/test font.ttf", LocationType.DISK)
 
         then:
         assert font.name == "My Custom Font Name"
-    }
-
-    def "font from disk location font use has font name extracted from file name"() {
-        when:
-        FontImpl font = new FontImpl()
-                .setFontFromDiskLocation("C:/test directory/test font.ttf")
-
-        then:
-        assert font.name == "test font.ttf"
-    }
-
-    def "def font exist "() {
-        when:
-        FontImpl font = new FontImpl()
-
-        then:
-        assert font.getSubFont().getFontLocation() == "FONT_DIR,Arial.TTF"
     }
 
     def "def font name"() {

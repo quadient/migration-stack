@@ -19,7 +19,7 @@ export function ProjectSettingsForm({
     setSettings,
     sourceFormats,
 }: SettingsFormProps & { sourceFormats?: string[] }) {
-    const updateSettings = (key: keyof ProjectConfig, value: string) => {
+    const updateSettings = (key: keyof ProjectConfig, value: string | undefined) => {
         setSettings((prev) => ({ ...prev, projectConfig: { ...prev.projectConfig, [key]: value } }));
     };
 
@@ -102,10 +102,10 @@ export function ProjectSettingsForm({
                     )}
                     {settings.projectConfig.inspireOutput === "Designer" && (
                         <div className="grid gap-3">
-                            <Label>Source Base template path</Label>
+                            <Label>Source base template path</Label>
                             <Input
                                 value={settings.projectConfig.sourceBaseTemplatePath ?? ""}
-                                onChange={(e) => updateSettings("sourceBaseTemplatePath", e.target.value)}
+                                onChange={(e) => updateSettings("sourceBaseTemplatePath", e.target.value || undefined)}
                             />
                         </div>
                     )}

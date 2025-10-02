@@ -1108,6 +1108,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { textStyleRepository.listAllModel() } returns listOf(
             aTextStyle("textStyle1", definition = aTextDef(bold = true, underline = true)),
         )
+        every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;"
 
         // when
         val result = subject.buildStyles(textStyleRepository.listAllModel(), paragraphStyleRepository.listAllModel())
@@ -1129,6 +1130,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { textStyleRepository.listAllModel() } returns listOf(
             aTextStyle("textStyle1", definition = aTextDef(size = sizeInMs)),
         )
+        every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;"
         val expectedValue = sizeInMs.toMeters()
 
         // when
@@ -1159,6 +1161,7 @@ class InteractiveDocumentObjectBuilderTest {
                 )
             ),
         )
+        every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;"
 
         // when
         val result = subject.buildStyles(textStyleRepository.listAllModel(), paragraphStyleRepository.listAllModel())
@@ -1177,6 +1180,52 @@ class InteractiveDocumentObjectBuilderTest {
         textStyle["FirstLineLeftIndent"].textValue().shouldBeEqualTo("0.0155")
         textStyle["LineSpacing"].textValue().shouldBeEqualTo("0.015")
         textStyle["LineSpacingType"].textValue().shouldBeEqualTo("Exact")
+    }
+
+    @Test
+    fun `font locations are correctly assigned from available font data`() {
+        // given
+        every { ipsService.gatherFontData(any()) } returns
+                "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;" +
+                "Arial,Bold,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arialbd.ttf;" +
+                "Tahoma,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/Tahoma/tahoma.ttf;"
+
+        val textStyles = listOf(
+            aTextStyle("ts1", definition = aTextDef(fontFamily = "Arial", bold = true)),
+            aTextStyle("ts2", definition = aTextDef(fontFamily = "Arial")),
+            aTextStyle("ts3", definition = aTextDef(fontFamily = "Tahoma", italic = true)),
+            aTextStyle("ts4", definition = aTextDef(fontFamily = "Unknown", bold = true)),
+        )
+
+        // when
+        val result = subject.buildStyles(textStyles, emptyList())
+
+        // then
+        val layout = xmlMapper.readTree(result.trimIndent())["Layout"]["Layout"]
+        val fonts = layout["Font"]
+
+        val arialFont = fonts.last { it["Id"].textValue() == "Def.Font" }
+        val arialSubFonts = arialFont["SubFont"]
+        arialSubFonts.size().shouldBeEqualTo(2)
+        val arialRegular = arialSubFonts.first { it["Name"].textValue() == "Regular" }
+        arialRegular["FontLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/arial.ttf")
+        val arialBold = arialSubFonts.first { it["Name"].textValue() == "Bold" }
+        arialBold["FontLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/arialbd.ttf")
+
+        val tahomaId = fonts.first { it["Name"].textValue() == "Tahoma" }["Id"].textValue()
+        val tahomaFont = fonts.last { it["Id"].textValue() == tahomaId }
+        tahomaFont["FontName"].textValue().shouldBeEqualTo("Tahoma")
+        tahomaFont["SubFont"]["Name"].textValue().shouldBeEqualTo("Italic")
+        tahomaFont["SubFont"]["Italic"].textValue().shouldBeEqualTo("True")
+        tahomaFont["SubFont"]["Bold"].textValue().shouldBeEqualTo("False")
+        tahomaFont["SubFont"]["FontLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/Tahoma/tahoma.ttf")
+
+        val unknownId = fonts.first { it["Name"].textValue() == "Unknown" }["Id"].textValue()
+        val unknownFont = fonts.last { it["Id"].textValue() == unknownId }
+        unknownFont["SubFont"]["FontLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/Unknown.ttf")
+
+        layout["TextStyle"].last { it["FontId"]?.textValue() == tahomaId }["SubFont"].textValue()
+            .shouldBeEqualTo("Italic")
     }
 
     @Test
@@ -1340,6 +1389,23 @@ class InteractiveDocumentObjectBuilderTest {
             val pathTestSubject = aSubject(config)
 
             val path = pathTestSubject.getStyleDefinitionPath()
+
+            path.shouldBeEqualTo(expected)
+        }
+
+        @ParameterizedTest
+        @CsvSource(
+            ",icm://Interactive/tenant/Resources/Fonts", "Fonts,icm://Interactive/tenant/Fonts"
+        )
+        fun testFontRootFolder(cfgFontsPath: String?, expected: String) {
+            val config = aProjectConfig(
+                output = InspireOutput.Interactive,
+                interactiveTenant = "tenant",
+                paths = PathsConfig(fonts = cfgFontsPath?.toIcmPath())
+            )
+            val pathTestSubject = aSubject(config)
+
+            val path = pathTestSubject.getFontRootFolder()
 
             path.shouldBeEqualTo(expected)
         }

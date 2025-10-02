@@ -30,6 +30,7 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
@@ -58,6 +59,7 @@ import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.Variable
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.layoutnodes.flow.Text
+import com.quadient.wfdxml.api.layoutnodes.font.SubFont
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.Table
@@ -68,6 +70,7 @@ import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeOptio
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.SUB_TREE
 import kotlinx.datetime.Clock
 import org.slf4j.LoggerFactory
+import java.util.concurrent.ConcurrentHashMap
 import com.quadient.migration.shared.DataType as DataTypeModel
 
 abstract class InspireDocumentObjectBuilder(
@@ -79,8 +82,11 @@ abstract class InspireDocumentObjectBuilder(
     protected val displayRuleRepository: DisplayRuleInternalRepository,
     protected val imageRepository: ImageInternalRepository,
     protected val projectConfig: ProjectConfig,
+    protected val ipsService: IpsService,
 ) {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
+
+    protected val fontDataCache = ConcurrentHashMap<FontKey, String>()
 
     abstract fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String
 
@@ -93,6 +99,8 @@ abstract class InspireDocumentObjectBuilder(
     abstract fun getImagePath(image: ImageModel): String
 
     abstract fun getStyleDefinitionPath(): String
+
+    abstract fun getFontRootFolder(): String
 
     abstract fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String
 
@@ -129,6 +137,11 @@ abstract class InspireDocumentObjectBuilder(
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
 
+        if (fontDataCache.isEmpty()) {
+            val fontDataString = ipsService.gatherFontData(getFontRootFolder())
+            fontDataCache.putAll(fontDataStringToMap(fontDataString))
+        }
+
         buildTextStyles(layout, textStyles)
         buildParagraphStyles(layout, paragraphStyles)
 
@@ -147,8 +160,7 @@ abstract class InspireDocumentObjectBuilder(
         var idx = 0
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
-            val contentPart = mutableContent[idx]
-            when (contentPart) {
+            when (val contentPart = mutableContent[idx]) {
                 is TableModel, is ParagraphModel, is ImageModelRef -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
@@ -287,8 +299,26 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
+    private fun upsertSubFont(font: Font, isBold: Boolean, isItalic: Boolean): SubFont {
+        val subFontName = buildFontName(isBold, isItalic)
+
+        font.subFonts.removeAll { it.name == subFontName }
+
+        val fontLocation = fontDataCache[FontKey(font.name, subFontName)]
+            ?: fontDataCache[FontKey(font.name, buildFontName(bold = false, italic = false))]
+            ?: IcmPath.from(getFontRootFolder()).join("${font.name}.ttf").toString()
+
+        return font.addSubfont().setName(subFontName).setBold(isBold).setItalic(isItalic).setLocation(
+            fontLocation, LocationType.ICM
+        )
+    }
+
     protected fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyleModel>) {
-        val usedFonts = mutableMapOf<String, Font>()
+        val arialFont = getFontByName(layout, "Arial")
+        require(arialFont != null) { "Layout must contain Arial font." }
+        upsertSubFont(arialFont, isBold = false, isItalic = false)
+
+        val usedFonts = mutableMapOf("Arial" to arialFont)
         val usedColorFillStyles = mutableMapOf<String, Pair<Color, FillStyle>>()
 
         textStyleModels.forEach { styleModel ->
@@ -296,15 +326,18 @@ abstract class InspireDocumentObjectBuilder(
 
             val textStyle = layout.addTextStyle().setName(styleModel.nameOrId())
 
-            if (definition.fontFamily != null) {
+            if (!definition.fontFamily.isNullOrBlank()) {
                 val usedFont = usedFonts[definition.fontFamily]
-                if (usedFont != null || definition.fontFamily == "Arial") {
-                    textStyle.setFont(usedFonts[definition.fontFamily])
-                } else {
-                    val newFont = layout.addFont().setFont(definition.fontFamily)
-                    usedFonts.put(definition.fontFamily, newFont)
-                    textStyle.setFont(newFont)
+                val font = if (usedFont != null) usedFont else {
+                    val newFont = layout.addFont().setName(definition.fontFamily).setFontName(definition.fontFamily)
+                    usedFonts[definition.fontFamily] = newFont
+                    newFont
                 }
+                textStyle.setFont(font)
+
+                val subFont = upsertSubFont(font, definition.bold, definition.italic)
+
+                textStyle.setSubFont(subFont)
             }
 
             if (definition.foregroundColor != null) {
@@ -319,7 +352,7 @@ abstract class InspireDocumentObjectBuilder(
                         definition.foregroundColor.blue()
                     )
                     val newFillStyle = layout.addFillStyle().setColor(newColor)
-                    usedColorFillStyles.put(colorId, Pair(newColor, newFillStyle))
+                    usedColorFillStyles[colorId] = Pair(newColor, newFillStyle)
                     textStyle.setFillStyle(newFillStyle)
                 }
             }
@@ -572,9 +605,7 @@ abstract class InspireDocumentObjectBuilder(
         if (paragraphModel.styleRef == null) return null
 
         val paraStyleModel = paragraphStyleRepository.firstWithDefinitionModel(paragraphModel.styleRef.id)
-        if (paraStyleModel == null) {
-            error("Paragraph style definition for ${paragraphModel.styleRef.id} not found.")
-        }
+            ?: error("Paragraph style definition for ${paragraphModel.styleRef.id} not found.")
 
         return paraStyleModel
     }
@@ -583,9 +614,7 @@ abstract class InspireDocumentObjectBuilder(
         if (textModel.styleRef == null) return null
 
         val textStyleModel = textStyleRepository.firstWithDefinitionModel(textModel.styleRef.id)
-        if (textStyleModel == null) {
-            error("Text style definition for ${textModel.styleRef.id} not found.")
-        }
+            ?: error("Text style definition for ${textModel.styleRef.id} not found.")
 
         return textStyleModel
     }

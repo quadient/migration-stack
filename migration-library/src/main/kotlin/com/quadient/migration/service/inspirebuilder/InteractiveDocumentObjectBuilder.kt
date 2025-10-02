@@ -37,7 +37,7 @@ class InteractiveDocumentObjectBuilder(
     displayRuleRepository: DisplayRuleInternalRepository,
     imageRepository: ImageInternalRepository,
     projectConfig: ProjectConfig,
-    private val ipsService: IpsService,
+    ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(
     documentObjectRepository,
     textStyleRepository,
@@ -46,7 +46,8 @@ class InteractiveDocumentObjectBuilder(
     variableStructureRepository,
     displayRuleRepository,
     imageRepository,
-    projectConfig
+    projectConfig,
+    ipsService,
 ) {
     private val lenientJson = Json { ignoreUnknownKeys = true }
     private val mainFlowId = "Def.MainFlow"
@@ -116,6 +117,13 @@ class InteractiveDocumentObjectBuilder(
             .toString()
     }
 
+    override fun getFontRootFolder(): String {
+        val fontConfigPath = projectConfig.paths.fonts
+
+        return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant)
+            .join(fontConfigPath.orDefault("Resources/Fonts")).toString()
+    }
+
     override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String {
         logger.debug("Starting to build document object '${documentObject.nameOrId()}'.")
 
@@ -123,6 +131,7 @@ class InteractiveDocumentObjectBuilder(
         val layout = builder.addLayout()
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
+
         val variableStructure = initVariableStructure(layout, documentObject)
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContentModel>>()
