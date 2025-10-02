@@ -85,10 +85,22 @@ class StylesValidator(
             paragraphStyle.resolveParagraphStyle(neededParagraphStyleIds, missingParagraphStyleIds)
         }
 
+        val styleDefPath = documentObjectBuilder.getStyleDefinitionPath()
+
+        val exists = try {
+            ipsService.fileExists(styleDefPath)
+        } catch (ex: Exception) {
+            throw RuntimeException("Failed to check whether style definition $styleDefPath exists", ex)
+        }
+
+        if (!exists) {
+            throw RuntimeException("Style definition $styleDefPath does not exist, cannot validate.")
+        }
+
         val xmlString = try {
             ipsService.wfd2xml(documentObjectBuilder.getStyleDefinitionPath())
         } catch (ex: Exception) {
-            throw RuntimeException("wfd2xml failed, cannot validate. Maybe the style definition does not exist?", ex)
+            throw RuntimeException("wfd2xml failed, cannot validate.", ex)
         }
 
         val xml = XmlMapper().readTree(xmlString)

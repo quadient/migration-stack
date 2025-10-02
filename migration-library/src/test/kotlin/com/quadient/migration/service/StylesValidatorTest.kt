@@ -48,6 +48,7 @@ class StylesValidatorTest {
     @BeforeEach
     fun init() {
         every { documentObjectBuilder.getStyleDefinitionPath() } returns "somepath"
+        every { ipsService.fileExists(any()) } returns true
     }
 
     @Test
