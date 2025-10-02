@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 
 - Styles validation against style definition and corresponding gradle tasks
+- Font identification based on used text styles and font (subfont) file localization in ICM font root folder
+- Project config option to override default font root folder
 
 ### Changed
 
