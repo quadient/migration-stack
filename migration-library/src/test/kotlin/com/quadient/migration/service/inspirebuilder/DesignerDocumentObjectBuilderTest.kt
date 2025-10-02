@@ -79,6 +79,7 @@ class DesignerDocumentObjectBuilderTest {
         every { variableStructureRepository.listAllModel() } returns emptyList()
         every { textStyleRepository.listAllModel() } returns emptyList()
         every { paragraphStyleRepository.listAllModel() } returns emptyList()
+        every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Fonts/arial.ttf;"
     }
 
     @Test
@@ -755,6 +756,20 @@ class DesignerDocumentObjectBuilderTest {
             val pathTestSubject = aSubject(config)
 
             val path = pathTestSubject.getStyleDefinitionPath()
+
+            path.shouldBeEqualTo(expected)
+        }
+
+        @ParameterizedTest
+        @CsvSource(
+            ",icm://", "Resources/Fonts,icm://Resources/Fonts"
+        )
+        fun testFontRootFolder(cfgFontsPath: String?, expected: String) {
+            val config =
+                aProjectConfig(output = InspireOutput.Designer, paths = PathsConfig(fonts = cfgFontsPath?.toIcmPath()))
+            val pathTestSubject = aSubject(config)
+
+            val path = pathTestSubject.getFontRootFolder()
 
             path.shouldBeEqualTo(expected)
         }

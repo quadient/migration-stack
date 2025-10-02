@@ -30,6 +30,7 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
@@ -81,6 +82,7 @@ abstract class InspireDocumentObjectBuilder(
     protected val displayRuleRepository: DisplayRuleInternalRepository,
     protected val imageRepository: ImageInternalRepository,
     protected val projectConfig: ProjectConfig,
+    protected val ipsService: IpsService,
 ) {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
 
@@ -134,6 +136,11 @@ abstract class InspireDocumentObjectBuilder(
 
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
+
+        if (fontDataCache.isEmpty()) {
+            val fontDataString = ipsService.gatherFontData(getFontRootFolder())
+            fontDataCache.putAll(fontDataStringToMap(fontDataString))
+        }
 
         buildTextStyles(layout, textStyles)
         buildParagraphStyles(layout, paragraphStyles)
@@ -298,6 +305,7 @@ abstract class InspireDocumentObjectBuilder(
         font.subFonts.removeAll { it.name == subFontName }
 
         val fontLocation = fontDataCache[FontKey(font.name, subFontName)]
+            ?: fontDataCache[FontKey(font.name, buildFontName(bold = false, italic = false))]
             ?: IcmPath.from(getFontRootFolder()).join("${font.name}.ttf").toString()
 
         return font.addSubfont().setName(subFontName).setBold(isBold).setItalic(isItalic).setLocation(

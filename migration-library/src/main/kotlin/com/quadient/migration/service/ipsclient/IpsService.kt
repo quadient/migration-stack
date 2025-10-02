@@ -137,7 +137,7 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         }
     }
 
-    fun gatherFontData(fontRootFolder: String): Map<FontKey, String> {
+    fun gatherFontData(fontRootFolder: String): String {
         val resultLocation = "memory://${UUID.randomUUID()}"
 
         val result =
@@ -148,13 +148,7 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
 
         val resultXml = client.download(resultLocation).throwIfNotOk()
         val resultXmlTree = xmlMapper.readTree(String(resultXml.customData))
-        val fontDataString = resultXmlTree["fontData"].textValue()
-        val fontDataStringList = fontDataString.split(";").filter { it.isNotBlank() }
-
-        return fontDataStringList.associate {
-            val fontDataParts = it.split(",")
-            FontKey(fontDataParts[0], fontDataParts[1]) to fontDataParts[2]
-        }
+        return resultXmlTree["fontData"].textValue()
     }
 
     fun runWfd(wfdPath: String, args: List<String>): OperationResult {

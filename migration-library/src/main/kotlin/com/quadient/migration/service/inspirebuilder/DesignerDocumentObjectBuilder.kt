@@ -59,7 +59,7 @@ class DesignerDocumentObjectBuilder(
     displayRuleRepository: DisplayRuleInternalRepository,
     imageRepository: ImageInternalRepository,
     projectConfig: ProjectConfig,
-    private val ipsService: IpsService,
+    ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(
     documentObjectRepository,
     textStyleRepository,
@@ -68,7 +68,8 @@ class DesignerDocumentObjectBuilder(
     variableStructureRepository,
     displayRuleRepository,
     imageRepository,
-    projectConfig
+    projectConfig,
+    ipsService,
 ) {
     private val sourceBaseTemplateCache = ConcurrentHashMap<String, String>()
 
@@ -89,11 +90,7 @@ class DesignerDocumentObjectBuilder(
         getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder)
 
     override fun getImagePath(
-        id: String,
-        imageType: ImageType,
-        name: String?,
-        targetFolder: IcmPath?,
-        sourcePath: String?
+        id: String, imageType: ImageType, name: String?, targetFolder: IcmPath?, sourcePath: String?
     ): String {
         val fileName = "${name ?: id}${imageExtension(imageType, name, sourcePath)}"
 
@@ -104,9 +101,7 @@ class DesignerDocumentObjectBuilder(
         val imageConfigPath = projectConfig.paths.images
 
         return IcmPath.root().join(imageConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
-            .join(fileName)
-            .toString()
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName).toString()
     }
 
     override fun getImagePath(image: ImageModel) =
@@ -140,7 +135,8 @@ class DesignerDocumentObjectBuilder(
         val virtualPageContent = mutableListOf<DocumentContentModel>()
 
         if (fontDataCache.isEmpty()) {
-            fontDataCache.putAll(ipsService.gatherFontData(getFontRootFolder()))
+            val fontDataString = ipsService.gatherFontData(getFontRootFolder())
+            fontDataCache.putAll(fontDataStringToMap(fontDataString))
         }
         val variableStructure = initVariableStructure(layout, documentObject)
 

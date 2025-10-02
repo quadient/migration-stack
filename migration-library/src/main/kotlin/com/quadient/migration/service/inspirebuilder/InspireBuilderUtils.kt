@@ -118,6 +118,15 @@ data class FontKey(
     val subFontName: String,
 )
 
+fun fontDataStringToMap(fontDataString: String): Map<FontKey, String> {
+    val fontDataStringList = fontDataString.split(";").filter { it.isNotBlank() }
+
+    return fontDataStringList.associate {
+        val fontDataParts = it.split(",")
+        FontKey(fontDataParts[0], fontDataParts[1]) to fontDataParts[2]
+    }
+}
+
 private val disallowedCharsRegex = Regex("[\\s\\-()?!.:;]")
 
 fun sanitizeVariablePart(part: String): String {

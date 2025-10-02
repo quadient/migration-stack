@@ -27,8 +27,8 @@ class FontImplTest extends Specification {
 
     def "font allSet serialization"() {
         given:
-        FontImpl font = new FontImpl().setName("Gigi").setFontName("Gigi")
-        font.addSubfont().setBold(true).setItalic(true).setLocation("Gigi", LocationType.FONT)
+        FontImpl font = new FontImpl()
+        font.setName("Gigi").setFontName("Gigi").addSubfont().setName("Bold Italic").setBold(true).setItalic(true).setLocation("Gigi", LocationType.FONT)
 
         when:
         font.export(exporter)

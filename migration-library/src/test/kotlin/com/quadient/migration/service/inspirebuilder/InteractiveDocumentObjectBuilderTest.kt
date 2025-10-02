@@ -1108,6 +1108,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { textStyleRepository.listAllModel() } returns listOf(
             aTextStyle("textStyle1", definition = aTextDef(bold = true, underline = true)),
         )
+        every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;"
 
         // when
         val result = subject.buildStyles(textStyleRepository.listAllModel(), paragraphStyleRepository.listAllModel())
@@ -1129,6 +1130,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { textStyleRepository.listAllModel() } returns listOf(
             aTextStyle("textStyle1", definition = aTextDef(size = sizeInMs)),
         )
+        every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;"
         val expectedValue = sizeInMs.toMeters()
 
         // when
@@ -1159,6 +1161,7 @@ class InteractiveDocumentObjectBuilderTest {
                 )
             ),
         )
+        every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;"
 
         // when
         val result = subject.buildStyles(textStyleRepository.listAllModel(), paragraphStyleRepository.listAllModel())
@@ -1177,6 +1180,12 @@ class InteractiveDocumentObjectBuilderTest {
         textStyle["FirstLineLeftIndent"].textValue().shouldBeEqualTo("0.0155")
         textStyle["LineSpacing"].textValue().shouldBeEqualTo("0.015")
         textStyle["LineSpacingType"].textValue().shouldBeEqualTo("Exact")
+    }
+
+    @Test
+    fun `font locations are correctly assigned from available font data`() {
+        every { ipsService.gatherFontData(any()) } returns
+                "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;"
     }
 
     @Test
@@ -1340,6 +1349,23 @@ class InteractiveDocumentObjectBuilderTest {
             val pathTestSubject = aSubject(config)
 
             val path = pathTestSubject.getStyleDefinitionPath()
+
+            path.shouldBeEqualTo(expected)
+        }
+
+        @ParameterizedTest
+        @CsvSource(
+            ",icm://Interactive/tenant/Resources/Fonts", "Fonts,icm://Interactive/tenant/Fonts"
+        )
+        fun testFontRootFolder(cfgFontsPath: String?, expected: String) {
+            val config = aProjectConfig(
+                output = InspireOutput.Interactive,
+                interactiveTenant = "tenant",
+                paths = PathsConfig(fonts = cfgFontsPath?.toIcmPath())
+            )
+            val pathTestSubject = aSubject(config)
+
+            val path = pathTestSubject.getFontRootFolder()
 
             path.shouldBeEqualTo(expected)
         }
