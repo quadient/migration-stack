@@ -45,6 +45,8 @@ import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aRow
 import com.quadient.migration.tools.model.aText
+import com.quadient.migration.tools.model.aTextDef
+import com.quadient.migration.tools.model.aTextStyle
 import com.quadient.migration.tools.model.aVariableStructureModel
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
@@ -629,6 +631,26 @@ class DesignerDocumentObjectBuilderTest {
 
         result["Variable"].first { it["Name"].textValue() == variable.nameOrId() }["ParentId"].textValue()
             .shouldBeEqualTo("Data.Records.Value")
+    }
+
+    @Test
+    fun `font data are gathered only once per multiple builds`() {
+        // given
+        val textStyle = aTextStyle("TS_1", definition = aTextDef(fontFamily = "Calibri", bold = true))
+        every { textStyleRepository.listAllModel() } returns listOf(textStyle)
+        every { textStyleRepository.firstWithDefinitionModel(textStyle.id) } returns textStyle
+
+        val blockA =
+            mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText(StringModel("Hello There!"), textStyle.id)))))
+        val blockB = mockObj(aDocObj("B_2", Block, listOf(aParagraph(aText(StringModel("Bye!"), textStyle.id)))))
+        every { ipsService.gatherFontData(any()) } returns "Calibri,Bold,icm://calibrib.ttf;"
+
+        // when
+        subject.buildDocumentObject(blockA, null)
+        subject.buildDocumentObject(blockB, null)
+
+        // then
+        verify(exactly = 1) { ipsService.gatherFontData("icm://") }
     }
 
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
