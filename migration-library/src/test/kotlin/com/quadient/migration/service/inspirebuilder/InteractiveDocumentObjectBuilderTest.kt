@@ -1222,7 +1222,7 @@ class InteractiveDocumentObjectBuilderTest {
 
         val unknownId = fonts.first { it["Name"].textValue() == "Unknown" }["Id"].textValue()
         val unknownFont = fonts.last { it["Id"].textValue() == unknownId }
-        unknownFont["SubFont"]["FontLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/Unknown.ttf")
+        unknownFont["SubFont"].shouldBeNull()
 
         layout["TextStyle"].last { it["FontId"]?.textValue() == tahomaId }["SubFont"].textValue()
             .shouldBeEqualTo("Italic")
