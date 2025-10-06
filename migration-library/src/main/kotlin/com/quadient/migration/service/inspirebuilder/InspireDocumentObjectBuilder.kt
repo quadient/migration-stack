@@ -299,18 +299,16 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun upsertSubFont(font: Font, isBold: Boolean, isItalic: Boolean): SubFont {
+    private fun upsertSubFont(font: Font, isBold: Boolean, isItalic: Boolean): SubFont? {
         val subFontName = buildFontName(isBold, isItalic)
-
-        font.subFonts.removeAll { it.name == subFontName }
 
         val fontLocation = fontDataCache[FontKey(font.name, subFontName)]
             ?: fontDataCache[FontKey(font.name, buildFontName(bold = false, italic = false))]
-            ?: IcmPath.from(getFontRootFolder()).join("${font.name}.ttf").toString()
+            ?: return null
 
-        return font.addSubfont().setName(subFontName).setBold(isBold).setItalic(isItalic).setLocation(
-            fontLocation, LocationType.ICM
-        )
+        font.subFonts.removeAll { it.name == subFontName }
+        return font.addSubfont().setName(subFontName).setBold(isBold).setItalic(isItalic)
+            .setLocation(fontLocation, LocationType.ICM)
     }
 
     protected fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyleModel>) {
@@ -336,8 +334,9 @@ abstract class InspireDocumentObjectBuilder(
                 textStyle.setFont(font)
 
                 val subFont = upsertSubFont(font, definition.bold, definition.italic)
-
-                textStyle.setSubFont(subFont)
+                if (subFont != null) {
+                    textStyle.setSubFont(subFont)
+                }
             }
 
             if (definition.foregroundColor != null) {
