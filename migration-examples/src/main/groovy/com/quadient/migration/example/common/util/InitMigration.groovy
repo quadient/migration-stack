@@ -3,6 +3,7 @@ package com.quadient.migration.example.common.util
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.MigConfig
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.PathsConfig
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.shared.IcmPath
 import groovy.transform.Field
@@ -40,19 +41,13 @@ static Migration initMigration(Binding binding) {
     def sourceBaseTemplate = getValueOfArg("--source-base-template-path", argsList).orElse(fileProjectConfig.sourceBaseTemplatePath)
     def defaultVariableStructure = getValueOfArg("--default-variable-structure", argsList).orElse(fileProjectConfig.defaultVariableStructure)
 
-    def styleDefinitionPath
-    if (styleDefinitionPathArg == null || styleDefinitionPathArg.isEmpty()) {
-        styleDefinitionPath = null
-    } else {
-        styleDefinitionPath = IcmPath.from(styleDefinitionPathArg)
-    }
+    def imagesPathArg = getValueOfArg("--images-path", argsList).orElse(fileProjectConfig.paths.images?.toString())
+    def fontsPathArg = getValueOfArg("--fonts-path", argsList).orElse(fileProjectConfig.paths.fonts?.toString())
 
-    def defFolder
-    if (defaultTargetFolder == null || defaultTargetFolder.isEmpty()) {
-        defFolder = null
-    } else {
-        defFolder = IcmPath.from(defaultTargetFolder)
-    }
+    def styleDefinitionPath = (styleDefinitionPathArg == null || styleDefinitionPathArg.isEmpty()) ? null : IcmPath.from(styleDefinitionPathArg)
+    def defFolder = (defaultTargetFolder == null || defaultTargetFolder.isEmpty()) ? null : IcmPath.from(defaultTargetFolder)
+    def imagesPath = (imagesPathArg == null || imagesPathArg.isEmpty()) ? null : IcmPath.from(imagesPathArg)
+    def fontsPath = (fontsPathArg == null || fontsPathArg.isEmpty()) ? null : IcmPath.from(fontsPathArg)
 
     def projectConfig = new ProjectConfig(projectName,
             baseTemplatePath,
@@ -60,7 +55,7 @@ static Migration initMigration(Binding binding) {
             inputDataPath,
             interactiveTenant,
             defFolder,
-            fileProjectConfig.paths,
+            new PathsConfig(imagesPath, fontsPath),
             InspireOutput.valueOf(inspireOutput),
             sourceBaseTemplate,
             defaultVariableStructure,
