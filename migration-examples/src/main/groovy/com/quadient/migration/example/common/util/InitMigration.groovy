@@ -32,12 +32,20 @@ static Migration initMigration(Binding binding) {
 
     def projectName = getValueOfArg("--project-name", argsList).orElse(fileProjectConfig.name)
     def baseTemplatePath = getValueOfArg("--base-template-path", argsList).orElse(fileProjectConfig.baseTemplatePath)
+    def styleDefinitionPathArg = getValueOfArg("--style-definition-path", argsList).orElse(fileProjectConfig.styleDefinitionPath?.toString())
     def inputDataPath = getValueOfArg("--input-data-path", argsList).orElse(fileProjectConfig.inputDataPath)
     def interactiveTenant = getValueOfArg("--interactive-tenant", argsList).orElse(fileProjectConfig.interactiveTenant)
     def defaultTargetFolder = getValueOfArg("--default-target-folder", argsList).orElse(fileProjectConfig.defaultTargetFolder?.toString())
     def inspireOutput = getValueOfArg("--inspire-output", argsList).orElse(fileProjectConfig.inspireOutput.toString())
     def sourceBaseTemplate = getValueOfArg("--source-base-template-path", argsList).orElse(fileProjectConfig.sourceBaseTemplatePath)
     def defaultVariableStructure = getValueOfArg("--default-variable-structure", argsList).orElse(fileProjectConfig.defaultVariableStructure)
+
+    def styleDefinitionPath
+    if (styleDefinitionPathArg == null || styleDefinitionPathArg.isEmpty()) {
+        styleDefinitionPath = null
+    } else {
+        styleDefinitionPath = IcmPath.from(styleDefinitionPathArg)
+    }
 
     def defFolder
     if (defaultTargetFolder == null || defaultTargetFolder.isEmpty()) {
@@ -46,18 +54,17 @@ static Migration initMigration(Binding binding) {
         defFolder = IcmPath.from(defaultTargetFolder)
     }
 
-    def projectConfig = new ProjectConfig(
-        projectName,
-        baseTemplatePath,
-        fileProjectConfig.styleDefinitionPath,
-        inputDataPath,
-        interactiveTenant,
-        defFolder,
-        fileProjectConfig.paths,
-        InspireOutput.valueOf(inspireOutput),
-        sourceBaseTemplate,
-        defaultVariableStructure,
-        fileProjectConfig.context)
+    def projectConfig = new ProjectConfig(projectName,
+            baseTemplatePath,
+            styleDefinitionPath,
+            inputDataPath,
+            interactiveTenant,
+            defFolder,
+            fileProjectConfig.paths,
+            InspireOutput.valueOf(inspireOutput),
+            sourceBaseTemplate,
+            defaultVariableStructure,
+            fileProjectConfig.context)
     log.info("Preparing to start migration script with $projectConfig.")
 
     return new Migration(migConfig, projectConfig)

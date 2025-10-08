@@ -314,7 +314,7 @@ abstract class InspireDocumentObjectBuilder(
     protected fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyleModel>) {
         val arialFont = getFontByName(layout, "Arial")
         require(arialFont != null) { "Layout must contain Arial font." }
-        upsertSubFont(arialFont, isBold = false, isItalic = false)
+        arialFont.setName("Arial").setFontName("Arial")
 
         val usedFonts = mutableMapOf("Arial" to arialFont)
         val usedColorFillStyles = mutableMapOf<String, Pair<Color, FillStyle>>()
