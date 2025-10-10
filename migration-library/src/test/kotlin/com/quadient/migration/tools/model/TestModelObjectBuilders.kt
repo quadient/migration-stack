@@ -53,7 +53,7 @@ import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
-import com.quadient.migration.shared.Literal
+import com.quadient.migration.shared.LiteralOrFunctionCall
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SuperOrSubscript
@@ -294,9 +294,9 @@ fun aDisplayRule(
 }
 
 fun aDisplayRule(
-    left: Literal,
+    left: LiteralOrFunctionCall,
     operator: BinOp,
-    right: Literal,
+    right: LiteralOrFunctionCall,
     groupOp: GroupOp = GroupOp.And,
     negation: Boolean = false,
     id: String = "R_1",

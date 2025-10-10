@@ -192,7 +192,7 @@ class DesignerDocumentObjectBuilder(
         layout: Layout, variableStructure: VariableStructureModel, ruleDef: DisplayRuleDefinition, successFlow: Flow,
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
-            ruleDef.toScript(layout, variableStructure), successFlow
+            ruleDef.toScript(layout, variableStructure, variableRepository::findModelOrFail), successFlow
         )
     }
 
@@ -206,7 +206,7 @@ class DesignerDocumentObjectBuilder(
 
         multipleRowSet.addRowSet(
             layout.addRowSet().setType(RowSet.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
-                ruleDef.toScript(layout, variableStructure), successRow
+                ruleDef.toScript(layout, variableStructure, variableRepository::findModelOrFail), successRow
             )
         )
 

@@ -30,18 +30,22 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.ScriptResult
+import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.ScriptResult.*
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
+import com.quadient.migration.shared.LiteralOrFunctionCall
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.TabType
 import com.quadient.wfdxml.WfdXmlBuilder
@@ -109,7 +113,7 @@ abstract class InspireDocumentObjectBuilder(
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
             layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
-                .setScript(ruleDef.toScript(layout, variableStructure)), successFlow
+                .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findModelOrFail)), successFlow
         )
     }
 
@@ -124,7 +128,7 @@ abstract class InspireDocumentObjectBuilder(
         multipleRowSet.addRowSet(
             layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
                 layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
-                    .setScript(ruleDef.toScript(layout, variableStructure)), successRow
+                    .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findModelOrFail)), successRow
             )
         )
 
@@ -630,7 +634,7 @@ abstract class InspireDocumentObjectBuilder(
 
         text.appendFlow(
             layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
-                displayRule.definition.toScript(layout, variableStructure), successFlow
+                displayRule.definition.toScript(layout, variableStructure, variableRepository::findModelOrFail), successFlow
             )
         )
 
@@ -708,7 +712,7 @@ abstract class InspireDocumentObjectBuilder(
                     .also { it.addParagraph().addText().appendFlow(contentFlow) }
 
             firstMatchFlow.addLineForSelectByInlineCondition(
-                displayRule.definition.toScript(layout, variableStructure), caseFlow
+                displayRule.definition.toScript(layout, variableStructure, variableRepository::findModelOrFail), caseFlow
             )
         }
 
@@ -724,100 +728,6 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         return firstMatchFlow
-    }
-
-    protected fun DisplayRuleDefinition.toScript(layout: Layout, variableStructure: VariableStructureModel): String {
-        return "return ${this.group.toScript(layout, variableStructure)};"
-    }
-
-    private fun Group.toScript(layout: Layout, variableStructure: VariableStructureModel): String {
-        val expressions = """(${
-            items.joinToString(
-                separator = " ${operator.toInlineCondition()} ", transform = {
-                    when (it) {
-                        is Binary -> it.toScript(layout, variableStructure)
-                        is Group -> it.toScript(layout, variableStructure)
-                    }
-                })
-        })"""
-        return if (negation) {
-            "not $expressions"
-        } else {
-            expressions
-        }
-    }
-
-    private fun Binary.toScript(layout: Layout, variableStructure: VariableStructureModel): String {
-        val leftScriptResult = left.toScript(layout, variableStructure)
-        val rightScriptResult = right.toScript(layout, variableStructure)
-
-        val binary = "$leftScriptResult${operator.toInlineCondition()}$rightScriptResult"
-        return if (leftScriptResult is ScriptResult.Success && rightScriptResult is ScriptResult.Success) {
-            binary
-        } else {
-            "String('${binary.replace("'", "")}')${BinOp.Equals.toInlineCondition()}String('unmapped')"
-        }
-    }
-
-    private fun Literal.toScript(layout: Layout, variableStructure: VariableStructureModel): ScriptResult {
-        return when (dataType) {
-            LiteralDataType.Variable -> variableToScript(value, layout, variableStructure)
-            LiteralDataType.String -> ScriptResult.Success(
-                "String('${
-                    value.replace("\\", "\\\\").replace("\"", "\\\"")
-                }')"
-            )
-
-            LiteralDataType.Number -> ScriptResult.Success(value)
-            LiteralDataType.Boolean -> ScriptResult.Success(value.lowercase().toBooleanStrict().toString())
-        }
-    }
-
-    private fun variableToScript(
-        id: String, layout: Layout, variableStructure: VariableStructureModel
-    ): ScriptResult {
-        val variableModel = variableRepository.findModelOrFail(id)
-        val variablePathData = variableStructure.structure[VariableModelRef(id)]
-        return if (variablePathData == null) {
-            ScriptResult.Failure(variableModel.nameOrId())
-        } else {
-            val variableName = variablePathData.name ?: variableModel.nameOrId()
-
-            getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path)
-
-            ScriptResult.Success((variablePathData.path.split(".") + variableName).joinToString(".") { pathPart ->
-                when (pathPart.lowercase()) {
-                    "value" -> "Current"
-                    "data" -> "DATA"
-                    else -> sanitizeVariablePart(if (pathPart.first().isDigit()) "_$pathPart" else pathPart)
-                }
-            })
-        }
-    }
-
-    private fun getOrCreateVariable(
-        data: Data, variableName: String, variableModel: VariableModel, variablePath: String
-    ): Variable {
-        val variable = getVariable(data as DataImpl, variableName, variablePath)
-        return variable ?: data.addVariable().setName(variableName).setKind(VariableKind.DISCONNECTED)
-            .setDataType(getDataType(variableModel.dataType)).setExistingParentId(variablePath)
-            .setValueIfAvailable(variableModel)
-    }
-
-    private fun Variable.setValueIfAvailable(variableModel: VariableModel): Variable {
-        if (!variableModel.defaultValue.isNullOrBlank()) {
-            when (variableModel.dataType) {
-                DataTypeModel.String, DataTypeModel.DateTime -> this.setValue(variableModel.defaultValue)
-                DataTypeModel.Integer -> this.setValue(variableModel.defaultValue.toInt())
-                DataTypeModel.Integer64 -> this.setValue(variableModel.defaultValue.toLong())
-                DataTypeModel.Double, DataTypeModel.Currency -> this.setValue(variableModel.defaultValue.toDouble())
-                DataTypeModel.Boolean -> this.setValue(
-                    variableModel.defaultValue.lowercase().toBooleanStrict()
-                )
-            }
-        }
-
-        return this
     }
 
     private fun TextStyleModel.resolve(): TextStyleDefinitionModel {
@@ -845,4 +755,134 @@ abstract class InspireDocumentObjectBuilder(
             override fun toString() = variableName
         }
     }
+}
+
+fun DisplayRuleDefinition.toScript(layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel): String {
+    return "return ${this.group.toScript(layout, variableStructure, findVar)};"
+}
+
+fun Group.toScript(layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel): String {
+    val expressions = """(${
+        items.joinToString(
+            separator = " ${operator.toInlineCondition()} ", transform = {
+                when (it) {
+                    is Binary -> it.toScript(layout, variableStructure, findVar)
+                    is Group -> it.toScript(layout, variableStructure, findVar)
+                }
+            })
+    })"""
+    return if (negation) {
+        "not $expressions"
+    } else {
+        expressions
+    }
+}
+
+fun Binary.toScript(layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel): String {
+    val leftScriptResult = left.toScript(layout, variableStructure, findVar)
+    val rightScriptResult = right.toScript(layout, variableStructure, findVar)
+
+    val binary = operator.toScript(leftScriptResult, rightScriptResult)
+    return if (leftScriptResult is ScriptResult.Success && rightScriptResult is ScriptResult.Success) {
+        binary
+    } else {
+        BinOp.Equals.toScript(
+            ScriptResult.Success("String('${binary.replace("'", "")}')"),
+            ScriptResult.Success("String('unmapped')")
+        )
+    }
+}
+
+fun BinOp.toScript(left: ScriptResult, right: ScriptResult): String {
+    return when (this) {
+        BinOp.Equals -> "$left==$right"
+        BinOp.EqualsCaseInsensitive -> "$left.equalCaseInsensitive($right)"
+        BinOp.NotEquals -> "$left!=$right"
+        BinOp.NotEqualsCaseInsensitive -> "(not $left.equalCaseInsensitive($right))"
+        BinOp.GreaterThan -> "$left>$right"
+        BinOp.GreaterOrEqualThan  -> "$left>=$right"
+        BinOp.LessThan -> "$left<$right"
+        BinOp.LessOrEqualThen  -> "$left<=$right"
+    }
+}
+
+fun LiteralOrFunctionCall.toScript(layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel): ScriptResult {
+    return when (this) {
+        is Literal -> this.toScript(layout, variableStructure, findVar)
+        is Function -> this.toScript(layout, variableStructure, findVar)
+    }
+}
+
+fun Function.toScript(layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel): ScriptResult {
+    when (this) {
+        is Function.UpperCase -> {
+            val arg = args[0]
+            return Success("(${arg.toScript(layout, variableStructure, findVar)}).toUpperCase()")
+        }
+        is Function.LowerCase -> {
+            val arg = args[0]
+            return Success("(${arg.toScript(layout, variableStructure, findVar)}).toLowerCase()")
+        }
+    }
+}
+
+fun Literal.toScript(layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel): ScriptResult {
+    return when (dataType) {
+        LiteralDataType.Variable -> variableToScript(value, layout, variableStructure, findVar)
+        LiteralDataType.String -> ScriptResult.Success(
+            "String('${
+                value.replace("\\", "\\\\").replace("\"", "\\\"")
+            }')"
+        )
+
+        LiteralDataType.Number -> ScriptResult.Success(value)
+        LiteralDataType.Boolean -> ScriptResult.Success(value.lowercase().toBooleanStrict().toString())
+    }
+}
+
+fun variableToScript(
+    id: String, layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel
+): ScriptResult {
+    val variableModel = findVar(id)
+    val variablePathData = variableStructure.structure[VariableModelRef(id)]
+    return if (variablePathData == null) {
+        ScriptResult.Failure(variableModel.nameOrId())
+    } else {
+        val variableName = variablePathData.name ?: variableModel.nameOrId()
+
+        getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path)
+
+        ScriptResult.Success((variablePathData.path.split(".") + variableName).joinToString(".") { pathPart ->
+            when (pathPart.lowercase()) {
+                "value" -> "Current"
+                "data" -> "DATA"
+                else -> sanitizeVariablePart(if (pathPart.first().isDigit()) "_$pathPart" else pathPart)
+            }
+        })
+    }
+}
+
+fun getOrCreateVariable(
+    data: Data, variableName: String, variableModel: VariableModel, variablePath: String
+): Variable {
+    val variable = getVariable(data as DataImpl, variableName, variablePath)
+    return variable ?: data.addVariable().setName(variableName).setKind(VariableKind.DISCONNECTED)
+        .setDataType(getDataType(variableModel.dataType)).setExistingParentId(variablePath)
+        .setValueIfAvailable(variableModel)
+}
+
+fun Variable.setValueIfAvailable(variableModel: VariableModel): Variable {
+    if (!variableModel.defaultValue.isNullOrBlank()) {
+        when (variableModel.dataType) {
+            DataTypeModel.String, DataTypeModel.DateTime -> this.setValue(variableModel.defaultValue)
+            DataTypeModel.Integer -> this.setValue(variableModel.defaultValue.toInt())
+            DataTypeModel.Integer64 -> this.setValue(variableModel.defaultValue.toLong())
+            DataTypeModel.Double, DataTypeModel.Currency -> this.setValue(variableModel.defaultValue.toDouble())
+            DataTypeModel.Boolean -> this.setValue(
+                variableModel.defaultValue.lowercase().toBooleanStrict()
+            )
+        }
+    }
+
+    return this
 }

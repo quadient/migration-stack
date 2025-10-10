@@ -24,20 +24,38 @@ enum class GroupOp {
 }
 
 enum class BinOp {
-    Equals, NotEquals, GreaterThan, GreaterOrEqualThan, LessThan, LessOrEqualThen, Add, Sub, Mul, Div;
+    Equals, EqualsCaseInsensitive, NotEquals, NotEqualsCaseInsensitive, GreaterThan, GreaterOrEqualThan, LessThan, LessOrEqualThen;
+}
 
-    fun toInlineCondition(): String {
-        return when (this) {
-            Equals -> "=="
-            NotEquals -> "!="
-            GreaterThan -> ">"
-            LessThan -> "<"
-            GreaterOrEqualThan -> ">="
-            LessOrEqualThen -> "<="
-            Add -> TODO()
-            Sub -> TODO()
-            Mul -> TODO()
-            Div -> TODO()
+@Serializable
+sealed class Function(val minArgs: Int, val maxArgs: Int, val args: List<LiteralOrFunctionCall>): LiteralOrFunctionCall {
+    init {
+        if (args.size !in minArgs..maxArgs) {
+            error("Function $this requires between $minArgs and $maxArgs arguments, but got ${args.size}")
+        }
+
+        if (this.validate() != null) {
+            error("Function $this is not valid: ${this.validate()}")
+        }
+    }
+
+    override fun collectRefs(): List<RefModel> {
+        return args.flatMap { it.collectRefs() }
+    }
+
+    abstract fun validate(): String?
+
+    @Serializable
+    data class UpperCase(val arg: LiteralOrFunctionCall): Function(minArgs = 1, maxArgs = 1, args = listOf(arg)) {
+        override fun validate(): String? {
+            return null
+        }
+    }
+
+    @Serializable
+    data class LowerCase(val arg: LiteralOrFunctionCall): Function(minArgs = 1, maxArgs = 1, args = listOf(arg)) {
+        override fun validate(): String? {
+            return null
         }
     }
 }
@@ -46,14 +64,17 @@ enum class BinOp {
 sealed class BinaryOrGroup : RefValidatable
 
 @Serializable
-data class Binary(val left: Literal, val operator: BinOp, val right: Literal) : RefValidatable, BinaryOrGroup() {
+sealed interface LiteralOrFunctionCall : RefValidatable
+
+@Serializable
+data class Binary(var left: LiteralOrFunctionCall, var operator: BinOp, var right: LiteralOrFunctionCall) : RefValidatable, BinaryOrGroup() {
     override fun collectRefs(): List<RefModel> {
         return left.collectRefs() + right.collectRefs()
     }
 }
 
 @Serializable
-data class Literal(var value: String, val dataType: LiteralDataType) : RefValidatable {
+data class Literal(var value: String, val dataType: LiteralDataType) : RefValidatable, LiteralOrFunctionCall {
     override fun collectRefs(): List<RefModel> {
         return when (dataType) {
             LiteralDataType.Variable -> listOf(VariableModelRef(value))
