@@ -7,8 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Image export/import now include an imageType field to support image formats.
 
 ### Changed
+- Split document and image export/import scripts
 
 ### Removed
 
