@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Removed
+
+## [17.0.3] - 2025-10-10
+
+### Added
+
 - Styles validation against style definition and corresponding gradle tasks
 - Font identification based on used text styles and font (subfont) file localization in ICM font root folder
 - Project config option to override default font root folder
@@ -38,5 +46,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - This CHANGELOG file
 
 [unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.2...HEAD
-[17.0.2]: https://github.com/quadient/migration-stack/releases/tag/v17.0.2
+[17.0.3]: https://github.com/quadient/migration-stack/compare/v17.0.2..v17.0.3
+[17.0.2]: https://github.com/quadient/migration-stack/compare/v0.0.1..v17.0.2
 [0.0.1]: https://github.com/quadient/migration-stack/releases/tag/v0.0.1
