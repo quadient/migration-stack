@@ -26,6 +26,7 @@ sealed class MappingItem {
         override var name: String?,
         var targetFolder: String?,
         var sourcePath: String?,
+        var imageType: ImageType?,
     ) : MappingItem()
 
     data class ParagraphStyle(override var name: String?, var definition: Definition?) : MappingItem() {
@@ -88,7 +89,10 @@ sealed class MappingItem {
 
             is MappingItem.Image -> {
                 MappingItemEntity.Image(
-                    name = this.name, targetFolder = this.targetFolder, sourcePath = this.sourcePath
+                    name = this.name,
+                    targetFolder = this.targetFolder,
+                    sourcePath = this.sourcePath,
+                    imageType = this.imageType,
                 )
             }
 

@@ -1,7 +1,7 @@
 //! ---
-//! displayName: Import Document Objects And Images
+//! displayName: Import Document Objects
 //! category: Mapping
-//! description: Imports document objects and image details from CSV files into the migration project, applying any updates made to the columns during editing.
+//! description: Imports document objects details from CSV files into the migration project, applying any updates made to the columns during editing.
 //! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping
@@ -19,17 +19,14 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 def migration = initMigration(this.binding)
 
 def docObjPath  = Mapping.csvPath(binding, migration.projectConfig.name, "document-objects")
-def imagesPath  = Mapping.csvPath(binding, migration.projectConfig.name, "images")
 
-runDocumentObjects(migration, docObjPath)
-runImages(migration, imagesPath)
+run(migration, docObjPath)
 
-static void runDocumentObjects(Migration migration, Path documentObjFilePath) {
+static void run(Migration migration, Path documentObjFilePath) {
     def deploymentId = UUID.randomUUID().toString()
     def now = new Date().getTime()
     def docObjectLines = documentObjFilePath.toFile().readLines()
 
-    // id, name, internal, baseTemplate, icmFolder
     def docObjectColumnNames = Csv.parseColumnNames(docObjectLines.removeFirst())
     def output = migration.projectConfig.inspireOutput
 
@@ -77,50 +74,4 @@ static void runDocumentObjects(Migration migration, Path documentObjFilePath) {
         migration.mappingRepository.upsert(id, existingMapping)
         migration.mappingRepository.applyDocumentObjectMapping(id)
     }
-
 }
-
-static void runImages(Migration migration, Path imagesFilePath) {
-    def deploymentId = UUID.randomUUID().toString()
-    def now = new Date().getTime()
-    def output = migration.projectConfig.inspireOutput
-    def imageLines = imagesFilePath.toFile().readLines()
-    // id, name, sourcePath, icmFolder
-    def imageColumnNames  = Csv.parseColumnNames(imageLines.removeFirst())
-
-    for (line in imageLines) {
-        def values = Csv.getCells(line, imageColumnNames)
-        def id = values.get("id")
-        def existingImage = migration.imageRepository.find(id)
-        def existingMapping = migration.mappingRepository.getImageMapping(id)
-
-        if (existingImage == null) {
-            throw new Exception("Image with id ${id} not found")
-        }
-        def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(existingImage.id,
-            ResourceType.Image,
-            migration.projectConfig.inspireOutput)
-
-        def newName = Csv.deserialize(values.get("name"), String.class)
-        Mapping.mapProp(existingMapping, existingImage, "name", newName)
-
-        def newSourcePath = Csv.deserialize(values.get("sourcePath"), String.class)
-        Mapping.mapProp(existingMapping, existingImage, "sourcePath", newSourcePath)
-
-        def newTargetFolder = Csv.deserialize(values.get("targetFolder"), String.class)
-        Mapping.mapProp(existingMapping, existingImage, "targetFolder", newTargetFolder)
-
-        def csvStatus = values.get("status")
-        if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {
-            migration.statusTrackingRepository.active(existingImage.id, ResourceType.Image, [reason: "Manual"])
-        }
-        if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deployed") {
-            migration.statusTrackingRepository.deployed(existingImage.id, deploymentId, now, ResourceType.Image, null, output, [reason: "Manual"])
-        }
-
-        migration.mappingRepository.upsert(id, existingMapping)
-        migration.mappingRepository.applyImageMapping(id)
-    }
-}
-
-
