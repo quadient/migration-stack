@@ -10,6 +10,7 @@ import com.quadient.migration.api.Migration
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.shared.ImageType
 
 import java.nio.file.Path
 
@@ -47,7 +48,7 @@ static void run(Migration migration, Path imagesFilePath) {
         def newSourcePath = Csv.deserialize(values.get("sourcePath"), String.class)
         Mapping.mapProp(existingMapping, existingImage, "sourcePath", newSourcePath)
 
-        def newImageType = Csv.deserialize(values.get("imageType"), String.class)
+        def newImageType = Csv.deserialize(values.get("imageType"), ImageType.class)
         Mapping.mapProp(existingMapping, existingImage, "imageType", newImageType)
 
         def newTargetFolder = Csv.deserialize(values.get("targetFolder"), String.class)

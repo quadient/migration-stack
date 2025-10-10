@@ -138,7 +138,14 @@ static <T> T deserialize(String value, Class<T> cls) {
         } else {
             throw new RuntimeException("Invalid boolean value ${value}")
         }
-        case { it.isEnum() }: return cls.find { it.toString() == value} as T
+        case { it.isEnum() }: {
+            def enumValue = cls.find { it.toString().equalsIgnoreCase(value) }
+            if (enumValue == null) {
+                throw new RuntimeException("Invalid enum value ${value} for type ${cls}. Available options: ${cls.values().join(', ')}")
+            }
+            return enumValue as T
+        }
+
         default: throw new RuntimeException("Unexpected type ${cls} for value ${value}")
     }
 }
