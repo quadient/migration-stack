@@ -87,12 +87,14 @@ sealed class MappingItemEntity {
         override val name: String?,
         val targetFolder: String?,
         val sourcePath: String?,
+        val imageType: ImageType?,
     ) : MappingItemEntity() {
         fun apply(item: ImageDto): ImageDto {
             return item.copy(
                 name = name ?: item.name,
                 targetFolder = targetFolder ?: item.targetFolder,
-                sourcePath = sourcePath ?: item.sourcePath
+                sourcePath = sourcePath ?: item.sourcePath,
+                imageType = imageType ?: item.imageType,
             )
         }
     }
@@ -288,7 +290,10 @@ sealed class MappingItemEntity {
 
             is Image -> {
                 MappingItem.Image(
-                    name = this.name, targetFolder = this.targetFolder, sourcePath = this.sourcePath
+                    name = this.name,
+                    targetFolder = this.targetFolder,
+                    sourcePath = this.sourcePath,
+                    imageType = this.imageType,
                 )
             }
 
