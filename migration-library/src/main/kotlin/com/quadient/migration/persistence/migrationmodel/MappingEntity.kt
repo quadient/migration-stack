@@ -87,7 +87,7 @@ sealed class MappingItemEntity {
         override val name: String?,
         val targetFolder: String?,
         val sourcePath: String?,
-        val imageType: ImageType?,
+        val imageType: ImageType? = null,
     ) : MappingItemEntity() {
         fun apply(item: ImageDto): ImageDto {
             return item.copy(
