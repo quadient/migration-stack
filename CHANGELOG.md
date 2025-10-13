@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [17.0.4] - 2025-10-13
+
+### Added
 - Image export/import now include an imageType field to support image formats.
 
 ### Changed
@@ -52,7 +62,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.3...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.4...HEAD
+[17.0.4]: https://github.com/quadient/migration-stack/compare/v17.0.3..v17.0.4
 [17.0.3]: https://github.com/quadient/migration-stack/compare/v17.0.2..v17.0.3
 [17.0.2]: https://github.com/quadient/migration-stack/compare/v0.0.1..v17.0.2
 [0.0.1]: https://github.com/quadient/migration-stack/releases/tag/v0.0.1
