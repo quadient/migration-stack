@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Changed
 - Split document and image export/import scripts
 
+### Fixed
+
+- Display rule database migration
+- Display rule report failing when origin content was missing
+
 ### Removed
 
 ## [17.0.3] - 2025-10-10

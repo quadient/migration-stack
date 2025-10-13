@@ -51,7 +51,7 @@ static void exportReport(List<DisplayRule> rules, Path exportFilePath) {
             builder.append("," + Csv.serialize(rule.definition != null))
             builder.append("," + "\"${translationError?.replace("\n", "\\n")?.replace("\"", "\\")}\"")
             builder.append("," + rule.originLocations.join(";"))
-            builder.append("," + "\"${rule.customFields.get("originContent").replace("\n", "\\n").replace("\"", "\\")}\"")
+            builder.append("," + "\"${rule.customFields?.get("originContent")?.replace("\n", "\\n")?.replace("\"", "\\")}\"")
             writer.writeLine(builder.toString())
         }
     }
