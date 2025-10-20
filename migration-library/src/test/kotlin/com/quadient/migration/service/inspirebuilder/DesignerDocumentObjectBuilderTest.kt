@@ -118,7 +118,7 @@ class DesignerDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         result["Page"].size().shouldBeEqualTo(4)
@@ -176,7 +176,7 @@ class DesignerDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         result["Image"].shouldBeEqualTo(null)
@@ -209,7 +209,7 @@ class DesignerDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val imageObject = result["ImageObject"].last()
@@ -241,7 +241,7 @@ class DesignerDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val areaFlowId = result["FlowArea"].last()["FlowId"].textValue()
@@ -285,7 +285,7 @@ class DesignerDocumentObjectBuilderTest {
         )
 
         // when
-        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val rowSetId = result["Table"].last()["RowSetId"].textValue()
@@ -311,7 +311,7 @@ class DesignerDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         result["Flow"].filter { it["Name"]?.textValue() == block.nameOrId() }.size.shouldBeEqualTo(1)
@@ -336,7 +336,7 @@ class DesignerDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val areaFlowId = result["FlowArea"].last()["FlowId"].textValue()
@@ -398,7 +398,7 @@ class DesignerDocumentObjectBuilderTest {
         // when
         val subject = aSubject(config)
         val result =
-            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val variableData = result["Variable"].single { it["Name"]?.textValue() == variable.nameOrId() }
@@ -453,7 +453,7 @@ class DesignerDocumentObjectBuilderTest {
         )
 
         // when
-        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val conditionFlow = result["Flow"].last { it["Type"]?.textValue() == "InlCond" }
@@ -501,7 +501,7 @@ class DesignerDocumentObjectBuilderTest {
             mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText(StringModel("Text")))), displayRuleRef = rule.id))
 
         // when
-        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val flowAreaFlowId = result["FlowArea"].last()["FlowId"].textValue()
@@ -550,7 +550,7 @@ class DesignerDocumentObjectBuilderTest {
 
         // when
         val subject = aSubject(config)
-        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         result["Property"].size().shouldBeEqualTo(3)
@@ -589,8 +589,8 @@ class DesignerDocumentObjectBuilderTest {
 
         // when
         val subject = aSubject(config)
-        subject.buildDocumentObject(block1, null)
-        subject.buildDocumentObject(block2, null)
+        subject.buildDocumentObject(block1, null, "")
+        subject.buildDocumentObject(block2, null, "")
 
         // then
         verify(exactly = 1) { ipsService.wfd2xml(any()) }
@@ -623,7 +623,7 @@ class DesignerDocumentObjectBuilderTest {
 
         // when
         val subject = aSubject(config)
-        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         verify(exactly = 1) { variableStructureRepository.findModelOrFail(variableStructureA.id) }
@@ -646,8 +646,8 @@ class DesignerDocumentObjectBuilderTest {
         every { ipsService.gatherFontData(any()) } returns "Calibri,Bold,icm://calibrib.ttf;"
 
         // when
-        subject.buildDocumentObject(blockA, null)
-        subject.buildDocumentObject(blockB, null)
+        subject.buildDocumentObject(blockA, null, "")
+        subject.buildDocumentObject(blockB, null, "")
 
         // then
         verify(exactly = 1) { ipsService.gatherFontData("icm://") }

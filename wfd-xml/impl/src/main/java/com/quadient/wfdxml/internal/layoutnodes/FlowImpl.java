@@ -215,7 +215,7 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
         flowContent.export(exporter);
 
         switch (type) {
-            case SIMPLE, REPEATED, CONDITION, INL_COND, VARIABLE_FORMATTED:
+            case SIMPLE, REPEATED, CONDITION, INL_COND, VARIABLE_FORMATTED, LANGUAGE:
                 break;
             case DIRECT_EXTERNAL: {
                 if (location == null || location.isBlank()) {
@@ -231,7 +231,7 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
             exporter.addElementWithIface("Variable", variable);
         }
 
-        if (type == INL_COND || type == CONDITION) {
+        if (type == INL_COND || type == CONDITION || type == LANGUAGE) {
             for (FlowCondition con : flowConditions) {
                 exporter.beginElement("Condition");
 
@@ -239,6 +239,7 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
                     case CONDITION:
                         exporter.addIfaceAttribute("VarId", con.getCondition());
                         break;
+                    case LANGUAGE:
                     case INL_COND:
                         exporter.addStringAttribute("Value", con.getCondition().toString());
                         break;

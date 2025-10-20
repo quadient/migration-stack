@@ -75,7 +75,7 @@ class DesignerDeployClient(
             }
 
             try {
-                val templateWfdXml = documentObjectBuilder.buildDocumentObject(it, styleDefPath)
+                val templateWfdXml = documentObjectBuilder.buildDocumentObject(it, styleDefPath, "en_us")
                 val xml2wfdResult = ipsService.xml2wfd(templateWfdXml, targetPath)
 
                 when (xml2wfdResult) {

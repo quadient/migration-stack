@@ -126,7 +126,15 @@ class DesignerDocumentObjectBuilder(
         return IcmPath.root().join(fontConfigPath).toString()
     }
 
-    override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String {
+    override fun getDefaultLanguage(baseTemplatePath: String?): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun buildDocumentObject(
+        documentObject: DocumentObjectModel,
+        styleDefinitionPath: String?,
+        defaultLanguage: String?
+    ): String {
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
         layout.name = "DocumentLayout"
@@ -155,12 +163,26 @@ class DesignerDocumentObjectBuilder(
 
         pageModels.forEach {
             buildPage(
-                layout, variableStructure, it.nameOrId(), it.content, documentObject, it.options as? PageOptions
+                layout,
+                variableStructure,
+                it.nameOrId(),
+                it.content,
+                documentObject,
+                it.options as? PageOptions,
+                defaultLanguage
             )
         }
 
         if (virtualPageContent.isNotEmpty() || pageModels.isEmpty()) {
-            buildPage(layout, variableStructure, "Virtual Page", virtualPageContent, documentObject)
+            buildPage(
+                layout,
+                variableStructure,
+                "Virtual Page",
+                virtualPageContent,
+                documentObject,
+                null,
+                defaultLanguage
+            )
         }
 
         val root = layout.addRoot().setAllowRuntimeModifications(true)
@@ -220,6 +242,7 @@ class DesignerDocumentObjectBuilder(
         content: List<DocumentContentModel>,
         mainObject: DocumentObjectModel,
         options: PageOptions? = null,
+        defaultLanguage: String?,
     ) {
         val page = layout.addPage().setName(name).setType(Pages.PageConditionType.SIMPLE)
         options?.height?.let { page.setHeight(it.toMeters()) }
@@ -236,11 +259,16 @@ class DesignerDocumentObjectBuilder(
             }
         }
 
-        areaModels.forEach { buildArea(layout, variableStructure, page, it, mainObject) }
+        areaModels.forEach { buildArea(layout, variableStructure, page, it, mainObject, defaultLanguage) }
 
         if (virtualAreaContent.isNotEmpty()) {
             buildArea(
-                layout, variableStructure, page, AreaModel(virtualAreaContent, defaultPosition, null), mainObject
+                layout,
+                variableStructure,
+                page,
+                AreaModel(virtualAreaContent, defaultPosition, null),
+                mainObject,
+                defaultLanguage
             )
         }
     }
@@ -249,8 +277,7 @@ class DesignerDocumentObjectBuilder(
         layout: Layout,
         variableStructure: VariableStructureModel,
         page: Page,
-        areaModel: AreaModel,
-        mainObject: DocumentObjectModel,
+        areaModel: AreaModel, mainObject: DocumentObjectModel, defaultLanguage: String?
     ) {
         val position = areaModel.position ?: defaultPosition
 
@@ -275,7 +302,11 @@ class DesignerDocumentObjectBuilder(
                 .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlowToNextPage(true)
                 .setFlow(
                     buildDocumentContentAsSingleFlow(
-                        layout, variableStructure, areaModel.content, displayRuleRef = mainObject.displayRuleRef
+                        layout,
+                        variableStructure,
+                        areaModel.content,
+                        displayRuleRef = mainObject.displayRuleRef,
+                        defaultLanguage = defaultLanguage
                     )
                 )
         }

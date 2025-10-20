@@ -47,3 +47,9 @@ data class FirstMatchEntity(val cases: List<CaseEntity>, val default: List<Docum
         val displayRuleRef: DisplayRuleEntityRef, val content: List<DocumentContentEntity>, val name: String? = null
     )
 }
+
+@Serializable
+data class SelectByLanguageEntity(val cases: List<CaseEntity>) : DocumentContentEntity {
+    @Serializable
+    data class CaseEntity(val language: String, val content: List<DocumentContentEntity>)
+}

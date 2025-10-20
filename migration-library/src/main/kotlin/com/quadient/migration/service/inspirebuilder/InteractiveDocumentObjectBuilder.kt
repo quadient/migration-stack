@@ -3,6 +3,7 @@ package com.quadient.migration.service.inspirebuilder
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.quadient.migration.api.IcmFileMetadata
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.DocumentContentModel
@@ -54,6 +55,7 @@ class InteractiveDocumentObjectBuilder(
 
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
     private val baseTemplatesInteractiveFlowNamesToIds = mutableMapOf<String, Map<String, String>>()
+    private val baseTemplateMetadata = mutableMapOf<String, IcmFileMetadata>()
 
     override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
         val fileName = "$nameOrId.jld"
@@ -124,7 +126,26 @@ class InteractiveDocumentObjectBuilder(
             .join(fontConfigPath.orDefault("Resources/Fonts")).toString()
     }
 
-    override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String {
+    override fun getDefaultLanguage(baseTemplatePath: String?): String {
+        requireNotNull(baseTemplatePath) {
+            "Base template path is required to get the default language for interactive output."
+        }
+
+        val result = this.baseTemplateMetadata.getOrPut(baseTemplatePath) {
+            try {
+                ipsService.readMetadata(baseTemplatePath)
+            } catch (e: Exception) {
+                logger.error("Failed to load metadata from base template '${baseTemplatePath}'.", e)
+                throw e
+            }
+        }.system["language"]?.first()
+
+        return requireNotNull(result) {
+            "Failed to determine default language from base template '$baseTemplatePath'. Metadata: '$result'"
+        }
+    }
+
+    override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?, defaultLanguage: String?): String {
         logger.debug("Starting to build document object '${documentObject.nameOrId()}'.")
 
         val builder = WfdXmlBuilder()
@@ -168,7 +189,7 @@ class InteractiveDocumentObjectBuilder(
                 layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).addParagraph().addText()
 
             val contentFlows =
-                buildDocumentContentAsFlows(layout, variableStructure, it.value, documentObject.nameOrId())
+                buildDocumentContentAsFlows(layout, variableStructure, it.value, documentObject.nameOrId(), defaultLanguage)
 
             if (documentObject.displayRuleRef == null) {
                 contentFlows.forEach { contentFlow -> interactiveFlowText.appendFlow(contentFlow) }

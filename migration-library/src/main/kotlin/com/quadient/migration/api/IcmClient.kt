@@ -1,6 +1,7 @@
 package com.quadient.migration.api
 
 import com.quadient.migration.service.ipsclient.IpsClientException
+import kotlinx.serialization.Serializable
 import java.io.IOException
 
 interface IcmClient {
@@ -76,4 +77,32 @@ interface IcmClient {
      * @throws IOException
      */
     fun delete(paths: List<String>): List<Boolean>
+
+    /**
+     * Read metadata of a single ICM file
+     * @return Metadata of the ICM file
+     * @param paths List of paths to the files Each path must start with "icm://"
+     * @throws IllegalArgumentException if any of the paths does not start with "icm://"
+     * @throws IpsClientException if failure occurs when working with IPS
+     * @throws IOException
+     */
+    fun readMetadata(path: String): IcmFileMetadata
+
+    /**
+     * Read metadata of all the provided files in the connected ICM
+     * @return List of results, where each element corresponds to the input path in the
+     * same order as they were provided.
+     * @param paths List of paths to the files Each path must start with "icm://"
+     * @throws IllegalArgumentException if any of the paths does not start with "icm://"
+     * @throws IpsClientException if failure occurs when working with IPS
+     * @throws IOException
+     */
+    fun readMetadata(paths: List<String>): List<IcmFileMetadata>
 }
+
+@Serializable
+data class IcmFileMetadata(
+    val path: String,
+    val system: MutableMap<String, List<String>>,
+    val user: MutableMap<String, List<String>>
+)

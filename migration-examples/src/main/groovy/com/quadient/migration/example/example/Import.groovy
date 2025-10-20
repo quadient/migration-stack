@@ -277,6 +277,23 @@ def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType
         }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Goodbye.") }.build())
     }.build()
 
+def selectByLanguageBlock = new DocumentObjectBuilder("selectByLanguage", DocumentObjectType.Block)
+    .internal(true)
+    .selectByLanguage() { sbv ->
+        sbv.case { c ->
+            c.language = "en_us"
+            c.appendContent(new ParagraphBuilder().content("Goodbye.").build())
+        }
+        .case { c ->
+            c.language = "de"
+            c.appendContent(new ParagraphBuilder().content("Krankenhaus").build())
+        }
+        .case { c ->
+            c.language = "es"
+            c.appendContent(new ParagraphBuilder().content("el paso").build())
+        }
+    }.build()
+
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas
 def paragraph1TopMargin = topMargin + Size.ofCentimeters(2)
@@ -313,6 +330,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             .paragraph { it.styleRef(paragraphStyle.id).text { it.content(table) } }
             .documentObjectRef(conditionalParagraph.id)
             .documentObjectRef(firstMatchBlock.id)
+            .documentObjectRef(selectByLanguageBlock.id)
     }
     .area {
         it.position {
@@ -330,7 +348,7 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
     .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {
