@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Changed
 
 ### Fixed
+- Default value of style definition path in app is now correctly set to null instead of empty string
 
 ### Removed
 
