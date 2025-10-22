@@ -11,6 +11,9 @@ abstract class DtoBuilderBase<T : MigrationObject, K : DtoBuilderBase<T, K>>(
         require(id.isNotEmpty()) { "id cannot be null or empty" }
     }
 
+    val getId: String
+        get() = id
+
     protected var name: String? = null
     protected var originLocations: List<String> = emptyList()
     protected var customFields = CustomFieldMap()
