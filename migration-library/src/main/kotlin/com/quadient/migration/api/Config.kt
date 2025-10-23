@@ -41,7 +41,7 @@ data class ProjectConfig(
     val inspireOutput: InspireOutput = InspireOutput.Interactive,
     val sourceBaseTemplatePath: String? = null,
     val defaultVariableStructure: String? = null,
-    val languageVariable: String? = null,
+    val defaultLanguage: String? = null,
     val context: Map<String, Any> = emptyMap(),
 ) {
     companion object {

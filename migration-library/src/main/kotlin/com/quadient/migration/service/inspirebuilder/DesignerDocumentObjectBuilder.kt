@@ -126,15 +126,7 @@ class DesignerDocumentObjectBuilder(
         return IcmPath.root().join(fontConfigPath).toString()
     }
 
-    override fun getDefaultLanguage(baseTemplatePath: String?): String {
-        TODO("Not yet implemented")
-    }
-
-    override fun buildDocumentObject(
-        documentObject: DocumentObjectModel,
-        styleDefinitionPath: String?,
-        defaultLanguage: String?
-    ): String {
+    override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String {
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
         layout.name = "DocumentLayout"
@@ -147,6 +139,16 @@ class DesignerDocumentObjectBuilder(
             fontDataCache.putAll(fontDataStringToMap(fontDataString))
         }
         val variableStructure = initVariableStructure(layout, documentObject)
+        val defaultLanguage = projectConfig.defaultLanguage
+
+        val languageVariable = variableStructure.languageVariable
+        if (languageVariable != null) {
+            val languageVariableModel = variableRepository.findModelOrFail(languageVariable.id)
+            val languageVariablePathData = variableStructure.structure[languageVariable]
+                ?: error("Language variable '${languageVariable.id}' not found in variable structure '${variableStructure.id}'.")
+            val variable = getOrCreateVariable(layout.data, languageVariableModel.nameOrId(), languageVariableModel, languageVariablePathData.path)
+            layout.data.setLanguageVariable(variable)
+        }
 
         documentObject.content.forEach {
             if (it is DocumentObjectModelRef) {
@@ -169,7 +171,7 @@ class DesignerDocumentObjectBuilder(
                 it.content,
                 documentObject,
                 it.options as? PageOptions,
-                defaultLanguage
+                defaultLanguage,
             )
         }
 

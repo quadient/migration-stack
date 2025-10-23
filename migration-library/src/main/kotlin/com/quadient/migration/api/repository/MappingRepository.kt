@@ -154,7 +154,7 @@ class MappingRepository(
 
     fun getVariableStructureMapping(id: String): MappingItem.VariableStructure {
         return (internalRepository.find<MappingItemEntity.VariableStructure>(id) ?: MappingItemEntity.VariableStructure(
-            name = null, mappings = mutableMapOf()
+            name = null, mappings = mutableMapOf(), languageVariable = null
         )).toDto() as MappingItem.VariableStructure
     }
 
@@ -165,7 +165,8 @@ class MappingRepository(
             name = null,
             originLocations = emptyList(),
             customFields = CustomFieldMap(),
-            structure = mutableMapOf()
+            structure = mutableMapOf(),
+            languageVariable = null,
         )
 
         if (mapping == null) {

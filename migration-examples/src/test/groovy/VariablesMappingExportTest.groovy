@@ -1,6 +1,8 @@
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.Variable
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.example.common.mapping.VariablesExport
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.VariablePathData
@@ -28,17 +30,18 @@ class VariablesMappingExportTest {
         ])
         when(migration.mappingRepository.getVariableMapping(any())).thenReturn(new MappingItem.Variable(null, null))
         when(migration.mappingRepository.getVariableMapping("overridden")).thenReturn(new MappingItem.Variable(null, DataType.Double))
-        when(migration.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure("", ["overridden": new VariablePathData("override/path", "overridden name")]))
+        when(migration.variableStructureRepository.find("test")).thenReturn(new VariableStructure("struct", "", [], new CustomFieldMap([:]), ["overridden": new VariablePathData("override/path", "overridden name")], new VariableRef("full")))
+        when(migration.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure("", ["overridden": new VariablePathData("override/path", "overridden name")], new VariableRef("full")))
 
         VariablesExport.run(migration, mappingFile)
 
         def text = mappingFile.toFile().text
 
         def expectedResult =
-                """id,name,data_type,inspire_path,inspire_name,origin_locations
-empty,,String,,,[],
-full,full name,Boolean,,,[foo; bar],
-overridden,full name,Boolean,,,[foo; bar],
+                """id,name,data_type,inspire_path,inspire_name,origin_locations,language_variable
+empty,,String,,,[],,
+full,full name,Boolean,,,[foo; bar],true,
+overridden,full name,Boolean,override/path,overridden name,[foo; bar],,
 """
 
         Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
@@ -56,7 +59,7 @@ overridden,full name,Boolean,,,[foo; bar],
 
         def text = mappingFile.toFile().text
 
-        def expectedResult = "id,name,data_type,inspire_path,inspire_name,origin_locations\n"
+        def expectedResult = "id,name,data_type,inspire_path,inspire_name,origin_locations,language_variable\n"
 
         Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
     }

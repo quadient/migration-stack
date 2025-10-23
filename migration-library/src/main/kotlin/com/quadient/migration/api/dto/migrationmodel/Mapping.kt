@@ -1,6 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.persistence.migrationmodel.MappingItemEntity
+import com.quadient.migration.persistence.migrationmodel.VariableEntityRef
 import com.quadient.migration.shared.*
 
 data class Mapping(val id: String, val mapping: MappingItem)
@@ -70,6 +71,7 @@ sealed class MappingItem {
     data class VariableStructure(
         override var name: String?,
         val mappings: MutableMap<String, VariablePathData>?,
+        var languageVariable: VariableRef?,
     ) : MappingItem()
 
     fun toDb(): MappingItemEntity {
@@ -160,6 +162,7 @@ sealed class MappingItem {
                 MappingItemEntity.VariableStructure(
                     name = this.name,
                     mappings = mappings,
+                    languageVariable = this.languageVariable?.let { VariableEntityRef(it.id) }
                 )
             }
         }

@@ -40,7 +40,7 @@ static Migration initMigration(Binding binding) {
     def inspireOutput = getValueOfArg("--inspire-output", argsList).orElse(fileProjectConfig.inspireOutput.toString())
     def sourceBaseTemplate = getValueOfArg("--source-base-template-path", argsList).orElse(fileProjectConfig.sourceBaseTemplatePath)
     def defaultVariableStructure = getValueOfArg("--default-variable-structure", argsList).orElse(fileProjectConfig.defaultVariableStructure)
-    def languageVariable = getValueOfArg("--language-variable", argsList).orElse(fileProjectConfig.languageVariable)
+    def defaultLanguage = getValueOfArg("--default-language", argsList).orElse(fileProjectConfig.defaultLanguage)
 
     def imagesPathArg = getValueOfArg("--images-path", argsList).orElse(fileProjectConfig.paths.images?.toString())
     def fontsPathArg = getValueOfArg("--fonts-path", argsList).orElse(fileProjectConfig.paths.fonts?.toString())
@@ -60,7 +60,7 @@ static Migration initMigration(Binding binding) {
             InspireOutput.valueOf(inspireOutput),
             sourceBaseTemplate,
             defaultVariableStructure,
-            languageVariable,
+            defaultLanguage,
             fileProjectConfig.context)
     log.info("Preparing to start migration script with $projectConfig.")
 

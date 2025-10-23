@@ -11,7 +11,7 @@ data class VariableStructureModel(
     override val customFields: Map<String, String>,
     override val created: Instant,
     val lastUpdated: Instant,
-//    val languageVariableRef: VariableModelRef?,
+    val languageVariable: VariableModelRef?,
     val structure: Map<VariableModelRef, VariablePathData>
 ) : RefValidatable, MigrationObjectModel {
     override fun collectRefs(): List<RefModel> {

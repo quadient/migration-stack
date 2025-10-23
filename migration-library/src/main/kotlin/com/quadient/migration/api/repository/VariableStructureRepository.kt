@@ -3,10 +3,12 @@ package com.quadient.migration.api.repository
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
+import com.quadient.migration.persistence.table.VariableStructureTable.languageVariable
 import com.quadient.migration.persistence.table.VariableStructureTable.structure
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
@@ -23,6 +25,7 @@ class VariableStructureRepository(internalRepository: VariableStructureInternalR
             originLocations = model.originLocations,
             customFields = CustomFieldMap(model.customFields.toMutableMap()),
             structure = model.structure.map { (key, value) -> key.id to value }.toMap(),
+            languageVariable = model.languageVariable?.let { VariableRef.fromModel(it) }
         )
     }
 
@@ -54,6 +57,7 @@ class VariableStructureRepository(internalRepository: VariableStructureInternalR
                 it[created] = existingItem?.created ?: now
                 it[lastUpdated] = now
                 it[structure] = dto.structure
+                it[languageVariable] = dto.languageVariable?.id
             }
         }
     }

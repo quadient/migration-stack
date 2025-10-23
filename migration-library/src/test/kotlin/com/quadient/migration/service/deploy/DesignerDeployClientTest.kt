@@ -291,7 +291,7 @@ class DesignerDeployClientTest {
         every { ipsService.close() } just runs
         every { documentObjectRepository.findModel(innerBlock.id) } throws IllegalStateException("Not found")
         every { documentObjectRepository.list(any()) } returns listOf(template, block)
-        every { documentObjectBuilder.buildDocumentObject(block, any(), any()) } throws IllegalStateException("Inner block not found")
+        every { documentObjectBuilder.buildDocumentObject(block, any()) } throws IllegalStateException("Inner block not found")
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd"
@@ -344,7 +344,7 @@ class DesignerDeployClientTest {
             val xml = "<xml>${documentObject.nameOrId()}</xml>"
             val outputPath = "icm://${documentObject.nameOrId()}"
 
-            every { documentObjectBuilder.buildDocumentObject(documentObject, any(), any()) } returns xml
+            every { documentObjectBuilder.buildDocumentObject(documentObject, any()) } returns xml
             every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns outputPath
             every { ipsService.xml2wfd(xml, outputPath) } returns OperationResult.Success
         }
@@ -356,7 +356,7 @@ class DesignerDeployClientTest {
         @BeforeEach
         fun setup() {
             every { ipsService.close() } just runs
-            every { documentObjectBuilder.buildDocumentObject(any(), any(), any()) } returns ""
+            every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns ""
             every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns  aDeployedStatus("id")
             every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
             every { statusTrackingRepository.active(any(), any()) } returns aActiveStatus("id")
@@ -382,7 +382,7 @@ class DesignerDeployClientTest {
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any(), any(), any()) }
+            verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any(), any()) }
             verify(exactly = 0) { imageRepository.findModel(any()) }
         }
 
@@ -411,7 +411,7 @@ class DesignerDeployClientTest {
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any(), any()) }
+            verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.deployed("D_2", any<Uuid>(), any(), any(), any(), any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.deployed("D_3", any<Uuid>(), any(), any(), any(), any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.deployed("I_1", any<Uuid>(), any(), any(), any(), any(), any()) }
@@ -433,7 +433,7 @@ class DesignerDeployClientTest {
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any(), any(), any()) }
+            verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.error("D_1", any(), any(), any(), any(), any(), "oops", any()) }
             verify(exactly = 1) { statusTrackingRepository.error("I_1", any(), any(), any(), any(), any(), any(), any()) }
         }

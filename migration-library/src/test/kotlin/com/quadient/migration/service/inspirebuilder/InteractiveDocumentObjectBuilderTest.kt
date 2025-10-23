@@ -1,6 +1,7 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import com.quadient.migration.api.IcmFileMetadata
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.PathsConfig
 import com.quadient.migration.api.ProjectConfig
@@ -54,6 +55,7 @@ import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aRow
+import com.quadient.migration.tools.model.aSelectByLanguage
 import com.quadient.migration.tools.model.aTemplate
 import com.quadient.migration.tools.model.aText
 import com.quadient.migration.tools.model.aTextDef
@@ -63,6 +65,8 @@ import com.quadient.migration.tools.model.aVariableStructureModel
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
+import com.quadient.migration.tools.shouldNotBeEmpty
+import com.quadient.migration.tools.shouldNotBeEqualTo
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -92,8 +96,12 @@ class InteractiveDocumentObjectBuilderTest {
     @BeforeEach
     fun setUp() {
         every { variableStructureRepository.listAllModel() } returns emptyList()
+        every { ipsService.readMetadata(any<String>()) } returns IcmFileMetadata(
+            path = "",
+            system = mutableMapOf("language" to listOf("en_us")),
+            user = mutableMapOf()
+        )
     }
-
 
     @Test
     fun `build of simple block with string and var ref that is not part of structure results in single flow with one paragraph and text`() {
@@ -105,7 +113,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { variableRepository.findModelOrFail(eq(variable.id)) } returns variable
 
         // when
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val flowDefinitions = result["Flow"]
@@ -128,7 +136,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { paragraphStyleRepository.firstWithDefinitionModel(paraStyle.id) } returns paraStyle
 
         // when
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val flowDefinitions = result["Flow"]
@@ -148,7 +156,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { documentObjectRepository.findModelOrFail(block.id) } returns block
 
         // when
-        val result = subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val flowDefinitions = result["Flow"]
@@ -202,7 +210,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { variableRepository.findModelOrFail(eq(variable.id)) } returns variable
 
         // when
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         result["Table"].size().shouldBeEqualTo(2)
@@ -245,7 +253,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { documentObjectRepository.findModelOrFail(section.id) } returns section
 
         // when
-        val result = subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
@@ -308,7 +316,7 @@ class InteractiveDocumentObjectBuilderTest {
 
         // when
         val subject = aSubject(config)
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val variableDefinitions = result["Variable"]
@@ -354,7 +362,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { displayRuleRepository.findModelOrFail(displayRule.id) } returns displayRule
 
         // when
-        val result = subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
@@ -410,7 +418,7 @@ class InteractiveDocumentObjectBuilderTest {
 
         // when
         val subject = aSubject(config)
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         result["Variable"].first { it["ParentId"]?.textValue() == "Data.Clients" }["Name"].textValue()
@@ -489,7 +497,7 @@ class InteractiveDocumentObjectBuilderTest {
 
         // when
         val subject = aSubject(config)
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
@@ -560,7 +568,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { documentObjectRepository.findModel(block.id) } returns block
 
         // when
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val conditionalRow = result["RowSet"].last { it["RowSetType"]?.textValue() == "Condition" }
@@ -584,7 +592,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { textStyleRepository.firstWithDefinitionModel("textStyle1") } returns null
 
         // when
-        val result = assertThrows<IllegalStateException> { subject.buildDocumentObject(block, null, "") }
+        val result = assertThrows<IllegalStateException> { subject.buildDocumentObject(block, null) }
 
         // then
         result.message.shouldBeEqualTo("Text style definition for textStyle1 not found.")
@@ -597,7 +605,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { paragraphStyleRepository.firstWithDefinitionModel("paraStyle1") } returns null
 
         // when
-        val result = assertThrows<IllegalStateException> { subject.buildDocumentObject(block, null, "") }
+        val result = assertThrows<IllegalStateException> { subject.buildDocumentObject(block, null) }
 
         // then
         result.message.shouldBeEqualTo("Paragraph style definition for paraStyle1 not found.")
@@ -611,7 +619,7 @@ class InteractiveDocumentObjectBuilderTest {
         val template = aTemplate("10", listOf(aDocumentObjectRef("block1")))
 
         // when
-        val result = subject.buildDocumentObject(template, null, "")
+        val result = subject.buildDocumentObject(template, null)
         val wfdXml = xmlMapper.readTree(result.trimIndent())
 
         // then
@@ -627,7 +635,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { variableRepository.findModelOrFail("var1") } throws IllegalStateException("Record 'var1' not found.")
 
         // when
-        val result = assertThrows<IllegalStateException> { subject.buildDocumentObject(block, null, "") }
+        val result = assertThrows<IllegalStateException> { subject.buildDocumentObject(block, null) }
 
         // then
         result.message.shouldBeEqualTo("Record 'var1' not found.")
@@ -654,7 +662,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { variableStructureRepository.listAllModel() } returns listOf()
 
         // when
-        val result = subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val conditionVariable = result["Variable"].last { it["Type"]?.textValue() == "Calculated" }
@@ -698,7 +706,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { variableStructureRepository.listAllModel() } returns listOf()
 
         // when
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
@@ -719,7 +727,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { imageRepository.findModelOrFail(image.id) } returns image
 
         // when
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         result["Image"].first()["Name"].textValue().shouldBeEqualTo("Image_Dog")
@@ -743,7 +751,7 @@ class InteractiveDocumentObjectBuilderTest {
         val template = aTemplate("3", listOf(aDocumentObjectRef(block1.id), aDocumentObjectRef(block2.id)))
 
         // when
-        val result = subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         result["Image"].filter { it["Name"]?.textValue() == image.nameOrId() }.size.shouldBeEqualTo(1)
@@ -763,7 +771,7 @@ class InteractiveDocumentObjectBuilderTest {
         every { imageRepository.findModelOrFail(dogImage.id) } returns dogImage
 
         // when
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         assert(result["Image"] == null)
@@ -816,7 +824,7 @@ class InteractiveDocumentObjectBuilderTest {
         )
 
         // when
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
@@ -860,7 +868,7 @@ class InteractiveDocumentObjectBuilderTest {
         val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(internalBlock.id)))
 
         // when
-        val result = subject.buildDocumentObject(template, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
@@ -888,7 +896,7 @@ class InteractiveDocumentObjectBuilderTest {
         )
 
         // when
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
@@ -959,7 +967,7 @@ class InteractiveDocumentObjectBuilderTest {
         </Workflow>""".trimMargin()
 
         // when
-        val result = subject.buildDocumentObject(page, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(page, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
         val mainFlowContentFlowId = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
@@ -1017,7 +1025,7 @@ class InteractiveDocumentObjectBuilderTest {
         </Workflow>""".trimMargin()
 
         // when
-        val result = subject.buildDocumentObject(page, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(page, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         val interactiveFlow = result["Flow"].first { it["Id"].textValue() == "Def.InteractiveFlow0" }
         val interactiveFlowContentFlowId = interactiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
@@ -1068,7 +1076,7 @@ class InteractiveDocumentObjectBuilderTest {
 
 
         // when
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         val cellNode = result["Cell"].last()
@@ -1253,13 +1261,78 @@ class InteractiveDocumentObjectBuilderTest {
 
         // when
         val subject = aSubject(config)
-        val result = subject.buildDocumentObject(block, null, "").let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
         verify(exactly = 1) { variableStructureRepository.findModelOrFail(variableStructureB.id) }
         verify(exactly = 0) { variableStructureRepository.findModelOrFail(variableStructureA.id) }
         result["Variable"].first { it["Name"].textValue() == variable.nameOrId() }["ParentId"].textValue()
             .shouldBeEqualTo("Data.Clients.Value")
+    }
+
+    @Test
+    fun `builds a simple select by language block without default language`() {
+        // given
+        val block = aBlock(
+            "1", listOf(aSelectByLanguage(
+                mapOf(
+                    "en" to listOf(aParagraph("en")),
+                    "de" to listOf(aParagraph("de")),
+                    "es" to listOf()
+                )))
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val flowDefinitions = result["Flow"]
+        val languageFlow = flowDefinitions.find { it["Type"]?.textValue() == "Language" }!!
+        val subFlows = languageFlow["Condition"].associate { it["Value"]?.textValue() to it[""].textValue() }
+        subFlows.count().shouldBeEqualTo(3)
+        val defaultFlowId = languageFlow["Default"].asText()
+        defaultFlowId.shouldNotBeEmpty()
+        for (subflowId in subFlows.values) {
+            defaultFlowId.shouldNotBeEqualTo(subflowId)
+        }
+
+        val enContent = flowDefinitions.findLast { it["Id"]?.textValue() == subFlows["en"] }!!["FlowContent"]["P"]["T"][""].textValue()
+        val deContent = flowDefinitions.findLast { it["Id"]?.textValue() == subFlows["de"] }!!["FlowContent"]["P"]["T"][""].textValue()
+        val esContent = flowDefinitions.findLast { it["Id"]?.textValue() == subFlows["es"] }!!["FlowContent"]["P"]["T"].get("")?.textValue()
+        enContent.shouldBeEqualTo("en")
+        deContent.shouldBeEqualTo("de")
+        esContent.shouldBeEqualTo(null)
+    }
+
+    @Test
+    fun `builds a simple select by language block with default language`() {
+        // given
+        val block = aBlock(
+            "1", listOf(aSelectByLanguage(
+                mapOf(
+                    "en_us" to listOf(aParagraph("en_us")),
+                    "de" to listOf(aParagraph("de")),
+                    "es" to listOf()
+                )))
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val flowDefinitions = result["Flow"]
+        val languageFlow = flowDefinitions.find { it["Type"]?.textValue() == "Language" }!!
+        val subFlows = languageFlow["Condition"].associate { it["Value"]?.textValue() to it[""].textValue() }
+        subFlows.count().shouldBeEqualTo(3)
+        val defaultFlowId = languageFlow["Default"].asText()
+        defaultFlowId.shouldBeEqualTo(subFlows["en_us"])
+
+        val enContent = flowDefinitions.findLast { it["Id"]?.textValue() == subFlows["en_us"] }!!["FlowContent"]["P"]["T"][""].textValue()
+        val deContent = flowDefinitions.findLast { it["Id"]?.textValue() == subFlows["de"] }!!["FlowContent"]["P"]["T"][""].textValue()
+        val esContent = flowDefinitions.findLast { it["Id"]?.textValue() == subFlows["es"] }!!["FlowContent"]["P"]["T"].get("")?.textValue()
+        enContent.shouldBeEqualTo("en_us")
+        deContent.shouldBeEqualTo("de")
+        esContent.shouldBeEqualTo(null)
     }
 
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {

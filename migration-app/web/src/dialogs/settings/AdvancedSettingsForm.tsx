@@ -43,6 +43,15 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                             />
                         </div>
                     </div>
+                    <div className="grid gap-3">
+                        <div className="grid gap-3">
+                            <Label>Language</Label>
+                            <Input
+                                value={settings.projectConfig.defaultLanguage ?? ""}
+                                onChange={(e) => updateSettings("defaultLanguage", e.target.value || undefined)}
+                            />
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
             <Card>

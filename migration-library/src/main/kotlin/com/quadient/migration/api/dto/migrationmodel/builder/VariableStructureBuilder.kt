@@ -1,10 +1,12 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.shared.VariablePathData
 
 class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, VariableStructureBuilder>(id) {
     var structure = mutableMapOf<String, VariablePathData>()
+    var languageVariable: VariableRef? = null
 
     /**
      * Adds a variable to the structure.
@@ -55,6 +57,28 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
     }
 
     /**
+     * Sets the language variable reference.
+     *
+     * @param languageVariable A [VariableRef] representing the language variable.
+     * @return This builder instance for method chaining.
+     */
+    fun languageVariable(languageVariable: VariableRef?) = apply {
+        this.languageVariable = languageVariable
+        return this
+    }
+
+    /**
+     * Sets the language variable reference using its ID.
+     *
+     * @param languageVariableId The unique identifier for the language variable.
+     * @return This builder instance for method chaining.
+     */
+    fun languageVariable(languageVariableId: String?) = apply {
+        this.languageVariable = languageVariableId?.let { VariableRef(it) }
+        return this
+    }
+
+    /**
      * Builds and returns a [VariableStructure] instance based on the current state of the builder.
      *
      * @return The constructed [VariableStructure] object.
@@ -66,6 +90,7 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
             originLocations = originLocations,
             customFields = customFields,
             structure = structure,
+            languageVariable = languageVariable
         )
     }
 }

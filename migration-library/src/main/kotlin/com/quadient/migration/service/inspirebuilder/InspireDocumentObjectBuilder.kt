@@ -108,9 +108,7 @@ abstract class InspireDocumentObjectBuilder(
 
     abstract fun getFontRootFolder(): String
 
-    abstract fun getDefaultLanguage(baseTemplatePath: String?): String
-
-    abstract fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?, defaultLanguage: String?): String
+    abstract fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String
 
     protected open fun wrapSuccessFlowInConditionFlow(
         layout: Layout, variableStructure: VariableStructureModel, ruleDef: DisplayRuleDefinition, successFlow: Flow
@@ -157,7 +155,7 @@ abstract class InspireDocumentObjectBuilder(
         return builder.build()
     }
 
-    protected fun buildDocumentContentAsFlows(
+    fun buildDocumentContentAsFlows(
         layout: Layout,
         variableStructure: VariableStructureModel,
         content: List<DocumentContentModel>,
@@ -211,11 +209,11 @@ abstract class InspireDocumentObjectBuilder(
 
                 is FlowModel.SelectByLanguage -> {
                     if (flowName == null) {
-                        buildSelectByLanguage(layout, variableStructure, it.model, null, defaultLanguage!!)
+                        buildSelectByLanguage(layout, variableStructure, it.model, null, defaultLanguage)
                     } else {
                         val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
                         flowSuffix++
-                        buildSelectByLanguage(layout, variableStructure, it.model, name, defaultLanguage!!)
+                        buildSelectByLanguage(layout, variableStructure, it.model, name, defaultLanguage)
                     }
                 }
             }
@@ -282,7 +280,8 @@ abstract class InspireDocumentObjectBuilder(
                 lastUpdated = Clock.System.now(),
                 created = Clock.System.now(),
                 structure = mutableMapOf(),
-                customFields = CustomFieldMap()
+                customFields = CustomFieldMap(),
+                languageVariable = null,
             )
 
         val normalizedVariablePaths = variableStructureModel.structure.map { (_, variablePathData) ->
@@ -758,22 +757,31 @@ abstract class InspireDocumentObjectBuilder(
         variableStructure: VariableStructureModel,
         model: SelectByLanguageModel,
         flowName: String?,
-        defaultLanguage: String,
+        defaultLanguage: String?,
     ): Flow {
         val languageFlow = layout.addFlow().setType(Flow.Type.SELECT_BY_LANGUAGE)
         flowName?.let { languageFlow.setName(it) }
 
-        val cases = model.cases.map { case ->
+        var defaultLanguageFlow: Flow? = null
+        for (case in model.cases) {
             val caseName = "Language ${case.language}"
             val contentFlow = buildDocumentContentAsSingleFlow(layout, variableStructure, case.content, null, null, defaultLanguage)
                 .setName(caseName)
             languageFlow.addLineForSelectByInlineCondition(case.language, contentFlow)
 
-            contentFlow
+            if (case.language == defaultLanguage) {
+                defaultLanguageFlow = contentFlow
+            }
         }
 
-        getDefaultLanguage(defaultLanguage)
-        cases.firstOrNull()?.let { languageFlow.setDefaultFlow(it) }
+        if (defaultLanguageFlow != null) {
+            languageFlow.setDefaultFlow(defaultLanguageFlow)
+        } else {
+            // In case the default language is not found among the cases, add an empty flow as default
+            val flow = layout.addFlow().setType(Flow.Type.SIMPLE)
+            flow.addParagraph().addText()
+            languageFlow.setDefaultFlow(flow)
+        }
 
         return languageFlow
     }

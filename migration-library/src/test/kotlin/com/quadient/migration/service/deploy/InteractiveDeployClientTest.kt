@@ -82,8 +82,7 @@ class InteractiveDeployClientTest {
         // given
         mockBasicDocumentObjects()
         mockBasicSuccessfulIpsOperations()
-        every { documentObjectBuilder.getDefaultLanguage(any()) } returns "en_us"
-        every { documentObjectBuilder.buildDocumentObject(any(), any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { documentObjectRepository.findModel(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
@@ -99,7 +98,7 @@ class InteractiveDeployClientTest {
                 "icm://Interactive/$tenant/Templates/defaultFolder/0.jld"
             )
         )
-        verify(exactly = 3) { documentObjectBuilder.buildDocumentObject(any(), any(), any()) }
+        verify(exactly = 3) { documentObjectBuilder.buildDocumentObject(any(), any()) }
     }
 
     @Test
@@ -130,9 +129,8 @@ class InteractiveDeployClientTest {
         val template =
             mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("block1"), aDocumentObjectRef("block2"))))
 
-        every { documentObjectBuilder.getDefaultLanguage(any()) } returns "en_us"
         every { documentObjectRepository.list(any()) } returns listOf(externalBlock, template)
-        every { documentObjectBuilder.buildDocumentObject(any(), any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { documentObjectRepository.findModel(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
@@ -149,7 +147,7 @@ class InteractiveDeployClientTest {
                 "icm://Interactive/$tenant/Templates/defaultFolder/3.jld"
             )
         )
-        verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any(), any()) }
+        verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any()) }
     }
 
     @Test
@@ -162,8 +160,7 @@ class InteractiveDeployClientTest {
                 any(), any(), any(), any(), "icm://Interactive/$tenant/Blocks/defaultFolder/0.jld"
             )
         } returns OperationResult.Failure("Problem")
-        every { documentObjectBuilder.getDefaultLanguage(any()) } returns "en_us"
-        every { documentObjectBuilder.buildDocumentObject(any(), any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { documentObjectRepository.findModel(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
@@ -183,7 +180,7 @@ class InteractiveDeployClientTest {
             )
         }
         verify { ipsService.close() }
-        verify(exactly = 3) { documentObjectBuilder.buildDocumentObject(any(), any(), any()) }
+        verify(exactly = 3) { documentObjectBuilder.buildDocumentObject(any(), any()) }
     }
 
     @Test
@@ -204,9 +201,8 @@ class InteractiveDeployClientTest {
         val template =
             mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("block1"), aDocumentObjectRef("block2"))))
 
-        every { documentObjectBuilder.getDefaultLanguage(any()) } returns "en_us"
         every { documentObjectRepository.list(any()) } returns listOf(block, template)
-        every { documentObjectBuilder.buildDocumentObject(any(), any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { documentObjectRepository.findModel(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
@@ -223,7 +219,7 @@ class InteractiveDeployClientTest {
                 "icm://Interactive/$tenant/Templates/defaultFolder/3.jld"
             )
         )
-        verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any(), any()) }
+        verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any()) }
     }
 
     @Test
@@ -232,9 +228,8 @@ class InteractiveDeployClientTest {
         val image = mockImage(aImage("Bunny"))
         val block = mockDocumentObject(aBlock(id = "1", listOf(ImageModelRef(image.id))))
 
-        every { documentObjectBuilder.getDefaultLanguage(any()) } returns "en_us"
         every { documentObjectRepository.list(any()) } returns listOf(block)
-        every { documentObjectBuilder.buildDocumentObject(any(), any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
@@ -264,9 +259,8 @@ class InteractiveDeployClientTest {
             aBlock("1", listOf(ImageModelRef(catImage.id), ImageModelRef(dogImage.id)))
         )
 
-        every { documentObjectBuilder.getDefaultLanguage(any()) } returns "en_us"
         every { documentObjectRepository.list(any()) } returns listOf(block)
-        every { documentObjectBuilder.buildDocumentObject(any(), any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { ipsService.upload(any(), any()) } just runs
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
@@ -296,10 +290,9 @@ class InteractiveDeployClientTest {
             )
         )
 
-        every { documentObjectBuilder.getDefaultLanguage(any()) } returns "en_us"
         every { documentObjectRepository.list(any()) } returns listOf(block)
         every { documentObjectRepository.findModel(innerBlock.id) } returns innerBlock
-        every { documentObjectBuilder.buildDocumentObject(any(), any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
@@ -573,12 +566,11 @@ class InteractiveDeployClientTest {
         val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
 
         mockBasicSuccessfulIpsOperations()
-        every { documentObjectBuilder.getDefaultLanguage(any()) } returns "en_us"
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { documentObjectRepository.findModel(innerBlock.id) } throws IllegalStateException("Not found")
         every { documentObjectRepository.list(any()) } returns listOf(template, block)
-        every { documentObjectBuilder.buildDocumentObject(block, any(), any()) } throws IllegalStateException("Inner block not found")
+        every { documentObjectBuilder.buildDocumentObject(block, any()) } throws IllegalStateException("Inner block not found")
 
         // when
         val result = subject.deployDocumentObjects()
@@ -665,7 +657,7 @@ class InteractiveDeployClientTest {
             val xml = "<xml>${documentObject.nameOrId()}</xml>"
             val outputPath = "icm://${documentObject.nameOrId()}"
 
-            every { documentObjectBuilder.buildDocumentObject(documentObject, any(), any()) } returns xml
+            every { documentObjectBuilder.buildDocumentObject(documentObject, any()) } returns xml
             every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns outputPath
         }
         return documentObject
@@ -676,7 +668,7 @@ class InteractiveDeployClientTest {
         @BeforeEach
         fun setup() {
             every { ipsService.close() } just runs
-            every { documentObjectBuilder.buildDocumentObject(any(), any(), any()) } returns ""
+            every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns ""
             every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns  aDeployedStatus("id")
             every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
             every { statusTrackingRepository.active(any(), any()) } returns aActiveStatus("id")
@@ -705,7 +697,7 @@ class InteractiveDeployClientTest {
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any(), any(), any()) }
+            verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any(), any()) }
             verify(exactly = 0) { imageRepository.findModel(any()) }
         }
 
@@ -725,7 +717,6 @@ class InteractiveDeployClientTest {
             givenObjectIsActive("I_2")
             givenObjectIsActive("D_3")
             givenObjectIsDeployed("I_3")
-            every { documentObjectBuilder.getDefaultLanguage(any()) } returns "en_us"
             every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
 
 
@@ -733,7 +724,7 @@ class InteractiveDeployClientTest {
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any(), any()) }
+            verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.deployed("D_2", any<Uuid>(), any(), any(), any(), any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.deployed("D_3", any<Uuid>(), any(), any(), any(), any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.deployed("I_1", any<Uuid>(), any(), any(), any(), any(), any()) }
@@ -747,7 +738,6 @@ class InteractiveDeployClientTest {
             givenObjectIsActive("D_1")
             givenObjectIsActive("I_1")
             mockImage(aImage("I_1"), success = false)
-            every { documentObjectBuilder.getDefaultLanguage(any()) } returns "en_us"
             every { ipsService.deployJld(any(), any(), any(), any(), any()) } returns
                     OperationResult.Failure("oops")
 
@@ -755,7 +745,7 @@ class InteractiveDeployClientTest {
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any(), any(), any()) }
+            verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.error("D_1", any(), any(), any(), any(), any(), "oops", any()) }
             verify(exactly = 1) { statusTrackingRepository.error("I_1", any(), any(), any(), any(), any(), any(), any()) }
         }

@@ -61,6 +61,7 @@ public class DataImpl extends Tree implements Data {
     private VariableImpl systemVariableArray;
     private boolean dataImported = false;
     private String repeatedBy = null;
+    private Variable languageVariable = null;
 
     public DataImpl() {
         initDefaultVariables();
@@ -203,6 +204,9 @@ public class DataImpl extends Tree implements Data {
         if (this.repeatedBy != null) {
             exporter.addElementWithStringData("RepeatedBy", this.repeatedBy);
         }
+        if (this.languageVariable != null) {
+            exporter.addElementWithIface("LanguageVariable", this.languageVariable);
+        }
     }
 
     @Override
@@ -220,6 +224,12 @@ public class DataImpl extends Tree implements Data {
     @Override
     public Data setRepeatedBy(String id) {
         this.repeatedBy = id;
+        return this;
+    }
+
+    @Override
+    public Data setLanguageVariable(Variable variable) {
+        this.languageVariable = variable;
         return this;
     }
 

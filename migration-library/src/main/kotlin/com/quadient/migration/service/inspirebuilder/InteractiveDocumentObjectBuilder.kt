@@ -126,32 +126,14 @@ class InteractiveDocumentObjectBuilder(
             .join(fontConfigPath.orDefault("Resources/Fonts")).toString()
     }
 
-    override fun getDefaultLanguage(baseTemplatePath: String?): String {
-        requireNotNull(baseTemplatePath) {
-            "Base template path is required to get the default language for interactive output."
-        }
-
-        val result = this.baseTemplateMetadata.getOrPut(baseTemplatePath) {
-            try {
-                ipsService.readMetadata(baseTemplatePath)
-            } catch (e: Exception) {
-                logger.error("Failed to load metadata from base template '${baseTemplatePath}'.", e)
-                throw e
-            }
-        }.system["language"]?.first()
-
-        return requireNotNull(result) {
-            "Failed to determine default language from base template '$baseTemplatePath'. Metadata: '$result'"
-        }
-    }
-
-    override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?, defaultLanguage: String?): String {
+    override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String {
         logger.debug("Starting to build document object '${documentObject.nameOrId()}'.")
 
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
+        val defaultLanguage = this.getDefaultLanguage(baseTemplatePath.toString())
 
         val variableStructure = initVariableStructure(layout, documentObject)
 
@@ -253,6 +235,21 @@ class InteractiveDocumentObjectBuilder(
         } catch (e: Exception) {
             logger.warn("Failed to load interactive flow names from base template '${baseTemplatePath}'.", e)
             return emptyMap()
+        }
+    }
+
+    private fun getDefaultLanguage(baseTemplatePath: String): String {
+        val result = this.baseTemplateMetadata.getOrPut(baseTemplatePath) {
+            try {
+                ipsService.readMetadata(baseTemplatePath)
+            } catch (e: Exception) {
+                logger.error("Failed to load metadata from base template '${baseTemplatePath}'.", e)
+                throw e
+            }
+        }.system["language"]?.first()
+
+        return requireNotNull(result) {
+            "Failed to determine default language from base template '$baseTemplatePath'. Metadata: '$result'"
         }
     }
 

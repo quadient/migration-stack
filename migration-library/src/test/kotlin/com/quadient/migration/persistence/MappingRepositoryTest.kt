@@ -61,7 +61,7 @@ class MappingRepositoryTest {
         repo.upsert("varStructId", MappingItem.VariableStructure(
             name = "new name", mappings = mutableMapOf(
                 "varId" to VariablePathData("somePath"), "anotherVarId" to VariablePathData("anotherPath")
-            )
+            ), languageVariable = null
         ))
 
         repo.applyVariableStructureMapping("varStructId")

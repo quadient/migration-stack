@@ -3,7 +3,6 @@ package com.quadient.migration.persistence.repository
 import com.quadient.migration.data.VariableModelRef
 import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.table.VariableStructureTable
-import com.quadient.migration.persistence.table.VariableStructureTable.structure
 import org.jetbrains.exposed.v1.core.ResultRow
 
 class VariableStructureInternalRepository(table: VariableStructureTable, projectName: String) :
@@ -15,8 +14,9 @@ class VariableStructureInternalRepository(table: VariableStructureTable, project
             customFields = row[table.customFields],
             lastUpdated = row[table.lastUpdated],
             created = row[table.created],
-            structure = row[structure].map { (key, value) -> VariableModelRef(key) to value }.toMap(),
-            originLocations = row[table.originLocations]
+            structure = row[VariableStructureTable.structure].map { (key, value) -> VariableModelRef(key) to value }.toMap(),
+            originLocations = row[table.originLocations],
+            languageVariable = row[VariableStructureTable.languageVariable]?.let { VariableModelRef(it) }
         )
     }
 }
