@@ -246,7 +246,7 @@ class InteractiveDocumentObjectBuilder(
                 logger.error("Failed to load metadata from base template '${baseTemplatePath}'.", e)
                 throw e
             }
-        }.system["language"]?.first()
+        }.system["Languages"]?.first()
 
         return requireNotNull(result) {
             "Failed to determine default language from base template '$baseTemplatePath'. Metadata: '$result'"
