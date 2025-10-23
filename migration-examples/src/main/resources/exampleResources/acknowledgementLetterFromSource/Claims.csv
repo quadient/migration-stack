@@ -1,6 +1,6 @@
-ClaimNumber,PolicyNumber,DateOfLoss,TypeOfLoss,Location,NotificationDate,AcknowledgementDate,ClaimStatus,ClaimsOfficer,ClaimsOfficerEmailShort,State
-CLM1001,PN123456,5/24/2025,Auto Accident,Main St & 2nd Ave,5/25/2025,5/26/2025,Pending,A. Madsen,a.madsen,en_us
-CLM1002,PN789012,5/20/2025,Home Fire,123 Oak Lane,5/21/2025,5/22/2025,In Review,B. Cooke,b.cooke,de
-CLM1003,PN345678,5/15/2025,Theft,456 Pine Street,5/16/2025,5/17/2025,Approved,B.D. Fleck,b.d.fleck,en_us
-CLM1004,PN901234,5/22/2025,Flood Damage,789 Maple Ave,5/23/2025,5/24/2025,Pending,D. Parsley,d.parsley,es
-CLM1005,PN567890,5/10/2025,Travel Baggage Loss,Heathrow Airport,5/11/2025,5/12/2025,Rejected,E. Leroy,e.leroy,en_us
+ClaimNumber,PolicyNumber,DateOfLoss,TypeOfLoss,Location,NotificationDate,AcknowledgementDate,ClaimStatus,ClaimsOfficer,ClaimsOfficerEmailShort
+CLM1001,PN123456,5/24/2025,Auto Accident,Main St & 2nd Ave,5/25/2025,5/26/2025,Pending,A. Madsen,a.madsen
+CLM1002,PN789012,5/20/2025,Home Fire,123 Oak Lane,5/21/2025,5/22/2025,In Review,B. Cooke,b.cooke
+CLM1003,PN345678,5/15/2025,Theft,456 Pine Street,5/16/2025,5/17/2025,Approved,B.D. Fleck,b.d.fleck
+CLM1004,PN901234,5/22/2025,Flood Damage,789 Maple Ave,5/23/2025,5/24/2025,Pending,D. Parsley,d.parsley
+CLM1005,PN567890,5/10/2025,Travel Baggage Loss,Heathrow Airport,5/11/2025,5/12/2025,Rejected,E. Leroy,e.leroy
