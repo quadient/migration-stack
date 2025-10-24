@@ -764,9 +764,9 @@ abstract class InspireDocumentObjectBuilder(
 
         var defaultLanguageFlow: Flow? = null
         for (case in model.cases) {
-            val caseName = "Language ${case.language}"
+            val caseName = "Case ${case.language}"
             val contentFlow = buildDocumentContentAsSingleFlow(layout, variableStructure, case.content, null, null, defaultLanguage)
-                .setName(caseName)
+                .setDisplayName(caseName)
             languageFlow.addLineForSelectByInlineCondition(case.language, contentFlow)
 
             if (case.language == defaultLanguage) {
@@ -776,11 +776,6 @@ abstract class InspireDocumentObjectBuilder(
 
         if (defaultLanguageFlow != null) {
             languageFlow.setDefaultFlow(defaultLanguageFlow)
-        } else {
-            // In case the default language is not found among the cases, add an empty flow as default
-            val flow = layout.addFlow().setType(Flow.Type.SIMPLE)
-            flow.addParagraph().addText()
-            languageFlow.setDefaultFlow(flow)
         }
 
         return languageFlow
