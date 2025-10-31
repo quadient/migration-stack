@@ -45,10 +45,6 @@ class DesignerDeployClient(
         return documentObject.type == DocumentObjectType.Page || !documentObject.internal
     }
 
-    override fun shouldIncludeImage(documentObject: DocumentObjectModel): Boolean {
-        return documentObject.internal || documentObject.type == DocumentObjectType.Page
-    }
-
     override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult {
         val deploymentResult = DeploymentResult(deploymentId)
 

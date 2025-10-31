@@ -133,8 +133,7 @@ class InteractiveDocumentObjectBuilder(
         val layout = builder.addLayout()
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
-        val defaultLanguage = this.getDefaultLanguage(baseTemplatePath.toString())
-
+        val languages = collectLanguages(documentObject)
         val variableStructure = initVariableStructure(layout, documentObject)
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContentModel>>()
@@ -163,7 +162,7 @@ class InteractiveDocumentObjectBuilder(
                 }
             }
         } else {
-            interactiveFlowsWithContent.put(mainFlowId, documentObject.content.toMutableList())
+            interactiveFlowsWithContent[mainFlowId] = documentObject.content.toMutableList()
         }
 
         interactiveFlowsWithContent.forEach {
@@ -171,7 +170,7 @@ class InteractiveDocumentObjectBuilder(
                 layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).addParagraph().addText()
 
             val contentFlows =
-                buildDocumentContentAsFlows(layout, variableStructure, it.value, documentObject.nameOrId(), defaultLanguage)
+                buildDocumentContentAsFlows(layout, variableStructure, it.value, documentObject.nameOrId(), languages)
 
             if (documentObject.displayRuleRef == null) {
                 contentFlows.forEach { contentFlow -> interactiveFlowText.appendFlow(contentFlow) }
@@ -186,6 +185,10 @@ class InteractiveDocumentObjectBuilder(
 
         logger.debug("Successfully built document object '${documentObject.nameOrId()}'")
         return builder.buildLayoutDelta()
+    }
+
+    override fun shouldIncludeInternalDependency(documentObject: DocumentObjectModel): Boolean {
+        return documentObject.internal
     }
 
     fun getInteractiveFlowIdByName(interactiveFlowName: String, baseTemplatePath: String): String? {
@@ -235,21 +238,6 @@ class InteractiveDocumentObjectBuilder(
         } catch (e: Exception) {
             logger.warn("Failed to load interactive flow names from base template '${baseTemplatePath}'.", e)
             return emptyMap()
-        }
-    }
-
-    private fun getDefaultLanguage(baseTemplatePath: String): String {
-        val result = this.baseTemplateMetadata.getOrPut(baseTemplatePath) {
-            try {
-                ipsService.readMetadata(baseTemplatePath)
-            } catch (e: Exception) {
-                logger.error("Failed to load metadata from base template '${baseTemplatePath}'.", e)
-                throw e
-            }
-        }.system["Languages"]?.first()
-
-        return requireNotNull(result) {
-            "Failed to determine default language from base template '$baseTemplatePath'. Metadata: '$result'"
         }
     }
 

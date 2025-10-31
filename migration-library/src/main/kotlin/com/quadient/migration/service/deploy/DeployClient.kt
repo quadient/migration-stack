@@ -62,7 +62,6 @@ sealed class DeployClient(
     abstract fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult
 
     abstract fun shouldIncludeDependency(documentObject: DocumentObjectModel): Boolean
-    abstract fun shouldIncludeImage(documentObject: DocumentObjectModel): Boolean
 
     fun deployDocumentObjects(): DeploymentResult {
         return deployDocumentObjectsInternal(getAllDocumentObjectsToDeploy())
@@ -490,7 +489,7 @@ sealed class DeployClient(
                     val model = documentObjectRepository.findModel(ref.id)
                         ?: error("Unable to collect image references because inner document object '${ref.id}' was not found.")
 
-                    if (shouldIncludeImage(model)) {
+                    if (documentObjectBuilder.shouldIncludeInternalDependency(model)) {
                         model.getAllDocumentObjectImageRefs()
                     } else {
                         emptyList()

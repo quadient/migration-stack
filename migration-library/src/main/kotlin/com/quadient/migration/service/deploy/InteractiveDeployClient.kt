@@ -49,10 +49,6 @@ class InteractiveDeployClient(
         return !documentObject.internal
     }
 
-    override fun shouldIncludeImage(documentObject: DocumentObjectModel): Boolean {
-        return documentObject.internal
-    }
-
     override fun getAllDocumentObjectsToDeploy(): List<DocumentObjectModel> {
         return documentObjectRepository.list(
             DocumentObjectTable.type neq DocumentObjectType.Unsupported.toString() and DocumentObjectTable.internal.eq(

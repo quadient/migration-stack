@@ -139,7 +139,7 @@ class DesignerDocumentObjectBuilder(
             fontDataCache.putAll(fontDataStringToMap(fontDataString))
         }
         val variableStructure = initVariableStructure(layout, documentObject)
-        val defaultLanguage = projectConfig.defaultLanguage
+        val languages = collectLanguages(documentObject)
 
         val languageVariable = variableStructure.languageVariable
         if (languageVariable != null) {
@@ -171,19 +171,13 @@ class DesignerDocumentObjectBuilder(
                 it.content,
                 documentObject,
                 it.options as? PageOptions,
-                defaultLanguage,
+                languages,
             )
         }
 
         if (virtualPageContent.isNotEmpty() || pageModels.isEmpty()) {
             buildPage(
-                layout,
-                variableStructure,
-                "Virtual Page",
-                virtualPageContent,
-                documentObject,
-                null,
-                defaultLanguage
+                layout, variableStructure, "Virtual Page", virtualPageContent, documentObject, null, languages
             )
         }
 
@@ -210,6 +204,10 @@ class DesignerDocumentObjectBuilder(
         } else {
             enrichLayoutWithSourceBaseTemplate(documentObjectXml, projectConfig.sourceBaseTemplatePath)
         }
+    }
+
+    override fun shouldIncludeInternalDependency(documentObject: DocumentObjectModel): Boolean {
+        return documentObject.internal || documentObject.type == DocumentObjectType.Page
     }
 
     override fun wrapSuccessFlowInConditionFlow(
@@ -244,7 +242,7 @@ class DesignerDocumentObjectBuilder(
         content: List<DocumentContentModel>,
         mainObject: DocumentObjectModel,
         options: PageOptions? = null,
-        defaultLanguage: String?,
+        languages: List<String>,
     ) {
         val page = layout.addPage().setName(name).setType(Pages.PageConditionType.SIMPLE)
         options?.height?.let { page.setHeight(it.toMeters()) }
@@ -261,7 +259,7 @@ class DesignerDocumentObjectBuilder(
             }
         }
 
-        areaModels.forEach { buildArea(layout, variableStructure, page, it, mainObject, defaultLanguage) }
+        areaModels.forEach { buildArea(layout, variableStructure, page, it, mainObject, languages) }
 
         if (virtualAreaContent.isNotEmpty()) {
             buildArea(
@@ -270,7 +268,7 @@ class DesignerDocumentObjectBuilder(
                 page,
                 AreaModel(virtualAreaContent, defaultPosition, null),
                 mainObject,
-                defaultLanguage
+                languages
             )
         }
     }
@@ -279,7 +277,9 @@ class DesignerDocumentObjectBuilder(
         layout: Layout,
         variableStructure: VariableStructureModel,
         page: Page,
-        areaModel: AreaModel, mainObject: DocumentObjectModel, defaultLanguage: String?
+        areaModel: AreaModel,
+        mainObject: DocumentObjectModel,
+        languages: List<String>
     ) {
         val position = areaModel.position ?: defaultPosition
 
@@ -308,7 +308,7 @@ class DesignerDocumentObjectBuilder(
                         variableStructure,
                         areaModel.content,
                         displayRuleRef = mainObject.displayRuleRef,
-                        defaultLanguage = defaultLanguage
+                        languages = languages
                     )
                 )
         }
