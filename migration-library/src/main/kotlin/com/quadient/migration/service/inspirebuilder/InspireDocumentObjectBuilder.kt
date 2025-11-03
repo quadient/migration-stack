@@ -165,6 +165,8 @@ abstract class InspireDocumentObjectBuilder(
             }
         }
 
+        collectLanguagesFromContent(documentObject.content)
+
         return languages.toList()
     }
 
