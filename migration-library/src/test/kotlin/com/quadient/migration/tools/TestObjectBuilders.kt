@@ -147,6 +147,7 @@ fun aProjectConfig(
     sourceBaseTemplatePath: String? = null,
     defaultVariableStructure: String? = null,
     styleDefinitionPath: IcmPath? = null,
+    defaultLanguage: String? = "en_us",
 ): ProjectConfig {
     return ProjectConfig(
         name = name,
@@ -159,6 +160,7 @@ fun aProjectConfig(
         inspireOutput = output,
         sourceBaseTemplatePath = sourceBaseTemplatePath,
         defaultVariableStructure = defaultVariableStructure,
+        defaultLanguage = defaultLanguage,
     )
 }
 

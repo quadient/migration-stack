@@ -77,6 +77,13 @@ class InteractiveDeployClientTest {
         config
     )
 
+    @BeforeEach
+    fun setupAll() {
+        every { documentObjectBuilder.shouldIncludeInternalDependency(any()) } answers {
+            firstArg<DocumentObjectModel>().internal
+        }
+    }
+
     @Test
     fun `deployDocumentObjects deploys external document objects as standalone jld files and approves them`() {
         // given
