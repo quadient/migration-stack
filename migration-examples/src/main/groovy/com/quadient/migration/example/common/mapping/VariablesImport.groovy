@@ -8,6 +8,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.shared.DataType
@@ -28,6 +29,7 @@ static void run(Migration migration, Path path) {
     def structureId = Mapping.variableStructureIdFromFileName(path.fileName.toString(), migration.projectConfig.name)
     def structureMapping = migration.mappingRepository.getVariableStructureMapping(structureId)
 
+    def languageVariableFound = false
     for (line in lines) {
         def values = Csv.getCells(line, columnNames)
         def id = Csv.deserialize(values.get("id"), String.class)
@@ -56,8 +58,17 @@ static void run(Migration migration, Path path) {
         def variableName = Csv.deserialize(values.get("name"), String.class)
         Mapping.mapProp(mapping, variable, "name", variableName)
 
+        if (values.get("language_variable")?.trim() == "true") {
+            structureMapping.languageVariable = new VariableRef(id)
+            languageVariableFound = true
+        }
+
         migration.mappingRepository.upsert(id, mapping)
         migration.mappingRepository.applyVariableMapping(id)
+    }
+
+    if (!languageVariableFound) {
+        structureMapping.languageVariable = null
     }
 
     migration.mappingRepository.upsert(structureId, structureMapping)

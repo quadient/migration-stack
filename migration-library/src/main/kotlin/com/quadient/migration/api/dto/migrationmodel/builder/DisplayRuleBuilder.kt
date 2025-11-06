@@ -9,6 +9,7 @@ import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
+import com.quadient.migration.shared.LiteralOrFunctionCall
 
 class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBuilder>(id) {
     var definition: DisplayRuleDefinition? = null
@@ -129,8 +130,8 @@ class DisplayRuleGroupBuilder() {
 }
 
 class BinaryExpressionBuilder() {
-    var left: Literal? = null
-    var right: Literal? = null
+    var left: LiteralOrFunctionCall? = null
+    var right: LiteralOrFunctionCall? = null
     var operator: BinOp? = null
     private var leftSet = false
 

@@ -84,7 +84,7 @@ static void run(Migration migration, Path filePath) {
     def file = filePath.toFile()
     file.createParentDirectories()
     file.withWriter { writer ->
-        writer.writeLine("id,name,data_type,inspire_path,inspire_name,origin_locations")
+        writer.writeLine("id,name,data_type,inspire_path,inspire_name,origin_locations,language_variable")
 
         for (variable in variables) {
             def variablePathData = existingStructure?.structure?.get(variable.id)
@@ -97,6 +97,11 @@ static void run(Migration migration, Path filePath) {
             writer.write("${Csv.serialize(inspirePath)},")
             writer.write("${Csv.serialize(variableName)},")
             writer.write("${Csv.serialize(variable.originLocations)},")
+            if (existingStructure?.languageVariable?.id == variable.id) {
+                writer.write("true,")
+            } else {
+                writer.write(",")
+            }
             writer.writeLine("")
         }
     }

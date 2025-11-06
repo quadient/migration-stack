@@ -190,12 +190,14 @@ sealed class MappingItemEntity {
     data class VariableStructure(
         override var name: String?,
         val mappings: MutableMap<String, VariablePathData>?,
+        val languageVariable: VariableEntityRef?,
     ) : MappingItemEntity() {
         fun apply(item: VariableStructureDto): VariableStructureDto {
             return item.copy(
                 name = name ?: item.name,
                 structure = mappings?.filter { !it.value.name.isNullOrBlank() || !it.value.path.isBlank() }
-                    ?: mutableMapOf()
+                    ?: mutableMapOf(),
+                languageVariable = languageVariable?.let { VariableRef(it.id) }
             )
         }
     }
@@ -353,7 +355,10 @@ sealed class MappingItemEntity {
             }
 
             is VariableStructure -> {
-                MappingItem.VariableStructure(name = this.name, mappings = this.mappings ?: mutableMapOf())
+                MappingItem.VariableStructure(
+                    name = this.name,
+                    mappings = this.mappings ?: mutableMapOf(),
+                    languageVariable = this.languageVariable?.let { VariableRef(it.id) })
             }
         }
     }

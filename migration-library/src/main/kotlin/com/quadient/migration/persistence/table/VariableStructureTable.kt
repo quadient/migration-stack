@@ -6,4 +6,5 @@ import org.jetbrains.exposed.v1.json.jsonb
 
 object VariableStructureTable : MigrationObjectTable("variable_structure") {
     val structure = jsonb<Map<String, VariablePathData>>("structure", Json)
+    val languageVariable  = varchar("language_variable", 255).nullable()
 }

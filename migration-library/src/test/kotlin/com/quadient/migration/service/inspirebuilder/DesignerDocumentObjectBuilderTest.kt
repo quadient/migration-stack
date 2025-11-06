@@ -24,6 +24,7 @@ import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.BinOp
+import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.*
 import com.quadient.migration.shared.IcmPath
@@ -44,12 +45,15 @@ import com.quadient.migration.tools.model.aDocumentObjectRef
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aRow
+import com.quadient.migration.tools.model.aSelectByLanguage
 import com.quadient.migration.tools.model.aText
 import com.quadient.migration.tools.model.aTextDef
 import com.quadient.migration.tools.model.aTextStyle
 import com.quadient.migration.tools.model.aVariableStructureModel
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldNotBeEmpty
+import com.quadient.migration.tools.shouldNotBeEqualTo
 import com.quadient.migration.tools.shouldNotBeNull
 import io.mockk.every
 import io.mockk.mockk
@@ -689,6 +693,37 @@ class DesignerDocumentObjectBuilderTest {
         config,
         ipsService,
     )
+
+    @Test
+    fun `builds language variable if defined`() {
+        // given
+        val languageVariable = mockVar(aVariable("LangVar", dataType = DataType.String))
+        val structure = aVariableStructureModel(
+            languageVariable = "LangVar",
+            structure = mapOf(VariableModelRef("LangVar") to VariablePathData("Data.Language"))
+        )
+        val block = aDocObj(
+            id = "obj", content = listOf(
+                aSelectByLanguage(
+                    mapOf(
+                        "en" to listOf(aParagraph("en")), "de" to listOf(aParagraph("de")), "es" to listOf()
+                    )
+                ),
+            ),
+            variableStructureModelRef = structure.id
+        )
+        every { variableStructureRepository.findModelOrFail(any()) } returns structure
+        every { variableRepository.findModelOrFail(any()) } returns languageVariable
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val languageVarId = result["Layout"]["Layout"]["Data"]["LanguageVariable"].textValue()
+        languageVarId.shouldNotBeEmpty()
+        val langVarData = result["Layout"]["Layout"]["Variable"].find { it["Id"]?.textValue() == languageVarId }
+        langVarData!!["Id"].textValue().shouldBeEqualTo(languageVarId)
+    }
 
     @Nested
     inner class PathTest {

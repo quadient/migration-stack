@@ -68,6 +68,14 @@ class DesignerDeployClientTest {
         storage
     )
 
+    @BeforeEach
+    fun setupAll() {
+        every { documentObjectBuilder.shouldIncludeInternalDependency(any()) } answers {
+            val documentObject = firstArg<DocumentObjectModel>()
+            documentObject.internal || documentObject.type == DocumentObjectType.Page
+        }
+    }
+
     @Test
     fun `deployDocumentObjects deploys complex structure template`() {
         // given

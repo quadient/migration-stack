@@ -1,11 +1,16 @@
 package com.quadient.migration.service.ipsclient
 
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.quadient.migration.api.IcmClient
+import com.quadient.migration.api.IcmFileMetadata
 import com.quadient.migration.api.IpsConfig
 import com.quadient.migration.service.inspirebuilder.FontKey
 import com.quadient.migration.tools.surroundWith
+import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
 import java.io.Closeable
 import java.util.*
@@ -385,8 +390,53 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
             }
         }
     }
+
+    override fun readMetadata(path: String): IcmFileMetadata {
+        require(path.startsWith("icm://")) { "Expected path to start with icm:// but got '$path" }
+        return readMetadata(listOf(path)).first()
+    }
+
+    override fun readMetadata(paths: List<String>): List<IcmFileMetadata> {
+        require(paths.all { it.startsWith("icm://") }) { "Expected all paths to start with icm:// but got '$paths" }
+        val pathsLocation = "memory://${UUID.randomUUID()}"
+        val resultLocation = "memory://${UUID.randomUUID()}"
+        val json = """{"paths":[${paths.joinToString(",") { it.surroundWith("\"") }}]}"""
+        try {
+            logger.debug(json)
+            client.upload(pathsLocation, json.toByteArray()).throwIfNotOk()
+            val result = runWfd("readMetadata.wfd", listOf("-difJSONDataInput", pathsLocation, "-f", resultLocation))
+            if (result != OperationResult.Success) {
+                throw IpsClientException("Failed to delete files: $paths")
+            }
+            val resultJson = client.download(resultLocation).throwIfNotOk()
+
+            val mapper = ObjectMapper()
+            val result2 = mapper.readTree(String(resultJson.customData))
+            return result2.get("paths").map {
+                val text = it.get("metadata").textValue()
+                val metadata = mapper.readValue(text, Metadata::class.java)
+                IcmFileMetadata(
+                    path = it.get("path").textValue(),
+                    system = metadata.system.toMutableMap(),
+                    user = metadata.user.toMutableMap(),
+                )
+            }
+        } finally {
+            client.remove(pathsLocation).ifNotSuccess {
+                logger.error("Failed to cleanup paths.json memory: {}", it)
+            }
+            client.remove(resultLocation).ifNotSuccess {
+                logger.error("Failed to cleanup deleteFiles.wfd result csv memory: {}", it)
+            }
+        }
+    }
 }
 
+@Serializable
+data class Metadata @JsonCreator constructor(
+    @JsonProperty("system") val system: Map<String, List<String>>,
+    @JsonProperty("user") val user: Map<String, List<String>>
+)
 data class UploadedFile(val path: String, val onClose: () -> Unit)
 sealed interface OperationResult {
     object Success : OperationResult

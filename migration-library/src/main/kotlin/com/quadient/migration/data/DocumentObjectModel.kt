@@ -30,6 +30,7 @@ data class DocumentObjectModel(
                 is ParagraphModel -> it.collectRefs()
                 is AreaModel -> it.collectRefs()
                 is FirstMatchModel -> it.collectRefs()
+                is SelectByLanguageModel -> it.collectRefs()
             }
         }.flatten() + (displayRuleRef?.let { listOf(it) } ?: emptyList())
     }

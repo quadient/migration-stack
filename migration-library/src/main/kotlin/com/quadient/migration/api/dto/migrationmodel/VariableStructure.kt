@@ -8,7 +8,8 @@ data class VariableStructure(
     override var name: String? = null,
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
-    val structure: Map<String, VariablePathData>
+    val structure: Map<String, VariablePathData>,
+    val languageVariable: VariableRef?,
 ) : MigrationObject {
 
     companion object {
@@ -18,6 +19,7 @@ data class VariableStructure(
             originLocations = model.originLocations,
             customFields = CustomFieldMap(model.customFields.toMutableMap()),
             structure = model.structure.map { (key, value) -> key.id to value }.toMap(),
+            languageVariable = model.languageVariable?.let { VariableRef.fromModel(it) }
         )
     }
 }

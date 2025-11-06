@@ -13,4 +13,6 @@ public interface Data {
     Variable findVariable(String... path);
 
     Data setRepeatedBy(String id);
+
+    Data setLanguageVariable(Variable variable);
 }

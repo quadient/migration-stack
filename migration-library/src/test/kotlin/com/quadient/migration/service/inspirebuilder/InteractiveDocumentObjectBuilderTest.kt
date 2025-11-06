@@ -54,6 +54,7 @@ import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aRow
+import com.quadient.migration.tools.model.aSelectByLanguage
 import com.quadient.migration.tools.model.aTemplate
 import com.quadient.migration.tools.model.aText
 import com.quadient.migration.tools.model.aTextDef
@@ -63,6 +64,8 @@ import com.quadient.migration.tools.model.aVariableStructureModel
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
+import com.quadient.migration.tools.shouldNotBeEmpty
+import com.quadient.migration.tools.shouldNotBeEqualTo
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -93,7 +96,6 @@ class InteractiveDocumentObjectBuilderTest {
     fun setUp() {
         every { variableStructureRepository.listAllModel() } returns emptyList()
     }
-
 
     @Test
     fun `build of simple block with string and var ref that is not part of structure results in single flow with one paragraph and text`() {
@@ -468,19 +470,21 @@ class InteractiveDocumentObjectBuilderTest {
             Literal("A", LiteralDataType.String), NotEquals, Literal("B", LiteralDataType.String), id = "R_text"
         )
 
-        val block = mockObj(aBlock(
-            "1", listOf(
-                aParagraph(
-                    listOf(
-                        aText(
-                            StringModel("This is")
-                        ), aText(
-                            StringModel("Preposterous!"), textStyle.id, DisplayRuleModelRef(textDisplayRule.id)
-                        )
-                    ), ParagraphStyleModelRef(paraStyle.id), DisplayRuleModelRef(paraDisplayRule.id)
+        val block = mockObj(
+            aBlock(
+                "1", listOf(
+                    aParagraph(
+                        listOf(
+                            aText(
+                                StringModel("This is")
+                            ), aText(
+                                StringModel("Preposterous!"), textStyle.id, DisplayRuleModelRef(textDisplayRule.id)
+                            )
+                        ), ParagraphStyleModelRef(paraStyle.id), DisplayRuleModelRef(paraDisplayRule.id)
+                    )
                 )
             )
-        ))
+        )
 
         every { displayRuleRepository.findModelOrFail(paraDisplayRule.id) } returns paraDisplayRule
         every { displayRuleRepository.findModelOrFail(textDisplayRule.id) } returns textDisplayRule
@@ -1024,6 +1028,7 @@ class InteractiveDocumentObjectBuilderTest {
         val interactiveFlowContentFlow = result["Flow"].last { it["Id"].textValue() == interactiveFlowContentFlowId }
         interactiveFlowContentFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("interactive flow text 1")
     }
+
     @Test
     fun `first match in cell is wrapped in simple flow`() {
         // given
@@ -1043,14 +1048,12 @@ class InteractiveDocumentObjectBuilderTest {
                     displayRuleRef = DisplayRuleModelRef(rule1.id),
                     content = listOf(aParagraph(aText(StringModel("first case")))),
                     name = "First"
-                ),
-                FirstMatchModel.CaseModel(
+                ), FirstMatchModel.CaseModel(
                     displayRuleRef = DisplayRuleModelRef(rule2.id),
                     content = listOf(aParagraph(aText(StringModel("second case")))),
                     name = "Second"
                 )
-            ),
-            default = listOf(aParagraph(aText(StringModel("default case"))))
+            ), default = listOf(aParagraph(aText(StringModel("default case"))))
         )
         val block = aBlock(
             "B1", listOf(
@@ -1087,18 +1090,21 @@ class InteractiveDocumentObjectBuilderTest {
         val firstCaseFlowId = conditions[0][""].textValue()
         val firstCase = result["Flow"].last { it["Id"].textValue() == firstCaseFlowId }
 
-        val firstCaseFlow = result["Flow"].last { it["Id"].textValue() == firstCase["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+        val firstCaseFlow =
+            result["Flow"].last { it["Id"].textValue() == firstCase["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
         firstCaseFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("first case")
 
         val secondCaseFlowId = conditions[1][""].textValue()
         val secondCase = result["Flow"].last { it["Id"].textValue() == secondCaseFlowId }
 
-        val secondCaseFlow = result["Flow"].last { it["Id"].textValue() == secondCase["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+        val secondCaseFlow =
+            result["Flow"].last { it["Id"].textValue() == secondCase["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
         secondCaseFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("second case")
 
         val default = result["Flow"].last { it["Id"].textValue() == inlineCondFlow["Default"].textValue() }
 
-        val defaultFlow = result["Flow"].last { it["Id"].textValue() == default["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+        val defaultFlow =
+            result["Flow"].last { it["Id"].textValue() == default["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
         defaultFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("default case")
     }
 
@@ -1185,10 +1191,7 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `font locations are correctly assigned from available font data`() {
         // given
-        every { ipsService.gatherFontData(any()) } returns
-                "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;" +
-                "Arial,Bold,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arialbd.ttf;" +
-                "Tahoma,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/Tahoma/tahoma.ttf;"
+        every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;" + "Arial,Bold,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arialbd.ttf;" + "Tahoma,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/Tahoma/tahoma.ttf;"
 
         val textStyles = listOf(
             aTextStyle("ts1", definition = aTextDef(fontFamily = "Arial", bold = true)),
@@ -1208,9 +1211,11 @@ class InteractiveDocumentObjectBuilderTest {
         val arialSubFonts = arialFont["SubFont"]
         arialSubFonts.size().shouldBeEqualTo(2)
         val arialRegular = arialSubFonts.first { it["Name"].textValue() == "Regular" }
-        arialRegular["FontLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/arial.ttf")
+        arialRegular["FontLocation"].textValue()
+            .shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/arial.ttf")
         val arialBold = arialSubFonts.first { it["Name"].textValue() == "Bold" }
-        arialBold["FontLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/arialbd.ttf")
+        arialBold["FontLocation"].textValue()
+            .shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/arialbd.ttf")
 
         val tahomaId = fonts.first { it["Name"].textValue() == "Tahoma" }["Id"].textValue()
         val tahomaFont = fonts.last { it["Id"].textValue() == tahomaId }
@@ -1218,7 +1223,8 @@ class InteractiveDocumentObjectBuilderTest {
         tahomaFont["SubFont"]["Name"].textValue().shouldBeEqualTo("Italic")
         tahomaFont["SubFont"]["Italic"].textValue().shouldBeEqualTo("True")
         tahomaFont["SubFont"]["Bold"].textValue().shouldBeEqualTo("False")
-        tahomaFont["SubFont"]["FontLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/Tahoma/tahoma.ttf")
+        tahomaFont["SubFont"]["FontLocation"].textValue()
+            .shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/Tahoma/tahoma.ttf")
 
         val unknownId = fonts.first { it["Name"].textValue() == "Unknown" }["Id"].textValue()
         val unknownFont = fonts.last { it["Id"].textValue() == unknownId }
@@ -1260,6 +1266,95 @@ class InteractiveDocumentObjectBuilderTest {
         verify(exactly = 0) { variableStructureRepository.findModelOrFail(variableStructureA.id) }
         result["Variable"].first { it["Name"].textValue() == variable.nameOrId() }["ParentId"].textValue()
             .shouldBeEqualTo("Data.Clients.Value")
+    }
+
+    @Test
+    fun `multiple select by languages always contain all languages`() {
+        // given
+        val block = aBlock(
+            "1", listOf(
+                aSelectByLanguage(
+                    mapOf(
+                        "en" to listOf(aParagraph("en")),
+                        "de" to listOf(aParagraph("de")),
+                        "es" to listOf(aParagraph("es"))
+                    )
+                ), aSelectByLanguage(
+                    mapOf(
+                        "ru" to listOf(aParagraph("ru")),
+                        "fi" to listOf(aParagraph("fi")),
+                    )
+                )
+            )
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val flowDefinitions = result["Flow"]
+        val languageFlows = flowDefinitions.filter { it["Type"]?.textValue() == "Language" }
+        languageFlows.size.shouldBeEqualTo(2)
+
+        val firstLanguageFlow = languageFlows[0]
+        val firstSubFlows = firstLanguageFlow["Condition"].associate { it["Value"]?.textValue() to it[""].textValue() }
+        firstSubFlows.count().shouldBeEqualTo(5)
+        flowDefinitions.last { it["Id"]?.textValue() == firstSubFlows["en"] }["FlowContent"]["P"]["T"][""].textValue()
+            .shouldBeEqualTo("en")
+        flowDefinitions.last { it["Id"]?.textValue() == firstSubFlows["de"] }["FlowContent"]["P"]["T"][""].textValue()
+            .shouldBeEqualTo("de")
+        flowDefinitions.last { it["Id"]?.textValue() == firstSubFlows["es"] }["FlowContent"]["P"]["T"][""].textValue()
+            .shouldBeEqualTo("es")
+
+        flowDefinitions.last { it["Id"]?.textValue() == firstSubFlows["ru"] }["FlowContent"]["P"].shouldBeNull()
+        flowDefinitions.last { it["Id"]?.textValue() == firstSubFlows["fi"] }["FlowContent"]["P"].shouldBeNull()
+
+        val defaultFlowId = firstLanguageFlow["Default"].textValue()
+        defaultFlowId.shouldNotBeEmpty()
+        for (subflowId in firstSubFlows.values) {
+            defaultFlowId.shouldNotBeEqualTo(subflowId)
+        }
+
+        val secondLanguageFlow = languageFlows[1]
+        val secondSubFlows =
+            secondLanguageFlow["Condition"].associate { it["Value"]?.textValue() to it[""].textValue() }
+        secondSubFlows.count().shouldBeEqualTo(5)
+        flowDefinitions.last { it["Id"]?.textValue() == secondSubFlows["fi"] }["FlowContent"]["P"]["T"][""].textValue()
+            .shouldBeEqualTo("fi")
+        flowDefinitions.last { it["Id"]?.textValue() == secondSubFlows["en"] }["FlowContent"]["P"].shouldBeNull()
+    }
+
+    @Test
+    fun `select by language default case references default language case if available`() {
+        // given
+        val block = aBlock(
+            "1", listOf(
+                aSelectByLanguage(
+                    mapOf(
+                        "en_us" to listOf(aParagraph("en_us")), "de" to listOf(aParagraph("de"))
+                    )
+                )
+            )
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val flowDefinitions = result["Flow"]
+        val languageFlow = flowDefinitions.find { it["Type"]?.textValue() == "Language" }!!
+        val subFlows = languageFlow["Condition"].associate { it["Value"]?.textValue() to it[""].textValue() }
+        subFlows.count().shouldBeEqualTo(2)
+        val defaultFlowId = languageFlow["Default"].asText()
+        defaultFlowId.shouldBeEqualTo(subFlows["en_us"])
+
+        val enContent =
+            flowDefinitions.findLast { it["Id"]?.textValue() == subFlows["en_us"] }!!["FlowContent"]["P"]["T"][""].textValue()
+        val deContent =
+            flowDefinitions.findLast { it["Id"]?.textValue() == subFlows["de"] }!!["FlowContent"]["P"]["T"][""].textValue()
+
+        enContent.shouldBeEqualTo("en_us")
+        deContent.shouldBeEqualTo("de")
     }
 
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {

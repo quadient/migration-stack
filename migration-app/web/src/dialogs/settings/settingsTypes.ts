@@ -39,11 +39,12 @@ export type ProjectConfig = {
     styleDefinitionPath: string | undefined;
     inputDataPath: string;
     interactiveTenant: string;
-    defaultTargetFolder?: string | undefined;
+    defaultTargetFolder?: string;
     paths: PathsConfig;
     inspireOutput: InspireOutput;
-    sourceBaseTemplatePath?: string | undefined;
-    defaultVariableStructure?: string | undefined;
+    sourceBaseTemplatePath?: string;
+    defaultVariableStructure?: string;
+    defaultLanguage?: string;
     context: Record<string, any>;
 };
 

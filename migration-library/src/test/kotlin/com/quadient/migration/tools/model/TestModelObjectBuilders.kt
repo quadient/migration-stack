@@ -13,6 +13,7 @@ import com.quadient.migration.data.ParagraphStyleDefOrRefModel
 import com.quadient.migration.data.ParagraphStyleDefinitionModel
 import com.quadient.migration.data.ParagraphStyleModel
 import com.quadient.migration.data.ParagraphStyleModelRef
+import com.quadient.migration.data.SelectByLanguageModel
 import com.quadient.migration.data.StringModel
 import com.quadient.migration.data.TableModel
 import com.quadient.migration.data.TabsModel
@@ -262,6 +263,7 @@ fun aVariableStructureModel(
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
     structure: Map<VariableModelRef, VariablePathData> = emptyMap(),
+    languageVariable: String? = null,
     lastUpdated: Instant = Clock.System.now(),
 ): VariableStructureModel {
     return VariableStructureModel(
@@ -271,7 +273,8 @@ fun aVariableStructureModel(
         customFields = customFields,
         lastUpdated = lastUpdated,
         created = Clock.System.now(),
-        structure = structure
+        structure = structure,
+        languageVariable = languageVariable?.let { VariableModelRef(it) }
     )
 }
 
@@ -320,6 +323,8 @@ fun aParagraph(
     content: TextModel, styleRef: String? = null, displayRuleRef: DisplayRuleModelRef? = null
 ): ParagraphModel = ParagraphModel(listOf(content), styleRef?.let { ParagraphStyleModelRef(it) }, displayRuleRef)
 
+fun aParagraph(string: String): ParagraphModel = aParagraph(aText(string))
+
 fun aText(string: String): TextModel = TextModel(listOf(StringModel(string)), null, null)
 
 fun aText(
@@ -340,6 +345,14 @@ fun aRow(
 
 fun aCell(content: DocumentContentModel, mergeLeft: Boolean = false, mergeUp: Boolean = false): TableModel.CellModel {
     return TableModel.CellModel(listOf(content), mergeLeft, mergeUp)
+}
+
+fun aSelectByLanguage(
+    cases: Map<String, List<DocumentContentModel>> = emptyMap()
+): SelectByLanguageModel {
+    return SelectByLanguageModel(
+        cases = cases.entries.map { SelectByLanguageModel.CaseModel(it.key, it.value) }
+    )
 }
 
 fun aImage(

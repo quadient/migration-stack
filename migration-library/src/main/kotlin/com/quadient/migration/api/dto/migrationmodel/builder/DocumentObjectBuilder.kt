@@ -7,6 +7,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 
@@ -111,6 +112,16 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     fun firstMatch(builder: FirstMatchBuilder.() -> Unit) = apply {
         val firstMatchBuilder = FirstMatchBuilder().apply (builder)
         content = content + firstMatchBuilder.build()
+    }
+
+    /**
+     * Add a select by language block to the document object
+     * @param builder Builder function where receiver is a [SelectByLanguageBuilder].
+     * @return This builder instance for method chaining.
+     */
+    fun selectByLanguage(builder: SelectByLanguageBuilder.() -> Unit) = apply {
+        val selectByLanguageBuilder = SelectByLanguageBuilder().apply (builder)
+        content = content + selectByLanguageBuilder.build()
     }
 
     /**

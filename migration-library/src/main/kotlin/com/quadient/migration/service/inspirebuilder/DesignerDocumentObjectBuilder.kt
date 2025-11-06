@@ -139,6 +139,16 @@ class DesignerDocumentObjectBuilder(
             fontDataCache.putAll(fontDataStringToMap(fontDataString))
         }
         val variableStructure = initVariableStructure(layout, documentObject)
+        val languages = collectLanguages(documentObject)
+
+        val languageVariable = variableStructure.languageVariable
+        if (languageVariable != null) {
+            val languageVariableModel = variableRepository.findModelOrFail(languageVariable.id)
+            val languageVariablePathData = variableStructure.structure[languageVariable]
+                ?: error("Language variable '${languageVariable.id}' not found in variable structure '${variableStructure.id}'.")
+            val variable = getOrCreateVariable(layout.data, languageVariableModel.nameOrId(), languageVariableModel, languageVariablePathData.path)
+            layout.data.setLanguageVariable(variable)
+        }
 
         documentObject.content.forEach {
             if (it is DocumentObjectModelRef) {
@@ -155,12 +165,20 @@ class DesignerDocumentObjectBuilder(
 
         pageModels.forEach {
             buildPage(
-                layout, variableStructure, it.nameOrId(), it.content, documentObject, it.options as? PageOptions
+                layout,
+                variableStructure,
+                it.nameOrId(),
+                it.content,
+                documentObject,
+                it.options as? PageOptions,
+                languages,
             )
         }
 
         if (virtualPageContent.isNotEmpty() || pageModels.isEmpty()) {
-            buildPage(layout, variableStructure, "Virtual Page", virtualPageContent, documentObject)
+            buildPage(
+                layout, variableStructure, "Virtual Page", virtualPageContent, documentObject, null, languages
+            )
         }
 
         val root = layout.addRoot().setAllowRuntimeModifications(true)
@@ -186,6 +204,10 @@ class DesignerDocumentObjectBuilder(
         } else {
             enrichLayoutWithSourceBaseTemplate(documentObjectXml, projectConfig.sourceBaseTemplatePath)
         }
+    }
+
+    override fun shouldIncludeInternalDependency(documentObject: DocumentObjectModel): Boolean {
+        return documentObject.internal || documentObject.type == DocumentObjectType.Page
     }
 
     override fun wrapSuccessFlowInConditionFlow(
@@ -220,6 +242,7 @@ class DesignerDocumentObjectBuilder(
         content: List<DocumentContentModel>,
         mainObject: DocumentObjectModel,
         options: PageOptions? = null,
+        languages: List<String>,
     ) {
         val page = layout.addPage().setName(name).setType(Pages.PageConditionType.SIMPLE)
         options?.height?.let { page.setHeight(it.toMeters()) }
@@ -236,11 +259,16 @@ class DesignerDocumentObjectBuilder(
             }
         }
 
-        areaModels.forEach { buildArea(layout, variableStructure, page, it, mainObject) }
+        areaModels.forEach { buildArea(layout, variableStructure, page, it, mainObject, languages) }
 
         if (virtualAreaContent.isNotEmpty()) {
             buildArea(
-                layout, variableStructure, page, AreaModel(virtualAreaContent, defaultPosition, null), mainObject
+                layout,
+                variableStructure,
+                page,
+                AreaModel(virtualAreaContent, defaultPosition, null),
+                mainObject,
+                languages
             )
         }
     }
@@ -251,6 +279,7 @@ class DesignerDocumentObjectBuilder(
         page: Page,
         areaModel: AreaModel,
         mainObject: DocumentObjectModel,
+        languages: List<String>
     ) {
         val position = areaModel.position ?: defaultPosition
 
@@ -275,7 +304,11 @@ class DesignerDocumentObjectBuilder(
                 .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlowToNextPage(true)
                 .setFlow(
                     buildDocumentContentAsSingleFlow(
-                        layout, variableStructure, areaModel.content, displayRuleRef = mainObject.displayRuleRef
+                        layout,
+                        variableStructure,
+                        areaModel.content,
+                        displayRuleRef = mainObject.displayRuleRef,
+                        languages = languages
                     )
                 )
         }

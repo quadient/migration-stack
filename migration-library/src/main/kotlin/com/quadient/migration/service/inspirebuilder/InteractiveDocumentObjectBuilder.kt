@@ -3,6 +3,7 @@ package com.quadient.migration.service.inspirebuilder
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.quadient.migration.api.IcmFileMetadata
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.DocumentContentModel
@@ -54,6 +55,7 @@ class InteractiveDocumentObjectBuilder(
 
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
     private val baseTemplatesInteractiveFlowNamesToIds = mutableMapOf<String, Map<String, String>>()
+    private val baseTemplateMetadata = mutableMapOf<String, IcmFileMetadata>()
 
     override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
         val fileName = "$nameOrId.jld"
@@ -131,7 +133,7 @@ class InteractiveDocumentObjectBuilder(
         val layout = builder.addLayout()
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
-
+        val languages = collectLanguages(documentObject)
         val variableStructure = initVariableStructure(layout, documentObject)
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContentModel>>()
@@ -160,7 +162,7 @@ class InteractiveDocumentObjectBuilder(
                 }
             }
         } else {
-            interactiveFlowsWithContent.put(mainFlowId, documentObject.content.toMutableList())
+            interactiveFlowsWithContent[mainFlowId] = documentObject.content.toMutableList()
         }
 
         interactiveFlowsWithContent.forEach {
@@ -168,7 +170,7 @@ class InteractiveDocumentObjectBuilder(
                 layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).addParagraph().addText()
 
             val contentFlows =
-                buildDocumentContentAsFlows(layout, variableStructure, it.value, documentObject.nameOrId())
+                buildDocumentContentAsFlows(layout, variableStructure, it.value, documentObject.nameOrId(), languages)
 
             if (documentObject.displayRuleRef == null) {
                 contentFlows.forEach { contentFlow -> interactiveFlowText.appendFlow(contentFlow) }
@@ -183,6 +185,10 @@ class InteractiveDocumentObjectBuilder(
 
         logger.debug("Successfully built document object '${documentObject.nameOrId()}'")
         return builder.buildLayoutDelta()
+    }
+
+    override fun shouldIncludeInternalDependency(documentObject: DocumentObjectModel): Boolean {
+        return documentObject.internal
     }
 
     fun getInteractiveFlowIdByName(interactiveFlowName: String, baseTemplatePath: String): String? {
