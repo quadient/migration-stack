@@ -185,8 +185,7 @@ class IpsClient(private val host: String, private val port: Int, private val tim
 
     fun extractJld(workflowId: WorkFlowId, outputPath: String, type: String): IpsResult<JobId, Unit, Unit> {
         val command =
-            """run $workflowId -e json -configDocumentLayout "eyJGaW5hbGl6ZURpc2Nvbm5lY3RlZFZhcmlhYmxlc0FzUmVmZXJlbmNlIjp0cnVlfQ==" -type $type -languageDocumentLayout en_us -f "$outputPath""""
-
+            """run $workflowId -e json -configDocumentLayout "eyJGaW5hbGl6ZURpc2Nvbm5lY3RlZFZhcmlhYmxlc0FzUmVmZXJlbmNlIjp0cnVlLCJEZXRlY3RMYW5ndWFnZXNGcm9tQ29udGVudCI6dHJ1ZX0=" -type $type -languageDocumentLayout en_us -f "$outputPath""""
         connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
         return connection.readResponse()
     }

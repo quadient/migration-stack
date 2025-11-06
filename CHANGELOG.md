@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Select by language document content option to specify different content for different languages in a document
+- Project config default language option
+- Option to set language variable in variable structure that is used in Designer output. Is included in variable
+  export/import.
 
 ### Changed
 
