@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [17.0.5] - 2025-11-06
+
+### Added
 - Select by language document content option to specify different content for different languages in a document
 - Project config default language option
 - Option to set language variable in variable structure that is used in Designer output. Is included in variable
@@ -67,7 +77,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.4...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.5...HEAD
+[17.0.5]: https://github.com/quadient/migration-stack/compare/v17.0.4..v17.0.5
 [17.0.4]: https://github.com/quadient/migration-stack/compare/v17.0.3..v17.0.4
 [17.0.3]: https://github.com/quadient/migration-stack/compare/v17.0.2..v17.0.3
 [17.0.2]: https://github.com/quadient/migration-stack/compare/v0.0.1..v17.0.2
