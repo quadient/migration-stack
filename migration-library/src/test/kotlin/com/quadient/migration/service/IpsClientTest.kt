@@ -4,7 +4,11 @@ import com.quadient.migration.Ips
 import com.quadient.migration.service.ipsclient.IpsClient
 import com.quadient.migration.service.ipsclient.IpsResult
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.shared.IcmDateTime
+import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.MetadataValue
 import com.quadient.migration.tools.aMigConfig
+import kotlinx.datetime.Clock
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -37,16 +41,37 @@ class IpsClientTest {
     }
 
     @Test
+    fun `writemetadata`() {
+        val input = mutableMapOf(
+            "TestKey" to MetadataValue(
+                values = listOf(
+                    MetadataPrimitive.DateTime(IcmDateTime(Clock.System.now())),
+                ),
+            )
+        )
+        service.writeMetadata(
+            path = "icm://Interactive/StandardPackage/BaseTemplates/EUAddressLetterheadBaseTemplate.wfd",
+            metadata = input
+        )
+
+        val result =
+            service.readMetadata("icm://Interactive/StandardPackage/BaseTemplates/EUAddressLetterheadBaseTemplate.wfd")
+
+        assertEquals(result.metadata["TestKey"], input["TestKey"])
+        println()
+    }
+
+    @Test
     fun `file upload round trip`() {
         val inputData = Random.nextBytes(1_000_000)
         val uploadPath = "memory://test"
 
         client.upload(uploadPath, inputData).throwIfNotOk()
         client.download(uploadPath).throwIfNotOk().ifOk {
-                assertEquals(it.customData.count(), inputData.count())
-                for ((resultByte, testByte) in it.customData.zip(inputData)) {
-                    assertEquals(resultByte, testByte)
-                }
+            assertEquals(it.customData.count(), inputData.count())
+            for ((resultByte, testByte) in it.customData.zip(inputData)) {
+                assertEquals(resultByte, testByte)
             }
+        }
     }
 }

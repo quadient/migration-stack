@@ -3,6 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
+import com.quadient.migration.shared.MetadataPrimitive
 
 data class Image(
     override val id: String,
@@ -13,6 +14,7 @@ data class Image(
     var options: ImageOptions?,
     var imageType: ImageType?,
     var targetFolder: String?,
+    val metadata: Map<String, List<MetadataPrimitive>>,
 ) : MigrationObject {
     companion object {
         fun fromModel(model: ImageModel): Image {
@@ -24,7 +26,8 @@ data class Image(
                 sourcePath = model.sourcePath,
                 options = model.options,
                 imageType = model.imageType,
-                targetFolder = model.targetFolder?.toString()
+                targetFolder = model.targetFolder?.toString(),
+                metadata = model.metadata,
             )
         }
     }

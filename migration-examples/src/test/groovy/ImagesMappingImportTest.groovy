@@ -127,7 +127,7 @@ class ImagesMappingImportTest {
     }
 
     static void givenExistingImage(Migration mig, String id, String name, String targetFolder, String sourcePath, ImageType imageType) {
-        when(mig.imageRepository.find(id)).thenReturn(new Image(id, name, [], new CustomFieldMap([:]), sourcePath, null, imageType, targetFolder))
+        when(mig.imageRepository.find(id)).thenReturn(new Image(id, name, [], new CustomFieldMap([:]), sourcePath, null, imageType, targetFolder, [:]))
     }
 
     static void givenExistingImageMapping(Migration mig,

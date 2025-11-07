@@ -185,7 +185,7 @@ class DocumentObjectsMappingImportTest {
     }
 
     static void givenExistingDocumentObject(Migration mig, String id, String name, Boolean internal, String baseTemplate, String targetFolder, DocumentObjectType type, String varStructureRef) {
-        when(mig.documentObjectRepository.find(id)).thenReturn(new DocumentObject(id, name, [], new CustomFieldMap([:]), type ?: DocumentObjectType.Block, [], internal, targetFolder, null, varStructureRef ? new VariableStructureRef(varStructureRef) : null, baseTemplate, null, null, null))
+        when(mig.documentObjectRepository.find(id)).thenReturn(new DocumentObject(id, name, [], new CustomFieldMap([:]), type ?: DocumentObjectType.Block, [], internal, targetFolder, null, varStructureRef ? new VariableStructureRef(varStructureRef) : null, baseTemplate, null, null, null, [:]))
     }
 
     static void givenExistingDocumentObjectMapping(Migration mig,

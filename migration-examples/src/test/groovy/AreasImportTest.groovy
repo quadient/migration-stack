@@ -57,6 +57,6 @@ class AreasImportTest {
     void givenPageExists(String pageId, List<String> flowNames) {
         def content = flowNames.collect { flowName -> createArea(flowName) }
         when(migration.documentObjectRepository.find(pageId))
-            .thenReturn(new DocumentObject(pageId, null, [], new CustomFieldMap([:]), DocumentObjectType.Page, content, false, null, null, null, null, null, null, null))
+            .thenReturn(new DocumentObject(pageId, null, [], new CustomFieldMap([:]), DocumentObjectType.Page, content, false, null, null, null, null, null, null, null, [:]))
     }
 }

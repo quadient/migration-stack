@@ -1,7 +1,8 @@
 package com.quadient.migration.api
 
 import com.quadient.migration.service.ipsclient.IpsClientException
-import kotlinx.serialization.Serializable
+import com.quadient.migration.shared.IcmFileMetadata
+import com.quadient.migration.shared.MetadataValue
 import java.io.IOException
 
 interface IcmClient {
@@ -98,11 +99,23 @@ interface IcmClient {
      * @throws IOException
      */
     fun readMetadata(paths: List<String>): List<IcmFileMetadata>
-}
 
-@Serializable
-data class IcmFileMetadata(
-    val path: String,
-    val system: MutableMap<String, List<String>>,
-    val user: MutableMap<String, List<String>>
-)
+    /**
+     * Write metadata to all the provided files in the connected ICM
+     * @param metadata List of IcmFileMetadata objects containing path and metadata to write
+     * @throws IllegalArgumentException if any of the paths does not start with "icm://"
+     * @throws IpsClientException if failure occurs when working with IPS
+     * @throws IOException
+     */
+    fun writeMetadata(metadata: List<IcmFileMetadata>)
+
+    /**
+     * Write metadata to a single file in the connected ICM
+     * @param path Path to the file. Must start with "icm://"
+     * @param metadata Map of metadata key-value pairs to write
+     * @throws IllegalArgumentException if the path does not start with "icm://"
+     * @throws IpsClientException if failure occurs when working with IPS
+     * @throws IOException
+     */
+    fun writeMetadata(path: String, metadata: Map<String, MetadataValue>)
+}

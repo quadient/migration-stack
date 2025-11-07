@@ -41,6 +41,11 @@ class DocumentObjectRepositoryTest {
             .customFields(mutableMapOf("f1" to "val1"))
             .originLocations(listOf("test1", "test2"))
             .content(listOf(Paragraph("hi"), DocumentObjectRef("var"), table))
+            .metadata("test") {
+                string("value")
+                integer(123)
+                boolean(true)
+            }
             .internal(true)
             .targetFolder("acquired")
             .displayRuleRef("someruleref")

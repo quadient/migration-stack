@@ -17,6 +17,9 @@ import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.shared.IcmFileMetadata
+import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.MetadataValue
 import com.quadient.migration.tools.aActiveStatusEvent
 import com.quadient.migration.tools.aDeployedStatus
 import com.quadient.migration.tools.aDeployedStatusEvent
@@ -31,6 +34,7 @@ import com.quadient.migration.tools.shouldNotBeNull
 import com.quadient.migration.tools.shouldStartWith
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -70,6 +74,73 @@ class DeployClientTest {
         every { documentObjectBuilder.getDocumentObjectPath(any(), any(), any()) } answers { callOriginal() }
         every { documentObjectBuilder.getImagePath(any()) } answers { callOriginal() }
         every { documentObjectBuilder.getImagePath(any(), any(), any(), any(), any()) } answers { callOriginal() }
+    }
+
+    @Test
+    fun `write metadata post processor`() {
+        val doc1 = aBlock(id = "doc1", metadata = mapOf("docMeta" to listOf(MetadataPrimitive.Str("v1"))))
+        val doc2 = aBlock(id = "doc2", metadata = mapOf("docMeta" to listOf(MetadataPrimitive.Str("v2"))))
+        val img1 = aImage(id = "img2", metadata = mapOf("imgMeta" to listOf(MetadataPrimitive.Str("v3"))))
+        val img2 = aImage(id = "img2", metadata = mapOf("imgMeta" to listOf(MetadataPrimitive.Str("v4"))))
+
+        every { documentObjectRepository.findModel("doc1") } returns doc1
+        every { documentObjectRepository.findModel("doc2") } returns doc2
+        every { imageRepository.findModel("img1") } returns img1
+        every { imageRepository.findModel("img2") } returns img2
+        every { ipsService.writeMetadata(any()) } returns Unit
+
+        val deploymentResult = DeploymentResult(Uuid.random()).apply {
+            deployed.add(DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://doc1.wfd"))
+            deployed.add(DeploymentInfo("doc2", ResourceType.DocumentObject, "icm://doc2.wfd"))
+            deployed.add(DeploymentInfo("img1", ResourceType.Image, "icm://img1.png"))
+            deployed.add(DeploymentInfo("img2", ResourceType.Image, "icm://img2.png"))
+        }
+
+        subject.postProcessors[0](deploymentResult)
+
+        //path=icm://doc1.wfd, metadata={docMeta=MetadataValue(values=[Str(value=v1)], system=false)}), IcmFileMetadata(path=icm://doc2.wfd, metadata={docMeta=MetadataValue(values=[Str(value=v2)], system=false)}), IcmFileMetadata(path=icm://img1.png, metadata={imgMeta=MetadataValue(values=[Str(value=v3)], system=false)}), IcmFileMetadata(path=icm://img2.png, metadata={imgMeta=MetadataValue(values=[Str(value=v4)], system=false)})]
+        verify {
+            ipsService.writeMetadata(
+                listOf(
+                    IcmFileMetadata(
+                        path = "icm://doc1.wfd",
+                        metadata = mapOf(
+                            "docMeta" to MetadataValue(
+                                listOf(MetadataPrimitive.Str("v1")),
+                                system = false
+                            )
+                        )
+                    ),
+                    IcmFileMetadata(
+                        path = "icm://doc2.wfd",
+                        metadata = mapOf(
+                            "docMeta" to MetadataValue(
+                                listOf(MetadataPrimitive.Str("v2")),
+                                system = false
+                            )
+                        )
+                    ),
+                    IcmFileMetadata(
+                        path = "icm://img1.png",
+                        metadata = mapOf(
+                            "imgMeta" to MetadataValue(
+                                listOf(MetadataPrimitive.Str("v3")),
+                                system = false
+                            )
+                        )
+                    ),
+                    IcmFileMetadata(
+                        path = "icm://img2.png",
+                        metadata = mapOf(
+                            "imgMeta" to MetadataValue(
+                                listOf(MetadataPrimitive.Str("v4")),
+                                system = false
+                            )
+                        )
+                    ),
+                )
+            )
+        }
     }
 
     @Test

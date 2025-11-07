@@ -88,6 +88,7 @@ fun aBlockDto(
         targetFolder = targetFolder,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
+        metadata = emptyMap()
     )
 }
 
@@ -116,7 +117,8 @@ fun aBlockModel(
         lastUpdated = Clock.System.now(),
         displayRuleRef = null,
         baseTemplate = baseTemplate,
-        options = options
+        options = options,
+        metadata = emptyMap()
     )
 }
 

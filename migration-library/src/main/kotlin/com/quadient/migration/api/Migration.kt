@@ -176,6 +176,13 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
             ipsService
         )
 
+        logger.debug("Setting up shutdown hook for IPS service")
+        Runtime.getRuntime().addShutdownHook(Thread {
+                logger.debug("Shutdown hook triggered, closing IPS service connections")
+                ipsService.close()
+            }
+        )
+
         logger.debug("Migration initialized")
     }
 }

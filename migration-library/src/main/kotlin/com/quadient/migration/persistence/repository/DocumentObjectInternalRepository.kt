@@ -9,6 +9,7 @@ import com.quadient.migration.persistence.table.DocumentObjectTable.baseTemplate
 import com.quadient.migration.persistence.table.DocumentObjectTable.content
 import com.quadient.migration.persistence.table.DocumentObjectTable.displayRuleRef
 import com.quadient.migration.persistence.table.DocumentObjectTable.internal
+import com.quadient.migration.persistence.table.DocumentObjectTable.metadata
 import com.quadient.migration.persistence.table.DocumentObjectTable.options
 import com.quadient.migration.persistence.table.DocumentObjectTable.targetFolder
 import com.quadient.migration.persistence.table.DocumentObjectTable.type
@@ -33,7 +34,8 @@ class DocumentObjectInternalRepository(table: DocumentObjectTable, projectName: 
             baseTemplate = row[baseTemplate],
             displayRuleRef = row[displayRuleRef]?.let { DisplayRuleModelRef(it) },
             variableStructureRef = row[DocumentObjectTable.variableStructureRef]?.let { VariableStructureModelRef(it) },
-            options = row[options]
+            options = row[options],
+            metadata = row[metadata]
         )
     }
 }

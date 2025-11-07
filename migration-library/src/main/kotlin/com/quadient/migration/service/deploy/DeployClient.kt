@@ -10,7 +10,6 @@ import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.ImageModel
-import com.quadient.migration.data.Error as StatusError
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphStyleDefinitionModel
 import com.quadient.migration.data.ParagraphStyleModelRef
@@ -28,7 +27,9 @@ import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilde
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.ImageType
+import com.quadient.migration.shared.toMetadata
 import com.quadient.migration.tools.unreachable
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
@@ -39,6 +40,7 @@ import java.nio.file.InvalidPathException
 import kotlin.reflect.KClass
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import com.quadient.migration.data.Error as StatusError
 
 data class DocObjectWithRef(val obj: DocumentObjectModel, val documentObjectRefs: Set<String>)
 
@@ -56,26 +58,80 @@ sealed class DeployClient(
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
     protected val deploymentId = Uuid.random()
     protected val deploymentTimestamp = Clock.System.now()
+    val postProcessors: MutableList<(DeploymentResult) -> Unit> = mutableListOf()
+
+    init {
+        addPostProcessor { deploymentResult ->
+            val meta =
+                deploymentResult.deployed.filter { it.type == ResourceType.DocumentObject || it.type == ResourceType.Image }
+                    .mapNotNull { info ->
+                        val obj = when (info.type) {
+                            ResourceType.DocumentObject -> documentObjectRepository.findModel(info.id)
+                            ResourceType.Image -> imageRepository.findModel(info.id)
+                            else -> null
+                        }
+                        if (obj == null) {
+                            deploymentResult.warnings.add(
+                                DeploymentWarning(
+                                    info.id,
+                                    "Failed to set metadata for ${info.type} object '${info.id}' at path '${info.targetPath}'."
+                                )
+                            )
+                            null
+                        } else {
+                            val metadata = when (obj) {
+                                is DocumentObjectModel -> obj.metadata
+                                is ImageModel -> obj.metadata
+                                else -> emptyMap()
+                            }
+                            info to metadata
+                        }
+                    }.mapNotNull { (info, metadata) ->
+                        metadata.ifEmpty { null }?.let {
+                            IcmFileMetadata(path = info.targetPath, metadata = metadata.toMetadata())
+                        }
+                    }
+
+            logger.debug("Writing metadata for ${meta.size} deployed document objects.")
+            ipsService.writeMetadata(meta)
+            logger.debug("Finished writing metadata for deployed document objects.")
+        }
+    }
 
     abstract fun getAllDocumentObjectsToDeploy(): List<DocumentObjectModel>
     abstract fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObjectModel>
     abstract fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult
 
+    protected fun addPostProcessor(processor: (DeploymentResult) -> Unit) {
+        postProcessors.add(processor)
+    }
+
     abstract fun shouldIncludeDependency(documentObject: DocumentObjectModel): Boolean
 
     fun deployDocumentObjects(): DeploymentResult {
-        return deployDocumentObjectsInternal(getAllDocumentObjectsToDeploy())
+        val result = deployDocumentObjectsInternal(getAllDocumentObjectsToDeploy())
+        for (processor in postProcessors) {
+            processor(result)
+        }
+
+        return result
     }
 
     fun deployDocumentObjects(documentObjectIds: List<String>) = deployDocumentObjects(documentObjectIds, false)
     fun deployDocumentObjects(documentObjectIds: List<String>, skipDependencies: Boolean): DeploymentResult {
         val documentObjects = getDocumentObjectsToDeploy(documentObjectIds)
-        return if (skipDependencies) {
+        val result = if (skipDependencies) {
             deployDocumentObjectsInternal(documentObjects)
         } else {
             val dependencies = documentObjects.flatMap { it.findDependencies() }.filter { !it.internal }
             deployDocumentObjectsInternal((documentObjects + dependencies).toSet().toList())
         }
+
+        for (processor in postProcessors) {
+            processor(result)
+        }
+
+        return result
     }
 
     fun deployStyles() {
@@ -135,7 +191,6 @@ sealed class DeployClient(
                         xml2wfdResult.message
                     )
                 }
-                ipsService.close()
                 return
             }
         }
@@ -145,8 +200,6 @@ sealed class DeployClient(
             is OperationResult.Failure -> logger.error("Failed to set production approval state to $outputPath.")
             OperationResult.Success -> logger.debug("Setting of production approval state to $outputPath is successful.")
         }
-
-        ipsService.close()
     }
 
     fun deployOrder(documentObjects: List<DocumentObjectModel>): List<DocumentObjectModel> {
@@ -374,11 +427,12 @@ sealed class DeployClient(
             val resource = when (ref) {
                 is DocumentObjectModelRef -> {
                     val obj = documentObjectRepository.findModelOrFail(ref.id)
-                    val nextIcmPath = if (obj.internal || (obj.type == DocumentObjectType.Page && output == InspireOutput.Designer)) {
-                        null
-                    } else {
-                        documentObjectBuilder.getDocumentObjectPath(obj)
-                    }
+                    val nextIcmPath =
+                        if (obj.internal || (obj.type == DocumentObjectType.Page && output == InspireOutput.Designer)) {
+                            null
+                        } else {
+                            documentObjectBuilder.getDocumentObjectPath(obj)
+                        }
                     val deployKind = obj.getDeployKind(nextIcmPath)
                     val lastStatus = obj.getLastStatus(lastDeployment)
 
@@ -387,7 +441,7 @@ sealed class DeployClient(
                         id = obj.id,
                         deploymentId = lastStatus.deployId,
                         deployTimestamp = lastStatus.deployTimestamp,
-                        documentObject =  obj,
+                        documentObject = obj,
                         previousIcmPath = lastStatus.icmPath,
                         nextIcmPath = nextIcmPath,
                         deployKind = deployKind,
@@ -499,7 +553,7 @@ sealed class DeployClient(
         }
     }
 
-    private fun getLastDeployEvent(): LastDeployment?  {
+    private fun getLastDeployEvent(): LastDeployment? {
         return statusTrackingRepository.listAll().mapNotNull {
             it.statusEvents.findLast { status ->
                 status is Deployed || status is StatusError
@@ -525,20 +579,17 @@ sealed class DeployClient(
             return LastStatus.Inlined
         }
         val objectEvents = statusTrackingRepository.findEventsRelevantToOutput(id, resourceType, output)
-            .filter { ev -> lastDeployment?.timestamp?.let { ev.timestamp <= it } ?: true  }
+            .filter { ev -> lastDeployment?.timestamp?.let { ev.timestamp <= it } ?: true }
         val lastEvent = objectEvents.lastOrNull()
         val lastDeployEvent = objectEvents.lastOrNull { it is Deployed || it is StatusError }
         val previousDeployEvent = lastDeployEvent?.timestamp?.let { lastDeployTimestamp ->
-            objectEvents
-                .filter { it.timestamp < lastDeployTimestamp  }
-                .mapNotNull {
-                    when (it) {
-                        is Deployed -> LastDeployment(it.deploymentId, it.timestamp)
-                        is StatusError -> LastDeployment(it.deploymentId, it.timestamp)
-                        else -> null
-                    }
+            objectEvents.filter { it.timestamp < lastDeployTimestamp }.mapNotNull {
+                when (it) {
+                    is Deployed -> LastDeployment(it.deploymentId, it.timestamp)
+                    is StatusError -> LastDeployment(it.deploymentId, it.timestamp)
+                    else -> null
                 }
-                .lastOrNull()
+            }.lastOrNull()
         }
 
         return if (lastDeployment == null) {
@@ -552,7 +603,10 @@ sealed class DeployClient(
             when (lastEvent) {
                 is Active -> getLastStatus(id, previousDeployEvent, resourceType, output, internal, isPage)
                 is Deployed -> LastStatus.Overwritten(lastEvent.icmPath, lastEvent.deploymentId, lastEvent.timestamp)
-                is StatusError -> LastStatus.Error(lastEvent.icmPath, lastEvent.deploymentId, lastEvent.timestamp, lastEvent.error)
+                is StatusError -> LastStatus.Error(
+                    lastEvent.icmPath, lastEvent.deploymentId, lastEvent.timestamp, lastEvent.error
+                )
+
                 null -> unreachable("lastEvent should not be null because previousDeployEvent exists")
             }
         } else {
@@ -589,14 +643,28 @@ sealed class DeployClient(
     }
 
     private fun DocumentObjectModel.getDeployKind(nextIcmPath: String?): DeployKind {
-        return getDeployKind(this.id, ResourceType.DocumentObject, output, this.internal, nextIcmPath, this.type == DocumentObjectType.Page)
+        return getDeployKind(
+            this.id,
+            ResourceType.DocumentObject,
+            output,
+            this.internal,
+            nextIcmPath,
+            this.type == DocumentObjectType.Page
+        )
     }
 
     private fun ImageModel.getDeployKind(nextIcmPath: String?): DeployKind {
         return getDeployKind(this.id, ResourceType.Image, output, false, nextIcmPath)
     }
 
-    private fun getDeployKind(id: String, resourceType: ResourceType, output: InspireOutput, internal: Boolean = false, nextIcmPath: String?, isPage: Boolean = false): DeployKind {
+    private fun getDeployKind(
+        id: String,
+        resourceType: ResourceType,
+        output: InspireOutput,
+        internal: Boolean = false,
+        nextIcmPath: String?,
+        isPage: Boolean = false
+    ): DeployKind {
         if (internal) {
             return DeployKind.Inline
         }

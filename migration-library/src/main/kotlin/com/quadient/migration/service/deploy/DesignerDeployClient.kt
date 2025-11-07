@@ -109,8 +109,6 @@ class DesignerDeployClient(
             }
         }
 
-        ipsService.close()
-
         return deploymentResult
     }
 

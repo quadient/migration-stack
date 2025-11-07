@@ -8,6 +8,7 @@ import com.quadient.migration.data.ImageModel
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.ImageTable.imageType
+import com.quadient.migration.persistence.table.ImageTable.metadata
 import com.quadient.migration.persistence.table.ImageTable.options
 import com.quadient.migration.persistence.table.ImageTable.sourcePath
 import com.quadient.migration.persistence.table.ImageTable.targetFolder
@@ -31,7 +32,8 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
             sourcePath = model.sourcePath,
             options = model.options,
             imageType = model.imageType,
-            targetFolder = model.targetFolder?.toString()
+            targetFolder = model.targetFolder?.toString(),
+            metadata = model.metadata,
         )
     }
 
@@ -70,6 +72,7 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
                 it[options] = dto.options
                 it[imageType] = dto.imageType?.toString() ?: ImageType.Unknown.toString()
                 it[targetFolder] = dto.targetFolder
+                it[metadata] = dto.metadata
             }
         }
     }

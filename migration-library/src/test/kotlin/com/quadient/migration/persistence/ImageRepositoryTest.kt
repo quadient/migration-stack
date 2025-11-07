@@ -26,6 +26,11 @@ class ImageRepositoryTest {
             .customFields(mutableMapOf("f1" to "val1"))
             .originLocations(listOf("test1", "test2"))
             .targetFolder("someFolder")
+            .metadata("test") {
+                string("value")
+                integer(123)
+                boolean(true)
+            }
             .imageType(ImageType.Gif)
             .build()
 

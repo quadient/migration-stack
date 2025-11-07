@@ -74,6 +74,7 @@ class DesignerDeployClientTest {
             val documentObject = firstArg<DocumentObjectModel>()
             documentObject.internal || documentObject.type == DocumentObjectType.Page
         }
+        every { ipsService.writeMetadata(any()) } just runs
     }
 
     @Test
@@ -106,7 +107,6 @@ class DesignerDeployClientTest {
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { documentObjectRepository.list(any()) } returns listOf(template, externalBlock)
-        every { ipsService.close() } just runs
         every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd"
         every { ipsService.fileExists(any()) } returns false
 
@@ -118,7 +118,6 @@ class DesignerDeployClientTest {
         verify { ipsService.xml2wfd(any(), "icm://${externalBlock.nameOrId()}") }
         verify { ipsService.tryUpload("icm://${image1.nameOrId()}", any()) }
         verify { ipsService.tryUpload("icm://${image2.nameOrId()}", any()) }
-        verify { ipsService.close() }
     }
 
     @Test
@@ -296,7 +295,6 @@ class DesignerDeployClientTest {
         val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, listOf(aDocumentObjectRef(innerBlock.id))))
         val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
 
-        every { ipsService.close() } just runs
         every { documentObjectRepository.findModel(innerBlock.id) } throws IllegalStateException("Not found")
         every { documentObjectRepository.list(any()) } returns listOf(template, block)
         every { documentObjectBuilder.buildDocumentObject(block, any()) } throws IllegalStateException("Inner block not found")
@@ -363,7 +361,6 @@ class DesignerDeployClientTest {
     inner class StatusTrackingTests {
         @BeforeEach
         fun setup() {
-            every { ipsService.close() } just runs
             every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns ""
             every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns  aDeployedStatus("id")
             every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")

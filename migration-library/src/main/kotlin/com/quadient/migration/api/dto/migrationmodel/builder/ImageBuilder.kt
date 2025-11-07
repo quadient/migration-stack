@@ -3,12 +3,14 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
+import com.quadient.migration.shared.MetadataPrimitive
 
 class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
     var sourcePath: String? = null
     var imageType: ImageType? = null
     var options: ImageOptions? = null
     var targetFolder: String? = null
+    var metadata: MutableMap<String, List<MetadataPrimitive>> = mutableMapOf()
 
     /**
      * Sets source path of the image. This path is relative to the storage root folder.
@@ -40,6 +42,20 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
     fun targetFolder(targetFolder: String) = apply { this.targetFolder = targetFolder }
 
     /**
+     * Add metadata to the document object.
+     * Metadata are not stored if empty.
+     * @param key Key of the metadata entry.
+     * @param block Builder function where receiver is a [MetadataBuilder].
+     * @return This builder instance for method chaining.
+     */
+    fun metadata(key: String, block: MetadataBuilder.() -> Unit) = apply {
+        val result = MetadataBuilder().apply(block).build()
+        if (result.isNotEmpty()) {
+            metadata[key] = result
+        }
+    }
+
+    /**
      * Builds the Image instance with the provided properties.
      * @return the built Image instance
      */
@@ -52,7 +68,8 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
             sourcePath = sourcePath,
             imageType = imageType,
             options = options,
-            targetFolder = targetFolder
+            targetFolder = targetFolder,
+            metadata = metadata,
         )
     }
 }

@@ -55,6 +55,7 @@ import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.LiteralOrFunctionCall
+import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SuperOrSubscript
@@ -62,6 +63,7 @@ import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.tools.aProjectConfig
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlin.collections.emptyMap
 
 fun aDocObj(
     id: String,
@@ -90,6 +92,7 @@ fun aDocObj(
         baseTemplate = baseTemplate,
         variableStructureRef = variableStructureModelRef?.let { VariableStructureModelRef(it) },
         options = options,
+        metadata = emptyMap(),
     )
 }
 
@@ -106,6 +109,7 @@ fun aBlock(
     type: DocumentObjectType = DocumentObjectType.Block,
     displayRuleRef: DisplayRuleModelRef? = null,
     baseTemplate: String? = null,
+    metadata : Map<String, List<MetadataPrimitive>> = emptyMap(),
 ): DocumentObjectModel {
     return DocumentObjectModel(
         id = id,
@@ -121,6 +125,7 @@ fun aBlock(
         displayRuleRef = displayRuleRef,
         baseTemplate = baseTemplate,
         options = null,
+        metadata = metadata,
     )
 }
 
@@ -150,6 +155,7 @@ fun aTemplate(
         lastUpdated = Clock.System.now(),
         baseTemplate = baseTemplate,
         options = null,
+        metadata = emptyMap(),
     )
 }
 
@@ -364,6 +370,7 @@ fun aImage(
     customFields: MutableMap<String, String> = mutableMapOf(),
     options: ImageOptions? = null,
     targetFolder: String? = null,
+    metadata : Map<String, List<MetadataPrimitive>> = emptyMap(),
 ): ImageModel {
     return ImageModel(
         id = id,
@@ -374,7 +381,8 @@ fun aImage(
         sourcePath = sourcePath,
         imageType = imageType,
         options = options,
-        targetFolder = targetFolder?.let(IcmPath::from)
+        targetFolder = targetFolder?.let(IcmPath::from),
+        metadata = metadata,
     )
 }
 

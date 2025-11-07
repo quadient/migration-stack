@@ -21,6 +21,7 @@ class ImageInternalRepository(
             imageType = ImageType.valueOf(row[ImageTable.imageType]),
             options = row[ImageTable.options],
             targetFolder = row[ImageTable.targetFolder]?.let(IcmPath::from),
+            metadata = row[ImageTable.metadata]
         )
     }
 }

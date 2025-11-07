@@ -3,7 +3,6 @@ package com.quadient.migration.service.inspirebuilder
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import com.quadient.migration.api.IcmFileMetadata
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.DocumentContentModel
@@ -21,6 +20,7 @@ import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault

@@ -10,6 +10,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.Are
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.MetadataPrimitive
 
 class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     DtoBuilderBase<DocumentObject, DocumentObjectBuilder>(id) {
@@ -20,6 +21,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     private var variableStructureRef: VariableStructureRef? = null
     private var baseTemplate: String? = null
     private var options: DocumentObjectOptions? = null
+    private var metadata: MutableMap<String, List<MetadataPrimitive>> = mutableMapOf()
 
     /**
      * Replace content of the document object.
@@ -170,6 +172,20 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
         content = content + ref
     }
 
+    /**
+     * Add metadata to the document object.
+     * Metadata are not stored if empty.
+     * @param key Key of the metadata entry.
+     * @param block Builder function where receiver is a [MetadataBuilder].
+     * @return This builder instance for method chaining.
+     */
+    fun metadata(key: String, block: MetadataBuilder.() -> Unit) = apply {
+        val result = MetadataBuilder().apply(block).build()
+        if (result.isNotEmpty()) {
+            metadata[key] = result
+        }
+    }
+
     override fun build(): DocumentObject {
         return DocumentObject(
             id = id,
@@ -183,6 +199,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
             displayRuleRef = displayRuleRef,
             baseTemplate = baseTemplate,
             options = options,
+            metadata = metadata,
         )
     }
 }

@@ -44,6 +44,16 @@ class InteractiveDeployClient(
     storage,
     InspireOutput.Interactive,
 ) {
+    init {
+        addPostProcessor { deploymentResult ->
+            val approvalResult = ipsService.setProductionApprovalState(deploymentResult.deployed.map { it.targetPath })
+            if (approvalResult == OperationResult.Success) {
+                logger.debug("Setting of production approval state to ${deploymentResult.deployed.size} document objects is successful.")
+            } else {
+                logger.error("Failed to set production approval state to document objects.")
+            }
+        }
+    }
 
     override fun shouldIncludeDependency(documentObject: DocumentObjectModel): Boolean {
         return !documentObject.internal
@@ -149,15 +159,6 @@ class InteractiveDeployClient(
                 deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
             }
         }
-
-        val approvalResult = ipsService.setProductionApprovalState(deploymentResult.deployed.map { it.targetPath })
-        if (approvalResult == OperationResult.Success) {
-            logger.debug("Setting of production approval state to ${deploymentResult.deployed.size} document objects is successful.")
-        } else {
-            logger.error("Failed to set production approval state to document objects.")
-        }
-
-        ipsService.close()
 
         return deploymentResult
     }

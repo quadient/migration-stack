@@ -82,6 +82,8 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.shouldIncludeInternalDependency(any()) } answers {
             firstArg<DocumentObjectModel>().internal
         }
+        every { ipsService.writeMetadata(any()) } just runs
+        every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
     }
 
     @Test
@@ -186,7 +188,6 @@ class InteractiveDeployClientTest {
                 )
             )
         }
-        verify { ipsService.close() }
         verify(exactly = 3) { documentObjectBuilder.buildDocumentObject(any(), any()) }
     }
 
@@ -330,7 +331,6 @@ class InteractiveDeployClientTest {
         every { paragraphStyleRepository.listAllModel() } returns emptyList()
         every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
         every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
-        every { ipsService.close() } just runs
 
         val definitionPath =
             "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.wfd"
@@ -343,7 +343,6 @@ class InteractiveDeployClientTest {
         // then
         verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPath)) }
         verify { ipsService.setProductionApprovalState(eq(listOf(definitionPath))) }
-        verify { ipsService.close() }
     }
 
     @Test
@@ -356,7 +355,6 @@ class InteractiveDeployClientTest {
         every { textStyleRepository.listAllModel() } returns emptyList()
         every { paragraphStyleRepository.listAllModel() } returns emptyList()
         every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Failure("Problem")
-        every { ipsService.close() } just runs
 
         val definitionPath =
             "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.wfd"
@@ -369,7 +367,6 @@ class InteractiveDeployClientTest {
         // then
         verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPath)) }
         verify(exactly = 0) { ipsService.setProductionApprovalState(any()) }
-        verify { ipsService.close() }
     }
 
     @Test
@@ -626,6 +623,7 @@ class InteractiveDeployClientTest {
 
         val dir = resolveTargetDir(config.defaultTargetFolder, documentObject.targetFolder)
         every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns "icm://Interactive/$tenant/$interactiveFolder/$dir/${documentObject.nameOrId()}.jld"
+        every { documentObjectRepository.findModel(documentObject.id) } returns documentObject
 
         return documentObject
     }
@@ -647,14 +645,12 @@ class InteractiveDeployClientTest {
             ipsService.deployJld(any(), any(), any(), any(), any())
         } returns OperationResult.Success
         every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
-        every { ipsService.close() } just runs
     }
 
     private fun verifyBasicIpsOperations(expectedOutputPaths: List<String>, deployCount: Int? = null) {
         val deployCountValue = deployCount ?: expectedOutputPaths.size
         verify(exactly = deployCountValue) { ipsService.deployJld(any(), any(), any(), any(), any()) }
         verify { ipsService.setProductionApprovalState(expectedOutputPaths) }
-        verify { ipsService.close() }
     }
 
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
@@ -674,7 +670,6 @@ class InteractiveDeployClientTest {
     inner class StatusTrackingTests {
         @BeforeEach
         fun setup() {
-            every { ipsService.close() } just runs
             every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns ""
             every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns  aDeployedStatus("id")
             every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")

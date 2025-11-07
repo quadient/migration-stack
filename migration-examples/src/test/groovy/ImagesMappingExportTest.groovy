@@ -24,10 +24,10 @@ class ImagesMappingExportTest {
         def migration = Utils.mockMigration()
 
         when(migration.imageRepository.listAll()).thenReturn([
-                new Image("empty", null, [], new CustomFieldMap([:]), null, null, null, null),
-                new Image("full", "full", ["foo", "bar"], new CustomFieldMap([:]), "sourcePath", null, ImageType.Jpeg, "targetDir"),
-                new Image("overridden empty", null, [], new CustomFieldMap([:]), null, null, null, null),
-                new Image("overridden full", "full", ["foo", "bar"], new CustomFieldMap([:]), "sourcePath", null, ImageType.Gif, "targetDir"),
+                new Image("empty", null, [], new CustomFieldMap([:]), null, null, null, null, [:]),
+                new Image("full", "full", ["foo", "bar"], new CustomFieldMap([:]), "sourcePath", null, ImageType.Jpeg, "targetDir", [:]),
+                new Image("overridden empty", null, [], new CustomFieldMap([:]), null, null, null, null, [:]),
+                new Image("overridden full", "full", ["foo", "bar"], new CustomFieldMap([:]), "sourcePath", null, ImageType.Gif, "targetDir", [:]),
         ])
 
         when(migration.statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any())).thenReturn(new Active())
