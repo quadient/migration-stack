@@ -16,6 +16,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Removed
 
+## [17.0.6] - 2025-11-07
+
+### Added
+
+- Support for ICM metadata
+
+### Changed
+
+### Fixed
+
+### Removed
+
 ## [17.0.5] - 2025-11-06
 
 ### Added
@@ -79,7 +91,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.5...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.6...HEAD
+[17.0.6]: https://github.com/quadient/migration-stack/compare/v17.0.5..v17.0.6
 [17.0.5]: https://github.com/quadient/migration-stack/compare/v17.0.4..v17.0.5
 [17.0.4]: https://github.com/quadient/migration-stack/compare/v17.0.3..v17.0.4
 [17.0.3]: https://github.com/quadient/migration-stack/compare/v17.0.2..v17.0.3
