@@ -95,6 +95,7 @@ class InteractiveDocumentObjectBuilderTest {
     @BeforeEach
     fun setUp() {
         every { variableStructureRepository.listAllModel() } returns emptyList()
+        every { ipsService.fileExists(any()) } returns true
     }
 
     @Test

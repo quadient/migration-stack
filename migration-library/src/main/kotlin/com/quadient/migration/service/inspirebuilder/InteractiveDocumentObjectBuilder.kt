@@ -20,7 +20,6 @@ import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
@@ -55,7 +54,7 @@ class InteractiveDocumentObjectBuilder(
 
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
     private val baseTemplatesInteractiveFlowNamesToIds = mutableMapOf<String, Map<String, String>>()
-    private val baseTemplateMetadata = mutableMapOf<String, IcmFileMetadata>()
+    private val baseTemplateExistenceCache = mutableMapOf<IcmPath, Boolean>()
 
     override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
         val fileName = "$nameOrId.jld"
@@ -133,6 +132,14 @@ class InteractiveDocumentObjectBuilder(
         val layout = builder.addLayout()
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
+
+        val baseTemplateExists = baseTemplateExistenceCache.getOrPut(baseTemplatePath) {
+            ipsService.fileExists(baseTemplatePath.toString())
+        }
+        if (!baseTemplateExists) {
+            error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
+        }
+
         val languages = collectLanguages(documentObject)
         val variableStructure = initVariableStructure(layout, documentObject)
 
