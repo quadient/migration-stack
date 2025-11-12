@@ -296,13 +296,11 @@ class DesignerDocumentObjectBuilder(
                 val flow = layout.addFlow()
                 flow.addParagraph().addText().appendText(imagePlaceholder)
                 page.addFlowArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
-                    .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlowToNextPage(true)
-                    .setFlow(flow)
+                    .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlow(flow)
             }
         } else {
             page.addFlowArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
-                .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlowToNextPage(true)
-                .setFlow(
+                .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlow(
                     buildDocumentContentAsSingleFlow(
                         layout,
                         variableStructure,
