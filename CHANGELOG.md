@@ -7,11 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
-
-- Support for ICM metadata
 - Verify existence of base template during interactive deployment
 
 ### Changed
+- Flow areas in Designer output no longer have FlowToNextPage option due to performance reasons.
 
 ### Fixed
 
