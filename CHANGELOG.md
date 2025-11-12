@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Changed
 
 ### Fixed
+- Language variable boolean value is now correctly parsed in VariablesImport script
 
 ### Removed
 

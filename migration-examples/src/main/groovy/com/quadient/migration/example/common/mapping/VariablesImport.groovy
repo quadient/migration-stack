@@ -58,7 +58,7 @@ static void run(Migration migration, Path path) {
         def variableName = Csv.deserialize(values.get("name"), String.class)
         Mapping.mapProp(mapping, variable, "name", variableName)
 
-        if (values.get("language_variable")?.trim() == "true") {
+        if (Csv.deserialize(values.get("language_variable")?.trim(), Boolean.class) == true) {
             structureMapping.languageVariable = new VariableRef(id)
             languageVariableFound = true
         }
