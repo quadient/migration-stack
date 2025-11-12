@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [17.0.7] - 2025-11-12
+
+### Added
 - Verify existence of base template during interactive deployment
 
 ### Changed
@@ -91,7 +101,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.6...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.7...HEAD
+[17.0.7]: https://github.com/quadient/migration-stack/compare/v17.0.6..v17.0.7
 [17.0.6]: https://github.com/quadient/migration-stack/compare/v17.0.5..v17.0.6
 [17.0.5]: https://github.com/quadient/migration-stack/compare/v17.0.4..v17.0.5
 [17.0.4]: https://github.com/quadient/migration-stack/compare/v17.0.3..v17.0.4
