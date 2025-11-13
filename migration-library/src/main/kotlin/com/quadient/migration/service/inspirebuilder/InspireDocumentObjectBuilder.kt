@@ -77,6 +77,7 @@ import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.
 import kotlinx.datetime.Clock
 import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.collections.ifEmpty
 import com.quadient.migration.shared.DataType as DataTypeModel
 
 abstract class InspireDocumentObjectBuilder(
@@ -871,6 +872,18 @@ abstract class InspireDocumentObjectBuilder(
         languageFlow.setDefaultFlow(defaultLanguageFlow ?: layout.addFlow().setType(Flow.Type.SIMPLE))
 
         return languageFlow
+    }
+
+    protected fun List<DocumentContentModel>.paragraphIfEmpty(): List<DocumentContentModel> {
+        return this.ifEmpty {
+            listOf(
+                ParagraphModel(
+                    listOf(TextModel(listOf(), null, null)),
+                    null,
+                    null
+                )
+            )
+        }
     }
 
     private fun TextStyleModel.resolve(): TextStyleDefinitionModel {

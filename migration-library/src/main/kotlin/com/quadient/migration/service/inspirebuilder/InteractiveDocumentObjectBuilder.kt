@@ -145,7 +145,7 @@ class InteractiveDocumentObjectBuilder(
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContentModel>>()
         if (documentObject.type == DocumentObjectType.Page) {
-            documentObject.content.forEach {
+            documentObject.content.paragraphIfEmpty().forEach {
                 if (it is AreaModel && !it.interactiveFlowName.isNullOrBlank()) {
                     val interactiveFlowId = if (it.interactiveFlowName.startsWith("Def.")) {
                         it.interactiveFlowName

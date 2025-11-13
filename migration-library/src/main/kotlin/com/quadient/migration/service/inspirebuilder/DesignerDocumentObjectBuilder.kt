@@ -150,7 +150,7 @@ class DesignerDocumentObjectBuilder(
             layout.data.setLanguageVariable(variable)
         }
 
-        documentObject.content.forEach {
+        documentObject.content.paragraphIfEmpty().forEach {
             if (it is DocumentObjectModelRef) {
                 val documentObjectModel = documentObjectRepository.findModelOrFail(it.id)
                 if (documentObjectModel.type == DocumentObjectType.Page) {
