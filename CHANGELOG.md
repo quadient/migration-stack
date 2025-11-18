@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Fixed
 - Language variable boolean value is now correctly parsed in VariablesImport script
-- Ensure document object content always contains at laest one paragraph
+- Ensure document object content always contains at least one paragraph
 
 ### Removed
 
@@ -43,7 +43,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [17.0.5] - 2025-11-06
 
 ### Added
-- Select by language document content option to specify different content for different languages in a document
+
+- Select by language document content option to specify different content for different languages in a document (recommended minimal Designer version **17.0.635.0**)
 - Project config default language option
 - Option to set language variable in variable structure that is used in Designer output. Is included in variable
   export/import.
