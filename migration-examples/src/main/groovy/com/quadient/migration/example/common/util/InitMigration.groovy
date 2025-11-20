@@ -29,7 +29,11 @@ static Migration initMigration(Binding binding) {
     def argsList = args.any() ? args.toList() : new ArrayList<String>()
 
     def activeProjectConfig = getValueOfArg("--active-project-config", argsList).orElse(getActiveProjectConfigFromFile(classLoader))
-    def fileProjectConfig = ProjectConfig.read(classLoader.getResource(activeProjectConfig).toURI())
+    def resource = classLoader.getResource(activeProjectConfig)
+    if (resource == null) {
+        throw new RuntimeException("Could not find project config file: $activeProjectConfig. Please ensure the file exists in the resources directory.")
+    }
+    def fileProjectConfig = ProjectConfig.read(resource.toURI())
 
     def projectName = getValueOfArg("--project-name", argsList).orElse(fileProjectConfig.name)
     def baseTemplatePath = getValueOfArg("--base-template-path", argsList).orElse(fileProjectConfig.baseTemplatePath)
