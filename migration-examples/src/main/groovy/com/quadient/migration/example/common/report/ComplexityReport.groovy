@@ -134,8 +134,15 @@ class Stats {
                 case Paragraph -> this.collectParagraph(content)
                 case Area -> this.collectContent(content.content)
                 case FirstMatch -> this.collectFirstMatch(content)
+                case SelectByLanguage -> this.collectSelectByLanguage(content)
                 default -> throw new IllegalStateException("Unknown content type: ${content.class.name}")
             }
+        }
+    }
+
+    void collectSelectByLanguage(SelectByLanguage selectByLanguage) {
+        for (langCase in selectByLanguage.cases) {
+            this.collectContent(langCase.content)
         }
     }
 

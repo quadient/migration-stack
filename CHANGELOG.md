@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Changed
 
 ### Fixed
+- Handle SelectByLanguage in complexity report
 
 ## [17.0.8] - 2025-11-28
 
