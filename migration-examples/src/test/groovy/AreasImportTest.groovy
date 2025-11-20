@@ -4,6 +4,7 @@ import com.quadient.migration.example.common.mapping.AreasImport
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.SkipOptions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -57,6 +58,6 @@ class AreasImportTest {
     void givenPageExists(String pageId, List<String> flowNames) {
         def content = flowNames.collect { flowName -> createArea(flowName) }
         when(migration.documentObjectRepository.find(pageId))
-            .thenReturn(new DocumentObject(pageId, null, [], new CustomFieldMap([:]), DocumentObjectType.Page, content, false, null, null, null, null, null, null, null, [:]))
+            .thenReturn(new DocumentObject(pageId, null, [], new CustomFieldMap([:]), DocumentObjectType.Page, content, false, null, null, null, null, null, null, null, [:], new SkipOptions(false, null, null)))
     }
 }

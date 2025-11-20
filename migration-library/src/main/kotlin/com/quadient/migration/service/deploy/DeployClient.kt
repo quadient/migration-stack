@@ -309,6 +309,24 @@ sealed class DeployClient(
                 continue
             }
 
+            if (imageModel.skip.skipped) {
+                val reason = imageModel.skip.reason?.let { " Reason: $it" } ?: ""
+                val message = "Image '${imageModel.nameOrId()}' is skipped.$reason"
+                logger.warn(message)
+                deploymentResult.warnings.add(DeploymentWarning(imageRef.id, message))
+                statusTrackingRepository.error(
+                    id = imageRef.id,
+                    deploymentId = deploymentId,
+                    timestamp = deploymentTimestamp,
+                    resourceType = ResourceType.Image,
+                    output = output,
+                    icmPath = icmImagePath,
+                    message = message
+                )
+                continue
+            }
+
+
             if (imageModel.sourcePath.isNullOrBlank()) {
                 val message = "Skipping deployment of image '${imageModel.nameOrId()}' due to missing source path."
                 logger.warn(message)

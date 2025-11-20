@@ -11,6 +11,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.Sel
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.SkipOptions
 
 class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     DtoBuilderBase<DocumentObject, DocumentObjectBuilder>(id) {
@@ -22,6 +23,9 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     private var baseTemplate: String? = null
     private var options: DocumentObjectOptions? = null
     private var metadata: MutableMap<String, List<MetadataPrimitive>> = mutableMapOf()
+    private var skip = false
+    private var placeholder: String? = null
+    private var reason: String? = null
 
     /**
      * Replace content of the document object.
@@ -186,6 +190,12 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
         }
     }
 
+    fun skip(placeholder: String? = null, reason: String? = null) = apply {
+        this.skip = true
+        this.placeholder = placeholder
+        this.reason = reason
+    }
+
     override fun build(): DocumentObject {
         return DocumentObject(
             id = id,
@@ -200,6 +210,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
             baseTemplate = baseTemplate,
             options = options,
             metadata = metadata,
+            skip = SkipOptions(skipped = skip, reason = reason, placeholder = placeholder),
         )
     }
 }

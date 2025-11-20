@@ -20,6 +20,7 @@ import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuild
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.tools.aActiveStatus
 import com.quadient.migration.tools.aDeployedStatus
 import com.quadient.migration.tools.aErrorStatus
@@ -121,11 +122,11 @@ class DesignerDeployClientTest {
     }
 
     @Test
-    fun `deploy list of document objects validates that no document objects are unsupported`() {
+    fun `deploy list of document objects validates that no document objects are skipped`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
         every { documentObjectRepository.list(any()) } returns listOf(
-            aBlock(id = "1", type = DocumentObjectType.Unsupported),
+            aBlock(id = "1", skip = SkipOptions(true, null, null)),
             aBlock(id = "2", type = DocumentObjectType.Block),
             aBlock(id = "3", type = DocumentObjectType.Page),
             aBlock(id = "4", type = DocumentObjectType.Template),
@@ -134,7 +135,7 @@ class DesignerDeployClientTest {
 
         val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(listOf("1", "2", "3")) }
 
-        assertEquals("The following document objects cannot be deployed due to their type: [1]. ", ex.message)
+        assertEquals("The following document objects are skipped: [1]. ", ex.message)
         verify(exactly = 1) { documentObjectRepository.list(any()) }
     }
 
@@ -199,7 +200,7 @@ class DesignerDeployClientTest {
             aBlock(id = "2", internal = true),
             aBlock(id = "3"),
             aBlock(id = "5"),
-            aBlock(id = "6", type = DocumentObjectType.Unsupported),
+            aBlock(id = "6", skip = SkipOptions(true, null, null)),
             aBlock(id = "7"),
         )
 
@@ -212,7 +213,7 @@ class DesignerDeployClientTest {
         }
 
         assertEquals(
-            "The following document objects were not found: [8]. The following document objects are internal: [2]. The following document objects cannot be deployed due to their type: [6]. ",
+            "The following document objects were not found: [8]. The following document objects are internal: [2]. The following document objects are skipped: [6]. ",
             ex.message
         )
         verify(exactly = 1) { documentObjectRepository.list(any()) }

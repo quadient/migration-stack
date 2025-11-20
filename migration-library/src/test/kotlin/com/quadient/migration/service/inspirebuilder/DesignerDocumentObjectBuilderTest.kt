@@ -32,6 +32,7 @@ import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.Position
+import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.shared.centimeters
 import com.quadient.migration.shared.millimeters
@@ -164,7 +165,7 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject creates flow area with placeholder text in case of invalid image`() {
         // given
-        val image = mockImg(aImage("Img_1", sourcePath = null))
+        val image = mockImg(aImage("Img_1", sourcePath = null, skip = SkipOptions(true, "img placeholder", null)))
         val page = mockObj(
             aDocObj(
                 "P_1", Page,
@@ -192,7 +193,7 @@ class DesignerDocumentObjectBuilderTest {
         val flowId = flowArea["FlowId"].textValue()
 
         val flow = result["Flow"].last { it["Id"].textValue() == flowId }
-        flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Image without source path: ${image.nameOrId()}")
+        flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("img placeholder")
     }
 
     @Test

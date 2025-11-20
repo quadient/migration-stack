@@ -5,6 +5,7 @@ import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.SkipOptions
 import kotlinx.datetime.Instant
 
 data class ImageModel(
@@ -18,6 +19,7 @@ data class ImageModel(
     val options: ImageOptions?,
     val targetFolder: IcmPath?,
     val metadata: Map<String, List<MetadataPrimitive>>,
+    val skip: SkipOptions,
 ) : RefValidatable, MigrationObjectModel {
     override fun collectRefs(): List<RefModel> {
         return emptyList()

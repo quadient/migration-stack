@@ -516,18 +516,30 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    protected fun getImagePlaceholder(imageModel: ImageModel): String? {
-        if (imageModel.imageType == ImageType.Unknown) {
-            logger.debug("Image '${imageModel.nameOrId()}' has unknown type. Rendering placeholder text instead.")
-            return "Unknown image: ${imageModel.nameOrId()}"
+    sealed interface ImagePlaceholderResult {
+        object RenderAsNormal : ImagePlaceholderResult
+        object Skip : ImagePlaceholderResult
+        data class Placeholder(val value: String) : ImagePlaceholderResult
+    }
+    protected fun getImagePlaceholder(imageModel: ImageModel): ImagePlaceholderResult {
+        if (imageModel.imageType == ImageType.Unknown && !imageModel.skip.skipped) {
+            throw IllegalStateException(
+                "Image '${imageModel.nameOrId()}' has unknown type and is not set to be skipped."
+            )
+        }
+        if (imageModel.sourcePath.isNullOrBlank() && !imageModel.skip.skipped) {
+            throw IllegalStateException(
+                "Image '${imageModel.nameOrId()}' has missing source path and is not set to be skipped."
+            )
         }
 
-        if (imageModel.sourcePath.isNullOrBlank()) {
-            logger.debug("Image '${imageModel.nameOrId()}' has missing source path. Rendering placeholder text instead.")
-            return "Image without source path: ${imageModel.nameOrId()}"
+        if (imageModel.skip.skipped && imageModel.skip.placeholder != null) {
+            return ImagePlaceholderResult.Placeholder(imageModel.skip.placeholder)
+        } else if (imageModel.skip.skipped) {
+            return ImagePlaceholderResult.Skip
         }
 
-        return null
+        return ImagePlaceholderResult.RenderAsNormal
     }
 
     protected fun getOrBuildImage(layout: Layout, imageModel: ImageModel): Image {
@@ -574,9 +586,16 @@ abstract class InspireDocumentObjectBuilder(
     ): Flow? {
         val documentModel = documentObjectRepository.findModelOrFail(documentObjectRef.id)
 
-        if (documentModel.type == DocumentObjectType.Unsupported) {
-            logger.debug("Skipping document content part ${documentObjectRef.id} due to unsupported type.")
+        if (documentModel.skip.skipped && documentModel.skip.placeholder == null) {
+            val reason = documentModel.skip.reason?.let { "with reason: $it" } ?: "without reason"
+            logger.debug("Document content part ${documentObjectRef.id} is set to be skipped without placeholder $reason.")
             return null
+        } else if (documentModel.skip.skipped && documentModel.skip.placeholder != null) {
+            val reason = documentModel.skip.reason?.let { "and reason: $it" } ?: "without reason"
+            logger.debug("Document content part ${documentObjectRef.id} is set to be skipped with placeholder $reason.")
+            val flow = layout.addFlow().setType(Flow.Type.SIMPLE)
+            flow.addParagraph().addText().appendText(documentModel.skip.placeholder)
+            return flow
         }
 
         val flow = getFlowByName(layout, documentModel.nameOrId()) ?: if (documentModel.internal) {
@@ -678,10 +697,13 @@ abstract class InspireDocumentObjectBuilder(
     private fun buildAndAppendImage(layout: Layout, text: Text, ref: ImageModelRef) {
         val imageModel = imageRepository.findModelOrFail(ref.id)
 
-        val imagePlaceholder = getImagePlaceholder(imageModel)
-        if (imagePlaceholder != null) {
-            text.appendText(imagePlaceholder)
-            return
+        when (val imagePlaceholder = getImagePlaceholder(imageModel)) {
+            is ImagePlaceholderResult.Placeholder -> {
+                text.appendText(imagePlaceholder.value)
+                return
+            }
+            is ImagePlaceholderResult.RenderAsNormal -> {}
+            is ImagePlaceholderResult.Skip -> return
         }
 
         text.appendImage(getOrBuildImage(layout, imageModel))

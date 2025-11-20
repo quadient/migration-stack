@@ -11,6 +11,7 @@ import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.SkipOptions
 
 import java.nio.file.Path
 
@@ -70,6 +71,12 @@ static void run(Migration migration, Path documentObjFilePath) {
         if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deployed") {
             migration.statusTrackingRepository.deployed(existingDocObject.id, deploymentId, now, ResourceType.DocumentObject, null, output, [reason: "Manual"])
         }
+
+        boolean newSkip = Csv.deserialize(values.get("skip"), boolean)
+        def newSkipReason = Csv.deserialize(values.get("skipReason"), String.class)
+        def newSkipPlaceholder = Csv.deserialize(values.get("skipPlaceholder"), String.class)
+        def skipObj = new SkipOptions(newSkip, newSkipPlaceholder, newSkipReason)
+        Mapping.mapProp(existingMapping, existingDocObject, "skip", skipObj)
 
         migration.mappingRepository.upsert(id, existingMapping)
         migration.mappingRepository.applyDocumentObjectMapping(id)

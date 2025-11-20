@@ -4,14 +4,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class DocumentObjectType {
-    Template, Page, Block, Section, Unsupported;
+    Template, Page, Block, Section;
 
     fun toInteractiveFolder(): String = when (this) {
         Template -> "Templates"
         Page -> "Templates"
         Block -> "Blocks"
         Section -> "Blocks"
-        Unsupported -> error("Unsupported is not expected in this case.")
     }
 
     fun toRunCommandType(): String = when (this) {
@@ -19,6 +18,5 @@ enum class DocumentObjectType {
         Page -> "template"
         Block -> "block"
         Section -> "block"
-        Unsupported -> error("Unsupported is not expected in this case.")
     }
 }

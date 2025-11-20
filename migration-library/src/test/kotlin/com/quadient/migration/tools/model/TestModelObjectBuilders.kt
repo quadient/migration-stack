@@ -58,6 +58,7 @@ import com.quadient.migration.shared.LiteralOrFunctionCall
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.tools.aProjectConfig
@@ -93,6 +94,7 @@ fun aDocObj(
         variableStructureRef = variableStructureModelRef?.let { VariableStructureModelRef(it) },
         options = options,
         metadata = emptyMap(),
+        skip = SkipOptions(false, null, null),
     )
 }
 
@@ -110,6 +112,7 @@ fun aBlock(
     displayRuleRef: DisplayRuleModelRef? = null,
     baseTemplate: String? = null,
     metadata : Map<String, List<MetadataPrimitive>> = emptyMap(),
+    skip: SkipOptions = SkipOptions(false, null, null),
 ): DocumentObjectModel {
     return DocumentObjectModel(
         id = id,
@@ -126,6 +129,7 @@ fun aBlock(
         baseTemplate = baseTemplate,
         options = null,
         metadata = metadata,
+        skip = skip,
     )
 }
 
@@ -156,6 +160,7 @@ fun aTemplate(
         baseTemplate = baseTemplate,
         options = null,
         metadata = emptyMap(),
+        skip = SkipOptions(false, null, null),
     )
 }
 
@@ -371,6 +376,7 @@ fun aImage(
     options: ImageOptions? = null,
     targetFolder: String? = null,
     metadata : Map<String, List<MetadataPrimitive>> = emptyMap(),
+    skip : SkipOptions = SkipOptions(false, null, null),
 ): ImageModel {
     return ImageModel(
         id = id,
@@ -383,6 +389,7 @@ fun aImage(
         options = options,
         targetFolder = targetFolder?.let(IcmPath::from),
         metadata = metadata,
+        skip = skip,
     )
 }
 

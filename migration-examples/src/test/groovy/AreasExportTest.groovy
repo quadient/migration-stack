@@ -5,6 +5,7 @@ import com.quadient.migration.example.common.mapping.AreasExport
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.SkipOptions
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -32,10 +33,10 @@ class AreasExportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         when(migration.mappingRepository.getAreaMapping(any())).thenReturn(new MappingItem.Area(null, [:]))
         when((migration.documentObjectRepository as DocumentObjectRepository).list(any())).thenReturn([
-            new DocumentObject("empty tmpl", null, [], new CustomFieldMap([:]), DocumentObjectType.Template, [], false, null, null, null, null, null, null, null, [:]),
-            new DocumentObject("unreferenced page", null, [], new CustomFieldMap([:]), DocumentObjectType.Page, [createArea("test flow")], false, null, null, null, null, null, null, null, [:]),
-            new DocumentObject("full tmpl", null, [], new CustomFieldMap([:]), DocumentObjectType.Template, [new DocumentObjectRef("full page")], false, null, null, null, null, null, null, null, [:]),
-            new DocumentObject("full page", null, [], new CustomFieldMap([:]), DocumentObjectType.Page, [createArea("test flow2"), createArea("test flow3"), createArea(null), createArea("test flow5")], false, null, null, null, null, null, null, null, [:]),
+            new DocumentObject("empty tmpl", null, [], new CustomFieldMap([:]), DocumentObjectType.Template, [], false, null, null, null, null, null, null, null, [:], emptySkipOptions()),
+            new DocumentObject("unreferenced page", null, [], new CustomFieldMap([:]), DocumentObjectType.Page, [createArea("test flow")], false, null, null, null, null, null, null, null, [:], emptySkipOptions()),
+            new DocumentObject("full tmpl", null, [], new CustomFieldMap([:]), DocumentObjectType.Template, [new DocumentObjectRef("full page")], false, null, null, null, null, null, null, null, [:], emptySkipOptions()),
+            new DocumentObject("full page", null, [], new CustomFieldMap([:]), DocumentObjectType.Page, [createArea("test flow2"), createArea("test flow3"), createArea(null), createArea("test flow5")], false, null, null, null, null, null, null, null, [:], emptySkipOptions()),
         ])
 
         AreasExport.run(migration, mappingFile)
@@ -53,5 +54,9 @@ class AreasExportTest {
 
     static Area createArea(String flowName) {
         return new Area([], new Position(Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0)), flowName)
+    }
+
+    static SkipOptions emptySkipOptions() {
+        return new SkipOptions(false, null, null)
     }
 }

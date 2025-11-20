@@ -4,6 +4,7 @@ import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.SkipOptions
 import kotlinx.datetime.Instant
 
 data class DocumentObject(
@@ -22,6 +23,7 @@ data class DocumentObject(
     var created: Instant? = null,
     var lastUpdated: Instant? = null,
     val metadata: Map<String, List<MetadataPrimitive>>,
+    val skip: SkipOptions,
 ) : MigrationObject {
     companion object {
         fun fromModel(model: DocumentObjectModel): DocumentObject {
@@ -41,6 +43,7 @@ data class DocumentObject(
                 created = model.created,
                 lastUpdated = model.lastUpdated,
                 metadata = model.metadata,
+                skip = model.skip,
             )
         }
     }

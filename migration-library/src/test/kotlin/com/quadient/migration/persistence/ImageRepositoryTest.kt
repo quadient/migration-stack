@@ -32,6 +32,7 @@ class ImageRepositoryTest {
                 boolean(true)
             }
             .imageType(ImageType.Gif)
+            .skip("reason", "placeholder")
             .build()
 
         repo.upsert(dto)

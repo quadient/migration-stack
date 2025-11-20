@@ -7,12 +7,13 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
-import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
+import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.shared.points
@@ -23,7 +24,6 @@ import com.quadient.migration.tools.aTextStyleDefinition
 import com.quadient.migration.tools.aVariable
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aImage
-import com.quadient.migration.tools.model.aVariableStructureModel
 import com.quadient.migration.tools.model.anArea
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
@@ -41,6 +41,7 @@ class MappingEntityTest {
                 targetFolder = null,
                 type = null,
                 variableStructureRef = null,
+                skip = null,
             )
             val dto = DocumentObject.fromModel(
                 aDocObj(
@@ -71,6 +72,7 @@ class MappingEntityTest {
                 targetFolder = "new folder",
                 type = DocumentObjectType.Block,
                 variableStructureRef = "new structure",
+                skip = SkipOptions(true, "ph", "reason"),
             )
             val dto = DocumentObject.fromModel(
                 aDocObj(
@@ -92,6 +94,9 @@ class MappingEntityTest {
             assertEquals(result.targetFolder, "new folder")
             assertEquals(result.type, DocumentObjectType.Block)
             assertEquals(result.variableStructureRef?.id, "new structure")
+            assertEquals(result.skip.skipped, true)
+            assertEquals(result.skip.placeholder, "ph")
+            assertEquals(result.skip.reason, "reason")
         }
     }
 
@@ -132,6 +137,7 @@ class MappingEntityTest {
                 name = null,
                 targetFolder = null,
                 sourcePath = null,
+                skip = null,
             )
             val dto = Image.fromModel(aImage("img1", name = "test img", targetFolder = "dir1", sourcePath = "source1"))
 
@@ -148,6 +154,8 @@ class MappingEntityTest {
                 name = "new name",
                 targetFolder = "new folder",
                 sourcePath = "new path",
+                imageType = ImageType.Gif,
+                skip = SkipOptions(true, "ph", "reason"),
             )
             val dto = Image.fromModel(aImage("img1", name = "test img", targetFolder = "dir1", sourcePath = "source1"))
 
@@ -156,6 +164,10 @@ class MappingEntityTest {
             assertEquals(result.name, "new name")
             assertEquals(result.targetFolder, "new folder")
             assertEquals(result.sourcePath, "new path")
+            assertEquals(result.imageType, ImageType.Gif)
+            assertEquals(result.skip.skipped, true)
+            assertEquals(result.skip.placeholder, "ph")
+            assertEquals(result.skip.reason, "reason")
         }
     }
 

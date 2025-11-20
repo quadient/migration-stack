@@ -46,6 +46,7 @@ sealed class MappingItemEntity {
         val targetFolder: String?,
         val variableStructureRef: String?,
         @SerialName("documentObjectType") val type: DocumentObjectType?,
+        var skip: SkipOptions?,
     ) : MappingItemEntity() {
 
         fun apply(item: DocumentObjectDto): DocumentObjectDto {
@@ -56,7 +57,9 @@ sealed class MappingItemEntity {
                 targetFolder = targetFolder ?: item.targetFolder,
                 type = type ?: item.type,
                 variableStructureRef = variableStructureRef?.let { VariableStructureRef(it) }
-                    ?: item.variableStructureRef)
+                    ?: item.variableStructureRef,
+                skip = skip ?: item.skip,
+            )
         }
     }
 
@@ -88,6 +91,7 @@ sealed class MappingItemEntity {
         val targetFolder: String?,
         val sourcePath: String?,
         val imageType: ImageType? = null,
+        var skip: SkipOptions?,
     ) : MappingItemEntity() {
         fun apply(item: ImageDto): ImageDto {
             return item.copy(
@@ -95,6 +99,7 @@ sealed class MappingItemEntity {
                 targetFolder = targetFolder ?: item.targetFolder,
                 sourcePath = sourcePath ?: item.sourcePath,
                 imageType = imageType ?: item.imageType,
+                skip = skip ?: item.skip,
             )
         }
     }
@@ -285,6 +290,7 @@ sealed class MappingItemEntity {
                     targetFolder = this.targetFolder,
                     type = this.type,
                     variableStructureRef = this.variableStructureRef,
+                    skip = this.skip
                 )
             }
 
@@ -296,6 +302,7 @@ sealed class MappingItemEntity {
                     targetFolder = this.targetFolder,
                     sourcePath = this.sourcePath,
                     imageType = this.imageType,
+                    skip = this.skip
                 )
             }
 

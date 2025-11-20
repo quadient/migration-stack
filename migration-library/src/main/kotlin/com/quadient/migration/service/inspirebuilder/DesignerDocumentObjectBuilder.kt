@@ -164,15 +164,24 @@ class DesignerDocumentObjectBuilder(
         }
 
         pageModels.forEach {
-            buildPage(
-                layout,
-                variableStructure,
-                it.nameOrId(),
-                it.content,
-                documentObject,
-                it.options as? PageOptions,
-                languages,
-            )
+            if (it.skip.skipped && it.skip.placeholder != null) {
+                val page = layout.addPage().setName("Page (skipped)").setType(Pages.PageConditionType.SIMPLE)
+                val flow = layout.addFlow().setType(Flow.Type.SIMPLE)
+                flow.addParagraph().addText().appendText("Skipped page: '${it.nameOrId()}'. Placeholder: ${it.skip.placeholder}")
+                page.addFlowArea().setPosX(defaultPosition.x.toMeters()).setPosY(defaultPosition.y.toMeters())
+                    .setWidth(defaultPosition.width.toMeters()).setHeight(defaultPosition.height.toMeters())
+                    .setFlow(flow)
+            } else if (!it.skip.skipped) {
+                buildPage(
+                    layout,
+                    variableStructure,
+                    it.nameOrId(),
+                    it.content,
+                    documentObject,
+                    it.options as? PageOptions,
+                    languages,
+                )
+            }
         }
 
         if (virtualPageContent.isNotEmpty() || pageModels.isEmpty()) {
@@ -287,16 +296,19 @@ class DesignerDocumentObjectBuilder(
         if (content.size == 1 && content.first() is ImageModelRef) {
             val imageModel = imageRepository.findModelOrFail((content.first() as ImageModelRef).id)
 
-            val imagePlaceholder = getImagePlaceholder(imageModel)
-            if (imagePlaceholder == null) {
-                page.addImageArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
-                    .setWidth(position.width.toMeters()).setHeight(position.height.toMeters())
-                    .setImage(getOrBuildImage(layout, imageModel))
-            } else {
-                val flow = layout.addFlow()
-                flow.addParagraph().addText().appendText(imagePlaceholder)
-                page.addFlowArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
-                    .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlow(flow)
+            when (val imagePlaceholder = getImagePlaceholder(imageModel)) {
+                is ImagePlaceholderResult.Skip -> return
+                is ImagePlaceholderResult.RenderAsNormal -> {
+                    page.addImageArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
+                        .setWidth(position.width.toMeters()).setHeight(position.height.toMeters())
+                        .setImage(getOrBuildImage(layout, imageModel))
+                }
+                is ImagePlaceholderResult.Placeholder -> {
+                    val flow = layout.addFlow()
+                    flow.addParagraph().addText().appendText(imagePlaceholder.value)
+                    page.addFlowArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
+                        .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlow(flow)
+                }
             }
         } else {
             page.addFlowArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())

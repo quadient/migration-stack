@@ -7,8 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Ability to skip document objects and images on purpose
 
 ### Changed
+- **Breaking** Removed the `Unsupported` document object type
 
 ### Fixed
 - Language variable boolean value is now correctly parsed in VariablesImport script

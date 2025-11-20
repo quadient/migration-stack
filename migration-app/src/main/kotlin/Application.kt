@@ -63,7 +63,7 @@ fun Application.module() {
                         val migration = Migration(settings.migrationConfig, settings.projectConfig)
 
                         val documentObjects = migration.documentObjectRepository.listAll()
-                        val (unsupported, supported) = documentObjects.partition { it.type === DocumentObjectType.Unsupported }
+                        val (unsupported, supported) = documentObjects.partition { it.skip.skipped }
 
                         call.respond(StatisticsResponse(unsupported.size, supported.size))
                     } catch (e: IllegalArgumentException) {

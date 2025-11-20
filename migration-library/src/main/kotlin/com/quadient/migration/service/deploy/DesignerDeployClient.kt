@@ -18,6 +18,7 @@ import com.quadient.migration.shared.DocumentObjectType
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.json.extract
 import kotlin.uuid.ExperimentalUuidApi
 
 class DesignerDeployClient(
@@ -114,14 +115,12 @@ class DesignerDeployClient(
 
     override fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObjectModel> {
         val documentObjects = documentObjectRepository.list(DocumentObjectTable.id inList documentObjectIds)
-        val invalidTypeIds = mutableListOf<String>()
+        val skippedIds = mutableListOf<String>()
         val internal = mutableListOf<String>()
         for (documentObject in documentObjects) {
-            when (documentObject.type) {
-                DocumentObjectType.Unsupported -> invalidTypeIds.add(documentObject.id)
-                DocumentObjectType.Page, DocumentObjectType.Template, DocumentObjectType.Block, DocumentObjectType.Section -> {}
-            }
-            if (documentObject.internal) {
+            if (documentObject.skip.skipped) {
+                skippedIds.add(documentObject.id)
+            } else if (documentObject.internal) {
                 internal.add(documentObject.id)
             }
         }
@@ -136,12 +135,8 @@ class DesignerDeployClient(
         if (internal.isNotEmpty()) {
             error += "The following document objects are internal: [${internal.joinToString(", ")}]. "
         }
-        if (invalidTypeIds.isNotEmpty()) {
-            error += "The following document objects cannot be deployed due to their type: [${
-                invalidTypeIds.joinToString(
-                    ", "
-                )
-            }]. "
+        if (skippedIds.isNotEmpty()) {
+            error += "The following document objects are skipped: [${skippedIds.joinToString(", ")}]. "
         }
 
         require(error.isEmpty()) { error }
@@ -157,7 +152,7 @@ class DesignerDeployClient(
                 DocumentObjectType.Template.toString(),
                 DocumentObjectType.Block.toString(),
                 DocumentObjectType.Section.toString()
-            ) and DocumentObjectTable.internal.eq(false))
+            ) and DocumentObjectTable.internal.eq(false) and (DocumentObjectTable.skip.extract<String>("skipped") eq "false"))
         )
     }
 }

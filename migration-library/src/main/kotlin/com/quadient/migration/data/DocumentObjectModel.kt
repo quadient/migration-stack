@@ -5,6 +5,7 @@ import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.SkipOptions
 import kotlinx.datetime.Instant
 
 data class DocumentObjectModel(
@@ -23,6 +24,7 @@ data class DocumentObjectModel(
     val baseTemplate: String?,
     val options: DocumentObjectOptions?,
     val metadata: Map<String, List<MetadataPrimitive>>,
+    val skip: SkipOptions,
 ) : RefValidatable, MigrationObjectModel {
     override fun collectRefs(): List<RefModel> {
         return this.content.map {

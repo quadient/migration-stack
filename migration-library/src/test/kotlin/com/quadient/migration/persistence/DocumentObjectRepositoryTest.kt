@@ -50,6 +50,7 @@ class DocumentObjectRepositoryTest {
             .targetFolder("acquired")
             .displayRuleRef("someruleref")
             .baseTemplate("someBaseTemplate")
+            .skip("reason", "placeholder")
             .build()
 
         repo.upsert(dto)
@@ -123,18 +124,6 @@ class DocumentObjectRepositoryTest {
 
         result.shouldBeOfSize(3)
         result.map{ it.id }.shouldBeEqualTo(listOf("parent1", "parent2", "parent3"))
-    }
-
-    @Test
-    fun `unsupported document object type`() {
-        val input = aBlockDto("myblock", listOf(), type = DocumentObjectType.Unsupported)
-
-        repo.upsert(input)
-
-        val result = repo.listAll()
-        assertEquals(1, result.size)
-        assertEquals(input.id, result.first().id)
-        assertEquals(DocumentObjectType.Unsupported, result.first().type)
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.SkipOptions
 
 class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
     var sourcePath: String? = null
@@ -11,6 +12,9 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
     var options: ImageOptions? = null
     var targetFolder: String? = null
     var metadata: MutableMap<String, List<MetadataPrimitive>> = mutableMapOf()
+    var skip = false
+    var placeholder: String? = null
+    var reason: String? = null
 
     /**
      * Sets source path of the image. This path is relative to the storage root folder.
@@ -55,6 +59,12 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
         }
     }
 
+    fun skip(placeholder: String? = null, reason: String? = null) = apply {
+        this.skip = true
+        this.placeholder = placeholder
+        this.reason = reason
+    }
+
     /**
      * Builds the Image instance with the provided properties.
      * @return the built Image instance
@@ -70,6 +80,7 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
             options = options,
             targetFolder = targetFolder,
             metadata = metadata,
+            skip = SkipOptions(skipped = skip, reason = reason, placeholder = placeholder),
         )
     }
 }

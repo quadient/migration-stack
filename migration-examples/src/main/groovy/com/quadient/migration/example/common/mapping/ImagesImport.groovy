@@ -11,6 +11,7 @@ import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.ImageType
+import com.quadient.migration.shared.SkipOptions
 
 import java.nio.file.Path
 
@@ -61,6 +62,12 @@ static void run(Migration migration, Path imagesFilePath) {
         if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deployed") {
             migration.statusTrackingRepository.deployed(existingImage.id, deploymentId, now, ResourceType.Image, null, output, [reason: "Manual"])
         }
+
+        boolean newSkip = Csv.deserialize(values.get("skip"), boolean)
+        def newSkipReason = Csv.deserialize(values.get("skipReason"), String.class)
+        def newSkipPlaceholder = Csv.deserialize(values.get("skipPlaceholder"), String.class)
+        def skipObj = new SkipOptions(newSkip, newSkipPlaceholder, newSkipReason)
+        Mapping.mapProp(existingMapping, existingImage, "skip", skipObj)
 
         migration.mappingRepository.upsert(id, existingMapping)
         migration.mappingRepository.applyImageMapping(id)

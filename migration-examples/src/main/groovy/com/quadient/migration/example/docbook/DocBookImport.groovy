@@ -65,7 +65,7 @@ def parseTemplate(File xmlFile) {
                     }
                 }
                 String id = nodeItem.@id
-                blocks.add(upsertBlock(id, paragraphs, null, [source]))
+                blocks.add(upsertBlock(id, paragraphs, null, [source], false))
             }
         }
         if (nodeItem.name() == "para" || nodeItem.name() == "title") {
@@ -73,10 +73,10 @@ def parseTemplate(File xmlFile) {
                 String id = "image_" + imageId.toString()
                 imageId++
                 Map<String, String> customFields = ["image": nodeItem.inlinegraphic.@fileref.toString()]
-                blocks.add(upsertBlock(id, [], customFields, [source], DocumentObjectType.Unsupported))
+                blocks.add(upsertBlock(id, [], customFields, [source], true, DocumentObjectType.Block))
             } else {
                 String id = "emptyLine"
-                blocks.add(upsertBlock(id, [new Paragraph("")], null, [source]))
+                blocks.add(upsertBlock(id, [new Paragraph("")], null, [source], false))
             }
         }
     }
@@ -88,11 +88,15 @@ DocumentObject upsertBlock(String id,
                            List<DocumentContent> paragraphs,
                            Map<String, String> customFields,
                            List<String> originLocations,
+                           Boolean skip,
                            DocumentObjectType type = DocumentObjectType.Block) {
     def blockBuilder = new DocumentObjectBuilder(id, type)
             .content(paragraphs)
             .originLocations(originLocations)
             .internal(true)
+    if (skip) {
+        blockBuilder.skip(null, null)
+    }
 
     if (customFields != null) {
         blockBuilder.customFields(customFields)

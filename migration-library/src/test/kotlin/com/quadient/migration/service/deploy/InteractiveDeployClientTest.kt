@@ -25,6 +25,7 @@ import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.ImageType
+import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.tools.aActiveStatus
 import com.quadient.migration.tools.aBlockModel
 import com.quadient.migration.tools.aDeployedStatus
@@ -205,7 +206,7 @@ class InteractiveDeployClientTest {
                 )
             )
         )
-        aBlock("2", type = DocumentObjectType.Unsupported)
+        aBlock("2", skip = SkipOptions(true, null, null))
         val template =
             mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("block1"), aDocumentObjectRef("block2"))))
 
@@ -423,14 +424,14 @@ class InteractiveDeployClientTest {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
         every { documentObjectRepository.list(any()) } returns listOf(
-            aBlock(id = "1", type = DocumentObjectType.Unsupported),
+            aBlock(id = "1", skip = SkipOptions(true, null, null)),
             aBlock(id = "2", type = DocumentObjectType.Block),
-            aBlock(id = "3", type = DocumentObjectType.Unsupported),
+            aBlock(id = "3", skip = SkipOptions(true, null, null)),
         )
 
         val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(listOf("1", "2", "3")) }
 
-        assertEquals("The following document objects are unsupported: [1, 3]. ", ex.message)
+        assertEquals("The following document objects are skipped: [1, 3]. ", ex.message)
         verify(exactly = 1) { documentObjectRepository.list(any()) }
     }
 
@@ -473,7 +474,7 @@ class InteractiveDeployClientTest {
             aBlock(id = "2", internal = true),
             aBlock(id = "3"),
             aBlock(id = "5"),
-            aBlock(id = "6", type = DocumentObjectType.Unsupported),
+            aBlock(id = "6", skip = SkipOptions(true, null, null)),
             aBlock(id = "7"),
         )
 
@@ -486,7 +487,7 @@ class InteractiveDeployClientTest {
         }
 
         assertEquals(
-            "The following document objects were not found: [8]. The following document objects are unsupported: [6]. The following document objects are internal: [2]. ",
+            "The following document objects were not found: [8]. The following document objects are skipped: [6]. The following document objects are internal: [2]. ",
             ex.message
         )
         verify(exactly = 1) { documentObjectRepository.list(any()) }

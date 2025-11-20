@@ -39,6 +39,7 @@ import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.TabType
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.shared.millimeters
@@ -611,7 +612,7 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build of template skips unsupported block and template is created without it`() {
         // given
-        val unsupportedBlock = aBlock("1", type = Unsupported)
+        val unsupportedBlock = aBlock("1", skip = SkipOptions(true, null, null))
         every { documentObjectRepository.findModelOrFail("block1") } returns unsupportedBlock
         val template = aTemplate("10", listOf(aDocumentObjectRef("block1")))
 
@@ -757,8 +758,8 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with unknown image and image with missing source path renders placeholder texts instead`() {
         // given
-        val catImage = aImage("Cat", imageType = ImageType.Unknown)
-        val dogImage = aImage("Dog", sourcePath = "")
+        val catImage = aImage("Cat", imageType = ImageType.Unknown, skip = SkipOptions(true, "Cat placeholder", null))
+        val dogImage = aImage("Dog", sourcePath = "", skip = SkipOptions(true, "Dog placeholder", null))
 
         val block = aBlock(
             "1", listOf(ImageModelRef(catImage.id), aParagraph(aText(ImageModelRef(dogImage.id))))
@@ -775,8 +776,8 @@ class InteractiveDocumentObjectBuilderTest {
         val blockFlow = result["Flow"].last { it["Id"].textValue() != "Def.MainFlow" }
         val paragraphs = blockFlow["FlowContent"]["P"]
         paragraphs.size().shouldBeEqualTo(2)
-        paragraphs[0]["T"][""].textValue().shouldBeEqualTo("Unknown image: ${catImage.nameOrId()}")
-        paragraphs[1]["T"][""].textValue().shouldBeEqualTo("Image without source path: ${dogImage.nameOrId()}")
+        paragraphs[0]["T"][""].textValue().shouldBeEqualTo("Cat placeholder")
+        paragraphs[1]["T"][""].textValue().shouldBeEqualTo("Dog placeholder")
     }
 
     @Test

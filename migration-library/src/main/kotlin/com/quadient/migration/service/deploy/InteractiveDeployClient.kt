@@ -16,11 +16,10 @@ import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
-import com.quadient.migration.shared.DocumentObjectType
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.neq
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.json.extract
 import kotlin.uuid.ExperimentalUuidApi
 
 class InteractiveDeployClient(
@@ -61,7 +60,7 @@ class InteractiveDeployClient(
 
     override fun getAllDocumentObjectsToDeploy(): List<DocumentObjectModel> {
         return documentObjectRepository.list(
-            DocumentObjectTable.type neq DocumentObjectType.Unsupported.toString() and DocumentObjectTable.internal.eq(
+            DocumentObjectTable.skip.extract<String>("skipped") eq "false" and DocumentObjectTable.internal.eq(
                 false
             )
         ).let { deployOrder(it) }
@@ -69,11 +68,11 @@ class InteractiveDeployClient(
 
     override fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObjectModel> {
         val documentObjects = documentObjectRepository.list(DocumentObjectTable.id inList documentObjectIds)
-        val unsupported = mutableListOf<String>()
+        val skipped = mutableListOf<String>()
         val internal = mutableListOf<String>()
         for (documentObject in documentObjects) {
-            if (documentObject.type == DocumentObjectType.Unsupported) {
-                unsupported.add(documentObject.id)
+            if (documentObject.skip.skipped) {
+                skipped.add(documentObject.id)
             }
             if (documentObject.internal) {
                 internal.add(documentObject.id)
@@ -87,8 +86,8 @@ class InteractiveDeployClient(
         if (notFoundDocObjects.isNotEmpty()) {
             error += "The following document objects were not found: [${notFoundDocObjects.joinToString(", ")}]. "
         }
-        if (unsupported.isNotEmpty()) {
-            error += "The following document objects are unsupported: [${unsupported.joinToString(", ")}]. "
+        if (skipped.isNotEmpty()) {
+            error += "The following document objects are skipped: [${skipped.joinToString(", ")}]. "
         }
         if (internal.isNotEmpty()) {
             error += "The following document objects are internal: [${internal.joinToString(", ")}]. "

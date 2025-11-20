@@ -48,6 +48,7 @@ class MappingRepository(
             targetFolder = null,
             type = null,
             variableStructureRef = null,
+            skip = null,
         )).toDto() as MappingItem.DocumentObject
     }
 
@@ -86,6 +87,7 @@ class MappingRepository(
             targetFolder = null,
             sourcePath = null,
             imageType = null,
+            skip = null,
         )).toDto() as MappingItem.Image
     }
 

@@ -14,7 +14,7 @@ def migration = initMigration(this.binding)
 
 def objects = migration.documentObjectRepository
         .listAll()
-        .findAll { !it.internal && it.type != DocumentObjectType.Unsupported }
+        .findAll { !it.internal && !it.skip.skipped }
 
 def documentObjFile = PathUtil.dataDirPath(binding, "deploy", "${migration.projectConfig.name}-document-objects").toFile()
 

@@ -52,6 +52,7 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.tools.model.aDisplayRuleInternalRepository
 import com.quadient.migration.tools.model.aDocumentObjectInternalRepository
@@ -88,7 +89,8 @@ fun aBlockDto(
         targetFolder = targetFolder,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
-        metadata = emptyMap()
+        metadata = emptyMap(),
+        skip = SkipOptions(false, null, null),
     )
 }
 
@@ -118,7 +120,8 @@ fun aBlockModel(
         displayRuleRef = null,
         baseTemplate = baseTemplate,
         options = options,
-        metadata = emptyMap()
+        metadata = emptyMap(),
+        skip = SkipOptions(false, null, null),
     )
 }
 

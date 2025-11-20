@@ -27,7 +27,7 @@ static void run(Migration migration, Path documentObjectsDstPath) {
     documentObjectsDstPath.toFile().createParentDirectories()
 
     documentObjectsDstPath.toFile().withWriter { writer ->
-        writer.writeLine("id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status")
+        writer.writeLine("id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status,skip,skipPlaceholder,skipReason")
         objects.each { obj ->
             def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(obj.id,
                     ResourceType.DocumentObject,
@@ -43,6 +43,9 @@ static void run(Migration migration, Path documentObjectsDstPath) {
             builder.append("," + Csv.serialize(obj.targetFolder))
             builder.append("," + Csv.serialize(obj.variableStructureRef?.id))
             builder.append("," + Csv.serialize(status.class.simpleName))
+            builder.append("," + Csv.serialize(obj.skip.skipped))
+            builder.append("," + Csv.serialize(obj.skip.placeholder))
+            builder.append("," + Csv.serialize(obj.skip.reason))
 
             writer.writeLine(builder.toString())
         }
