@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [17.0.8] - 2025-11-28
+
+### Added
 - Ability to skip document objects and images on purpose
 
 ### Changed
@@ -106,7 +114,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.7...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.8...HEAD
+[17.0.8]: https://github.com/quadient/migration-stack/compare/v17.0.7..v17.0.8
 [17.0.7]: https://github.com/quadient/migration-stack/compare/v17.0.6..v17.0.7
 [17.0.6]: https://github.com/quadient/migration-stack/compare/v17.0.5..v17.0.6
 [17.0.5]: https://github.com/quadient/migration-stack/compare/v17.0.4..v17.0.5
