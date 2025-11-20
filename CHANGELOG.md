@@ -11,7 +11,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Changed
 
 ### Fixed
+
+## [17.0.9] - 2025-11-28
+
+### Added
+
+### Changed
+
+### Fixed
 - Handle SelectByLanguage in complexity report
+- Skip mapping migration not correctly handling Unsupported document object mapping
 
 ## [17.0.8] - 2025-11-28
 
@@ -115,7 +124,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.8...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.9...HEAD
+[17.0.9]: https://github.com/quadient/migration-stack/compare/v17.0.8..v17.0.9
 [17.0.8]: https://github.com/quadient/migration-stack/compare/v17.0.7..v17.0.8
 [17.0.7]: https://github.com/quadient/migration-stack/compare/v17.0.6..v17.0.7
 [17.0.6]: https://github.com/quadient/migration-stack/compare/v17.0.5..v17.0.6

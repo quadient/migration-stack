@@ -57,6 +57,7 @@ class V6__skip_upgrade : BaseJavaMigration() {
 
                 val originalDef = mapper.readTree(mapping ?: "{}") as ObjectNode
                 originalDef.putPOJO("skip", SkipOptions(skipped = true, placeholder = null, reason = "Unsupported document object type"))
+                originalDef.putNull("documentObjectType")
                 val mappingJson = mapper.writeValueAsString(originalDef)
 
                 if (mapping != null) {

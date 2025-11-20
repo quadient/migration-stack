@@ -46,7 +46,7 @@ sealed class MappingItemEntity {
         val targetFolder: String?,
         val variableStructureRef: String?,
         @SerialName("documentObjectType") val type: DocumentObjectType?,
-        var skip: SkipOptions?,
+        var skip: SkipOptions? = null,
     ) : MappingItemEntity() {
 
         fun apply(item: DocumentObjectDto): DocumentObjectDto {
@@ -91,7 +91,7 @@ sealed class MappingItemEntity {
         val targetFolder: String?,
         val sourcePath: String?,
         val imageType: ImageType? = null,
-        var skip: SkipOptions?,
+        var skip: SkipOptions? = null,
     ) : MappingItemEntity() {
         fun apply(item: ImageDto): ImageDto {
             return item.copy(

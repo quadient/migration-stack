@@ -16,7 +16,7 @@ sealed class MappingItem {
         var targetFolder: String?,
         var type: DocumentObjectType?,
         var variableStructureRef: String?,
-        var skip: SkipOptions?,
+        var skip: SkipOptions? = null,
     ) : MappingItem()
 
     data class Area(
@@ -29,7 +29,7 @@ sealed class MappingItem {
         var targetFolder: String?,
         var sourcePath: String?,
         var imageType: ImageType?,
-        var skip: SkipOptions?,
+        var skip: SkipOptions? = null,
     ) : MappingItem()
 
     data class ParagraphStyle(override var name: String?, var definition: Definition?) : MappingItem() {
