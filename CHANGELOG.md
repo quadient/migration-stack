@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Improved error message when active project config could not be found
 
 ### Fixed
+- Metadata db migration not setting a proper default value
 
 ## [17.0.9] - 2025-11-28
 
