@@ -9,12 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 
 ### Changed
+
+### Fixed
+
+## [17.0.10] - 2025-11-21
+
+### Added
+
+### Changed
 - Improved error message when active project config could not be found
 
 ### Fixed
 - Metadata db migration not setting a proper default value
 
-## [17.0.9] - 2025-11-28
+## [17.0.9] - 2025-11-20
 
 ### Added
 
@@ -24,7 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Handle SelectByLanguage in complexity report
 - Skip mapping migration not correctly handling Unsupported document object mapping
 
-## [17.0.8] - 2025-11-28
+## [17.0.8] - 2025-11-20
 
 ### Added
 - Ability to skip document objects and images on purpose
@@ -126,7 +134,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.9...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.10...HEAD
+[17.0.10]: https://github.com/quadient/migration-stack/compare/v17.0.9..v17.0.10
 [17.0.9]: https://github.com/quadient/migration-stack/compare/v17.0.8..v17.0.9
 [17.0.8]: https://github.com/quadient/migration-stack/compare/v17.0.7..v17.0.8
 [17.0.7]: https://github.com/quadient/migration-stack/compare/v17.0.6..v17.0.7
