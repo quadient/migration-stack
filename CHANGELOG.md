@@ -7,10 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Add read-only column/field `originalName` to relevant mapping files
 
 ### Changed
+- Align originLocations to the right in mapping CSVs (and unify the naming to `originlocations`)
+- Mark read-only columns with a `(read-only)` suffix in CSV headers
+- Allow mapping of empty (delete) values in mapping CSVs (useful for variable structure path/name)
 
 ### Fixed
+- Fix mapping of areas that incorrectly assigned areas to their positions
 
 ## [17.0.10] - 2025-11-21
 
