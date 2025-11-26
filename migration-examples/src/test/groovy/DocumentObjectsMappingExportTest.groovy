@@ -27,7 +27,7 @@ class DocumentObjectsMappingExportTest {
                 new DocumentObject("should not be listed because internal", null, [], new CustomFieldMap([:]), DocumentObjectType.Block, [], true, null, null, null, null, null, null, null, [:], emptySkipOptions()),
                 new DocumentObject("full", "full", ["foo", "bar"], new CustomFieldMap([:]), DocumentObjectType.Page, [], false, "someDir", null, new VariableStructureRef("struct"), "tmpl.wfd", null, null, null, [:], new SkipOptions(true, "placeholder", "reason")),
                 new DocumentObject("overridden empty", null, [], new CustomFieldMap([:]), DocumentObjectType.Block, [], false, null, null, null, null, null, null, null, [:], emptySkipOptions()),
-                new DocumentObject("overridden full", "full", ["foo", "bar"], new CustomFieldMap([:]), DocumentObjectType.Page, [], false, "someDir", null, new VariableStructureRef("struct"), "tmpl.wfd", null, null, null, [:], emptySkipOptions()),
+                new DocumentObject("overridden full", "full", ["foo", "bar"], new CustomFieldMap(["originalName": "originalFull"]), DocumentObjectType.Page, [], false, "someDir", null, new VariableStructureRef("struct"), "tmpl.wfd", null, null, null, [:], emptySkipOptions()),
         ])
 
         when(migration.statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any())).thenReturn(new Active())
@@ -35,11 +35,11 @@ class DocumentObjectsMappingExportTest {
         DocumentObjectsExport.run(migration, mappingFile)
 
         def expected = """\
-            id,name,type,internal,baseTemplate,targetFolder,variableStructureId,status,skip,skipPlaceholder,skipReason,originLocations (read-only)
-            empty,,Block,false,,,,Active,false,,,[]
-            full,full,Page,false,tmpl.wfd,someDir,struct,Active,true,placeholder,reason,[foo; bar]
-            overridden empty,,Block,false,,,,Active,false,,,[]
-            overridden full,full,Page,false,tmpl.wfd,someDir,struct,Active,false,,,[foo; bar]
+            id,name,type,internal,baseTemplate,targetFolder,variableStructureId,status,skip,skipPlaceholder,skipReason,originalName (read-only),originLocations (read-only)
+            empty,,Block,false,,,,Active,false,,,,[]
+            full,full,Page,false,tmpl.wfd,someDir,struct,Active,true,placeholder,reason,,[foo; bar]
+            overridden empty,,Block,false,,,,Active,false,,,,[]
+            overridden full,full,Page,false,tmpl.wfd,someDir,struct,Active,false,,,originalFull,[foo; bar]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
