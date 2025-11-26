@@ -52,7 +52,7 @@ sealed class MappingItemEntity {
         fun apply(item: DocumentObjectDto): DocumentObjectDto {
             return item.copy(
                 name = name,
-                internal = internal,
+                internal = internal ?: false,
                 baseTemplate = baseTemplate,
                 targetFolder = targetFolder,
                 type = type ?: item.type,
@@ -71,15 +71,15 @@ sealed class MappingItemEntity {
                 return item
             }
 
-            var idx = 0
-            for (obj in item.content) {
-                if (obj is AreaDto && areas.contains(idx)) {
-                    obj.interactiveFlowName = areas[idx]
+            val objectAreas = item.content.filter { it is AreaDto }
+
+            if (objectAreas.size == areas.size) {
+                for ((idx, obj) in objectAreas.withIndex()) {
+                    (obj as AreaDto).interactiveFlowName = areas[idx]
                 }
-                idx++
             }
 
-            return item.copy(name = name ?: item.name, content = item.content)
+            return item.copy(content = item.content)
         }
     }
 

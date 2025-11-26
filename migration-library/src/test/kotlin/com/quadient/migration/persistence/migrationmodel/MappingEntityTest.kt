@@ -1,6 +1,7 @@
 package com.quadient.migration.persistence.migrationmodel
 
 import com.quadient.migration.api.dto.migrationmodel.Area
+import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
@@ -24,7 +25,9 @@ import com.quadient.migration.tools.aTextStyleDefinition
 import com.quadient.migration.tools.aVariable
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aImage
+import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.anArea
+import com.quadient.migration.tools.shouldBeEqualTo
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -33,7 +36,7 @@ class MappingEntityTest {
     @Nested
     inner class DocumentObjectTest {
         @Test
-        fun `nothing changes for document object with null mapping`() {
+        fun `document object mapped to null has skip set to default, type retained, and rest nullified`() {
             val mapping = MappingItemEntity.DocumentObject(
                 name = null,
                 internal = null,
@@ -56,10 +59,10 @@ class MappingEntityTest {
 
             val result = mapping.apply(dto)
 
-            assertEquals(result.name, "Test doc")
-            assertEquals(result.internal, true)
-            assertEquals(result.baseTemplate, "base1")
-            assertEquals(result.targetFolder, "folder1")
+            assertEquals(result.name, null)
+            assertEquals(result.internal, false)
+            assertEquals(result.baseTemplate, null)
+            assertEquals(result.targetFolder, null)
             assertEquals(result.type, DocumentObjectType.Section)
         }
 
@@ -117,22 +120,38 @@ class MappingEntityTest {
 
         @Test
         fun `maps interactiveFlowName`() {
-            val mapping = MappingItemEntity.Area(name = null, areas = mutableMapOf(1 to "New Area Name"))
+            val mapping = MappingItemEntity.Area(
+                name = null, areas = mutableMapOf(0 to "AddedFirstAreaName", 1 to null, 2 to "AddedLastAreaName")
+            )
             val dto = DocumentObject.fromModel(
-                aDocObj("doc1", content = listOf(anArea(emptyList(), null, "Area 1"), anArea(emptyList(), null, "Area 2")))
+                aDocObj(
+                    "doc1", content = listOf(
+                        anArea(emptyList(), null, null),
+                        aParagraph("Default paragraph content"),
+                        anArea(emptyList(), null, "MiddleAreaFlow"),
+                        aParagraph("Another paragraph content"),
+                        anArea(emptyList(), null, null),
+                    )
+                )
             )
 
             val result = mapping.apply(dto)
 
-            assertEquals((result.content[0] as Area).interactiveFlowName, "Area 1")
-            assertEquals((result.content[1] as Area).interactiveFlowName, "New Area Name")
+            result.content.shouldBeEqualTo(
+                listOf(
+                    anArea(emptyList(), null, "AddedFirstAreaName"),
+                    aParagraph("Default paragraph content"),
+                    anArea(emptyList(), null, null),
+                    aParagraph("Another paragraph content"),
+                    anArea(emptyList(), null, "AddedLastAreaName"),
+                ).map { DocumentContent.fromModelContent(it) })
         }
     }
 
     @Nested
     inner class ImageTest {
         @Test
-        fun `nothing changes for image with null mapping`() {
+        fun `image mapped to null has skip set to default and rest nullified`() {
             val mapping = MappingItemEntity.Image(
                 name = null,
                 targetFolder = null,
@@ -143,9 +162,10 @@ class MappingEntityTest {
 
             val result = mapping.apply(dto)
 
-            assertEquals(result.name, "test img")
-            assertEquals(result.targetFolder, "dir1")
-            assertEquals(result.sourcePath, "source1")
+            assertEquals(result.name, null)
+            assertEquals(result.targetFolder, null)
+            assertEquals(result.sourcePath, null)
+            assertEquals(result.skip, SkipOptions(false, null, null))
         }
 
         @Test
@@ -421,7 +441,7 @@ class MappingEntityTest {
     @Nested
     inner class VariableTest {
         @Test
-        fun `nothing changes for variable with null mapping`() {
+        fun `variable mapped to null has name changed to null but retains data type`() {
             val mapping = MappingItemEntity.Variable(
                 name = null,
                 dataType = null,
@@ -430,7 +450,7 @@ class MappingEntityTest {
 
             val resultVar = mapping.apply(dto)
 
-            assertEquals(resultVar.name, "Variable 1")
+            assertEquals(resultVar.name, null)
             assertEquals(resultVar.dataType, DataType.String)
         }
 
