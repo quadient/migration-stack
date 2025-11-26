@@ -37,7 +37,19 @@ static void run(Migration migration, Path path) {
     def usedPageIds = new ArrayList<String>()
 
     areasFile.withWriter { writer ->
-        writer.writeLine("templateId,templateName,pageId,pageName,interactiveFlowName,x,y,width,height,contentPreview")
+        def headers = [
+            Mapping.displayHeader("templateId", true),
+            Mapping.displayHeader("templateName", true),
+            Mapping.displayHeader("pageId", true),
+            Mapping.displayHeader("pageName", true),
+            Mapping.displayHeader("interactiveFlowName", false),
+            Mapping.displayHeader("x", true),
+            Mapping.displayHeader("y", true),
+            Mapping.displayHeader("width", true),
+            Mapping.displayHeader("height", true),
+            Mapping.displayHeader("contentPreview", true)
+        ]
+        writer.writeLine(headers.join(","))
         templates.each { template ->
             def templatePageRefs = template.content.findAll { it instanceof DocumentObjectRef && pageIds.contains(it.id) }
             templatePageRefs.each { templatePageRef ->

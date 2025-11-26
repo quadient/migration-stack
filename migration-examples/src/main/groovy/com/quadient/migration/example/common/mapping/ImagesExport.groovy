@@ -27,7 +27,8 @@ static void run(Migration migration, Path imagesDstPath) {
     imagesDstPath.toFile().createParentDirectories()
 
     imagesDstPath.toFile().withWriter { writer ->
-        writer.writeLine("id,name,sourcePath,imageType,targetFolder,status,originLocation,skip,skipPlaceholder,skipReason")
+        def headers = ["id", "name", "sourcePath", "imageType", "targetFolder", "status", "skip", "skipPlaceholder", "skipReason", Mapping.displayHeader("originalName", true), Mapping.displayHeader("originLocations", true)]
+        writer.writeLine(headers.join(","))
         images.each { obj ->
             def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(obj.id,
                     ResourceType.Image,
@@ -40,10 +41,11 @@ static void run(Migration migration, Path imagesDstPath) {
             builder.append("," + Csv.serialize(obj.imageType))
             builder.append("," + Csv.serialize(obj.targetFolder))
             builder.append("," + Csv.serialize(status.class.simpleName))
-            builder.append("," + Csv.serialize(obj.originLocations))
             builder.append("," + Csv.serialize(obj.skip.skipped))
             builder.append("," + Csv.serialize(obj.skip.placeholder))
             builder.append("," + Csv.serialize(obj.skip.reason))
+            builder.append("," + Csv.serialize(obj.customFields["originalName"]))
+            builder.append("," + Csv.serialize(obj.originLocations))
 
             writer.writeLine(builder.toString())
         }

@@ -55,22 +55,22 @@ class ParagraphStylesMappingExportTest {
 
         ParagraphStylesExport.run(migration, mappingFile)
 
-        "id,name,targetId,origin_locations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue"
+        "id,name,targetId,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue,originLocations (read-only)"
 
         def expected = """\
-            id,name,targetId,origin_locations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
-            empty,,,[],,,,,,Left,,,Additional,0.0mm
-            empty with targetId,,other,[],,,,,,,,,
-            full,full,,[foo; bar],25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm
-            full with targetId,full,other,[foo; bar],,,,,,,,,
-            empty overridden by def,,,[],,,,,,Left,,,Additional,0.0mm
-            empty overridden by ref,,,[],,,,,,Left,,,Additional,0.0mm
-            empty with targetId overridden by def,,other,[],,,,,,,,,
-            empty with targetId overridden by ref,,other,[],,,,,,,,,
-            full overridden by def,,,[],25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm
-            full overridden by ref,,other,[],,,,,,,,,
-            full with targetId overridden by def,,other,[],,,,,,,,,
-            full with targetId overridden by ref,,other,[],,,,,,,,,
+            id,name,targetId,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue,originLocations (read-only)
+            empty,,,,,,,,Left,,,Additional,0.0mm,[]
+            empty with targetId,,other,,,,,,,,,,[]
+            full,full,,25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm,[foo; bar]
+            full with targetId,full,other,,,,,,,,,,[foo; bar]
+            empty overridden by def,,,,,,,,Left,,,Additional,0.0mm,[]
+            empty overridden by ref,,,,,,,,Left,,,Additional,0.0mm,[]
+            empty with targetId overridden by def,,other,,,,,,,,,,[]
+            empty with targetId overridden by ref,,other,,,,,,,,,,[]
+            full overridden by def,,,25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm,[]
+            full overridden by ref,,other,,,,,,,,,,[]
+            full with targetId overridden by def,,other,,,,,,,,,,[]
+            full with targetId overridden by ref,,other,,,,,,,,,,[]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

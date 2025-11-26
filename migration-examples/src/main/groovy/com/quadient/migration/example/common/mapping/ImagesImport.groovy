@@ -28,7 +28,7 @@ static void run(Migration migration, Path imagesFilePath) {
     def now = new Date().getTime()
     def output = migration.projectConfig.inspireOutput
     def imageLines = imagesFilePath.toFile().readLines()
-    def imageColumnNames  = Csv.parseColumnNames(imageLines.removeFirst())
+    def imageColumnNames  = Csv.parseColumnNames(imageLines.removeFirst()).collect { Mapping.normalizeHeader(it) }
 
     for (line in imageLines) {
         def values = Csv.getCells(line, imageColumnNames)

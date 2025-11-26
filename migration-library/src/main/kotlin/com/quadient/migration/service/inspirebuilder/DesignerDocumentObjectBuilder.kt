@@ -145,7 +145,9 @@ class DesignerDocumentObjectBuilder(
         if (languageVariable != null) {
             val languageVariableModel = variableRepository.findModelOrFail(languageVariable.id)
             val languageVariablePathData = variableStructure.structure[languageVariable]
-                ?: error("Language variable '${languageVariable.id}' not found in variable structure '${variableStructure.id}'.")
+            if (languageVariablePathData == null || languageVariablePathData.path.isBlank()) {
+                error("Language variable '${languageVariable.id}' or its path not found in variable structure '${variableStructure.id}'.")
+            }
             val variable = getOrCreateVariable(layout.data, languageVariableModel.nameOrId(), languageVariableModel, languageVariablePathData.path)
             layout.data.setLanguageVariable(variable)
         }

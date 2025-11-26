@@ -40,7 +40,8 @@ static void run(Migration migration, Path dstPath) {
     def file = dstPath.toFile()
     file.createParentDirectories()
     file.withWriter { writer ->
-        writer.writeLine("id,name,targetId,origin_locations,${definitionOrder.join(",")}")
+        def headers = ["id","name","targetId"] + definitionOrder + [ Mapping.displayHeader("originLocations", true) ]
+        writer.writeLine(headers.join(","))
 
         styles.each { style ->
             def definition = style.definition
@@ -50,15 +51,15 @@ static void run(Migration migration, Path dstPath) {
             builder << "${Csv.serialize(style.name)},"
 
             if (definition instanceof TextStyleDefinition) {
-                builder << "," // targetId
-                builder << "${Csv.serialize(style.originLocations)},"
+                builder << "," // targetId (empty)
                 builder << definitionOrder.collect {
                     Csv.serialize(definition?."$it", getUnit(it))
                 }.join(",")
+                builder << ",${Csv.serialize(style.originLocations)}"
             } else if (definition instanceof TextStyleRef) {
                 builder << "${Csv.serialize(definition.id)}," // targetId
-                builder << "${Csv.serialize(style.originLocations)},"
                 builder << definitionOrder.collect { "" }.join(",")
+                builder << ",${Csv.serialize(style.originLocations)}"
             }
 
             writer.writeLine(builder.toString())
@@ -73,4 +74,3 @@ static Size.Unit getUnit(String name) {
         return Size.Unit.Millimeters
     }
 }
-

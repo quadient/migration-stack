@@ -42,7 +42,7 @@ class AreasExportTest {
         AreasExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName,pageId,pageName,interactiveFlowName,x,y,width,height,contentPreview
+            templateId (read-only),templateName (read-only),pageId (read-only),pageName (read-only),interactiveFlowName,x (read-only),y (read-only),width (read-only),height (read-only),contentPreview (read-only)
             full tmpl,,full page,,test flow2,0.0mm,0.0mm,0.0mm,0.0mm,
             full tmpl,,full page,,test flow3,0.0mm,0.0mm,0.0mm,0.0mm,
             full tmpl,,full page,,,0.0mm,0.0mm,0.0mm,0.0mm,

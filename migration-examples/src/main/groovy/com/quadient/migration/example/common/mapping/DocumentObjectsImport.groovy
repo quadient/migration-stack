@@ -28,7 +28,7 @@ static void run(Migration migration, Path documentObjFilePath) {
     def now = new Date().getTime()
     def docObjectLines = documentObjFilePath.toFile().readLines()
 
-    def docObjectColumnNames = Csv.parseColumnNames(docObjectLines.removeFirst())
+    def docObjectColumnNames = Csv.parseColumnNames(docObjectLines.removeFirst()).collect { Mapping.normalizeHeader(it) }
     def output = migration.projectConfig.inspireOutput
 
     for (line in docObjectLines) {
@@ -59,9 +59,9 @@ static void run(Migration migration, Path documentObjFilePath) {
         def newType = Csv.deserialize(values.get("type"), DocumentObjectType.class)
         Mapping.mapProp(existingMapping, existingDocObject, "type", newType)
 
-        def varStructure = Csv.deserialize(values.get("variableStructureId"), String.class)
-        if (varStructure != null && varStructure != "" && varStructure != existingDocObject.variableStructureRef?.id && varStructure != existingMapping.variableStructureRef)  {
-            existingMapping.variableStructureRef = varStructure
+        def varStructureRef = Csv.deserialize(values.get("variableStructureId"), String.class)
+        if (varStructureRef != existingDocObject.variableStructureRef?.id && varStructureRef != existingMapping.variableStructureRef) {
+            existingMapping.variableStructureRef = varStructureRef
         }
 
         def csvStatus = values.get("status")
