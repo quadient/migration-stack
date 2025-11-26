@@ -715,8 +715,8 @@ abstract class InspireDocumentObjectBuilder(
         val variableModel = variableRepository.findModelOrFail(ref.id)
 
         val variablePathData = variableStructure.structure[ref]
-        if (variablePathData == null) {
-            this.appendText("""$${variableModel.nameOrId()}$""")
+        if (variablePathData == null || variablePathData.path.isBlank()) {
+            this.appendText("""$${variablePathData?.name ?: variableModel.nameOrId()}$""")
         } else {
             val variableName = variablePathData.name ?: variableModel.nameOrId()
             this.appendVariable(getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path))
@@ -967,11 +967,11 @@ fun Binary.toScript(
     val rightScriptResult = right.toScript(layout, variableStructure, findVar)
 
     val binary = operator.toScript(leftScriptResult, rightScriptResult)
-    return if (leftScriptResult is ScriptResult.Success && rightScriptResult is ScriptResult.Success) {
+    return if (leftScriptResult is Success && rightScriptResult is Success) {
         binary
     } else {
         BinOp.Equals.toScript(
-            ScriptResult.Success("String('${binary.replace("'", "")}')"), ScriptResult.Success("String('unmapped')")
+            Success("String('${binary.replace("'", "")}')"), Success("String('unmapped')")
         )
     }
 }
@@ -1019,14 +1019,14 @@ fun Literal.toScript(
 ): ScriptResult {
     return when (dataType) {
         LiteralDataType.Variable -> variableToScript(value, layout, variableStructure, findVar)
-        LiteralDataType.String -> ScriptResult.Success(
+        LiteralDataType.String -> Success(
             "String('${
                 value.replace("\\", "\\\\").replace("\"", "\\\"")
             }')"
         )
 
-        LiteralDataType.Number -> ScriptResult.Success(value)
-        LiteralDataType.Boolean -> ScriptResult.Success(value.lowercase().toBooleanStrict().toString())
+        LiteralDataType.Number -> Success(value)
+        LiteralDataType.Boolean -> Success(value.lowercase().toBooleanStrict().toString())
     }
 }
 
@@ -1035,14 +1035,14 @@ fun variableToScript(
 ): ScriptResult {
     val variableModel = findVar(id)
     val variablePathData = variableStructure.structure[VariableModelRef(id)]
-    return if (variablePathData == null) {
-        ScriptResult.Failure(variableModel.nameOrId())
+    return if (variablePathData == null || variablePathData.path.isBlank()) {
+        Failure(variablePathData?.name ?: variableModel.nameOrId())
     } else {
         val variableName = variablePathData.name ?: variableModel.nameOrId()
 
         getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path)
 
-        ScriptResult.Success((variablePathData.path.split(".") + variableName).joinToString(".") { pathPart ->
+        Success((variablePathData.path.split(".") + variableName).joinToString(".") { pathPart ->
             when (pathPart.lowercase()) {
                 "value" -> "Current"
                 "data" -> "DATA"

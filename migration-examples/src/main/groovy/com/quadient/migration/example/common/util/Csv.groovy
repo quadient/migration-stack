@@ -131,13 +131,14 @@ static <T> T deserialize(String value, Class<T> cls) {
         case Color: return Color.fromHex(value) as T
         case Size: return Size.fromString(value) as T
         case Boolean:
-        case boolean: if (value.toLowerCase() == "true") {
-            return true as T
-        } else if (value.toLowerCase() == "false") {
-            return false as T
-        } else {
-            throw new RuntimeException("Invalid boolean value ${value}")
-        }
+        case boolean:
+            if (value.toLowerCase() == "true") {
+                return true as T
+            } else if (value.toLowerCase() == "false") {
+                return false as T
+            } else {
+                throw new RuntimeException("Invalid boolean value ${value}")
+            }
         case { it.isEnum() }: {
             def enumValue = cls.find { it.toString().equalsIgnoreCase(value) }
             if (enumValue == null) {

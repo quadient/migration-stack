@@ -28,7 +28,7 @@ class ParagraphStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
+            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
             new,newName,,[foo; bar],1m,1m,1m,1m,1m,Center,1m,true,Exact,
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -53,7 +53,7 @@ class ParagraphStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
+            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
             new,newName,otherStyle,[foo; bar],,,,,,,,,,
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -69,7 +69,7 @@ class ParagraphStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
+            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
             existing,someNewName,,[foo; bar],1m,1m,1m,1m,1m,Center,1m,true,AtLeast,1m
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -98,7 +98,7 @@ class ParagraphStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
+            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
             existing,someNewName,otherRef,[foo; bar],,,,,,,,,,
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -117,7 +117,7 @@ class ParagraphStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
+            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
             existing,someNewName,otherRef,[foo; bar],,,,,,,,,,
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -136,7 +136,7 @@ class ParagraphStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
+            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
             existing,someNewName,,[foo; bar],2m,2m,2m,2m,2m,Right,2m,false,AtLeast,2m
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -165,7 +165,7 @@ class ParagraphStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
+            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
             existing,someNewName,,[foo; bar],1m,1m,1m,2m,2m,Right,2m,true,Exact,1m
             """.stripIndent()
         mappingFile.toFile().write(input)
