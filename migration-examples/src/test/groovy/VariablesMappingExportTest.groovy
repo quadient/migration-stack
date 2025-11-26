@@ -38,13 +38,13 @@ class VariablesMappingExportTest {
         def text = mappingFile.toFile().text
 
         def expectedResult =
-                """id,name,data_type,inspire_path,inspire_name,origin_locations,language_variable
-empty,,String,,,[],,
-full,full name,Boolean,,,[foo; bar],true,
-overridden,full name,Boolean,override/path,overridden name,[foo; bar],,
+                """id,name,data_type,inspire_path,inspire_name,language_variable,originLocations (read-only)
+empty,,String,,,,[]
+full,full name,Boolean,,,true,[foo; bar]
+overridden,full name,Boolean,override/path,overridden name,,[foo; bar]
 """
 
-        Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
+         Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
     }
 
     @Test
@@ -59,7 +59,7 @@ overridden,full name,Boolean,override/path,overridden name,[foo; bar],,
 
         def text = mappingFile.toFile().text
 
-        def expectedResult = "id,name,data_type,inspire_path,inspire_name,origin_locations,language_variable\n"
+        def expectedResult = "id,name,data_type,inspire_path,inspire_name,language_variable,originLocations (read-only)\n"
 
         Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
     }

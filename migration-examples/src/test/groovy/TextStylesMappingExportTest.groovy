@@ -55,19 +55,19 @@ class TextStylesMappingExportTest {
         TextStylesExport.run(migration, mappingFile)
 
         def expected = """\
-            id,name,targetId,origin_locations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
-            empty,,,[],,,,false,false,false,false,None,
-            empty with targetId,,other,[],,,,,,,,,
-            full,full,,[foo; bar],Arial,#ff0000,72.0pt,true,true,true,true,Superscript,10.0mm
-            full with targetId,full,other,[foo; bar],,,,,,,,,
-            empty overridden by def,,,[],,,,false,false,false,false,None,
-            empty overridden by ref,,,[],,,,false,false,false,false,None,
-            empty with targetId overridden by def,,other,[],,,,,,,,,
-            empty with targetId overridden by ref,,other,[],,,,,,,,,
-            full overridden by def,,,[],Arial,#ff0000,72.0pt,true,true,true,true,Superscript,10.0mm
-            full overridden by ref,,other,[],,,,,,,,,
-            full with targetId overridden by def,,other,[],,,,,,,,,
-            full with targetId overridden by ref,,other,[],,,,,,,,,
+            id,name,targetId,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing,originLocations (read-only)
+            empty,,,,,,false,false,false,false,None,,[]
+            empty with targetId,,other,,,,,,,,,,[]
+            full,full,,Arial,#ff0000,72.0pt,true,true,true,true,Superscript,10.0mm,[foo; bar]
+            full with targetId,full,other,,,,,,,,,,[foo; bar]
+            empty overridden by def,,,,,,false,false,false,false,None,,[]
+            empty overridden by ref,,,,,,false,false,false,false,None,,[]
+            empty with targetId overridden by def,,other,,,,,,,,,,[]
+            empty with targetId overridden by ref,,other,,,,,,,,,,[]
+            full overridden by def,,,Arial,#ff0000,72.0pt,true,true,true,true,Superscript,10.0mm,[]
+            full overridden by ref,,other,,,,,,,,,,[]
+            full with targetId overridden by def,,other,,,,,,,,,,[]
+            full with targetId overridden by ref,,other,,,,,,,,,,[]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

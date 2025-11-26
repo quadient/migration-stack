@@ -51,21 +51,20 @@ sealed class MappingItemEntity {
 
         fun apply(item: DocumentObjectDto): DocumentObjectDto {
             return item.copy(
-                name = name ?: item.name,
-                internal = internal ?: item.internal,
-                baseTemplate = baseTemplate ?: item.baseTemplate,
-                targetFolder = targetFolder ?: item.targetFolder,
+                name = name,
+                internal = internal,
+                baseTemplate = baseTemplate,
+                targetFolder = targetFolder,
                 type = type ?: item.type,
-                variableStructureRef = variableStructureRef?.let { VariableStructureRef(it) }
-                    ?: item.variableStructureRef,
-                skip = skip ?: item.skip,
+                variableStructureRef = variableStructureRef?.let { VariableStructureRef(it) },
+                skip = skip ?: SkipOptions(false, null, null),
             )
         }
     }
 
     @Serializable
     data class Area(
-        override val name: String?, val areas: MutableMap<Int, String>
+        override val name: String?, val areas: MutableMap<Int, String?>
     ) : MappingItemEntity() {
         fun apply(item: DocumentObjectDto): DocumentObjectDto {
             if (areas.isEmpty()) {
@@ -95,11 +94,11 @@ sealed class MappingItemEntity {
     ) : MappingItemEntity() {
         fun apply(item: ImageDto): ImageDto {
             return item.copy(
-                name = name ?: item.name,
-                targetFolder = targetFolder ?: item.targetFolder,
-                sourcePath = sourcePath ?: item.sourcePath,
-                imageType = imageType ?: item.imageType,
-                skip = skip ?: item.skip,
+                name = name,
+                targetFolder = targetFolder,
+                sourcePath = sourcePath,
+                imageType = imageType,
+                skip = skip ?: SkipOptions(false, null, null),
             )
         }
     }
@@ -130,7 +129,7 @@ sealed class MappingItemEntity {
             return when (definition) {
                 is Ref -> {
                     item.copy(
-                        name = name ?: item.name, definition = ParagraphStyleRef(definition.targetId)
+                        name = name, definition = ParagraphStyleRef(definition.targetId)
                     )
                 }
 
@@ -139,25 +138,24 @@ sealed class MappingItemEntity {
                     when (def) {
                         is ParagraphStyleDefinition -> {
                             item.copy(
-                                name = name ?: item.name, definition = def.copy(
-                                    leftIndent = definition.leftIndent ?: def.leftIndent,
-                                    rightIndent = definition.rightIndent ?: def.rightIndent,
-                                    defaultTabSize = definition.defaultTabSize ?: def.defaultTabSize,
-                                    spaceBefore = definition.spaceBefore ?: def.spaceBefore,
-                                    spaceAfter = definition.spaceAfter ?: def.spaceAfter,
-                                    alignment = definition.alignment ?: def.alignment,
-                                    firstLineIndent = definition.firstLineIndent ?: def.firstLineIndent,
-                                    lineSpacing = definition.lineSpacing ?: def.lineSpacing,
-                                    keepWithNextParagraph = definition.keepWithNextParagraph
-                                        ?: def.keepWithNextParagraph,
-                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel) ?: def.tabs
+                                name = name, definition = def.copy(
+                                    leftIndent = definition.leftIndent,
+                                    rightIndent = definition.rightIndent,
+                                    defaultTabSize = definition.defaultTabSize,
+                                    spaceBefore = definition.spaceBefore,
+                                    spaceAfter = definition.spaceAfter,
+                                    alignment = definition.alignment ?: Alignment.Left,
+                                    firstLineIndent = definition.firstLineIndent,
+                                    lineSpacing = definition.lineSpacing ?: Additional(null),
+                                    keepWithNextParagraph = definition.keepWithNextParagraph,
+                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel)
                                 )
                             )
                         }
 
                         is ParagraphStyleRef -> {
                             item.copy(
-                                name = name ?: item.name, definition = ParagraphStyleDefinition(
+                                name = name, definition = ParagraphStyleDefinition(
                                     leftIndent = definition.leftIndent,
                                     rightIndent = definition.rightIndent,
                                     defaultTabSize = definition.defaultTabSize,
@@ -186,7 +184,7 @@ sealed class MappingItemEntity {
     ) : MappingItemEntity() {
         fun apply(variable: VariableDto): VariableDto {
             return variable.copy(
-                name = name ?: variable.name, dataType = dataType ?: variable.dataType,
+                name = name, dataType = dataType ?: variable.dataType,
             )
         }
     }
@@ -199,11 +197,9 @@ sealed class MappingItemEntity {
     ) : MappingItemEntity() {
         fun apply(item: VariableStructureDto): VariableStructureDto {
             return item.copy(
-                name = name ?: item.name,
-                structure = mappings?.filter { !it.value.name.isNullOrBlank() || !it.value.path.isBlank() }
-                    ?: mutableMapOf(),
-                languageVariable = languageVariable?.let { VariableRef(it.id) }
-            )
+                name = name,
+                structure = mappings ?: mutableMapOf(),
+                languageVariable = languageVariable?.let { VariableRef(it.id) })
         }
     }
 
@@ -233,7 +229,7 @@ sealed class MappingItemEntity {
             return when (definition) {
                 is Ref -> {
                     item.copy(
-                        name = name ?: item.name, definition = TextStyleRef(definition.targetId)
+                        name = name, definition = TextStyleRef(definition.targetId)
                     )
                 }
 
@@ -242,24 +238,24 @@ sealed class MappingItemEntity {
                     when (def) {
                         is TextStyleDefinition -> {
                             item.copy(
-                                name = name ?: item.name,
+                                name = name,
                                 definition = def.copy(
-                                    fontFamily = definition.fontFamily ?: def.fontFamily,
-                                    foregroundColor = definition.foregroundColor ?: def.foregroundColor,
-                                    size = definition.size ?: def.size,
-                                    bold = definition.bold ?: def.bold,
-                                    italic = definition.italic ?: def.italic,
-                                    underline = definition.underline ?: def.underline,
-                                    strikethrough = definition.strikethrough ?: def.strikethrough,
-                                    superOrSubscript = definition.superOrSubscript ?: def.superOrSubscript,
-                                    interspacing = definition.interspacing ?: def.interspacing
+                                    fontFamily = definition.fontFamily,
+                                    foregroundColor = definition.foregroundColor,
+                                    size = definition.size,
+                                    bold = definition.bold ?: false,
+                                    italic = definition.italic ?: false,
+                                    underline = definition.underline ?: false,
+                                    strikethrough = definition.strikethrough ?: false,
+                                    superOrSubscript = definition.superOrSubscript ?: SuperOrSubscript.None,
+                                    interspacing = definition.interspacing
                                 ),
                             )
                         }
 
                         is TextStyleRef -> {
                             item.copy(
-                                name = name ?: item.name, definition = TextStyleDefinition(
+                                name = name, definition = TextStyleDefinition(
                                     fontFamily = definition.fontFamily,
                                     foregroundColor = definition.foregroundColor,
                                     size = definition.size,

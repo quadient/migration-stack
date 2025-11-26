@@ -30,7 +30,7 @@ class TextStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
+            id,name,targetId,originLocations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
             new,newName,,[foo; bar],MonoLisa,#2f2f2f,11pt,true,true,true,true,Superscript,0.5pt
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -46,7 +46,7 @@ class TextStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
+            id,name,targetId,originLocations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
             new,newName,otherStyle,[foo; bar],,,,,,,,,
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -62,7 +62,7 @@ class TextStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
+            id,name,targetId,originLocations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
             existing,someNewName,,[foo; bar],MonoLisa,#2f2f2f,11pt,true,true,true,true,Superscript,0.5pt
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -90,7 +90,7 @@ class TextStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
+            id,name,targetId,originLocations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
             existing,someNewName,otherRef,[foo; bar],,,,,,,,,
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -109,7 +109,7 @@ class TextStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
+            id,name,targetId,originLocations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
             existing,someNewName,otherRef,[foo; bar],,,,,,,,,
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -128,7 +128,7 @@ class TextStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
+            id,name,targetId,originLocations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
             existing,someNewName,,[foo; bar],Roboto,#ff0000,12pt,true,false,true,false,Subscript,1pt
             """.stripIndent()
         mappingFile.toFile().write(input)
@@ -156,7 +156,7 @@ class TextStylesMappingImportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
         def input = """\
-            id,name,targetId,origin_locations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
+            id,name,targetId,originLocations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
             existing,someName,,[foo; bar],Roboto,#ff0000,11pt,true,true,true,true,Superscript,1pt
             """.stripIndent()
         mappingFile.toFile().write(input)

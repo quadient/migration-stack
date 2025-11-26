@@ -36,11 +36,11 @@ class ImagesMappingExportTest {
         ImagesExport.run(migration, mappingFile)
 
         def expected = """\
-            id,name,sourcePath,imageType,targetFolder,status,originLocation,skip,skipPlaceholder,skipReason
-            empty,,,,,Active,[],false,,
-            full,full,sourcePath,Jpeg,targetDir,Active,[foo; bar],true,placeholder,reason
-            overridden empty,,,,,Active,[],false,,
-            overridden full,full,sourcePath,Gif,targetDir,Active,[foo; bar],false,,
+            id,name,sourcePath,imageType,targetFolder,status,skip,skipPlaceholder,skipReason,originLocations (read-only)
+            empty,,,,,Active,false,,,[]
+            full,full,sourcePath,Jpeg,targetDir,Active,true,placeholder,reason,[foo; bar]
+            overridden empty,,,,,Active,false,,,[]
+            overridden full,full,sourcePath,Gif,targetDir,Active,false,,,[foo; bar]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

@@ -27,7 +27,8 @@ static void run(Migration migration, Path exportFilePath) {
 
     def styles = migration.paragraphStyleRepository.listAll()
     file.withWriter { writer ->
-        writer.writeLine("id,name,targetId,origin_locations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue")
+        def headers = ["id","name","targetId","leftIndent","rightIndent","defaultTabSize","spaceBefore","spaceAfter","alignment","firstLineIndent","keepWithNextParagraph","lineSpacingType","lineSpacingValue", Mapping.displayHeader("originLocations", true)]
+        writer.writeLine(headers.join(","))
 
         styles.each { style ->
             def definition = style.definition
@@ -37,13 +38,13 @@ static void run(Migration migration, Path exportFilePath) {
             builder << "${Csv.serialize(style.name)},"
 
             if (definition instanceof ParagraphStyleDefinition) {
-                builder << "," // targetId
-                builder << "${Csv.serialize(style.originLocations)},"
+                builder << "," // targetId (empty)
                 builder << serializeDefinition(definition)
+                builder << ",${Csv.serialize(style.originLocations)}"
             } else if (definition instanceof ParagraphStyleRef){
                 builder << "${Csv.serialize(definition.id)}," // targetId
-                builder << "${Csv.serialize(style.originLocations)},"
                 builder << serializeDefinition(null)
+                builder << ",${Csv.serialize(style.originLocations)}"
             }
 
             writer.writeLine(builder.toString())

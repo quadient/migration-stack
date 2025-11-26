@@ -21,7 +21,7 @@ sealed class MappingItem {
 
     data class Area(
         override var name: String?,
-        var areas: MutableMap<Int, String>,
+        var areas: MutableMap<Int, String?>,
     ) : MappingItem()
 
     data class Image(

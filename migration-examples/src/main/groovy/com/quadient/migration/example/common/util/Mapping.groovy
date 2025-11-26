@@ -6,7 +6,7 @@ import java.nio.file.Paths
 import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
 
 static void mapProp(Object mapping, Object obj, String key, Object newValue) {
-    if (newValue != null && newValue != obj[key] && mapping[key] != newValue && newValue != "") {
+    if (newValue != obj[key] && mapping[key] != newValue) {
         mapping[key] = newValue
     }
 }
@@ -74,4 +74,22 @@ static String variableStructureIdFromFileName(String fileName, String projectNam
         throw new IllegalArgumentException("Invalid variable structure file name: ${fileName}")
     }
     return fileName.substring(prefix.length(), fileName.length() - ".csv".length())
+}
+
+static String displayHeader(String logicalName, boolean readOnly) {
+    if (logicalName == null) return ""
+    if (readOnly) {
+        return logicalName + " (read-only)"
+    }
+    return logicalName
+}
+
+static String normalizeHeader(String displayName) {
+    if (displayName == null) return null
+    def s = displayName.trim()
+    def suffix = " (read-only)"
+    if (s.endsWith(suffix)) {
+        s = s.substring(0, s.length() - suffix.length())
+    }
+    return s.trim()
 }

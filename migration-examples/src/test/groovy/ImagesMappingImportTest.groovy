@@ -20,7 +20,7 @@ class ImagesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def input = """\
-            id,name,sourcePath,imageType,targetFolder,status,originLocation
+            id,name,sourcePath,imageType,targetFolder,status,originLocations
             unchanged,,,,,Active,[]
             kept,keptName,,,,Active,[]
             overridden,someName,,,,Active,[]
@@ -48,7 +48,7 @@ class ImagesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def input = """\
-            id,name,sourcePath,imageType,targetFolder,status,originLocation
+            id,name,sourcePath,imageType,targetFolder,status,originLocations
             unchanged,,,,,Active,[]
             kept,,,,keptFolder,Active,[]
             overridden,,,,overrideFolder,Active,[]
@@ -76,7 +76,7 @@ class ImagesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def input = """\
-            id,name,sourcePath,imageType,targetFolder,status,originLocation
+            id,name,sourcePath,imageType,targetFolder,status,originLocations
             unchanged,,,,,Active,[]
             kept,,keptPath,,,Active,[]
             overridden,,overridePath,,,Active,[]
@@ -104,7 +104,7 @@ class ImagesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def input = """\
-            id,name,sourcePath,imageType,targetFolder,status,originLocation
+            id,name,sourcePath,imageType,targetFolder,status,originLocations
             unchanged,,,,,Active,[]
             kept,,,Jpeg,,Active,[]
             overridden,,,Gif,,Active,[]

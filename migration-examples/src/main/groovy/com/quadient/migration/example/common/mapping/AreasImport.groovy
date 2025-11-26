@@ -24,7 +24,7 @@ run(migration, areasFile)
 
 static void run(Migration migration, Path path) {
     def fileLines = path.toFile().readLines()
-    def columnNames = Csv.parseColumnNames(fileLines.removeFirst())
+    def columnNames = Csv.parseColumnNames(fileLines.removeFirst()).collect { Mapping.normalizeHeader(it) }
 
     DocumentObject currentPage = null
     def areas = null
@@ -52,7 +52,7 @@ static void run(Migration migration, Path path) {
         }
 
         def interactiveFlowName = Csv.deserialize(values.get("interactiveFlowName"), String.class)
-        if (interactiveFlowName != null && !interactiveFlowName.empty && interactiveFlowName != mapping.areas.get(areaIndex) && areas[areaIndex].interactiveFlowName != interactiveFlowName) {
+        if (interactiveFlowName != mapping.areas.get(areaIndex) && areas[areaIndex].interactiveFlowName != interactiveFlowName) {
             mapping.areas[areaIndex] = interactiveFlowName
         }
 
@@ -64,4 +64,3 @@ static void run(Migration migration, Path path) {
         migration.mappingRepository.applyAreaMapping(currentPage.id)
     }
 }
-

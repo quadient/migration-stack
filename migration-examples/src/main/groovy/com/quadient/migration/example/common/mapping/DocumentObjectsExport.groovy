@@ -27,7 +27,8 @@ static void run(Migration migration, Path documentObjectsDstPath) {
     documentObjectsDstPath.toFile().createParentDirectories()
 
     documentObjectsDstPath.toFile().withWriter { writer ->
-        writer.writeLine("id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status,skip,skipPlaceholder,skipReason")
+        def headers = ["id", "name", "type", "internal", "baseTemplate", "targetFolder", "variableStructureId", "status", "skip", "skipPlaceholder", "skipReason", Mapping.displayHeader("originLocations", true)]
+        writer.writeLine(headers.join(","))
         objects.each { obj ->
             def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(obj.id,
                     ResourceType.DocumentObject,
@@ -38,7 +39,6 @@ static void run(Migration migration, Path documentObjectsDstPath) {
             builder.append("," + Csv.serialize(obj.name))
             builder.append("," + Csv.serialize(obj.type))
             builder.append("," + Csv.serialize(obj.internal))
-            builder.append("," + Csv.serialize(obj.originLocations))
             builder.append("," + Csv.serialize(obj.baseTemplate))
             builder.append("," + Csv.serialize(obj.targetFolder))
             builder.append("," + Csv.serialize(obj.variableStructureRef?.id))
@@ -46,6 +46,7 @@ static void run(Migration migration, Path documentObjectsDstPath) {
             builder.append("," + Csv.serialize(obj.skip.skipped))
             builder.append("," + Csv.serialize(obj.skip.placeholder))
             builder.append("," + Csv.serialize(obj.skip.reason))
+            builder.append("," + Csv.serialize(obj.originLocations))
 
             writer.writeLine(builder.toString())
         }

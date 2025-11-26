@@ -25,7 +25,7 @@ run(migration, selectedFilePath)
 
 static void run(Migration migration, Path path) {
     def lines = path.toFile().readLines()
-    def columnNames = Csv.parseColumnNames(lines.removeFirst())
+    def columnNames = Csv.parseColumnNames(lines.removeFirst()).collect { Mapping.normalizeHeader(it) }
     def structureId = Mapping.variableStructureIdFromFileName(path.fileName.toString(), migration.projectConfig.name)
     def structureMapping = migration.mappingRepository.getVariableStructureMapping(structureId)
 
@@ -37,18 +37,12 @@ static void run(Migration migration, Path path) {
         def variablePathData = structureMapping.mappings[id] ?: new VariablePathData("", null)
 
         def newName = Csv.deserialize(values.get("inspire_name"), String.class)
-        if (newName != null) {
-            variablePathData.name = newName
-        }
+        variablePathData.name = newName
 
         def inspirePath = Csv.deserialize(values.get("inspire_path"), String.class)
-        if (inspirePath != null) {
-            variablePathData.path = inspirePath
-        }
+        variablePathData.path = inspirePath ?: ""
 
-        if (variablePathData.name != null || variablePathData.path != "") {
-            structureMapping.mappings[id] = variablePathData
-        }
+        structureMapping.mappings[id] = variablePathData
 
         def mapping = migration.mappingRepository.getVariableMapping(id)
 
