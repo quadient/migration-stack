@@ -160,35 +160,6 @@ class ParagraphStylesMappingImportTest {
         verify(migration.mappingRepository).applyParagraphStyleMapping("existing")
     }
 
-    @Test
-    void adjustsOnlySomePropertiesInDefToDefMapping() {
-        Path mappingFile = Paths.get(dir.path, "testProject.csv")
-
-        def input = """\
-            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
-            existing,someNewName,,[foo; bar],1m,1m,1m,2m,2m,Right,2m,true,Exact,1m
-            """.stripIndent()
-        mappingFile.toFile().write(input)
-        givenExistingDefinitionStyle("existing", "someName", 1, 1, 1, 1, 1, Alignment.Center, 1, new LineSpacing.Exact(Size.ofMeters(1)), true)
-        givenExistingDefinitionStyleMapping("existing", "someName", 1, 1, null, null, null, null, 1, null, null)
-
-        ParagraphStylesImport.run(migration, mappingFile)
-
-        verify(migration.mappingRepository)
-            .upsert("existing", new MappingItem.ParagraphStyle("someNewName",
-                new MappingItem.ParagraphStyle.Def(Size.ofMeters(1),
-                    Size.ofMeters(1),
-                    null,
-                    Size.ofMeters(2),
-                    Size.ofMeters(2),
-                    Alignment.Right,
-                    Size.ofMeters(2),
-                    null,
-                    null,
-                    null)))
-        verify(migration.mappingRepository).applyParagraphStyleMapping("existing")
-    }
-
     void givenExistingRefStyle(String id, String name, String ref) {
         when(migration.paragraphStyleRepository.find(id))
             .thenReturn(new ParagraphStyle(id, name, [], new CustomFieldMap([:]), new ParagraphStyleRef(ref)))

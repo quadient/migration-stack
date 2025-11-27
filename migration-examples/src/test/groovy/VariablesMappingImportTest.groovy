@@ -42,13 +42,13 @@ class VariablesMappingImportTest {
 
         VariablesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchangedEmpty", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchangedEmpty", new MappingItem.Variable(null, DataType.String))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedEmpty")
-        verify(migration.mappingRepository, times(1)).upsert("unchangedPath", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchangedPath", new MappingItem.Variable(null, DataType.String))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("unchangedPath")
-        verify(migration.mappingRepository, times(1)).upsert("withPath", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).upsert("withPath", new MappingItem.Variable(null, DataType.String))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("withPath")
-        verify(migration.mappingRepository, times(1)).upsert("withPathEmpty", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).upsert("withPathEmpty", new MappingItem.Variable(null, DataType.String))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("withPathEmpty")
         verify(migration.mappingRepository, times(1)).upsert("test",
                 new MappingItem.VariableStructure(null,
@@ -82,7 +82,7 @@ class VariablesMappingImportTest {
 
         VariablesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, DataType.String))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged")
         verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable(null, DataType.String))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("kept")
@@ -112,11 +112,11 @@ class VariablesMappingImportTest {
 
         VariablesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Variable(null, DataType.String))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable("someName", null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Variable("someName", DataType.String))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable("Overridden name", null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Variable("Overridden name", DataType.String))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("overridden")
         verify(migration.mappingRepository, times(1)).upsert("test",
                 new MappingItem.VariableStructure(null,

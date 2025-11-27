@@ -35,11 +35,11 @@ class ImagesMappingImportTest {
 
         ImagesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Image(null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Image(null, null, null, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Image("keptName", null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Image("keptName", null, null, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Image("someName", null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Image("someName", null, null, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("overridden")
     }
 
@@ -63,11 +63,11 @@ class ImagesMappingImportTest {
 
         ImagesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Image(null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Image(null, null, null, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Image(null, "keptFolder", null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Image(null, "keptFolder", null, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Image(null, "overrideFolder", null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Image(null, "overrideFolder", null, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("overridden")
     }
 
@@ -91,11 +91,11 @@ class ImagesMappingImportTest {
 
         ImagesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Image(null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Image(null, null, null, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Image(null, null, "keptPath", null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Image(null, null, "keptPath", null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Image(null, null, "overridePath", null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Image(null, null, "overridePath", null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("overridden")
     }
 
@@ -119,11 +119,11 @@ class ImagesMappingImportTest {
 
         ImagesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Image(null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Image(null, null, null, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Image(null, null, null, ImageType.Jpeg, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Image(null, null, null, ImageType.Jpeg, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Image(null, null, null, ImageType.Gif, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Image(null, null, null, ImageType.Gif, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("overridden")
     }
 
@@ -147,9 +147,9 @@ class ImagesMappingImportTest {
 
         ImagesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Image(null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.Image(null, null, null, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Image(null, null, null, ImageType.Jpeg, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.Image(null, null, null, ImageType.Jpeg, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyImageMapping("kept")
         verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.Image(null, null, null, ImageType.Gif, new SkipOptions(true, "placeholder", "reason")))
         verify(migration.mappingRepository, times(1)).applyImageMapping("overridden")

@@ -6,9 +6,7 @@ import java.nio.file.Paths
 import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
 
 static void mapProp(Object mapping, Object obj, String key, Object newValue) {
-    if (newValue != obj[key] && mapping[key] != newValue) {
-        mapping[key] = newValue
-    }
+    mapping[key] = newValue
 }
 
 static Path csvPath(Binding binding, String projectName, String mapping) {

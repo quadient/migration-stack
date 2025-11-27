@@ -37,11 +37,11 @@ class DocumentObjectsMappingImportTest {
 
         DocumentObjectsImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject("keptName", null, null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject("keptName", false, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject("someName", null, null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject("someName", false, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
 
@@ -65,11 +65,11 @@ class DocumentObjectsMappingImportTest {
 
         DocumentObjectsImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, true, null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, true, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, true, null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, true, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
 
@@ -93,11 +93,11 @@ class DocumentObjectsMappingImportTest {
 
         DocumentObjectsImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, null, "keptTemplate", null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, false, "keptTemplate", null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, null, "overriddenTemplate", null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, false, "overriddenTemplate", null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
 
@@ -121,11 +121,11 @@ class DocumentObjectsMappingImportTest {
 
         DocumentObjectsImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, null, null, "keptFolder", null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, false, null, "keptFolder", DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, null, null, "overriddenFolder", null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, false, null, "overriddenFolder", DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
 
@@ -149,11 +149,11 @@ class DocumentObjectsMappingImportTest {
 
         DocumentObjectsImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, null, null, null, null, "keptVarStructure", null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Block, "keptVarStructure", new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, null, null, null, null, "overriddenVarStructure", null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Block, "overriddenVarStructure", new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
 
@@ -177,11 +177,11 @@ class DocumentObjectsMappingImportTest {
 
         DocumentObjectsImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, null, null, null, DocumentObjectType.Template, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Template, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, null, null, null, DocumentObjectType.Page, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Page, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
 
@@ -205,11 +205,11 @@ class DocumentObjectsMappingImportTest {
 
         DocumentObjectsImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, null, null, null, null, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, null, null, null, DocumentObjectType.Template, null, null))
+        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Template, null, new SkipOptions(false, null, null)))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, null, null, null, DocumentObjectType.Page, null, new SkipOptions(true, "placeholder", "reason")))
+        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Page, null, new SkipOptions(true, "placeholder", "reason")))
         verify(migration.mappingRepository, times(1)).applyDocumentObjectMapping("overridden")
     }
 

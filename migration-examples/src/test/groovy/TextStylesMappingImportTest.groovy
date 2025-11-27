@@ -142,39 +142,11 @@ class TextStylesMappingImportTest {
                 new MappingItem.TextStyle.Def("Roboto",
                     Color.fromHex("#ff0000"),
                     Size.ofPoints(12),
-                    null,
+                    true,
                     false,
-                    null,
+                    true,
                     false,
                     SuperOrSubscript.Subscript,
-                    Size.ofPoints(1))))
-        verify(migration.mappingRepository).applyTextStyleMapping("existing")
-    }
-
-    @Test
-    void adjustsOnlySomePropertiesInDefToDefMapping() {
-        Path mappingFile = Paths.get(dir.path, "testProject.csv")
-
-        def input = """\
-            id,name,targetId,originLocations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
-            existing,someName,,[foo; bar],Roboto,#ff0000,11pt,true,true,true,true,Superscript,1pt
-            """.stripIndent()
-        mappingFile.toFile().write(input)
-        givenExistingDefinitionTextStyle("existing", "someName", "MonoLisa", "#2f2f2f", 11.0, true, true, true, true, SuperOrSubscript.Superscript, 0.5)
-        givenExistingDefinitionTextStyleMapping("existing", "someName", "MonoLisa", null, null, null, null, null, null, null, null)
-
-        TextStylesImport.run(migration, mappingFile)
-
-        verify(migration.mappingRepository)
-            .upsert("existing", new MappingItem.TextStyle("someName",
-                new MappingItem.TextStyle.Def("Roboto",
-                    Color.fromHex("#ff0000"),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
                     Size.ofPoints(1))))
         verify(migration.mappingRepository).applyTextStyleMapping("existing")
     }
