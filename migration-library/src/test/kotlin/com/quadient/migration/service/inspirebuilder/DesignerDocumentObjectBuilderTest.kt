@@ -605,9 +605,13 @@ class DesignerDocumentObjectBuilderTest {
     fun `block uses the assigned variable structure`() {
         // given
         val variable = mockVar(aVariable("V_1"))
+        val varNoPath = mockVar(aVariable("V_2"))
         val variableStructureA = mockVarStructure(
             aVariableStructureModel(
-                "VS_1", structure = mapOf(VariableModelRef(variable.id) to VariablePathData("Data.Records.Value"))
+                "VS_1", structure = mapOf(
+                    VariableModelRef(variable.id) to VariablePathData("Data.Records.Value"),
+                    VariableModelRef(varNoPath.id) to VariablePathData("", "No Path Variable")
+                )
             )
         )
         val variableStructureB = mockVarStructure(
@@ -621,7 +625,13 @@ class DesignerDocumentObjectBuilderTest {
         val block = mockObj(
             aDocObj(
                 "B_1", Block, listOf(
-                    aParagraph(aText(listOf(StringModel("Text"), VariableModelRef(variable.id))))
+                    aParagraph(
+                        aText(
+                            listOf(
+                                StringModel("Text"), VariableModelRef(variable.id), VariableModelRef(varNoPath.id)
+                            )
+                        )
+                    )
                 ), variableStructureModelRef = variableStructureA.id
             )
         )
@@ -636,6 +646,10 @@ class DesignerDocumentObjectBuilderTest {
 
         result["Variable"].first { it["Name"].textValue() == variable.nameOrId() }["ParentId"].textValue()
             .shouldBeEqualTo("Data.Records.Value")
+
+        val flow = result["Flow"].first { it["Type"]?.textValue() == "Simple" }
+        flow["FlowContent"]["P"]["T"][""][0].textValue().shouldBeEqualTo("Text")
+        flow["FlowContent"]["P"]["T"][""][1].textValue().shouldBeEqualTo("\$No Path Variable\$")
     }
 
     @Test
