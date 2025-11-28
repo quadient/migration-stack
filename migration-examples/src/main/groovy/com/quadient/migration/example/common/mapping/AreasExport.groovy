@@ -40,7 +40,7 @@ static void run(Migration migration, Path path) {
         def headers = [
             Mapping.displayHeader("templateId", true),
             Mapping.displayHeader("templateName", true),
-            Mapping.displayHeader("pageId", true),
+            Mapping.displayHeader("pageId", false),
             Mapping.displayHeader("pageName", true),
             Mapping.displayHeader("interactiveFlowName", false),
             Mapping.displayHeader("x", true),
