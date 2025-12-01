@@ -26,6 +26,8 @@ import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.Size
 
+import java.time.Instant
+
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 import static com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 
@@ -252,9 +254,23 @@ def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Bloc
     .build()
 
 // Paragraph that is displayed conditionally based on the value of the displayParagraphVariable.
+// This also demonstrates metadata usage - various metadata types can be attached
+// to document objects to provide additional information without affecting visible content.
 def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", DocumentObjectType.Block)
     .internal(false)
     .displayRuleRef(displayParagraphRule.id)
+    .metadata("DocumentInfo") { mb ->
+        mb.string("Document type: Technical Example")
+        mb.string("Version: 1.0")
+    }
+    .metadata("Timestamps") { mb ->
+        mb.dateTime(Instant.parse("2024-01-15T10:30:00Z"))
+    }
+    .metadata("Statistics") { mb ->
+        mb.integer(42L)
+        mb.float(98.5)
+        mb.boolean(true)
+    }
     .paragraph {
         it.styleRef(new ParagraphStyleRef(paragraphStyle.id))
             .text {
@@ -275,6 +291,28 @@ def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType
                 it.appendContent("Au revoir.")
             }.build()).displayRule(displayRuleStateFrance.id)
         }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Goodbye.") }.build())
+    }.build()
+
+// SelectByLanguage demonstrates language-based content selection.
+def selectByLanguageBlock = new DocumentObjectBuilder("selectByLanguage", DocumentObjectType.Block)
+    .internal(true)
+    .selectByLanguage { sb ->
+        sb.case { cb ->
+            cb.language("en_us")
+            cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                it.appendContent("This document was created in English.")
+            }.build())
+        }.case { cb ->
+            cb.language("de")
+            cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                it.appendContent("Dieses Dokument wurde auf Deutsch erstellt.")
+            }.build())
+        }.case { cb ->
+            cb.language("es")
+            cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
+                it.appendContent("Este documento fue creado en español.")
+            }.build())
+        }
     }.build()
 
 // A page object which contains the address, paragraphs, table, and signature.
@@ -313,6 +351,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             .paragraph { it.styleRef(paragraphStyle.id).text { it.content(table) } }
             .documentObjectRef(conditionalParagraph.id)
             .documentObjectRef(firstMatchBlock.id)
+            .documentObjectRef(selectByLanguageBlock.id)
     }
     .area {
         it.position {
@@ -330,7 +369,7 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
     .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {
