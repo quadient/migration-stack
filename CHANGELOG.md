@@ -44,6 +44,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 - **Breaking** Removed the `Unsupported` document object type
+  - Update your parser scripts to use the "skip" functionality instead, and change the `Unsupported` type to the most fitting type based on the document object
+- **Breaking** Images with `Unknown` type or empty `sourcePath` must be explicitly skipped to avoid deployment failures
+  - Update your parser scripts to mark these images as skipped
 
 ### Fixed
 - Language variable boolean value is now correctly parsed in VariablesImport script
