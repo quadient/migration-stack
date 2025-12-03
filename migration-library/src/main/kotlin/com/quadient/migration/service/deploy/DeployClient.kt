@@ -56,8 +56,6 @@ sealed class DeployClient(
     protected val output: InspireOutput,
 ) {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
-    protected val deploymentId = Uuid.random()
-    protected val deploymentTimestamp = Clock.System.now()
     val postProcessors: MutableList<(DeploymentResult) -> Unit> = mutableListOf()
 
     init {
@@ -135,6 +133,9 @@ sealed class DeployClient(
     }
 
     fun deployStyles() {
+        val deploymentId = Uuid.random()
+        val deploymentTimestamp = Clock.System.now()
+
         val textStyles = textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel }
         val paragraphStyles =
             paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel }
@@ -256,7 +257,7 @@ sealed class DeployClient(
         return deployOrder
     }
 
-    protected fun deployImages(documentObjects: List<DocumentObjectModel>): DeploymentResult {
+    protected fun deployImages(documentObjects: List<DocumentObjectModel>, deploymentId: Uuid, deploymentTimestamp: Instant): DeploymentResult {
         val deploymentResult = DeploymentResult(deploymentId)
 
         val uniqueImageRefs = documentObjects.flatMap {
@@ -408,7 +409,7 @@ sealed class DeployClient(
     fun progressReportInternal(objects: List<DocumentObjectModel>, deployId: Uuid? = null): ProgressReport {
         val lastDeployment = deployId?.let { LastDeployment(it, Clock.System.now()) } ?: getLastDeployEvent()
 
-        val report = ProgressReport(deploymentId, mutableMapOf())
+        val report = ProgressReport(deployId ?: Uuid.random(), mutableMapOf())
 
         val queue: MutableList<RefModel> = mutableListOf()
         val alreadyVisitedRefs = mutableSetOf<Pair<String, KClass<*>>>()

@@ -47,10 +47,12 @@ class DesignerDeployClient(
     }
 
     override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult {
+        val deploymentId = kotlin.uuid.Uuid.random()
+        val deploymentTimestamp = kotlinx.datetime.Clock.System.now()
         val deploymentResult = DeploymentResult(deploymentId)
 
         val orderedDocumentObject = deployOrder(documentObjects)
-        deploymentResult += deployImages(orderedDocumentObject)
+        deploymentResult += deployImages(orderedDocumentObject, deploymentId, deploymentTimestamp)
 
         for (it in orderedDocumentObject) {
             val targetPath = documentObjectBuilder.getDocumentObjectPath(it)
