@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [17.0.11] - 2025-12-03
+
+### Added
 - Add read-only column/field `originalName` to relevant mapping files
 
 ### Changed
@@ -142,7 +150,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.10...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.11...HEAD
+[17.0.11]: https://github.com/quadient/migration-stack/compare/v17.0.10..v17.0.11
 [17.0.10]: https://github.com/quadient/migration-stack/compare/v17.0.9..v17.0.10
 [17.0.9]: https://github.com/quadient/migration-stack/compare/v17.0.8..v17.0.9
 [17.0.8]: https://github.com/quadient/migration-stack/compare/v17.0.7..v17.0.8
