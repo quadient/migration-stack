@@ -2,8 +2,9 @@ package com.quadient.migration.api.dto.migrationmodel.builder.documentcontent
 
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentContentBuilderBase
 
-class SelectByLanguageBuilder  {
+class SelectByLanguageBuilder {
     private var cases: MutableList<CaseBuilder> = mutableListOf()
 
     /**
@@ -11,14 +12,11 @@ class SelectByLanguageBuilder  {
      * @return A SelectByLanguage instance containing the cases and default content.
      */
     fun build(): SelectByLanguage {
-        return SelectByLanguage (
+        return SelectByLanguage(
             cases.map {
                 SelectByLanguage.Case(
-                    it.content,
-                    requireNotNull(it.language) { "language must be provided" }
-                )
-            }
-        )
+                    it.content, requireNotNull(it.language) { "language must be provided" })
+            })
     }
 
     /**
@@ -37,25 +35,9 @@ class SelectByLanguageBuilder  {
         cases.add(caseBuilder)
     }
 
-    class CaseBuilder {
-        var content: MutableList<DocumentContent> = mutableListOf()
+    class CaseBuilder : DocumentContentBuilderBase<CaseBuilder> {
+        override val content: MutableList<DocumentContent> = mutableListOf()
         var language: String? = null
-
-        /**
-         * Sets the content for the case.
-         * @param content The [DocumentContent] to be used in the case.
-         * @param language The language to be used for the case.
-         * @return A CaseBuilder instance for method chaining.
-         */
-        fun content(content: DocumentContent) = apply { this.content = mutableListOf(content) }
-
-        /**
-         * Appends additional content to the case.
-         * @param content The [DocumentContent] to be added to the case.
-         * @param language The language to be used for the case.
-         * @return A CaseBuilder instance for method chaining.
-         */
-        fun appendContent(content: DocumentContent) = apply { this.content.add(content) }
 
         /**
          * Sets the language for the case.

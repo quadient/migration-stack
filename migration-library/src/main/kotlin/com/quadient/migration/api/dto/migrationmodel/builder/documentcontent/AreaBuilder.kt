@@ -1,32 +1,15 @@
 package com.quadient.migration.api.dto.migrationmodel.builder.documentcontent
 
-import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
-import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Area
-import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentContentBuilderBase
 import com.quadient.migration.api.dto.migrationmodel.builder.PositionBuilder
 import com.quadient.migration.shared.Position
 
-class AreaBuilder {
-    private var content = mutableListOf<DocumentContent>()
+class AreaBuilder : DocumentContentBuilderBase<AreaBuilder> {
+    override val content = mutableListOf<DocumentContent>()
     private var position: Position? = null
     private var interactiveFlowName: String? = null
-
-    /**
-     * Appends the content of the flow area.
-     * @param content A list of [DocumentContent] to be appended to content of the flow area.
-     * @return The [AreaBuilder] instance for method chaining.
-     */
-    fun content(content: List<DocumentContent>) = apply { this.content.addAll(content) }
-
-    /**
-     * Adds a single [DocumentContent] to the flow area.
-     * @param content The [DocumentContent] to be added.
-     * @return The [AreaBuilder] instance for method chaining.
-     */
-    fun content(content: DocumentContent) = apply { this.content.add(content) }
 
     /**
      * Sets the position of the flow area.
@@ -52,43 +35,6 @@ class AreaBuilder {
      * @return The [AreaBuilder] instance for method chaining.
      */
     fun interactiveFlowName(interactiveFlowName: String) = apply { this.interactiveFlowName = interactiveFlowName }
-
-    /**
-     * Adds a reference to a document object by its ID to the content.
-     * @param documentObjectId The ID of the document object.
-     * @return The [AreaBuilder] instance for method chaining.
-     */
-    fun documentObjectRef(documentObjectId: String) = apply {
-        content.add(DocumentObjectRef(documentObjectId, null))
-    }
-
-    /**
-     * Adds a conditional reference to a document object by its ID and display rule ID to the content.
-     * @param documentObjectId The ID of the document object.
-     * @param displayRuleId The ID of the display rule.
-     * @return The [AreaBuilder] instance for method chaining.
-     */
-    fun documentObjectRef(documentObjectId: String, displayRuleId: String) = apply {
-        content.add(DocumentObjectRef(documentObjectId, DisplayRuleRef(displayRuleId)))
-    }
-
-    /**
-     * Adds a paragraph to the flow area using a builder function.
-     * @param builder A builder function to build the paragraph.
-     * @return The [AreaBuilder] instance for method chaining.
-     */
-    fun paragraph(builder: ParagraphBuilder.() -> Unit) = apply {
-        content.add(ParagraphBuilder().apply(builder).build())
-    }
-
-    /**
-     * Adds a reference to an image by its ID to the content.
-     * @param imageRefId The ID of the image reference.
-     * @return The [AreaBuilder] instance for method chaining.
-     */
-    fun imageRef(imageRefId: String) = apply {
-        content.add(ImageRef(imageRefId))
-    }
 
     /**
      * Builds the [Area] instance.

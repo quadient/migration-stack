@@ -7,8 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Added `string()` convenience method to all DocumentContent builders for creating paragraphs with simple text content
 
 ### Changed
+- Refactored DocumentContent builders to use shared interface, reducing code duplication and improving consistency
+- Standardized string-handling methods: deprecated `content(String)` in favor of `string(String)` for clarity
 
 ### Fixed
 

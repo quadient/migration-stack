@@ -11,8 +11,8 @@ import com.quadient.migration.shared.SuperOrSubscript
 class TextStyleBuilder(id: String) : DtoBuilderBase<TextStyle, TextStyleBuilder>(id) {
     var definition: TextStyleDefOrRef? = null
 
-    fun definition(builder: TextStyleDefinitionBuilder.() -> TextStyleDefinitionBuilder) = apply {
-        this.definition = builder(TextStyleDefinitionBuilder()).build()
+    fun definition(builder: TextStyleDefinitionBuilder.() -> Unit) = apply {
+        this.definition = TextStyleDefinitionBuilder().apply(builder).build()
     }
 
     fun definition(definition: TextStyleDefinition) = apply { this.definition = definition }

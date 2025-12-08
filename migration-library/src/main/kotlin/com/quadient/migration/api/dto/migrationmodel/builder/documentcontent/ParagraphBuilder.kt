@@ -2,6 +2,7 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
@@ -76,10 +77,23 @@ class ParagraphBuilder {
      * Adds a string content to the paragraph.
      * @param content The string content to add.
      * @return The current instance of [ParagraphBuilder] for method chaining.
+     * @deprecated Use [string] instead for consistency. This method uses confusing naming.
      */
+    @Deprecated("Use string() instead", ReplaceWith("string(content)"))
     fun content(content: String) = apply {
         val textBuilder = TextBuilder()
         textBuilder.content(StringValue(content))
+        this.content.add(textBuilder)
+    }
+
+    /**
+     * Adds a string to the paragraph content (creates a text block with StringValue).
+     * @param text The string to add.
+     * @return The current instance of [ParagraphBuilder] for method chaining.
+     */
+    fun string(text: String) = apply {
+        val textBuilder = TextBuilder()
+        textBuilder.content(StringValue(text))
         this.content.add(textBuilder)
     }
 
@@ -149,38 +163,49 @@ class ParagraphBuilder {
         fun displayRuleRef(displayRuleRefId: String) = apply { this.displayRuleRef = DisplayRuleRef(displayRuleRefId) }
 
         /**
-         * Sets the content of the text.
+         * Replaces all content with a single [TextContent] item.
          * @param content A [TextContent] instance to set as the content.
          * @return The current instance of [TextBuilder] for method chaining.
          */
         fun content(content: TextContent) = apply { this.content = mutableListOf(content) }
 
         /**
-         * Sets the content of the text using a string.
+         * Replaces all content with a string.
          * @param content The string content to set.
          * @return The current instance of [TextBuilder] for method chaining.
+         * @deprecated Use [string] for appending strings. This method replaces content which is inconsistent with other specific methods.
          */
+        @Deprecated("Use string() to append string content", ReplaceWith("string(content)"))
         fun content(content: String) = apply { this.content = mutableListOf(StringValue(content)) }
 
         /**
-         * Appends a [TextContent] to the existing content of the text.
+         * Appends a [TextContent] to the existing content.
          * @param content The [TextContent] to append.
          * @return The current instance of [TextBuilder] for method chaining.
          */
         fun appendContent(content: TextContent) = apply { this.content.add(content) }
 
         /**
-         * Sets the content of the text using a list of [TextContent].
+         * Replaces all content with a list of [TextContent].
          * @param content A list of [TextContent] to set as the content.
          * @return The current instance of [TextBuilder] for method chaining.
          */
         fun content(content: List<TextContent>) = apply { this.content = content.toMutableList() }
 
         /**
-         * Appends a string content to the existing content of the text.
-         * @param content The string content to append.
+         * Appends a string to the existing content (creates a StringValue).
+         * @param text The string to append.
          * @return The current instance of [TextBuilder] for method chaining.
          */
+        fun string(text: String) = apply { this.content.add(StringValue(text)) }
+
+        /**
+         * Appends a string to the existing content.
+         * @param content The string content to append.
+         * @return The current instance of [TextBuilder] for method chaining.
+         * @deprecated Use [string] instead for consistency.
+         */
+        @Deprecated("Use string() instead", ReplaceWith("string(content)"))
         fun appendContent(content: String) = apply { this.content.add(StringValue(content)) }
 
         /**
@@ -210,6 +235,51 @@ class ParagraphBuilder {
         fun firstMatch(builder: FirstMatchBuilder.() -> Unit) = apply {
             val firstMatchBuilder = FirstMatchBuilder().apply(builder)
             content.add(firstMatchBuilder.build())
+        }
+
+        /**
+         * Adds a variable reference to the text content.
+         * @param variableId The ID of the variable to reference.
+         * @return The current instance of [TextBuilder] for method chaining.
+         */
+        fun variableRef(variableId: String) = apply {
+            content.add(VariableRef(variableId))
+        }
+
+        /**
+         * Adds a variable reference to the text content.
+         * @param ref The variable reference to add.
+         * @return The current instance of [TextBuilder] for method chaining.
+         */
+        fun variableRef(ref: VariableRef) = apply {
+            content.add(ref)
+        }
+
+        /**
+         * Adds an image reference to the text content.
+         * @param imageId The ID of the image to reference.
+         * @return The current instance of [TextBuilder] for method chaining.
+         */
+        fun imageRef(imageId: String) = apply {
+            content.add(ImageRef(imageId))
+        }
+
+        /**
+         * Adds an image reference to the text content.
+         * @param ref The image reference to add.
+         * @return The current instance of [TextBuilder] for method chaining.
+         */
+        fun imageRef(ref: ImageRef) = apply {
+            content.add(ref)
+        }
+
+        /**
+         * Adds a table to the text content.
+         * @param builder A builder function to configure the [TableBuilder].
+         * @return The current instance of [TextBuilder] for method chaining.
+         */
+        fun table(builder: TableBuilder.() -> Unit) = apply {
+            content.add(TableBuilder().apply(builder).build())
         }
     }
 }

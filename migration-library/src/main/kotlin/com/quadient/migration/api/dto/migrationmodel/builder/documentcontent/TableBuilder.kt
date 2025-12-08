@@ -2,7 +2,9 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Table
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
 import com.quadient.migration.shared.Size
 
 class TableBuilder {
@@ -29,18 +31,18 @@ class TableBuilder {
     fun columnWidths(width: List<ColumnWidth>) = columnWidths.apply { clear() }.addAll(width)
 
     fun build(): Table {
-        return Table(rows = rows.map {
-            Table.Row(cells = it.cells.map {
+        return Table(rows = rows.map { row ->
+            Table.Row(cells = row.cells.map { cell ->
                 Table.Cell(
-                    content = it.content,
-                    mergeUp = it.mergeUp,
-                    mergeLeft = it.mergeLeft,
+                    content = cell.content,
+                    mergeUp = cell.mergeUp,
+                    mergeLeft = cell.mergeLeft,
                 )
-            }, displayRuleRef = it.displayRuleRef)
-        }, columnWidths = columnWidths.map {
+            }, displayRuleRef = row.displayRuleRef)
+        }, columnWidths = columnWidths.map { colWidth ->
             Table.ColumnWidth(
-                minWidth = it.minWidth,
-                percentWidth = it.percentWidth,
+                minWidth = colWidth.minWidth,
+                percentWidth = colWidth.percentWidth,
             )
         })
     }
@@ -58,37 +60,13 @@ class TableBuilder {
         fun displayRuleRef(ref: DisplayRuleRef) = this.apply { this.displayRuleRef = ref }
     }
 
-    class Cell {
-        val content = mutableListOf<DocumentContent>()
+    class Cell : DocumentContentBuilderBase<Cell> {
+        override val content = mutableListOf<DocumentContent>()
         var mergeLeft = false
         var mergeUp = false
 
         fun mergeLeft(value: Boolean) = apply { mergeLeft = value }
         fun mergeUp(value: Boolean) = apply { mergeUp = value }
-
-        /**
-         * Append content to the cell.
-         * @param content The content to append to the cell. Must be either
-         * a [String], [com.quadient.migration.api.dto.migrationmodel.Text]
-         * or [com.quadient.migration.api.dto.migrationmodel.Ref].
-         */
-        fun appendContent(content: DocumentContent) = apply { this.content.add(content) }
-
-        /**
-         * Replace content of the cell with single object.
-         * @param content The content to append to the cell. Must be either
-         * a [String], [com.quadient.migration.api.dto.migrationmodel.Text]
-         * or [com.quadient.migration.api.dto.migrationmodel.Ref].
-         */
-        fun content(content: DocumentContent) = apply { this.content.apply { clear() }.add(content) }
-
-        /**
-         * Replace content of the cell with the provided list of objects.
-         * @param content The content to append to the cell. Must be either
-         * a [String], [com.quadient.migration.api.dto.migrationmodel.Text]
-         * or [com.quadient.migration.api.dto.migrationmodel.Ref].
-         */
-        fun content(content: List<DocumentContent>) = apply { this@Cell.content.apply { clear() }.addAll(content) }
     }
 
     data class ColumnWidth(val minWidth: Size, val percentWidth: Double)

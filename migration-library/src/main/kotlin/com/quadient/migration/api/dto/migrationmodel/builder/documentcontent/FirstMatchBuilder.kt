@@ -32,7 +32,7 @@ class FirstMatchBuilder {
     fun addCase() = CaseBuilder().apply { cases.add(this) }
 
     /**
-     * Sets the default content for the FirstMatch instance.
+     * Replaces the default content for the FirstMatch instance.
      * @param default The default DocumentContent to be used.
      * @return The FirstMatchBuilder instance for method chaining.
      */
@@ -55,24 +55,37 @@ class FirstMatchBuilder {
         cases.add(caseBuilder)
     }
 
-    class CaseBuilder {
-        var content: MutableList<DocumentContent> = mutableListOf()
+    /**
+     * Sets the default content as a paragraph using a builder function.
+     * @param builder A builder function to configure the paragraph.
+     * @return The FirstMatchBuilder instance for method chaining.
+     */
+    fun defaultParagraph(builder: ParagraphBuilder.() -> Unit) = apply {
+        default.add(ParagraphBuilder().apply(builder).build())
+    }
+
+    /**
+     * Sets the default content as a table using a builder function.
+     * @param builder A builder function to configure the table.
+     * @return The FirstMatchBuilder instance for method chaining.
+     */
+    fun defaultTable(builder: TableBuilder.() -> Unit) = apply {
+        default.add(TableBuilder().apply(builder).build())
+    }
+
+    /**
+     * Adds default content as a paragraph with the given string.
+     * @param text The string to be wrapped in a paragraph.
+     * @return The FirstMatchBuilder instance for method chaining.
+     */
+    fun defaultString(text: String) = apply {
+        default.add(ParagraphBuilder().string(text).build())
+    }
+
+    class CaseBuilder : DocumentContentBuilderBase<CaseBuilder> {
+        override val content: MutableList<DocumentContent> = mutableListOf()
         var displayRuleRef: DisplayRuleRef? = null
         var name: String? = null
-
-        /**
-         * Sets the content for the case.
-         * @param content The [DocumentContent] to be used in the case.
-         * @return A CaseBuilder instance for method chaining.
-         */
-        fun content(content: DocumentContent) = apply { this.content = mutableListOf(content) }
-
-        /**
-         * Appends additional content to the case.
-         * @param content The [DocumentContent] to be added to the case.
-         * @return A CaseBuilder instance for method chaining.
-         */
-        fun appendContent(content: DocumentContent) = apply { this.content.add(content) }
 
         /**
          * Sets the display rule reference for the case.
