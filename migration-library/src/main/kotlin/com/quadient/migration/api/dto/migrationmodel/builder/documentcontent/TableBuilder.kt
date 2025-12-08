@@ -31,18 +31,18 @@ class TableBuilder {
     fun columnWidths(width: List<ColumnWidth>) = columnWidths.apply { clear() }.addAll(width)
 
     fun build(): Table {
-        return Table(rows = rows.map {
-            Table.Row(cells = it.cells.map {
+        return Table(rows = rows.map { row ->
+            Table.Row(cells = row.cells.map { cell ->
                 Table.Cell(
-                    content = it.content,
-                    mergeUp = it.mergeUp,
-                    mergeLeft = it.mergeLeft,
+                    content = cell.content,
+                    mergeUp = cell.mergeUp,
+                    mergeLeft = cell.mergeLeft,
                 )
-            }, displayRuleRef = it.displayRuleRef)
-        }, columnWidths = columnWidths.map {
+            }, displayRuleRef = row.displayRuleRef)
+        }, columnWidths = columnWidths.map { colWidth ->
             Table.ColumnWidth(
-                minWidth = it.minWidth,
-                percentWidth = it.percentWidth,
+                minWidth = colWidth.minWidth,
+                percentWidth = colWidth.percentWidth,
             )
         })
     }
@@ -60,34 +60,13 @@ class TableBuilder {
         fun displayRuleRef(ref: DisplayRuleRef) = this.apply { this.displayRuleRef = ref }
     }
 
-    class Cell {
-        val content = mutableListOf<DocumentContent>()
+    class Cell : DocumentContentBuilderBase<Cell> {
+        override val content = mutableListOf<DocumentContent>()
         var mergeLeft = false
         var mergeUp = false
 
         fun mergeLeft(value: Boolean) = apply { mergeLeft = value }
         fun mergeUp(value: Boolean) = apply { mergeUp = value }
-
-        /**
-         * Appends content to the cell.
-         * @param content The content to append to the cell.
-         * @return The [Cell] instance for method chaining.
-         */
-        fun appendContent(content: DocumentContent) = apply { this.content.add(content) }
-
-        /**
-         * Replaces all content in the cell with a single item.
-         * @param content The content to set as the cell content.
-         * @return The [Cell] instance for method chaining.
-         */
-        fun content(content: DocumentContent) = apply { this.content.apply { clear() }.add(content) }
-
-        /**
-         * Replaces all content in the cell with multiple items.
-         * @param content The list of content to set as the cell content.
-         * @return The [Cell] instance for method chaining.
-         */
-        fun content(content: List<DocumentContent>) = apply { this@Cell.content.apply { clear() }.addAll(content) }
 
         /**
          * Adds a paragraph with the given string to the cell.
@@ -99,67 +78,14 @@ class TableBuilder {
         }
 
         /**
-         * Adds a paragraph to the cell using a builder function.
-         * @param builder A builder function to build the paragraph.
+         * Adds a paragraph with the given text to the cell.
+         * @param text The text content to add in a paragraph.
          * @return The [Cell] instance for method chaining.
+         * @deprecated Use [string] for consistency with string() naming pattern.
          */
-        fun paragraph(builder: ParagraphBuilder.() -> Unit) = apply {
-            content.add(ParagraphBuilder().apply(builder).build())
-        }
-
-        /**
-         * Adds a table to the cell using a builder function.
-         * @param builder A builder function to build the table.
-         * @return The [Cell] instance for method chaining.
-         */
-        fun table(builder: TableBuilder.() -> Unit) = apply {
-            content.add(TableBuilder().apply(builder).build())
-        }
-
-        /**
-         * Adds an image reference to the cell.
-         * @param imageId The ID of the image to reference.
-         * @return The [Cell] instance for method chaining.
-         */
-        fun imageRef(imageId: String) = apply {
-            content.add(com.quadient.migration.api.dto.migrationmodel.ImageRef(imageId))
-        }
-
-        /**
-         * Adds a document object reference to the cell.
-         * @param documentObjectId The ID of the document object to reference.
-         * @return The [Cell] instance for method chaining.
-         */
-        fun documentObjectRef(documentObjectId: String) = apply {
-            content.add(DocumentObjectRef(documentObjectId, null))
-        }
-
-        /**
-         * Adds a conditional document object reference to the cell.
-         * @param documentObjectId The ID of the document object to reference.
-         * @param displayRuleId The ID of the display rule.
-         * @return The [Cell] instance for method chaining.
-         */
-        fun documentObjectRef(documentObjectId: String, displayRuleId: String) = apply {
-            content.add(DocumentObjectRef(documentObjectId, DisplayRuleRef(displayRuleId)))
-        }
-
-        /**
-         * Adds a first match block to the cell using a builder function.
-         * @param builder A builder function to build the first match block.
-         * @return The [Cell] instance for method chaining.
-         */
-        fun firstMatch(builder: FirstMatchBuilder.() -> Unit) = apply {
-            content.add(FirstMatchBuilder().apply(builder).build())
-        }
-
-        /**
-         * Adds a select by language block to the cell using a builder function.
-         * @param builder A builder function to build the select by language block.
-         * @return The [Cell] instance for method chaining.
-         */
-        fun selectByLanguage(builder: SelectByLanguageBuilder.() -> Unit) = apply {
-            content.add(SelectByLanguageBuilder().apply(builder).build())
+        @Deprecated("Use string() instead", ReplaceWith("string(text)"))
+        fun text(text: String) = apply {
+            this.content.add(ParagraphBuilder().string(text).build())
         }
     }
 
