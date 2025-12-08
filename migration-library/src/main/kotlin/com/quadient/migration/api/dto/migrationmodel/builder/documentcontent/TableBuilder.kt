@@ -76,17 +76,6 @@ class TableBuilder {
         fun string(text: String) = apply {
             this.content.add(ParagraphBuilder().string(text).build())
         }
-
-        /**
-         * Adds a paragraph with the given text to the cell.
-         * @param text The text content to add in a paragraph.
-         * @return The [Cell] instance for method chaining.
-         * @deprecated Use [string] for consistency with string() naming pattern.
-         */
-        @Deprecated("Use string() instead", ReplaceWith("string(text)"))
-        fun text(text: String) = apply {
-            this.content.add(ParagraphBuilder().string(text).build())
-        }
     }
 
     data class ColumnWidth(val minWidth: Size, val percentWidth: Double)
