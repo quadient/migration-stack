@@ -110,4 +110,14 @@ interface DocumentContentBuilderBase<T> {
     fun selectByLanguage(builder: SelectByLanguageBuilder.() -> Unit): T = apply {
         this.content.add(SelectByLanguageBuilder().apply(builder).build())
     } as T
+
+    /**
+     * Adds a paragraph with the given string to the content (convenience method).
+     * Creates: Paragraph → Text → StringValue
+     * @param text The string to add in a paragraph.
+     * @return This builder instance for method chaining.
+     */
+    fun string(text: String): T = apply {
+        this.content.add(ParagraphBuilder().string(text).build())
+    } as T
 }

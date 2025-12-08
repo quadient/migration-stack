@@ -67,15 +67,6 @@ class TableBuilder {
 
         fun mergeLeft(value: Boolean) = apply { mergeLeft = value }
         fun mergeUp(value: Boolean) = apply { mergeUp = value }
-
-        /**
-         * Adds a paragraph with the given string to the cell.
-         * @param text The string to add in a paragraph.
-         * @return The [Cell] instance for method chaining.
-         */
-        fun string(text: String) = apply {
-            this.content.add(ParagraphBuilder().string(text).build())
-        }
     }
 
     data class ColumnWidth(val minWidth: Size, val percentWidth: Double)
