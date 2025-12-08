@@ -2,7 +2,9 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
 
 class FirstMatchBuilder {
     private var default: MutableList<DocumentContent> = mutableListOf()
@@ -32,7 +34,7 @@ class FirstMatchBuilder {
     fun addCase() = CaseBuilder().apply { cases.add(this) }
 
     /**
-     * Sets the default content for the FirstMatch instance.
+     * Replaces the default content for the FirstMatch instance.
      * @param default The default DocumentContent to be used.
      * @return The FirstMatchBuilder instance for method chaining.
      */
@@ -55,13 +57,40 @@ class FirstMatchBuilder {
         cases.add(caseBuilder)
     }
 
+    /**
+     * Sets the default content as a paragraph using a builder function.
+     * @param builder A builder function to configure the paragraph.
+     * @return The FirstMatchBuilder instance for method chaining.
+     */
+    fun defaultParagraph(builder: ParagraphBuilder.() -> Unit) = apply {
+        default.add(ParagraphBuilder().apply(builder).build())
+    }
+
+    /**
+     * Sets the default content as a table using a builder function.
+     * @param builder A builder function to configure the table.
+     * @return The FirstMatchBuilder instance for method chaining.
+     */
+    fun defaultTable(builder: TableBuilder.() -> Unit) = apply {
+        default.add(TableBuilder().apply(builder).build())
+    }
+
+    /**
+     * Adds default content as a paragraph with the given string.
+     * @param text The string to be wrapped in a paragraph.
+     * @return The FirstMatchBuilder instance for method chaining.
+     */
+    fun defaultString(text: String) = apply {
+        default.add(ParagraphBuilder().string(text).build())
+    }
+
     class CaseBuilder {
         var content: MutableList<DocumentContent> = mutableListOf()
         var displayRuleRef: DisplayRuleRef? = null
         var name: String? = null
 
         /**
-         * Sets the content for the case.
+         * Replaces the content for the case.
          * @param content The [DocumentContent] to be used in the case.
          * @return A CaseBuilder instance for method chaining.
          */
@@ -94,5 +123,69 @@ class FirstMatchBuilder {
          * @return A CaseBuilder instance for method chaining.
          */
         fun name(name: String) = apply { this.name = name }
+
+        /**
+         * Adds a paragraph to the case using a builder function.
+         * @param builder A builder function to build the paragraph.
+         * @return A CaseBuilder instance for method chaining.
+         */
+        fun paragraph(builder: ParagraphBuilder.() -> Unit) = apply {
+            content.add(ParagraphBuilder().apply(builder).build())
+        }
+
+        /**
+         * Adds a table to the case using a builder function.
+         * @param builder A builder function to build the table.
+         * @return A CaseBuilder instance for method chaining.
+         */
+        fun table(builder: TableBuilder.() -> Unit) = apply {
+            content.add(TableBuilder().apply(builder).build())
+        }
+
+        /**
+         * Adds an image reference to the case.
+         * @param imageId The ID of the image to reference.
+         * @return A CaseBuilder instance for method chaining.
+         */
+        fun imageRef(imageId: String) = apply {
+            content.add(com.quadient.migration.api.dto.migrationmodel.ImageRef(imageId))
+        }
+
+        /**
+         * Adds a document object reference to the case.
+         * @param documentObjectId The ID of the document object to reference.
+         * @return A CaseBuilder instance for method chaining.
+         */
+        fun documentObjectRef(documentObjectId: String) = apply {
+            content.add(DocumentObjectRef(documentObjectId, null))
+        }
+
+        /**
+         * Adds a conditional document object reference to the case.
+         * @param documentObjectId The ID of the document object to reference.
+         * @param displayRuleId The ID of the display rule.
+         * @return A CaseBuilder instance for method chaining.
+         */
+        fun documentObjectRef(documentObjectId: String, displayRuleId: String) = apply {
+            content.add(DocumentObjectRef(documentObjectId, DisplayRuleRef(displayRuleId)))
+        }
+
+        /**
+         * Adds a nested first match block to the case.
+         * @param builder A builder function to build the first match block.
+         * @return A CaseBuilder instance for method chaining.
+         */
+        fun firstMatch(builder: FirstMatchBuilder.() -> Unit) = apply {
+            content.add(FirstMatchBuilder().apply(builder).build())
+        }
+
+        /**
+         * Adds a select by language block to the case.
+         * @param builder A builder function to build the select by language block.
+         * @return A CaseBuilder instance for method chaining.
+         */
+        fun selectByLanguage(builder: SelectByLanguageBuilder.() -> Unit) = apply {
+            content.add(SelectByLanguageBuilder().apply(builder).build())
+        }
     }
 }

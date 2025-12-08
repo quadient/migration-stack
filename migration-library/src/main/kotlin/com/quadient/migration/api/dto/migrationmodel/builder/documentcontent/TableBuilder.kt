@@ -2,7 +2,9 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Table
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
 import com.quadient.migration.shared.Size
 
 class TableBuilder {
@@ -67,28 +69,98 @@ class TableBuilder {
         fun mergeUp(value: Boolean) = apply { mergeUp = value }
 
         /**
-         * Append content to the cell.
-         * @param content The content to append to the cell. Must be either
-         * a [String], [com.quadient.migration.api.dto.migrationmodel.Text]
-         * or [com.quadient.migration.api.dto.migrationmodel.Ref].
+         * Appends content to the cell.
+         * @param content The content to append to the cell.
+         * @return The [Cell] instance for method chaining.
          */
         fun appendContent(content: DocumentContent) = apply { this.content.add(content) }
 
         /**
-         * Replace content of the cell with single object.
-         * @param content The content to append to the cell. Must be either
-         * a [String], [com.quadient.migration.api.dto.migrationmodel.Text]
-         * or [com.quadient.migration.api.dto.migrationmodel.Ref].
+         * Replaces all content in the cell with a single item.
+         * @param content The content to set as the cell content.
+         * @return The [Cell] instance for method chaining.
          */
         fun content(content: DocumentContent) = apply { this.content.apply { clear() }.add(content) }
 
         /**
-         * Replace content of the cell with the provided list of objects.
-         * @param content The content to append to the cell. Must be either
-         * a [String], [com.quadient.migration.api.dto.migrationmodel.Text]
-         * or [com.quadient.migration.api.dto.migrationmodel.Ref].
+         * Replaces all content in the cell with multiple items.
+         * @param content The list of content to set as the cell content.
+         * @return The [Cell] instance for method chaining.
          */
         fun content(content: List<DocumentContent>) = apply { this@Cell.content.apply { clear() }.addAll(content) }
+
+        /**
+         * Adds a paragraph with the given string to the cell.
+         * @param text The string to add in a paragraph.
+         * @return The [Cell] instance for method chaining.
+         */
+        fun string(text: String) = apply {
+            this.content.add(ParagraphBuilder().string(text).build())
+        }
+
+        /**
+         * Adds a paragraph to the cell using a builder function.
+         * @param builder A builder function to build the paragraph.
+         * @return The [Cell] instance for method chaining.
+         */
+        fun paragraph(builder: ParagraphBuilder.() -> Unit) = apply {
+            content.add(ParagraphBuilder().apply(builder).build())
+        }
+
+        /**
+         * Adds a table to the cell using a builder function.
+         * @param builder A builder function to build the table.
+         * @return The [Cell] instance for method chaining.
+         */
+        fun table(builder: TableBuilder.() -> Unit) = apply {
+            content.add(TableBuilder().apply(builder).build())
+        }
+
+        /**
+         * Adds an image reference to the cell.
+         * @param imageId The ID of the image to reference.
+         * @return The [Cell] instance for method chaining.
+         */
+        fun imageRef(imageId: String) = apply {
+            content.add(com.quadient.migration.api.dto.migrationmodel.ImageRef(imageId))
+        }
+
+        /**
+         * Adds a document object reference to the cell.
+         * @param documentObjectId The ID of the document object to reference.
+         * @return The [Cell] instance for method chaining.
+         */
+        fun documentObjectRef(documentObjectId: String) = apply {
+            content.add(DocumentObjectRef(documentObjectId, null))
+        }
+
+        /**
+         * Adds a conditional document object reference to the cell.
+         * @param documentObjectId The ID of the document object to reference.
+         * @param displayRuleId The ID of the display rule.
+         * @return The [Cell] instance for method chaining.
+         */
+        fun documentObjectRef(documentObjectId: String, displayRuleId: String) = apply {
+            content.add(DocumentObjectRef(documentObjectId, DisplayRuleRef(displayRuleId)))
+        }
+
+        /**
+         * Adds a first match block to the cell using a builder function.
+         * @param builder A builder function to build the first match block.
+         * @return The [Cell] instance for method chaining.
+         */
+        fun firstMatch(builder: FirstMatchBuilder.() -> Unit) = apply {
+            content.add(FirstMatchBuilder().apply(builder).build())
+        }
+
+        /**
+         * Adds a select by language block to the cell using a builder function.
+         * @param builder A builder function to build the select by language block.
+         * @return The [Cell] instance for method chaining.
+         */
+        fun selectByLanguage(builder: SelectByLanguageBuilder.() -> Unit) = apply {
+            content.add(SelectByLanguageBuilder().apply(builder).build())
+        }
     }
 
     data class ColumnWidth(val minWidth: Size, val percentWidth: Double)

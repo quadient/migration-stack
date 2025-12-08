@@ -12,8 +12,8 @@ import com.quadient.migration.shared.Size
 class ParagraphStyleBuilder(id: String) : DtoBuilderBase<ParagraphStyle, ParagraphStyleBuilder>(id) {
     var definition: ParagraphStyleDefOrRef? = null
 
-    fun definition(builder: ParagraphStyleDefinitionBuilder.() -> ParagraphStyleDefinitionBuilder) = apply {
-        this.definition = builder(ParagraphStyleDefinitionBuilder()).build()
+    fun definition(builder: ParagraphStyleDefinitionBuilder.() -> Unit) = apply {
+        this.definition = ParagraphStyleDefinitionBuilder().apply(builder).build()
     }
 
     fun definition(definition: ParagraphStyleDefinition) = apply { this.definition = definition }

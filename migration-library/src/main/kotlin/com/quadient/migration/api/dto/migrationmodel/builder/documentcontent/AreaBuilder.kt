@@ -91,6 +91,33 @@ class AreaBuilder {
     }
 
     /**
+     * Adds a table to the flow area using a builder function.
+     * @param builder A builder function to build the table.
+     * @return The [AreaBuilder] instance for method chaining.
+     */
+    fun table(builder: com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder.() -> Unit) = apply {
+        content.add(com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder().apply(builder).build())
+    }
+
+    /**
+     * Adds a first match block to the flow area using a builder function.
+     * @param builder A builder function to build the first match block.
+     * @return The [AreaBuilder] instance for method chaining.
+     */
+    fun firstMatch(builder: com.quadient.migration.api.dto.migrationmodel.builder.FirstMatchBuilder.() -> Unit) = apply {
+        content.add(com.quadient.migration.api.dto.migrationmodel.builder.FirstMatchBuilder().apply(builder).build())
+    }
+
+    /**
+     * Adds a select by language block to the flow area using a builder function.
+     * @param builder A builder function to build the select by language block.
+     * @return The [AreaBuilder] instance for method chaining.
+     */
+    fun selectByLanguage(builder: SelectByLanguageBuilder.() -> Unit) = apply {
+        content.add(SelectByLanguageBuilder().apply(builder).build())
+    }
+
+    /**
      * Builds the [Area] instance.
      * @return The constructed [Area] instance.
      */
