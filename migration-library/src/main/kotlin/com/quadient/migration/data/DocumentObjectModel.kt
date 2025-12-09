@@ -29,7 +29,7 @@ data class DocumentObjectModel(
     override fun collectRefs(): List<RefModel> {
         return this.content.map {
             when (it) {
-                is RefModel -> listOf(it)
+                is RefModel -> it.collectRefs()
                 is TableModel -> it.collectRefs()
                 is ParagraphModel -> it.collectRefs()
                 is AreaModel -> it.collectRefs()
