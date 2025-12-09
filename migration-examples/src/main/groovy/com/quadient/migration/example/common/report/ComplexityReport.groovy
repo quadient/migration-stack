@@ -122,6 +122,7 @@ class Stats {
     Stats collect(DocumentObject obj) {
         this.id = obj.id
         this.collectContent(obj.content)
+        this.collectDisplayRule(obj.displayRuleRef)
         return this
     }
 

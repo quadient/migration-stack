@@ -53,7 +53,7 @@ sealed interface ParagraphStyleDefOrRefModel {
 data class DocumentObjectModelRef(override val id: String, val displayRuleRef: DisplayRuleModelRef?) : RefModel,
     DocumentContentModel, TextContentModel {
     override fun collectRefs(): List<RefModel> {
-        return listOf(this)
+        return listOfNotNull(this, this.displayRuleRef)
     }
 
     companion object {
