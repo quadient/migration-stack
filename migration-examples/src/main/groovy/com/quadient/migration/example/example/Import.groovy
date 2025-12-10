@@ -8,7 +8,6 @@ package com.quadient.migration.example.example
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
-import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
@@ -139,52 +138,52 @@ def table = table {
     it.row {
         it.displayRuleRef = new DisplayRuleRef(displayHeaderRule.id)
         it.cell {
-            it.appendContent(new Paragraph("ID"))
+            it.paragraph { it.string("ID") }
         }
         it.cell {
-            it.appendContent(new Paragraph("key"))
+            it.paragraph { it.string("key") }
         }
         it.cell {
-            it.appendContent(new Paragraph("value"))
+            it.paragraph { it.string("value") }
         }
     }
 
     it.row {
         it.cell {
-            it.appendContent(new Paragraph("1"))
+            it.paragraph { it.text { it.string("1") } }
         }
         it.cell {
             // This cell is merged with the cell to the left on the same row
             // and contains the value of the left cell.
             it.mergeLeft = true
-            it.appendContent(new Paragraph("key1"))
+            it.paragraph { it.string("key1") }
         }
         it.cell {
-            it.appendContent(new Paragraph("value1"))
-        }
-    }
-
-    it.row {
-        it.cell {
-            it.appendContent(new Paragraph("2"))
-        }
-        it.cell {
-            it.appendContent(new Paragraph("key2"))
-        }
-        it.cell {
-            it.appendContent(new Paragraph("value2"))
+            it.paragraph { it.string("value1") }
         }
     }
 
     it.row {
         it.cell {
-            it.appendContent(new Paragraph("3"))
+            it.paragraph { it.string("2") }
         }
         it.cell {
-            it.appendContent(new Paragraph("key3"))
+            it.paragraph { it.string("key2") }
         }
         it.cell {
-            it.appendContent(new Paragraph("value3"))
+            it.paragraph { it.string("value2") }
+        }
+    }
+
+    it.row {
+        it.cell {
+            it.paragraph { it.string("3") }
+        }
+        it.cell {
+            it.paragraph { it.string("key3") }
+        }
+        it.cell {
+            it.paragraph { it.string("value3") }
         }
     }
 }
@@ -202,9 +201,9 @@ def address = new DocumentObjectBuilder("address", DocumentObjectType.Block)
 
 // Footer of the document containing a signature.
 def signature = new DocumentObjectBuilder("signature", DocumentObjectType.Block)
-    .paragraph { it.content("Sincerely,") }
-    .paragraph { it.content("John Smith") }
-    .paragraph { it.content("CEO of Lorem ipsum") }
+    .paragraph { it.string("Sincerely,") }
+    .paragraph { it.string("John Smith") }
+    .paragraph { it.string("CEO of Lorem ipsum") }
     .build()
 
 // Sample paragraph containing a heading using headingStyle style,
@@ -215,26 +214,26 @@ def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Bloc
     .paragraph {
         it.text {
             it.styleRef(headingStyle.id)
-            it.content("Lorem ipsum dolor sit amet\n")
+            it.string("Lorem ipsum dolor sit amet\n")
         }
     }
     .paragraph {
         it.styleRef(paragraphStyle.id)
-            .text {
-                it.styleRef(normalStyle.id)
-                it.firstMatch {
-                    it.case {
-                        it.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                            it.appendContent("Dobrý den")
-                        }.build()).displayRule(displayRuleStateCzechia.id)
-                    }.case {
-                        it.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                            it.appendContent("Bonjour")
-                        }.build()).displayRule(displayRuleStateFrance.id)
-                    }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Good morning") }.build())
+                .text {
+                    it.styleRef(normalStyle.id)
+                    it.firstMatch {
+                        it.case {
+                            it.paragraph {
+                                it.styleRef(paragraphStyle.id).text { it.string("Dobrý den") }
+                            }.displayRule(displayRuleStateCzechia.id)
+                        }.case {
+                            it.paragraph {
+                                it.styleRef(paragraphStyle.id).text { it.string("Bonjour") }
+                            }.displayRule(displayRuleStateFrance.id)
+                        }.defaultParagraph { it.styleRef(paragraphStyle.id).string("Good morning") }
+                    }
+                    it.string(", Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
                 }
-                it.appendContent(", Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
-            }
     }
     .build()
 
@@ -244,11 +243,10 @@ def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Bloc
     .paragraph {
         it.styleRef(new ParagraphStyleRef(paragraphStyle.id))
             .text {
-                it.content("Donec non porttitor ipsum. Praesent et blandit nulla, quis ullamcorper enim. Curabitur nec rutrum justo. Nunc ac quam a ante consequat ullamcorper eget sit amet tortor. Donec convallis sagittis purus, a feugiat lacus tristique vitae. In a orci risus. Sed elit magna, vestibulum vitae orci sodales, consequat pharetra nisi. Vestibulum non scelerisque elit. Duis feugiat porttitor ante sit amet porta. Fusce at leo posuere, venenatis libero ut, varius dolor. Duis bibendum porta tincidunt.")
+                it.string("Donec non porttitor ipsum. Praesent et blandit nulla, quis ullamcorper enim. Curabitur nec rutrum justo. Nunc ac quam a ante consequat ullamcorper eget sit amet tortor. Donec convallis sagittis purus, a feugiat lacus tristique vitae. In a orci risus. Sed elit magna, vestibulum vitae orci sodales, consequat pharetra nisi. Vestibulum non scelerisque elit. Duis feugiat porttitor ante sit amet porta. Fusce at leo posuere, venenatis libero ut, varius dolor. Duis bibendum porta tincidunt.")
             }
             .text {
-                it.displayRuleRef(new DisplayRuleRef(displayLastSentenceRule.id))
-                it.content("Nulla id nulla odio.")
+                it.displayRuleRef(new DisplayRuleRef(displayLastSentenceRule.id)).string("Nulla id nulla odio.")
             }
     }
     .build()
@@ -273,9 +271,9 @@ def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", Doc
     }
     .paragraph {
         it.styleRef(new ParagraphStyleRef(paragraphStyle.id))
-            .text {
-                it.content("Integer quis quam semper, accumsan neque at, pellentesque diam. Etiam in blandit dolor. Maecenas sit amet interdum augue, vel pellentesque erat. Suspendisse ut sem in justo rhoncus placerat vitae ut lacus. Etiam consequat bibendum justo ut posuere. Donec aliquam posuere nibh, vehicula pulvinar lectus dictum et. Nullam rhoncus ultrices ipsum et consectetur. Nam tincidunt id purus ac viverra. ")
-            }
+                .text {
+                    it.string("Integer quis quam semper, accumsan neque at, pellentesque diam. Etiam in blandit dolor. Maecenas sit amet interdum augue, vel pellentesque erat. Suspendisse ut sem in justo rhoncus placerat vitae ut lacus. Etiam consequat bibendum justo ut posuere. Donec aliquam posuere nibh, vehicula pulvinar lectus dictum et. Nullam rhoncus ultrices ipsum et consectetur. Nam tincidunt id purus ac viverra. ")
+                }
     }
     .build()
 
