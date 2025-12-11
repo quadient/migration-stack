@@ -37,7 +37,7 @@ static void writeDeploymentReport(Binding binding, Report report, String project
                     writer.write("${item.deployKind},") // Next Action
                     writer.write("${item.previousIcmPath ?: ""},") // Last ICM Path
                     writer.write("${item.nextIcmPath ?: ""},") // Next ICM Path
-                    writer.write("${item.errorMessage?.replaceAll("\n", "")?.replaceAll(",", ";") ?: ""},") // Error Message
+                    writer.write("${item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";") ?: ""},") // Error Message
                     writer.write("${item.deploymentId ?: ""},") // Deploy ID
                     writer.write("${item.deployTimestamp ?: ""},") // Deploy Timestamp
                     writer.write("${content}") // Content
@@ -54,7 +54,7 @@ static void writeDeploymentReport(Binding binding, Report report, String project
                     writer.write("${item.deployKind},") // Next Action
                     writer.write("${item.previousIcmPath ?: ""},") // Last ICM Path
                     writer.write("${item.nextIcmPath ?: ""},") // Next ICM Path
-                    writer.write("${item.errorMessage?.replaceAll("\n", "")?.replaceAll(",", ";") ?: ""},") // Error Message
+                    writer.write("${item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";") ?: ""},") // Error Message
                     writer.write("${item.deploymentId ?: ""},") // Deploy ID
                     writer.write("${item.deployTimestamp ?: ""},") // Deploy Timestamp
                     writer.write("") // Content
