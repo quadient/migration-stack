@@ -114,6 +114,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
             originLocations = originLocations,
             customFields = customFields,
             displayRuleRef = displayRuleRef,
+            variableStructureRef = variableStructureRef,
             baseTemplate = baseTemplate,
             options = options,
             metadata = metadata,
