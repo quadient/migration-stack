@@ -378,6 +378,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
 
 def template = new DocumentObjectBuilder("template", DocumentObjectType.Template)
     .documentObjectRef(page.id)
+    .variableStructureRef(variableStructure.id)
     .build()
 
 // Insert all content into the database to be used in the deploy task
