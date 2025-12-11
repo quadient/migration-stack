@@ -63,6 +63,16 @@ def stateVariable = new VariableBuilder("stateVariable")
     .defaultValue("Canada")
     .dataType(DataType.String).build()
 
+def variableStructure = new VariableStructureBuilder("variableStructure")
+        .addVariable(displayHeaderVariable.id, "Data.displayHeader")
+        .addVariable(displayParagraphVariable.id, "Data.displayParagraph")
+        .addVariable(displayLastSentenceVariable.id, "Data.displayLastSentence")
+        .addVariable(nameVariable.id, "Data.name")
+        .addVariable(addressVariable.id, "Data.address")
+        .addVariable(cityVariable.id, "Data.city")
+        .addVariable(stateVariable.id, "Data.state")
+        .build()
+
 // Display displayHeaderRule to conditionally display the address.
 // Header is hidden if displayHeaderVariable is set to false
 def displayAddressRule = new DisplayRuleBuilder("displayAddressRule")
@@ -197,6 +207,7 @@ def address = new DocumentObjectBuilder("address", DocumentObjectType.Block)
     .paragraph { it.variableRef(addressVariable.id) }
     .paragraph { it.variableRef(cityVariable.id) }
     .paragraph { it.variableRef(stateVariable.id) }
+    .variableStructureRef(variableStructure.id)
     .build()
 
 // Footer of the document containing a signature.
@@ -204,6 +215,7 @@ def signature = new DocumentObjectBuilder("signature", DocumentObjectType.Block)
     .paragraph { it.string("Sincerely,") }
     .paragraph { it.string("John Smith") }
     .paragraph { it.string("CEO of Lorem ipsum") }
+    .variableStructureRef(variableStructure.id)
     .build()
 
 // Sample paragraph containing a heading using headingStyle style,
@@ -275,6 +287,7 @@ def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", Doc
                     it.string("Integer quis quam semper, accumsan neque at, pellentesque diam. Etiam in blandit dolor. Maecenas sit amet interdum augue, vel pellentesque erat. Suspendisse ut sem in justo rhoncus placerat vitae ut lacus. Etiam consequat bibendum justo ut posuere. Donec aliquam posuere nibh, vehicula pulvinar lectus dictum et. Nullam rhoncus ultrices ipsum et consectetur. Nam tincidunt id purus ac viverra. ")
                 }
     }
+    .variableStructureRef(variableStructure.id)
     .build()
 
 def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
@@ -360,6 +373,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         }
             .documentObjectRef(signature.id)
     }
+    .variableStructureRef(variableStructure.id)
     .build()
 
 def template = new DocumentObjectBuilder("template", DocumentObjectType.Template)
@@ -384,12 +398,4 @@ for (item in [paragraphStyle]) {
 }
 
 migration.imageRepository.upsert(logo)
-migration.variableStructureRepository.upsert(new VariableStructureBuilder("variableStructure")
-    .addVariable(displayHeaderVariable.id, "Data.displayHeader")
-    .addVariable(displayParagraphVariable.id, "Data.displayParagraph")
-    .addVariable(displayLastSentenceVariable.id, "Data.displayLastSentence")
-    .addVariable(nameVariable.id, "Data.name")
-    .addVariable(addressVariable.id, "Data.address")
-    .addVariable(cityVariable.id, "Data.city")
-    .addVariable(stateVariable.id, "Data.state")
-    .build())
+migration.variableStructureRepository.upsert(variableStructure)
