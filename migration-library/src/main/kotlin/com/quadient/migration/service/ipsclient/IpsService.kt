@@ -216,7 +216,7 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         return Result.success(uploadDest)
     }
 
-    private fun waitAndAckAndGetProgressStatus(jobId: JobId): String? {
+    private fun waitAndAckJobAndGetErrorLog(jobId: JobId): String? {
         client.waitForJob(jobId).ifNotSuccess {
             logger.error("Waiting for job run to finish failed, {}", jobId)
         }
@@ -230,11 +230,14 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         }
 
         job.ifOk {
-            val potentialProgressStatusPart = it.parts[6]
-            return if (potentialProgressStatusPart.startsWith("E")) {
-                null
-            } else {
-                potentialProgressStatusPart
+            val statusPart = it.parts.getOrNull(5)
+            val errorOrProgressPart = it.parts.getOrNull(6)
+
+            return when {
+                statusPart == "Failed" -> log
+                errorOrProgressPart?.startsWith("E") == true -> if (errorOrProgressPart.startsWith("E0")) null else log
+                errorOrProgressPart?.startsWith("Aborted") == true -> "$errorOrProgressPart. job log: $log"
+                else -> null
             }
         }
 
@@ -244,9 +247,9 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     private fun <W, C> IpsResult<JobId, W, C>.waitAndAckJobOrLogError(): OperationResult {
         return when (this) {
             is IpsResult.Ok -> {
-                val progressStatus = waitAndAckAndGetProgressStatus(this.jobId)
-                if (progressStatus?.startsWith("Aborted") == true) {
-                    val message = "Job finished with aborted progress status: '$progressStatus'"
+                val errorLog = waitAndAckJobAndGetErrorLog(this.jobId)
+                if (errorLog != null) {
+                    val message = "Job finished with error: '$errorLog'"
                     logger.error(message)
                     return OperationResult.Failure(message)
                 }
@@ -254,8 +257,11 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
             }
 
             is IpsResult.Error -> {
-                waitAndAckAndGetProgressStatus(this.jobId)
-                val message = "Job failed. '$this'"
+                val errorLog = waitAndAckJobAndGetErrorLog(this.jobId)
+                var message = "Job failed. '$this'"
+                if (errorLog != null) {
+                    message += ". Error log: '$errorLog'"
+                }
                 logger.error(message)
                 OperationResult.Failure(message)
             }
