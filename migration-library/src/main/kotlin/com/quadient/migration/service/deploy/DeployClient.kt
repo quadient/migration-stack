@@ -594,47 +594,35 @@ sealed class DeployClient(
         internal: Boolean,
         isPage: Boolean
     ): LastStatus {
-        if (internal || (isPage && output == InspireOutput.Designer)) {
-            return LastStatus.Inlined
-        }
+        if (internal || (isPage && output == InspireOutput.Designer)) return LastStatus.Inlined
+
         val objectEvents = statusTrackingRepository.findEventsRelevantToOutput(id, resourceType, output)
             .filter { ev -> lastDeployment?.timestamp?.let { ev.timestamp <= it } ?: true }
         val lastEvent = objectEvents.lastOrNull()
         val lastDeployEvent = objectEvents.lastOrNull { it is Deployed || it is StatusError }
-        val previousDeployEvent = lastDeployEvent?.timestamp?.let { lastDeployTimestamp ->
-            objectEvents.filter { it.timestamp < lastDeployTimestamp }.mapNotNull {
-                when (it) {
-                    is Deployed -> LastDeployment(it.deploymentId, it.timestamp)
-                    is StatusError -> LastDeployment(it.deploymentId, it.timestamp)
-                    else -> null
+
+        return when (lastDeployEvent) {
+            null -> {
+                if (lastEvent is Active) LastStatus.None
+                else error("No events tracked for $resourceType with id $id and output $output")
+            }
+            is StatusError -> LastStatus.Error(
+                lastDeployEvent.icmPath, lastDeployEvent.deploymentId, lastDeployEvent.timestamp, lastDeployEvent.error
+            )
+
+            else -> {
+                val deployEvent = lastDeployEvent as Deployed
+                if (deployEvent.deploymentId != lastDeployment?.id) {
+                    LastStatus.Unchanged(deployEvent.icmPath, deployEvent.deploymentId, deployEvent.timestamp)
+                } else {
+                    val hasPreviousSuccessfulDeploy =
+                        objectEvents.any { it.timestamp < deployEvent.timestamp && it is Deployed }
+                    if (hasPreviousSuccessfulDeploy) {
+                        LastStatus.Overwritten(deployEvent.icmPath, deployEvent.deploymentId, deployEvent.timestamp)
+                    } else {
+                        LastStatus.Created(deployEvent.icmPath, deployEvent.deploymentId, deployEvent.timestamp)
+                    }
                 }
-            }.lastOrNull()
-        }
-
-        return if (lastDeployment == null) {
-            when (lastEvent) {
-                is Active -> LastStatus.None
-                is Deployed -> throw IllegalStateException("Last deployment ID is null but the last status is Deployed")
-                is StatusError -> throw IllegalStateException("Last deployment ID is null but the last status is Error")
-                null -> throw IllegalStateException("No events tracked for $resourceType with id $id and output $output")
-            }
-        } else if (previousDeployEvent != null) {
-            when (lastEvent) {
-                is Active -> getLastStatus(id, previousDeployEvent, resourceType, output, internal, isPage)
-                is Deployed -> LastStatus.Overwritten(lastEvent.icmPath, lastEvent.deploymentId, lastEvent.timestamp)
-                is StatusError -> LastStatus.Error(
-                    lastEvent.icmPath, lastEvent.deploymentId, lastEvent.timestamp, lastEvent.error
-                )
-
-                null -> unreachable("lastEvent should not be null because previousDeployEvent exists")
-            }
-        } else {
-            val ev = lastDeployEvent ?: lastEvent
-            when (ev) {
-                is Active -> LastStatus.None
-                is Deployed -> LastStatus.Created(ev.icmPath, ev.deploymentId, ev.timestamp)
-                is StatusError -> LastStatus.Error(ev.icmPath, ev.deploymentId, ev.timestamp, ev.error)
-                null -> throw IllegalStateException("No events tracked for $resourceType with id $id and output $output")
             }
         }
     }
@@ -690,7 +678,7 @@ sealed class DeployClient(
 
         val objectEvents = statusTrackingRepository.findEventsRelevantToOutput(id, resourceType, output)
         val lastEvent = objectEvents.lastOrNull()
-        return if (lastEvent is Active) {
+        return if (lastEvent is Active || lastEvent is StatusError) {
             val lastDeployEvent = objectEvents.filterIsInstance<Deployed>().lastOrNull()
             if (lastDeployEvent != null && lastDeployEvent.icmPath != nextIcmPath) {
                 DeployKind.Create
@@ -701,8 +689,6 @@ sealed class DeployClient(
             } else {
                 DeployKind.Create
             }
-        } else if (lastEvent is StatusError) {
-            DeployKind.Create
         } else {
             DeployKind.Keep
         }

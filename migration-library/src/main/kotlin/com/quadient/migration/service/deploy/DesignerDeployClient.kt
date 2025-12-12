@@ -109,6 +109,16 @@ class DesignerDeployClient(
                 }
             } catch (e: Exception) {
                 deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
+                statusTrackingRepository.error(
+                    id = it.id,
+                    deploymentId = deploymentId,
+                    timestamp = deploymentTimestamp,
+                    resourceType = ResourceType.DocumentObject,
+                    output = output,
+                    icmPath = targetPath,
+                    message = e.message ?: "",
+                    data = mapOf("type" to it.type.toString()),
+                )
             }
         }
 

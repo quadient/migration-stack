@@ -16,9 +16,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Fixed
 
 - Complexity report now correctly collects display rule usage statistics from document object references
-- Collecting references from document objects and document object references now correctly returns display rule reference usages
+- Collecting references from document objects and document object references now correctly returns display rule
+  reference usages
 - Document object builder now assigns variable structure reference when building document object
 - Some specific errors were not properly identified or logged during deployment
+- Added status tracking for non-IPS errors
+- Fixed values of last status and next action in deployment report for specific cases related to errors and repeated
+  deployments 
 
 ## [17.0.11] - 2025-12-03
 

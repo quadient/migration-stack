@@ -303,6 +303,7 @@ class DesignerDeployClientTest {
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd"
         every { ipsService.fileExists(any()) } returns false
+        every { statusTrackingRepository.error("B_1", any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("B_1")
 
         // when
         val result = subject.deployDocumentObjects()

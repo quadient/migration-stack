@@ -2,6 +2,7 @@
 
 package com.quadient.migration.service.deploy
 
+import com.quadient.migration.api.dto.migrationmodel.StatusTracking
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
@@ -23,6 +24,7 @@ import com.quadient.migration.shared.MetadataValue
 import com.quadient.migration.tools.aActiveStatusEvent
 import com.quadient.migration.tools.aDeployedStatus
 import com.quadient.migration.tools.aDeployedStatusEvent
+import com.quadient.migration.tools.aErrorStatusEvent
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aImage
@@ -37,10 +39,10 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -175,21 +177,22 @@ class DeployClientTest {
     @Test
     fun `progress report after deploy`() {
         val currentDeployTimestamp = Clock.System.now()
+        val deploymentId = Uuid.random()
+
         givenNewExternalDocumentObject("1", deps = listOf("2"))
-        givenChangedExternalDocumentObject("2", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp)
-        givenChangedExternalDocumentObject("8", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp, icmPath = "icm://other.wfd")
-        givenExistingExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"), deployTimestamp = currentDeployTimestamp)
+        givenChangedExternalDocumentObject("2", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
+        givenChangedExternalDocumentObject("8", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp, icmPath = "icm://other.wfd", deploymentId = deploymentId)
+        givenExistingExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"), deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
         givenInternalDocumentObject("4", deps = listOf("1", "5"))
         givenInternalDocumentObject("5", deps = listOf("6"))
         givenNewExternalDocumentObject("6", deps = listOf("7"))
         givenNewExternalDocumentObject("7", deps = listOf())
         givenNewImage("1")
-        givenChangedImage("2", deployTimestamp = currentDeployTimestamp)
+        givenChangedImage("2", deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
         givenNewImage("3")
 
-        val lastDeployTimestamp = Clock.System.now()
         every { statusTrackingRepository.listAll() } returns listOf(
-            aDeployedStatus("random", deploymentId = Uuid.random(), timestamp = lastDeployTimestamp),
+            aDeployedStatus("random", deploymentId = deploymentId, timestamp = currentDeployTimestamp),
         )
 
         val result = subject.progressReport()
@@ -213,6 +216,116 @@ class DeployClientTest {
         for (i in arrayOf(8)) {
             result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeChangedPath()
         }
+    }
+
+    @Test
+    fun `progress report status complex scenario`() {
+        val scenarioStart = Clock.System.now() - 2.hours
+
+        // Step 1: pre-deploy report
+        val aBlockEvents = mutableListOf(aActiveStatusEvent(scenarioStart))
+        val bBlockEvents = mutableListOf(aActiveStatusEvent(scenarioStart))
+        updateMocks(aBlockEvents, bBlockEvents)
+
+        val preDeployReport = subject.progressReport()
+
+        preDeployReport.items.forEach {
+            it.value.lastStatus::class.shouldBeEqualTo(LastStatus.None::class)
+            it.value.deployKind.shouldBeEqualTo(DeployKind.Create)
+        }
+
+        // Step 2: report with A deployed and B error
+        val firstDeploymentId = Uuid.random()
+        val firstDeploymentTimestamp = scenarioStart + 1.minutes
+        aBlockEvents.add(aDeployedStatusEvent(firstDeploymentId, "icm://block_A.wfd", firstDeploymentTimestamp))
+        bBlockEvents.add(
+            aErrorStatusEvent(
+                firstDeploymentId, "icm://block_B.wfd", firstDeploymentTimestamp, error = "Paragraph not found!"
+            )
+        )
+        updateMocks(aBlockEvents, bBlockEvents)
+
+        val firstDeploymentReport = subject.progressReport()
+        firstDeploymentReport.items[Pair("block_A", ResourceType.DocumentObject)].apply {
+            this.shouldNotBeNull()
+            this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
+            this.deployKind.shouldBeEqualTo(DeployKind.Keep)
+        }
+        firstDeploymentReport.items[Pair("block_B", ResourceType.DocumentObject)].apply {
+            this.shouldNotBeNull()
+            this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Error::class)
+            this.errorMessage.shouldBeEqualTo("Paragraph not found!")
+            this.deployKind.shouldBeEqualTo(DeployKind.Create)
+        }
+
+        // Step 3: report with B successfully redeployed
+        val secondDeploymentId = Uuid.random()
+        val secondDeploymentTimestamp = scenarioStart + 5.minutes
+        bBlockEvents.add(aDeployedStatusEvent(secondDeploymentId, "icm://block_B.wfd", secondDeploymentTimestamp))
+        updateMocks(aBlockEvents, bBlockEvents)
+
+        val secondDeploymentReport = subject.progressReport()
+        secondDeploymentReport.items[Pair("block_A", ResourceType.DocumentObject)].apply {
+            this.shouldNotBeNull()
+            this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Unchanged::class)
+            this.deployKind.shouldBeEqualTo(DeployKind.Keep)
+        }
+        secondDeploymentReport.items[Pair("block_B", ResourceType.DocumentObject)].apply {
+            this.shouldNotBeNull()
+            this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
+            this.deployKind.shouldBeEqualTo(DeployKind.Keep)
+        }
+
+        // Step 4: activate all
+        aBlockEvents.add(aActiveStatusEvent(scenarioStart + 10.minutes))
+        bBlockEvents.add(aActiveStatusEvent(scenarioStart + 10.minutes))
+        updateMocks(aBlockEvents, bBlockEvents)
+
+        val activateAllReport = subject.progressReport()
+        activateAllReport.items[Pair("block_A", ResourceType.DocumentObject)].apply {
+            this.shouldNotBeNull()
+            this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Unchanged::class)
+            this.deployKind.shouldBeEqualTo(DeployKind.Overwrite)
+        }
+        activateAllReport.items[Pair("block_B", ResourceType.DocumentObject)].apply {
+            this.shouldNotBeNull()
+            this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
+            this.deployKind.shouldBeEqualTo(DeployKind.Overwrite)
+        }
+
+        // Step 5: report with A error and B deployed for second time
+        val thirdDeploymentId = Uuid.random()
+        val thirdDeploymentTimestamp = scenarioStart + 30.minutes
+        aBlockEvents.add(
+            aErrorStatusEvent(
+                thirdDeploymentId, "icm://block_A.wfd", thirdDeploymentTimestamp, error = "Connection lost"
+            )
+        )
+        bBlockEvents.add(aDeployedStatusEvent(thirdDeploymentId, "icm://block_B.wfd", thirdDeploymentTimestamp))
+        updateMocks(aBlockEvents, bBlockEvents)
+
+        val thirdDeploymentReport = subject.progressReport()
+        thirdDeploymentReport.items[Pair("block_A", ResourceType.DocumentObject)].apply {
+            this.shouldNotBeNull()
+            this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Error::class)
+            this.errorMessage.shouldBeEqualTo("Connection lost")
+            this.deployKind.shouldBeEqualTo(DeployKind.Overwrite)
+        }
+        thirdDeploymentReport.items[Pair("block_B", ResourceType.DocumentObject)].apply {
+            this.shouldNotBeNull()
+            this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Overwritten::class)
+            this.deployKind.shouldBeEqualTo(DeployKind.Keep)
+        }
+    }
+
+    private fun updateMocks(aBlockEvents: List<StatusEvent>, bBlockEvents: List<StatusEvent>) {
+        givenExternalDocumentObject("block_A", events = aBlockEvents)
+        givenExternalDocumentObject("block_B", events = bBlockEvents)
+
+        every { statusTrackingRepository.listAll() } returns listOf(
+            StatusTracking("block_A", "project", ResourceType.DocumentObject, aBlockEvents),
+            StatusTracking("block_B", "project", ResourceType.DocumentObject, bBlockEvents),
+        )
     }
 
     private fun ProgressReportItem?.shouldBeNew() {
@@ -240,9 +353,9 @@ class DeployClientTest {
         this?.nextIcmPath.shouldStartWith("icm://")
         this?.deployKind.shouldBeEqualTo(DeployKind.Overwrite)
         this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
-        this?.deploymentId.shouldNotBeNull()
-        this?.deployTimestamp.shouldNotBeNull()
-        this?.errorMessage.shouldBeNull()
+        this.deploymentId.shouldNotBeNull()
+        this.deployTimestamp.shouldNotBeNull()
+        this.errorMessage.shouldBeNull()
     }
 
     private fun ProgressReportItem?.shouldBeKept() {
@@ -250,9 +363,9 @@ class DeployClientTest {
         this?.nextIcmPath.shouldStartWith("icm://")
         this?.deployKind.shouldBeEqualTo(DeployKind.Keep)
         this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
-        this?.deploymentId.shouldNotBeNull()
-        this?.deployTimestamp.shouldNotBeNull()
-        this?.errorMessage.shouldBeNull()
+        this.deploymentId.shouldNotBeNull()
+        this.deployTimestamp.shouldNotBeNull()
+        this.errorMessage.shouldBeNull()
     }
 
     private fun ProgressReportItem?.shouldBeChangedPath() {
@@ -260,17 +373,23 @@ class DeployClientTest {
         this?.nextIcmPath.shouldStartWith("icm://")
         this?.deployKind.shouldBeEqualTo(DeployKind.Create)
         this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
-        this?.deploymentId.shouldNotBeNull()
-        this?.deployTimestamp.shouldNotBeNull()
-        this?.errorMessage.shouldBeNull()
+        this.deploymentId.shouldNotBeNull()
+        this.deployTimestamp.shouldNotBeNull()
+        this.errorMessage.shouldBeNull()
     }
 
     private fun givenNewImage(id: String) {
-        givenImage(id = id, events = listOf(aActiveStatusEvent()))
+        givenImage(id = id, events = listOf(aActiveStatusEvent(Clock.System.now() - 1.hours)))
     }
 
-    private fun givenChangedImage(id: String, deployTimestamp: Instant) {
-        givenImage(id = id, events = listOf(aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds), aDeployedStatusEvent(timestamp = deployTimestamp), aActiveStatusEvent(timestamp = deployTimestamp + 1.seconds)))
+    private fun givenChangedImage(id: String, deployTimestamp: Instant, deploymentId: Uuid) {
+        givenImage(
+            id = id, events = listOf(
+                aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds),
+                aDeployedStatusEvent(deploymentId, timestamp = deployTimestamp),
+                aActiveStatusEvent(timestamp = deployTimestamp + 1.seconds)
+            )
+        )
     }
 
     private fun givenImage(id: String, events: List<StatusEvent> = listOf()) {
@@ -295,7 +414,7 @@ class DeployClientTest {
             imageDeps = imageDeps,
             textStyles = textStyles,
             paragraphStyles = paragraphStyles,
-            events = listOf(aActiveStatusEvent())
+            events = listOf(aActiveStatusEvent(Clock.System.now() - 1.hours))
         )
     }
 
@@ -306,6 +425,7 @@ class DeployClientTest {
         textStyles: List<String> = listOf(),
         paragraphStyles: List<String> = listOf(),
         deployTimestamp: Instant,
+        deploymentId: Uuid,
         icmPath: String = "icm://$id.wfd"
     ) {
         givenExternalDocumentObject(
@@ -314,7 +434,7 @@ class DeployClientTest {
             imageDeps = imageDeps,
             textStyles = textStyles,
             paragraphStyles = paragraphStyles,
-            events = listOf(aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds), aDeployedStatusEvent(timestamp = deployTimestamp, icmPath = icmPath), aActiveStatusEvent(timestamp = deployTimestamp + 1.seconds))
+            events = listOf(aActiveStatusEvent(timestamp = deployTimestamp - 1.hours), aDeployedStatusEvent(deploymentId, icmPath, deployTimestamp), aActiveStatusEvent(timestamp = deployTimestamp + 1.seconds))
         )
     }
 
@@ -325,14 +445,17 @@ class DeployClientTest {
         textStyles: List<String> = listOf(),
         paragraphStyles: List<String> = listOf(),
         deployTimestamp: Instant,
+        deploymentId: Uuid,
     ) {
         givenExternalDocumentObject(
             id,
             deps,
             imageDeps = imageDeps,
             textStyles = textStyles,
-            paragraphStyles = paragraphStyles,
-            events = listOf(aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds), aDeployedStatusEvent(timestamp = deployTimestamp, icmPath = "icm://$id.wfd"))
+            paragraphStyles = paragraphStyles, events = listOf(
+                aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds),
+                aDeployedStatusEvent(deploymentId, "icm://$id.wfd", deployTimestamp)
+            )
         )
     }
 

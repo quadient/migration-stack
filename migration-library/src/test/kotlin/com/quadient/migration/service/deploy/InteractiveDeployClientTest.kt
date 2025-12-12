@@ -576,6 +576,7 @@ class InteractiveDeployClientTest {
         every { documentObjectRepository.findModel(innerBlock.id) } throws IllegalStateException("Not found")
         every { documentObjectRepository.list(any()) } returns listOf(template, block)
         every { documentObjectBuilder.buildDocumentObject(block, any()) } throws IllegalStateException("Inner block not found")
+        every { statusTrackingRepository.error("B_1", any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("B_1")
 
         // when
         val result = subject.deployDocumentObjects()
