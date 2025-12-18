@@ -7,6 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+## [17.0.12] - 2025-12-18
+
+### Added
 - Added `string()` convenience method to all DocumentContent builders for creating paragraphs with simple text content
 
 ### Changed
@@ -162,7 +170,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.11...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.12...HEAD
+[17.0.12]: https://github.com/quadient/migration-stack/compare/v17.0.11...v17.0.12
 [17.0.11]: https://github.com/quadient/migration-stack/compare/v17.0.10..v17.0.11
 [17.0.10]: https://github.com/quadient/migration-stack/compare/v17.0.9..v17.0.10
 [17.0.9]: https://github.com/quadient/migration-stack/compare/v17.0.8..v17.0.9
