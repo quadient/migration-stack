@@ -2,7 +2,7 @@ plugins {
     java
     `maven-publish`
     id("net.researchgate.release") version "3.0.2"
-    id("org.owasp.dependencycheck") version "12.1.8"
+    id("org.owasp.dependencycheck") version "12.1.9"
 }
 
 release {

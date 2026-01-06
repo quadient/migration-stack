@@ -24,7 +24,7 @@ jobs:
       - name: Dependency check migration-library
         working-directory: ./migration-library
         run: |
-          ./gradlew dependencyCheckAnalyze --info
+          ./gradlew dependencyCheckAnalyze --debug
 
           curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
             "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=migration-library&versionName=$VERSION"
@@ -32,7 +32,7 @@ jobs:
       - name: Dependency check migration-examples
         working-directory: ./migration-examples
         run: |
-          ./gradlew dependencyCheckAnalyze --info
+          ./gradlew dependencyCheckAnalyze --debug
 
           curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
             "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=migration-examples&versionName=$VERSION"
@@ -40,7 +40,7 @@ jobs:
       - name: Dependency check wfd-xml
         working-directory: ./wfd-xml
         run: |
-          ./gradlew dependencyCheckAggregate --info
+          ./gradlew dependencyCheckAggregate --debug
 
           curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
             "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=wfd-xml&versionName=$VERSION"

@@ -1,6 +1,6 @@
 plugins {
     id("groovy")
-    id("org.owasp.dependencycheck") version "12.1.8"
+    id("org.owasp.dependencycheck") version "12.1.9"
 }
 
 group = "com.quadient"

@@ -8,7 +8,7 @@ plugins {
     kotlin("jvm") version "2.1.0"
     kotlin("plugin.serialization") version "2.1.0"
     id("maven-publish")
-    id("org.owasp.dependencycheck") version "12.1.8"
+    id("org.owasp.dependencycheck") version "12.1.9"
 }
 
 group = "com.quadient"
