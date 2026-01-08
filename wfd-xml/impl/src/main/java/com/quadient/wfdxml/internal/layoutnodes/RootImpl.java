@@ -8,6 +8,7 @@ public class RootImpl implements Root, XmlExportable {
 
     private boolean allowRuntimeModifications = false;
     private String externalStylesLayoutVcsLocation = null;
+    private String subject = null;
 
     @Override
     public Root setAllowRuntimeModifications(boolean allowRuntimeModifications) {
@@ -22,10 +23,21 @@ public class RootImpl implements Root, XmlExportable {
     }
 
     @Override
+    public Root setSubject(String subject) {
+        this.subject = subject;
+        return null;
+    }
+
+    @Override
     public void export(XmlExporter exporter) {
-        exporter.addElementWithBoolData("AllowRuntimeModifications", allowRuntimeModifications);
+        if (allowRuntimeModifications) {
+            exporter.addElementWithBoolData("AllowRuntimeModifications", allowRuntimeModifications);
+        }
         if (externalStylesLayoutVcsLocation != null) {
             exporter.addElementWithStringData("ExternalStylesLayout", "VCSLocation," + externalStylesLayoutVcsLocation);
+        }
+        if (subject != null) {
+            exporter.addElementWithStringData("Subject", subject);
         }
     }
 }

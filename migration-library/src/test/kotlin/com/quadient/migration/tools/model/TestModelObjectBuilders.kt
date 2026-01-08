@@ -77,6 +77,7 @@ fun aDocObj(
     displayRuleRef: String? = null,
     baseTemplate: String? = null,
     variableStructureModelRef: String? = null,
+    metadata: Map<String, List<MetadataPrimitive>> = emptyMap(),
 ): DocumentObjectModel {
     return DocumentObjectModel(
         id = id,
@@ -93,8 +94,9 @@ fun aDocObj(
         baseTemplate = baseTemplate,
         variableStructureRef = variableStructureModelRef?.let { VariableStructureModelRef(it) },
         options = options,
-        metadata = emptyMap(),
+        metadata = metadata,
         skip = SkipOptions(false, null, null),
+        subject = null,
     )
 }
 
@@ -130,6 +132,7 @@ fun aBlock(
         options = null,
         metadata = metadata,
         skip = skip,
+        subject = null,
     )
 }
 
@@ -161,6 +164,7 @@ fun aTemplate(
         options = null,
         metadata = emptyMap(),
         skip = SkipOptions(false, null, null),
+        subject = null,
     )
 }
 

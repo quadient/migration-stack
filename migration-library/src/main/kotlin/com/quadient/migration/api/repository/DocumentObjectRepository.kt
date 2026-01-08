@@ -88,6 +88,7 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
                 it[options] = dto.options
                 it[metadata] = dto.metadata
                 it[DocumentObjectTable.skip] = dto.skip
+                it[DocumentObjectTable.subject] = dto.subject
             }
         }
     }

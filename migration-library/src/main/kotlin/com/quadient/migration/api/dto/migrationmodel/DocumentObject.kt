@@ -24,6 +24,7 @@ data class DocumentObject(
     var lastUpdated: Instant? = null,
     val metadata: Map<String, List<MetadataPrimitive>>,
     val skip: SkipOptions,
+    val subject: String?,
 ) : MigrationObject {
     companion object {
         fun fromModel(model: DocumentObjectModel): DocumentObject {
@@ -44,6 +45,7 @@ data class DocumentObject(
                 lastUpdated = model.lastUpdated,
                 metadata = model.metadata,
                 skip = model.skip,
+                subject = model.subject,
             )
         }
     }

@@ -66,6 +66,17 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
     }
 
     /**
+     * Sets the subject of the document object. This is visible as description in Interactive
+     * The subject is part of the metadata with key "Subject" and this is just a shorthand for
+     * metadata("Subject") { string(subject) }
+     * @param subject the subject of the document object
+     * @return the builder instance for chaining
+     */
+    fun subject(subject: String) = apply {
+        metadata("Subject") { string(subject) }
+    }
+
+    /**
      * Builds the Image instance with the provided properties.
      * @return the built Image instance
      */

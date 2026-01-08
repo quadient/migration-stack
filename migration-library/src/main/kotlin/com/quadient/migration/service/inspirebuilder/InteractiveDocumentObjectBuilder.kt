@@ -130,6 +130,10 @@ class InteractiveDocumentObjectBuilder(
 
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
+        if (documentObject.subject != null) {
+            val root = layout.addRoot()
+            root.setSubject(documentObject.subject)
+        }
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
 

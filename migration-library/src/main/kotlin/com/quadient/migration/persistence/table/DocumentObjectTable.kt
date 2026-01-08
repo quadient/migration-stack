@@ -25,6 +25,7 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
     val options = jsonb<DocumentObjectOptions>("options", Json).nullable()
     val metadata = jsonb<Map<String, List<MetadataPrimitive>>>("metadata", Json)
     val skip = jsonb<SkipOptions>("skip", Json)
+    val subject = varchar("subject", 255).nullable()
 
     fun fromResultRow(result: ResultRow): DocumentObjectModel {
         return DocumentObjectModel(
@@ -43,7 +44,8 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
             baseTemplate = result[baseTemplate],
             options = result[options],
             metadata = result[metadata],
-            skip = result[skip]
+            skip = result[skip],
+            subject = result[subject],
         )
     }
 }

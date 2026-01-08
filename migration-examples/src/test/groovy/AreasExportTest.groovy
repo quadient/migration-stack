@@ -33,10 +33,10 @@ class AreasExportTest {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         when(migration.mappingRepository.getAreaMapping(any())).thenReturn(new MappingItem.Area(null, [:]))
         when((migration.documentObjectRepository as DocumentObjectRepository).list(any())).thenReturn([
-            new DocumentObject("empty tmpl", null, [], new CustomFieldMap([:]), DocumentObjectType.Template, [], false, null, null, null, null, null, null, null, [:], emptySkipOptions()),
-            new DocumentObject("unreferenced page", null, [], new CustomFieldMap([:]), DocumentObjectType.Page, [createArea("test flow")], false, null, null, null, null, null, null, null, [:], emptySkipOptions()),
-            new DocumentObject("full tmpl", null, [], new CustomFieldMap([:]), DocumentObjectType.Template, [new DocumentObjectRef("full page")], false, null, null, null, null, null, null, null, [:], emptySkipOptions()),
-            new DocumentObject("full page", null, [], new CustomFieldMap([:]), DocumentObjectType.Page, [createArea("test flow2"), createArea("test flow3"), createArea(null), createArea("test flow5")], false, null, null, null, null, null, null, null, [:], emptySkipOptions()),
+            new DocumentObject("empty tmpl", null, [], new CustomFieldMap([:]), DocumentObjectType.Template, [], false, null, null, null, null, null, null, null, [:], emptySkipOptions(), null),
+            new DocumentObject("unreferenced page", null, [], new CustomFieldMap([:]), DocumentObjectType.Page, [createArea("test flow")], false, null, null, null, null, null, null, null, [:], emptySkipOptions(), null),
+            new DocumentObject("full tmpl", null, [], new CustomFieldMap([:]), DocumentObjectType.Template, [new DocumentObjectRef("full page")], false, null, null, null, null, null, null, null, [:], emptySkipOptions(), null),
+            new DocumentObject("full page", null, [], new CustomFieldMap([:]), DocumentObjectType.Page, [createArea("test flow2"), createArea("test flow3"), createArea(null), createArea("test flow5")], false, null, null, null, null, null, null, null, [:], emptySkipOptions(), null),
         ])
 
         AreasExport.run(migration, mappingFile)

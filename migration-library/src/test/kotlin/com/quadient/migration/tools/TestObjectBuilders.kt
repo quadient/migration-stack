@@ -91,6 +91,7 @@ fun aBlockDto(
         customFields = CustomFieldMap(customFields),
         metadata = emptyMap(),
         skip = SkipOptions(false, null, null),
+        subject = null,
     )
 }
 
@@ -122,6 +123,7 @@ fun aBlockModel(
         options = options,
         metadata = emptyMap(),
         skip = SkipOptions(false, null, null),
+        subject = null,
     )
 }
 

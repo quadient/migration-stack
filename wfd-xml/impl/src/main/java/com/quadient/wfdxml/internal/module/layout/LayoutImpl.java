@@ -339,6 +339,11 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
                     }
                     return child;
                 }).collect(Collectors.toList());
+        if (root != null) {
+            exporter.beginElement("Root");
+            root.export(exporter);
+            exporter.endElement();
+        }
 
         new ForwardReferencesExporter(this, defNodes, exporter).exportForwardReferences(true);
         exportNodes(exporter);

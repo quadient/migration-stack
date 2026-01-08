@@ -20,6 +20,7 @@ import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuild
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.tools.aActiveStatus
 import com.quadient.migration.tools.aDeployedStatus
@@ -443,6 +444,45 @@ class DesignerDeployClientTest {
             verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.error("D_1", any(), any(), any(), any(), any(), "oops", any()) }
             verify(exactly = 1) { statusTrackingRepository.error("I_1", any(), any(), any(), any(), any(), any(), any()) }
+        }
+
+        @Test
+        fun `deployDocumentObjects disallows system metadata`() {
+            var count = 0
+            for (key in DeployClient.DISALLOWED_METADATA) {
+                // given
+                val docObjects = listOf(aDocObj("D_1", metadata = mapOf(key to listOf(MetadataPrimitive.Str("value")))))
+                givenObjectIsActive("D_1")
+
+                // when
+                val result = subject.deployDocumentObjectsInternal(docObjects)
+
+                // then
+                assertEquals(
+                    listOf(DeploymentError("D_1", "Metadata of document object 'D_1' contains invalid keys: [${key}]")),
+                    result.errors
+                )
+
+                count++
+            }
+
+            assertEquals(DeployClient.DISALLOWED_METADATA.size, count)
+        }
+
+        @Test
+        fun `deployDocumentObjects allows other metadata`() {
+            // given
+            val docObjects = listOf(aDocObj("D_1", metadata = mapOf("other" to listOf(MetadataPrimitive.Str("value")))))
+            givenObjectIsActive("D_1")
+            every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd"
+            every { ipsService.fileExists(any()) } returns false
+            every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
+
+            // when
+            val result = subject.deployDocumentObjectsInternal(docObjects)
+
+            // then
+            assertEquals(listOf(DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path")), result.deployed)
         }
 
         private fun givenObjectIsActive(id: String) {

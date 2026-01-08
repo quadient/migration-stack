@@ -30,7 +30,7 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.toMetadata
-import com.quadient.migration.tools.unreachable
+import com.quadient.migration.tools.caseInsensitiveSetOf
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import org.slf4j.LoggerFactory
@@ -57,6 +57,48 @@ sealed class DeployClient(
 ) {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
     val postProcessors: MutableList<(DeploymentResult) -> Unit> = mutableListOf()
+
+    companion object {
+        val DISALLOWED_METADATA = caseInsensitiveSetOf(
+            "Type",
+            "Dependencies",
+            "Tags",
+            "Subject",
+            "PublicTemplate",
+            "StateId",
+            "BusinessProcess",
+            "TicketTitle",
+            "TicketDescription",
+            "TicketIcon",
+            "UserAttachment",
+            "GlobalStorageAttachment",
+            "Languages",
+            "MailMergeModule",
+            "MailMergePath",
+            "Guid",
+            "IM_Path",
+            "IM_PM_Name",
+            "IM_PM_Location",
+            "IM_Context",
+            "ModuleNames",
+            "EM_Paths",
+            "ResultType",
+            "ParamTypes",
+            "Channels",
+            "Master Template",
+            "ProductionActions",
+            "Html Content",
+            "Responsive Html Content",
+            "Brand",
+            "WFDType",
+            "OutputType",
+            "PreviewTypes",
+            "SupportedChannels",
+            "InteractiveFlowsNames",
+            "InteractiveFlowsTypes ",
+        )
+        val IMAGE_DISALLOWED_METADATA = DISALLOWED_METADATA - "Subject"
+    }
 
     init {
         addPostProcessor { deploymentResult ->
@@ -259,6 +301,7 @@ sealed class DeployClient(
 
     protected fun deployImages(documentObjects: List<DocumentObjectModel>, deploymentId: Uuid, deploymentTimestamp: Instant): DeploymentResult {
         val deploymentResult = DeploymentResult(deploymentId)
+        val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
 
         val uniqueImageRefs = documentObjects.flatMap {
             try {
@@ -279,34 +322,26 @@ sealed class DeployClient(
             if (imageModel == null) {
                 val message = "Image '${imageRef.id}' not found."
                 logger.error(message)
-                deploymentResult.errors.add(DeploymentError(imageRef.id, message))
-                statusTrackingRepository.error(
-                    id = imageRef.id,
-                    deploymentId = deploymentId,
-                    timestamp = deploymentTimestamp,
-                    resourceType = ResourceType.Image,
-                    output = output,
-                    icmPath = null,
-                    message = message
-                )
+                tracker.errorImage(imageRef.id, null, message)
                 continue
             }
 
             val icmImagePath = documentObjectBuilder.getImagePath(imageModel)
 
+            val invalidMetadata = imageModel.getInvalidMetadataKeys()
+            if (invalidMetadata.isNotEmpty()) {
+                logger.error("Failed to deploy '$icmImagePath' due to invalid metadata.")
+                val keys = invalidMetadata.joinToString(", ", prefix = "[", postfix = "]")
+                val message = "Metadata of image '${imageModel.id}' contains invalid keys: $keys"
+                tracker.errorImage(imageModel.id, icmImagePath, message)
+                continue
+            }
+
+
             if (imageModel.imageType == ImageType.Unknown) {
                 val message = "Skipping deployment of image '${imageModel.nameOrId()}' due to unknown image type."
                 logger.warn(message)
-                deploymentResult.warnings.add(DeploymentWarning(imageRef.id, message))
-                statusTrackingRepository.error(
-                    id = imageRef.id,
-                    deploymentId = deploymentId,
-                    timestamp = deploymentTimestamp,
-                    resourceType = ResourceType.Image,
-                    output = output,
-                    icmPath = icmImagePath,
-                    message = message
-                )
+                tracker.warningImage(imageModel.id, icmImagePath, message)
                 continue
             }
 
@@ -314,16 +349,7 @@ sealed class DeployClient(
                 val reason = imageModel.skip.reason?.let { " Reason: $it" } ?: ""
                 val message = "Image '${imageModel.nameOrId()}' is skipped.$reason"
                 logger.warn(message)
-                deploymentResult.warnings.add(DeploymentWarning(imageRef.id, message))
-                statusTrackingRepository.error(
-                    id = imageRef.id,
-                    deploymentId = deploymentId,
-                    timestamp = deploymentTimestamp,
-                    resourceType = ResourceType.Image,
-                    output = output,
-                    icmPath = icmImagePath,
-                    message = message
-                )
+                tracker.warningImage(imageModel.id, icmImagePath, message)
                 continue
             }
 
@@ -331,16 +357,7 @@ sealed class DeployClient(
             if (imageModel.sourcePath.isNullOrBlank()) {
                 val message = "Skipping deployment of image '${imageModel.nameOrId()}' due to missing source path."
                 logger.warn(message)
-                deploymentResult.warnings.add(DeploymentWarning(imageRef.id, message))
-                statusTrackingRepository.error(
-                    id = imageRef.id,
-                    deploymentId = deploymentId,
-                    timestamp = deploymentTimestamp,
-                    resourceType = ResourceType.Image,
-                    output = output,
-                    icmPath = icmImagePath,
-                    message = message
-                )
+                tracker.warningImage(imageModel.id, icmImagePath, message)
                 continue
             }
 
@@ -349,16 +366,7 @@ sealed class DeployClient(
             if (readResult is ReadResult.Error) {
                 val message = "Error while reading image source data: ${readResult.errorMessage}."
                 logger.error(message)
-                deploymentResult.errors.add(DeploymentError(imageRef.id, message))
-                statusTrackingRepository.error(
-                    id = imageRef.id,
-                    deploymentId = deploymentId,
-                    timestamp = deploymentTimestamp,
-                    resourceType = ResourceType.Image,
-                    output = output,
-                    icmPath = icmImagePath,
-                    message = message
-                )
+                tracker.errorImage(imageModel.id, icmImagePath, message)
                 continue
             }
 
@@ -368,29 +376,12 @@ sealed class DeployClient(
 
             val uploadResult = ipsService.tryUpload(icmImagePath, imageData)
             if (uploadResult is OperationResult.Failure) {
-                deploymentResult.errors.add(DeploymentError(imageRef.id, uploadResult.message))
-                statusTrackingRepository.error(
-                    id = imageRef.id,
-                    deploymentId = deploymentId,
-                    timestamp = deploymentTimestamp,
-                    resourceType = ResourceType.Image,
-                    output = output,
-                    icmPath = icmImagePath,
-                    message = uploadResult.message
-                )
+                tracker.errorImage(imageModel.id, icmImagePath, uploadResult.message)
                 continue
             }
 
             logger.debug("Deployment of image '${imageModel.nameOrId()}' to '${icmImagePath}' is successful.")
-            deploymentResult.deployed.add(DeploymentInfo(imageRef.id, ResourceType.Image, icmImagePath))
-            statusTrackingRepository.deployed(
-                id = imageRef.id,
-                deploymentId = deploymentId,
-                timestamp = deploymentTimestamp,
-                resourceType = ResourceType.Image,
-                output = output,
-                icmPath = icmImagePath,
-            )
+            tracker.deployedImage(imageModel.id, icmImagePath)
         }
 
         return deploymentResult
@@ -504,6 +495,14 @@ sealed class DeployClient(
         }
 
         return report
+    }
+
+    protected fun DocumentObjectModel.getInvalidMetadataKeys(): Set<String> {
+        return this.metadata.keys.asSequence().filter { key -> DISALLOWED_METADATA.contains(key) }.toSet()
+    }
+
+    protected fun ImageModel.getInvalidMetadataKeys(): Set<String> {
+        return this.metadata.keys.asSequence().filter { key -> IMAGE_DISALLOWED_METADATA.contains(key) }.toSet()
     }
 
     protected fun shouldDeployObject(

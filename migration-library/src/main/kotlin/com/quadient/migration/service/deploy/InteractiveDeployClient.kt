@@ -105,12 +105,22 @@ class InteractiveDeployClient(
         val orderedDocumentObject = deployOrder(documentObjects)
 
         deploymentResult += deployImages(orderedDocumentObject, deploymentId, deploymentTimestamp)
+        val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
 
         for (it in orderedDocumentObject) {
             val targetPath = documentObjectBuilder.getDocumentObjectPath(it)
 
             if (!shouldDeployObject(it.id, ResourceType.DocumentObject, targetPath, deploymentResult)) {
                 logger.info("Skipping deployment of '${it.id}' as it is not marked for deployment.")
+                continue
+            }
+
+            val invalidMetadata = it.getInvalidMetadataKeys()
+            if (invalidMetadata.isNotEmpty()) {
+                logger.error("Failed to deploy '$targetPath' due to invalid metadata.")
+                val keys = invalidMetadata.joinToString(", ", prefix = "[", postfix = "]")
+                val message = "Metadata of document object '${it.id}' contains invalid keys: $keys"
+                tracker.errorDocumentObject(it.id, targetPath, it.type, message)
                 continue
             }
 
@@ -129,45 +139,16 @@ class InteractiveDeployClient(
                 when (editResult) {
                     OperationResult.Success -> {
                         logger.debug("Deployment of '$targetPath' is successful.")
-                        deploymentResult.deployed.add(DeploymentInfo(it.id, ResourceType.DocumentObject, targetPath))
-                        statusTrackingRepository.deployed(
-                            id = it.id,
-                            deploymentId = deploymentId,
-                            timestamp = deploymentTimestamp,
-                            resourceType = ResourceType.DocumentObject,
-                            output = output,
-                            icmPath = targetPath,
-                            data = mapOf("type" to it.type.toString())
-                        )
+                        tracker.deployedDocumentObject(it.id, targetPath, it.type)
                     }
 
                     is OperationResult.Failure -> {
                         logger.error("Failed to deploy '$targetPath'.")
-                        deploymentResult.errors.add(DeploymentError(it.id, editResult.message))
-                        statusTrackingRepository.error(
-                            id = it.id,
-                            deploymentId = deploymentId,
-                            timestamp = deploymentTimestamp,
-                            resourceType = ResourceType.DocumentObject,
-                            output = output,
-                            icmPath = targetPath,
-                            message = editResult.message,
-                            data = mapOf("type" to it.type.toString())
-                        )
+                        tracker.errorDocumentObject(it.id, targetPath, it.type, editResult.message)
                     }
                 }
             } catch (e: IllegalStateException) {
-                deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
-                statusTrackingRepository.error(
-                    id = it.id,
-                    deploymentId = deploymentId,
-                    timestamp = deploymentTimestamp,
-                    resourceType = ResourceType.DocumentObject,
-                    output = output,
-                    icmPath = targetPath,
-                    message = e.message ?: "",
-                    data = mapOf("type" to it.type.toString())
-                )
+                tracker.errorDocumentObject(it.id, targetPath, it.type, e.message ?: "")
             }
         }
 

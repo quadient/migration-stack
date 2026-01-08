@@ -23,6 +23,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     private var skip = false
     private var placeholder: String? = null
     private var reason: String? = null
+    private var subject: String? = null
 
     /**
      * Set whether the document object is internal. Internal objects do not create a separate
@@ -103,6 +104,15 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
         this.reason = reason
     }
 
+    /**
+     * Sets the subject of the document object. This is visible as description in Interactive
+     * @param subject the subject of the document object
+     * @return the builder instance for chaining
+     */
+    fun subject(subject: String) = apply {
+        this.subject = subject
+    }
+
     override fun build(): DocumentObject {
         return DocumentObject(
             id = id,
@@ -119,6 +129,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
             options = options,
             metadata = metadata,
             skip = SkipOptions(skipped = skip, reason = reason, placeholder = placeholder),
+            subject = subject,
         )
     }
 }

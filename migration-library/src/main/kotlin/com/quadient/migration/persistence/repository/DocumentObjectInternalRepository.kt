@@ -36,7 +36,8 @@ class DocumentObjectInternalRepository(table: DocumentObjectTable, projectName: 
             variableStructureRef = row[DocumentObjectTable.variableStructureRef]?.let { VariableStructureModelRef(it) },
             options = row[options],
             metadata = row[metadata],
-            skip = row[DocumentObjectTable.skip]
+            skip = row[DocumentObjectTable.skip],
+            subject = row[DocumentObjectTable.subject]
         )
     }
 }

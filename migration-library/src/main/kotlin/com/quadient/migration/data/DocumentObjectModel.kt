@@ -25,6 +25,7 @@ data class DocumentObjectModel(
     val options: DocumentObjectOptions?,
     val metadata: Map<String, List<MetadataPrimitive>>,
     val skip: SkipOptions,
+    val subject: String?,
 ) : RefValidatable, MigrationObjectModel {
     override fun collectRefs(): List<RefModel> {
         return this.content.map {

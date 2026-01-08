@@ -25,6 +25,7 @@ import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.ImageType
+import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.tools.aActiveStatus
 import com.quadient.migration.tools.aBlockModel
@@ -752,6 +753,85 @@ class InteractiveDeployClientTest {
             verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any(), any()) }
             verify(exactly = 1) { statusTrackingRepository.error("D_1", any(), any(), any(), any(), any(), "oops", any()) }
             verify(exactly = 1) { statusTrackingRepository.error("I_1", any(), any(), any(), any(), any(), any(), any()) }
+        }
+
+        @Test
+        fun `deployDocumentObjects disallows system metadata`() {
+            var count = 0
+            for (key in DeployClient.DISALLOWED_METADATA) {
+                // given
+                val docObjects = listOf(aDocObj("D_1", metadata = mapOf(key to listOf(MetadataPrimitive.Str("value")))))
+                givenObjectIsActive("D_1")
+
+                // when
+                val result = subject.deployDocumentObjectsInternal(docObjects)
+
+                // then
+                assertEquals(
+                    listOf(DeploymentError("D_1", "Metadata of document object 'D_1' contains invalid keys: [${key}]")),
+                    result.errors
+                )
+
+                count++
+            }
+
+            assertEquals(DeployClient.DISALLOWED_METADATA.size, count)
+        }
+
+        @Test
+        fun `deployDocumentObjects allows other metadata`() {
+            // given
+            val docObjects = listOf(aDocObj("D_1", metadata = mapOf("other" to listOf(MetadataPrimitive.Str("value")))))
+            givenObjectIsActive("D_1")
+
+            // when
+            val result = subject.deployDocumentObjectsInternal(docObjects)
+
+            // then
+            assertEquals(listOf(DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path")), result.deployed)
+        }
+
+        @Test
+        fun `deployImages disallows system metadata`() {
+            var count = 0
+            for (key in DeployClient.IMAGE_DISALLOWED_METADATA) {
+                // given
+                val docObjects = listOf(aDocObj("D_1", content = listOf(ImageModelRef("I_1"))) )
+                givenObjectIsActive("D_1")
+                givenObjectIsActive("I_1")
+                mockImage(aImage("I_1", metadata = mapOf(key to listOf(MetadataPrimitive.Str("value")))))
+
+                // when
+                val result = subject.deployDocumentObjectsInternal(docObjects)
+
+                // then
+                assertEquals(
+                    listOf(DeploymentError("I_1", "Metadata of image 'I_1' contains invalid keys: [${key}]")),
+                    result.errors
+                )
+
+                count++
+            }
+
+            assertEquals(DeployClient.IMAGE_DISALLOWED_METADATA.size, count)
+        }
+
+        @Test
+        fun `deployImages allows Subject metadata`() {
+            // given
+            val docObjects = listOf(aDocObj("D_1", content = listOf(ImageModelRef("I_1"))) )
+            givenObjectIsActive("D_1")
+            givenObjectIsActive("I_1")
+            mockImage(aImage("I_1", metadata = mapOf("other" to listOf(MetadataPrimitive.Str("value")))))
+
+            // when
+            val result = subject.deployDocumentObjectsInternal(docObjects)
+
+            // then
+            assertEquals(listOf(
+                DeploymentInfo("I_1", ResourceType.Image, "icm://Interactive/tenant/Resources/Images/defaultFolder/Image_I_1.jpg"),
+                DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path"),
+            ), result.deployed)
         }
 
         private fun givenObjectIsActive(id: String) {

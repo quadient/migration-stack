@@ -59,3 +59,13 @@ inline fun <reified T: Enum<T>> Array<T>.toEnumSet(): EnumSet<T> {
     }
     return result
 }
+
+fun caseInsensitiveSetOf(vararg elements: String): Set<String> {
+    val set = TreeSet(String.CASE_INSENSITIVE_ORDER)
+    if (elements.isNotEmpty()) {
+        set.addAll(elements)
+    }
+
+    return set
+}
+
