@@ -53,6 +53,16 @@ public interface Table extends Node<Table> {
 
     Table setEditability(EditabilityType editability);
 
+    enum PdfTaggingRule {
+        NONE,
+        DEFAULT,
+        TABLE
+    }
+
+    Table setTablePdfTagRule(PdfTaggingRule rule);
+
+    Table setTablePdfAlternateText(String alternateText);
+
 
     enum EditabilityType {
         LABEL_AND_LOCK,

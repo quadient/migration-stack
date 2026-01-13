@@ -8,6 +8,7 @@ import spock.lang.Specification
 import static com.quadient.wfdxml.api.layoutnodes.tables.RowSet.Type.MULTIPLE_ROWS
 import static com.quadient.wfdxml.api.layoutnodes.tables.Table.BordersType.SIMPLE
 import static com.quadient.wfdxml.api.layoutnodes.tables.Table.EditabilityType.LOCK
+import static com.quadient.wfdxml.api.layoutnodes.tables.Table.PdfTaggingRule.*
 import static com.quadient.wfdxml.api.layoutnodes.tables.Table.TableAlignment.CENTER
 import static com.quadient.wfdxml.utils.AssertXml.assertXmlEqualsWrapRoot
 
@@ -169,5 +170,57 @@ class TableImplTest extends Specification {
         result.contains("<MinWidth>0.0</MinWidth>")
         result.contains("<MaxWidth>0.0</MaxWidth>")
         result.contains("<PercentWidth>-1.0</PercentWidth>")
+    }
+
+    def "export table pdf tagging none rule emits block"() {
+        given:
+        Table table = new TableImpl().setTablePdfTagRule(NONE).setTablePdfAlternateText("ignored text")
+
+        when:
+        table.export(exporter)
+
+        then:
+        String xml = exporter.buildString()
+        xml.contains("<PDFAdvanced>")
+        xml.contains("<Tagging>")
+        xml.contains("<Rule>None</Rule>")
+        xml.contains("<AlternateText></AlternateText>")
+    }
+
+    def "export table pdf tagging default without alt text emits nothing"() {
+        given:
+        Table table = new TableImpl().setTablePdfTagRule(DEFAULT)
+
+        when:
+        table.export(exporter)
+
+        then:
+        !exporter.buildString().contains("PDFAdvanced")
+    }
+
+    def "export table pdf tagging default with alt text emits block with text"() {
+        given:
+        Table table = new TableImpl().setTablePdfTagRule(DEFAULT).setTablePdfAlternateText("Default with alt text")
+
+        when:
+        table.export(exporter)
+
+        then:
+        String xml = exporter.buildString()
+        xml.contains("<Rule>Default</Rule>")
+        xml.contains("<AlternateText>Default with alt text</AlternateText>")
+    }
+
+    def "export table pdf tagging table rule emits block"() {
+        given:
+        Table table = new TableImpl().setTablePdfTagRule(TABLE).setTablePdfAlternateText("Table alt text")
+
+        when:
+        table.export(exporter)
+
+        then:
+        String xml = exporter.buildString()
+        xml.contains("<Rule>Table</Rule>")
+        xml.contains("<AlternateText>Table alt text</AlternateText>")
     }
 }
