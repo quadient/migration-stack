@@ -400,6 +400,7 @@ abstract class InspireDocumentObjectBuilder(
         val arialFont = getFontByName(layout, "Arial")
         require(arialFont != null) { "Layout must contain Arial font." }
         arialFont.setName("Arial").setFontName("Arial")
+        upsertSubFont(arialFont, isBold = false, isItalic = false)
 
         val usedFonts = mutableMapOf("Arial" to arialFont)
         val usedColorFillStyles = mutableMapOf<String, Pair<Color, FillStyle>>()
@@ -408,20 +409,19 @@ abstract class InspireDocumentObjectBuilder(
             val definition = styleModel.resolve()
 
             val textStyle = layout.addTextStyle().setName(styleModel.nameOrId())
+            val fontFamily = definition.fontFamily ?: "Arial"
 
-            if (!definition.fontFamily.isNullOrBlank()) {
-                val usedFont = usedFonts[definition.fontFamily]
-                val font = if (usedFont != null) usedFont else {
-                    val newFont = layout.addFont().setName(definition.fontFamily).setFontName(definition.fontFamily)
-                    usedFonts[definition.fontFamily] = newFont
-                    newFont
-                }
-                textStyle.setFont(font)
+            val usedFont = usedFonts[fontFamily]
+            val font = if (usedFont != null) usedFont else {
+                val newFont = layout.addFont().setName(definition.fontFamily).setFontName(definition.fontFamily)
+                usedFonts[fontFamily] = newFont
+                newFont
+            }
+            textStyle.setFont(font)
 
-                val subFont = upsertSubFont(font, definition.bold, definition.italic)
-                if (subFont != null) {
-                    textStyle.setSubFont(subFont)
-                }
+            val subFont = upsertSubFont(font, definition.bold, definition.italic)
+            if (subFont != null) {
+                textStyle.setSubFont(subFont)
             }
 
             if (definition.foregroundColor != null) {
