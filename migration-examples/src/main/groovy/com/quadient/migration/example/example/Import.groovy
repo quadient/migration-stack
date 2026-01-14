@@ -136,6 +136,7 @@ def logo = new ImageBuilder("logo")
     .options(new ImageOptions(logoWidth, logoHeight))
     .sourcePath(logoImageName)
     .imageType(ImageType.Png)
+    .subject("Example logo")
     .build()
 
 // Table containing some data with the first address row being optionally hidden
@@ -269,6 +270,7 @@ def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Bloc
 def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", DocumentObjectType.Block)
     .internal(false)
     .displayRuleRef(displayParagraphRule.id)
+    .subject("Conditional Paragraph")
     .metadata("DocumentInfo") { mb ->
         mb.string("Document type: Technical Example")
         mb.string("Version: 1.0")
@@ -378,6 +380,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
 
 def template = new DocumentObjectBuilder("template", DocumentObjectType.Template)
     .documentObjectRef(page.id)
+    .subject("Document example template")
     .variableStructureRef(variableStructure.id)
     .build()
 
