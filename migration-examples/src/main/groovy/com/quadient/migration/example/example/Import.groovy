@@ -23,6 +23,7 @@ import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
+import com.quadient.migration.shared.PdfTaggingRule
 import com.quadient.migration.shared.Size
 
 import java.time.Instant
@@ -142,6 +143,8 @@ def logo = new ImageBuilder("logo")
 // by using displayRuleRef to the display displayHeaderRule defined above.
 // The table also contains some merged cells and custom column widths.
 def table = table {
+    it.pdfTaggingRule(PdfTaggingRule.Table)
+    it.pdfAlternateText("Example key value table")
     it.addColumnWidth(Size.ofMillimeters(10), 10)
     it.addColumnWidth(Size.ofMillimeters(20), 20)
     it.addColumnWidth(Size.ofMillimeters(98), 70)

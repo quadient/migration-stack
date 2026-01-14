@@ -283,7 +283,7 @@ class DesignerDocumentObjectBuilderTest {
                                     aCell(aParagraph(aText(StringModel("D"))))
                                 ), rule.id
                             )
-                        ), listOf()
+                        ), listOf(), pdfTaggingRule = com.quadient.migration.shared.PdfTaggingRule.Table, pdfAlternateText = "Table alt text"
                     )
                 )
             )
@@ -300,6 +300,10 @@ class DesignerDocumentObjectBuilderTest {
         val secondRow = result["RowSet"].last { it["Id"].textValue() == rowIds[1].textValue() }
         secondRow["RowSetType"].textValue().shouldBeEqualTo("InlCond")
         secondRow["RowSetCondition"][0]["Condition"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val pdfAdvanced = result["Table"].last()["PDFAdvanced"]
+        pdfAdvanced.shouldNotBeNull()
+        pdfAdvanced["Tagging"]["Rule"].textValue().shouldBeEqualTo("Table")
+        pdfAdvanced["Tagging"]["AlternateText"].textValue().shouldBeEqualTo("Table alt text")
     }
 
     @Test

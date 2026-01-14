@@ -3,6 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Table
+import com.quadient.migration.shared.PdfTaggingRule
 import com.quadient.migration.shared.Size
 
 object Dsl {
@@ -21,7 +22,7 @@ object Dsl {
                 minWidth = it.minWidth,
                 percentWidth = it.percentWidth,
             )
-        })
+        }, pdfTaggingRule, pdfAlternateText)
     }
 }
 
@@ -29,6 +30,11 @@ object Dsl {
 class TableDsl {
     val rows = mutableListOf<Row>()
     var columnWidths = mutableListOf<ColumnWidth>()
+    var pdfTaggingRule: PdfTaggingRule = PdfTaggingRule.Default
+    var pdfAlternateText: String? = null
+
+    fun pdfTaggingRule(rule: PdfTaggingRule) = apply { this.pdfTaggingRule = rule }
+    fun pdfAlternateText(text: String?) = apply { this.pdfAlternateText = text }
 
     /**
      * Add a row to the table. Rows are added in the order they are defined.

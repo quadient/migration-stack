@@ -69,6 +69,7 @@ import com.quadient.wfdxml.api.layoutnodes.font.SubFont
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.Table
+import com.quadient.migration.shared.PdfTaggingRule
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.data.WorkFlowTreeDefinition
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
@@ -808,6 +809,13 @@ abstract class InspireDocumentObjectBuilder(
                 )
             }
         }
+
+        when (model.pdfTaggingRule) {
+            PdfTaggingRule.None -> table.setTablePdfTagRule(Table.PdfTaggingRule.NONE)
+            PdfTaggingRule.Default -> table.setTablePdfTagRule(Table.PdfTaggingRule.DEFAULT)
+            PdfTaggingRule.Table -> table.setTablePdfTagRule(Table.PdfTaggingRule.TABLE)
+        }
+        table.setTablePdfAlternateText(model.pdfAlternateText)
 
         return table
     }
