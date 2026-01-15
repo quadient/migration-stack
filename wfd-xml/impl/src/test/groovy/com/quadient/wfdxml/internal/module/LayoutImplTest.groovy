@@ -184,4 +184,17 @@ class LayoutImplTest extends Specification {
         then:
         assert result.contains("<Flow><Id>SR_1</Id><ParentId>Def.FlowGroup</ParentId><CustomProperty>{&quot;DisplayName&quot;:&quot;Custom flow name&quot;}</CustomProperty><Forward></Forward></Flow>")
     }
+
+    def "node with display name and additional custom property"() {
+        given:
+        Layout layout = new LayoutImpl()
+        layout.addFlow().setType(Flow.Type.SIMPLE).setDisplayName("Flow with multiple properties").addCustomProperty("ValueWrapperVariable", true).addCustomProperty("Version", 2)
+
+        when:
+        layout.exportLayoutDelta(exporter)
+        String result = exporter.buildString()
+
+        then:
+        assert result.contains("<Layout><Flow><Id>SR_1</Id><ParentId>Def.FlowGroup</ParentId><CustomProperty>{&quot;ValueWrapperVariable&quot;:true,&quot;Version&quot;:2,&quot;DisplayName&quot;:&quot;Flow with multiple properties&quot;}</CustomProperty><Forward></Forward></Flow><Flow><Id>SR_1</Id><Type>Simple</Type><FlowContent Width=\"0.2\"></FlowContent><SectionFlow>False</SectionFlow></Flow><Data><Id>Def.Data</Id></Data></Layout>")
+    }
 }

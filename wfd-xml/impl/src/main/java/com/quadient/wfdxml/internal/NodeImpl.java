@@ -3,12 +3,16 @@ package com.quadient.wfdxml.internal;
 import com.quadient.wfdxml.api.Node;
 import com.quadient.wfdxml.internal.xml.export.XmlExportable;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public abstract class NodeImpl<S extends Node<S>> implements Node<S>, XmlExportable {
 
     private String name;
     private String comment;
     private String id;
     private String displayName;
+    private final Map<String, Object> customProperties = new HashMap<>();
 
     @Override
     public String getName() {
@@ -55,6 +59,18 @@ public abstract class NodeImpl<S extends Node<S>> implements Node<S>, XmlExporta
     @SuppressWarnings("unchecked")
     public S setDisplayName(String displayName) {
         this.displayName = displayName;
+        return (S) this;
+    }
+
+    @Override
+    public Map<String, Object> getCustomProperties() {
+        return customProperties;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public S addCustomProperty(String key, Object value) {
+        customProperties.put(key, value);
         return (S) this;
     }
 

@@ -1,5 +1,7 @@
 package com.quadient.wfdxml.api;
 
+import java.util.Map;
+
 public interface Node<S extends Node<S>> {
     String getName();
 
@@ -16,4 +18,8 @@ public interface Node<S extends Node<S>> {
     String getDisplayName();
 
     S setDisplayName(String displayName);
+
+    Map<String, Object> getCustomProperties();
+
+    S addCustomProperty(String key, Object value);
 }

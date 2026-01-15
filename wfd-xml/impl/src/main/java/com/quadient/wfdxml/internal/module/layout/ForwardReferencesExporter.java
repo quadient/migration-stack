@@ -1,5 +1,6 @@
 package com.quadient.wfdxml.internal.module.layout;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.internal.DefaultNodeType;
 import com.quadient.wfdxml.internal.NodeImpl;
@@ -7,7 +8,6 @@ import com.quadient.wfdxml.internal.Tree;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -18,7 +18,7 @@ public class ForwardReferencesExporter {
     private final XmlExporter exporter;
 
     private Set<NodeImpl> rootDefNodes;
-
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public ForwardReferencesExporter(LayoutImpl layout, Map<DefaultNodeType, DefNode> defNodes, XmlExporter exporter) {
         this.layout = layout;
@@ -64,7 +64,17 @@ public class ForwardReferencesExporter {
         }
 
         if (node.getDisplayName() != null && !node.getDisplayName().isBlank()) {
-            exporter.addElementWithStringData("CustomProperty", "{\"DisplayName\":\"" + node.getDisplayName() + "\"}");
+            node.addCustomProperty("DisplayName", node.getDisplayName());
+        }
+
+        var customProperties = node.getCustomProperties();
+        if (customProperties != null && !customProperties.isEmpty()) {
+            try {
+                String customPropsJson = objectMapper.writeValueAsString(customProperties);
+                exporter.addElementWithStringData("CustomProperty", customPropsJson);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to serialize customProperties to JSON", e);
+            }
         }
 
         var forwardElement = exporter.beginElement("Forward");

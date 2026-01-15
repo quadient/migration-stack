@@ -6,6 +6,7 @@ xmlunit = "2.10.0"
 cglib = "3.3.0"
 mockito = "5.13.0"
 logback = "1.5.18"
+jackson = "2.20.1"
 
 [libraries]
 groovy-xml = { group = "org.apache.groovy", name = "groovy-xml", version.ref = "groovyXml" }
@@ -15,3 +16,4 @@ xmlunit-core = { group = "org.xmlunit", name = "xmlunit-core", version.ref = "xm
 cglib = { group = "cglib", name = "cglib", version.ref = "cglib" }
 mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
 logback = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
+jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }
