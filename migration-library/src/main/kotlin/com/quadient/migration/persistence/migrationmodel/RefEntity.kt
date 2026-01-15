@@ -31,7 +31,7 @@ data class ParagraphStyleEntityRef(val id: String) : RefEntity, ParagraphStyleDe
 data class DisplayRuleEntityRef(val id: String)
 
 @Serializable
-data class ImageEntityRef(val id: String) : RefEntity, DocumentContentEntity, TextContentEntity
+data class ImageEntityRef(val id: String, val alternateText: String? = null) : RefEntity, DocumentContentEntity, TextContentEntity
 
 @Serializable
 data class VariableStructureEntityRef(val id: String) : RefEntity

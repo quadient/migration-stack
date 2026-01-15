@@ -353,7 +353,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.top(topMargin)
             it.width(logoWidth)
             it.height(logoHeight)
-        }.imageRef(logo.id)
+        }.imageRef(logo.id, "Example logo image")
     }
     .area {
         it.position {

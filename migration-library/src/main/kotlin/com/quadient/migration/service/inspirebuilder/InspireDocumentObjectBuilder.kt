@@ -543,7 +543,7 @@ abstract class InspireDocumentObjectBuilder(
         return ImagePlaceholderResult.RenderAsNormal
     }
 
-    protected fun getOrBuildImage(layout: Layout, imageModel: ImageModel): Image {
+    protected fun getOrBuildImage(layout: Layout, imageModel: ImageModel, alternateText: String? = null): Image {
         val image = getImageByName(layout, imageModel.nameOrId()) ?: layout.addImage().setName(imageModel.nameOrId())
             .setImageLocation(getImagePath(imageModel), LocationType.ICM)
 
@@ -552,8 +552,14 @@ abstract class InspireDocumentObjectBuilder(
             imageModel.options.resizeHeight?.let { image.setResizeHeight(it.toMeters()) }
         }
 
+        if (!alternateText.isNullOrBlank()) {
+            applyImageAlternateText(layout, image, alternateText)
+        }
+
         return image
     }
+
+    protected abstract fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String)
 
     private fun buildCompositeFlow(
         layout: Layout,
@@ -707,7 +713,7 @@ abstract class InspireDocumentObjectBuilder(
             is ImagePlaceholderResult.Skip -> return
         }
 
-        text.appendImage(getOrBuildImage(layout, imageModel))
+        text.appendImage(getOrBuildImage(layout, imageModel, ref.alternateText))
     }
 
     private fun Text.appendVariable(
