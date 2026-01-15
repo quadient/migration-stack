@@ -5,6 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.Ref
 import com.quadient.migration.data.MigrationObjectModel
 import com.quadient.migration.persistence.repository.InternalRepository
 import com.quadient.migration.service.RefValidatable
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 abstract class Repository<T : MigrationObject, K : MigrationObjectModel>(
     protected val internalRepository: InternalRepository<K>
@@ -40,5 +41,5 @@ abstract class Repository<T : MigrationObject, K : MigrationObjectModel>(
 
     abstract fun findUsages(id: String): List<MigrationObject>
 
-    abstract fun upsert(dto: T)
+    abstract fun upsert(dto: T): T
 }

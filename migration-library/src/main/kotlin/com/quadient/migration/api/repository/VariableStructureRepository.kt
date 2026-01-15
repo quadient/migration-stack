@@ -14,7 +14,8 @@ import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.upsert
+import org.jetbrains.exposed.v1.jdbc.upsertReturning
+import kotlin.collections.map
 
 class VariableStructureRepository(internalRepository: VariableStructureInternalRepository) :
     Repository<VariableStructure, VariableStructureModel>(internalRepository) {
@@ -37,15 +38,15 @@ class VariableStructureRepository(internalRepository: VariableStructureInternalR
         }
     }
 
-    override fun upsert(dto: VariableStructure) {
-        internalRepository.upsert(dto.id) {
+    override fun upsert(dto: VariableStructure): VariableStructure {
+        return toDto(internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
 
             val now = Clock.System.now()
 
-            internalRepository.table.upsert(
+            internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
                 it[id] = dto.id
@@ -57,7 +58,7 @@ class VariableStructureRepository(internalRepository: VariableStructureInternalR
                 it[lastUpdated] = now
                 it[structure] = dto.structure
                 it[languageVariable] = dto.languageVariable?.id
-            }
-        }
+            }.first()
+        })
     }
 }

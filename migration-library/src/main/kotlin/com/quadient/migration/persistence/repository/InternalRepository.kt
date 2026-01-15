@@ -22,13 +22,11 @@ abstract class InternalRepository<T : MigrationObjectModel>(
 
     abstract fun toModel(row: ResultRow): T
 
-    fun upsert(id: String, block: JdbcTransaction.() -> Unit) {
-        transaction {
-            block()
-            when (val model = findModelInternal(id)) {
-                null -> cache.remove(id)
-                else -> cache.put(id, model)
-            }
+    fun upsert(block: JdbcTransaction.() -> ResultRow): T {
+        return transaction {
+            val result = toModel(block())
+            cache[result.id] = result
+            result
         }
     }
 
@@ -39,7 +37,7 @@ abstract class InternalRepository<T : MigrationObjectModel>(
         return transaction {
             val result = table.selectAll().where(filter()).map {
                 val result = toModel(it)
-                cache.put(result.id, result)
+                cache[result.id] = result
                 result
             }
             allCached = true
@@ -71,7 +69,7 @@ abstract class InternalRepository<T : MigrationObjectModel>(
     fun findModel(id: String): T? {
         return cache.getOrPutOrNull(id) {
             transaction {
-                findModelInternal(id)
+                table.selectAll().where(filter(id)).firstOrNull()?.let(::toModel)
             }
         }
     }
@@ -108,9 +106,4 @@ abstract class InternalRepository<T : MigrationObjectModel>(
 
         return result
     }
-
-    private fun findModelInternal(id: String): T? {
-        return table.selectAll().where(filter(id)).firstOrNull()?.let(::toModel)
-    }
-
 }
