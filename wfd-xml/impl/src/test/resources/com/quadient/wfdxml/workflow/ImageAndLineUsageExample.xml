@@ -463,6 +463,16 @@
                 <TransparencyG X="255" Y="255"></TransparencyG>
                 <TransparencyB X="255" Y="255"></TransparencyB>
                 <UseDifferentImageSizeForHtml>False</UseDifferentImageSizeForHtml>
+                <AlternativeTextVar/>
+                <PDFAdvanced>
+                    <Tagging>
+                        <Rule>Figure</Rule>
+                        <AlternateText/>
+                        <Attributes Type="Array"/>
+                        <AlternateTextNodeId/>
+                        <AlternateTextType>1</AlternateTextType>
+                    </Tagging>
+                </PDFAdvanced>
             </Image>
             <BorderStyle>
                 <Id>Def.BorderStyle</Id>

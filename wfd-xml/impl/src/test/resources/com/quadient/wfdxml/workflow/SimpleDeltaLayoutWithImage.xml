@@ -35,6 +35,16 @@
         <TransparencyG X="255" Y="255"/>
         <TransparencyB X="255" Y="255"/>
         <UseDifferentImageSizeForHtml>False</UseDifferentImageSizeForHtml>
+        <AlternativeTextVar/>
+        <PDFAdvanced>
+            <Tagging>
+                <Rule>Figure</Rule>
+                <AlternateText/>
+                <Attributes Type="Array"/>
+                <AlternateTextNodeId/>
+                <AlternateTextType>1</AlternateTextType>
+            </Tagging>
+        </PDFAdvanced>
     </Image>
     <Data>
         <Id>Def.Data</Id>
