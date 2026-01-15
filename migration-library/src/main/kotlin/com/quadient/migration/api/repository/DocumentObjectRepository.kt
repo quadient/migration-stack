@@ -49,8 +49,7 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
     }
 
     override fun upsert(dto: DocumentObject) {
-        internalRepository.cache.remove(dto.id)
-        transaction {
+        internalRepository.upsert(dto.id) {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }

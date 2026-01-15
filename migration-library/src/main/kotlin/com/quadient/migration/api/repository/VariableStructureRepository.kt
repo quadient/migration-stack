@@ -38,8 +38,7 @@ class VariableStructureRepository(internalRepository: VariableStructureInternalR
     }
 
     override fun upsert(dto: VariableStructure) {
-        internalRepository.cache.remove(dto.id)
-        transaction {
+        internalRepository.upsert(dto.id) {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }

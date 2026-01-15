@@ -48,8 +48,7 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
     }
 
     override fun upsert(dto: Image) {
-        internalRepository.cache.remove(dto.id)
-        transaction {
+        internalRepository.upsert(dto.id) {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
