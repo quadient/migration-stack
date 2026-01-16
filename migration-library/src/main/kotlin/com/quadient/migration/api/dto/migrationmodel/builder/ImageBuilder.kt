@@ -15,6 +15,7 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
     var skip = false
     var placeholder: String? = null
     var reason: String? = null
+    var alternateText: String? = null
 
     /**
      * Sets source path of the image. This path is relative to the storage root folder.
@@ -77,6 +78,13 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
     }
 
     /**
+     * Sets the alternate text for the image for accessibility purposes.
+     * @param alternateText the alternate text for the image
+     * @return the builder instance for chaining
+     */
+    fun alternateText(alternateText: String) = apply { this.alternateText = alternateText }
+
+    /**
      * Builds the Image instance with the provided properties.
      * @return the built Image instance
      */
@@ -92,6 +100,7 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
             targetFolder = targetFolder,
             metadata = metadata,
             skip = SkipOptions(skipped = skip, reason = reason, placeholder = placeholder),
+            alternateText = alternateText,
         )
     }
 }

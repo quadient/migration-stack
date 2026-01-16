@@ -23,6 +23,7 @@ class ImageInternalRepository(
             targetFolder = row[ImageTable.targetFolder]?.let(IcmPath::from),
             metadata = row[ImageTable.metadata],
             skip = row[ImageTable.skip],
+            alternateText = row[ImageTable.alternateText],
         )
     }
 }

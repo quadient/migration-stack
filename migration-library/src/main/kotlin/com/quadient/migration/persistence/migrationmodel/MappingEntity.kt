@@ -91,6 +91,7 @@ sealed class MappingItemEntity {
         val sourcePath: String?,
         val imageType: ImageType? = null,
         var skip: SkipOptions? = null,
+        val alternateText: String? = null,
     ) : MappingItemEntity() {
         fun apply(item: ImageDto): ImageDto {
             return item.copy(
@@ -99,6 +100,7 @@ sealed class MappingItemEntity {
                 sourcePath = sourcePath,
                 imageType = imageType,
                 skip = skip ?: SkipOptions(false, null, null),
+                alternateText = alternateText,
             )
         }
     }
@@ -298,7 +300,8 @@ sealed class MappingItemEntity {
                     targetFolder = this.targetFolder,
                     sourcePath = this.sourcePath,
                     imageType = this.imageType,
-                    skip = this.skip
+                    skip = this.skip,
+                    alternateText = this.alternateText,
                 )
             }
 

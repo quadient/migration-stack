@@ -230,6 +230,35 @@ class DesignerDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `buildDocumentObject creates image with alternate text from ImageModel`() {
+        // given
+        val imageModel = mockImg(aImage("Img_1", alternateText = "Description of the image"))
+        val page = mockObj(
+            aDocObj(
+                "P_1", Page, listOf(
+                    anArea(
+                        listOf(
+                            ImageModelRef(imageModel.id)
+                        ), Position(60.millimeters(), 120.millimeters(), 20.centimeters(), 10.centimeters())
+                    ),
+                )
+            )
+        )
+        val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))))
+
+        // when
+        val result =
+            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val imageObject = result["ImageObject"].last()
+        val imageId = imageObject["ImageId"].textValue()
+
+        val image = result["Image"].last { it["Id"].textValue() == imageId }
+        image["PDFAdvanced"]["Tagging"]["AlternateText"].textValue().shouldBeEqualTo("Description of the image")
+    }
+
+    @Test
     fun `buildDocumentObject uses inline condition flow when block is used with display rule`() {
         // given
         val rule = mockRule(

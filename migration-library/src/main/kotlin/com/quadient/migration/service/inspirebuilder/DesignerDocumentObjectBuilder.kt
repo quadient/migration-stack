@@ -309,7 +309,7 @@ class DesignerDocumentObjectBuilder(
                 is ImagePlaceholderResult.RenderAsNormal -> {
                     page.addImageArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
                         .setWidth(position.width.toMeters()).setHeight(position.height.toMeters())
-                        .setImage(getOrBuildImage(layout, imageModel, imageRef.alternateText))
+                        .setImage(getOrBuildImage(layout, imageModel, imageModel.alternateText))
                 }
                 is ImagePlaceholderResult.Placeholder -> {
                     val flow = layout.addFlow()

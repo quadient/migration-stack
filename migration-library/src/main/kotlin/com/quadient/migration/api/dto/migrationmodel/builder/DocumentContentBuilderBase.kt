@@ -74,15 +74,6 @@ interface DocumentContentBuilderBase<T> {
         this.content.add(ImageRef(imageId))
     } as T
 
-    /**
-     * Adds an image reference with alternate text to the content.
-     * @param imageId The ID of the image to reference.
-     * @param alternateText The alternate text for the image.
-     * @return This builder instance for method chaining.
-     */
-    fun imageRef(imageId: String, alternateText: String): T = apply {
-        this.content.add(ImageRef(imageId, alternateText))
-    } as T
 
     /**
      * Adds a document object reference to the content.

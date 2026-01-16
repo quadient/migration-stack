@@ -138,6 +138,7 @@ def logo = new ImageBuilder("logo")
     .sourcePath(logoImageName)
     .imageType(ImageType.Png)
     .subject("Example logo")
+    .alternateText("Example logo image")
     .build()
 
 // Table containing some data with the first address row being optionally hidden
@@ -353,7 +354,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.top(topMargin)
             it.width(logoWidth)
             it.height(logoHeight)
-        }.imageRef(logo.id, "Example logo image")
+        }.imageRef(logo.id)
     }
     .area {
         it.position {

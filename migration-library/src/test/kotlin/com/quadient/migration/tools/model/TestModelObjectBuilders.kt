@@ -381,6 +381,7 @@ fun aImage(
     targetFolder: String? = null,
     metadata : Map<String, List<MetadataPrimitive>> = emptyMap(),
     skip : SkipOptions = SkipOptions(false, null, null),
+    alternateText: String? = null,
 ): ImageModel {
     return ImageModel(
         id = id,
@@ -394,6 +395,7 @@ fun aImage(
         targetFolder = targetFolder?.let(IcmPath::from),
         metadata = metadata,
         skip = skip,
+        alternateText = alternateText,
     )
 }
 

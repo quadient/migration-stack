@@ -55,6 +55,9 @@ static void run(Migration migration, Path imagesFilePath) {
         def newTargetFolder = Csv.deserialize(values.get("targetFolder"), String.class)
         Mapping.mapProp(existingMapping, existingImage, "targetFolder", newTargetFolder)
 
+        def newAlternateText = Csv.deserialize(values.get("alternateText"), String.class)
+        Mapping.mapProp(existingMapping, existingImage, "alternateText", newAlternateText)
+
         def csvStatus = values.get("status")
         if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {
             migration.statusTrackingRepository.active(existingImage.id, ResourceType.Image, [reason: "Manual"])

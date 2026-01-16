@@ -13,4 +13,5 @@ object ImageTable : MigrationObjectTable("image") {
     val targetFolder = varchar("target_folder", 255).nullable()
     val metadata = jsonb<Map<String, List<MetadataPrimitive>>>("metadata", Json)
     val skip = jsonb<SkipOptions>("skip", Json)
+    val alternateText = varchar("alternate_text", 255).nullable()
 }

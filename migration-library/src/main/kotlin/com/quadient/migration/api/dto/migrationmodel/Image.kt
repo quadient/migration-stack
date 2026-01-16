@@ -17,6 +17,7 @@ data class Image(
     var targetFolder: String?,
     val metadata: Map<String, List<MetadataPrimitive>>,
     val skip: SkipOptions,
+    var alternateText: String? = null,
 ) : MigrationObject {
     companion object {
         fun fromModel(model: ImageModel): Image {
@@ -31,6 +32,7 @@ data class Image(
                 targetFolder = model.targetFolder?.toString(),
                 metadata = model.metadata,
                 skip = model.skip,
+                alternateText = model.alternateText,
             )
         }
     }

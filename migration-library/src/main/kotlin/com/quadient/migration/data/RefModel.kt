@@ -86,13 +86,13 @@ data class DisplayRuleModelRef(override val id: String) : RefModel {
     }
 }
 
-data class ImageModelRef(override val id: String, val alternateText: String? = null) : RefModel, DocumentContentModel, TextContentModel {
+data class ImageModelRef(override val id: String) : RefModel, DocumentContentModel, TextContentModel {
     override fun collectRefs(): List<RefModel> {
         return listOf(this)
     }
 
     companion object {
-        fun fromDb(entity: ImageEntityRef) = ImageModelRef(entity.id, entity.alternateText)
+        fun fromDb(entity: ImageEntityRef) = ImageModelRef(entity.id)
     }
 }
 

@@ -142,16 +142,13 @@ data class DisplayRuleRef(override val id: String) : Ref {
     fun toDb() = DisplayRuleEntityRef(id)
 }
 
-data class ImageRef(override val id: String, val alternateText: String? = null) : Ref, DocumentContent, TextContent {
-
-    constructor(id: String) : this(id, null)
-
+data class ImageRef(override val id: String) : Ref, DocumentContent, TextContent {
     companion object {
-        fun fromModel(model: ImageModelRef) = ImageRef(model.id, model.alternateText)
+        fun fromModel(model: ImageModelRef) = ImageRef(model.id)
     }
 
-    fun toModel() = ImageModelRef(id, alternateText)
-    fun toDb() = ImageEntityRef(id, alternateText)
+    fun toModel() = ImageModelRef(id)
+    fun toDb() = ImageEntityRef(id)
 }
 
 data class VariableStructureRef(override val id: String) : Ref {

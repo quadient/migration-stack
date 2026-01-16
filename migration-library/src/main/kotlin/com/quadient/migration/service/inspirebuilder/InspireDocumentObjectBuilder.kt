@@ -713,7 +713,7 @@ abstract class InspireDocumentObjectBuilder(
             is ImagePlaceholderResult.Skip -> return
         }
 
-        text.appendImage(getOrBuildImage(layout, imageModel, ref.alternateText))
+        text.appendImage(getOrBuildImage(layout, imageModel, imageModel.alternateText))
     }
 
     private fun Text.appendVariable(

@@ -7,6 +7,7 @@ import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
+import com.quadient.migration.persistence.table.ImageTable.alternateText
 import com.quadient.migration.persistence.table.ImageTable.imageType
 import com.quadient.migration.persistence.table.ImageTable.metadata
 import com.quadient.migration.persistence.table.ImageTable.options
@@ -76,6 +77,7 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
                 it[targetFolder] = dto.targetFolder
                 it[metadata] = dto.metadata
                 it[skip] = dto.skip
+                it[alternateText] = dto.alternateText
             }
         }
     }
