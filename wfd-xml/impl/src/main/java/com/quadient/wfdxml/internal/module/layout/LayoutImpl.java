@@ -221,6 +221,11 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
     }
 
     @Override
+    public Root getRoot() {
+        return root;
+    }
+
+    @Override
     public ParagraphStyleImpl addBulletParagraph(TextStyle textStyle, String bullet) {
         return addParagraphStyle().setBulletsNumberingFlow(addBulletFlow(textStyle, bullet));
     }
@@ -339,13 +344,15 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
                     }
                     return child;
                 }).collect(Collectors.toList());
+
+        new ForwardReferencesExporter(this, defNodes, exporter).exportForwardReferences(true);
+
         if (root != null) {
             exporter.beginElement("Root");
             root.export(exporter);
             exporter.endElement();
         }
 
-        new ForwardReferencesExporter(this, defNodes, exporter).exportForwardReferences(true);
         exportNodes(exporter);
 
         exporter.endElement();

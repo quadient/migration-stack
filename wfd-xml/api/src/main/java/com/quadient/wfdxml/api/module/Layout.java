@@ -64,4 +64,6 @@ public interface Layout extends WorkFlowModule<Layout> {
     Element addElement();
 
     Root addRoot();
+
+    Root getRoot();
 }

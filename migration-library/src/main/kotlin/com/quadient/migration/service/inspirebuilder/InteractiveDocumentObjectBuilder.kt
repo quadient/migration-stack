@@ -132,10 +132,14 @@ class InteractiveDocumentObjectBuilder(
     override fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String) {
         val escapedText = alternateText.replace("\"", "\\\"")
         val variable = layout.data.addVariable()
+            .setName("Alternate text variable for ${image.name}")
             .setKind(VariableKind.CALCULATED)
             .setDataType(DataType.STRING)
-            .setScript("return \"$escapedText\";")
+            .setScript("return '$escapedText';")
             .addCustomProperty("ValueWrapperVariable", true)
+        val layoutRoot = layout.root ?: layout.addRoot()
+        layoutRoot.addLockedWebNode(variable)
+
         image.setAlternateTextVariable(variable)
     }
 
