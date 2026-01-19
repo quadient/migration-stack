@@ -2,6 +2,7 @@ package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.FirstMatchModel
+import com.quadient.migration.data.HyperlinkModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphModel
 import com.quadient.migration.data.StringModel
@@ -31,6 +32,7 @@ data class Paragraph(
                             is TableModel -> Table.fromModel(textContent)
                             is ImageModelRef -> ImageRef.fromModel(textContent)
                             is FirstMatchModel -> FirstMatch.fromModel(textContent)
+                            is HyperlinkModel -> Hyperlink.fromModel(textContent)
                         }
                     })
             },
@@ -75,6 +77,7 @@ data class Paragraph(
                     is StringValue -> textContent.toDb()
                     is VariableRef -> textContent.toDb()
                     is FirstMatch -> textContent.toDb()
+                    is Hyperlink -> textContent.toDb()
                 }
             }.toMutableList(), it.styleRef?.toDb(), it.displayRuleRef?.toDb())
         }.toMutableList(),

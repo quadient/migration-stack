@@ -3,6 +3,7 @@ package com.quadient.migration.data
 import com.quadient.migration.persistence.migrationmodel.DisplayRuleEntityRef
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
 import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
+import com.quadient.migration.persistence.migrationmodel.HyperlinkEntity
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefOrRefEntity
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefinitionEntity
@@ -29,6 +30,7 @@ sealed interface TextContentModel {
             is DocumentObjectEntityRef -> DocumentObjectModelRef.fromDb(entity)
             is ImageEntityRef -> ImageModelRef.fromDb(entity)
             is FirstMatchEntity -> FirstMatchModel.fromDb(entity)
+            is HyperlinkEntity -> HyperlinkModel.fromDb(entity)
         }
     }
 }
@@ -105,6 +107,20 @@ data class VariableStructureModelRef(override val id: String) : RefModel {
 data class StringModel(val value: String) : TextContentModel {
     companion object {
         fun fromDb(entity: StringEntity) = StringModel(entity.value)
+    }
+}
+
+data class HyperlinkModel(
+    val url: String,
+    val displayText: String? = null,
+    val alternateText: String? = null
+) : TextContentModel {
+    companion object {
+        fun fromDb(entity: HyperlinkEntity) = HyperlinkModel(
+            url = entity.url,
+            displayText = entity.displayText,
+            alternateText = entity.alternateText
+        )
     }
 }
 

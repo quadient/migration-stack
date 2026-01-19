@@ -3,6 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.FirstMatchModel
+import com.quadient.migration.data.HyperlinkModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphStyleDefOrRefModel
 import com.quadient.migration.data.ParagraphStyleDefinitionModel
@@ -18,6 +19,7 @@ import com.quadient.migration.data.VariableModelRef
 import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.migrationmodel.DisplayRuleEntityRef
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
+import com.quadient.migration.persistence.migrationmodel.HyperlinkEntity
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleEntityRef
 import com.quadient.migration.persistence.migrationmodel.StringEntity
@@ -50,6 +52,7 @@ sealed interface TextContent {
             is TableModel -> Table.fromModel(model)
             is VariableModelRef -> VariableRef.fromModel(model)
             is FirstMatchModel -> FirstMatch.fromModel(model)
+            is HyperlinkModel -> Hyperlink.fromModel(model)
         }
     }
 }
@@ -167,4 +170,30 @@ data class StringValue(val value: String) : TextContent {
 
     fun toModel() = StringModel(value)
     fun toDb() = StringEntity(value)
+}
+
+data class Hyperlink(
+    val url: String,
+    val displayText: String? = null,
+    val alternateText: String? = null
+) : TextContent {
+    companion object {
+        fun fromModel(model: HyperlinkModel) = Hyperlink(
+            url = model.url,
+            displayText = model.displayText,
+            alternateText = model.alternateText
+        )
+    }
+
+    fun toModel() = HyperlinkModel(
+        url = url,
+        displayText = displayText,
+        alternateText = alternateText
+    )
+
+    fun toDb() = HyperlinkEntity(
+        url = url,
+        displayText = displayText,
+        alternateText = alternateText
+    )
 }

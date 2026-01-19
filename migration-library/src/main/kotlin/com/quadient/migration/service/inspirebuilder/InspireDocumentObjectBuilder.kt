@@ -8,6 +8,7 @@ import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.FirstMatchModel
 import com.quadient.migration.data.AreaModel
+import com.quadient.migration.data.HyperlinkModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphModel
@@ -693,6 +694,12 @@ abstract class InspireDocumentObjectBuilder(
                     }
 
                     is ImageModelRef -> buildAndAppendImage(layout, text, it)
+                    is HyperlinkModel -> {
+                        // TODO: Implement proper hyperlink rendering in WFD-XML
+                        // For now, append as text with display text or URL
+                        val displayValue = it.displayText ?: it.url
+                        text.appendText(displayValue)
+                    }
                     is FirstMatchModel -> text.appendFlow(
                         buildFirstMatch(layout, variableStructure, it, true, null, languages)
                     )

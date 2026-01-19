@@ -40,6 +40,13 @@ data class VariableStructureEntityRef(val id: String) : RefEntity
 data class StringEntity(val value: String) : TextContentEntity
 
 @Serializable
+data class HyperlinkEntity(
+    val url: String,
+    val displayText: String? = null,
+    val alternateText: String? = null
+) : TextContentEntity
+
+@Serializable
 data class FirstMatchEntity(val cases: List<CaseEntity>, val default: List<DocumentContentEntity>) :
     DocumentContentEntity, TextContentEntity {
     @Serializable
