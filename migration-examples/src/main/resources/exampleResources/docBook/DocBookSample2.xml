@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN" "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<article lang="">
+  <para>
+    <inlinegraphic fileref="embedded:Image1" width="2.7693inch" depth="0.6827inch"/>
+  </para>
+  <sect1 id="PolicyDetails">
+    <para>Policy number        $policyNumber$</para>
+    <para>Insured        $fullName$</para>
+    <para>Processes        $staff$</para>
+    <para/>
+  </sect1>
+  <sect1 id="AddressBlock">
+    <para>$salutation$</para>
+    <para>$fullName$</para>
+    <para>$street$</para>
+    <para>$postalCode$  $city$</para>
+    <para>$country$</para>
+  </sect1>
+  <para/>
+  <sect1 id="DateLocation">
+    <para>$workplaceLocation$ $dateOfCreation$</para>
+  </sect1>
+  <para/>
+  <sect1 id="Section1">
+    <para>Request for Additional Information $repeatedRequest$</para>
+    <para/>
+  </sect1>
+  <sect1 id="Salutation1">
+    <para>Dear Sir $surename$,</para>
+  </sect1>
+  <sect1 id="Salutation2">
+    <para>Dear Madam $surename$,</para>
+  </sect1>
+  <sect1 id="Salutation3">
+    <para>Dear Sir,</para>
+  </sect1>
+  <sect1 id="Salutation4">
+    <para>Dear Madam,</para>
+  </sect1>
+  <sect1 id="Salutation5">
+    <para>Dear Madam, Dear Sir,</para>
+  </sect1>
+  <sect1 id="Paragraph1">
+    <para>We would like to inform you that we have received your request for surrender from the above-mentioned insurance policy.</para>
+  </sect1>
+  <sect1 id="Paragraph2_1">
+    <para>To process your request, according to the Act No. 211/2111 Coll., on certain measures against the legalization of proceeds from criminal activities, we are obligated to physically identify the person applying in a specific scope. Simultaneously, the applicant is bound to cooperate with the insurer in this identification process.</para>
+    <para>For the above-mentioned reasons, please contact any branch of our insurance company with this document and a valid identification card. They will conduct the identification process for you free of charge and without delays.</para>
+  </sect1>
+  <sect1 id="Paragraph2_2">
+    <para>To process your request, in accordance with Act No. 211/2111 Coll., on certain measures against the legalization of proceeds from criminal activities, we are obliged to record identification details of the applicant within a specific scope. Simultaneously, the applicant is obligated to provide proper cooperation in this identification process to the insurer.</para>
+    <para>For the reasons stated above, please complete and deliver the attached form to our correspondence address at GF Bank, Bank street 1, London. Alternatively, please contact any branch of our insurance company with this document and a valid identification card, ensuring that the identification process is conducted free of charge and without delays.</para>
+  </sect1>
+  <sect1 id="Paragraph3">
+    <para>To eliminate the possibility of unauthorized handling of the insurance policy, please submit the attached form to any branch of our insurance company, to the registry office, or notary, where your signature can be verified.</para>
+  </sect1>
+  <sect1 id="Paragraph4_1">
+    <para>In this context, we would like to inform you that with the disbursement $surrenderRedemption1$ the insured must consent to the surrender/redemption. Therefore, we request you to provide his/her agreement for the disbursement $surrenderRedemption2$. </para>
+  </sect1>
+  <sect1 id="Paragraph4_2">
+    <para>In this context, we would like to inform you that with the disbursement $surrenderRedemption1$ the insured must consent to the surrender/redemption. Therefore, we request you to provide his/her agreement for the disbursement $surrenderRedemption2$. </para>
+    <para>To eliminate the possibility of unauthorized handling of the insurance policy, please ensure the verification of the insured's signature on the consent for the cancellation of the insurance. The insured can personally contact our insurance advisor, the nearest branch of our insurance company, or have the signature verified at the registry office or notary.</para>
+    <para/>
+    <para>After fulfilling the legal obligation of identification and receiving the insured's consent, we will be able to proceed with your request.</para>
+  </sect1>
+  <sect1 id="Paragraph_5">
+    <para>$additionalInformation$</para>
+  </sect1>
+  <sect1 id="Inquiries1">
+    <para>Any potential inquiries you may have will be addressed by $staff$, your request will be handled by the representative on the telephone line $phone$ on business days from 8 am to 4 pm, or alternatively, at the email address $staffEmail$.</para>
+  </sect1>
+  <sect1 id="Inquiries2">
+    <para>Any questions you may have will be gladly answered by our Customer Service representatives at the telephone line 211 111 111. You can also contact us in writing at our correspondence address: GF Bank, Bank Street 1, London.</para>
+  </sect1>
+  <sect1 id="SignatureGeneric">
+    <para>Best Regards</para>
+    <para>$signature$$team$</para>
+    <para/>
+  </sect1>
+</article>
