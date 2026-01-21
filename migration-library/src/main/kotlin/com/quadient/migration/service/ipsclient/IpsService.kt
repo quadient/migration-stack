@@ -292,9 +292,9 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     }
 
     override fun close() {
-        logger.debug("Cleaning resources for IPS service")
+        logger.trace("Cleaning resources for IPS service")
         for (resource in uploadedResources.values) {
-            logger.debug("Cleaning up {}", resource)
+            logger.trace("Cleaning up {}", resource)
             resource.onClose()
         }
 

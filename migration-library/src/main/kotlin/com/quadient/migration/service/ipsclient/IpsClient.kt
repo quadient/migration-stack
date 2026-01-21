@@ -20,6 +20,14 @@ class IpsClient(private val host: String, private val port: Int, private val tim
     private val _connection = lazy { IpsConnection() }
     private val connection: IpsConnection by _connection
     private val logger = LoggerFactory.getLogger(IpsClient::class.java)!!
+    val version: Version?
+        get() {
+            if (!_connection.isInitialized()) {
+                return null
+            }
+
+            return connection.version
+        }
 
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
 
@@ -222,6 +230,9 @@ class IpsClient(private val host: String, private val port: Int, private val tim
         val socket = Socket()
         val reader: BufferedInputStream
         val writer: OutputStreamWriter
+        val version: Version?
+            get() = _version
+        private var _version: Version? = null
 
         init {
             try {
@@ -234,6 +245,39 @@ class IpsClient(private val host: String, private val port: Int, private val tim
             } catch (e: Exception) {
                 throw IpsClientException("Failed to connect to $host:$port", e)
             }
+
+            this._version = version()
+        }
+
+        private fun version(): Version? {
+            val command = "version"
+
+            this.writeLine(command).getOrElse {
+                logger.error("Failed to write version command to ips", it)
+                return null
+            }
+
+            val result = this.readLine()
+            if (!result.startsWith("ok;")) {
+                logger.error("Failed to read version from ips, invalid response: $result")
+                return null
+            }
+            val split = result.split(";")
+            val versionString = split.getOrNull(1)
+            if (versionString == null) {
+                logger.error("Failed to read version from ips, invalid response: $result")
+                return null
+            }
+
+            val version = when (val parseResult = Version.parse(versionString)) {
+                is Version.ParseResult.Success -> parseResult.version
+                is Version.ParseResult.Failure -> {
+                    logger.error("Failed to read version from ips: ${parseResult.reason}")
+                    return null
+                }
+            }
+
+            return version
         }
 
         fun readLine(): String {
