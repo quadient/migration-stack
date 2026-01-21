@@ -369,6 +369,13 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             .documentObjectRef(conditionalParagraph.id)
             .documentObjectRef(firstMatchBlock.id)
             .documentObjectRef(selectByLanguageBlock.id)
+            .paragraph {
+                it.styleRef(paragraphStyle.id).text {
+                    it.styleRef(normalStyle.id)
+                            .string("For more information visit ")
+                            .hyperlink("https://github.com/quadient/migration-stack", "Migration Stack GitHub", "Migration Stack GitHub URL link")
+                }
+            }
     }
     .area {
         it.position {

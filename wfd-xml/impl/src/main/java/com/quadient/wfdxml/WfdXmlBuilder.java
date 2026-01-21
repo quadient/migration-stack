@@ -51,6 +51,11 @@ public class WfdXmlBuilder {
         exporter.declaration("1.0", "UTF-8");
         exporter.beginElement("WorkFlow");
 
+        exporter.beginElement("Property");
+        exporter.addElementWithStringData("Name", "DeltaStyles");
+        exporter.addElementWithIntData("Value", 1);
+        exporter.endElement();
+
         for (WorkFlowModuleImpl module : modules) {
             module.export(exporter);
         }

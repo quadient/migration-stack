@@ -4,11 +4,11 @@ import com.quadient.wfdxml.api.layoutnodes.FillStyle;
 import com.quadient.wfdxml.api.layoutnodes.Font;
 import com.quadient.wfdxml.api.layoutnodes.LineStyle;
 import com.quadient.wfdxml.api.layoutnodes.TextStyle;
+import com.quadient.wfdxml.api.layoutnodes.TextStyleType;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.api.layoutnodes.font.SubFont;
 import com.quadient.wfdxml.api.layoutnodes.tables.BorderStyle;
 import com.quadient.wfdxml.internal.NodeImpl;
-import com.quadient.wfdxml.internal.layoutnodes.font.SubFontImpl;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 
 public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
@@ -17,7 +17,7 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
      * Inspire Designer  #define DPI_TS (72.0*100.0/2.54)
      */
     private static final double DPI_TS = 72.0d * 100.0 / 2.54;
-    private final String type = "Simple";
+    private TextStyleType type = TextStyleType.SIMPLE;
     private final boolean isVisible = true;
     private FillStyle fillStyle;
     private Font font;
@@ -123,7 +123,7 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
                 .addElementWithBoolData("SubScript", isSubScript)
                 .addElementWithIface("URLLink", urlLink)
                 .addElementWithDoubleData("HorizontalScale", horizontalScale * 100.0d)
-                .addElementWithStringData("Type", type)
+                .addElementWithStringData("Type", type.getXmlValue())
                 .addElementWithIface("StrikethroughLineStyleId", strikeThroughStyleId)
                 .addElementWithIface("UnderlineLineStyleId", underlineStyleId)
                 .addElementWithBoolData("IsFixedWidth", isFixedWidth)
@@ -164,8 +164,14 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
         this.ancestorId = ancestorId;
     }
 
-    public String getType() {
+    public TextStyleType getType() {
         return type;
+    }
+
+    @Override
+    public TextStyleImpl setType(TextStyleType type) {
+        this.type = type;
+        return this;
     }
 
     public String getLanguage() {

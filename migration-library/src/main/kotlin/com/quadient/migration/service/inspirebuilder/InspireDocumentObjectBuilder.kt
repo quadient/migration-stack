@@ -52,8 +52,6 @@ import com.quadient.migration.shared.LiteralOrFunctionCall
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.TabType
 import com.quadient.wfdxml.WfdXmlBuilder
-import com.quadient.wfdxml.api.layoutnodes.Color
-import com.quadient.wfdxml.api.layoutnodes.FillStyle
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Font
 import com.quadient.wfdxml.api.layoutnodes.Image
@@ -71,8 +69,10 @@ import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.Table
 import com.quadient.migration.shared.PdfTaggingRule
+import com.quadient.wfdxml.api.layoutnodes.TextStyleType
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.data.WorkFlowTreeDefinition
+import com.quadient.wfdxml.internal.layoutnodes.TextStyleImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeOptionality
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.SUB_TREE
@@ -403,56 +403,50 @@ abstract class InspireDocumentObjectBuilder(
         arialFont.setName("Arial").setFontName("Arial")
         upsertSubFont(arialFont, isBold = false, isItalic = false)
 
-        val usedFonts = mutableMapOf("Arial" to arialFont)
-        val usedColorFillStyles = mutableMapOf<String, Pair<Color, FillStyle>>()
-
         textStyleModels.forEach { styleModel ->
             val definition = styleModel.resolve()
-
             val textStyle = layout.addTextStyle().setName(styleModel.nameOrId())
-            val fontFamily = definition.fontFamily ?: "Arial"
+            applyTextStyleProperties(layout, textStyle, definition)
+        }
+    }
 
-            val usedFont = usedFonts[fontFamily]
-            val font = if (usedFont != null) usedFont else {
-                val newFont = layout.addFont().setName(definition.fontFamily).setFontName(definition.fontFamily)
-                usedFonts[fontFamily] = newFont
-                newFont
-            }
+    private fun applyTextStyleProperties(
+        layout: Layout,
+        textStyle: com.quadient.wfdxml.api.layoutnodes.TextStyle,
+        definition: TextStyleDefinitionModel
+    ) {
+        definition.fontFamily?.let { fontFamily ->
+            val font = getFontByName(layout, fontFamily) ?: layout.addFont()
+                .setName(fontFamily)
+                .setFontName(fontFamily)
             textStyle.setFont(font)
 
             val subFont = upsertSubFont(font, definition.bold, definition.italic)
             if (subFont != null) {
                 textStyle.setSubFont(subFont)
             }
+        }
 
-            if (definition.foregroundColor != null) {
-                val colorId = definition.foregroundColor.toString()
-                val usedColorFillStyle = usedColorFillStyles[colorId]
-                if (usedColorFillStyle != null) {
-                    textStyle.setFillStyle(usedColorFillStyle.second)
-                } else {
-                    val newColor = layout.addColor().setRGB(
-                        definition.foregroundColor.red(),
-                        definition.foregroundColor.green(),
-                        definition.foregroundColor.blue()
-                    )
-                    val newFillStyle = layout.addFillStyle().setColor(newColor)
-                    usedColorFillStyles[colorId] = Pair(newColor, newFillStyle)
-                    textStyle.setFillStyle(newFillStyle)
-                }
-            }
+        textStyle.setBold(definition.bold)
+        textStyle.seItalic(definition.italic)
+        textStyle.setUnderline(definition.underline)
+        textStyle.setStrikeThrough(definition.strikethrough)
 
-            definition.size?.let { textStyle.setFontSizeInMeters(definition.size.toMeters()) }
-            textStyle.setBold(definition.bold)
-            textStyle.seItalic(definition.italic)
-            textStyle.setUnderline(definition.underline)
-            textStyle.setStrikeThrough(definition.strikethrough)
-            when (definition.superOrSubscript) {
-                SuperOrSubscript.Subscript -> textStyle.setSubScript(true).setSuperScript(false)
-                SuperOrSubscript.Superscript -> textStyle.setSubScript(false).setSuperScript(true)
-                SuperOrSubscript.None -> textStyle.setSubScript(false).setSuperScript(false)
-            }
-            definition.interspacing?.let { textStyle.setInterSpacing(it.toMeters()) }
+        definition.size?.let { textStyle.setFontSizeInMeters(it.toMeters()) }
+        definition.interspacing?.let { textStyle.setInterSpacing(it.toMeters()) }
+
+        when (definition.superOrSubscript) {
+            SuperOrSubscript.Subscript -> textStyle.setSubScript(true).setSuperScript(false)
+            SuperOrSubscript.Superscript -> textStyle.setSubScript(false).setSuperScript(true)
+            SuperOrSubscript.None -> textStyle.setSubScript(false).setSuperScript(false)
+        }
+
+        definition.foregroundColor?.let { colorModel ->
+            val layoutColor = getColorByRGB(layout, colorModel.red(), colorModel.green(), colorModel.blue())
+                ?: layout.addColor().setRGB(colorModel.red(), colorModel.green(), colorModel.blue())
+            val fillStyle = getFillStyleByColor(layout, layoutColor)
+                ?: layout.addFillStyle().setColor(layoutColor)
+            textStyle.setFillStyle(fillStyle)
         }
     }
 
@@ -670,7 +664,7 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         paragraphModel.content.forEach { textModel ->
-            val text = if (textModel.displayRuleRef == null) {
+            val baseText = if (textModel.displayRuleRef == null) {
                 paragraph.addText()
             } else {
                 buildSuccessFlowWrappedInInlineConditionFlow(
@@ -680,32 +674,78 @@ abstract class InspireDocumentObjectBuilder(
                 }.addText()
             }
 
-            findTextStyle(textModel)?.also { text.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
+            val baseTextStyleModel = findTextStyle(textModel)
+            baseTextStyleModel?.also { baseText.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
+
+            var currentText = baseText
 
             textModel.content.forEach {
                 when (it) {
-                    is StringModel -> text.appendText(it.value)
-                    is VariableModelRef -> text.appendVariable(it, layout, variableStructure)
-                    is TableModel -> text.appendTable(buildTable(layout, variableStructure, it, languages))
+                    is StringModel -> currentText.appendText(it.value)
+                    is VariableModelRef -> currentText.appendVariable(it, layout, variableStructure)
+                    is TableModel -> currentText.appendTable(buildTable(layout, variableStructure, it, languages))
                     is DocumentObjectModelRef -> buildDocumentObjectRef(
                         layout, variableStructure, it, languages
                     )?.also { flow ->
-                        text.appendFlow(flow)
+                        currentText.appendFlow(flow)
                     }
 
-                    is ImageModelRef -> buildAndAppendImage(layout, text, it)
+                    is ImageModelRef -> buildAndAppendImage(layout, currentText, it)
                     is HyperlinkModel -> {
-                        // TODO: Implement proper hyperlink rendering in WFD-XML
-                        // For now, append as text with display text or URL
-                        val displayValue = it.displayText ?: it.url
-                        text.appendText(displayValue)
+                        currentText = paragraph.addText()
+                        val hyperlinkStyle = createHyperlinkTextStyle(layout, baseTextStyleModel, it.url)
+                        currentText.setTextStyle(hyperlinkStyle)
+                        currentText.appendText(it.displayText ?: it.url)
+
+                        currentText = paragraph.addText()
+                        baseTextStyleModel?.also { currentText.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
                     }
-                    is FirstMatchModel -> text.appendFlow(
+                    is FirstMatchModel -> currentText.appendFlow(
                         buildFirstMatch(layout, variableStructure, it, true, null, languages)
                     )
                 }
             }
         }
+    }
+
+    private fun createHyperlinkTextStyle(
+        layout: Layout,
+        baseTextStyleModel: TextStyleModel?,
+        url: String
+    ): com.quadient.wfdxml.api.layoutnodes.TextStyle {
+        val baseStyleName = baseTextStyleModel?.nameOrId() ?: "text"
+        val hyperlinkName = generateUniqueHyperlinkStyleName(layout, baseStyleName)
+
+        val urlVariable = createUrlVariable(layout, hyperlinkName, url)
+
+        val hyperlinkStyle = layout.addTextStyle()
+            .setName(hyperlinkName)
+            .setUrlTarget(urlVariable)
+            .setType(TextStyleType.DELTA)
+        (hyperlinkStyle as TextStyleImpl).setAncestorId("Def.TextStyleHyperlink")
+
+        // TODO d.svitak - evaluate
+//        if (baseTextStyleModel != null) {
+//            val definition = baseTextStyleModel.resolve()
+//            applyTextStyleProperties(layout, hyperlinkStyle, definition)
+//        }
+
+        return hyperlinkStyle
+    }
+
+    private fun generateUniqueHyperlinkStyleName(layout: Layout, baseStyleName: String): String {
+        var counter = 1
+        var candidateName = "${baseStyleName}_url_${counter}"
+        while (getTextStyleByName(layout, candidateName) != null) {
+            counter++
+            candidateName = "${baseStyleName}_url_${counter}"
+        }
+        return candidateName
+    }
+
+    private fun createUrlVariable(layout: Layout, variableName: String, url: String): Variable {
+        return layout.data.addVariable().setName(variableName).setKind(VariableKind.CONSTANT)
+            .setDataType(DataType.STRING).setValue(url)
     }
 
     private fun buildAndAppendImage(layout: Layout, text: Text, ref: ImageModelRef) {

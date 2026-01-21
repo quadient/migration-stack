@@ -90,6 +90,31 @@ fun getFontByName(layout: Layout, fontName: String): Font? {
     return fontGroup.children.find { (it as FontImpl).name == fontName } as? Font
 }
 
+fun getTextStyleByName(layout: Layout, styleName: String): com.quadient.wfdxml.api.layoutnodes.TextStyle? {
+    val textStyleGroup = (layout as LayoutImpl).children.find { it.name == "TextStyles" } as Group
+    return textStyleGroup.children.find { (it as com.quadient.wfdxml.internal.layoutnodes.TextStyleImpl).name == styleName } as? com.quadient.wfdxml.api.layoutnodes.TextStyle
+}
+
+fun getColorByRGB(layout: Layout, r: Int, g: Int, b: Int): com.quadient.wfdxml.api.layoutnodes.Color? {
+    val colorGroup = (layout as LayoutImpl).children.find { it.name == "Colors" } as Group
+    val targetRed = r / 255.0
+    val targetGreen = g / 255.0
+    val targetBlue = b / 255.0
+    return colorGroup.children.find {
+        val color = it as com.quadient.wfdxml.internal.layoutnodes.ColorImpl
+        val colorRgb = color.colorRgb
+        colorRgb.red == targetRed && colorRgb.green == targetGreen && colorRgb.blue == targetBlue
+    } as? com.quadient.wfdxml.api.layoutnodes.Color
+}
+
+fun getFillStyleByColor(layout: Layout, color: com.quadient.wfdxml.api.layoutnodes.Color): com.quadient.wfdxml.api.layoutnodes.FillStyle? {
+    val fillStyleGroup = (layout as LayoutImpl).children.find { it.name == "FillStyles" } as Group
+    return fillStyleGroup.children.find {
+        val fillStyle = it as com.quadient.wfdxml.internal.layoutnodes.FillStyleImpl
+        fillStyle.color == color
+    } as? com.quadient.wfdxml.api.layoutnodes.FillStyle
+}
+
 fun getVariable(data: DataImpl, name: String, parentPath: String): Variable? {
     return (data.children).find {
         val variable = it as VariableImpl

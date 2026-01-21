@@ -61,4 +61,6 @@ public interface TextStyle extends Node<TextStyle> {
     TextStyle setConnectBorders(boolean connectBorders);
 
     TextStyle setWithLineGap(boolean withLineGap);
+
+    TextStyle setType(TextStyleType type);
 }
