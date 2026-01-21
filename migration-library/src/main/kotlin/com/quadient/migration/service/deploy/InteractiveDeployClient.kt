@@ -6,6 +6,8 @@ import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.DocumentObjectModel
+import com.quadient.migration.data.ParagraphStyleDefinitionModel
+import com.quadient.migration.data.TextStyleDefinitionModel
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
@@ -16,11 +18,13 @@ import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
+import kotlinx.datetime.Clock
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.json.extract
 import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class InteractiveDeployClient(
     documentObjectRepository: DocumentObjectInternalRepository,
@@ -98,8 +102,8 @@ class InteractiveDeployClient(
     }
 
     override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult {
-        val deploymentId = kotlin.uuid.Uuid.random()
-        val deploymentTimestamp = kotlinx.datetime.Clock.System.now()
+        val deploymentId = Uuid.random()
+        val deploymentTimestamp = Clock.System.now()
         val deploymentResult = DeploymentResult(deploymentId)
 
         val orderedDocumentObject = deployOrder(documentObjects)
@@ -153,5 +157,103 @@ class InteractiveDeployClient(
         }
 
         return deploymentResult
+    }
+
+    override fun deployStyles() {
+        val deploymentId = Uuid.random()
+        val deploymentTimestamp = Clock.System.now()
+
+        val outputPathWfd = documentObjectBuilder.getStyleDefinitionPath(extension = "wfd")
+        val outputPathJld = documentObjectBuilder.getStyleDefinitionPath(extension = "jld")
+
+        val xml2wfdResult = ipsService.xml2wfd(
+            documentObjectBuilder.buildStyles(emptyList(), emptyList(), withDeltaStyles = true),
+            outputPathWfd
+        )
+
+        when (xml2wfdResult) {
+            is OperationResult.Success -> {
+                logger.debug("Deployment of $outputPathWfd is successful. Will deploy style $outputPathJld next.")
+            }
+
+            is OperationResult.Failure -> {
+                logger.error("Failed to deploy $outputPathWfd. Will not attempt to deploy style $outputPathJld.")
+                return
+            }
+        }
+
+        val textStyles = textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel }
+        val paragraphStyles =
+            paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel }
+
+        val styleLayoutDeltaXml = documentObjectBuilder.buildStyleLayoutDelta(
+            textStyles = textStyles,
+            paragraphStyles = paragraphStyles
+        )
+
+        val editResult = ipsService.deployStyleJld(
+            baseTemplate = outputPathWfd,
+            xmlContent = styleLayoutDeltaXml,
+            outputPath = outputPathJld,
+        )
+
+        when (editResult) {
+            OperationResult.Success -> {
+                logger.debug("Deployment of $outputPathJld is successful.")
+                textStyles.forEach {
+                    statusTrackingRepository.deployed(
+                        id = it.id,
+                        deploymentId = deploymentId,
+                        timestamp = deploymentTimestamp,
+                        resourceType = ResourceType.TextStyle,
+                        icmPath = outputPathWfd,
+                        output = output
+                    )
+                }
+                paragraphStyles.forEach {
+                    statusTrackingRepository.deployed(
+                        id = it.id,
+                        deploymentId = deploymentId,
+                        timestamp = deploymentTimestamp,
+                        resourceType = ResourceType.ParagraphStyle,
+                        icmPath = outputPathWfd,
+                        output = output
+                    )
+                }
+            }
+
+            is OperationResult.Failure -> {
+                logger.error("Failed to deploy $outputPathJld.")
+                textStyles.forEach {
+                    statusTrackingRepository.error(
+                        it.id,
+                        deploymentId,
+                        deploymentTimestamp,
+                        ResourceType.TextStyle,
+                        outputPathWfd,
+                        output,
+                        ""
+                    )
+                }
+                paragraphStyles.forEach {
+                    statusTrackingRepository.error(
+                        it.id,
+                        deploymentId,
+                        deploymentTimestamp,
+                        ResourceType.ParagraphStyle,
+                        outputPathWfd,
+                        output,
+                        ""
+                    )
+                }
+                return
+            }
+        }
+
+        val approvalResult = ipsService.setProductionApprovalState(listOf(outputPathWfd, outputPathJld))
+        when (approvalResult) {
+            is OperationResult.Failure -> logger.error("Failed to set production approval state to $outputPathWfd.")
+            OperationResult.Success -> logger.debug("Setting of production approval state to $outputPathWfd is successful.")
+        }
     }
 }

@@ -190,6 +190,13 @@ class IpsClient(private val host: String, private val port: Int, private val tim
         return connection.readResponse()
     }
 
+    fun extractJldStyleDefinition(workflowId: WorkFlowId, outputPath: String): IpsResult<JobId, Unit, Unit> {
+        val command =
+            """run $workflowId -e json -type resources -f "$outputPath""""
+        connection.writeLine(command).getOrElse { return IpsFailedWriteException(command, it).toIpsResult() }
+        return connection.readResponse()
+    }
+
     fun queryJobMessages(jobId: JobId): String {
         val command = "qjm $jobId"
         connection.writeLine(command).getOrThrow()

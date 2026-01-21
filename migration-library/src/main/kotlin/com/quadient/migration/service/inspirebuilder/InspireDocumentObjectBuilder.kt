@@ -57,6 +57,7 @@ import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Font
 import com.quadient.wfdxml.api.layoutnodes.Image
 import com.quadient.wfdxml.api.layoutnodes.LocationType
+import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType.*
 import com.quadient.wfdxml.api.layoutnodes.TabulatorType
@@ -105,7 +106,7 @@ abstract class InspireDocumentObjectBuilder(
 
     abstract fun getImagePath(image: ImageModel): String
 
-    abstract fun getStyleDefinitionPath(): String
+    abstract fun getStyleDefinitionPath(extension: String = "wfd"): String
 
     abstract fun getFontRootFolder(): String
 
@@ -200,8 +201,8 @@ abstract class InspireDocumentObjectBuilder(
         return successRow
     }
 
-    fun buildStyles(textStyles: List<TextStyleModel>, paragraphStyles: List<ParagraphStyleModel>): String {
-        logger.debug("Starting to build style definition.")
+    fun buildStyleLayoutDelta(textStyles: List<TextStyleModel>, paragraphStyles: List<ParagraphStyleModel>): String {
+        logger.debug("Starting to build style layout delta.")
 
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
@@ -214,8 +215,36 @@ abstract class InspireDocumentObjectBuilder(
         buildTextStyles(layout, textStyles)
         buildParagraphStyles(layout, paragraphStyles)
 
+        logger.debug("Successfully built style layout delta.")
+        return builder.buildStyleLayoutDelta()
+    }
+
+    fun buildStyles(
+        textStyles: List<TextStyleModel>,
+        paragraphStyles: List<ParagraphStyleModel>,
+        withDeltaStyles: Boolean = false
+    ): String {
+        logger.debug("Starting to build style definition.")
+
+        val builder = WfdXmlBuilder()
+        val layout = builder.addLayout()
+
+        layout.setName("DocumentLayout")
+        val flow = layout.addFlow().setSectionFlow(true).setWebEditingType(Flow.WebEditingType.SECTION)
+        layout.pages.setMainFlow(flow)
+        layout.addPage().setName("Page 1").setType(Pages.PageConditionType.SIMPLE)
+        layout.addRoot().setAllowRuntimeModifications(true)
+
+        if (fontDataCache.isEmpty()) {
+            val fontDataString = ipsService.gatherFontData(getFontRootFolder())
+            fontDataCache.putAll(fontDataStringToMap(fontDataString))
+        }
+
+        buildTextStyles(layout, textStyles)
+        buildParagraphStyles(layout, paragraphStyles)
+
         logger.debug("Successfully built style definition.")
-        return builder.build()
+        return builder.build(withDeltaStyles)
     }
 
     fun buildDocumentContentAsFlows(
@@ -395,10 +424,11 @@ abstract class InspireDocumentObjectBuilder(
             .setLocation(fontLocation, LocationType.ICM)
     }
 
-    protected fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyleModel>) {
+    fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyleModel>) {
         val arialFont = getFontByName(layout, "Arial")
         require(arialFont != null) { "Layout must contain Arial font." }
         arialFont.setName("Arial").setFontName("Arial")
+        upsertSubFont(arialFont, isBold = false, isItalic = false)
 
         val usedFonts = mutableMapOf("Arial" to arialFont)
         val usedColorFillStyles = mutableMapOf<String, Pair<Color, FillStyle>>()
@@ -454,7 +484,7 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    protected fun buildParagraphStyles(layout: Layout, paragraphStyleModels: List<ParagraphStyleModel>) {
+    fun buildParagraphStyles(layout: Layout, paragraphStyleModels: List<ParagraphStyleModel>) {
         paragraphStyleModels.forEach { styleModel ->
             val definition = styleModel.resolve()
 

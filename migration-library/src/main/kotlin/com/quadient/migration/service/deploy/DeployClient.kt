@@ -11,10 +11,8 @@ import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
-import com.quadient.migration.data.ParagraphStyleDefinitionModel
 import com.quadient.migration.data.ParagraphStyleModelRef
 import com.quadient.migration.data.RefModel
-import com.quadient.migration.data.TextStyleDefinitionModel
 import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.data.VariableModelRef
 import com.quadient.migration.data.VariableStructureModelRef
@@ -141,6 +139,7 @@ sealed class DeployClient(
     abstract fun getAllDocumentObjectsToDeploy(): List<DocumentObjectModel>
     abstract fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObjectModel>
     abstract fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult
+    abstract fun deployStyles()
 
     protected fun addPostProcessor(processor: (DeploymentResult) -> Unit) {
         postProcessors.add(processor)
@@ -174,76 +173,6 @@ sealed class DeployClient(
         return result
     }
 
-    fun deployStyles() {
-        val deploymentId = Uuid.random()
-        val deploymentTimestamp = Clock.System.now()
-
-        val textStyles = textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel }
-        val paragraphStyles =
-            paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel }
-        val outputPath = documentObjectBuilder.getStyleDefinitionPath()
-        val xml2wfdResult =
-            ipsService.xml2wfd(documentObjectBuilder.buildStyles(textStyles, paragraphStyles), outputPath)
-
-        when (xml2wfdResult) {
-            is OperationResult.Success -> {
-                logger.debug("Deployment of $outputPath is successful.")
-                textStyles.forEach {
-                    statusTrackingRepository.deployed(
-                        id = it.id,
-                        deploymentId = deploymentId,
-                        timestamp = deploymentTimestamp,
-                        resourceType = ResourceType.TextStyle,
-                        icmPath = outputPath,
-                        output = output
-                    )
-                }
-                paragraphStyles.forEach {
-                    statusTrackingRepository.deployed(
-                        id = it.id,
-                        deploymentId = deploymentId,
-                        timestamp = deploymentTimestamp,
-                        resourceType = ResourceType.ParagraphStyle,
-                        icmPath = outputPath,
-                        output = output
-                    )
-                }
-            }
-
-            is OperationResult.Failure -> {
-                logger.error("Failed to deploy $outputPath.")
-                textStyles.forEach {
-                    statusTrackingRepository.error(
-                        it.id,
-                        deploymentId,
-                        deploymentTimestamp,
-                        ResourceType.TextStyle,
-                        outputPath,
-                        output,
-                        xml2wfdResult.message
-                    )
-                }
-                paragraphStyles.forEach {
-                    statusTrackingRepository.error(
-                        it.id,
-                        deploymentId,
-                        deploymentTimestamp,
-                        ResourceType.ParagraphStyle,
-                        outputPath,
-                        output,
-                        xml2wfdResult.message
-                    )
-                }
-                return
-            }
-        }
-
-        val approvalResult = ipsService.setProductionApprovalState(listOf(outputPath))
-        when (approvalResult) {
-            is OperationResult.Failure -> logger.error("Failed to set production approval state to $outputPath.")
-            OperationResult.Success -> logger.debug("Setting of production approval state to $outputPath is successful.")
-        }
-    }
 
     fun deployOrder(documentObjects: List<DocumentObjectModel>): List<DocumentObjectModel> {
         val documentObjectIds = documentObjects.map { it.id }

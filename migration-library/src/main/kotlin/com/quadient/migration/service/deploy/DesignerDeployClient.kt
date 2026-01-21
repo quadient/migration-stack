@@ -5,6 +5,8 @@ package com.quadient.migration.service.deploy
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.DocumentObjectModel
+import com.quadient.migration.data.ParagraphStyleDefinitionModel
+import com.quadient.migration.data.TextStyleDefinitionModel
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
@@ -15,11 +17,13 @@ import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuild
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
+import kotlinx.datetime.Clock
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.json.extract
 import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class DesignerDeployClient(
     documentObjectRepository: DocumentObjectInternalRepository,
@@ -147,5 +151,70 @@ class DesignerDeployClient(
                 DocumentObjectType.Section.toString()
             ) and DocumentObjectTable.internal.eq(false) and (DocumentObjectTable.skip.extract<String>("skipped") eq "false"))
         )
+    }
+
+    override fun deployStyles() {
+        val deploymentId = Uuid.random()
+        val deploymentTimestamp = Clock.System.now()
+
+        val textStyles = textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel }
+        val paragraphStyles =
+            paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel }
+        val outputPath = documentObjectBuilder.getStyleDefinitionPath()
+        val xml2wfdResult =
+            ipsService.xml2wfd(documentObjectBuilder.buildStyles(textStyles, paragraphStyles), outputPath)
+
+        when (xml2wfdResult) {
+            is OperationResult.Success -> {
+                logger.debug("Deployment of $outputPath is successful.")
+                textStyles.forEach {
+                    statusTrackingRepository.deployed(
+                        id = it.id,
+                        deploymentId = deploymentId,
+                        timestamp = deploymentTimestamp,
+                        resourceType = ResourceType.TextStyle,
+                        icmPath = outputPath,
+                        output = output
+                    )
+                }
+                paragraphStyles.forEach {
+                    statusTrackingRepository.deployed(
+                        id = it.id,
+                        deploymentId = deploymentId,
+                        timestamp = deploymentTimestamp,
+                        resourceType = ResourceType.ParagraphStyle,
+                        icmPath = outputPath,
+                        output = output
+                    )
+                }
+            }
+
+            is OperationResult.Failure -> {
+                logger.error("Failed to deploy $outputPath.")
+                textStyles.forEach {
+                    statusTrackingRepository.error(
+                        it.id,
+                        deploymentId,
+                        deploymentTimestamp,
+                        ResourceType.TextStyle,
+                        outputPath,
+                        output,
+                        xml2wfdResult.message
+                    )
+                }
+                paragraphStyles.forEach {
+                    statusTrackingRepository.error(
+                        it.id,
+                        deploymentId,
+                        deploymentTimestamp,
+                        ResourceType.ParagraphStyle,
+                        outputPath,
+                        output,
+                        xml2wfdResult.message
+                    )
+                }
+                return
+            }
+        }
     }
 }

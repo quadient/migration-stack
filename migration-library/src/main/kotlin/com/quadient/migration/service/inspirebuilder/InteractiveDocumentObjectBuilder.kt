@@ -100,7 +100,7 @@ class InteractiveDocumentObjectBuilder(
     override fun getImagePath(image: ImageModel) =
         getImagePath(image.id, image.imageType, image.name, image.targetFolder, image.sourcePath)
 
-    override fun getStyleDefinitionPath(): String {
+    override fun getStyleDefinitionPath(extension: String): String {
         val styleDefConfigPath = projectConfig.styleDefinitionPath
 
         if (styleDefConfigPath != null && !styleDefConfigPath.isAbsolute()) {
@@ -114,7 +114,7 @@ class InteractiveDocumentObjectBuilder(
             .join(projectConfig.interactiveTenant)
             .join("CompanyStyles")
             .join(resolveTargetDir(projectConfig.defaultTargetFolder))
-            .join("${projectConfig.name}Styles.wfd")
+            .join("${projectConfig.name}Styles.$extension")
             .toString()
     }
 

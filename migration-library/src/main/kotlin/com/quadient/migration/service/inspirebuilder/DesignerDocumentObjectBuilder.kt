@@ -107,7 +107,7 @@ class DesignerDocumentObjectBuilder(
     override fun getImagePath(image: ImageModel) =
         getImagePath(image.id, image.imageType, image.name, image.targetFolder, image.sourcePath)
 
-    override fun getStyleDefinitionPath(): String {
+    override fun getStyleDefinitionPath(extension: String): String {
         val styleDefinitionPath = projectConfig.styleDefinitionPath
 
         if (styleDefinitionPath != null && !styleDefinitionPath.isAbsolute()) {
@@ -117,7 +117,7 @@ class DesignerDocumentObjectBuilder(
         }
 
         return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder))
-            .join("${projectConfig.name}Styles.wfd").toString()
+            .join("${projectConfig.name}Styles.$extension").toString()
     }
 
     override fun getFontRootFolder(): String {
