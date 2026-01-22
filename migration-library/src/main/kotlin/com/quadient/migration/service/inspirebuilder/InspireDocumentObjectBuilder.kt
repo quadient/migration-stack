@@ -247,7 +247,7 @@ abstract class InspireDocumentObjectBuilder(
         buildParagraphStyles(layout, paragraphStyles)
 
         logger.debug("Successfully built style definition.")
-        return builder.build(withDeltaStyles)
+        return builder.build()
     }
 
     fun buildDocumentContentAsFlows(
@@ -445,16 +445,14 @@ abstract class InspireDocumentObjectBuilder(
         textStyle: com.quadient.wfdxml.api.layoutnodes.TextStyle,
         definition: TextStyleDefinitionModel
     ) {
-        definition.fontFamily?.let { fontFamily ->
-            val font = getFontByName(layout, fontFamily) ?: layout.addFont()
-                .setName(fontFamily)
-                .setFontName(fontFamily)
-            textStyle.setFont(font)
+        val fontFamily = definition.fontFamily ?: "Arial"
 
-            val subFont = upsertSubFont(font, definition.bold, definition.italic)
-            if (subFont != null) {
-                textStyle.setSubFont(subFont)
-            }
+        val font = getFontByName(layout, fontFamily) ?: layout.addFont().setName(fontFamily).setFontName(fontFamily)
+        textStyle.setFont(font)
+
+        val subFont = upsertSubFont(font, definition.bold, definition.italic)
+        if (subFont != null) {
+            textStyle.setSubFont(subFont)
         }
 
         textStyle.setBold(definition.bold)
