@@ -225,7 +225,6 @@ abstract class InspireDocumentObjectBuilder(
     fun buildStyles(
         textStyles: List<TextStyleModel>,
         paragraphStyles: List<ParagraphStyleModel>,
-        withDeltaStyles: Boolean = false
     ): String {
         logger.debug("Starting to build style definition.")
 

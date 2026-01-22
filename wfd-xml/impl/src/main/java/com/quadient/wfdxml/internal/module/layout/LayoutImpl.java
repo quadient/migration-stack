@@ -72,7 +72,7 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
     private PagesImpl pages;
 
     private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images");
-    private final List<String> styleLayoutDeltaAllowedGroups = List.of("TextStyles", "FillStyles", "ParagraphStyles", "Colors");
+    private final List<String> styleLayoutDeltaAllowedGroups = List.of("TextStyles", "FillStyles", "ParagraphStyles", "Colors", "Fonts");
 
     public LayoutImpl() {
         initializeDefaultNodes();
