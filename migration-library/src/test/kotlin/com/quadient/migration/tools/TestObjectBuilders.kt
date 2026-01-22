@@ -51,6 +51,7 @@ import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.LineSpacing
+import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
@@ -250,7 +251,8 @@ fun aParagraphStyleDefinition(
     firstLineIndent: Size? = null,
     lineSpacing: LineSpacing = LineSpacing.Additional(null),
     keepWithNextParagraph: Boolean? = null,
-    tabs: Tabs? = null
+    tabs: Tabs? = null,
+    pdfTaggingRule: ParagraphPdfTaggingRule? = null,
 ): ParagraphStyleDefinition {
     return ParagraphStyleDefinition(
         leftIndent = leftIndent,
@@ -262,7 +264,8 @@ fun aParagraphStyleDefinition(
         firstLineIndent = firstLineIndent,
         lineSpacing = lineSpacing,
         keepWithNextParagraph = keepWithNextParagraph,
-        tabs = tabs
+        tabs = tabs,
+        pdfTaggingRule = pdfTaggingRule,
     )
 }
 

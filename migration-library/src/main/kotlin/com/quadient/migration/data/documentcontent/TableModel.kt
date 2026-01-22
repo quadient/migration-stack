@@ -1,14 +1,14 @@
 package com.quadient.migration.data
 
 import com.quadient.migration.persistence.migrationmodel.TableEntity
-import com.quadient.migration.shared.PdfTaggingRule
+import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.service.RefValidatable
 import com.quadient.migration.shared.Size
 
 data class TableModel(
     val rows: List<RowModel>,
     val columnWidths: List<ColumnWidthModel>,
-    val pdfTaggingRule: PdfTaggingRule = PdfTaggingRule.Default,
+    val pdfTaggingRule: TablePdfTaggingRule = TablePdfTaggingRule.Default,
     val pdfAlternateText: String? = null,
 ) : DocumentContentModel, TextContentModel, RefValidatable {
 

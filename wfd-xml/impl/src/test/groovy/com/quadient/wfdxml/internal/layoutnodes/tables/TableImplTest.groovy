@@ -8,7 +8,7 @@ import spock.lang.Specification
 import static com.quadient.wfdxml.api.layoutnodes.tables.RowSet.Type.MULTIPLE_ROWS
 import static com.quadient.wfdxml.api.layoutnodes.tables.Table.BordersType.SIMPLE
 import static com.quadient.wfdxml.api.layoutnodes.tables.Table.EditabilityType.LOCK
-import static com.quadient.wfdxml.api.layoutnodes.tables.Table.PdfTaggingRule.*
+import static com.quadient.wfdxml.api.layoutnodes.tables.Table.TablePdfTaggingRule.*
 import static com.quadient.wfdxml.api.layoutnodes.tables.Table.TableAlignment.CENTER
 import static com.quadient.wfdxml.utils.AssertXml.assertXmlEqualsWrapRoot
 
@@ -174,7 +174,7 @@ class TableImplTest extends Specification {
 
     def "export table pdf tagging none rule emits block"() {
         given:
-        Table table = new TableImpl().setTablePdfTagRule(NONE).setTablePdfAlternateText("ignored text")
+        Table table = new TableImpl().setTablePdfTaggingRule(NONE).setTablePdfAlternateText("ignored text")
 
         when:
         table.export(exporter)
@@ -189,7 +189,7 @@ class TableImplTest extends Specification {
 
     def "export table pdf tagging default without alt text emits nothing"() {
         given:
-        Table table = new TableImpl().setTablePdfTagRule(DEFAULT)
+        Table table = new TableImpl().setTablePdfTaggingRule(DEFAULT)
 
         when:
         table.export(exporter)
@@ -200,7 +200,7 @@ class TableImplTest extends Specification {
 
     def "export table pdf tagging default with alt text emits block with text"() {
         given:
-        Table table = new TableImpl().setTablePdfTagRule(DEFAULT).setTablePdfAlternateText("Default with alt text")
+        Table table = new TableImpl().setTablePdfTaggingRule(DEFAULT).setTablePdfAlternateText("Default with alt text")
 
         when:
         table.export(exporter)
@@ -213,7 +213,7 @@ class TableImplTest extends Specification {
 
     def "export table pdf tagging table rule emits block"() {
         given:
-        Table table = new TableImpl().setTablePdfTagRule(TABLE).setTablePdfAlternateText("Table alt text")
+        Table table = new TableImpl().setTablePdfTaggingRule(TABLE).setTablePdfAlternateText("Table alt text")
 
         when:
         table.export(exporter)

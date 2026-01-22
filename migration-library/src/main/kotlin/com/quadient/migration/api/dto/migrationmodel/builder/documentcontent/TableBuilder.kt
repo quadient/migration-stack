@@ -4,15 +4,15 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.shared.Size
-import com.quadient.migration.shared.PdfTaggingRule
+import com.quadient.migration.shared.TablePdfTaggingRule
 
 class TableBuilder {
     private val rows = mutableListOf<Row>()
     private val columnWidths = mutableListOf<ColumnWidth>()
-    private var pdfTaggingRule: PdfTaggingRule = PdfTaggingRule.Default
+    private var pdfTaggingRule: TablePdfTaggingRule = TablePdfTaggingRule.Default
     private var pdfAlternateText: String? = null
 
-    fun pdfTaggingRule(rule: PdfTaggingRule) = apply { this.pdfTaggingRule = rule }
+    fun pdfTaggingRule(rule: TablePdfTaggingRule) = apply { this.pdfTaggingRule = rule }
     fun pdfAlternateText(text: String?) = apply { this.pdfAlternateText = text }
 
     /**

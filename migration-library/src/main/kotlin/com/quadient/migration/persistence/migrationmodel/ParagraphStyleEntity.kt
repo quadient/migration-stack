@@ -2,6 +2,7 @@ package com.quadient.migration.persistence.migrationmodel
 
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.LineSpacing
+import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.TabType
 import kotlinx.serialization.Serializable
@@ -18,6 +19,7 @@ data class ParagraphStyleDefinitionEntity(
     val lineSpacing: LineSpacing,
     val keepWithNextParagraph: Boolean?,
     val tabs: TabsEntity?,
+    val pdfTaggingRule: ParagraphPdfTaggingRule?,
 ): ParagraphStyleDefOrRefEntity
 
 @Serializable

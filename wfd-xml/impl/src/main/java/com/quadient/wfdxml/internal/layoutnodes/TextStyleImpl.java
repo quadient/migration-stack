@@ -4,12 +4,17 @@ import com.quadient.wfdxml.api.layoutnodes.FillStyle;
 import com.quadient.wfdxml.api.layoutnodes.Font;
 import com.quadient.wfdxml.api.layoutnodes.LineStyle;
 import com.quadient.wfdxml.api.layoutnodes.TextStyle;
+import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag;
 import com.quadient.wfdxml.api.layoutnodes.TextStyleType;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.api.layoutnodes.font.SubFont;
 import com.quadient.wfdxml.api.layoutnodes.tables.BorderStyle;
 import com.quadient.wfdxml.internal.NodeImpl;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
 
@@ -46,6 +51,8 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
 
     private LineStyle underlineStyleId;
     private LineStyle strikeThroughStyleId;
+    private String urlAlternateText;
+    private final Set<TextStyleInheritFlag> inheritFlags = new HashSet<>();
 
     public TextStyleImpl() {
     }
@@ -122,12 +129,21 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
                 .addElementWithBoolData("SuperScript", isSuperScript)
                 .addElementWithBoolData("SubScript", isSubScript)
                 .addElementWithIface("URLLink", urlLink)
+                .addElementWithStringData("URLAlternateText", urlAlternateText)
                 .addElementWithDoubleData("HorizontalScale", horizontalScale * 100.0d)
                 .addElementWithStringData("Type", type.getXmlValue())
                 .addElementWithIface("StrikethroughLineStyleId", strikeThroughStyleId)
                 .addElementWithIface("UnderlineLineStyleId", underlineStyleId)
                 .addElementWithBoolData("IsFixedWidth", isFixedWidth)
                 .addElementWithDoubleData("FixedWidth", fixedWidth);
+
+        if (type == TextStyleType.DELTA) {
+            exporter.beginElement("InheritFlag");
+            for (TextStyleInheritFlag flag : inheritFlags) {
+                exporter.addElement(flag.getXmlElementName());
+            }
+            exporter.endElement();
+        }
     }
 
     public FillStyle getFillStyle() {
@@ -311,6 +327,16 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
         return this;
     }
 
+    public String getUrlAlternateText() {
+        return urlAlternateText;
+    }
+
+    @Override
+    public TextStyleImpl setUrlAlternateText(String urlAlternateText) {
+        this.urlAlternateText = urlAlternateText;
+        return this;
+    }
+
     public double getBaselineShift() {
         return baselineShift;
     }
@@ -371,5 +397,17 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
 
     public LineStyle getStrikeThroughStyleId() {
         return strikeThroughStyleId;
+    }
+
+    @Override
+    public TextStyleImpl addInheritFlag(TextStyleInheritFlag flag) {
+        this.inheritFlags.add(flag);
+        return this;
+    }
+
+    @Override
+    public TextStyleImpl addInheritFlags(TextStyleInheritFlag... flags) {
+        Collections.addAll(this.inheritFlags, flags);
+        return this;
     }
 }

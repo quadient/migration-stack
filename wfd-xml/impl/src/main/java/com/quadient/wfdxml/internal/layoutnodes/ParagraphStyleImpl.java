@@ -37,6 +37,8 @@ public class ParagraphStyleImpl extends NodeImpl<ParagraphStyle> implements Para
     private boolean hyphenate = false;
 
     private int numberingFrom = 1;
+    
+    private ParagraphPdfTaggingRule pdfTaggingRule = null;
 
     private double leftIndent = 0;
     private double rightIndent = 0;
@@ -210,6 +212,15 @@ public class ParagraphStyleImpl extends NodeImpl<ParagraphStyle> implements Para
                 .addElementWithDoubleData("LineSpacing", lineSpacingValue)
                 .addElementWithStringData("LineSpacingType", convertLineSpacingTypeToXmlName(lineSpacingType))
                 .addElementWithStringData("Type", type);
+
+        if (pdfTaggingRule != null) {
+            exporter.beginElement("PDFAdvanced");
+            exporter.addElementWithBoolData("LinkedToParent", false);
+            exporter.beginElement("Tagging");
+            exporter.addElementWithStringData("Rule", convertParagraphPdfTaggingRuleToXmlName(pdfTaggingRule));
+            exporter.endElement();
+            exporter.endElement();
+        }
     }
 
     public String getAncestorId() {
@@ -423,5 +434,29 @@ public class ParagraphStyleImpl extends NodeImpl<ParagraphStyle> implements Para
 
     public boolean isWithLineGab() {
         return withLineGab;
+    }
+
+    public ParagraphPdfTaggingRule getPdfTaggingRule() {
+        return pdfTaggingRule;
+    }
+
+    @Override
+    public ParagraphStyleImpl setPdfTaggingRule(ParagraphPdfTaggingRule rule) {
+        this.pdfTaggingRule = rule;
+        return this;
+    }
+
+    public static String convertParagraphPdfTaggingRuleToXmlName(ParagraphPdfTaggingRule rule) {
+        if (rule == null) return null;
+        return switch (rule) {
+            case PARAGRAPH -> "P";
+            case HEADING -> "H";
+            case HEADING_1 -> "H1";
+            case HEADING_2 -> "H2";
+            case HEADING_3 -> "H3";
+            case HEADING_4 -> "H4";
+            case HEADING_5 -> "H5";
+            case HEADING_6 -> "H6";
+        };
     }
 }

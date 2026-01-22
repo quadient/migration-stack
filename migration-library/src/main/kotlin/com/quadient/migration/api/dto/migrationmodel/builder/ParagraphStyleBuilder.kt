@@ -7,6 +7,7 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.LineSpacing
+import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 
 class ParagraphStyleBuilder(id: String) : DtoBuilderBase<ParagraphStyle, ParagraphStyleBuilder>(id) {
@@ -43,6 +44,7 @@ class ParagraphStyleDefinitionBuilder {
     var lineSpacing: LineSpacing = LineSpacing.Additional(null)
     var keepWithNextParagraph: Boolean? = null
     var tabs: Tabs? = null
+    var pdfTaggingRule: ParagraphPdfTaggingRule? = null
 
     fun spaceBefore(spaceBefore: Size?) = apply { this.spaceBefore = spaceBefore }
     fun spaceAfter(spaceAfter: Size?) = apply { this.spaceAfter = spaceAfter }
@@ -69,6 +71,8 @@ class ParagraphStyleDefinitionBuilder {
 
     fun tabs(tabs: Tabs?) = apply { this.tabs = tabs }
 
+    fun pdfTaggingRule(pdfTaggingRule: ParagraphPdfTaggingRule?) = apply { this.pdfTaggingRule = pdfTaggingRule }
+
     fun build() = ParagraphStyleDefinition(
         leftIndent = leftIndent,
         rightIndent = rightIndent,
@@ -80,5 +84,6 @@ class ParagraphStyleDefinitionBuilder {
         lineSpacing = lineSpacing,
         keepWithNextParagraph = keepWithNextParagraph,
         tabs = tabs,
+        pdfTaggingRule = pdfTaggingRule,
     )
 }

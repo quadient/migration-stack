@@ -49,6 +49,7 @@ import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.LiteralOrFunctionCall
+import com.quadient.migration.shared.ParagraphPdfTaggingRule as ParagraphPdfTaggingRuleModel
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.TabType
 import com.quadient.wfdxml.WfdXmlBuilder
@@ -69,7 +70,10 @@ import com.quadient.wfdxml.api.layoutnodes.font.SubFont
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.Table
-import com.quadient.migration.shared.PdfTaggingRule
+import com.quadient.migration.shared.TablePdfTaggingRule
+import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.ParagraphPdfTaggingRule
+import com.quadient.wfdxml.api.layoutnodes.TextStyle
+import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.api.layoutnodes.TextStyleType
 import com.quadient.wfdxml.api.layoutnodes.flow.Paragraph
 import com.quadient.wfdxml.api.module.Layout
@@ -439,11 +443,7 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun applyTextStyleProperties(
-        layout: Layout,
-        textStyle: com.quadient.wfdxml.api.layoutnodes.TextStyle,
-        definition: TextStyleDefinitionModel
-    ) {
+    private fun applyTextStyleProperties(layout: Layout, textStyle: TextStyle, definition: TextStyleDefinitionModel) {
         val fontFamily = definition.fontFamily ?: "Arial"
 
         val font = getFontByName(layout, fontFamily) ?: layout.addFont().setName(fontFamily).setFontName(fontFamily)
@@ -535,6 +535,20 @@ abstract class InspireDocumentObjectBuilder(
 
                     paragraphStyle.addTabulator(tabModel.position.toMeters(), tabType)
                 }
+            }
+
+            definition.pdfTaggingRule?.let { pdfTaggingRule ->
+                val rule = when (pdfTaggingRule) {
+                    ParagraphPdfTaggingRuleModel.Paragraph -> ParagraphPdfTaggingRule.PARAGRAPH
+                    ParagraphPdfTaggingRuleModel.Heading -> ParagraphPdfTaggingRule.HEADING
+                    ParagraphPdfTaggingRuleModel.Heading1 -> ParagraphPdfTaggingRule.HEADING_1
+                    ParagraphPdfTaggingRuleModel.Heading2 -> ParagraphPdfTaggingRule.HEADING_2
+                    ParagraphPdfTaggingRuleModel.Heading3 -> ParagraphPdfTaggingRule.HEADING_3
+                    ParagraphPdfTaggingRuleModel.Heading4 -> ParagraphPdfTaggingRule.HEADING_4
+                    ParagraphPdfTaggingRuleModel.Heading5 -> ParagraphPdfTaggingRule.HEADING_5
+                    ParagraphPdfTaggingRuleModel.Heading6 -> ParagraphPdfTaggingRule.HEADING_6
+                }
+                paragraphStyle.setPdfTaggingRule(rule)
             }
         }
     }
@@ -728,26 +742,28 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun createHyperlinkTextStyle(
-        layout: Layout,
-        baseTextStyleModel: TextStyleModel?,
-        url: String
-    ): com.quadient.wfdxml.api.layoutnodes.TextStyle {
+        layout: Layout, baseTextStyleModel: TextStyleModel?, hyperlinkModel: HyperlinkModel
+    ): TextStyle {
         val baseStyleName = baseTextStyleModel?.nameOrId() ?: "text"
         val hyperlinkName = generateUniqueHyperlinkStyleName(layout, baseStyleName)
 
-        val urlVariable = createUrlVariable(layout, hyperlinkName, url)
+        val urlVariable = createUrlVariable(layout, hyperlinkName, hyperlinkModel.url)
 
         val hyperlinkStyle = layout.addTextStyle()
             .setName(hyperlinkName)
             .setUrlTarget(urlVariable)
             .setType(TextStyleType.DELTA)
+            .setUrlAlternateText(hyperlinkModel.alternateText)
+            .addInheritFlags(
+                *TextStyleInheritFlag.entries
+                .filter { it != TextStyleInheritFlag.UNDERLINE && it != TextStyleInheritFlag.FILL_STYLE }
+                .toTypedArray())
         (hyperlinkStyle as TextStyleImpl).setAncestorId("Def.TextStyleHyperlink")
 
-        // TODO d.svitak - evaluate
-//        if (baseTextStyleModel != null) {
-//            val definition = baseTextStyleModel.resolve()
-//            applyTextStyleProperties(layout, hyperlinkStyle, definition)
-//        }
+        if (baseTextStyleModel != null) {
+            val definition = baseTextStyleModel.resolve()
+            applyTextStyleProperties(layout, hyperlinkStyle, definition)
+        }
 
         return hyperlinkStyle
     }
@@ -786,7 +802,7 @@ abstract class InspireDocumentObjectBuilder(
         layout: Layout, paragraph: Paragraph, baseTextStyleModel: TextStyleModel?, hyperlinkModel: HyperlinkModel
     ): Text {
         val hyperlinkText = paragraph.addText()
-        val hyperlinkStyle = createHyperlinkTextStyle(layout, baseTextStyleModel, hyperlinkModel.url)
+        val hyperlinkStyle = createHyperlinkTextStyle(layout, baseTextStyleModel, hyperlinkModel)
         hyperlinkText.setTextStyle(hyperlinkStyle)
         hyperlinkText.appendText(hyperlinkModel.displayText ?: hyperlinkModel.url)
 
@@ -896,9 +912,9 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         when (model.pdfTaggingRule) {
-            PdfTaggingRule.None -> table.setTablePdfTagRule(Table.PdfTaggingRule.NONE)
-            PdfTaggingRule.Default -> table.setTablePdfTagRule(Table.PdfTaggingRule.DEFAULT)
-            PdfTaggingRule.Table -> table.setTablePdfTagRule(Table.PdfTaggingRule.TABLE)
+            TablePdfTaggingRule.None -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.NONE)
+            TablePdfTaggingRule.Default -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.DEFAULT)
+            TablePdfTaggingRule.Table -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.TABLE)
         }
         table.setTablePdfAlternateText(model.pdfAlternateText)
 

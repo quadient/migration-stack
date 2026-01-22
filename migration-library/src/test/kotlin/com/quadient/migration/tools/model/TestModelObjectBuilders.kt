@@ -56,6 +56,7 @@ import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.LiteralOrFunctionCall
 import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
@@ -214,7 +215,8 @@ fun aParaDef(
     firstLineIndent: Size? = null,
     lineSpacing: LineSpacing = LineSpacing.Additional(null),
     keepWithNextParagraph: Boolean? = null,
-    tabs: TabsModel? = null
+    tabs: TabsModel? = null,
+    pdfTaggingRule: ParagraphPdfTaggingRule? = null,
 ): ParagraphStyleDefinitionModel {
     return ParagraphStyleDefinitionModel(
         leftIndent = leftIndent,
@@ -226,7 +228,8 @@ fun aParaDef(
         firstLineIndent = firstLineIndent,
         lineSpacing = lineSpacing,
         keepWithNextParagraph = keepWithNextParagraph,
-        tabs = tabs
+        tabs = tabs,
+        pdfTaggingRule = pdfTaggingRule,
     )
 }
 

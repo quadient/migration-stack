@@ -47,6 +47,7 @@ sealed class MappingItem {
             var lineSpacing: LineSpacing?,
             var keepWithNextParagraph: Boolean?,
             var tabs: Tabs?,
+            var pdfTaggingRule: ParagraphPdfTaggingRule?,
         ) : Definition
     }
 
@@ -122,7 +123,8 @@ sealed class MappingItem {
                             firstLineIndent = def.firstLineIndent,
                             lineSpacing = def.lineSpacing,
                             keepWithNextParagraph = def.keepWithNextParagraph,
-                            tabs = def.tabs?.toDb()
+                            tabs = def.tabs?.toDb(),
+                            pdfTaggingRule = def.pdfTaggingRule
                         )
 
                         null -> null

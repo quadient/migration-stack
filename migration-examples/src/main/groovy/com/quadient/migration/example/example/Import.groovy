@@ -23,7 +23,8 @@ import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
-import com.quadient.migration.shared.PdfTaggingRule
+import com.quadient.migration.shared.ParagraphPdfTaggingRule
+import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.shared.Size
 
 import java.time.Instant
@@ -120,6 +121,13 @@ def headingStyle = new TextStyleBuilder("headingStyle")
     }
     .build()
 
+def headingParaStyle = new ParagraphStyleBuilder("headingParagraphStyle")
+        .definition {
+            it.spaceAfter(Size.ofMillimeters(3))
+            it.pdfTaggingRule(ParagraphPdfTaggingRule.Heading1)
+        }
+        .build()
+
 def paragraphStyle = new ParagraphStyleBuilder("paragraphStyle")
     .definition {
         it.firstLineIndent(Size.ofMillimeters(10))
@@ -145,7 +153,7 @@ def logo = new ImageBuilder("logo")
 // by using displayRuleRef to the display displayHeaderRule defined above.
 // The table also contains some merged cells and custom column widths.
 def table = table {
-    it.pdfTaggingRule(PdfTaggingRule.Table)
+    it.pdfTaggingRule(TablePdfTaggingRule.Table)
     it.pdfAlternateText("Example key value table")
     it.addColumnWidth(Size.ofMillimeters(10), 10)
     it.addColumnWidth(Size.ofMillimeters(20), 20)
@@ -233,6 +241,7 @@ def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Bloc
             it.styleRef(headingStyle.id)
             it.string("Lorem ipsum dolor sit amet\n")
         }
+        it.styleRef(headingParaStyle.id)
     }
     .paragraph {
         it.styleRef(paragraphStyle.id)
@@ -408,7 +417,7 @@ for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSenten
 for (item in [displayAddressRule, displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {
     migration.displayRuleRepository.upsert(item)
 }
-for (item in [paragraphStyle]) {
+for (item in [paragraphStyle, headingParaStyle]) {
     migration.paragraphStyleRepository.upsert(item)
 }
 

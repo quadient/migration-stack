@@ -124,7 +124,8 @@ sealed class MappingItemEntity {
             var firstLineIndent: Size?,
             var lineSpacing: LineSpacing?,
             var keepWithNextParagraph: Boolean?,
-            var tabs: TabsEntity?
+            var tabs: TabsEntity?,
+            var pdfTaggingRule: ParagraphPdfTaggingRule?
         ) : Definition
 
         fun apply(item: ParagraphStyleDto): ParagraphStyleDto {
@@ -150,7 +151,8 @@ sealed class MappingItemEntity {
                                     firstLineIndent = definition.firstLineIndent,
                                     lineSpacing = definition.lineSpacing ?: Additional(null),
                                     keepWithNextParagraph = definition.keepWithNextParagraph,
-                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel)
+                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel),
+                                    pdfTaggingRule = definition.pdfTaggingRule
                                 )
                             )
                         }
@@ -167,7 +169,8 @@ sealed class MappingItemEntity {
                                     firstLineIndent = definition.firstLineIndent,
                                     lineSpacing = definition.lineSpacing ?: Additional(null),
                                     keepWithNextParagraph = definition.keepWithNextParagraph ?: false,
-                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel)
+                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel),
+                                    pdfTaggingRule = definition.pdfTaggingRule
                                 )
                             )
                         }
@@ -319,7 +322,8 @@ sealed class MappingItemEntity {
                                 firstLineIndent = definition.firstLineIndent,
                                 lineSpacing = definition.lineSpacing,
                                 keepWithNextParagraph = definition.keepWithNextParagraph,
-                                tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel)
+                                tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel),
+                                pdfTaggingRule = definition.pdfTaggingRule
                             )
                         }
 

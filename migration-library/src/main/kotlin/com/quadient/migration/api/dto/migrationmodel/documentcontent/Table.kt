@@ -4,12 +4,12 @@ import com.quadient.migration.data.TableModel
 import com.quadient.migration.persistence.migrationmodel.TableEntity
 import com.quadient.migration.persistence.migrationmodel.TableEntity.ColumnWidthEntity
 import com.quadient.migration.shared.Size
-import com.quadient.migration.shared.PdfTaggingRule
+import com.quadient.migration.shared.TablePdfTaggingRule
 
 data class Table(
     val rows: List<Row>,
     val columnWidths: List<ColumnWidth>,
-    val pdfTaggingRule: PdfTaggingRule = PdfTaggingRule.Default,
+    val pdfTaggingRule: TablePdfTaggingRule = TablePdfTaggingRule.Default,
     val pdfAlternateText: String? = null,
 ) : DocumentContent, TextContent {
     companion object {

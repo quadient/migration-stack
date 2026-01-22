@@ -54,7 +54,6 @@ import com.quadient.migration.tools.model.aVariableStructureModel
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldNotBeEmpty
-import com.quadient.migration.tools.shouldNotBeEqualTo
 import com.quadient.migration.tools.shouldNotBeNull
 import io.mockk.every
 import io.mockk.mockk
@@ -312,7 +311,7 @@ class DesignerDocumentObjectBuilderTest {
                                     aCell(aParagraph(aText(StringModel("D"))))
                                 ), rule.id
                             )
-                        ), listOf(), pdfTaggingRule = com.quadient.migration.shared.PdfTaggingRule.Table, pdfAlternateText = "Table alt text"
+                        ), listOf(), pdfTaggingRule = com.quadient.migration.shared.TablePdfTaggingRule.Table, pdfAlternateText = "Table alt text"
                     )
                 )
             )

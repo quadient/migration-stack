@@ -14,6 +14,7 @@ import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
+import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.millimeters
@@ -28,6 +29,7 @@ import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -262,7 +264,8 @@ class MappingEntityTest {
                     firstLineIndent = 3.0.millimeters(),
                     lineSpacing = LineSpacing.ExactFromPrevious(14.0.millimeters()),
                     keepWithNextParagraph = false,
-                    tabs = TabsEntity(tabs = emptyList(), useOutsideTabs = true)
+                    tabs = TabsEntity(tabs = emptyList(), useOutsideTabs = true),
+                    pdfTaggingRule = ParagraphPdfTaggingRule.Heading1
                 )
             )
             val dto = aParagraphStyle(
@@ -275,7 +278,9 @@ class MappingEntityTest {
                     alignment = Alignment.JustifyLeft,
                     firstLineIndent = 2.0.millimeters(),
                     lineSpacing = LineSpacing.ExactFromPrevious(12.0.millimeters()),
-                    keepWithNextParagraph = true
+                    keepWithNextParagraph = true,
+                    tabs = null,
+                    pdfTaggingRule = null,
                 )
             )
 
@@ -312,7 +317,8 @@ class MappingEntityTest {
                     firstLineIndent = 3.0.millimeters(),
                     lineSpacing = LineSpacing.ExactFromPrevious(14.0.millimeters()),
                     keepWithNextParagraph = false,
-                    tabs = TabsEntity(tabs = emptyList(), useOutsideTabs = true)
+                    tabs = TabsEntity(tabs = emptyList(), useOutsideTabs = true),
+                    pdfTaggingRule = ParagraphPdfTaggingRule.Paragraph
                 )
             )
             val dto = aParagraphStyle("para1", name = "para1", definition = ParagraphStyleRef("other"))
@@ -335,6 +341,7 @@ class MappingEntityTest {
             assertEquals(resultDef.keepWithNextParagraph, false)
             assertEquals(resultDef.tabs?.tabs?.size, 0)
             assertEquals(resultDef.tabs?.useOutsideTabs, true)
+            assertEquals(resultDef.pdfTaggingRule, ParagraphPdfTaggingRule.Paragraph)
         }
     }
 

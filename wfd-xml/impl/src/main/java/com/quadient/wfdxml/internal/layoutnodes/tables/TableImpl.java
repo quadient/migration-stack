@@ -36,7 +36,7 @@ public class TableImpl extends NodeImpl<Table> implements Table {
     private boolean displayAsImage = true;
     private boolean htmlFormatting = false;
     private boolean responsiveHtml = false;
-    private PdfTaggingRule tablePdfTagRule = PdfTaggingRule.DEFAULT;
+    private TablePdfTaggingRule tablePdfTaggingRule = TablePdfTaggingRule.DEFAULT;
     private String tablePdfAlternateText = null;
 
     public RowSet getRowSet() {
@@ -291,13 +291,13 @@ public class TableImpl extends NodeImpl<Table> implements Table {
         return this;
     }
 
-    public PdfTaggingRule getTablePdfTagRule() {
-        return tablePdfTagRule;
+    public TablePdfTaggingRule getTablePdfTaggingRule() {
+        return tablePdfTaggingRule;
     }
 
     @Override
-    public TableImpl setTablePdfTagRule(PdfTaggingRule rule) {
-        this.tablePdfTagRule = rule;
+    public TableImpl setTablePdfTaggingRule(TablePdfTaggingRule rule) {
+        this.tablePdfTaggingRule = rule;
         return this;
     }
 
@@ -374,7 +374,7 @@ public class TableImpl extends NodeImpl<Table> implements Table {
         }
 
         exporter.addElementWithBoolData("ResponsiveHtml", responsiveHtml);
-        switch (tablePdfTagRule) {
+        switch (tablePdfTaggingRule) {
             case NONE:
                 exporter.beginElement("PDFAdvanced");
                 exporter.beginElement("Tagging");
@@ -421,7 +421,7 @@ public class TableImpl extends NodeImpl<Table> implements Table {
                 exporter.endElement();
                 break;
             default:
-                throw new IllegalStateException(tablePdfTagRule.toString());
+                throw new IllegalStateException(tablePdfTaggingRule.toString());
         }
 
         {

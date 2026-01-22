@@ -3,7 +3,7 @@ package com.quadient.migration.persistence.migrationmodel
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 import kotlinx.serialization.Serializable
-import com.quadient.migration.shared.PdfTaggingRule
+import com.quadient.migration.shared.TablePdfTaggingRule
 
 @Serializable
 sealed interface DocumentContentEntity
@@ -12,7 +12,7 @@ sealed interface DocumentContentEntity
 data class TableEntity(
     val rows: List<Row>,
     val columnWidths: List<ColumnWidthEntity>,
-    val pdfTaggingRule: PdfTaggingRule = PdfTaggingRule.Default,
+    val pdfTaggingRule: TablePdfTaggingRule = TablePdfTaggingRule.Default,
     val pdfAlternateText: String? = null,
 ) : DocumentContentEntity, TextContentEntity {
     @Serializable
