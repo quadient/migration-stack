@@ -70,6 +70,7 @@ import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.Table
 import com.quadient.migration.shared.PdfTaggingRule
 import com.quadient.wfdxml.api.layoutnodes.TextStyleType
+import com.quadient.wfdxml.api.layoutnodes.flow.Paragraph
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.data.WorkFlowTreeDefinition
 import com.quadient.wfdxml.internal.layoutnodes.TextStyleImpl
@@ -691,15 +692,7 @@ abstract class InspireDocumentObjectBuilder(
                     }
 
                     is ImageModelRef -> buildAndAppendImage(layout, currentText, it)
-                    is HyperlinkModel -> {
-                        currentText = paragraph.addText()
-                        val hyperlinkStyle = createHyperlinkTextStyle(layout, baseTextStyleModel, it.url)
-                        currentText.setTextStyle(hyperlinkStyle)
-                        currentText.appendText(it.displayText ?: it.url)
-
-                        currentText = paragraph.addText()
-                        baseTextStyleModel?.also { currentText.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
-                    }
+                    is HyperlinkModel -> currentText = buildAndAppendHyperlink(layout, paragraph, baseTextStyleModel, it)
                     is FirstMatchModel -> currentText.appendFlow(
                         buildFirstMatch(layout, variableStructure, it, true, null, languages)
                     )
@@ -761,6 +754,19 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         text.appendImage(getOrBuildImage(layout, imageModel, imageModel.alternateText))
+    }
+
+    private fun buildAndAppendHyperlink(
+        layout: Layout, paragraph: Paragraph, baseTextStyleModel: TextStyleModel?, hyperlinkModel: HyperlinkModel
+    ): Text {
+        val hyperlinkText = paragraph.addText()
+        val hyperlinkStyle = createHyperlinkTextStyle(layout, baseTextStyleModel, hyperlinkModel.url)
+        hyperlinkText.setTextStyle(hyperlinkStyle)
+        hyperlinkText.appendText(hyperlinkModel.displayText ?: hyperlinkModel.url)
+
+        val newText = paragraph.addText()
+        baseTextStyleModel?.also { newText.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
+        return newText
     }
 
     private fun Text.appendVariable(
