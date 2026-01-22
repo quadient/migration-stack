@@ -52,6 +52,8 @@ public interface TextStyle extends Node<TextStyle> {
 
     TextStyle setUrlTarget(Variable variable);
 
+    TextStyle setUrlAlternateText(String alternateText);
+
     TextStyle setUnderlineStyle(LineStyle lineStyle);
 
     TextStyle setStrikeThroughStyle(LineStyle lineStyle);
@@ -63,4 +65,8 @@ public interface TextStyle extends Node<TextStyle> {
     TextStyle setWithLineGap(boolean withLineGap);
 
     TextStyle setType(TextStyleType type);
+
+    TextStyle addInheritFlag(TextStyleInheritFlag flag);
+
+    TextStyle addInheritFlags(TextStyleInheritFlag... flags);
 }
