@@ -109,19 +109,3 @@ data class StringModel(val value: String) : TextContentModel {
         fun fromDb(entity: StringEntity) = StringModel(entity.value)
     }
 }
-
-data class HyperlinkModel(
-    val url: String,
-    val displayText: String? = null,
-    val alternateText: String? = null
-) : TextContentModel {
-    companion object {
-        fun fromDb(entity: HyperlinkEntity) = HyperlinkModel(
-            url = entity.url,
-            displayText = entity.displayText,
-            alternateText = entity.alternateText
-        )
-    }
-}
-
-
