@@ -70,7 +70,24 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     fun deployJld(
         baseTemplate: String, type: String, moduleName: String, xmlContent: String, outputPath: String
     ): OperationResult {
-        logger.debug("Starting deployment of $outputPath.")
+        return deployJld(baseTemplate, moduleName, xmlContent) {
+            wfId -> client.extractJld(wfId, outputPath, type)
+        }
+    }
+
+    fun deployStyleJld(baseTemplate: String, xmlContent: String, outputPath: String): OperationResult {
+        return deployJld(baseTemplate, "DocumentLayout", xmlContent) {
+                wfId -> client.extractJldStyleDefinition(wfId, outputPath)
+        }
+    }
+
+    fun deployJld(
+        baseTemplate: String,
+        moduleName: String,
+        xmlContent: String,
+        jldExtractor: (WorkFlowId) -> IpsResult<JobId, Unit, Unit>
+    ): OperationResult {
+        logger.debug("Starting deployment.")
 
         val xmlContentIpsLocation = "memory://${UUID.randomUUID()}"
         val commandXmlIpsLocation = "memory://${UUID.randomUUID()}"
@@ -100,12 +117,12 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
                 }
 
                 client.editWfd(openResult.workFlowId, commandXmlIpsLocation).ifNotSuccess {
-                    val message = "Failed to edit wfd with content xml to create $outputPath. $it"
+                    val message = "Failed to edit wfd with content xml. $it"
                     logger.error(message)
                     return OperationResult.Failure(message)
                 }
 
-                val result = client.extractJld(openResult.workFlowId, outputPath, type)
+                val result = jldExtractor(openResult.workFlowId)
                 return result.waitAndAckJobOrLogError()
             } finally {
                 client.close(openResult.workFlowId).ifOk { closeResult ->
@@ -275,9 +292,9 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     }
 
     override fun close() {
-        logger.debug("Cleaning resources for IPS service")
+        logger.trace("Cleaning resources for IPS service")
         for (resource in uploadedResources.values) {
-            logger.debug("Cleaning up {}", resource)
+            logger.trace("Cleaning up {}", resource)
             resource.onClose()
         }
 

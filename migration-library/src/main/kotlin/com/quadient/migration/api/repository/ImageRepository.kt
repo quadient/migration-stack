@@ -20,7 +20,7 @@ import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.upsert
+import org.jetbrains.exposed.v1.jdbc.upsertReturning
 
 class ImageRepository(internalRepository: ImageInternalRepository) : Repository<Image, ImageModel>(internalRepository) {
     val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
@@ -48,9 +48,8 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
         }
     }
 
-    override fun upsert(dto: Image) {
-        internalRepository.cache.remove(dto.id)
-        transaction {
+    override fun upsert(dto: Image): Image {
+        return toDto(internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
@@ -61,7 +60,7 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
                 statusTrackingRepository.active(dto.id, ResourceType.Image)
             }
 
-            internalRepository.table.upsert(
+            internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
                 it[id] = dto.id
@@ -78,7 +77,7 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
                 it[metadata] = dto.metadata
                 it[skip] = dto.skip
                 it[alternateText] = dto.alternateText
-            }
-        }
+            }.first()
+        })
     }
 }

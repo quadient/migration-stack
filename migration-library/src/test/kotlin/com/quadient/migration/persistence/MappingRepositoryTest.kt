@@ -43,8 +43,8 @@ class MappingRepositoryTest {
             )
         )
         every { variableStructureRepository.find(any()) } returns null
-        every { variableStructureRepository.upsert(any()) } returns Unit
-        every { variableRepository.upsert(any()) } returns Unit
+        every { variableStructureRepository.upsert(any()) } answers { firstArg() }
+        every { variableRepository.upsert(any()) } answers { firstArg() }
         repo.upsert("varId", MappingItem.Variable(name = "new name", dataType = null))
 
         repo.applyVariableMapping("varId")
@@ -57,7 +57,7 @@ class MappingRepositoryTest {
         every { variableStructureRepository.find("varStructId") } returns VariableStructure.fromModel(
             aVariableStructureModel(id = "varStructId", name = null)
         )
-        every { variableStructureRepository.upsert(any()) } returns Unit
+        every { variableStructureRepository.upsert(any()) } answers { firstArg() }
         repo.upsert("varStructId", MappingItem.VariableStructure(
             name = "new name", mappings = mutableMapOf(
                 "varId" to VariablePathData("somePath"), "anotherVarId" to VariablePathData("anotherPath")

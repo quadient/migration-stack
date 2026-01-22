@@ -325,32 +325,38 @@ class InteractiveDeployClientTest {
     @Test
     fun `deployStyles creates style definition and sets production approval state`() {
         // given
-        every { documentObjectBuilder.buildStyles(any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildStyles(any(), any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildStyleLayoutDelta(any(), any()) } returns "<xml />"
 
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { textStyleRepository.listAllModel() } returns emptyList()
         every { paragraphStyleRepository.listAllModel() } returns emptyList()
         every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
+        every { ipsService.deployStyleJld(any(), any(), any()) } returns OperationResult.Success
         every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
 
-        val definitionPath =
+        val definitionPathWfd =
             "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.wfd"
+        val definitionPathJld =
+            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld"
 
-        every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPath
+        every { documentObjectBuilder.getStyleDefinitionPath("wfd") } returns definitionPathWfd
+        every { documentObjectBuilder.getStyleDefinitionPath("jld") } returns definitionPathJld
 
         // when
         subject.deployStyles()
 
         // then
-        verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPath)) }
-        verify { ipsService.setProductionApprovalState(eq(listOf(definitionPath))) }
+        verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd)) }
+        verify { ipsService.deployStyleJld(any(), eq("<xml />"), eq(definitionPathJld)) }
+        verify { ipsService.setProductionApprovalState(eq(listOf(definitionPathWfd, definitionPathJld))) }
     }
 
     @Test
     fun `deployStyles does not continue when wfd creation fails`() {
         // given
-        every { documentObjectBuilder.buildStyles(any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildStyles(any(), any(), any()) } returns "<xml />"
 
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any()) } returns aDeployedStatus("id")
@@ -361,7 +367,7 @@ class InteractiveDeployClientTest {
         val definitionPath =
             "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.wfd"
 
-        every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPath
+        every { documentObjectBuilder.getStyleDefinitionPath(any()) } returns definitionPath
 
         // when
         subject.deployStyles()

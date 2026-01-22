@@ -8,11 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+- Added sample input files for DocBook example to the resources folder
+- deployStyles now creates wfd as well as jld style definition for interactive
+- A warning will now be printed if an unsupported GA version of IPS is detected
 - PDF tagging support for tables
 - Alternate text option for images including support in export/import mapping scripts
 - New Hyperlink text content 
 
 ### Changed
+
+- Improve caching behavior of internal repositories
 
 ### Fixed
 

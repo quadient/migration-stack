@@ -28,7 +28,7 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.upsert
+import org.jetbrains.exposed.v1.jdbc.upsertReturning
 
 class DocumentObjectRepository(internalRepository: DocumentObjectInternalRepository) :
     Repository<DocumentObject, DocumentObjectModel>(internalRepository) {
@@ -48,9 +48,8 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
         }
     }
 
-    override fun upsert(dto: DocumentObject) {
-        internalRepository.cache.remove(dto.id)
-        transaction {
+    override fun upsert(dto: DocumentObject): DocumentObject {
+        return toDto(internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
@@ -68,7 +67,7 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
                 )
             }
 
-            internalRepository.table.upsert(
+            internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
                 it[id] = dto.id
@@ -89,8 +88,8 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
                 it[metadata] = dto.metadata
                 it[DocumentObjectTable.skip] = dto.skip
                 it[DocumentObjectTable.subject] = dto.subject
-            }
-        }
+            }.first()
+        })
     }
 
     private fun filter(filter: DocumentObjectFilter): Op<Boolean> {

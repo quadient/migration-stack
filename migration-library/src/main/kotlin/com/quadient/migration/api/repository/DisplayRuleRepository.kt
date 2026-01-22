@@ -12,7 +12,7 @@ import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.upsert
+import org.jetbrains.exposed.v1.jdbc.upsertReturning
 
 class DisplayRuleRepository(internalRepository: InternalRepository<DisplayRuleModel>) :
     Repository<DisplayRule, DisplayRuleModel>(internalRepository) {
@@ -35,16 +35,15 @@ class DisplayRuleRepository(internalRepository: InternalRepository<DisplayRuleMo
         }
     }
 
-    override fun upsert(dto: DisplayRule) {
-        internalRepository.cache.remove(dto.id)
-        transaction {
+    override fun upsert(dto: DisplayRule): DisplayRule {
+        return toDto(internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
 
             val now = Clock.System.now()
 
-            internalRepository.table.upsert(
+            internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
                 it[id] = dto.id
@@ -55,7 +54,7 @@ class DisplayRuleRepository(internalRepository: InternalRepository<DisplayRuleMo
                 it[created] = existingItem?.created ?: now
                 it[lastUpdated] = now
                 it[definition] = dto.definition
-            }
-        }
+            }.first()
+        })
     }
 }

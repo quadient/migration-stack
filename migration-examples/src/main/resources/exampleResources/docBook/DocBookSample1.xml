@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE article PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN" "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
+<article lang="">
+  <para>
+    <inlinegraphic fileref="embedded:Image1" width="3.011inch" depth="0.7646inch"/>
+  </para>
+  <para/>
+  <sect1 id="AddressBlock">
+    <para>$salutation$</para>
+    <para>$fullName$</para>
+    <para>$street$</para>
+    <para>$postalCode$  $city$</para>
+    <para>$country$</para>
+  </sect1>
+  <para/>
+  <sect1 id="DateLocation">
+    <para>$workplaceLocation$ $dateOfCreation$</para>
+  </sect1>
+  <para/>
+  <sect1 id="Salutation1">
+    <para>Dear Sir $surename$,</para>
+  </sect1>
+  <sect1 id="Salutation2">
+    <para>Dear Madam $surename$,</para>
+  </sect1>
+  <sect1 id="Salutation3">
+    <para>Dear Sir,</para>
+  </sect1>
+  <sect1 id="Salutation4">
+    <para>Dear Madam,</para>
+  </sect1>
+  <sect1 id="Salutation5">
+    <para>Dear Madam, Dear Sir,</para>
+  </sect1>
+  <sect1 id="Contact1">
+    <para>Contacts</para>
+    <para>Any inquiries will be gladly answered by the Customer Service staff on the phone line 111 111 111 on business days from 8 a.m. to 7 p.m. You can also contact us in writing at our correspondence address GF Bank, Bank street 1 London.</para>
+  </sect1>
+  <sect1 id="Contact2">
+    <para>Contacts</para>
+    <para>Any inquiries will be gladly answered by $staffName$, which is handling your request on the phone line $staffPhoneNumber$ on business days from 8 a.m. to 5 p.m., or alternatively, at the email address: $staffEmail$.</para>
+  </sect1>
+  <sect1 id="AccountDetails">
+    <para>Account number/bank code:         12345678/0000</para>
+    <para>Variable symbol:         $variableNumber$</para>
+  </sect1>
+  <para/>
+  <sect1 id="Signature1">
+    <para>We greatly appreciate your trust and assure you that we are a reliable partner you can count on in every life situation.</para>
+    <para>Thank you for your time and attention. If you have any further questions or require additional information, please do not hesitate to contact me. Wishing you a wonderful day ahead.</para>
+    <para>$signature$$team$</para>
+  </sect1>
+  <sect1 id="Signature2">
+    <para>We highly appreciate your trust and want to reassure you that we are a reliable partner you can count on throughout your journeys.</para>
+    <para/>
+    <para>Wishing you a pleasant day ahead.</para>
+    <para>$signature$$team$</para>
+    <para/>
+    <para/>
+    <para/>
+  </sect1>
+  <para/>
+</article>

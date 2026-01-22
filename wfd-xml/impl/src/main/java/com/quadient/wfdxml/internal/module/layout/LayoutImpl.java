@@ -72,6 +72,7 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
     private PagesImpl pages;
 
     private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images");
+    private final List<String> styleLayoutDeltaAllowedGroups = List.of("TextStyles", "FillStyles", "ParagraphStyles", "Colors");
 
     public LayoutImpl() {
         initializeDefaultNodes();
@@ -325,6 +326,23 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
         exportNodes(exporter);
 
         exporter.endElement();
+        exporter.endElement();
+    }
+
+    public void exportStyleLayoutDelta(XmlExporter exporter) {
+        for (DefNode defNode : defNodes.values()) {
+            exporter.getIdRegister().setObjectId(defNode.node, defNode.xmlId);
+        }
+
+        exporter.beginElement("Layout");
+
+        children = children.stream()
+                .filter(child -> styleLayoutDeltaAllowedGroups.contains(child.getName()))
+                .collect(Collectors.toList());
+
+        new ForwardReferencesExporter(this, defNodes, exporter).exportForwardReferences(true);
+        exportNodes(exporter);
+
         exporter.endElement();
     }
 

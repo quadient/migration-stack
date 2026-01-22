@@ -1167,6 +1167,35 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `build of simple style delta works correctly`() {
+        every { paragraphStyleRepository.listAllModel() } returns listOf(
+            aParaStyle("paraStyle1", definition = aParaDef(leftIndent = Size.ofCentimeters(1)))
+        )
+        every { textStyleRepository.listAllModel() } returns listOf(
+            aTextStyle("textStyle1", definition = aTextDef(bold = true, underline = true)),
+        )
+        every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;"
+
+        // when
+        val result = subject.buildStyleLayoutDelta(textStyleRepository.listAllModel(), paragraphStyleRepository.listAllModel())
+
+        // then
+        val textStyleDefinitions = xmlMapper.readTree(result.trimIndent())["TextStyle"]
+        textStyleDefinitions.size().shouldBeEqualTo(3)
+
+        val textStyle = textStyleDefinitions[2]
+        textStyle["Bold"].textValue().shouldBeEqualTo("True")
+        textStyle["Italic"].textValue().shouldBeEqualTo("False")
+        textStyle["Underline"].textValue().shouldBeEqualTo("True")
+
+        val paraStyleDefinitions = xmlMapper.readTree(result.trimIndent())["ParaStyle"]
+        paraStyleDefinitions .size().shouldBeEqualTo(3)
+
+        val paraStyle = paraStyleDefinitions[2]
+        paraStyle ["LeftIndent"].textValue().shouldBeEqualTo("0.01")
+    }
+
+    @Test
     fun `build of text style with font size converts the value to millimeters`() {
         val sizeInMs = Size.ofPoints(12)
         every { paragraphStyleRepository.listAllModel() } returns listOf()
@@ -1185,6 +1214,31 @@ class InteractiveDocumentObjectBuilderTest {
 
         val textStyle = textStyleDefinitions[2]
         textStyle["FontSize"].textValue().shouldBeEqualTo(expectedValue.toString())
+    }
+
+    @Test
+    fun `styles have correctly set layout`() {
+        every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;"
+
+        // when
+        val result = subject.buildStyles(emptyList(), emptyList())
+
+        // then
+        val layout = xmlMapper.readTree(result.trimIndent())["Layout"]
+        layout["Name"].textValue().shouldBeEqualTo("DocumentLayout")
+
+        val root = layout["Layout"]["Root"]
+        root["AllowRuntimeModifications"].textValue().shouldBeEqualTo("True")
+
+        val page = layout["Layout"]["Page"]
+        page.size().shouldBeEqualTo(2)
+        page[0]["Name"].textValue().shouldBeEqualTo("Page 1")
+
+        val pages = layout["Layout"]["Pages"]
+        pages["Id"].textValue().shouldBeEqualTo("Def.Pages")
+        pages["SelectionType"].textValue().shouldBeEqualTo("Simple")
+        pages["MainFlow"].textValue().shouldBeEqualTo("SR_2")
+
     }
 
     @Test

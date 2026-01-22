@@ -485,6 +485,52 @@ class DesignerDeployClientTest {
             assertEquals(listOf(DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path")), result.deployed)
         }
 
+        @Test
+        fun `deployStyles creates style definition and sets production approval state`() {
+            // given
+            every { documentObjectBuilder.buildStyles(any(), any(), any()) } returns "<xml />"
+            every { documentObjectBuilder.buildStyleLayoutDelta(any(), any()) } returns "<xml />"
+
+            every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
+            every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+            every { textStyleRepository.listAllModel() } returns emptyList()
+            every { paragraphStyleRepository.listAllModel() } returns emptyList()
+            every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
+
+            val definitionPathWfd = "icm://defaultFolder/CompanyStyles.wfd"
+
+            every { documentObjectBuilder.getStyleDefinitionPath("wfd") } returns definitionPathWfd
+
+            // when
+            subject.deployStyles()
+
+            // then
+            verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd)) }
+        }
+
+        @Test
+        fun `deployStyles does not continue when wfd creation fails`() {
+            // given
+            every { documentObjectBuilder.buildStyles(any(), any(), any()) } returns "<xml />"
+
+            every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
+            every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+            every { textStyleRepository.listAllModel() } returns emptyList()
+            every { paragraphStyleRepository.listAllModel() } returns emptyList()
+            every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Failure("Problem")
+
+            val definitionPath = "icm://defaultFolder/CompanyStyles.wfd"
+
+            every { documentObjectBuilder.getStyleDefinitionPath(any()) } returns definitionPath
+
+            // when
+            subject.deployStyles()
+
+            // then
+            verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPath)) }
+            verify(exactly = 0) { ipsService.setProductionApprovalState(any()) }
+        }
+
         private fun givenObjectIsActive(id: String) {
             every {
                 statusTrackingRepository.findLastEventRelevantToOutput(id, any(), any())

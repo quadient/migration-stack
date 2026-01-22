@@ -13,7 +13,8 @@ import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.upsert
+import org.jetbrains.exposed.v1.jdbc.upsertReturning
+import kotlin.collections.map
 
 class VariableRepository(internalRepository: VariableInternalRepository) :
     Repository<Variable, VariableModel>(internalRepository) {
@@ -36,16 +37,15 @@ class VariableRepository(internalRepository: VariableInternalRepository) :
         }
     }
 
-    override fun upsert(dto: Variable) {
-        internalRepository.cache.remove(dto.id)
-        transaction {
+    override fun upsert(dto: Variable): Variable {
+        return toDto(internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
 
             val now = Clock.System.now()
 
-            internalRepository.table.upsert(
+            internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
                 it[id] = dto.id
@@ -57,7 +57,7 @@ class VariableRepository(internalRepository: VariableInternalRepository) :
                 it[lastUpdated] = now
                 it[dataType] = dto.dataType.toString()
                 it[defaultValue] = dto.defaultValue
-            }
-        }
+            }.first()
+        })
     }
 }

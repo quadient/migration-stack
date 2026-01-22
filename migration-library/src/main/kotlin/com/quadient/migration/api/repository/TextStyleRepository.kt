@@ -14,7 +14,8 @@ import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.upsert
+import org.jetbrains.exposed.v1.jdbc.upsertReturning
+import kotlin.collections.map
 
 class TextStyleRepository(internalRepository: TextStyleInternalRepository) :
     Repository<TextStyle, TextStyleModel>(internalRepository) {
@@ -39,9 +40,8 @@ class TextStyleRepository(internalRepository: TextStyleInternalRepository) :
         }
     }
 
-    override fun upsert(dto: TextStyle) {
-        internalRepository.cache.remove(dto.id)
-        transaction {
+    override fun upsert(dto: TextStyle): TextStyle {
+        return toDto(internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
@@ -52,7 +52,7 @@ class TextStyleRepository(internalRepository: TextStyleInternalRepository) :
                 statusTrackingRepository.active(dto.id, ResourceType.TextStyle)
             }
 
-            internalRepository.table.upsert(
+            internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
                 it[id] = dto.id
@@ -63,7 +63,7 @@ class TextStyleRepository(internalRepository: TextStyleInternalRepository) :
                 it[definition] = dto.definition.toDb()
                 it[created] = existingItem?.created ?: now
                 it[lastUpdated] = now
-            }
-        }
+            }.first()
+        })
     }
 }

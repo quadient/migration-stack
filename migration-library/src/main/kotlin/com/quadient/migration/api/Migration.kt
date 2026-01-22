@@ -16,6 +16,8 @@ import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuild
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.service.ipsclient.Version
+import com.quadient.migration.service.ipsclient.display
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.slf4j.LoggerFactory
@@ -178,7 +180,30 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
 
         logger.debug("Setting up shutdown hook for IPS service")
         Runtime.getRuntime().addShutdownHook(Thread {
-                logger.debug("Shutdown hook triggered, closing IPS service connections")
+                val version = ipsService.client.version
+                if (version != null) {
+                    if (version.isSupportedMajorVersion() && !version.isSupportedVersion()) {
+                        logger.warn("""
+                            
+                            ************************************************************
+                            *                                                          *
+                            * WARNING: Connected to unsupported IPS version $version *
+                            *                                                          *
+                            ************************************************************
+                            """.trimIndent()
+                        )
+                        logger.warn(
+                            "Supported IPS versions are: ${
+                                Version.SUPPORTED_VERSION_RANGES.joinToString(
+                                    prefix = "[",
+                                    postfix = "]"
+                                ) { it.display() }
+                            }"
+                        )
+                    }
+                }
+
+                logger.trace("Shutdown hook triggered, closing IPS service connections")
                 ipsService.close()
             }
         )

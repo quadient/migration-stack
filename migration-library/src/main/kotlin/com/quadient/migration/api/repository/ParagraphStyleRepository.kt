@@ -14,7 +14,8 @@ import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.upsert
+import org.jetbrains.exposed.v1.jdbc.upsertReturning
+import kotlin.collections.map
 
 class ParagraphStyleRepository(internalRepository: ParagraphStyleInternalRepository) :
     Repository<ParagraphStyle, ParagraphStyleModel>(internalRepository) {
@@ -38,9 +39,8 @@ class ParagraphStyleRepository(internalRepository: ParagraphStyleInternalReposit
         }
     }
 
-    override fun upsert(dto: ParagraphStyle) {
-        internalRepository.cache.remove(dto.id)
-        transaction {
+    override fun upsert(dto: ParagraphStyle): ParagraphStyle {
+        return toDto(internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
@@ -51,7 +51,7 @@ class ParagraphStyleRepository(internalRepository: ParagraphStyleInternalReposit
                 statusTrackingRepository.active(dto.id, ResourceType.ParagraphStyle)
             }
 
-            internalRepository.table.upsert(
+            internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
                 it[id] = dto.id
@@ -62,7 +62,7 @@ class ParagraphStyleRepository(internalRepository: ParagraphStyleInternalReposit
                 it[definition] = dto.definition.toDb()
                 it[created] = existingItem?.created ?: now
                 it[lastUpdated] = now
-            }
-        }
+            }.first()
+        })
     }
 }

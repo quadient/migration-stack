@@ -1,15 +1,12 @@
-package com.quadient.migration.service
+package com.quadient.migration.service.ipsclient
 
 import com.quadient.migration.Ips
-import com.quadient.migration.service.ipsclient.IpsClient
-import com.quadient.migration.service.ipsclient.IpsResult
-import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.IcmDateTime
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.MetadataValue
 import com.quadient.migration.tools.aMigConfig
 import kotlinx.datetime.Clock
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import kotlin.random.Random
@@ -18,7 +15,7 @@ import kotlin.time.Duration.Companion.seconds
 // @Ips
 @Disabled
 class IpsClientTest {
-    val client = IpsClient(Ips.HOST, Ips.PORT, 120.seconds)
+    val client = IpsClient(Ips.Companion.HOST, Ips.Companion.PORT, 120.seconds)
     val service = IpsService(aMigConfig().inspireConfig.ipsConfig)
 
     @Test
@@ -57,20 +54,20 @@ class IpsClientTest {
         val result =
             service.readMetadata("icm://Interactive/StandardPackage/BaseTemplates/EUAddressLetterheadBaseTemplate.wfd")
 
-        assertEquals(result.metadata["TestKey"], input["TestKey"])
+        Assertions.assertEquals(result.metadata["TestKey"], input["TestKey"])
         println()
     }
 
     @Test
     fun `file upload round trip`() {
-        val inputData = Random.nextBytes(1_000_000)
+        val inputData = Random.Default.nextBytes(1_000_000)
         val uploadPath = "memory://test"
 
         client.upload(uploadPath, inputData).throwIfNotOk()
         client.download(uploadPath).throwIfNotOk().ifOk {
-            assertEquals(it.customData.count(), inputData.count())
+            Assertions.assertEquals(it.customData.count(), inputData.count())
             for ((resultByte, testByte) in it.customData.zip(inputData)) {
-                assertEquals(resultByte, testByte)
+                Assertions.assertEquals(resultByte, testByte)
             }
         }
     }

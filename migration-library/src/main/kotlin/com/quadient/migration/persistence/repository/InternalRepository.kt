@@ -6,8 +6,8 @@ import com.quadient.migration.tools.getOrPutOrNull
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -17,18 +17,31 @@ abstract class InternalRepository<T : MigrationObjectModel>(
     val table: MigrationObjectTable, val projectName: String
 ) {
     private val logger = LoggerFactory.getLogger(this::class.java)!!
-    val cache = mutableMapOf<String, T>()
+    private val cache = mutableMapOf<String, T>()
+    private var allCached = false
 
     abstract fun toModel(row: ResultRow): T
 
-    fun listAllModel(): List<T> {
-        cache.clear()
+    fun upsert(block: JdbcTransaction.() -> ResultRow): T {
         return transaction {
-            table.selectAll().where(filter()).map {
+            val result = toModel(block())
+            cache[result.id] = result
+            result
+        }
+    }
+
+    fun listAllModel(): List<T> {
+        if (allCached) {
+            return cache.values.toList()
+        }
+        return transaction {
+            val result = table.selectAll().where(filter()).map {
                 val result = toModel(it)
-                cache.put(result.id, result)
+                cache[result.id] = result
                 result
             }
+            allCached = true
+            result
         }
     }
 
@@ -36,7 +49,7 @@ abstract class InternalRepository<T : MigrationObjectModel>(
         return transaction {
             table.selectAll().where(customFilter and filter()).map {
                 val result = toModel(it)
-                cache.put(result.id, result)
+                cache[result.id] = result
                 result
             }
         }
@@ -76,6 +89,7 @@ abstract class InternalRepository<T : MigrationObjectModel>(
     }
 
     fun destroy() {
+        cache.clear()
         transaction {
             exec("DROP TABLE ${table.tableName}")
         }
