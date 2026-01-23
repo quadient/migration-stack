@@ -30,7 +30,7 @@ public class RootImpl implements Root, XmlExportable {
     @Override
     public Root setSubject(String subject) {
         this.subject = subject;
-        return null;
+        return this;
     }
 
     @Override
