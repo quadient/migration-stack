@@ -1,12 +1,11 @@
 package com.quadient.migration.tools
 
-import org.hamcrest.CoreMatchers.equalTo
-import org.hamcrest.CoreMatchers.not
-import org.hamcrest.MatcherAssert.assertThat
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.testcontainers.shaded.org.hamcrest.MatcherAssert.assertThat
+import org.testcontainers.shaded.org.hamcrest.Matchers.equalTo
 import org.testcontainers.shaded.org.hamcrest.Matchers.greaterThan
+import org.testcontainers.shaded.org.hamcrest.Matchers.not
 
 fun <T> Collection<T>.shouldBeEmpty() = assertEquals(this.count(), 0)
 fun <T> Collection<T>.shouldBeOfSize(size: Int) = assertEquals(size, this.count())

@@ -1,5 +1,6 @@
 repositories {
     mavenCentral()
+    maven("https://jitpack.io")
 }
 
 plugins {
@@ -16,4 +17,11 @@ dependencies {
     testImplementation(libs.spock.core)
     testImplementation(libs.groovy.xml)
     testImplementation(libs.mockito.core)
+}
+
+
+tasks.test {
+    if (project.hasProperty("excludeTests")) {
+        exclude(project.property("excludeTests").toString().split(","))
+    }
 }

@@ -32,6 +32,7 @@ dependencyCheck {
 buildscript {
     repositories {
         mavenCentral()
+        maven("https://jitpack.io")
     }
     dependencies {
         classpath("org.owasp:dependency-check-gradle:12.1.3")

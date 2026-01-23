@@ -10,7 +10,6 @@ class DesignerTestEnvironment extends Specification {
     protected IpsDockerCompose ipsDockerCompose = new IpsDockerCompose()
             .withExposedIcm()
             .withExposedIps()
-            .withLocalCompose(true)
 
     def setupSpec() {
         ipsDockerCompose.start()

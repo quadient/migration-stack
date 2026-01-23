@@ -95,9 +95,9 @@ dependencies {
     testImplementation("io.mockk:mockk:${mockkVersion}")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.1")
-    testImplementation("org.testcontainers:testcontainers:1.20.4")
-    testImplementation("org.testcontainers:junit-jupiter:1.20.4")
-    testImplementation("org.testcontainers:postgresql:1.20.4")
+    testImplementation("org.testcontainers:testcontainers:2.0.3")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.3")
+    testImplementation("org.testcontainers:testcontainers-postgresql:2.0.3")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
