@@ -360,6 +360,10 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
                         dataNode.children = dataNode.children.stream().filter(dataChild -> dataChild.getName() == null || !dataChild.getName().equals("SystemVariable")).toList();
                         return dataNode;
                     }
+                    if (child.getName().equals("TextStyles") && child instanceof Tree<?> textStylesNode) {
+                        textStylesNode.children = textStylesNode.children.stream().filter(textStyleChild -> !textStyleChild.getName().equals("Normal")).toList();
+                        return textStylesNode;
+                    }
                     return child;
                 }).collect(Collectors.toList());
 

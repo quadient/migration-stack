@@ -16,7 +16,7 @@ class WfdXmlBuilderTest extends Specification {
         String result = emptyBuilder.build()
 
         then:
-        String expected = '<?xml version="1.0" encoding="UTF-8"?><WorkFlow></WorkFlow>'
+        String expected = '<?xml version="1.0" encoding="UTF-8"?><WorkFlow><Property><Name>DeltaStyles</Name><Value>1</Value></Property></WorkFlow>'
         assert result == expected
     }
 
