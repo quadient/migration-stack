@@ -1524,10 +1524,10 @@ class InteractiveDocumentObjectBuilderTest {
         @ParameterizedTest
         @CsvSource(
             // styleDefPath        ,defaultTargetFolder  ,expected
-            "                      ,                       ,icm://Interactive/tenant/CompanyStyles/projectNameStyles.wfd",
-            "                      ,null                   ,icm://Interactive/tenant/CompanyStyles/projectNameStyles.wfd",
-            "                      ,default                ,icm://Interactive/tenant/CompanyStyles/default/projectNameStyles.wfd",
-            "icm://some/path/f.wfd ,default                ,icm://some/path/f.wfd",
+            "                      ,                       ,icm://Interactive/tenant/CompanyStyles/projectNameStyles.jld",
+            "                      ,null                   ,icm://Interactive/tenant/CompanyStyles/projectNameStyles.jld",
+            "                      ,default                ,icm://Interactive/tenant/CompanyStyles/default/projectNameStyles.jld",
+            "icm://some/path/f.jld ,default                ,icm://some/path/f.jld",
         )
         fun testCompanyStylesPath(styleDefPath: String?, defaultTargetFolder: String?, expected: String) {
             val config = aProjectConfig(
@@ -1539,7 +1539,7 @@ class InteractiveDocumentObjectBuilderTest {
             )
             val pathTestSubject = aSubject(config)
 
-            val path = pathTestSubject.getStyleDefinitionPath()
+            val path = pathTestSubject.getStyleDefinitionPath("jld")
 
             path.shouldBeEqualTo(expected)
         }

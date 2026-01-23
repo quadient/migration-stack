@@ -105,8 +105,10 @@ class InteractiveDocumentObjectBuilder(
 
         if (styleDefConfigPath != null && !styleDefConfigPath.isAbsolute()) {
             throw IllegalArgumentException("The configured style definition path '${styleDefConfigPath}' is not absolute.")
+        } else if (styleDefConfigPath != null && !styleDefConfigPath.path.endsWith(".jld")) {
+            throw IllegalArgumentException("Style definition path '${styleDefConfigPath}' must end with '.jld'.")
         } else if (styleDefConfigPath != null) {
-            return styleDefConfigPath.toString()
+            return styleDefConfigPath.toString().replace(".jld", ".$extension")
         }
 
         return IcmPath.root()
