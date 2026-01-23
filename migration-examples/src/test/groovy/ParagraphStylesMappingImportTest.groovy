@@ -45,6 +45,7 @@ class ParagraphStylesMappingImportTest {
                 Size.ofMeters(1),
                 new LineSpacing.Exact(null),
                 true,
+                null,
                 null)))
     }
 
@@ -89,6 +90,7 @@ class ParagraphStylesMappingImportTest {
                     Size.ofMeters(1),
                     new LineSpacing.AtLeast(Size.ofMeters(1)),
                     true,
+                    null,
                     null)))
         verify(migration.mappingRepository).applyParagraphStyleMapping("existing")
     }
@@ -156,6 +158,7 @@ class ParagraphStylesMappingImportTest {
                     Size.ofMeters(2),
                     new LineSpacing.AtLeast(Size.ofMeters(2)),
                     false,
+                    null,
                     null)))
         verify(migration.mappingRepository).applyParagraphStyleMapping("existing")
     }
@@ -186,6 +189,7 @@ class ParagraphStylesMappingImportTest {
                 firstLineIndentM != null ? Size.ofMeters(firstLineIndentM) : null,
                 lineSpacing,
                 keepWithNextParagraph,
+                null,
                 null)))
     }
 
@@ -219,6 +223,7 @@ class ParagraphStylesMappingImportTest {
                 firstLineIndentM != null ? Size.ofMeters(firstLineIndentM) : null,
                 lineSpacing,
                 keepWithNextParagraph,
+                null,
                 null)))
     }
 }

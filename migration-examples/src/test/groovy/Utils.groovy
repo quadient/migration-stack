@@ -16,8 +16,8 @@ static Migration mockMigration() {
     def migration = mock(Migration.class)
 
     def projectConfig = mock(ProjectConfig.class)
-    when(migration.projectConfig).thenReturn(projectConfig)
-    when(migration.projectConfig.name).thenReturn("testProject")
+    when(migration.getProjectConfig()).thenReturn(projectConfig)
+    when(projectConfig.getName()).thenReturn("testProject")
 
     def varRepo = mock(VariableRepository.class)
     def structureRepo = mock(VariableStructureRepository.class)
@@ -28,14 +28,14 @@ static Migration mockMigration() {
     def textStyleRepo = mock(TextStyleRepository.class)
     def paraStyleRepo = mock(ParagraphStyleRepository.class)
 
-    when(migration.paragraphStyleRepository).thenReturn(paraStyleRepo)
-    when(migration.textStyleRepository).thenReturn(textStyleRepo)
-    when(migration.statusTrackingRepository).thenReturn(statusTrackingRepo)
-    when(migration.imageRepository).thenReturn(imageRepo)
-    when(migration.documentObjectRepository).thenReturn(docObjectRepo)
-    when(migration.variableRepository).thenReturn(varRepo)
-    when(migration.variableStructureRepository).thenReturn(structureRepo)
-    when(migration.mappingRepository).thenReturn(mappingRepo)
+    when(migration.getParagraphStyleRepository()).thenReturn(paraStyleRepo)
+    when(migration.getTextStyleRepository()).thenReturn(textStyleRepo)
+    when(migration.getStatusTrackingRepository()).thenReturn(statusTrackingRepo)
+    when(migration.getImageRepository()).thenReturn(imageRepo)
+    when(migration.getDocumentObjectRepository()).thenReturn(docObjectRepo)
+    when(migration.getVariableRepository()).thenReturn(varRepo)
+    when(migration.getVariableStructureRepository()).thenReturn(structureRepo)
+    when(migration.getMappingRepository()).thenReturn(mappingRepo)
 
     return migration
 }

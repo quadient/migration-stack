@@ -22,10 +22,10 @@ class ParagraphStylesMappingExportTest {
     void exportWorksCorrectlyForAllVariants() {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def migration = Utils.mockMigration()
-        def emptyDefinition = new ParagraphStyleDefinition(null, null, null, null, null, Alignment.Left, null, new LineSpacing.Additional(Size.ofInches(0)), null, null)
-        def fullDefinition = new ParagraphStyleDefinition(Size.ofInches(1), Size.ofInches(1), Size.ofInches(1), Size.ofInches(1), Size.ofInches(1), Alignment.Center, Size.ofInches(1), new LineSpacing.Additional(Size.ofInches(1)), true, new Tabs([new Tab(Size.ofInches(1), TabType.Right)], true))
+        def emptyDefinition = new ParagraphStyleDefinition(null, null, null, null, null, Alignment.Left, null, new LineSpacing.Additional(Size.ofInches(0)), null, null, null)
+        def fullDefinition = new ParagraphStyleDefinition(Size.ofInches(1), Size.ofInches(1), Size.ofInches(1), Size.ofInches(1), Size.ofInches(1), Alignment.Center, Size.ofInches(1), new LineSpacing.Additional(Size.ofInches(1)), true, new Tabs([new Tab(Size.ofInches(1), TabType.Right)], true), null)
 
-        def overrideMappingDef = new MappingItem.ParagraphStyle("newName", new MappingItem.ParagraphStyle.Def(Size.ofInches(2), Size.ofInches(2), Size.ofInches(2), Size.ofInches(2), Size.ofInches(2), Alignment.Right, Size.ofInches(2), new LineSpacing.ExactFromPrevious(Size.ofInches(2)), true, new Tabs([new Tab(Size.ofInches(2), TabType.Right)], true)))
+        def overrideMappingDef = new MappingItem.ParagraphStyle("newName", new MappingItem.ParagraphStyle.Def(Size.ofInches(2), Size.ofInches(2), Size.ofInches(2), Size.ofInches(2), Size.ofInches(2), Alignment.Right, Size.ofInches(2), new LineSpacing.ExactFromPrevious(Size.ofInches(2)), true, new Tabs([new Tab(Size.ofInches(2), TabType.Right)], true), null))
         def overrideMappingRef = new MappingItem.ParagraphStyle("newName", new MappingItem.ParagraphStyle.Ref("new other"))
 
         when(migration.paragraphStyleRepository.listAll()).thenReturn([
@@ -58,19 +58,19 @@ class ParagraphStylesMappingExportTest {
         "id,name,targetId,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue,originLocations (read-only)"
 
         def expected = """\
-            id,name,targetId,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue,originLocations (read-only)
-            empty,,,,,,,,Left,,,Additional,0.0mm,[]
-            empty with targetId,,other,,,,,,,,,,[]
-            full,full,,25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm,[foo; bar]
-            full with targetId,full,other,,,,,,,,,,[foo; bar]
-            empty overridden by def,,,,,,,,Left,,,Additional,0.0mm,[]
-            empty overridden by ref,,,,,,,,Left,,,Additional,0.0mm,[]
-            empty with targetId overridden by def,,other,,,,,,,,,,[]
-            empty with targetId overridden by ref,,other,,,,,,,,,,[]
-            full overridden by def,,,25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm,[]
-            full overridden by ref,,other,,,,,,,,,,[]
-            full with targetId overridden by def,,other,,,,,,,,,,[]
-            full with targetId overridden by ref,,other,,,,,,,,,,[]
+            id,name,targetId,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue,pdfTaggingRule,originLocations (read-only)
+            empty,,,,,,,,Left,,,Additional,0.0mm,,[]
+            empty with targetId,,other,,,,,,,,,,,[]
+            full,full,,25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm,,[foo; bar]
+            full with targetId,full,other,,,,,,,,,,,[foo; bar]
+            empty overridden by def,,,,,,,,Left,,,Additional,0.0mm,,[]
+            empty overridden by ref,,,,,,,,Left,,,Additional,0.0mm,,[]
+            empty with targetId overridden by def,,other,,,,,,,,,,,[]
+            empty with targetId overridden by ref,,other,,,,,,,,,,,[]
+            full overridden by def,,,25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm,,[]
+            full overridden by ref,,other,,,,,,,,,,,[]
+            full with targetId overridden by def,,other,,,,,,,,,,,[]
+            full with targetId overridden by ref,,other,,,,,,,,,,,[]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
