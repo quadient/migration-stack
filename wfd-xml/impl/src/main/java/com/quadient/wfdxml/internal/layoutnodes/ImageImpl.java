@@ -2,6 +2,7 @@ package com.quadient.wfdxml.internal.layoutnodes;
 
 import com.quadient.wfdxml.api.layoutnodes.Image;
 import com.quadient.wfdxml.api.layoutnodes.LocationType;
+import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.internal.NodeImpl;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 
@@ -27,6 +28,9 @@ public class ImageImpl extends NodeImpl<Image> implements Image {
     private boolean useDifferentImageSizeForHtml = false;
     private String htmlImageWidthValue;
     private String htmlImageHeightValue;
+
+    private String alternateText;
+    private Variable alternateTextVariable;
 
     public String getImageType() {
         return imageType;
@@ -185,6 +189,25 @@ public class ImageImpl extends NodeImpl<Image> implements Image {
         return this;
     }
 
+    public String getAlternateText() {
+        return alternateText;
+    }
+
+    public ImageImpl setAlternateText(String alternateText) {
+        this.alternateText = alternateText;
+        return this;
+    }
+
+    public Variable getAlternateTextVariable() {
+        return alternateTextVariable;
+    }
+
+    @Override
+    public ImageImpl setAlternateTextVariable(Variable variable) {
+        this.alternateTextVariable = variable;
+        return this;
+    }
+
     @Override
     public ImageImpl setImageDiskLocation(String imageLocation) {
         this.imageLocation = LocationType.DISK.getXmlValue() + "," + imageLocation;
@@ -287,5 +310,28 @@ public class ImageImpl extends NodeImpl<Image> implements Image {
                 .addElementWithBoolData("UseDifferentImageSizeForHtml", useDifferentImageSizeForHtml)
                 .addElementWithStringData("HtmlImageWidthValue", htmlImageWidthValue)
                 .addElementWithStringData("HtmlImageHeightValue", htmlImageHeightValue);
+
+        // Export alternate text - variable takes priority over string
+        boolean hasVariable = alternateTextVariable != null;
+        boolean hasString = alternateText != null && !alternateText.isEmpty();
+
+        exporter.addElementWithIface("AlternativeTextVar", alternateTextVariable);
+        exporter.beginElement("PDFAdvanced");
+        exporter.beginElement("Tagging");
+        exporter.addElementWithStringData("Rule", "Figure");
+        if (hasVariable) {
+            exporter.addElementWithStringData("AlternateText", "");
+        } else if (hasString) {
+            exporter.addElementWithStringData("AlternateText", alternateText);
+        } else {
+            exporter.addElementWithStringData("AlternateText", "");
+        }
+        exporter.beginElement("Attributes");
+        exporter.addStringAttribute("Type", "Array");
+        exporter.endElement();
+        exporter.addElementWithIface("AlternateTextNodeId", alternateTextVariable);
+        exporter.addElementWithIntData("AlternateTextType", hasVariable ? 2 : 1);
+        exporter.endElement();
+        exporter.endElement();
     }
 }

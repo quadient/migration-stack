@@ -2,6 +2,7 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
@@ -271,6 +272,26 @@ class ParagraphBuilder {
          */
         fun imageRef(ref: ImageRef) = apply {
             content.add(ref)
+        }
+
+        /**
+         * Adds an inline hyperlink to the text content.
+         * @param url The URL to link to (mandatory).
+         * @param displayText The text to display (optional - if null, url will be displayed).
+         * @param alternateText The accessibility text for screen readers (optional).
+         * @return The current instance of [TextBuilder] for method chaining.
+         */
+        fun hyperlink(url: String, displayText: String? = null, alternateText: String? = null) = apply {
+            content.add(Hyperlink(url, displayText, alternateText))
+        }
+
+        /**
+         * Adds a hyperlink to the text content.
+         * @param hyperlink The hyperlink to add.
+         * @return The current instance of [TextBuilder] for method chaining.
+         */
+        fun hyperlink(hyperlink: Hyperlink) = apply {
+            content.add(hyperlink)
         }
 
         /**

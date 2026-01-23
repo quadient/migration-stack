@@ -2,6 +2,8 @@ package com.quadient.wfdxml.internal.layoutnodes
 
 import com.quadient.wfdxml.api.layoutnodes.LineStyle
 import com.quadient.wfdxml.api.layoutnodes.TextStyle
+import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
+import com.quadient.wfdxml.api.layoutnodes.TextStyleType
 import com.quadient.wfdxml.api.layoutnodes.data.Variable
 import com.quadient.wfdxml.internal.layoutnodes.data.VariableImpl
 import com.quadient.wfdxml.internal.xml.export.XmlExporter
@@ -164,5 +166,40 @@ class TextStyleImplTest extends Specification {
 
         then:
         assert textStyle.getLanguage() == "en"
+    }
+
+    def "textStyle with URL target and alternate text"() {
+        given:
+        Variable urlVariable = new VariableImpl()
+        TextStyle textStyle = new TextStyleImpl()
+                .setUrlTarget(urlVariable)
+                .setUrlAlternateText("Link to external resource")
+
+        when:
+        (textStyle as TextStyleImpl).export(exporter)
+
+        then:
+        String result = exporter.buildString()
+        result.contains("<URLLink>SR_1</URLLink>")
+        result.contains("<URLAlternateText>Link to external resource</URLAlternateText>")
+    }
+
+    def "textStyle with type Delta and inherit flags"() {
+        given:
+        TextStyle textStyle = new TextStyleImpl()
+                .setType(TextStyleType.DELTA)
+                .addInheritFlags(TextStyleInheritFlag.FONT,
+                        TextStyleInheritFlag.FONT_SIZE,
+                        TextStyleInheritFlag.BOLD,
+                        TextStyleInheritFlag.ITALIC,
+                        TextStyleInheritFlag.UNDERLINE)
+
+        when:
+        (textStyle as TextStyleImpl).export(exporter)
+
+        then:
+        String result = exporter.buildString()
+        result.contains("<Type>Delta</Type>")
+        result.contains("<InheritFlag><Font></Font><FontSize></FontSize><Bold></Bold><Italic></Italic><Underline></Underline></InheritFlag>")
     }
 }

@@ -54,7 +54,6 @@ import com.quadient.migration.tools.model.aVariableStructureModel
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldNotBeEmpty
-import com.quadient.migration.tools.shouldNotBeEqualTo
 import com.quadient.migration.tools.shouldNotBeNull
 import io.mockk.every
 import io.mockk.mockk
@@ -230,6 +229,35 @@ class DesignerDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `buildDocumentObject creates image with alternate text from ImageModel`() {
+        // given
+        val imageModel = mockImg(aImage("Img_1", alternateText = "Description of the image"))
+        val page = mockObj(
+            aDocObj(
+                "P_1", Page, listOf(
+                    anArea(
+                        listOf(
+                            ImageModelRef(imageModel.id)
+                        ), Position(60.millimeters(), 120.millimeters(), 20.centimeters(), 10.centimeters())
+                    ),
+                )
+            )
+        )
+        val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))))
+
+        // when
+        val result =
+            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val imageObject = result["ImageObject"].last()
+        val imageId = imageObject["ImageId"].textValue()
+
+        val image = result["Image"].last { it["Id"].textValue() == imageId }
+        image["PDFAdvanced"]["Tagging"]["AlternateText"].textValue().shouldBeEqualTo("Description of the image")
+    }
+
+    @Test
     fun `buildDocumentObject uses inline condition flow when block is used with display rule`() {
         // given
         val rule = mockRule(
@@ -283,7 +311,7 @@ class DesignerDocumentObjectBuilderTest {
                                     aCell(aParagraph(aText(StringModel("D"))))
                                 ), rule.id
                             )
-                        ), listOf()
+                        ), listOf(), pdfTaggingRule = com.quadient.migration.shared.TablePdfTaggingRule.Table, pdfAlternateText = "Table alt text"
                     )
                 )
             )
@@ -300,6 +328,10 @@ class DesignerDocumentObjectBuilderTest {
         val secondRow = result["RowSet"].last { it["Id"].textValue() == rowIds[1].textValue() }
         secondRow["RowSetType"].textValue().shouldBeEqualTo("InlCond")
         secondRow["RowSetCondition"][0]["Condition"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val pdfAdvanced = result["Table"].last()["PDFAdvanced"]
+        pdfAdvanced.shouldNotBeNull()
+        pdfAdvanced["Tagging"]["Rule"].textValue().shouldBeEqualTo("Table")
+        pdfAdvanced["Tagging"]["AlternateText"].textValue().shouldBeEqualTo("Table alt text")
     }
 
     @Test

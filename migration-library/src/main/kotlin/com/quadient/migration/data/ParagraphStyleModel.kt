@@ -38,6 +38,7 @@ data class ParagraphStyleDefinitionModel(
     val lineSpacing: LineSpacing,
     val keepWithNextParagraph: Boolean?,
     val tabs: TabsModel?,
+    val pdfTaggingRule: com.quadient.migration.shared.ParagraphPdfTaggingRule?,
 ) : ParagraphStyleDefOrRefModel {
     companion object {
         fun fromDb(entity: ParagraphStyleDefinitionEntity) = ParagraphStyleDefinitionModel(
@@ -50,7 +51,8 @@ data class ParagraphStyleDefinitionModel(
             firstLineIndent = entity.firstLineIndent,
             lineSpacing = entity.lineSpacing,
             keepWithNextParagraph = entity.keepWithNextParagraph,
-            tabs = entity.tabs?.let { TabsModel.fromDb(it) }
+            tabs = entity.tabs?.let { TabsModel.fromDb(it) },
+            pdfTaggingRule = entity.pdfTaggingRule
         )
     }
 }

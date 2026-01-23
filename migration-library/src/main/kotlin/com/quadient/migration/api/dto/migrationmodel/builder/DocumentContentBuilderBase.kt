@@ -74,6 +74,7 @@ interface DocumentContentBuilderBase<T> {
         this.content.add(ImageRef(imageId))
     } as T
 
+
     /**
      * Adds a document object reference to the content.
      * @param documentObjectId The ID of the document object to reference.

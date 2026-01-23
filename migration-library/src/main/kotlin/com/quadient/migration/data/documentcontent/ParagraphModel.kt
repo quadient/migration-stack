@@ -42,6 +42,7 @@ data class ParagraphModel(
                 when (it) {
                     is VariableModelRef -> listOf(it)
                     is StringModel -> null
+                    is HyperlinkModel -> null
                     is TableModel -> it.collectRefs()
                     is DocumentObjectModelRef -> listOf(it)
                     is ImageModelRef -> listOf(it)

@@ -91,6 +91,7 @@ sealed class MappingItemEntity {
         val sourcePath: String?,
         val imageType: ImageType? = null,
         var skip: SkipOptions? = null,
+        val alternateText: String? = null,
     ) : MappingItemEntity() {
         fun apply(item: ImageDto): ImageDto {
             return item.copy(
@@ -99,6 +100,7 @@ sealed class MappingItemEntity {
                 sourcePath = sourcePath,
                 imageType = imageType,
                 skip = skip ?: SkipOptions(false, null, null),
+                alternateText = alternateText,
             )
         }
     }
@@ -122,7 +124,8 @@ sealed class MappingItemEntity {
             var firstLineIndent: Size?,
             var lineSpacing: LineSpacing?,
             var keepWithNextParagraph: Boolean?,
-            var tabs: TabsEntity?
+            var tabs: TabsEntity?,
+            var pdfTaggingRule: ParagraphPdfTaggingRule?
         ) : Definition
 
         fun apply(item: ParagraphStyleDto): ParagraphStyleDto {
@@ -148,7 +151,8 @@ sealed class MappingItemEntity {
                                     firstLineIndent = definition.firstLineIndent,
                                     lineSpacing = definition.lineSpacing ?: Additional(null),
                                     keepWithNextParagraph = definition.keepWithNextParagraph,
-                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel)
+                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel),
+                                    pdfTaggingRule = definition.pdfTaggingRule
                                 )
                             )
                         }
@@ -165,7 +169,8 @@ sealed class MappingItemEntity {
                                     firstLineIndent = definition.firstLineIndent,
                                     lineSpacing = definition.lineSpacing ?: Additional(null),
                                     keepWithNextParagraph = definition.keepWithNextParagraph ?: false,
-                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel)
+                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel),
+                                    pdfTaggingRule = definition.pdfTaggingRule
                                 )
                             )
                         }
@@ -298,7 +303,8 @@ sealed class MappingItemEntity {
                     targetFolder = this.targetFolder,
                     sourcePath = this.sourcePath,
                     imageType = this.imageType,
-                    skip = this.skip
+                    skip = this.skip,
+                    alternateText = this.alternateText,
                 )
             }
 
@@ -316,7 +322,8 @@ sealed class MappingItemEntity {
                                 firstLineIndent = definition.firstLineIndent,
                                 lineSpacing = definition.lineSpacing,
                                 keepWithNextParagraph = definition.keepWithNextParagraph,
-                                tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel)
+                                tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel),
+                                pdfTaggingRule = definition.pdfTaggingRule
                             )
                         }
 

@@ -20,6 +20,7 @@ data class ImageModel(
     val targetFolder: IcmPath?,
     val metadata: Map<String, List<MetadataPrimitive>>,
     val skip: SkipOptions,
+    val alternateText: String? = null,
 ) : RefValidatable, MigrationObjectModel {
     override fun collectRefs(): List<RefModel> {
         return emptyList()

@@ -2,14 +2,18 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
-import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Table
-import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.TablePdfTaggingRule
 
 class TableBuilder {
     private val rows = mutableListOf<Row>()
     private val columnWidths = mutableListOf<ColumnWidth>()
+    private var pdfTaggingRule: TablePdfTaggingRule = TablePdfTaggingRule.Default
+    private var pdfAlternateText: String? = null
+
+    fun pdfTaggingRule(rule: TablePdfTaggingRule) = apply { this.pdfTaggingRule = rule }
+    fun pdfAlternateText(text: String?) = apply { this.pdfAlternateText = text }
 
     /**
      * Add a row to the table. Rows are added in the order they are defined.
@@ -44,7 +48,7 @@ class TableBuilder {
                 minWidth = colWidth.minWidth,
                 percentWidth = colWidth.percentWidth,
             )
-        })
+        }, pdfTaggingRule, pdfAlternateText)
     }
 
     class Row {

@@ -58,7 +58,7 @@ static void mapStyle(Migration migration, ParagraphStyle existingStyle, String s
     if (styleRefId.empty) {
         MappingItem.ParagraphStyle.Def mappingDefinition
         if (!(mapping.definition instanceof MappingItem.ParagraphStyle.Def)) {
-            mappingDefinition = new MappingItem.ParagraphStyle.Def(null, null, null, null, null, null, null, null, null, null)
+            mappingDefinition = new MappingItem.ParagraphStyle.Def(null, null, null, null, null, null, null, null, null, null, null)
         } else {
             mappingDefinition = mapping.definition as MappingItem.ParagraphStyle.Def
         }

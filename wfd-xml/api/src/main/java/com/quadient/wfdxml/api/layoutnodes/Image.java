@@ -1,6 +1,7 @@
 package com.quadient.wfdxml.api.layoutnodes;
 
 import com.quadient.wfdxml.api.Node;
+import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 
 public interface Image extends Node<Image> {
 
@@ -23,4 +24,8 @@ public interface Image extends Node<Image> {
     Image setTransparentG(int min, int max);
 
     Image setTransparentB(int min, int max);
+
+    Image setAlternateText(String alternateText);
+
+    Image setAlternateTextVariable(Variable variable);
 }

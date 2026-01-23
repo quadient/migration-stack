@@ -32,6 +32,8 @@ class DocumentObjectRepositoryTest {
     @Test
     fun `roundtrip is correct`() {
         val table = table {
+            pdfTaggingRule(com.quadient.migration.shared.TablePdfTaggingRule.Table)
+            pdfAlternateText("Table alt text")
             row {
                 displayRuleRef("someref")
                 cell { }
@@ -167,4 +169,3 @@ class DocumentObjectRepositoryTest {
         result.first().id.shouldBeEqualTo("parablock")
     }
 }
-

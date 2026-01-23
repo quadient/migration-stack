@@ -71,8 +71,8 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
     private DataImpl data;
     private PagesImpl pages;
 
-    private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images");
-    private final List<String> styleLayoutDeltaAllowedGroups = List.of("TextStyles", "FillStyles", "ParagraphStyles", "Colors");
+    private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images", "TextStyles");
+    private final List<String> styleLayoutDeltaAllowedGroups = List.of("TextStyles", "FillStyles", "ParagraphStyles", "Colors", "Fonts");
 
     public LayoutImpl() {
         initializeDefaultNodes();
@@ -222,6 +222,11 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
     }
 
     @Override
+    public Root getRoot() {
+        return root;
+    }
+
+    @Override
     public ParagraphStyleImpl addBulletParagraph(TextStyle textStyle, String bullet) {
         return addParagraphStyle().setBulletsNumberingFlow(addBulletFlow(textStyle, bullet));
     }
@@ -355,15 +360,21 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
                         dataNode.children = dataNode.children.stream().filter(dataChild -> dataChild.getName() == null || !dataChild.getName().equals("SystemVariable")).toList();
                         return dataNode;
                     }
+                    if (child.getName().equals("TextStyles") && child instanceof Tree<?> textStylesNode) {
+                        textStylesNode.children = textStylesNode.children.stream().filter(textStyleChild -> !textStyleChild.getName().equals("Normal")).toList();
+                        return textStylesNode;
+                    }
                     return child;
                 }).collect(Collectors.toList());
+
+        new ForwardReferencesExporter(this, defNodes, exporter).exportForwardReferences(true);
+
         if (root != null) {
             exporter.beginElement("Root");
             root.export(exporter);
             exporter.endElement();
         }
 
-        new ForwardReferencesExporter(this, defNodes, exporter).exportForwardReferences(true);
         exportNodes(exporter);
 
         exporter.endElement();

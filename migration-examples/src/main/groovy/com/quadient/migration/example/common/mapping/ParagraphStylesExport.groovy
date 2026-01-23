@@ -27,7 +27,7 @@ static void run(Migration migration, Path exportFilePath) {
 
     def styles = migration.paragraphStyleRepository.listAll()
     file.withWriter { writer ->
-        def headers = ["id","name","targetId","leftIndent","rightIndent","defaultTabSize","spaceBefore","spaceAfter","alignment","firstLineIndent","keepWithNextParagraph","lineSpacingType","lineSpacingValue", Mapping.displayHeader("originLocations", true)]
+        def headers = ["id", "name", "targetId", "leftIndent", "rightIndent", "defaultTabSize", "spaceBefore", "spaceAfter", "alignment", "firstLineIndent", "keepWithNextParagraph", "lineSpacingType", "lineSpacingValue", "pdfTaggingRule", Mapping.displayHeader("originLocations", true)]
         writer.writeLine(headers.join(","))
 
         styles.each { style ->
@@ -64,7 +64,8 @@ static StringBuilder serializeDefinition(ParagraphStyleDefinition definition) {
     builder << "${Csv.serialize(definition?.firstLineIndent)},"
     builder << "${Csv.serialize(definition?.keepWithNextParagraph)},"
     // Linespacing serializes as two columns
-    builder << "${Csv.serialize(definition?.lineSpacing)}"
+    builder << "${Csv.serialize(definition?.lineSpacing)},"
+    builder << "${Csv.serialize(definition?.pdfTaggingRule)}"
 
     return builder
 }

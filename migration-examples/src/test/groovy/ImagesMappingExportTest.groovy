@@ -25,10 +25,10 @@ class ImagesMappingExportTest {
         def migration = Utils.mockMigration()
 
         when(migration.imageRepository.listAll()).thenReturn([
-                new Image("empty", null, [], new CustomFieldMap([:]), null, null, null, null, [:], emptySkipOptions()),
-                new Image("full", "full", ["foo", "bar"], new CustomFieldMap([:]), "sourcePath", null, ImageType.Jpeg, "targetDir", [:], new SkipOptions(true, "placeholder", "reason")),
-                new Image("overridden empty", null, [], new CustomFieldMap([:]), null, null, null, null, [:], emptySkipOptions()),
-                new Image("overridden full", "full", ["foo", "bar"], new CustomFieldMap(["originalName": "originalFull"]), "sourcePath", null, ImageType.Gif, "targetDir", [:], emptySkipOptions()),
+                new Image("empty", null, [], new CustomFieldMap([:]), null, null, null, null, [:], emptySkipOptions(), null),
+                new Image("full", "full", ["foo", "bar"], new CustomFieldMap([:]), "sourcePath", null, ImageType.Jpeg, "targetDir", [:], new SkipOptions(true, "placeholder", "reason"), "Alt text for full"),
+                new Image("overridden empty", null, [], new CustomFieldMap([:]), null, null, null, null, [:], emptySkipOptions(), null),
+                new Image("overridden full", "full", ["foo", "bar"], new CustomFieldMap(["originalName": "originalFull"]), "sourcePath", null, ImageType.Gif, "targetDir", [:], emptySkipOptions(), "Alt text for overridden"),
         ])
 
         when(migration.statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any())).thenReturn(new Active())
@@ -36,11 +36,11 @@ class ImagesMappingExportTest {
         ImagesExport.run(migration, mappingFile)
 
         def expected = """\
-            id,name,sourcePath,imageType,targetFolder,status,skip,skipPlaceholder,skipReason,originalName (read-only),originLocations (read-only)
-            empty,,,,,Active,false,,,,[]
-            full,full,sourcePath,Jpeg,targetDir,Active,true,placeholder,reason,,[foo; bar]
-            overridden empty,,,,,Active,false,,,,[]
-            overridden full,full,sourcePath,Gif,targetDir,Active,false,,,originalFull,[foo; bar]
+            id,name,sourcePath,imageType,targetFolder,alternateText,status,skip,skipPlaceholder,skipReason,originalName (read-only),originLocations (read-only)
+            empty,,,,,,Active,false,,,,[]
+            full,full,sourcePath,Jpeg,targetDir,Alt text for full,Active,true,placeholder,reason,,[foo; bar]
+            overridden empty,,,,,,Active,false,,,,[]
+            overridden full,full,sourcePath,Gif,targetDir,Alt text for overridden,Active,false,,,originalFull,[foo; bar]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

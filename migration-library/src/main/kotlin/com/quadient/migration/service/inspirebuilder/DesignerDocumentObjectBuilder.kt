@@ -30,6 +30,7 @@ import com.quadient.migration.shared.millimeters
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.FlowArea
+import com.quadient.wfdxml.api.layoutnodes.Image
 import com.quadient.wfdxml.api.layoutnodes.Page
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
@@ -124,6 +125,10 @@ class DesignerDocumentObjectBuilder(
         val fontConfigPath = projectConfig.paths.fonts
 
         return IcmPath.root().join(fontConfigPath).toString()
+    }
+
+    override fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String) {
+        image.setAlternateText(alternateText)
     }
 
     override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String {
@@ -296,14 +301,15 @@ class DesignerDocumentObjectBuilder(
 
         val content = areaModel.content
         if (content.size == 1 && content.first() is ImageModelRef) {
-            val imageModel = imageRepository.findModelOrFail((content.first() as ImageModelRef).id)
+            val imageRef = content.first() as ImageModelRef
+            val imageModel = imageRepository.findModelOrFail(imageRef.id)
 
             when (val imagePlaceholder = getImagePlaceholder(imageModel)) {
                 is ImagePlaceholderResult.Skip -> return
                 is ImagePlaceholderResult.RenderAsNormal -> {
                     page.addImageArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
                         .setWidth(position.width.toMeters()).setHeight(position.height.toMeters())
-                        .setImage(getOrBuildImage(layout, imageModel))
+                        .setImage(getOrBuildImage(layout, imageModel, imageModel.alternateText))
                 }
                 is ImagePlaceholderResult.Placeholder -> {
                     val flow = layout.addFlow()

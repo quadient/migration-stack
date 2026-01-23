@@ -488,7 +488,7 @@ class DesignerDeployClientTest {
         @Test
         fun `deployStyles creates style definition and sets production approval state`() {
             // given
-            every { documentObjectBuilder.buildStyles(any(), any(), any()) } returns "<xml />"
+            every { documentObjectBuilder.buildStyles(any(), any()) } returns "<xml />"
             every { documentObjectBuilder.buildStyleLayoutDelta(any(), any()) } returns "<xml />"
 
             every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
@@ -511,7 +511,7 @@ class DesignerDeployClientTest {
         @Test
         fun `deployStyles does not continue when wfd creation fails`() {
             // given
-            every { documentObjectBuilder.buildStyles(any(), any(), any()) } returns "<xml />"
+            every { documentObjectBuilder.buildStyles(any(), any()) } returns "<xml />"
 
             every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
             every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any()) } returns aDeployedStatus("id")

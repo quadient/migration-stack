@@ -8,6 +8,7 @@ import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.FirstMatchModel
 import com.quadient.migration.data.AreaModel
+import com.quadient.migration.data.HyperlinkModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphModel
@@ -48,11 +49,10 @@ import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.LiteralOrFunctionCall
+import com.quadient.migration.shared.ParagraphPdfTaggingRule as ParagraphPdfTaggingRuleModel
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.TabType
 import com.quadient.wfdxml.WfdXmlBuilder
-import com.quadient.wfdxml.api.layoutnodes.Color
-import com.quadient.wfdxml.api.layoutnodes.FillStyle
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Font
 import com.quadient.wfdxml.api.layoutnodes.Image
@@ -70,8 +70,15 @@ import com.quadient.wfdxml.api.layoutnodes.font.SubFont
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.Table
+import com.quadient.migration.shared.TablePdfTaggingRule
+import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.ParagraphPdfTaggingRule
+import com.quadient.wfdxml.api.layoutnodes.TextStyle
+import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
+import com.quadient.wfdxml.api.layoutnodes.TextStyleType
+import com.quadient.wfdxml.api.layoutnodes.flow.Paragraph
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.data.WorkFlowTreeDefinition
+import com.quadient.wfdxml.internal.layoutnodes.TextStyleImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeOptionality
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.SUB_TREE
@@ -222,7 +229,6 @@ abstract class InspireDocumentObjectBuilder(
     fun buildStyles(
         textStyles: List<TextStyleModel>,
         paragraphStyles: List<ParagraphStyleModel>,
-        withDeltaStyles: Boolean = false
     ): String {
         logger.debug("Starting to build style definition.")
 
@@ -244,7 +250,7 @@ abstract class InspireDocumentObjectBuilder(
         buildParagraphStyles(layout, paragraphStyles)
 
         logger.debug("Successfully built style definition.")
-        return builder.build(withDeltaStyles)
+        return builder.build()
     }
 
     fun buildDocumentContentAsFlows(
@@ -430,57 +436,44 @@ abstract class InspireDocumentObjectBuilder(
         arialFont.setName("Arial").setFontName("Arial")
         upsertSubFont(arialFont, isBold = false, isItalic = false)
 
-        val usedFonts = mutableMapOf("Arial" to arialFont)
-        val usedColorFillStyles = mutableMapOf<String, Pair<Color, FillStyle>>()
-
         textStyleModels.forEach { styleModel ->
             val definition = styleModel.resolve()
-
             val textStyle = layout.addTextStyle().setName(styleModel.nameOrId())
+            applyTextStyleProperties(layout, textStyle, definition)
+        }
+    }
 
-            if (!definition.fontFamily.isNullOrBlank()) {
-                val usedFont = usedFonts[definition.fontFamily]
-                val font = if (usedFont != null) usedFont else {
-                    val newFont = layout.addFont().setName(definition.fontFamily).setFontName(definition.fontFamily)
-                    usedFonts[definition.fontFamily] = newFont
-                    newFont
-                }
-                textStyle.setFont(font)
+    private fun applyTextStyleProperties(layout: Layout, textStyle: TextStyle, definition: TextStyleDefinitionModel) {
+        val fontFamily = definition.fontFamily ?: "Arial"
 
-                val subFont = upsertSubFont(font, definition.bold, definition.italic)
-                if (subFont != null) {
-                    textStyle.setSubFont(subFont)
-                }
-            }
+        val font = getFontByName(layout, fontFamily) ?: layout.addFont().setName(fontFamily).setFontName(fontFamily)
+        textStyle.setFont(font)
 
-            if (definition.foregroundColor != null) {
-                val colorId = definition.foregroundColor.toString()
-                val usedColorFillStyle = usedColorFillStyles[colorId]
-                if (usedColorFillStyle != null) {
-                    textStyle.setFillStyle(usedColorFillStyle.second)
-                } else {
-                    val newColor = layout.addColor().setRGB(
-                        definition.foregroundColor.red(),
-                        definition.foregroundColor.green(),
-                        definition.foregroundColor.blue()
-                    )
-                    val newFillStyle = layout.addFillStyle().setColor(newColor)
-                    usedColorFillStyles[colorId] = Pair(newColor, newFillStyle)
-                    textStyle.setFillStyle(newFillStyle)
-                }
-            }
+        val subFont = upsertSubFont(font, definition.bold, definition.italic)
+        if (subFont != null) {
+            textStyle.setSubFont(subFont)
+        }
 
-            definition.size?.let { textStyle.setFontSizeInMeters(definition.size.toMeters()) }
-            textStyle.setBold(definition.bold)
-            textStyle.seItalic(definition.italic)
-            textStyle.setUnderline(definition.underline)
-            textStyle.setStrikeThrough(definition.strikethrough)
-            when (definition.superOrSubscript) {
-                SuperOrSubscript.Subscript -> textStyle.setSubScript(true).setSuperScript(false)
-                SuperOrSubscript.Superscript -> textStyle.setSubScript(false).setSuperScript(true)
-                SuperOrSubscript.None -> textStyle.setSubScript(false).setSuperScript(false)
-            }
-            definition.interspacing?.let { textStyle.setInterSpacing(it.toMeters()) }
+        textStyle.setBold(definition.bold)
+        textStyle.seItalic(definition.italic)
+        textStyle.setUnderline(definition.underline)
+        textStyle.setStrikeThrough(definition.strikethrough)
+
+        definition.size?.let { textStyle.setFontSizeInMeters(it.toMeters()) }
+        definition.interspacing?.let { textStyle.setInterSpacing(it.toMeters()) }
+
+        when (definition.superOrSubscript) {
+            SuperOrSubscript.Subscript -> textStyle.setSubScript(true).setSuperScript(false)
+            SuperOrSubscript.Superscript -> textStyle.setSubScript(false).setSuperScript(true)
+            SuperOrSubscript.None -> textStyle.setSubScript(false).setSuperScript(false)
+        }
+
+        definition.foregroundColor?.let { colorModel ->
+            val layoutColor = getColorByRGB(layout, colorModel.red(), colorModel.green(), colorModel.blue())
+                ?: layout.addColor().setRGB(colorModel.red(), colorModel.green(), colorModel.blue())
+            val fillStyle = getFillStyleByColor(layout, layoutColor)
+                ?: layout.addFillStyle().setColor(layoutColor)
+            textStyle.setFillStyle(fillStyle)
         }
     }
 
@@ -543,6 +536,20 @@ abstract class InspireDocumentObjectBuilder(
                     paragraphStyle.addTabulator(tabModel.position.toMeters(), tabType)
                 }
             }
+
+            definition.pdfTaggingRule?.let { pdfTaggingRule ->
+                val rule = when (pdfTaggingRule) {
+                    ParagraphPdfTaggingRuleModel.Paragraph -> ParagraphPdfTaggingRule.PARAGRAPH
+                    ParagraphPdfTaggingRuleModel.Heading -> ParagraphPdfTaggingRule.HEADING
+                    ParagraphPdfTaggingRuleModel.Heading1 -> ParagraphPdfTaggingRule.HEADING_1
+                    ParagraphPdfTaggingRuleModel.Heading2 -> ParagraphPdfTaggingRule.HEADING_2
+                    ParagraphPdfTaggingRuleModel.Heading3 -> ParagraphPdfTaggingRule.HEADING_3
+                    ParagraphPdfTaggingRuleModel.Heading4 -> ParagraphPdfTaggingRule.HEADING_4
+                    ParagraphPdfTaggingRuleModel.Heading5 -> ParagraphPdfTaggingRule.HEADING_5
+                    ParagraphPdfTaggingRuleModel.Heading6 -> ParagraphPdfTaggingRule.HEADING_6
+                }
+                paragraphStyle.setPdfTaggingRule(rule)
+            }
         }
     }
 
@@ -572,7 +579,7 @@ abstract class InspireDocumentObjectBuilder(
         return ImagePlaceholderResult.RenderAsNormal
     }
 
-    protected fun getOrBuildImage(layout: Layout, imageModel: ImageModel): Image {
+    protected fun getOrBuildImage(layout: Layout, imageModel: ImageModel, alternateText: String? = null): Image {
         val image = getImageByName(layout, imageModel.nameOrId()) ?: layout.addImage().setName(imageModel.nameOrId())
             .setImageLocation(getImagePath(imageModel), LocationType.ICM)
 
@@ -581,8 +588,14 @@ abstract class InspireDocumentObjectBuilder(
             imageModel.options.resizeHeight?.let { image.setResizeHeight(it.toMeters()) }
         }
 
+        if (!alternateText.isNullOrBlank()) {
+            applyImageAlternateText(layout, image, alternateText)
+        }
+
         return image
     }
+
+    protected abstract fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String)
 
     private fun buildCompositeFlow(
         layout: Layout,
@@ -692,7 +705,7 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         paragraphModel.content.forEach { textModel ->
-            val text = if (textModel.displayRuleRef == null) {
+            val baseText = if (textModel.displayRuleRef == null) {
                 paragraph.addText()
             } else {
                 buildSuccessFlowWrappedInInlineConditionFlow(
@@ -702,26 +715,72 @@ abstract class InspireDocumentObjectBuilder(
                 }.addText()
             }
 
-            findTextStyle(textModel)?.also { text.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
+            val baseTextStyleModel = findTextStyle(textModel)
+            baseTextStyleModel?.also { baseText.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
+
+            var currentText = baseText
 
             textModel.content.forEach {
                 when (it) {
-                    is StringModel -> text.appendText(it.value)
-                    is VariableModelRef -> text.appendVariable(it, layout, variableStructure)
-                    is TableModel -> text.appendTable(buildTable(layout, variableStructure, it, languages))
+                    is StringModel -> currentText.appendText(it.value)
+                    is VariableModelRef -> currentText.appendVariable(it, layout, variableStructure)
+                    is TableModel -> currentText.appendTable(buildTable(layout, variableStructure, it, languages))
                     is DocumentObjectModelRef -> buildDocumentObjectRef(
                         layout, variableStructure, it, languages
                     )?.also { flow ->
-                        text.appendFlow(flow)
+                        currentText.appendFlow(flow)
                     }
 
-                    is ImageModelRef -> buildAndAppendImage(layout, text, it)
-                    is FirstMatchModel -> text.appendFlow(
+                    is ImageModelRef -> buildAndAppendImage(layout, currentText, it)
+                    is HyperlinkModel -> currentText = buildAndAppendHyperlink(layout, paragraph, baseTextStyleModel, it)
+                    is FirstMatchModel -> currentText.appendFlow(
                         buildFirstMatch(layout, variableStructure, it, true, null, languages)
                     )
                 }
             }
         }
+    }
+
+    private fun createHyperlinkTextStyle(
+        layout: Layout, baseTextStyleModel: TextStyleModel?, hyperlinkModel: HyperlinkModel
+    ): TextStyle {
+        val baseStyleName = baseTextStyleModel?.nameOrId() ?: "text"
+        val hyperlinkName = generateUniqueHyperlinkStyleName(layout, baseStyleName)
+
+        val urlVariable = createUrlVariable(layout, hyperlinkName, hyperlinkModel.url)
+
+        val hyperlinkStyle = layout.addTextStyle()
+            .setName(hyperlinkName)
+            .setUrlTarget(urlVariable)
+            .setType(TextStyleType.DELTA)
+            .setUrlAlternateText(hyperlinkModel.alternateText)
+            .addInheritFlags(
+                *TextStyleInheritFlag.entries
+                .filter { it != TextStyleInheritFlag.UNDERLINE && it != TextStyleInheritFlag.FILL_STYLE }
+                .toTypedArray())
+        (hyperlinkStyle as TextStyleImpl).setAncestorId("Def.TextStyleHyperlink")
+
+        if (baseTextStyleModel != null) {
+            val definition = baseTextStyleModel.resolve()
+            applyTextStyleProperties(layout, hyperlinkStyle, definition)
+        }
+
+        return hyperlinkStyle
+    }
+
+    private fun generateUniqueHyperlinkStyleName(layout: Layout, baseStyleName: String): String {
+        var counter = 1
+        var candidateName = "${baseStyleName}_url_${counter}"
+        while (getTextStyleByName(layout, candidateName) != null) {
+            counter++
+            candidateName = "${baseStyleName}_url_${counter}"
+        }
+        return candidateName
+    }
+
+    private fun createUrlVariable(layout: Layout, variableName: String, url: String): Variable {
+        return layout.data.addVariable().setName(variableName).setKind(VariableKind.CONSTANT)
+            .setDataType(DataType.STRING).setValue(url)
     }
 
     private fun buildAndAppendImage(layout: Layout, text: Text, ref: ImageModelRef) {
@@ -736,7 +795,20 @@ abstract class InspireDocumentObjectBuilder(
             is ImagePlaceholderResult.Skip -> return
         }
 
-        text.appendImage(getOrBuildImage(layout, imageModel))
+        text.appendImage(getOrBuildImage(layout, imageModel, imageModel.alternateText))
+    }
+
+    private fun buildAndAppendHyperlink(
+        layout: Layout, paragraph: Paragraph, baseTextStyleModel: TextStyleModel?, hyperlinkModel: HyperlinkModel
+    ): Text {
+        val hyperlinkText = paragraph.addText()
+        val hyperlinkStyle = createHyperlinkTextStyle(layout, baseTextStyleModel, hyperlinkModel)
+        hyperlinkText.setTextStyle(hyperlinkStyle)
+        hyperlinkText.appendText(hyperlinkModel.displayText ?: hyperlinkModel.url)
+
+        val newText = paragraph.addText()
+        baseTextStyleModel?.also { newText.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
+        return newText
     }
 
     private fun Text.appendVariable(
@@ -838,6 +910,13 @@ abstract class InspireDocumentObjectBuilder(
                 )
             }
         }
+
+        when (model.pdfTaggingRule) {
+            TablePdfTaggingRule.None -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.NONE)
+            TablePdfTaggingRule.Default -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.DEFAULT)
+            TablePdfTaggingRule.Table -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.TABLE)
+        }
+        table.setTablePdfAlternateText(model.pdfAlternateText)
 
         return table
     }

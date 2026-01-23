@@ -25,6 +25,10 @@ import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
+import com.quadient.wfdxml.api.layoutnodes.Image
+import com.quadient.wfdxml.api.layoutnodes.data.DataType
+import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
+import com.quadient.wfdxml.api.module.Layout
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -125,6 +129,20 @@ class InteractiveDocumentObjectBuilder(
 
         return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant)
             .join(fontConfigPath.orDefault("Resources/Fonts")).toString()
+    }
+
+    override fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String) {
+        val escapedText = alternateText.replace("\"", "\\\"")
+        val variable = layout.data.addVariable()
+            .setName("Alternate text variable for ${image.name}")
+            .setKind(VariableKind.CALCULATED)
+            .setDataType(DataType.STRING)
+            .setScript("return '$escapedText';")
+            .addCustomProperty("ValueWrapperVariable", true)
+        val layoutRoot = layout.root ?: layout.addRoot()
+        layoutRoot.addLockedWebNode(variable)
+
+        image.setAlternateTextVariable(variable)
     }
 
     override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String {

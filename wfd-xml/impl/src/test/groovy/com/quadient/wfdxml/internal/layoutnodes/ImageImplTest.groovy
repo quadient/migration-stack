@@ -2,6 +2,8 @@ package com.quadient.wfdxml.internal.layoutnodes
 
 import com.quadient.wfdxml.api.layoutnodes.Image
 import com.quadient.wfdxml.api.layoutnodes.LocationType
+import com.quadient.wfdxml.api.layoutnodes.data.Variable
+import com.quadient.wfdxml.internal.layoutnodes.data.VariableImpl
 import com.quadient.wfdxml.internal.xml.export.XmlExporter
 import spock.lang.Specification
 
@@ -31,6 +33,16 @@ class ImageImplTest extends Specification {
                   <TransparencyG X="255" Y="255"></TransparencyG>
                   <TransparencyB X="255" Y="255"></TransparencyB>
                   <UseDifferentImageSizeForHtml>False</UseDifferentImageSizeForHtml>
+                  <AlternativeTextVar/>
+                  <PDFAdvanced>
+                      <Tagging>
+                          <Rule>Figure</Rule>
+                          <AlternateText/>
+                          <Attributes Type="Array"/>
+                          <AlternateTextNodeId/>
+                          <AlternateTextType>1</AlternateTextType>
+                      </Tagging>
+                  </PDFAdvanced>
                   """)
 
     }
@@ -64,7 +76,17 @@ class ImageImplTest extends Specification {
                   <TransparencyB X="1" Y="10"></TransparencyB>
                   <UseDifferentImageSizeForHtml>True</UseDifferentImageSizeForHtml>
                   <HtmlImageWidthValue>500px</HtmlImageWidthValue>
-                  <HtmlImageHeightValue>600px</HtmlImageHeightValue>           
+                  <HtmlImageHeightValue>600px</HtmlImageHeightValue>
+                  <AlternativeTextVar/>
+                  <PDFAdvanced>
+                      <Tagging>
+                          <Rule>Figure</Rule>
+                          <AlternateText/>
+                          <Attributes Type="Array"/>
+                          <AlternateTextNodeId/>
+                          <AlternateTextType>1</AlternateTextType>
+                      </Tagging>
+                  </PDFAdvanced>
                   """)
     }
 
@@ -89,7 +111,125 @@ class ImageImplTest extends Specification {
                   <TransparencyR X="255" Y="255"></TransparencyR>
                   <TransparencyG X="255" Y="255"></TransparencyG>
                   <TransparencyB X="255" Y="255"></TransparencyB>
-                  <UseDifferentImageSizeForHtml>False</UseDifferentImageSizeForHtml>   
+                  <UseDifferentImageSizeForHtml>False</UseDifferentImageSizeForHtml>
+                  <AlternativeTextVar/>
+                  <PDFAdvanced>
+                      <Tagging>
+                          <Rule>Figure</Rule>
+                          <AlternateText/>
+                          <Attributes Type="Array"/>
+                          <AlternateTextNodeId/>
+                          <AlternateTextType>1</AlternateTextType>
+                      </Tagging>
+                  </PDFAdvanced>
+                  """)
+    }
+
+    def "export image with string alternate text"() {
+        given:
+        ImageImpl image = new ImageImpl().setAlternateText("Some Alternate text example")
+
+        when:
+        image.export(exporter)
+
+        then:
+        assertXmlEqualsWrapRoot(exporter.buildString(), """
+                  <ImageType>Simple</ImageType>
+                  <ImageDPIX>0.0</ImageDPIX>
+                  <ImageDPIY>0.0</ImageDPIY>
+                  <UseResizeWidth>False</UseResizeWidth>
+                  <ResizeImageWidth>0.0</ResizeImageWidth>
+                  <UseResizeHeight>False</UseResizeHeight>
+                  <ResizeImageHeight>0.0</ResizeImageHeight>
+                  <MakeTransparent>False</MakeTransparent>
+                  <TransparencyR X="255" Y="255"></TransparencyR>
+                  <TransparencyG X="255" Y="255"></TransparencyG>
+                  <TransparencyB X="255" Y="255"></TransparencyB>
+                  <UseDifferentImageSizeForHtml>False</UseDifferentImageSizeForHtml>
+                  <AlternativeTextVar/>
+                  <PDFAdvanced>
+                      <Tagging>
+                          <Rule>Figure</Rule>
+                          <AlternateText>Some Alternate text example</AlternateText>
+                          <Attributes Type="Array"/>
+                          <AlternateTextNodeId/>
+                          <AlternateTextType>1</AlternateTextType>
+                      </Tagging>
+                  </PDFAdvanced>
+                  """)
+    }
+
+    def "export image with variable alternate text"() {
+        given:
+        Variable variable = new VariableImpl()
+        String variableId = exporter.idRegister.getOrCreateId(variable)
+        ImageImpl image = new ImageImpl().setAlternateTextVariable(variable)
+
+        when:
+        image.export(exporter)
+
+        then:
+        assertXmlEqualsWrapRoot(exporter.buildString(), """
+                  <ImageType>Simple</ImageType>
+                  <ImageDPIX>0.0</ImageDPIX>
+                  <ImageDPIY>0.0</ImageDPIY>
+                  <UseResizeWidth>False</UseResizeWidth>
+                  <ResizeImageWidth>0.0</ResizeImageWidth>
+                  <UseResizeHeight>False</UseResizeHeight>
+                  <ResizeImageHeight>0.0</ResizeImageHeight>
+                  <MakeTransparent>False</MakeTransparent>
+                  <TransparencyR X="255" Y="255"></TransparencyR>
+                  <TransparencyG X="255" Y="255"></TransparencyG>
+                  <TransparencyB X="255" Y="255"></TransparencyB>
+                  <UseDifferentImageSizeForHtml>False</UseDifferentImageSizeForHtml>
+                  <AlternativeTextVar>$variableId</AlternativeTextVar>
+                  <PDFAdvanced>
+                      <Tagging>
+                          <Rule>Figure</Rule>
+                          <AlternateText/>
+                          <Attributes Type="Array"/>
+                          <AlternateTextNodeId>$variableId</AlternateTextNodeId>
+                          <AlternateTextType>2</AlternateTextType>
+                      </Tagging>
+                  </PDFAdvanced>
+                  """)
+    }
+
+    def "export image with both string and variable alternate text - variable takes priority"() {
+        given:
+        Variable variable = new VariableImpl()
+        String variableId = exporter.idRegister.getOrCreateId(variable)
+        ImageImpl image = new ImageImpl()
+                .setAlternateText("Some Alternate text example")
+                .setAlternateTextVariable(variable)
+
+        when:
+        image.export(exporter)
+
+        then:
+        assertXmlEqualsWrapRoot(exporter.buildString(), """
+                  <ImageType>Simple</ImageType>
+                  <ImageDPIX>0.0</ImageDPIX>
+                  <ImageDPIY>0.0</ImageDPIY>
+                  <UseResizeWidth>False</UseResizeWidth>
+                  <ResizeImageWidth>0.0</ResizeImageWidth>
+                  <UseResizeHeight>False</UseResizeHeight>
+                  <ResizeImageHeight>0.0</ResizeImageHeight>
+                  <MakeTransparent>False</MakeTransparent>
+                  <TransparencyR X="255" Y="255"></TransparencyR>
+                  <TransparencyG X="255" Y="255"></TransparencyG>
+                  <TransparencyB X="255" Y="255"></TransparencyB>
+                  <UseDifferentImageSizeForHtml>False</UseDifferentImageSizeForHtml>
+                  <AlternativeTextVar>$variableId</AlternativeTextVar>
+                  <PDFAdvanced>
+                      <Tagging>
+                          <Rule>Figure</Rule>
+                          <AlternateText/>
+                          <Attributes Type="Array"/>
+                          <AlternateTextNodeId>$variableId</AlternateTextNodeId>
+                          <AlternateTextType>2</AlternateTextType>
+                      </Tagging>
+                  </PDFAdvanced>
                   """)
     }
 }

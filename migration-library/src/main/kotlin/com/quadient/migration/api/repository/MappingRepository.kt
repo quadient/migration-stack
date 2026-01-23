@@ -88,6 +88,7 @@ class MappingRepository(
             sourcePath = null,
             imageType = null,
             skip = null,
+            alternateText = null,
         )).toDto() as MappingItem.Image
     }
 

@@ -30,6 +30,7 @@ sealed class MappingItem {
         var sourcePath: String?,
         var imageType: ImageType?,
         var skip: SkipOptions? = null,
+        var alternateText: String? = null,
     ) : MappingItem()
 
     data class ParagraphStyle(override var name: String?, var definition: Definition?) : MappingItem() {
@@ -46,6 +47,7 @@ sealed class MappingItem {
             var lineSpacing: LineSpacing?,
             var keepWithNextParagraph: Boolean?,
             var tabs: Tabs?,
+            var pdfTaggingRule: ParagraphPdfTaggingRule?,
         ) : Definition
     }
 
@@ -99,6 +101,7 @@ sealed class MappingItem {
                     sourcePath = this.sourcePath,
                     imageType = this.imageType,
                     skip = this.skip,
+                    alternateText = this.alternateText,
                 )
             }
 
@@ -120,7 +123,8 @@ sealed class MappingItem {
                             firstLineIndent = def.firstLineIndent,
                             lineSpacing = def.lineSpacing,
                             keepWithNextParagraph = def.keepWithNextParagraph,
-                            tabs = def.tabs?.toDb()
+                            tabs = def.tabs?.toDb(),
+                            pdfTaggingRule = def.pdfTaggingRule
                         )
 
                         null -> null

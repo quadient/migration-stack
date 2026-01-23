@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <WorkFlow>
+    <Property>
+        <Name>DeltaStyles</Name>
+        <Value>1</Value>
+    </Property>
     <Layout>
         <Id>SR_1</Id>
         <ModulePos X="0" Y="0"></ModulePos>

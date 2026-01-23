@@ -36,6 +36,8 @@ public class TableImpl extends NodeImpl<Table> implements Table {
     private boolean displayAsImage = true;
     private boolean htmlFormatting = false;
     private boolean responsiveHtml = false;
+    private TablePdfTaggingRule tablePdfTaggingRule = TablePdfTaggingRule.DEFAULT;
+    private String tablePdfAlternateText = null;
 
     public RowSet getRowSet() {
         return rowSet;
@@ -289,6 +291,26 @@ public class TableImpl extends NodeImpl<Table> implements Table {
         return this;
     }
 
+    public TablePdfTaggingRule getTablePdfTaggingRule() {
+        return tablePdfTaggingRule;
+    }
+
+    @Override
+    public TableImpl setTablePdfTaggingRule(TablePdfTaggingRule rule) {
+        this.tablePdfTaggingRule = rule;
+        return this;
+    }
+
+    public String getTablePdfAlternateText() {
+        return tablePdfAlternateText;
+    }
+
+    @Override
+    public TableImpl setTablePdfAlternateText(String alternateText) {
+        this.tablePdfAlternateText = alternateText;
+        return this;
+    }
+
 
     @Override
     public String getXmlElementName() {
@@ -352,6 +374,56 @@ public class TableImpl extends NodeImpl<Table> implements Table {
         }
 
         exporter.addElementWithBoolData("ResponsiveHtml", responsiveHtml);
+        switch (tablePdfTaggingRule) {
+            case NONE:
+                exporter.beginElement("PDFAdvanced");
+                exporter.beginElement("Tagging");
+                exporter.addElementWithStringData("Rule", "None");
+                exporter.addElementWithStringData("AlternateText", "");
+                exporter.beginElement("Attributes");
+                exporter.addStringAttribute("Type", "Array");
+                exporter.endElement();
+                exporter.addElementWithStringData("AlternateTextNodeId", "");
+                exporter.addElementWithIntData("AlternateTextType", 1);
+                exporter.endElement();
+                exporter.endElement();
+                break;
+            case DEFAULT:
+                if (tablePdfAlternateText != null && !tablePdfAlternateText.isEmpty()) {
+                    exporter.beginElement("PDFAdvanced");
+                    exporter.beginElement("Tagging");
+                    exporter.addElementWithStringData("Rule", "Default");
+                    exporter.addElementWithStringData("AlternateText", tablePdfAlternateText);
+                    exporter.beginElement("Attributes");
+                    exporter.addStringAttribute("Type", "Array");
+                    exporter.endElement();
+                    exporter.addElementWithStringData("AlternateTextNodeId", "");
+                    exporter.addElementWithIntData("AlternateTextType", 1);
+                    exporter.endElement();
+                    exporter.endElement();
+                }
+                break;
+            case TABLE:
+                exporter.beginElement("PDFAdvanced");
+                exporter.beginElement("Tagging");
+                exporter.addElementWithStringData("Rule", "Table");
+                exporter.beginElement("AlternateText");
+                if (tablePdfAlternateText != null && !tablePdfAlternateText.isEmpty()) {
+                    exporter.addPCData(tablePdfAlternateText);
+                }
+                exporter.endElement();
+                exporter.beginElement("Attributes");
+                exporter.addStringAttribute("Type", "Array");
+                exporter.endElement();
+                exporter.addElementWithStringData("AlternateTextNodeId", "");
+                exporter.addElementWithIntData("AlternateTextType", 1);
+                exporter.endElement();
+                exporter.endElement();
+                break;
+            default:
+                throw new IllegalStateException(tablePdfTaggingRule.toString());
+        }
+
         {
             switch (editabilityType) {
                 case LABEL_AND_LOCK:

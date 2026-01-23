@@ -167,7 +167,7 @@ class InteractiveDeployClient(
         val outputPathJld = documentObjectBuilder.getStyleDefinitionPath(extension = "jld")
 
         val xml2wfdResult = ipsService.xml2wfd(
-            documentObjectBuilder.buildStyles(emptyList(), emptyList(), withDeltaStyles = true),
+            documentObjectBuilder.buildStyles(emptyList(), emptyList()),
             outputPathWfd
         )
 

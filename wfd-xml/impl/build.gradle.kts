@@ -11,6 +11,7 @@ plugins {
 dependencies {
     implementation(project(":${rootProject.name}-api"))
     implementation(libs.logback)
+    implementation(libs.jackson.databind)
     testImplementation(libs.testcointainer.spock)
     testImplementation(libs.xmlunit.core)
     testImplementation(libs.cglib)

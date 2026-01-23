@@ -23,6 +23,8 @@ import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
+import com.quadient.migration.shared.ParagraphPdfTaggingRule
+import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.shared.Size
 
 import java.time.Instant
@@ -119,6 +121,13 @@ def headingStyle = new TextStyleBuilder("headingStyle")
     }
     .build()
 
+def headingParaStyle = new ParagraphStyleBuilder("headingParagraphStyle")
+        .definition {
+            it.spaceAfter(Size.ofMillimeters(3))
+            it.pdfTaggingRule(ParagraphPdfTaggingRule.Heading1)
+        }
+        .build()
+
 def paragraphStyle = new ParagraphStyleBuilder("paragraphStyle")
     .definition {
         it.firstLineIndent(Size.ofMillimeters(10))
@@ -137,12 +146,15 @@ def logo = new ImageBuilder("logo")
     .sourcePath(logoImageName)
     .imageType(ImageType.Png)
     .subject("Example logo")
+    .alternateText("Example logo image")
     .build()
 
 // Table containing some data with the first address row being optionally hidden
 // by using displayRuleRef to the display displayHeaderRule defined above.
 // The table also contains some merged cells and custom column widths.
 def table = table {
+    it.pdfTaggingRule(TablePdfTaggingRule.Table)
+    it.pdfAlternateText("Example key value table")
     it.addColumnWidth(Size.ofMillimeters(10), 10)
     it.addColumnWidth(Size.ofMillimeters(20), 20)
     it.addColumnWidth(Size.ofMillimeters(98), 70)
@@ -229,6 +241,7 @@ def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Bloc
             it.styleRef(headingStyle.id)
             it.string("Lorem ipsum dolor sit amet\n")
         }
+        it.styleRef(headingParaStyle.id)
     }
     .paragraph {
         it.styleRef(paragraphStyle.id)
@@ -365,6 +378,13 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             .documentObjectRef(conditionalParagraph.id)
             .documentObjectRef(firstMatchBlock.id)
             .documentObjectRef(selectByLanguageBlock.id)
+            .paragraph {
+                it.styleRef(paragraphStyle.id).text {
+                    it.styleRef(normalStyle.id)
+                            .string("For more information visit ")
+                            .hyperlink("https://github.com/quadient/migration-stack", "Migration Stack GitHub", "Migration Stack GitHub URL link")
+                }
+            }
     }
     .area {
         it.position {
@@ -397,7 +417,7 @@ for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSenten
 for (item in [displayAddressRule, displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {
     migration.displayRuleRepository.upsert(item)
 }
-for (item in [paragraphStyle]) {
+for (item in [paragraphStyle, headingParaStyle]) {
     migration.paragraphStyleRepository.upsert(item)
 }
 

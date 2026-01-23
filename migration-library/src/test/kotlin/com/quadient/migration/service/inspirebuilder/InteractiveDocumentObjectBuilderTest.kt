@@ -67,6 +67,7 @@ import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
 import com.quadient.migration.tools.shouldNotBeEmpty
 import com.quadient.migration.tools.shouldNotBeEqualTo
+import com.quadient.migration.tools.shouldNotBeNull
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -737,6 +738,40 @@ class InteractiveDocumentObjectBuilderTest {
         imageContent["ResizeImageWidth"].textValue().shouldBeEqualTo(image.options?.resizeWidth?.toMeters().toString())
         imageContent["ResizeImageHeight"].textValue()
             .shouldBeEqualTo(image.options?.resizeHeight?.toMeters().toString())
+    }
+
+    @Test
+    fun `build block with image uses alternateText from ImageModel`() {
+        // given
+        val image = aImage("Dog", alternateText = "A cute dog picture")
+        val block = aBlock("1", listOf(ImageModelRef(image.id)))
+
+        every { imageRepository.findModelOrFail(image.id) } returns image
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        result["Image"].first()["Name"].textValue().shouldBeEqualTo("Image_Dog")
+        val imageContent = result["Image"].last()
+        val varId = imageContent["AlternativeTextVar"].textValue()
+        varId.shouldNotBeNull()
+
+        val tagging = imageContent["PDFAdvanced"]["Tagging"]
+        tagging["AlternateTextType"].textValue().shouldBeEqualTo("2")
+        tagging["AlternateTextNodeId"].textValue().shouldBeEqualTo(varId)
+        tagging["AlternateText"].textValue().shouldBeEqualTo("")
+        tagging["Rule"].textValue().shouldBeEqualTo("Figure")
+
+        val varData = result["Variable"].first { it["Id"].textValue() == varId }
+        varData["Name"].textValue().shouldBeEqualTo("Alternate text variable for Image_Dog")
+        varData["CustomProperty"].textValue().shouldBeEqualTo("{\"ValueWrapperVariable\":true}")
+
+        val varContent = result["Variable"].last { it["Id"].textValue() == varId }
+        varContent["Type"].textValue().shouldBeEqualTo("Calculated")
+        varContent["Script"].textValue().shouldBeEqualTo("return 'A cute dog picture';")
+
+        result["Root"]["LockedWebNodes"]["LockedWebNode"].textValue().shouldBeEqualTo(varId)
     }
 
     @Test

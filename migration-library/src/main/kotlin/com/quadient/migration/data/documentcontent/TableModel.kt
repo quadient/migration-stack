@@ -1,24 +1,32 @@
 package com.quadient.migration.data
 
 import com.quadient.migration.persistence.migrationmodel.TableEntity
+import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.service.RefValidatable
 import com.quadient.migration.shared.Size
 
 data class TableModel(
     val rows: List<RowModel>,
     val columnWidths: List<ColumnWidthModel>,
+    val pdfTaggingRule: TablePdfTaggingRule = TablePdfTaggingRule.Default,
+    val pdfAlternateText: String? = null,
 ) : DocumentContentModel, TextContentModel, RefValidatable {
 
     companion object {
-        fun fromDb(table: TableEntity): TableModel = TableModel(rows = table.rows.map { row ->
-            RowModel(row.cells.map { cell ->
-                CellModel(
-                    cell.content.map { DocumentContentModel.fromDbContent(it) },
-                    cell.mergeLeft,
-                    cell.mergeUp,
-                )
-            }, displayRuleRef = row.displayRuleRef?.let { DisplayRuleModelRef.fromDb(it) })
-        }, columnWidths = table.columnWidths.map { ColumnWidthModel(it.minWidth, it.percentWidth) })
+        fun fromDb(table: TableEntity): TableModel = TableModel(
+            rows = table.rows.map { row ->
+                RowModel(row.cells.map { cell ->
+                    CellModel(
+                        cell.content.map { DocumentContentModel.fromDbContent(it) },
+                        cell.mergeLeft,
+                        cell.mergeUp,
+                    )
+                }, displayRuleRef = row.displayRuleRef?.let { DisplayRuleModelRef.fromDb(it) })
+            },
+            columnWidths = table.columnWidths.map { ColumnWidthModel(it.minWidth, it.percentWidth) },
+            pdfTaggingRule = table.pdfTaggingRule,
+            pdfAlternateText = table.pdfAlternateText
+        )
     }
 
     override fun collectRefs(): List<RefModel> {
