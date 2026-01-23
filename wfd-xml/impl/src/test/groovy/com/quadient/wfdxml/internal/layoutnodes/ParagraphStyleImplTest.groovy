@@ -9,6 +9,7 @@ import spock.lang.Specification
 import static com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.AlignType
 import static com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType
 import static com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.NumberingType
+import static com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.ParagraphPdfTaggingRule
 import static com.quadient.wfdxml.api.layoutnodes.TabulatorType.LEFT
 import static com.quadient.wfdxml.utils.AssertXml.assertXmlEqualsWrapRoot
 
@@ -289,5 +290,64 @@ class ParagraphStyleImplTest extends Specification {
         String result = exporter.buildString()
         result.contains("<LeftIndent>0.005</LeftIndent>")
         result.contains("<FirstLineLeftIndent>0.007</FirstLineLeftIndent>")
+    }
+
+    def "paraStyle with PDF tagging rule PARAGRAPH"() {
+        given:
+        ParagraphStyleImpl paraStyle = new ParagraphStyleImpl()
+                .setPdfTaggingRule(ParagraphPdfTaggingRule.PARAGRAPH)
+
+        when:
+        paraStyle.export(exporter)
+
+        then:
+        assertXmlEqualsWrapRoot(exporter.buildString(), """
+                    <AncestorId>Def.ParaStyle</AncestorId>
+                    <LeftIndent>0.0</LeftIndent>
+                    <RightIndent>0.0</RightIndent>
+                    <SpaceBefore>0.0</SpaceBefore>
+                    <SpaceAfter>0.0</SpaceAfter>
+                    <FirstLineLeftIndent>0.0</FirstLineLeftIndent>
+                    <HAlign>Left</HAlign>
+                    <BorderStyleId></BorderStyleId>
+                    <IsVisible>True</IsVisible>
+                    <ConnectBorders>False</ConnectBorders>
+                    <WithLineGap>False</WithLineGap>
+                    <BullettingId/>
+                    <IgnoreEmptyLines>False</IgnoreEmptyLines>
+                    <TabulatorProperties>
+                        <Default>0.0125</Default>
+                        <UseOutsideTabs>False</UseOutsideTabs>
+                    </TabulatorProperties>
+                    <Hyphenation>
+                        <Hyphenate>False</Hyphenate>
+                    </Hyphenation>
+                    <NumberingType>Increment</NumberingType>
+                    <NumberingVariableId/>
+                    <CalcMaxSpaceBeforeAfter>False</CalcMaxSpaceBeforeAfter>
+                    <DistributeLineSpace>False</DistributeLineSpace>
+                    <SpaceBeforeFirst>False</SpaceBeforeFirst>
+                    <LineSpacing>0.0</LineSpacing>
+                    <LineSpacingType>Additional</LineSpacingType>
+                    <Type>Simple</Type>
+                    <PDFAdvanced>
+                        <LinkedToParent>False</LinkedToParent>
+                        <Tagging>
+                            <Rule>P</Rule>
+                        </Tagging>
+                    </PDFAdvanced>""")
+    }
+
+    def "paraStyle without PDF tagging rule"() {
+        given:
+        ParagraphStyleImpl paraStyle = new ParagraphStyleImpl()
+
+        when:
+        paraStyle.export(exporter)
+
+        then:
+        String result = exporter.buildString()
+        !result.contains("<PDFAdvanced>")
+        !result.contains("<Rule>")
     }
 }

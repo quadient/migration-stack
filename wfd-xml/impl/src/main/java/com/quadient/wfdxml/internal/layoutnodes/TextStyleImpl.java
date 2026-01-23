@@ -13,7 +13,7 @@ import com.quadient.wfdxml.internal.NodeImpl;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
@@ -52,7 +52,7 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
     private LineStyle underlineStyleId;
     private LineStyle strikeThroughStyleId;
     private String urlAlternateText;
-    private final Set<TextStyleInheritFlag> inheritFlags = new HashSet<>();
+    private final Set<TextStyleInheritFlag> inheritFlags = new LinkedHashSet<>();
 
     public TextStyleImpl() {
     }
