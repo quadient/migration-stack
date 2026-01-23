@@ -252,8 +252,8 @@ class InteractiveDeployClient(
 
         val approvalResult = ipsService.setProductionApprovalState(listOf(outputPathWfd, outputPathJld))
         when (approvalResult) {
-            is OperationResult.Failure -> logger.error("Failed to set production approval state to $outputPathWfd.")
-            OperationResult.Success -> logger.debug("Setting of production approval state to $outputPathWfd is successful.")
+            is OperationResult.Failure -> logger.error("Failed to set production approval state to $outputPathWfd and $outputPathJld.")
+            OperationResult.Success -> logger.debug("Setting of production approval state to $outputPathWfd and $outputPathJld is successful.")
         }
     }
 }
