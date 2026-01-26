@@ -35,6 +35,7 @@ def header = ["Id",
               "Display rules",
               "Translated display rules",
               "Images",
+              "Hyperlinks",
               "Paragraph styles",
               "Text styles",
               "Last status",
@@ -86,6 +87,7 @@ file.withWriter { writer ->
         writer.write("$stats.displayRulesCount,") // Display rules count
         writer.write("$stats.translatedDisplayRulesCount,") // Translated display rules
         writer.write("$stats.imagesCount,") // Images count
+        writer.write("$stats.usedHyperlinksCount,") // Used Hyperlinks Count
         writer.write("$stats.usedParagraphStylesCount,") // Used Paragraph Styles Count
         writer.write("$stats.usedTextStylesCount,") // Used Text Styles Count
         writer.write("$lastStatus.class.simpleName,") // Last status
@@ -105,6 +107,7 @@ class Stats {
     Set<String> usedDisplayRules = new HashSet()
     Set<String> usedTranslatedDisplayRules = new HashSet()
     Set<String> usedImages = new HashSet()
+    Set<String> usedHyperlinks = new HashSet()
     Set<String> usedParagraphStyles = new HashSet()
     Set<String> usedTextStyles = new HashSet()
 
@@ -165,6 +168,7 @@ class Stats {
                     this.wordCount += content.value.split("\\s+").length
                     this.lineCount += content.value.lines().count()
                 }
+                case Hyperlink -> this.usedHyperlinks.add(content.url)
                 case Table -> this.collectTable(content)
                 case VariableRef -> this.usedVariables.add(content.id)
                 case FirstMatch -> this.collectFirstMatch(content)
@@ -245,6 +249,10 @@ class Stats {
 
     Number getImagesCount() {
         return this.usedImages.size()
+    }
+
+    Number getUsedHyperlinksCount() {
+        return this.usedHyperlinks.size()
     }
 
     Number getUsedParagraphStylesCount() {

@@ -223,4 +223,37 @@ class TableImplTest extends Specification {
         xml.contains("<Rule>Table</Rule>")
         xml.contains("<AlternateText>Table alt text</AlternateText>")
     }
+
+    def "export table pdf tagging artifact rule emits block with alt text"() {
+        given:
+        Table table = new TableImpl().setTablePdfTaggingRule(ARTIFACT).setTablePdfAlternateText("Some alt text for table")
+
+        when:
+        table.export(exporter)
+
+        then:
+        String xml = exporter.buildString()
+        xml.contains("<PDFAdvanced>")
+        xml.contains("<Tagging>")
+        xml.contains("<Rule>Artifact</Rule>")
+        xml.contains("<AlternateText>Some alt text for table</AlternateText>")
+        xml.contains("<Attributes Type=\"Array\"></Attributes>")
+        xml.contains("<AlternateTextNodeId></AlternateTextNodeId>")
+        xml.contains("<AlternateTextType>1</AlternateTextType>")
+    }
+
+    def "export table pdf tagging artifact rule without alt text emits empty alt text"() {
+        given:
+        Table table = new TableImpl().setTablePdfTaggingRule(ARTIFACT)
+
+        when:
+        table.export(exporter)
+
+        then:
+        String xml = exporter.buildString()
+        xml.contains("<PDFAdvanced>")
+        xml.contains("<Tagging>")
+        xml.contains("<Rule>Artifact</Rule>")
+        xml.contains("<AlternateText></AlternateText>")
+    }
 }

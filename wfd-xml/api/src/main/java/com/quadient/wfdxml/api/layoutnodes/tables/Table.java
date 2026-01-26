@@ -60,7 +60,8 @@ public interface Table extends Node<Table> {
     enum TablePdfTaggingRule {
         NONE,
         DEFAULT,
-        TABLE
+        TABLE,
+        ARTIFACT
     }
 
     enum EditabilityType {

@@ -420,6 +420,23 @@ public class TableImpl extends NodeImpl<Table> implements Table {
                 exporter.endElement();
                 exporter.endElement();
                 break;
+            case ARTIFACT:
+                exporter.beginElement("PDFAdvanced");
+                exporter.beginElement("Tagging");
+                exporter.addElementWithStringData("Rule", "Artifact");
+                exporter.beginElement("AlternateText");
+                if (tablePdfAlternateText != null && !tablePdfAlternateText.isEmpty()) {
+                    exporter.addPCData(tablePdfAlternateText);
+                }
+                exporter.endElement();
+                exporter.beginElement("Attributes");
+                exporter.addStringAttribute("Type", "Array");
+                exporter.endElement();
+                exporter.addElementWithStringData("AlternateTextNodeId", "");
+                exporter.addElementWithIntData("AlternateTextType", 1);
+                exporter.endElement();
+                exporter.endElement();
+                break;
             default:
                 throw new IllegalStateException(tablePdfTaggingRule.toString());
         }

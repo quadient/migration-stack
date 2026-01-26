@@ -915,6 +915,7 @@ abstract class InspireDocumentObjectBuilder(
             TablePdfTaggingRule.None -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.NONE)
             TablePdfTaggingRule.Default -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.DEFAULT)
             TablePdfTaggingRule.Table -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.TABLE)
+            TablePdfTaggingRule.Artifact -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.ARTIFACT)
         }
         table.setTablePdfAlternateText(model.pdfAlternateText)
 

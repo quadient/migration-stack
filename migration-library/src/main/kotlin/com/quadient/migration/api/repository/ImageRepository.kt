@@ -37,6 +37,7 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
             targetFolder = model.targetFolder?.toString(),
             metadata = model.metadata,
             skip = model.skip,
+            alternateText = model.alternateText,
         )
     }
 

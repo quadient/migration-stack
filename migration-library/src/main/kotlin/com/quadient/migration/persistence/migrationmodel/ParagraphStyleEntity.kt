@@ -19,7 +19,7 @@ data class ParagraphStyleDefinitionEntity(
     val lineSpacing: LineSpacing,
     val keepWithNextParagraph: Boolean?,
     val tabs: TabsEntity?,
-    val pdfTaggingRule: ParagraphPdfTaggingRule?,
+    val pdfTaggingRule: ParagraphPdfTaggingRule? = null,
 ): ParagraphStyleDefOrRefEntity
 
 @Serializable

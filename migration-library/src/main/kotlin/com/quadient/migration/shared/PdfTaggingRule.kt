@@ -6,7 +6,8 @@ import kotlinx.serialization.Serializable
 enum class TablePdfTaggingRule {
     None,
     Default,
-    Table
+    Table,
+    Artifact
 }
 
 @Serializable
