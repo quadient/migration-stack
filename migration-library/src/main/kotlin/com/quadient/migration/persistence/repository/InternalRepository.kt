@@ -1,13 +1,17 @@
 package com.quadient.migration.persistence.repository
 
+import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.data.MigrationObjectModel
 import com.quadient.migration.persistence.table.MigrationObjectTable
 import com.quadient.migration.tools.getOrPutOrNull
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.statements.BatchUpsertStatement
 import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -27,6 +31,20 @@ abstract class InternalRepository<T : MigrationObjectModel>(
             val result = toModel(block())
             cache[result.id] = result
             result
+        }
+    }
+
+    fun <D: MigrationObject> upsertBatch(dto: Collection<D>, block: BatchUpsertStatement.(D) -> Unit) {
+        val ids = dto.map { it.id }.toSet()
+        return transaction {
+            table.batchUpsert(dto) {
+                block(it)
+            }
+
+            for (obj in table.selectAll().where(table.projectName eq projectName and (table.id inList ids))
+                .map(::toModel)) {
+                cache[obj.id] = obj
+            }
         }
     }
 
@@ -74,8 +92,16 @@ abstract class InternalRepository<T : MigrationObjectModel>(
         }
     }
 
-    fun findModelByName(name: String): T? = transaction {
-        table.selectAll().where(filter(name = name)).firstOrNull()?.let(::toModel)
+    fun findModelByName(name: String): T? {
+        val found = cache.values.find { it.name == name }
+        return found ?: transaction {
+            val result = table.selectAll().where(filter(name = name)).firstOrNull()?.let(::toModel)
+            if (result != null) {
+                cache[result.id] = result
+            }
+
+            result
+        }
     }
 
     fun delete(id: String) {

@@ -10,7 +10,9 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.aVariable
 import com.quadient.migration.tools.model.aVariableStructureModel
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
 import io.mockk.verify
 import org.junit.jupiter.api.Test
 
@@ -44,7 +46,7 @@ class MappingRepositoryTest {
         )
         every { variableStructureRepository.find(any()) } returns null
         every { variableStructureRepository.upsert(any()) } answers { firstArg() }
-        every { variableRepository.upsert(any()) } answers { firstArg() }
+        every { variableRepository.upsert(any()) } just runs
         repo.upsert("varId", MappingItem.Variable(name = "new name", dataType = null))
 
         repo.applyVariableMapping("varId")
@@ -57,7 +59,7 @@ class MappingRepositoryTest {
         every { variableStructureRepository.find("varStructId") } returns VariableStructure.fromModel(
             aVariableStructureModel(id = "varStructId", name = null)
         )
-        every { variableStructureRepository.upsert(any()) } answers { firstArg() }
+        every { variableStructureRepository.upsert(any()) } just runs
         repo.upsert("varStructId", MappingItem.VariableStructure(
             name = "new name", mappings = mutableMapOf(
                 "varId" to VariablePathData("somePath"), "anotherVarId" to VariablePathData("anotherPath")

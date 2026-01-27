@@ -8,7 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefOrRef
 import com.quadient.migration.data.ParagraphStyleModel
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.ParagraphStyleTable.definition
+import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
@@ -39,8 +39,8 @@ class ParagraphStyleRepository(internalRepository: ParagraphStyleInternalReposit
         }
     }
 
-    override fun upsert(dto: ParagraphStyle): ParagraphStyle {
-        return toDto(internalRepository.upsert {
+    override fun upsert(dto: ParagraphStyle) {
+        internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
@@ -54,15 +54,42 @@ class ParagraphStyleRepository(internalRepository: ParagraphStyleInternalReposit
             internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
-                it[id] = dto.id
-                it[projectName] = internalRepository.projectName
-                it[name] = dto.name
-                it[originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-                it[customFields] = dto.customFields.inner
-                it[definition] = dto.definition.toDb()
-                it[created] = existingItem?.created ?: now
-                it[lastUpdated] = now
+                it[ParagraphStyleTable.id] = dto.id
+                it[ParagraphStyleTable.projectName] = internalRepository.projectName
+                it[ParagraphStyleTable.name] = dto.name
+                it[ParagraphStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+                it[ParagraphStyleTable.customFields] = dto.customFields.inner
+                it[ParagraphStyleTable.definition] = dto.definition.toDb()
+                it[ParagraphStyleTable.created] = existingItem?.created ?: now
+                it[ParagraphStyleTable.lastUpdated] = now
             }.first()
-        })
+        }
+    }
+
+    override fun upsertBatch(dtos: Collection<ParagraphStyle>) {
+        internalRepository.upsertBatch(dtos) { dto ->
+            val existingItem =
+                internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
+                    ?.let { internalRepository.toModel(it) }
+
+            val now = Clock.System.now()
+
+            if (existingItem == null) {
+                statusTrackingRepository.active(dto.id, ResourceType.ParagraphStyle)
+            }
+
+            internalRepository.table.upsertReturning(
+                internalRepository.table.id, internalRepository.table.projectName
+            ) {
+                it[ParagraphStyleTable.id] = dto.id
+                it[ParagraphStyleTable.projectName] = internalRepository.projectName
+                it[ParagraphStyleTable.name] = dto.name
+                it[ParagraphStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+                it[ParagraphStyleTable.customFields] = dto.customFields.inner
+                it[ParagraphStyleTable.definition] = dto.definition.toDb()
+                it[ParagraphStyleTable.created] = existingItem?.created ?: now
+                it[ParagraphStyleTable.lastUpdated] = now
+            }.first()
+        }
     }
 }

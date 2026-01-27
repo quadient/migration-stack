@@ -65,7 +65,7 @@ data class DbConfig(
     val user: String = "migrationadmin",
     val password: String = "password"
 ) {
-    fun connectionString() = "jdbc:postgresql://$host:$port/$dbName"
+    fun connectionString() = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"
 }
 
 data class InspireConfig(val ipsConfig: IpsConfig = IpsConfig())

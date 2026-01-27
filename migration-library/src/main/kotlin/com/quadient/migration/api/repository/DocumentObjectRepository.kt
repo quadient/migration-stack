@@ -7,15 +7,6 @@ import com.quadient.migration.api.dto.migrationmodel.toDb
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.DocumentObjectTable.baseTemplate
-import com.quadient.migration.persistence.table.DocumentObjectTable.content
-import com.quadient.migration.persistence.table.DocumentObjectTable.displayRuleRef
-import com.quadient.migration.persistence.table.DocumentObjectTable.internal
-import com.quadient.migration.persistence.table.DocumentObjectTable.metadata
-import com.quadient.migration.persistence.table.DocumentObjectTable.options
-import com.quadient.migration.persistence.table.DocumentObjectTable.targetFolder
-import com.quadient.migration.persistence.table.DocumentObjectTable.type
-import com.quadient.migration.persistence.table.DocumentObjectTable.variableStructureRef
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.PageOptions
@@ -48,11 +39,47 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
         }
     }
 
-    override fun upsert(dto: DocumentObject): DocumentObject {
-        return toDto(internalRepository.upsert {
-            val existingItem =
-                internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
-                    ?.let { internalRepository.toModel(it) }
+    override fun upsertBatch(dtos: Collection<DocumentObject>) {
+        internalRepository.upsertBatch(dtos) { dto ->
+            val now = Clock.System.now()
+
+            val existingItem = internalRepository.findModel(dto.id)
+
+            when (dto.type) {
+                DocumentObjectType.Page -> require(dto.options == null || dto.options is PageOptions)
+                else -> require(dto.options == null || dto.options !is PageOptions)
+            }
+
+            if ((existingItem == null && dto.internal != true) || (dto.internal == false && existingItem?.internal == true)) {
+                statusTrackingRepository.active(
+                    dto.id, ResourceType.DocumentObject, mapOf("type" to dto.type.toString())
+                )
+            }
+
+            this[DocumentObjectTable.id] = dto.id
+            this[DocumentObjectTable.projectName] = internalRepository.projectName
+            this[DocumentObjectTable.type] = dto.type.name
+            this[DocumentObjectTable.name] = dto.name
+            this[DocumentObjectTable.content] = dto.content.toDb()
+            this[DocumentObjectTable.internal] = dto.internal == true
+            this[DocumentObjectTable.targetFolder] = dto.targetFolder
+            this[DocumentObjectTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+            this[DocumentObjectTable.customFields] = dto.customFields.inner
+            this[DocumentObjectTable.created] = existingItem?.created ?: now
+            this[DocumentObjectTable.lastUpdated] = now
+            this[DocumentObjectTable.displayRuleRef] = dto.displayRuleRef?.id
+            this[DocumentObjectTable.variableStructureRef] = dto.variableStructureRef?.id
+            this[DocumentObjectTable.baseTemplate] = dto.baseTemplate
+            this[DocumentObjectTable.options] = dto.options
+            this[DocumentObjectTable.metadata] = dto.metadata
+            this[DocumentObjectTable.skip] = dto.skip
+            this[DocumentObjectTable.subject] = dto.subject
+        }
+    }
+
+    override fun upsert(dto: DocumentObject) {
+        internalRepository.upsert {
+            val existingItem = internalRepository.findModel(dto.id)
 
             when (dto.type) {
                 DocumentObjectType.Page -> require(dto.options == null || dto.options is PageOptions)
@@ -70,26 +97,26 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
             internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
-                it[id] = dto.id
-                it[projectName] = internalRepository.projectName
-                it[type] = dto.type.name
-                it[name] = dto.name
-                it[content] = dto.content.toDb()
-                it[internal] = dto.internal == true
-                it[targetFolder] = dto.targetFolder
-                it[originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-                it[customFields] = dto.customFields.inner
-                it[created] = existingItem?.created ?: now
-                it[lastUpdated] = now
-                it[displayRuleRef] = dto.displayRuleRef?.id
-                it[variableStructureRef] = dto.variableStructureRef?.id
-                it[baseTemplate] = dto.baseTemplate
-                it[options] = dto.options
-                it[metadata] = dto.metadata
+                it[DocumentObjectTable.id] = dto.id
+                it[DocumentObjectTable.projectName] = internalRepository.projectName
+                it[DocumentObjectTable.type] = dto.type.name
+                it[DocumentObjectTable.name] = dto.name
+                it[DocumentObjectTable.content] = dto.content.toDb()
+                it[DocumentObjectTable.internal] = dto.internal == true
+                it[DocumentObjectTable.targetFolder] = dto.targetFolder
+                it[DocumentObjectTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+                it[DocumentObjectTable.customFields] = dto.customFields.inner
+                it[DocumentObjectTable.created] = existingItem?.created ?: now
+                it[DocumentObjectTable.lastUpdated] = now
+                it[DocumentObjectTable.displayRuleRef] = dto.displayRuleRef?.id
+                it[DocumentObjectTable.variableStructureRef] = dto.variableStructureRef?.id
+                it[DocumentObjectTable.baseTemplate] = dto.baseTemplate
+                it[DocumentObjectTable.options] = dto.options
+                it[DocumentObjectTable.metadata] = dto.metadata
                 it[DocumentObjectTable.skip] = dto.skip
                 it[DocumentObjectTable.subject] = dto.subject
             }.first()
-        })
+        }
     }
 
     private fun filter(filter: DocumentObjectFilter): Op<Boolean> {
@@ -101,7 +128,7 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
             result = result and (DocumentObjectTable.name.lowerCase() inList filter.names.map { it.lowercase() })
         }
         if (filter.types != null && filter.types.isNotEmpty()) {
-            result = result and (type inList filter.types.map { it.toString() })
+            result = result and (DocumentObjectTable.type inList filter.types.map { it.toString() })
         }
 
         return result

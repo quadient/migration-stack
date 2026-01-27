@@ -6,7 +6,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.persistence.repository.InternalRepository
-import com.quadient.migration.persistence.table.DisplayRuleTable.definition
+import com.quadient.migration.persistence.table.DisplayRuleTable
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
@@ -35,8 +35,27 @@ class DisplayRuleRepository(internalRepository: InternalRepository<DisplayRuleMo
         }
     }
 
-    override fun upsert(dto: DisplayRule): DisplayRule {
-        return toDto(internalRepository.upsert {
+    override fun upsertBatch(dtos: Collection<DisplayRule>) {
+        internalRepository.upsertBatch(dtos) { dto ->
+            val existingItem =
+                internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
+                    ?.let { internalRepository.toModel(it) }
+
+            val now = Clock.System.now()
+
+            this[DisplayRuleTable.id] = dto.id
+            this[DisplayRuleTable.projectName] = internalRepository.projectName
+            this[DisplayRuleTable.name] = dto.name
+            this[DisplayRuleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+            this[DisplayRuleTable.customFields] = dto.customFields.inner
+            this[DisplayRuleTable.created] = existingItem?.created ?: now
+            this[DisplayRuleTable.lastUpdated] = now
+            this[DisplayRuleTable.definition] = dto.definition
+        }
+    }
+
+    override fun upsert(dto: DisplayRule) {
+        internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
@@ -46,15 +65,15 @@ class DisplayRuleRepository(internalRepository: InternalRepository<DisplayRuleMo
             internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
-                it[id] = dto.id
-                it[projectName] = internalRepository.projectName
-                it[name] = dto.name
-                it[originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-                it[customFields] = dto.customFields.inner
-                it[created] = existingItem?.created ?: now
-                it[lastUpdated] = now
-                it[definition] = dto.definition
+                it[DisplayRuleTable.id] = dto.id
+                it[DisplayRuleTable.projectName] = internalRepository.projectName
+                it[DisplayRuleTable.name] = dto.name
+                it[DisplayRuleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+                it[DisplayRuleTable.customFields] = dto.customFields.inner
+                it[DisplayRuleTable.created] = existingItem?.created ?: now
+                it[DisplayRuleTable.lastUpdated] = now
+                it[DisplayRuleTable.definition] = dto.definition
             }.first()
-        })
+        }
     }
 }

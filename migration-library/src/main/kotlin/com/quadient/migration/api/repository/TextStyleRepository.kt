@@ -8,7 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleDefOrRef
 import com.quadient.migration.data.TextStyleModel
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.TextStyleTable.definition
+import com.quadient.migration.persistence.table.TextStyleTable
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
@@ -40,8 +40,8 @@ class TextStyleRepository(internalRepository: TextStyleInternalRepository) :
         }
     }
 
-    override fun upsert(dto: TextStyle): TextStyle {
-        return toDto(internalRepository.upsert {
+    override fun upsert(dto: TextStyle) {
+        internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
@@ -55,15 +55,38 @@ class TextStyleRepository(internalRepository: TextStyleInternalRepository) :
             internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
-                it[id] = dto.id
-                it[projectName] = internalRepository.projectName
-                it[name] = dto.name
-                it[originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-                it[customFields] = dto.customFields.inner
-                it[definition] = dto.definition.toDb()
-                it[created] = existingItem?.created ?: now
-                it[lastUpdated] = now
+                it[TextStyleTable.id] = dto.id
+                it[TextStyleTable.projectName] = internalRepository.projectName
+                it[TextStyleTable.name] = dto.name
+                it[TextStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+                it[TextStyleTable.customFields] = dto.customFields.inner
+                it[TextStyleTable.definition] = dto.definition.toDb()
+                it[TextStyleTable.created] = existingItem?.created ?: now
+                it[TextStyleTable.lastUpdated] = now
             }.first()
-        })
+        }
+    }
+
+    override fun upsertBatch(dtos: Collection<TextStyle>) {
+        internalRepository.upsertBatch(dtos) { dto ->
+            val existingItem =
+                internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
+                    ?.let { internalRepository.toModel(it) }
+
+            val now = Clock.System.now()
+
+            if (existingItem == null) {
+                statusTrackingRepository.active(dto.id, ResourceType.TextStyle)
+            }
+
+            this[TextStyleTable.id] = dto.id
+            this[TextStyleTable.projectName] = internalRepository.projectName
+            this[TextStyleTable.name] = dto.name
+            this[TextStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+            this[TextStyleTable.customFields] = dto.customFields.inner
+            this[TextStyleTable.definition] = dto.definition.toDb()
+            this[TextStyleTable.created] = existingItem?.created ?: now
+            this[TextStyleTable.lastUpdated] = now
+        }
     }
 }

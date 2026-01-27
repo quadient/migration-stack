@@ -8,8 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.VariableStructureTable.languageVariable
-import com.quadient.migration.persistence.table.VariableStructureTable.structure
+import com.quadient.migration.persistence.table.VariableStructureTable
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -38,8 +37,8 @@ class VariableStructureRepository(internalRepository: VariableStructureInternalR
         }
     }
 
-    override fun upsert(dto: VariableStructure): VariableStructure {
-        return toDto(internalRepository.upsert {
+    override fun upsert(dto: VariableStructure) {
+        internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
@@ -49,16 +48,36 @@ class VariableStructureRepository(internalRepository: VariableStructureInternalR
             internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
-                it[id] = dto.id
-                it[projectName] = internalRepository.projectName
-                it[name] = dto.name
-                it[originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-                it[customFields] = dto.customFields.inner
-                it[created] = existingItem?.created ?: now
-                it[lastUpdated] = now
-                it[structure] = dto.structure
-                it[languageVariable] = dto.languageVariable?.id
+                it[VariableStructureTable.id] = dto.id
+                it[VariableStructureTable.projectName] = internalRepository.projectName
+                it[VariableStructureTable.name] = dto.name
+                it[VariableStructureTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+                it[VariableStructureTable.customFields] = dto.customFields.inner
+                it[VariableStructureTable.created] = existingItem?.created ?: now
+                it[VariableStructureTable.lastUpdated] = now
+                it[VariableStructureTable.structure] = dto.structure
+                it[VariableStructureTable.languageVariable] = dto.languageVariable?.id
             }.first()
-        })
+        }
+    }
+
+    override fun upsertBatch(dtos: Collection<VariableStructure>) {
+        internalRepository.upsertBatch(dtos) { dto ->
+            val existingItem =
+                internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
+                    ?.let { internalRepository.toModel(it) }
+
+            val now = Clock.System.now()
+
+            this[VariableStructureTable.id] = dto.id
+            this[VariableStructureTable.projectName] = internalRepository.projectName
+            this[VariableStructureTable.name] = dto.name
+            this[VariableStructureTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+            this[VariableStructureTable.customFields] = dto.customFields.inner
+            this[VariableStructureTable.created] = existingItem?.created ?: now
+            this[VariableStructureTable.lastUpdated] = now
+            this[VariableStructureTable.structure] = dto.structure
+            this[VariableStructureTable.languageVariable] = dto.languageVariable?.id
+        }
     }
 }

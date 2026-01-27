@@ -7,13 +7,7 @@ import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.ImageTable.alternateText
-import com.quadient.migration.persistence.table.ImageTable.imageType
-import com.quadient.migration.persistence.table.ImageTable.metadata
-import com.quadient.migration.persistence.table.ImageTable.options
-import com.quadient.migration.persistence.table.ImageTable.skip
-import com.quadient.migration.persistence.table.ImageTable.sourcePath
-import com.quadient.migration.persistence.table.ImageTable.targetFolder
+import com.quadient.migration.persistence.table.ImageTable
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.tools.concat
@@ -49,8 +43,8 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
         }
     }
 
-    override fun upsert(dto: Image): Image {
-        return toDto(internalRepository.upsert {
+    override fun upsert(dto: Image) {
+        internalRepository.upsert {
             val existingItem =
                 internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
                     ?.let { internalRepository.toModel(it) }
@@ -64,21 +58,50 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
             internalRepository.table.upsertReturning(
                 internalRepository.table.id, internalRepository.table.projectName
             ) {
-                it[id] = dto.id
-                it[projectName] = internalRepository.projectName
-                it[name] = dto.name
-                it[originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-                it[customFields] = dto.customFields.inner
-                it[created] = existingItem?.created ?: now
-                it[lastUpdated] = now
-                it[sourcePath] = dto.sourcePath
-                it[options] = dto.options
-                it[imageType] = dto.imageType?.toString() ?: ImageType.Unknown.toString()
-                it[targetFolder] = dto.targetFolder
-                it[metadata] = dto.metadata
-                it[skip] = dto.skip
-                it[alternateText] = dto.alternateText
+                it[ImageTable.id] = dto.id
+                it[ImageTable.projectName] = internalRepository.projectName
+                it[ImageTable.name] = dto.name
+                it[ImageTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+                it[ImageTable.customFields] = dto.customFields.inner
+                it[ImageTable.created] = existingItem?.created ?: now
+                it[ImageTable.lastUpdated] = now
+                it[ImageTable.sourcePath] = dto.sourcePath
+                it[ImageTable.options] = dto.options
+                it[ImageTable.imageType] = dto.imageType?.toString() ?: ImageType.Unknown.toString()
+                it[ImageTable.targetFolder] = dto.targetFolder
+                it[ImageTable.metadata] = dto.metadata
+                it[ImageTable.skip] = dto.skip
+                it[ImageTable.alternateText] = dto.alternateText
             }.first()
-        })
+        }
+    }
+
+    override fun upsertBatch(dtos: Collection<Image>) {
+        internalRepository.upsertBatch(dtos) { dto ->
+            val existingItem =
+                internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
+                    ?.let { internalRepository.toModel(it) }
+
+            val now = Clock.System.now()
+
+            if (existingItem == null) {
+                statusTrackingRepository.active(dto.id, ResourceType.Image)
+            }
+
+            this[ImageTable.id] = dto.id
+            this[ImageTable.projectName] = internalRepository.projectName
+            this[ImageTable.name] = dto.name
+            this[ImageTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+            this[ImageTable.customFields] = dto.customFields.inner
+            this[ImageTable.created] = existingItem?.created ?: now
+            this[ImageTable.lastUpdated] = now
+            this[ImageTable.sourcePath] = dto.sourcePath
+            this[ImageTable.options] = dto.options
+            this[ImageTable.imageType] = dto.imageType?.toString() ?: ImageType.Unknown.toString()
+            this[ImageTable.targetFolder] = dto.targetFolder
+            this[ImageTable.metadata] = dto.metadata
+            this[ImageTable.skip] = dto.skip
+            this[ImageTable.alternateText] = dto.alternateText
+        }
     }
 }

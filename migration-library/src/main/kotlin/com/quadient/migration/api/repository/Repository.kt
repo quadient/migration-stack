@@ -41,5 +41,7 @@ abstract class Repository<T : MigrationObject, K : MigrationObjectModel>(
 
     abstract fun findUsages(id: String): List<MigrationObject>
 
-    abstract fun upsert(dto: T): T
+    abstract fun upsert(dto: T)
+
+    abstract fun upsertBatch(dtos: Collection<T>)
 }
