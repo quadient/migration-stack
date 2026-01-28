@@ -1,6 +1,4 @@
-$parentPath = Split-Path -Parent $PSScriptRoot
-
-$postgreDataPath = Join-Path $parentPath ".pgdata"
+$postgreDataPath = "/var/lib/docker-postgres/migration-stack"
 
 if ($args[0] -eq "stop") {
     docker stop migration-postgre *> $null
