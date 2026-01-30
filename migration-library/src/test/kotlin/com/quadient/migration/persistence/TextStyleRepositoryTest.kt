@@ -79,4 +79,63 @@ class TextStyleRepositoryTest {
         result?.statusEvents?.shouldBeOfSize(1)
         assertInstanceOf(Active::class.java, result?.statusEvents?.last())
     }
+
+    @Test
+    fun `upsertBatch roundtrip`() {
+        // given
+        val style1 = TextStyleBuilder("style1")
+            .name("Text Style 1")
+            .customFields(mutableMapOf("field1" to "value1"))
+            .originLocations(listOf("origin1"))
+            .definition {
+                foregroundColor("#FF0000")
+                size(12.0.millimeters())
+                bold(true)
+                italic(false)
+                fontFamily("Arial")
+            }
+            .build()
+
+        val style2 = TextStyleBuilder("style2")
+            .name("Text Style 2")
+            .customFields(mutableMapOf("field2" to "value2"))
+            .originLocations(listOf("origin2"))
+            .definition {
+                foregroundColor("#0000FF")
+                size(14.0.millimeters())
+                bold(false)
+                italic(true)
+                fontFamily("Times New Roman")
+                underline(true)
+            }
+            .build()
+
+        // when
+        repo.upsertBatch(listOf(style1, style2))
+
+        // then
+        val result = repo.listAll()
+        result.shouldBeOfSize(2)
+
+        val resultStyle1 = result.first { it.id == "style1" }
+        val resultStyle2 = result.first { it.id == "style2" }
+
+        resultStyle1.shouldBeEqualTo(style1)
+        resultStyle2.shouldBeEqualTo(style2)
+
+        // Update the already existing styles and assert upsert again
+        resultStyle1.name = "Updated Style 1"
+        resultStyle2.name = "Updated Style 2"
+
+        repo.upsertBatch(listOf(resultStyle1, resultStyle2))
+
+        val updatedResult = repo.listAll()
+        updatedResult.shouldBeOfSize(2)
+
+        val updatedStyle1 = updatedResult.first { it.id == "style1" }
+        val updatedStyle2 = updatedResult.first { it.id == "style2" }
+
+        updatedStyle1.name.shouldBeEqualTo("Updated Style 1")
+        updatedStyle2.name.shouldBeEqualTo("Updated Style 2")
+    }
 }

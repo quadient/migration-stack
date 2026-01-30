@@ -12,7 +12,9 @@ abstract class Repository<T : MigrationObject, K : MigrationObjectModel>(
 ) {
     abstract fun toDto(model: K): T
 
+    fun count(): Long = internalRepository.count()
     fun listAll(): List<T> = internalRepository.listAllModel().map(::toDto)
+    fun listAllBatched(limit: Int, offset: Long): List<T> = internalRepository.listAllModelBatched(limit, offset).map(::toDto)
     fun find(id: String): T? = internalRepository.findModel(id)?.let(::toDto)
     fun findByName(name: String): T? = internalRepository.findModelByName(name)?.let(::toDto)
 

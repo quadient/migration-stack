@@ -5,14 +5,8 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Tab
 import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
-import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.LineSpacing
@@ -85,5 +79,61 @@ class ParagraphStyleRepositoryTest {
 
         result?.statusEvents?.shouldBeOfSize(1)
         assertInstanceOf(Active::class.java, result?.statusEvents?.last())
+    }
+
+    @Test
+    fun `upsertBatch roundtrip`() {
+        // given
+        val style1 = ParagraphStyleBuilder("style1")
+            .name("Paragraph Style 1")
+            .customFields(mutableMapOf("field1" to "value1"))
+            .originLocations(listOf("origin1"))
+            .definition {
+                defaultTabSize(10.0.millimeters())
+                leftIndent(5.0.millimeters())
+                alignment(Alignment.JustifyLeft)
+                lineSpacing(LineSpacing.ExactFromPrevious(12.millimeters()))
+            }
+            .build()
+
+        val style2 = ParagraphStyleBuilder("style2")
+            .name("Paragraph Style 2")
+            .customFields(mutableMapOf("field2" to "value2"))
+            .originLocations(listOf("origin2"))
+            .definition {
+                defaultTabSize(15.0.millimeters())
+                rightIndent(8.0.millimeters())
+                alignment(Alignment.JustifyRight)
+                keepWithNextParagraph(true)
+            }
+            .build()
+
+        // when
+        repo.upsertBatch(listOf(style1, style2))
+
+        // then
+        val result = repo.listAll()
+        result.shouldBeOfSize(2)
+
+        val resultStyle1 = result.first { it.id == "style1" }
+        val resultStyle2 = result.first { it.id == "style2" }
+
+        resultStyle1.shouldBeEqualTo(style1)
+        resultStyle2.shouldBeEqualTo(style2)
+
+        // Update the already existing styles and assert upsert again
+        resultStyle1.name = "Updated Style 1"
+        resultStyle2.name = "Updated Style 2"
+
+        repo.upsertBatch(listOf(resultStyle1, resultStyle2))
+
+        val updatedResult = repo.listAll()
+        updatedResult.shouldBeOfSize(2)
+
+        val updatedStyle1 = updatedResult.first { it.id == "style1" }
+        val updatedStyle2 = updatedResult.first { it.id == "style2" }
+
+        updatedStyle1.name.shouldBeEqualTo("Updated Style 1")
+        updatedStyle2.name.shouldBeEqualTo("Updated Style 2")
     }
 }

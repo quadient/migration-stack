@@ -69,4 +69,52 @@ class VariableRepositoryTest {
         result.shouldBeOfSize(1)
         result.first().id.shouldBeEqualTo("parablock")
     }
+
+    @Test
+    fun `upsertBatch roundtrip`() {
+        // given
+        val var1 = VariableBuilder("var1")
+            .name("Variable 1")
+            .customFields(mutableMapOf("field1" to "value1"))
+            .originLocations(listOf("origin1"))
+            .dataType(DataType.String)
+            .defaultValue("default1")
+            .build()
+
+        val var2 = VariableBuilder("var2")
+            .name("Variable 2")
+            .customFields(mutableMapOf("field2" to "value2"))
+            .originLocations(listOf("origin2"))
+            .dataType(DataType.Currency)
+            .defaultValue("default2")
+            .build()
+
+        // when
+        variableRepo.upsertBatch(listOf(var1, var2))
+
+        // then
+        val result = variableRepo.listAll()
+        result.shouldBeOfSize(2)
+
+        val resultVar1 = result.first { it.id == "var1" }
+        val resultVar2 = result.first { it.id == "var2" }
+
+        resultVar1.shouldBeEqualTo(var1)
+        resultVar2.shouldBeEqualTo(var2)
+
+        // Update the already existing variables and assert upsert again
+        resultVar1.name = "Updated Variable 1"
+        resultVar2.name = "Updated Variable 2"
+
+        variableRepo.upsertBatch(listOf(resultVar1, resultVar2))
+
+        val updatedResult = variableRepo.listAll()
+        updatedResult.shouldBeOfSize(2)
+
+        val updatedVar1 = updatedResult.first { it.id == "var1" }
+        val updatedVar2 = updatedResult.first { it.id == "var2" }
+
+        updatedVar1.name.shouldBeEqualTo("Updated Variable 1")
+        updatedVar2.name.shouldBeEqualTo("Updated Variable 2")
+    }
 }

@@ -65,6 +65,73 @@ class DocumentObjectRepositoryTest {
     }
 
     @Test
+    fun `upsertBatch roundtrip`() {
+        // given
+        val block1 = DocumentObjectBuilder("block1", DocumentObjectType.Block)
+            .internal(true)
+            .baseTemplate("baseTemplate1")
+            .customFields(mutableMapOf("field1" to "value1"))
+            .originLocations(listOf("origin1"))
+            .content(listOf(Paragraph("content1")))
+            .internal(false)
+            .targetFolder("folder1")
+            .displayRuleRef("rule1")
+            .variableStructureRef("varref1")
+            .metadata("meta1") { string("data1") }
+            .subject("sub1")
+            .area { interactiveFlowName("flow1") }
+            .build()
+
+        val block2 = DocumentObjectBuilder("block2", DocumentObjectType.Block)
+            .internal(false)
+            .baseTemplate("baseTemplate2")
+            .customFields(mutableMapOf("field2" to "value2"))
+            .originLocations(listOf("origin2"))
+            .content(listOf(Paragraph("content2")))
+            .internal(true)
+            .targetFolder("folder2")
+            .displayRuleRef("rule2")
+            .variableStructureRef("varref2")
+            .metadata("meta2") { string("data2") }
+            .subject("sub2")
+            .area { interactiveFlowName("flow1") }
+            .build()
+
+        // when
+        repo.upsertBatch(listOf(block1, block2))
+
+        // then
+        val result = repo.listAll()
+        result.shouldBeOfSize(2)
+
+        val resultBlock1 = result.first { it.id == "block1" }
+        val resultBlock2 = result.first { it.id == "block2" }
+
+        block1.lastUpdated = resultBlock1.lastUpdated
+        block1.created = resultBlock1.created
+        block2.lastUpdated = resultBlock2.lastUpdated
+        block2.created = resultBlock2.created
+
+        resultBlock1.shouldBeEqualTo(block1)
+        resultBlock2.shouldBeEqualTo(block2)
+
+        // Update the already existing blocks and assert upsert again
+        resultBlock1.targetFolder = "updatedFolder1"
+        resultBlock2.targetFolder = "updatedFolder2"
+
+        repo.upsertBatch(listOf(resultBlock1, resultBlock2))
+
+        val updatedResult = repo.listAll()
+        updatedResult.shouldBeOfSize(2)
+
+        val updatedBlock1 = updatedResult.first { it.id == "block1" }
+        val updatedBlock2 = updatedResult.first { it.id == "block2" }
+
+        updatedBlock1.targetFolder.shouldBeEqualTo("updatedFolder1")
+        updatedBlock2.targetFolder.shouldBeEqualTo("updatedFolder2")
+    }
+
+    @Test
     fun `upsert creates a block`() {
         val input = aBlockDto("myblock", listOf())
 
@@ -90,7 +157,7 @@ class DocumentObjectRepositoryTest {
 
     @Test
     fun `upsert tracks active status for objects that changed from internal to external`() {
-        val input = aBlockDto("block", internal = true, content = listOf())
+        val input = aBlockDto("blockarstarst", internal = true, content = listOf())
         repo.upsert(input)
 
         input.internal = false

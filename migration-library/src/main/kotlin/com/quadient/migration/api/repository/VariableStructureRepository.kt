@@ -11,6 +11,9 @@ import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.VariableStructureTable
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
+import kotlinx.datetime.toJavaInstant
+import kotlinx.serialization.json.Json
+import java.sql.Types
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
@@ -62,22 +65,33 @@ class VariableStructureRepository(internalRepository: VariableStructureInternalR
     }
 
     override fun upsertBatch(dtos: Collection<VariableStructure>) {
-        internalRepository.upsertBatch(dtos) { dto ->
-            val existingItem =
-                internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
-                    ?.let { internalRepository.toModel(it) }
+        if (dtos.isEmpty()) return
 
-            val now = Clock.System.now()
+        val columns = listOf(
+            "id", "project_name", "name", "origin_locations", "custom_fields",
+            "created", "last_updated", "structure", "language_variable"
+        )
+        val sql = internalRepository.createSql(columns, dtos.size)
+        val now = Clock.System.now()
 
-            this[VariableStructureTable.id] = dto.id
-            this[VariableStructureTable.projectName] = internalRepository.projectName
-            this[VariableStructureTable.name] = dto.name
-            this[VariableStructureTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-            this[VariableStructureTable.customFields] = dto.customFields.inner
-            this[VariableStructureTable.created] = existingItem?.created ?: now
-            this[VariableStructureTable.lastUpdated] = now
-            this[VariableStructureTable.structure] = dto.structure
-            this[VariableStructureTable.languageVariable] = dto.languageVariable?.id
+        internalRepository.upsertBatch(dtos) {
+            val stmt = it.prepareStatement(sql)
+            var index = 1
+            dtos.forEach { dto ->
+                val existingItem = internalRepository.findModel(dto.id)
+
+                stmt.setString(index++, dto.id)
+                stmt.setString(index++, internalRepository.projectName)
+                stmt.setString(index++, dto.name)
+                stmt.setArray(index++, it.createArrayOf("text", existingItem?.originLocations.concat(dto.originLocations).distinct().toTypedArray()))
+                stmt.setObject(index++, Json.encodeToString(dto.customFields.inner), Types.OTHER)
+                stmt.setTimestamp(index++, java.sql.Timestamp.from((existingItem?.created ?: now).toJavaInstant()))
+                stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
+                stmt.setObject(index++, Json.encodeToString(dto.structure), Types.OTHER)
+                stmt.setString(index++, dto.languageVariable?.id)
+            }
+
+            stmt.executeUpdate()
         }
     }
 }

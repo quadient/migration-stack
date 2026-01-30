@@ -12,6 +12,9 @@ import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
+import kotlinx.datetime.toJavaInstant
+import kotlinx.serialization.json.Json
+import java.sql.Types
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
@@ -67,29 +70,36 @@ class ParagraphStyleRepository(internalRepository: ParagraphStyleInternalReposit
     }
 
     override fun upsertBatch(dtos: Collection<ParagraphStyle>) {
-        internalRepository.upsertBatch(dtos) { dto ->
-            val existingItem =
-                internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
-                    ?.let { internalRepository.toModel(it) }
+        if (dtos.isEmpty()) return
 
-            val now = Clock.System.now()
+        val columns = listOf(
+            "id", "project_name", "name", "origin_locations", "custom_fields",
+            "created", "last_updated", "definition"
+        )
+        val sql = internalRepository.createSql(columns, dtos.size)
+        val now = Clock.System.now()
 
-            if (existingItem == null) {
-                statusTrackingRepository.active(dto.id, ResourceType.ParagraphStyle)
+        internalRepository.upsertBatch(dtos) {
+            val stmt = it.prepareStatement(sql)
+            var index = 1
+            dtos.forEach { dto ->
+                val existingItem = internalRepository.findModel(dto.id)
+
+                if (existingItem == null) {
+                    statusTrackingRepository.active(dto.id, ResourceType.ParagraphStyle)
+                }
+
+                stmt.setString(index++, dto.id)
+                stmt.setString(index++, internalRepository.projectName)
+                stmt.setString(index++, dto.name)
+                stmt.setArray(index++, it.createArrayOf("text", existingItem?.originLocations.concat(dto.originLocations).distinct().toTypedArray()))
+                stmt.setObject(index++, Json.encodeToString(dto.customFields.inner), Types.OTHER)
+                stmt.setTimestamp(index++, java.sql.Timestamp.from((existingItem?.created ?: now).toJavaInstant()))
+                stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
+                stmt.setObject(index++, Json.encodeToString(dto.definition.toDb()), Types.OTHER)
             }
 
-            internalRepository.table.upsertReturning(
-                internalRepository.table.id, internalRepository.table.projectName
-            ) {
-                it[ParagraphStyleTable.id] = dto.id
-                it[ParagraphStyleTable.projectName] = internalRepository.projectName
-                it[ParagraphStyleTable.name] = dto.name
-                it[ParagraphStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-                it[ParagraphStyleTable.customFields] = dto.customFields.inner
-                it[ParagraphStyleTable.definition] = dto.definition.toDb()
-                it[ParagraphStyleTable.created] = existingItem?.created ?: now
-                it[ParagraphStyleTable.lastUpdated] = now
-            }.first()
+            stmt.executeUpdate()
         }
     }
 }

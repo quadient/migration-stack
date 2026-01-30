@@ -26,6 +26,12 @@ abstract class InternalRepository<T : MigrationObjectModel>(
 
     abstract fun toModel(row: ResultRow): T
 
+    fun count(): Long {
+        return transaction {
+            table.selectAll().where(filter()).count()
+        }
+    }
+
     fun upsert(block: JdbcTransaction.() -> ResultRow): T {
         return transaction {
             val result = toModel(block())
@@ -34,17 +40,45 @@ abstract class InternalRepository<T : MigrationObjectModel>(
         }
     }
 
-    fun <D: MigrationObject> upsertBatch(dto: Collection<D>, block: BatchUpsertStatement.(D) -> Unit) {
-        val ids = dto.map { it.id }.toSet()
-        return transaction {
-            table.batchUpsert(dto) {
-                block(it)
-            }
+    fun <D: MigrationObject> upsertBatch(dtos: Collection<D>, block: (java.sql.Connection) -> Unit) {
+        transaction {
+            block(connection.connection as java.sql.Connection)
+        }
+        cacheObjects(dtos)
+    }
 
+    fun createSql(columns: List<String>, dtoCount: Int): String {
+        val placeholders = (1..columns.size).joinToString(",", prefix = "(", postfix = ")") { "?" }
+        val values = (1..dtoCount).joinToString(",") { placeholders }
+        val setOnConflict = columns.filter { it != "created" }.joinToString(", ") { "$it = EXCLUDED.$it" }
+
+        val sql = """
+        INSERT INTO ${table.tableName} (${columns.joinToString(", ")})
+        VALUES $values
+        ON CONFLICT (id, project_name) DO UPDATE SET $setOnConflict
+        """.trimIndent()
+
+        return sql
+    }
+
+    fun <D: MigrationObject> cacheObjects(dto: Collection<D>) {
+        val ids = dto.map { it.id }.toSet()
+        transaction {
             for (obj in table.selectAll().where(table.projectName eq projectName and (table.id inList ids))
                 .map(::toModel)) {
                 cache[obj.id] = obj
             }
+        }
+    }
+
+    fun listAllModelBatched(limit: Int, offset: Long): List<T> {
+        return transaction {
+            val result = table.selectAll().orderBy(table.id).limit(limit).offset(offset).where(filter()).map {
+                val result = toModel(it)
+                cache[result.id] = result
+                result
+            }
+            result
         }
     }
 
