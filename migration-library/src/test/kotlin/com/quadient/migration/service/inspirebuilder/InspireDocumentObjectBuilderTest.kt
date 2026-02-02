@@ -33,6 +33,7 @@ class InspireDocumentObjectBuilderTest {
     private val variableStructureRepository = mockk<VariableStructureInternalRepository>()
     private val displayRuleRepository = mockk<DisplayRuleInternalRepository>()
     private val imageRepository = mockk<ImageInternalRepository>()
+    private val fileRepository = mockk<FileInternalRepository>()
     private val ipsService = mockk<IpsService>()
 
     private val xmlMapper = XmlMapper().also { it.findAndRegisterModules() }
@@ -45,6 +46,7 @@ class InspireDocumentObjectBuilderTest {
         variableStructureRepository,
         displayRuleRepository,
         imageRepository,
+        fileRepository,
         aProjectConfig(output = InspireOutput.Designer),
         ipsService,
     )

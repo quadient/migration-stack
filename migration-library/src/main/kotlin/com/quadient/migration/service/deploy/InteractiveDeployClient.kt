@@ -10,6 +10,7 @@ import com.quadient.migration.data.ParagraphStyleDefinitionModel
 import com.quadient.migration.data.TextStyleDefinitionModel
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
+import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
@@ -29,6 +30,7 @@ import kotlin.uuid.Uuid
 class InteractiveDeployClient(
     documentObjectRepository: DocumentObjectInternalRepository,
     imageRepository: ImageInternalRepository,
+    fileRepository: FileInternalRepository,
     statusTrackingRepository: StatusTrackingRepository,
     textStyleRepository: TextStyleInternalRepository,
     paragraphStyleRepository: ParagraphStyleInternalRepository,
@@ -39,6 +41,7 @@ class InteractiveDeployClient(
 ) : DeployClient(
     documentObjectRepository,
     imageRepository,
+    fileRepository,
     statusTrackingRepository,
     textStyleRepository,
     paragraphStyleRepository,
@@ -108,7 +111,7 @@ class InteractiveDeployClient(
 
         val orderedDocumentObject = deployOrder(documentObjects)
 
-        deploymentResult += deployImages(orderedDocumentObject, deploymentId, deploymentTimestamp)
+        deploymentResult += deployImagesAndFiles(orderedDocumentObject, deploymentId, deploymentTimestamp)
         val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
 
         for (it in orderedDocumentObject) {

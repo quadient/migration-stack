@@ -33,6 +33,14 @@ sealed class MappingItem {
         var alternateText: String? = null,
     ) : MappingItem()
 
+    data class File(
+        override var name: String?,
+        var targetFolder: String?,
+        var sourcePath: String?,
+        var fileType: FileType?,
+        var skip: SkipOptions? = null,
+    ) : MappingItem()
+
     data class ParagraphStyle(override var name: String?, var definition: Definition?) : MappingItem() {
         sealed interface Definition
         data class Ref(val targetId: String) : Definition
@@ -102,6 +110,16 @@ sealed class MappingItem {
                     imageType = this.imageType,
                     skip = this.skip,
                     alternateText = this.alternateText,
+                )
+            }
+
+            is MappingItem.File -> {
+                MappingItemEntity.File(
+                    name = this.name,
+                    targetFolder = this.targetFolder,
+                    sourcePath = this.sourcePath,
+                    fileType = this.fileType,
+                    skip = this.skip,
                 )
             }
 

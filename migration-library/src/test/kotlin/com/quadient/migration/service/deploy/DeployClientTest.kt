@@ -12,6 +12,7 @@ import com.quadient.migration.data.ParagraphStyleModelRef
 import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
+import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
@@ -51,6 +52,7 @@ import kotlin.uuid.Uuid
 class DeployClientTest {
     val documentObjectRepository = mockk<DocumentObjectInternalRepository>()
     val imageRepository = mockk<ImageInternalRepository>()
+    val fileRepository = mockk<FileInternalRepository>()
     val textStyleRepository = mockk<TextStyleInternalRepository>()
     val paragraphStyleRepository = mockk<ParagraphStyleInternalRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
@@ -61,6 +63,7 @@ class DeployClientTest {
     private val subject = DesignerDeployClient(
         documentObjectRepository,
         imageRepository,
+        fileRepository,
         statusTrackingRepository,
         textStyleRepository,
         paragraphStyleRepository,

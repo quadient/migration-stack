@@ -5,6 +5,7 @@ import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.FirstMatchModel
 import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.ImageModelRef
+import com.quadient.migration.data.FileModelRef
 import com.quadient.migration.data.ParagraphModel
 import com.quadient.migration.data.SelectByLanguageModel
 import com.quadient.migration.data.TableModel
@@ -17,6 +18,7 @@ sealed interface DocumentContent {
             is ParagraphModel -> Paragraph.fromModel(model)
             is DocumentObjectModelRef -> DocumentObjectRef.fromModel(model)
             is ImageModelRef -> ImageRef.fromModel(model)
+            is FileModelRef -> FileRef.fromModel(model)
             is AreaModel -> Area.fromModel(model)
             is FirstMatchModel -> FirstMatch.fromModel(model)
             is SelectByLanguageModel -> SelectByLanguage.fromModel(model)
@@ -31,6 +33,7 @@ fun List<DocumentContent>.toDb(): List<DocumentContentEntity> {
             is Paragraph -> it.toDb()
             is DocumentObjectRef -> it.toDb()
             is ImageRef -> it.toDb()
+            is FileRef -> it.toDb()
             is Area -> it.toDb()
             is FirstMatch -> it.toDb()
             is SelectByLanguage -> it.toDb()

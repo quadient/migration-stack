@@ -9,6 +9,8 @@ import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
+import com.quadient.migration.data.FileModel
+import com.quadient.migration.data.FileModelRef
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphStyleModelRef
@@ -18,6 +20,7 @@ import com.quadient.migration.data.VariableModelRef
 import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
+import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.service.Storage
@@ -45,6 +48,7 @@ data class DocObjectWithRef(val obj: DocumentObjectModel, val documentObjectRefs
 sealed class DeployClient(
     protected val documentObjectRepository: DocumentObjectInternalRepository,
     protected val imageRepository: ImageInternalRepository,
+    protected val fileRepository: FileInternalRepository,
     protected val statusTrackingRepository: StatusTrackingRepository,
     protected val textStyleRepository: TextStyleInternalRepository,
     protected val paragraphStyleRepository: ParagraphStyleInternalRepository,
@@ -228,92 +232,153 @@ sealed class DeployClient(
         return deployOrder
     }
 
-    protected fun deployImages(documentObjects: List<DocumentObjectModel>, deploymentId: Uuid, deploymentTimestamp: Instant): DeploymentResult {
+    protected fun deployImagesAndFiles(documentObjects: List<DocumentObjectModel>, deploymentId: Uuid, deploymentTimestamp: Instant): DeploymentResult {
         val deploymentResult = DeploymentResult(deploymentId)
         val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
 
-        val uniqueImageRefs = documentObjects.flatMap {
+        val allRefs = documentObjects.map {
             try {
-                it.getAllDocumentObjectImageRefs()
+                it.getAllDocumentObjectImageAndFileRefs()
             } catch (e: IllegalStateException) {
                 deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
-                emptyList()
+                Pair(emptyList(), emptyList())
             }
-        }.distinct()
+        }
+        
+        val imageRefs = allRefs.flatMap { pair -> pair.first }.distinct()
+        val fileRefs = allRefs.flatMap { pair -> pair.second }.distinct()
 
-        for (imageRef in uniqueImageRefs) {
-            if (!shouldDeployObject(imageRef.id, ResourceType.Image, imageRef.id, deploymentResult)) {
-                logger.info("Skipping deployment of '${imageRef.id}' as it is not marked for deployment.")
-                continue
-            }
+        for (imageRef in imageRefs) {
+            deployImage(imageRef, deploymentResult, tracker)
+        }
 
-            val imageModel = imageRepository.findModel(imageRef.id)
-            if (imageModel == null) {
-                val message = "Image '${imageRef.id}' not found."
-                logger.error(message)
-                tracker.errorImage(imageRef.id, null, message)
-                continue
-            }
-
-            val icmImagePath = documentObjectBuilder.getImagePath(imageModel)
-
-            val invalidMetadata = imageModel.getInvalidMetadataKeys()
-            if (invalidMetadata.isNotEmpty()) {
-                logger.error("Failed to deploy '$icmImagePath' due to invalid metadata.")
-                val keys = invalidMetadata.joinToString(", ", prefix = "[", postfix = "]")
-                val message = "Metadata of image '${imageModel.id}' contains invalid keys: $keys"
-                tracker.errorImage(imageModel.id, icmImagePath, message)
-                continue
-            }
-
-
-            if (imageModel.imageType == ImageType.Unknown) {
-                val message = "Skipping deployment of image '${imageModel.nameOrId()}' due to unknown image type."
-                logger.warn(message)
-                tracker.warningImage(imageModel.id, icmImagePath, message)
-                continue
-            }
-
-            if (imageModel.skip.skipped) {
-                val reason = imageModel.skip.reason?.let { " Reason: $it" } ?: ""
-                val message = "Image '${imageModel.nameOrId()}' is skipped.$reason"
-                logger.warn(message)
-                tracker.warningImage(imageModel.id, icmImagePath, message)
-                continue
-            }
-
-
-            if (imageModel.sourcePath.isNullOrBlank()) {
-                val message = "Skipping deployment of image '${imageModel.nameOrId()}' due to missing source path."
-                logger.warn(message)
-                tracker.warningImage(imageModel.id, icmImagePath, message)
-                continue
-            }
-
-            logger.debug("Starting deployment of image '${imageModel.nameOrId()}'.")
-            val readResult = readStorageSafely(imageModel.sourcePath)
-            if (readResult is ReadResult.Error) {
-                val message = "Error while reading image source data: ${readResult.errorMessage}."
-                logger.error(message)
-                tracker.errorImage(imageModel.id, icmImagePath, message)
-                continue
-            }
-
-            val imageData = (readResult as ReadResult.Success).result
-
-            logger.trace("Loaded image data of size ${imageData.size} from storage.")
-
-            val uploadResult = ipsService.tryUpload(icmImagePath, imageData)
-            if (uploadResult is OperationResult.Failure) {
-                tracker.errorImage(imageModel.id, icmImagePath, uploadResult.message)
-                continue
-            }
-
-            logger.debug("Deployment of image '${imageModel.nameOrId()}' to '${icmImagePath}' is successful.")
-            tracker.deployedImage(imageModel.id, icmImagePath)
+        for (fileRef in fileRefs) {
+            deployFile(fileRef, deploymentResult, tracker)
         }
 
         return deploymentResult
+    }
+
+    private fun deployImage(imageRef: ImageModelRef, deploymentResult: DeploymentResult, tracker: ResultTracker) {
+        if (!shouldDeployObject(imageRef.id, ResourceType.Image, imageRef.id, deploymentResult)) {
+            logger.info("Skipping deployment of '${imageRef.id}' as it is not marked for deployment.")
+            return
+        }
+
+        val imageModel = imageRepository.findModel(imageRef.id)
+        if (imageModel == null) {
+            val message = "Image '${imageRef.id}' not found."
+            logger.error(message)
+            tracker.errorImage(imageRef.id, null, message)
+            return
+        }
+
+        val icmImagePath = documentObjectBuilder.getImagePath(imageModel)
+
+        val invalidMetadata = imageModel.getInvalidMetadataKeys()
+        if (invalidMetadata.isNotEmpty()) {
+            logger.error("Failed to deploy '$icmImagePath' due to invalid metadata.")
+            val keys = invalidMetadata.joinToString(", ", prefix = "[", postfix = "]")
+            val message = "Metadata of image '${imageModel.id}' contains invalid keys: $keys"
+            tracker.errorImage(imageModel.id, icmImagePath, message)
+            return
+        }
+
+        if (imageModel.imageType == ImageType.Unknown) {
+            val message = "Skipping deployment of image '${imageModel.nameOrId()}' due to unknown image type."
+            logger.warn(message)
+            tracker.warningImage(imageModel.id, icmImagePath, message)
+            return
+        }
+
+        if (imageModel.skip.skipped) {
+            val reason = imageModel.skip.reason?.let { " Reason: $it" } ?: ""
+            val message = "Image '${imageModel.nameOrId()}' is skipped.$reason"
+            logger.warn(message)
+            tracker.warningImage(imageModel.id, icmImagePath, message)
+            return
+        }
+
+        if (imageModel.sourcePath.isNullOrBlank()) {
+            val message = "Skipping deployment of image '${imageModel.nameOrId()}' due to missing source path."
+            logger.warn(message)
+            tracker.warningImage(imageModel.id, icmImagePath, message)
+            return
+        }
+
+        logger.debug("Starting deployment of image '${imageModel.nameOrId()}'.")
+        val readResult = readStorageSafely(imageModel.sourcePath)
+        if (readResult is ReadResult.Error) {
+            val message = "Error while reading image source data: ${readResult.errorMessage}."
+            logger.error(message)
+            tracker.errorImage(imageModel.id, icmImagePath, message)
+            return
+        }
+
+        val imageData = (readResult as ReadResult.Success).result
+        logger.trace("Loaded image data of size ${imageData.size} from storage.")
+
+        val uploadResult = ipsService.tryUpload(icmImagePath, imageData)
+        if (uploadResult is OperationResult.Failure) {
+            tracker.errorImage(imageModel.id, icmImagePath, uploadResult.message)
+            return
+        }
+
+        logger.debug("Deployment of image '${imageModel.nameOrId()}' to '${icmImagePath}' is successful.")
+        tracker.deployedImage(imageModel.id, icmImagePath)
+    }
+
+    private fun deployFile(fileRef: FileModelRef, deploymentResult: DeploymentResult, tracker: ResultTracker) {
+        if (!shouldDeployObject(fileRef.id, ResourceType.File, fileRef.id, deploymentResult)) {
+            logger.info("Skipping deployment of file '${fileRef.id}' as it is not marked for deployment.")
+            return
+        }
+
+        val fileModel = fileRepository.findModel(fileRef.id)
+        if (fileModel == null) {
+            val message = "File '${fileRef.id}' not found."
+            logger.error(message)
+            tracker.errorFile(fileRef.id, null, message)
+            return
+        }
+
+        val icmFilePath = documentObjectBuilder.getFilePath(fileModel)
+
+        if (fileModel.skip.skipped) {
+            val reason = fileModel.skip.reason?.let { " Reason: $it" } ?: ""
+            val message = "File '${fileModel.nameOrId()}' is skipped.$reason"
+            logger.warn(message)
+            tracker.warningFile(fileModel.id, icmFilePath, message)
+            return
+        }
+
+        if (fileModel.sourcePath.isNullOrBlank()) {
+            val message = "Skipping deployment of file '${fileModel.nameOrId()}' due to missing source path."
+            logger.warn(message)
+            tracker.warningFile(fileModel.id, icmFilePath, message)
+            return
+        }
+
+        logger.debug("Starting deployment of file '${fileModel.nameOrId()}'.")
+        val readResult = readStorageSafely(fileModel.sourcePath)
+        if (readResult is ReadResult.Error) {
+            val message = "Error while reading file source data: ${readResult.errorMessage}."
+            logger.error(message)
+            tracker.errorFile(fileModel.id, icmFilePath, message)
+            return
+        }
+
+        val fileData = (readResult as ReadResult.Success).result
+        logger.trace("Loaded file data of size ${fileData.size} from storage.")
+
+        val uploadResult = ipsService.tryUpload(icmFilePath, fileData)
+        if (uploadResult is OperationResult.Failure) {
+            tracker.errorFile(fileModel.id, icmFilePath, uploadResult.message)
+            return
+        }
+
+        logger.debug("Deployment of file '${fileModel.nameOrId()}' to '${icmFilePath}' is successful.")
+        tracker.deployedFile(fileModel.id, icmFilePath)
     }
 
     fun progressReport(deployId: Uuid? = null): ProgressReport {
@@ -410,6 +475,26 @@ sealed class DeployClient(
                     img
                 }
 
+                is FileModelRef -> {
+                    val file = fileRepository.findModelOrFail(ref.id)
+                    val nextIcmPath = documentObjectBuilder.getFilePath(file)
+                    val deployKind = file.getDeployKind(nextIcmPath)
+                    val lastStatus = file.getLastStatus(lastDeployment)
+
+                    report.addFile(
+                        id = file.id,
+                        file = file,
+                        deploymentId = lastStatus.deployId,
+                        deployTimestamp = lastStatus.deployTimestamp,
+                        previousIcmPath = lastStatus.icmPath,
+                        nextIcmPath = nextIcmPath,
+                        lastStatus = lastStatus,
+                        deployKind = deployKind,
+                        errorMessage = lastStatus.errorMessage,
+                    )
+                    file
+                }
+
                 is TextStyleModelRef -> null
                 is ParagraphStyleModelRef -> null
                 is DisplayRuleModelRef -> null
@@ -469,6 +554,7 @@ sealed class DeployClient(
             when (ref) {
                 is DisplayRuleModelRef, is TextStyleModelRef, is ParagraphStyleModelRef, is VariableModelRef, is VariableStructureModelRef -> {}
                 is ImageModelRef -> {}
+                is FileModelRef -> {}
                 is DocumentObjectModelRef -> {
                     val model = documentObjectRepository.findModelOrFail(ref.id)
                     if (shouldIncludeDependency(model)) {
@@ -481,23 +567,29 @@ sealed class DeployClient(
         return dependencies
     }
 
-    private fun DocumentObjectModel.getAllDocumentObjectImageRefs(): List<ImageModelRef> {
-        return this.collectRefs().flatMap { ref ->
+    private fun DocumentObjectModel.getAllDocumentObjectImageAndFileRefs(): Pair<List<ImageModelRef>, List<FileModelRef>> {
+        val images = mutableListOf<ImageModelRef>()
+        val files = mutableListOf<FileModelRef>()
+
+        this.collectRefs().forEach { ref ->
             when (ref) {
-                is DisplayRuleModelRef, is TextStyleModelRef, is ParagraphStyleModelRef, is VariableModelRef, is VariableStructureModelRef -> emptyList()
-                is ImageModelRef -> listOf(ref)
+                is DisplayRuleModelRef, is TextStyleModelRef, is ParagraphStyleModelRef, is VariableModelRef, is VariableStructureModelRef -> {}
+                is ImageModelRef -> images.add(ref)
+                is FileModelRef -> files.add(ref)
                 is DocumentObjectModelRef -> {
                     val model = documentObjectRepository.findModel(ref.id)
-                        ?: error("Unable to collect image references because inner document object '${ref.id}' was not found.")
+                        ?: error("Unable to collect image or file references because inner document object '${ref.id}' was not found.")
 
                     if (documentObjectBuilder.shouldIncludeInternalDependency(model)) {
-                        model.getAllDocumentObjectImageRefs()
-                    } else {
-                        emptyList()
+                        val (nestedImages, nestedFiles) = model.getAllDocumentObjectImageAndFileRefs()
+                        images.addAll(nestedImages)
+                        files.addAll(nestedFiles)
                     }
                 }
             }
         }
+
+        return Pair(images, files)
     }
 
     private fun getLastDeployEvent(): LastDeployment? {
@@ -577,6 +669,17 @@ sealed class DeployClient(
         )
     }
 
+    private fun FileModel.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
+        return getLastStatus(
+            id = this.id,
+            lastDeployment = lastDeployment,
+            resourceType = ResourceType.File,
+            output = output,
+            internal = false,
+            isPage = false
+        )
+    }
+
     private fun DocumentObjectModel.getDeployKind(nextIcmPath: String?): DeployKind {
         return getDeployKind(
             this.id,
@@ -590,6 +693,10 @@ sealed class DeployClient(
 
     private fun ImageModel.getDeployKind(nextIcmPath: String?): DeployKind {
         return getDeployKind(this.id, ResourceType.Image, output, false, nextIcmPath)
+    }
+
+    private fun FileModel.getDeployKind(nextIcmPath: String?): DeployKind {
+        return getDeployKind(this.id, ResourceType.File, output, false, nextIcmPath)
     }
 
     private fun getDeployKind(

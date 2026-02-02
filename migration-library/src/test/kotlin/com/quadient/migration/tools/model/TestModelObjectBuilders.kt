@@ -28,6 +28,7 @@ import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
+import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
@@ -35,6 +36,7 @@ import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
 import com.quadient.migration.persistence.table.DisplayRuleTable
 import com.quadient.migration.persistence.table.DocumentObjectTable
+import com.quadient.migration.persistence.table.FileTable
 import com.quadient.migration.persistence.table.ImageTable
 import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.persistence.table.TextStyleTable
@@ -414,3 +416,4 @@ fun aParaStyleInternalRepository() = ParagraphStyleInternalRepository(ParagraphS
 fun aTextStyleInternalRepository() = TextStyleInternalRepository(TextStyleTable, aProjectConfig().name)
 fun aDisplayRuleInternalRepository() = DisplayRuleInternalRepository(DisplayRuleTable, aProjectConfig().name)
 fun aImageInternalRepository() = ImageInternalRepository(ImageTable, aProjectConfig().name)
+fun aFileInternalRepository() = FileInternalRepository(FileTable, aProjectConfig().name)

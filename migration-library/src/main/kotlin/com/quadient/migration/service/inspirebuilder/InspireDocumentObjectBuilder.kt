@@ -11,6 +11,8 @@ import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.HyperlinkModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
+import com.quadient.migration.data.FileModel
+import com.quadient.migration.data.FileModelRef
 import com.quadient.migration.data.ParagraphModel
 import com.quadient.migration.data.ParagraphModel.TextModel
 import com.quadient.migration.data.ParagraphStyleDefinitionModel
@@ -28,6 +30,7 @@ import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
+import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
@@ -41,6 +44,7 @@ import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.FileType
 import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.IcmPath
@@ -96,6 +100,7 @@ abstract class InspireDocumentObjectBuilder(
     protected val variableStructureRepository: VariableStructureInternalRepository,
     protected val displayRuleRepository: DisplayRuleInternalRepository,
     protected val imageRepository: ImageInternalRepository,
+    protected val fileRepository: FileInternalRepository,
     protected val projectConfig: ProjectConfig,
     protected val ipsService: IpsService,
 ) {
@@ -112,6 +117,12 @@ abstract class InspireDocumentObjectBuilder(
     ): String
 
     abstract fun getImagePath(image: ImageModel): String
+
+    abstract fun getFilePath(
+        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, fileType: FileType
+    ): String
+
+    abstract fun getFilePath(file: FileModel): String
 
     abstract fun getStyleDefinitionPath(extension: String = "wfd"): String
 
@@ -266,7 +277,7 @@ abstract class InspireDocumentObjectBuilder(
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
             when (val contentPart = mutableContent[idx]) {
-                is TableModel, is ParagraphModel, is ImageModelRef -> {
+                is TableModel, is ParagraphModel, is ImageModelRef, is FileModelRef -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
                     flowModels.add(Composite(flowParts))
@@ -597,6 +608,54 @@ abstract class InspireDocumentObjectBuilder(
 
     protected abstract fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String)
 
+    sealed interface FilePlaceholderResult {
+        object RenderAsNormal : FilePlaceholderResult
+        object Skip : FilePlaceholderResult
+        data class Placeholder(val value: String) : FilePlaceholderResult
+    }
+
+    // TODO: Implement file placeholder logic similar to images
+    protected fun getFilePlaceholder(fileModel: FileModel): FilePlaceholderResult {
+        if (fileModel.sourcePath.isNullOrBlank() && !fileModel.skip.skipped) {
+            throw IllegalStateException(
+                "File '${fileModel.nameOrId()}' has missing source path and is not set to be skipped."
+            )
+        }
+
+        if (fileModel.skip.skipped && fileModel.skip.placeholder != null) {
+            return FilePlaceholderResult.Placeholder(fileModel.skip.placeholder)
+        } else if (fileModel.skip.skipped) {
+            return FilePlaceholderResult.Skip
+        }
+
+        return FilePlaceholderResult.RenderAsNormal
+    }
+
+    // TODO: Implement file handling logic
+    protected fun getOrBuildFile(layout: Layout, fileModel: FileModel): Any {
+        // TODO: Implement actual file building logic
+        // This is a placeholder for future implementation
+        throw NotImplementedError("File building not yet implemented. File ID: ${fileModel.id}")
+    }
+
+    // TODO: Implement file appending logic
+    private fun buildAndAppendFile(layout: Layout, text: Text, ref: FileModelRef) {
+        val fileModel = fileRepository.findModelOrFail(ref.id)
+
+        when (val filePlaceholder = getFilePlaceholder(fileModel)) {
+            is FilePlaceholderResult.Placeholder -> {
+                text.appendText(filePlaceholder.value)
+                return
+            }
+            is FilePlaceholderResult.RenderAsNormal -> {}
+            is FilePlaceholderResult.Skip -> return
+        }
+
+        // TODO: Implement actual file appending logic
+        // text.appendFile(getOrBuildFile(layout, fileModel))
+        throw NotImplementedError("File appending not yet implemented. File ID: ${fileModel.id}")
+    }
+
     private fun buildCompositeFlow(
         layout: Layout,
         variableStructure: VariableStructureModel,
@@ -614,6 +673,7 @@ abstract class InspireDocumentObjectBuilder(
                     .appendTable(buildTable(layout, variableStructure, it, languages))
 
                 is ImageModelRef -> buildAndAppendImage(layout, flow.addParagraph().addText(), it)
+                is FileModelRef -> buildAndAppendFile(layout, flow.addParagraph().addText(), it)
                 else -> error("Content part type ${it::class.simpleName} is not allowed in composite flow.")
             }
         }
@@ -674,7 +734,7 @@ abstract class InspireDocumentObjectBuilder(
 
         do {
             val contentPart = content[index]
-            if (contentPart is TableModel || contentPart is ParagraphModel || contentPart is ImageModelRef) {
+            if (contentPart is TableModel || contentPart is ParagraphModel || contentPart is ImageModelRef || contentPart is FileModelRef) {
                 flowParts.add(contentPart)
                 index++
             } else {
@@ -732,6 +792,7 @@ abstract class InspireDocumentObjectBuilder(
                     }
 
                     is ImageModelRef -> buildAndAppendImage(layout, currentText, it)
+                    is FileModelRef -> buildAndAppendFile(layout, currentText, it)
                     is HyperlinkModel -> currentText = buildAndAppendHyperlink(layout, paragraph, baseTextStyleModel, it)
                     is FirstMatchModel -> currentText.appendFlow(
                         buildFirstMatch(layout, variableStructure, it, true, null, languages)

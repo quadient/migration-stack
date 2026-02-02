@@ -5,6 +5,7 @@ import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.FirstMatchModel
 import com.quadient.migration.data.HyperlinkModel
 import com.quadient.migration.data.ImageModelRef
+import com.quadient.migration.data.FileModelRef
 import com.quadient.migration.data.ParagraphStyleDefOrRefModel
 import com.quadient.migration.data.ParagraphStyleDefinitionModel
 import com.quadient.migration.data.ParagraphStyleModelRef
@@ -19,8 +20,8 @@ import com.quadient.migration.data.VariableModelRef
 import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.migrationmodel.DisplayRuleEntityRef
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
-import com.quadient.migration.persistence.migrationmodel.HyperlinkEntity
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
+import com.quadient.migration.persistence.migrationmodel.FileEntityRef
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleEntityRef
 import com.quadient.migration.persistence.migrationmodel.StringEntity
 import com.quadient.migration.persistence.migrationmodel.TextStyleEntityRef
@@ -38,6 +39,7 @@ sealed interface Ref {
             is ParagraphStyleModelRef -> ParagraphStyleRef.fromModel(model)
             is DisplayRuleModelRef -> DisplayRuleRef.fromModel(model)
             is ImageModelRef -> ImageRef.fromModel(model)
+            is FileModelRef -> FileRef.fromModel(model)
             is VariableStructureModelRef -> VariableStructureRef.fromModel(model)
         }
     }
@@ -48,6 +50,7 @@ sealed interface TextContent {
         fun fromModel(model: TextContentModel) = when (model) {
             is DocumentObjectModelRef -> DocumentObjectRef.fromModel(model)
             is ImageModelRef -> ImageRef.fromModel(model)
+            is FileModelRef -> FileRef.fromModel(model)
             is StringModel -> StringValue.fromModel(model)
             is TableModel -> Table.fromModel(model)
             is VariableModelRef -> VariableRef.fromModel(model)
@@ -152,6 +155,15 @@ data class ImageRef(override val id: String) : Ref, DocumentContent, TextContent
 
     fun toModel() = ImageModelRef(id)
     fun toDb() = ImageEntityRef(id)
+}
+
+data class FileRef(override val id: String) : Ref, DocumentContent, TextContent {
+    companion object {
+        fun fromModel(model: FileModelRef) = FileRef(model.id)
+    }
+
+    fun toModel() = FileModelRef(id)
+    fun toDb() = FileEntityRef(id)
 }
 
 data class VariableStructureRef(override val id: String) : Ref {

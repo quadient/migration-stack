@@ -7,10 +7,12 @@ import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.data.AreaModel
 import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModel
+import com.quadient.migration.data.FileModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
+import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
@@ -20,6 +22,7 @@ import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.FileType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
@@ -40,6 +43,7 @@ class InteractiveDocumentObjectBuilder(
     variableStructureRepository: VariableStructureInternalRepository,
     displayRuleRepository: DisplayRuleInternalRepository,
     imageRepository: ImageInternalRepository,
+    fileRepository: FileInternalRepository,
     projectConfig: ProjectConfig,
     ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(
@@ -50,6 +54,7 @@ class InteractiveDocumentObjectBuilder(
     variableStructureRepository,
     displayRuleRepository,
     imageRepository,
+    fileRepository,
     projectConfig,
     ipsService,
 ) {
@@ -103,6 +108,27 @@ class InteractiveDocumentObjectBuilder(
 
     override fun getImagePath(image: ImageModel) =
         getImagePath(image.id, image.imageType, image.name, image.targetFolder, image.sourcePath)
+
+    override fun getFilePath(
+        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, fileType: FileType
+    ): String {
+        val fileName = name ?: id
+
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName).toString()
+        }
+
+        val fileConfigPath = when (fileType) {
+            FileType.Document -> projectConfig.paths.documents ?: IcmPath.from("Resources/Documents")
+            FileType.Attachment -> projectConfig.paths.attachments ?: IcmPath.from("Resources/Attachments")
+        }
+
+        return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant).join(fileConfigPath)
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName).toString()
+    }
+
+    override fun getFilePath(file: FileModel): String =
+        getFilePath(file.id, file.name, file.targetFolder, file.sourcePath, file.fileType)
 
     override fun getStyleDefinitionPath(extension: String): String {
         val styleDefConfigPath = projectConfig.styleDefinitionPath

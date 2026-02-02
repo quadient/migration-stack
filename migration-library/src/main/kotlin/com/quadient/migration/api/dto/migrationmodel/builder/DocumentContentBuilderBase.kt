@@ -4,6 +4,7 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.FileRef
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
 
 /**
@@ -74,6 +75,14 @@ interface DocumentContentBuilderBase<T> {
         this.content.add(ImageRef(imageId))
     } as T
 
+    /**
+     * Adds a file reference to the content.
+     * @param fileId The ID of the file to reference.
+     * @return This builder instance for method chaining.
+     */
+    fun fileRef(fileId: String): T = apply {
+        this.content.add(FileRef(fileId))
+    } as T
 
     /**
      * Adds a document object reference to the content.

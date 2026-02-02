@@ -13,6 +13,7 @@ import org.jetbrains.exposed.v1.dao.CompositeEntity
 import org.jetbrains.exposed.v1.dao.CompositeEntityClass
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject as DocumentObjectDto
 import com.quadient.migration.api.dto.migrationmodel.Image as ImageDto
+import com.quadient.migration.api.dto.migrationmodel.File as FileDto
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle as ParagraphStyleDto
 import com.quadient.migration.api.dto.migrationmodel.TextStyle as TextStyleDto
 import com.quadient.migration.api.dto.migrationmodel.Variable as VariableDto
@@ -101,6 +102,25 @@ sealed class MappingItemEntity {
                 imageType = imageType,
                 skip = skip ?: SkipOptions(false, null, null),
                 alternateText = alternateText,
+            )
+        }
+    }
+
+    @Serializable
+    data class File(
+        override val name: String?,
+        val targetFolder: String?,
+        val sourcePath: String?,
+        val fileType: FileType?,
+        var skip: SkipOptions? = null,
+    ) : MappingItemEntity() {
+        fun apply(item: FileDto): FileDto {
+            return item.copy(
+                name = name,
+                targetFolder = targetFolder,
+                sourcePath = sourcePath,
+                fileType = fileType ?: item.fileType,
+                skip = skip ?: SkipOptions(false, null, null),
             )
         }
     }
@@ -305,6 +325,16 @@ sealed class MappingItemEntity {
                     imageType = this.imageType,
                     skip = this.skip,
                     alternateText = this.alternateText,
+                )
+            }
+
+            is File -> {
+                MappingItem.File(
+                    name = this.name,
+                    targetFolder = this.targetFolder,
+                    sourcePath = this.sourcePath,
+                    fileType = this.fileType,
+                    skip = this.skip,
                 )
             }
 

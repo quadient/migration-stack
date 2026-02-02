@@ -4,8 +4,10 @@ package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.dto.migrationmodel.File
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.ImageModel
+import com.quadient.migration.data.FileModel
 import kotlinx.datetime.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -133,6 +135,27 @@ data class ReportedImage(
     errorMessage
 )
 
+data class ReportedFile(
+    override val id: String,
+    override val previousIcmPath: String? = null,
+    override val nextIcmPath: String? = null,
+    override val deployKind: DeployKind,
+    override val lastStatus: LastStatus,
+    override val deploymentId: Uuid?,
+    override val deployTimestamp: Instant?,
+    override val errorMessage: String?,
+    val file: File,
+) : ProgressReportItem(
+    id,
+    previousIcmPath,
+    nextIcmPath,
+    deployKind,
+    lastStatus,
+    deploymentId,
+    deployTimestamp,
+    errorMessage
+)
+
 data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, ResourceType>, ProgressReportItem>) {
     fun addDocumentObject(
         id: String,
@@ -181,6 +204,32 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
                 deploymentId = deploymentId,
                 deployTimestamp = deployTimestamp,
                 image = Image.fromModel(image),
+                errorMessage = errorMessage,
+            )
+        }
+    }
+
+    fun addFile(
+        id: String,
+        file: FileModel,
+        previousIcmPath: String? = null,
+        nextIcmPath: String? = null,
+        deployKind: DeployKind,
+        lastStatus: LastStatus,
+        deploymentId: Uuid?,
+        deployTimestamp: Instant?,
+        errorMessage: String?,
+    ): ProgressReportItem {
+        return items.getOrPut(Pair(id, ResourceType.File)) {
+            ReportedFile(
+                id = id,
+                previousIcmPath = previousIcmPath,
+                nextIcmPath = nextIcmPath,
+                deployKind = deployKind,
+                lastStatus = lastStatus,
+                deploymentId = deploymentId,
+                deployTimestamp = deployTimestamp,
+                file = File.fromModel(file),
                 errorMessage = errorMessage,
             )
         }

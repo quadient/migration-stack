@@ -11,6 +11,7 @@ class MappingRepository(
     private val projectName: String,
     private val documentObjectRepository: DocumentObjectRepository,
     private val imageRepository: ImageRepository,
+    private val fileRepository: FileRepository,
     private val textStyleRepository: TextStyleRepository,
     private val paragraphStyleRepository: ParagraphStyleRepository,
     private val variableRepository: VariableRepository,
@@ -27,6 +28,7 @@ class MappingRepository(
             when (mapping.mapping) {
                 is MappingItem.DocumentObject -> applyDocumentObjectMapping(mapping.id)
                 is MappingItem.Image -> applyImageMapping(mapping.id)
+                is MappingItem.File -> applyFileMapping(mapping.id)
                 is MappingItem.TextStyle -> applyTextStyleMapping(mapping.id)
                 is MappingItem.ParagraphStyle -> applyParagraphStyleMapping(mapping.id)
                 is MappingItem.Variable -> applyVariableMapping(mapping.id)
@@ -101,6 +103,27 @@ class MappingRepository(
         }
 
         imageRepository.upsert(mapping.apply(img))
+    }
+
+    fun getFileMapping(id: String): MappingItem.File {
+        return (internalRepository.find<MappingItemEntity.File>(id) ?: MappingItemEntity.File(
+            name = null,
+            targetFolder = null,
+            sourcePath = null,
+            fileType = null,
+            skip = null,
+        )).toDto() as MappingItem.File
+    }
+
+    fun applyFileMapping(id: String) {
+        val mapping = internalRepository.find<MappingItemEntity.File>(id)
+        val file = fileRepository.find(id)
+
+        if (mapping == null || file == null) {
+            return
+        }
+
+        fileRepository.upsert(mapping.apply(file))
     }
 
     fun getTextStyleMapping(id: String): MappingItem.TextStyle {
