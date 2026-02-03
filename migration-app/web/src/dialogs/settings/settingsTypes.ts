@@ -51,6 +51,8 @@ export type ProjectConfig = {
 export type PathsConfig = {
     images?: string | undefined;
     fonts?: string | undefined;
+    documents?: string | undefined;
+    attachments?: string | undefined;
 };
 
 export const inspireOutputOptions = ["Designer", "Interactive", "Evolve"] as const;

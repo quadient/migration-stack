@@ -12,6 +12,8 @@ inspireOutput = "Designer" # "Evolve", "Interactive", "Designer"
 [paths]
 #images = ""
 #fonts = ""
+#documents = ""
+#attachments = ""
 
 [context]
 endpoint = "https://<<ENDPOINT>>/documentintelligence/documentModels/prebuilt-layout:analyze?_overload=analyzeDocument&api-version=2024-11-30&features=styleFont,barcodes"

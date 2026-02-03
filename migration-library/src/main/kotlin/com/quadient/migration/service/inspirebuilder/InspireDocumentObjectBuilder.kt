@@ -277,13 +277,14 @@ abstract class InspireDocumentObjectBuilder(
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
             when (val contentPart = mutableContent[idx]) {
-                is TableModel, is ParagraphModel, is ImageModelRef, is FileModelRef -> {
+                is TableModel, is ParagraphModel, is ImageModelRef -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
                     flowModels.add(Composite(flowParts))
                 }
 
                 is DocumentObjectModelRef -> flowModels.add(DocumentObject(contentPart))
+                is FileModelRef -> flowModels.add(File(contentPart))
                 is AreaModel -> mutableContent.addAll(idx + 1, contentPart.content)
                 is FirstMatchModel -> flowModels.add(FirstMatch(contentPart))
                 is SelectByLanguageModel -> flowModels.add(SelectByLanguage(contentPart))
@@ -296,6 +297,7 @@ abstract class InspireDocumentObjectBuilder(
         return flowModels.mapNotNull {
             when (it) {
                 is DocumentObject -> buildDocumentObjectRef(layout, variableStructure, it.ref, languages)
+                is File -> buildFileRef(layout, it.ref)
                 is Composite -> {
                     if (flowName == null) {
                         buildCompositeFlow(layout, variableStructure, it.parts, null, languages)
@@ -332,6 +334,7 @@ abstract class InspireDocumentObjectBuilder(
     sealed interface FlowModel {
         data class Composite(val parts: List<DocumentContentModel>) : FlowModel
         data class DocumentObject(val ref: DocumentObjectModelRef) : FlowModel
+        data class File(val ref: FileModelRef) : FlowModel
         data class FirstMatch(val model: FirstMatchModel) : FlowModel
         data class SelectByLanguage(val model: SelectByLanguageModel) : FlowModel
     }
@@ -608,52 +611,38 @@ abstract class InspireDocumentObjectBuilder(
 
     protected abstract fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String)
 
-    sealed interface FilePlaceholderResult {
-        object RenderAsNormal : FilePlaceholderResult
-        object Skip : FilePlaceholderResult
-        data class Placeholder(val value: String) : FilePlaceholderResult
-    }
+    private fun buildFileRef(
+        layout: Layout,
+        fileRef: FileModelRef,
+    ): Flow? {
+        val fileModel = fileRepository.findModelOrFail(fileRef.id)
 
-    // TODO: Implement file placeholder logic similar to images
-    protected fun getFilePlaceholder(fileModel: FileModel): FilePlaceholderResult {
-        if (fileModel.sourcePath.isNullOrBlank() && !fileModel.skip.skipped) {
+        if (fileModel.skip.skipped && fileModel.skip.placeholder == null) {
+            val reason = fileModel.skip.reason?.let { "with reason: $it" } ?: "without reason"
+            logger.debug("File ${fileRef.id} is set to be skipped without placeholder $reason.")
+            return null
+        } else if (fileModel.skip.skipped && fileModel.skip.placeholder != null) {
+            val reason = fileModel.skip.reason?.let { "and reason: $it" } ?: "without reason"
+            logger.debug("File ${fileRef.id} is set to be skipped with placeholder $reason.")
+            val flow = layout.addFlow().setType(Flow.Type.SIMPLE)
+            flow.addParagraph().addText().appendText(fileModel.skip.placeholder)
+            return flow
+        }
+
+        if (fileModel.sourcePath.isNullOrBlank()) {
             throw IllegalStateException(
                 "File '${fileModel.nameOrId()}' has missing source path and is not set to be skipped."
             )
         }
 
-        if (fileModel.skip.skipped && fileModel.skip.placeholder != null) {
-            return FilePlaceholderResult.Placeholder(fileModel.skip.placeholder)
-        } else if (fileModel.skip.skipped) {
-            return FilePlaceholderResult.Skip
+        val flow = getFlowByName(layout, fileModel.nameOrId()) ?: run {
+            layout.addFlow()
+                .setName(fileModel.nameOrId())
+                .setType(Flow.Type.DIRECT_EXTERNAL)
+                .setLocation(getFilePath(fileModel))
         }
 
-        return FilePlaceholderResult.RenderAsNormal
-    }
-
-    // TODO: Implement file handling logic
-    protected fun getOrBuildFile(layout: Layout, fileModel: FileModel): Any {
-        // TODO: Implement actual file building logic
-        // This is a placeholder for future implementation
-        throw NotImplementedError("File building not yet implemented. File ID: ${fileModel.id}")
-    }
-
-    // TODO: Implement file appending logic
-    private fun buildAndAppendFile(layout: Layout, text: Text, ref: FileModelRef) {
-        val fileModel = fileRepository.findModelOrFail(ref.id)
-
-        when (val filePlaceholder = getFilePlaceholder(fileModel)) {
-            is FilePlaceholderResult.Placeholder -> {
-                text.appendText(filePlaceholder.value)
-                return
-            }
-            is FilePlaceholderResult.RenderAsNormal -> {}
-            is FilePlaceholderResult.Skip -> return
-        }
-
-        // TODO: Implement actual file appending logic
-        // text.appendFile(getOrBuildFile(layout, fileModel))
-        throw NotImplementedError("File appending not yet implemented. File ID: ${fileModel.id}")
+        return flow
     }
 
     private fun buildCompositeFlow(
@@ -673,7 +662,6 @@ abstract class InspireDocumentObjectBuilder(
                     .appendTable(buildTable(layout, variableStructure, it, languages))
 
                 is ImageModelRef -> buildAndAppendImage(layout, flow.addParagraph().addText(), it)
-                is FileModelRef -> buildAndAppendFile(layout, flow.addParagraph().addText(), it)
                 else -> error("Content part type ${it::class.simpleName} is not allowed in composite flow.")
             }
         }
@@ -734,7 +722,7 @@ abstract class InspireDocumentObjectBuilder(
 
         do {
             val contentPart = content[index]
-            if (contentPart is TableModel || contentPart is ParagraphModel || contentPart is ImageModelRef || contentPart is FileModelRef) {
+            if (contentPart is TableModel || contentPart is ParagraphModel || contentPart is ImageModelRef) {
                 flowParts.add(contentPart)
                 index++
             } else {
@@ -791,8 +779,11 @@ abstract class InspireDocumentObjectBuilder(
                         currentText.appendFlow(flow)
                     }
 
+                    is FileModelRef -> buildFileRef(layout, it)?.also { flow ->
+                        currentText.appendFlow(flow)
+                    }
+
                     is ImageModelRef -> buildAndAppendImage(layout, currentText, it)
-                    is FileModelRef -> buildAndAppendFile(layout, currentText, it)
                     is HyperlinkModel -> currentText = buildAndAppendHyperlink(layout, paragraph, baseTextStyleModel, it)
                     is FirstMatchModel -> currentText.appendFlow(
                         buildFirstMatch(layout, variableStructure, it, true, null, languages)
@@ -819,7 +810,7 @@ abstract class InspireDocumentObjectBuilder(
                 *TextStyleInheritFlag.entries
                 .filter { it != TextStyleInheritFlag.UNDERLINE && it != TextStyleInheritFlag.FILL_STYLE }
                 .toTypedArray())
-        (hyperlinkStyle as TextStyleImpl).setAncestorId("Def.TextStyleHyperlink")
+        (hyperlinkStyle as TextStyleImpl).ancestorId = "Def.TextStyleHyperlink"
 
         if (baseTextStyleModel != null) {
             val definition = baseTextStyleModel.resolve()

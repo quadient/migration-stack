@@ -70,6 +70,7 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                                     projectConfig: {
                                         ...prev.projectConfig,
                                         paths: {
+                                            ...prev.projectConfig.paths,
                                             images: e.target.value || undefined,
                                         },
                                     },
@@ -87,7 +88,44 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                                     projectConfig: {
                                         ...prev.projectConfig,
                                         paths: {
+                                            ...prev.projectConfig.paths,
                                             fonts: e.target.value || undefined,
+                                        },
+                                    },
+                                }))
+                            }
+                        />
+                    </div>
+                    <div className="grid gap-3">
+                        <Label>Documents</Label>
+                        <Input
+                            value={settings.projectConfig.paths.documents ?? ""}
+                            onChange={(e) =>
+                                setSettings((prev) => ({
+                                    ...prev,
+                                    projectConfig: {
+                                        ...prev.projectConfig,
+                                        paths: {
+                                            ...prev.projectConfig.paths,
+                                            documents: e.target.value || undefined,
+                                        },
+                                    },
+                                }))
+                            }
+                        />
+                    </div>
+                    <div className="grid gap-3">
+                        <Label>Attachments</Label>
+                        <Input
+                            value={settings.projectConfig.paths.attachments ?? ""}
+                            onChange={(e) =>
+                                setSettings((prev) => ({
+                                    ...prev,
+                                    projectConfig: {
+                                        ...prev.projectConfig,
+                                        paths: {
+                                            ...prev.projectConfig.paths,
+                                            attachments: e.target.value || undefined,
                                         },
                                     },
                                 }))

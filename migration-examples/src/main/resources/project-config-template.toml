@@ -12,5 +12,7 @@ inspireOutput = "Designer" # "Evolve", "Interactive", "Designer"
 [paths]
 #images = ""
 #fonts = ""
+#documents = ""
+#attachments = ""
 
 [context]
