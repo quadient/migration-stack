@@ -15,8 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - PDF tagging support for paragraph styles including support in export/import mapping scripts
 - Alternate text option for images including support in export/import mapping scripts
 - New Hyperlink text content 
-- Added more upsertBatch functons to repos
-- Introduced azureAI paser
+- Added more upsertBatch functions to repos
+- Introduced azureAI parser
 
 ### Changed
 
