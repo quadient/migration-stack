@@ -112,7 +112,8 @@ class InteractiveDocumentObjectBuilder(
     override fun getFilePath(
         id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, fileType: FileType
     ): String {
-        val fileName = name ?: id
+        val baseFileName = name ?: id
+        val fileName = appendExtensionIfMissing(baseFileName, sourcePath)
 
         if (targetFolder?.isAbsolute() == true) {
             return targetFolder.join(fileName).toString()
