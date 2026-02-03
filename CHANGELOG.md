@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.14] - 2026-02-03
+
+### Added
+
 - Added sample input files for DocBook example to the resources folder
 - deployStyles now creates wfd as well as jld style definition for interactive
 - A warning will now be printed if an unsupported GA version of IPS is detected
@@ -15,8 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - PDF tagging support for paragraph styles including support in export/import mapping scripts
 - Alternate text option for images including support in export/import mapping scripts
 - New Hyperlink text content 
-- Added more upsertBatch functons to repos
-- Introduced azureAI paser
+- Added more upsertBatch functions to repos
+- Introduced azureAI parser
 
 ### Changed
 
@@ -192,7 +200,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.13...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.14...HEAD
+[17.0.14]: https://github.com/quadient/migration-stack/compare/v17.0.13...v17.0.14
 [17.0.13]: https://github.com/quadient/migration-stack/compare/v17.0.12...v17.0.13
 [17.0.12]: https://github.com/quadient/migration-stack/compare/v17.0.11...v17.0.12
 [17.0.11]: https://github.com/quadient/migration-stack/compare/v17.0.10..v17.0.11
