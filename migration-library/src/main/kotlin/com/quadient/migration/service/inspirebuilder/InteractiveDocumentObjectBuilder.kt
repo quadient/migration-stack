@@ -120,8 +120,8 @@ class InteractiveDocumentObjectBuilder(
         }
 
         val fileConfigPath = when (fileType) {
-            FileType.Document -> projectConfig.paths.documents ?: IcmPath.from("Resources/Documents")
-            FileType.Attachment -> projectConfig.paths.attachments ?: IcmPath.from("Resources/Attachments")
+            FileType.Document -> projectConfig.paths.documents.orDefault("Documents")
+            FileType.Attachment -> projectConfig.paths.attachments.orDefault("Attachments")
         }
 
         return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant).join(fileConfigPath)
