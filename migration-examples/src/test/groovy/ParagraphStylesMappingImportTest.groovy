@@ -14,7 +14,7 @@ import static org.mockito.Mockito.when
 
 class ParagraphStylesMappingImportTest {
     @TempDir
-    File dir
+    java.io.File dir
 
     Migration migration
 

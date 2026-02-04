@@ -19,7 +19,7 @@ import static org.mockito.Mockito.times
 
 class AreasImportTest {
     @TempDir
-    File dir
+    java.io.File dir
 
     Migration migration
 

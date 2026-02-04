@@ -15,7 +15,7 @@ import static org.mockito.Mockito.when
 
 class TextStylesMappingExportTest {
     @TempDir
-    File dir
+    java.io.File dir
 
     @Test
     void exportWorksCorrectlyForAllVariants() {

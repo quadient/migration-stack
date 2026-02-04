@@ -16,7 +16,7 @@ import static org.mockito.Mockito.when
 
 class ParagraphStylesMappingExportTest {
     @TempDir
-    File dir
+    java.io.File dir
 
     @Test
     void exportWorksCorrectlyForAllVariants() {

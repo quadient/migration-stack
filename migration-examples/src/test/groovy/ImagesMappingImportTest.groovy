@@ -13,7 +13,7 @@ import static org.mockito.Mockito.*
 
 class ImagesMappingImportTest {
     @TempDir
-    File dir
+    java.io.File dir
 
     @Test
     void overridesImageName() {

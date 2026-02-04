@@ -27,7 +27,7 @@ static void run(Migration migration, Path filesDstPath) {
     filesDstPath.toFile().createParentDirectories()
 
     filesDstPath.toFile().withWriter { writer ->
-        def headers = ["id", "name", "sourcePath", "targetFolder", "status", "skip", "skipPlaceholder", "skipReason", Mapping.displayHeader("originalName", true), Mapping.displayHeader("originLocations", true)]
+        def headers = ["id", "name", "sourcePath", "fileType", "targetFolder", "status", "skip", "skipPlaceholder", "skipReason", Mapping.displayHeader("originalName", true), Mapping.displayHeader("originLocations", true)]
         writer.writeLine(headers.join(","))
         files.each { obj ->
             def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(obj.id,
@@ -38,6 +38,7 @@ static void run(Migration migration, Path filesDstPath) {
             builder.append(Csv.serialize(obj.id))
             builder.append("," + Csv.serialize(obj.name))
             builder.append("," + Csv.serialize(obj.sourcePath))
+            builder.append("," + Csv.serialize(obj.fileType))
             builder.append("," + Csv.serialize(obj.targetFolder))
             builder.append("," + Csv.serialize(status.class.simpleName))
             builder.append("," + Csv.serialize(obj.skip.skipped))

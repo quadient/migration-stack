@@ -16,7 +16,7 @@ import static org.mockito.Mockito.when
 
 class TextStylesMappingImportTest {
     @TempDir
-    File dir
+    java.io.File dir
 
     Migration migration
 
