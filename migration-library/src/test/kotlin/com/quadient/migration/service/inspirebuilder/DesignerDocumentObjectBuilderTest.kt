@@ -28,6 +28,7 @@ import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.*
+import com.quadient.migration.shared.FileType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
@@ -44,6 +45,7 @@ import com.quadient.migration.tools.model.aVariable
 import com.quadient.migration.tools.model.aDisplayRule
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
+import com.quadient.migration.tools.model.aFile
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aRow
@@ -897,6 +899,64 @@ class DesignerDocumentObjectBuilderTest {
             "null" -> null
             null -> ""
             else -> this.trim()
+        }
+
+        @ParameterizedTest
+        @CsvSource(
+            // fileType,paths.documents,paths.attachments,targetFolder,defaultTargetFolder,expected
+            "Document,,,,                   ,icm://File_F1.pdf",
+            "Document,,,relative,           ,icm://relative/File_F1.pdf",
+            "Document,Docs,,relative,       ,icm://Docs/relative/File_F1.pdf",
+            "Document,,,icm://absolute/,    ,icm://absolute/File_F1.pdf",
+            "Document,,,                ,def,icm://def/File_F1.pdf",
+            "Attachment,,,,                 ,icm://File_F1.pdf",
+            "Attachment,,Attach,relative,   ,icm://Attach/relative/File_F1.pdf",
+            "Attachment,,,icm://absolute/,  ,icm://absolute/File_F1.pdf",
+        )
+        fun testFilePath(
+            fileType: String,
+            documentsPath: String?,
+            attachmentsPath: String?,
+            targetFolder: String?,
+            defaultTargetFolder: String?,
+            expected: String
+        ) {
+            val config = aProjectConfig(
+                output = InspireOutput.Designer,
+                paths = PathsConfig(
+                    documents = documentsPath.nullToNull()?.let(IcmPath::from),
+                    attachments = attachmentsPath.nullToNull()?.let(IcmPath::from)
+                ),
+                targetDefaultFolder = defaultTargetFolder.nullToNull(),
+            )
+            val pathTestSubject = aSubject(config)
+            val file = aFile("F1", targetFolder = targetFolder.nullToNull(), fileType = FileType.valueOf(fileType))
+
+            val path = pathTestSubject.getFilePath(file)
+
+            path.shouldBeEqualTo(expected)
+        }
+
+        @Test
+        fun `file path appends extension from sourcePath when fileName lacks one`() {
+            val config = aProjectConfig(output = InspireOutput.Designer)
+            val pathTestSubject = aSubject(config)
+            val file = aFile("F1", name = "document", sourcePath = "C:/files/doc.pdf")
+
+            val path = pathTestSubject.getFilePath(file)
+
+            path.shouldBeEqualTo("icm://document.pdf")
+        }
+
+        @Test
+        fun `file path preserves fileName extension when present`() {
+            val config = aProjectConfig(output = InspireOutput.Designer)
+            val pathTestSubject = aSubject(config)
+            val file = aFile("F1", name = "report.docx", sourcePath = "file.pdf")
+
+            val path = pathTestSubject.getFilePath(file)
+
+            path.shouldBeEqualTo("icm://report.docx")
         }
     }
 }

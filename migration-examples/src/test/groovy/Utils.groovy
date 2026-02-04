@@ -1,6 +1,7 @@
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.FileRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.MappingRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
@@ -24,6 +25,7 @@ static Migration mockMigration() {
     def mappingRepo = mock(MappingRepository.class)
     def docObjectRepo = mock(DocumentObjectRepository.class)
     def imageRepo = mock(ImageRepository.class)
+    def fileRepo = mock(FileRepository.class)
     def statusTrackingRepo = mock(StatusTrackingRepository.class)
     def textStyleRepo = mock(TextStyleRepository.class)
     def paraStyleRepo = mock(ParagraphStyleRepository.class)
@@ -32,6 +34,7 @@ static Migration mockMigration() {
     when(migration.getTextStyleRepository()).thenReturn(textStyleRepo)
     when(migration.getStatusTrackingRepository()).thenReturn(statusTrackingRepo)
     when(migration.getImageRepository()).thenReturn(imageRepo)
+    when(migration.getFileRepository()).thenReturn(fileRepo)
     when(migration.getDocumentObjectRepository()).thenReturn(docObjectRepo)
     when(migration.getVariableRepository()).thenReturn(varRepo)
     when(migration.getVariableStructureRepository()).thenReturn(structureRepo)

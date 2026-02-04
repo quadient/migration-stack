@@ -6,6 +6,7 @@ import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
+import com.quadient.migration.data.FileModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ParagraphModel
 import com.quadient.migration.data.ParagraphModel.TextModel
@@ -50,6 +51,7 @@ import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.FileType
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.IcmPath
@@ -401,6 +403,29 @@ fun aImage(
         metadata = metadata,
         skip = skip,
         alternateText = alternateText,
+    )
+}
+
+fun aFile(
+    id: String,
+    name: String = "File_$id",
+    sourcePath: String? = "$name.pdf",
+    fileType: FileType = FileType.Document,
+    originLocations: List<String> = emptyList(),
+    customFields: MutableMap<String, String> = mutableMapOf(),
+    targetFolder: String? = null,
+    skip: SkipOptions = SkipOptions(false, null, null),
+): FileModel {
+    return FileModel(
+        id = id,
+        name = name,
+        originLocations = originLocations,
+        customFields = customFields,
+        created = Clock.System.now(),
+        sourcePath = sourcePath,
+        fileType = fileType,
+        targetFolder = targetFolder?.let(IcmPath::from),
+        skip = skip,
     )
 }
 
