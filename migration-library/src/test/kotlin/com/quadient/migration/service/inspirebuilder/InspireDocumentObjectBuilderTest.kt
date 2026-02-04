@@ -4,6 +4,8 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.data.DisplayRuleModel
 import com.quadient.migration.data.DocumentObjectModel
+import com.quadient.migration.data.FileModel
+import com.quadient.migration.data.FileModelRef
 import com.quadient.migration.data.HyperlinkModel
 import com.quadient.migration.data.StringModel
 import com.quadient.migration.data.TextStyleModel
@@ -15,6 +17,7 @@ import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.*
 import com.quadient.migration.tools.shouldBeEqualTo
@@ -154,9 +157,82 @@ class InspireDocumentObjectBuilderTest {
         assert(inheritFlags.none { it.textValue() == "FillStyle" })
     }
 
+    @Test
+    fun `file reference creates DirectExternal flow with correct structure`() {
+        // given
+        val file = aFile("File_1", name = "document", sourcePath = "C:/files/document.pdf")
+        every { fileRepository.findModelOrFail(file.id) } returns file
+        val block = mockObj(
+            aBlock("B_1", listOf(aParagraph(aText(listOf(StringModel("See attached: "), FileModelRef(file.id))))))
+        )
+
+        // when
+        val result =
+            subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val flowAreaFlowId = result["FlowArea"].last()["FlowId"].textValue()
+        val flowAreaFlow = result["Flow"].last { it["Id"].textValue() == flowAreaFlowId }
+
+        flowAreaFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("See attached: ")
+        val fileFlowId = flowAreaFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+
+        val fileFlow = result["Flow"].last { it["Id"].textValue() == fileFlowId }
+        fileFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
+        fileFlow["ExternalLocation"].textValue().shouldBeEqualTo("icm://document.pdf")
+    }
+
+    @Test
+    fun `file reference with skip and placeholder creates simple flow with placeholder text`() {
+        // given
+        val file = aFile("File_1", skip = SkipOptions(true, "File not available", "Missing source"))
+        every { fileRepository.findModelOrFail(file.id) } returns file
+        val block = mockObj(
+            aBlock("B_1", listOf(aParagraph(aText(listOf(FileModelRef(file.id))))))
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val placeholderFlow = result["Flow"].last()
+        placeholderFlow["FlowContent"]["P"]["T"][""].textValue() == "File not available"
+    }
+
+    @Test
+    fun `file reference with skip but no placeholder does not create flow`() {
+        // given
+        val file = mockFile(aFile("File_1", skip = SkipOptions(true, null, "Not needed")))
+        val block = mockObj(
+            aBlock(
+                "B_1", listOf(
+                    aParagraph(
+                        aText(
+                            listOf(
+                                StringModel("Text "), FileModelRef(file.id), StringModel(" more text")
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val flow = result["Flow"].last()
+        flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text  more text")
+    }
+
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
         every { documentObjectRepository.findModelOrFail(documentObject.id) } returns documentObject
         return documentObject
+    }
+
+    private fun mockFile(file: FileModel): FileModel {
+        every { fileRepository.findModelOrFail(file.id) } returns file
+        return file
     }
 
     private fun mockTextStyle(textStyle: TextStyleModel): TextStyleModel {

@@ -8,6 +8,8 @@ import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.Error
+import com.quadient.migration.data.FileModel
+import com.quadient.migration.data.FileModelRef
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphModel
@@ -36,6 +38,7 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
+import com.quadient.migration.tools.model.aFile
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aTemplate
@@ -236,10 +239,11 @@ class InteractiveDeployClientTest {
     }
 
     @Test
-    fun `deployDocumentObjects deploys images when used in document objects`() {
+    fun `deployDocumentObjects deploys images and files when used in document objects`() {
         // given
         val image = mockImage(aImage("Bunny"))
-        val block = mockDocumentObject(aBlock(id = "1", listOf(ImageModelRef(image.id))))
+        val file = mockFile(aFile("Report"))
+        val block = mockDocumentObject(aBlock(id = "1", listOf(ImageModelRef(image.id), FileModelRef(file.id))))
 
         every { documentObjectRepository.list(any()) } returns listOf(block)
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
@@ -249,27 +253,39 @@ class InteractiveDeployClientTest {
 
         mockBasicSuccessfulIpsOperations()
         val expectedImageIcmPath = "icm://Interactive/$tenant/Resources/Images/defaultFolder/${image.sourcePath}"
+        val expectedFileIcmPath = "icm://Interactive/$tenant/Resources/Files/defaultFolder/${file.sourcePath}"
 
         // when
-        subject.deployDocumentObjects()
+        val deploymentResult = subject.deployDocumentObjects()
 
         // then
+        deploymentResult.deployed.size.shouldBeEqualTo(3)
+        deploymentResult.errors.shouldBeEqualTo(emptyList())
+
         verify { ipsService.tryUpload(expectedImageIcmPath, any()) }
+        verify { ipsService.tryUpload(expectedFileIcmPath, any()) }
         verifyBasicIpsOperations(
             listOf(
-                expectedImageIcmPath, "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"
+                expectedImageIcmPath, expectedFileIcmPath, "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"
             ), 1
         )
     }
 
     @Test
-    fun `Images with unknown type or missing source path are omitted from deployment`() {
+    fun `Images with unknown type or missing source path and files with missing source path or skip flag are omitted from deployment`() {
         // given
         val catImage = mockImage(aImage("Cat", imageType = ImageType.Unknown))
         val dogImage = mockImage(aImage("Dog", sourcePath = null))
+        val missingFile = mockFile(aFile("MissingDoc", sourcePath = null))
+        val skippedFile = mockFile(aFile("SkippedDoc", skip = SkipOptions(true, null, "Not needed")))
 
         val block = mockDocumentObject(
-            aBlock("1", listOf(ImageModelRef(catImage.id), ImageModelRef(dogImage.id)))
+            aBlock("1", listOf(
+                ImageModelRef(catImage.id), 
+                ImageModelRef(dogImage.id),
+                FileModelRef(missingFile.id),
+                FileModelRef(skippedFile.id)
+            ))
         )
 
         every { documentObjectRepository.list(any()) } returns listOf(block)
@@ -282,23 +298,29 @@ class InteractiveDeployClientTest {
         mockBasicSuccessfulIpsOperations()
 
         // when
-        subject.deployDocumentObjects()
+        val deploymentResult = subject.deployDocumentObjects()
 
         // then
+        deploymentResult.deployed.size.shouldBeEqualTo(1)
+        deploymentResult.warnings.size.shouldBeEqualTo(4)
+        deploymentResult.errors.shouldBeEqualTo(emptyList())
+
         verify(exactly = 0) { ipsService.upload(any(), any()) }
         verifyBasicIpsOperations(listOf("icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"))
     }
 
     @Test
-    fun `Multiple times used image is deployed only once`() {
+    fun `Multiple times used image or file is deployed only once`() {
         // given
         val image = mockImage(aImage("Bunny"))
-        val innerBlock = aBlock("10", listOf(ImageModelRef(image.id)), internal = true)
+        val file = mockFile(aFile("Report"))
+        val innerBlock = aBlock("10", listOf(ImageModelRef(image.id), FileModelRef(file.id)), internal = true)
         val block = mockDocumentObject(
             aBlock(
                 "1", listOf(
                     aDocumentObjectRef(innerBlock.id),
-                    aParagraph(aText(ImageModelRef(image.id)))
+                    aParagraph(aText(ImageModelRef(image.id))),
+                    aParagraph(aText(FileModelRef(file.id)))
                 )
             )
         )
@@ -312,15 +334,17 @@ class InteractiveDeployClientTest {
 
         mockBasicSuccessfulIpsOperations()
         val expectedImageIcmPath = "icm://Interactive/$tenant/Resources/Images/defaultFolder/${image.sourcePath}"
+        val expectedFileIcmPath = "icm://Interactive/$tenant/Resources/Files/defaultFolder/${file.sourcePath}"
 
         // when
         subject.deployDocumentObjects()
 
         // then
         verify(exactly = 1) { ipsService.tryUpload(expectedImageIcmPath, any()) }
+        verify(exactly = 1) { ipsService.tryUpload(expectedFileIcmPath, any()) }
         verifyBasicIpsOperations(
             listOf(
-                expectedImageIcmPath, "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"
+                expectedImageIcmPath, expectedFileIcmPath, "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"
             ), 1
         )
     }
@@ -650,6 +674,18 @@ class InteractiveDeployClientTest {
         }
 
         return image
+    }
+
+    private fun mockFile(file: FileModel, success: Boolean = true): FileModel {
+        val dir = resolveTargetDir(config.defaultTargetFolder)
+        every { documentObjectBuilder.getFilePath(file) } returns "icm://Interactive/$tenant/Resources/Files/$dir/${file.sourcePath}"
+
+        every { fileRepository.findModel(file.id) } returns if (success) { file } else { null }
+        if (!file.sourcePath.isNullOrBlank()) {
+            every { storage.read(file.sourcePath) } returns ByteArray(10)
+        }
+
+        return file
     }
 
     private fun mockBasicSuccessfulIpsOperations() {

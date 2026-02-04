@@ -8,6 +8,8 @@ import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.Error
+import com.quadient.migration.data.FileModel
+import com.quadient.migration.data.FileModelRef
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.StringModel
@@ -29,6 +31,7 @@ import com.quadient.migration.tools.aErrorStatus
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
+import com.quadient.migration.tools.model.aFile
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aTemplate
@@ -83,14 +86,16 @@ class DesignerDeployClientTest {
     }
 
     @Test
-    fun `deployDocumentObjects deploys complex structure template`() {
+    fun `deployDocumentObjects deploys complex structure template with images and files`() {
         // given
         val image1 = mockImg(aImage("I_1"))
         val image2 = mockImg(aImage("I_2"))
+        val file1 = mockFile(aFile("F_1"))
         val externalBlock = mockObj(
             aDocObj(
-                "Txt_Img_1", DocumentObjectType.Block, listOf(
-                    aParagraph(aText(StringModel("Image: "))), ImageModelRef(image1.id)
+                "Txt_Img_File_1", DocumentObjectType.Block, listOf(
+                    aParagraph(aText(StringModel("Image: "))), ImageModelRef(image1.id),
+                    aParagraph(aText(StringModel("File: "))), FileModelRef(file1.id)
                 )
             )
         )
@@ -116,13 +121,17 @@ class DesignerDeployClientTest {
         every { ipsService.fileExists(any()) } returns false
 
         // when
-        subject.deployDocumentObjects()
+        val deploymentResult = subject.deployDocumentObjects()
 
         // then
+        deploymentResult.deployed.size.shouldBeEqualTo(5)
+        deploymentResult.errors.shouldBeEqualTo(emptyList())
+
         verify { ipsService.xml2wfd(any(), "icm://${template.nameOrId()}") }
         verify { ipsService.xml2wfd(any(), "icm://${externalBlock.nameOrId()}") }
         verify { ipsService.tryUpload("icm://${image1.nameOrId()}", any()) }
         verify { ipsService.tryUpload("icm://${image2.nameOrId()}", any()) }
+        verify { ipsService.tryUpload("icm://${file1.nameOrId()}", any()) }
     }
 
     @Test
@@ -347,6 +356,26 @@ class DesignerDeployClientTest {
         }
 
         return image
+    }
+
+    private fun mockFile(file: FileModel, success: Boolean = true): FileModel {
+        val filePath = "icm://${file.nameOrId()}"
+
+        every { documentObjectBuilder.getFilePath(file) } returns filePath
+        every { fileRepository.findModel(file.id) } returns file
+        if (!file.sourcePath.isNullOrBlank()) {
+            val byteArray = ByteArray(10)
+            every { storage.read(file.sourcePath) } answers {
+                if (success) {
+                    byteArray
+                } else {
+                    throw Exception()
+                }
+            }
+            every { ipsService.tryUpload(filePath, byteArray) } returns OperationResult.Success
+        }
+
+        return file
     }
 
     private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
