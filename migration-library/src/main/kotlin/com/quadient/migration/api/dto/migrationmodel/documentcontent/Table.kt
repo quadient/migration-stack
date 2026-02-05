@@ -1,6 +1,5 @@
 package com.quadient.migration.api.dto.migrationmodel
 
-import com.quadient.migration.data.TableModel
 import com.quadient.migration.persistence.migrationmodel.TableEntity
 import com.quadient.migration.persistence.migrationmodel.TableEntity.ColumnWidthEntity
 import com.quadient.migration.shared.Size
@@ -11,21 +10,25 @@ data class Table(
     val columnWidths: List<ColumnWidth>,
     val pdfTaggingRule: TablePdfTaggingRule = TablePdfTaggingRule.Default,
     val pdfAlternateText: String? = null,
-) : DocumentContent, TextContent {
+) : DocumentContent, TextContent, RefValidatable {
+    override fun collectRefs(): List<Ref> {
+        return rows.flatMap { it.collectRefs() }
+    }
+
     companion object {
-        fun fromModel(model: TableModel): Table = Table(
-            rows = model.rows.map { row ->
+        fun fromDb(table: TableEntity): Table = Table(
+            rows = table.rows.map { row ->
                 Row(row.cells.map { cell ->
                     Cell(
-                        cell.content.map { DocumentContent.fromModelContent(it) },
+                        cell.content.map { DocumentContent.fromDbContent(it) },
                         cell.mergeLeft,
                         cell.mergeUp,
                     )
-                }, displayRuleRef = row.displayRuleRef?.let { DisplayRuleRef.fromModel(it) })
+                }, displayRuleRef = row.displayRuleRef?.let { DisplayRuleRef.fromDb(it) })
             },
-            columnWidths = model.columnWidths.map { ColumnWidth(it.minWidth, it.percentWidth) },
-            pdfTaggingRule = model.pdfTaggingRule,
-            pdfAlternateText = model.pdfAlternateText
+            columnWidths = table.columnWidths.map { ColumnWidth(it.minWidth, it.percentWidth) },
+            pdfTaggingRule = table.pdfTaggingRule,
+            pdfAlternateText = table.pdfAlternateText
         )
     }
 
@@ -46,13 +49,26 @@ data class Table(
         )
     }
 
-    data class Row(val cells: List<Cell>, val displayRuleRef: DisplayRuleRef? = null)
+    data class Row(val cells: List<Cell>, val displayRuleRef: DisplayRuleRef? = null) : RefValidatable {
+        override fun collectRefs(): List<Ref> {
+            return cells.flatMap { it.collectRefs() } + listOfNotNull(displayRuleRef)
+        }
+    }
 
     data class Cell(
         val content: List<DocumentContent>,
         val mergeLeft: Boolean,
         val mergeUp: Boolean,
-    )
+    ) : RefValidatable {
+        override fun collectRefs(): List<Ref> {
+            return content.flatMap {
+                when (it) {
+                    is RefValidatable -> it.collectRefs()
+                    else -> emptyList()
+                }
+            }
+        }
+    }
 
     data class ColumnWidth(val minWidth: Size, val percentWidth: Double)
 }

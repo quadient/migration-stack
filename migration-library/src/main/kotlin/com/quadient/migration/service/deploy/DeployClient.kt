@@ -6,18 +6,18 @@ import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
-import com.quadient.migration.data.DisplayRuleModelRef
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.DocumentObjectModelRef
-import com.quadient.migration.data.FileModel
-import com.quadient.migration.data.FileModelRef
-import com.quadient.migration.data.ImageModel
-import com.quadient.migration.data.ImageModelRef
-import com.quadient.migration.data.ParagraphStyleModelRef
-import com.quadient.migration.data.RefModel
-import com.quadient.migration.data.TextStyleModelRef
-import com.quadient.migration.data.VariableModelRef
-import com.quadient.migration.data.VariableStructureModelRef
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.File
+import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.Ref
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.FileInternalRepository
@@ -43,7 +43,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import com.quadient.migration.data.Error as StatusError
 
-data class DocObjectWithRef(val obj: DocumentObjectModel, val documentObjectRefs: Set<String>)
+data class DocObjectWithRef(val obj: DocumentObject, val documentObjectRefs: Set<String>)
 
 sealed class DeployClient(
     protected val documentObjectRepository: DocumentObjectInternalRepository,
@@ -122,8 +122,8 @@ sealed class DeployClient(
                             null
                         } else {
                             val metadata = when (obj) {
-                                is DocumentObjectModel -> obj.metadata
-                                is ImageModel -> obj.metadata
+                                is DocumentObject -> obj.metadata
+                                is Image -> obj.metadata
                                 else -> emptyMap()
                             }
                             info to metadata
@@ -140,16 +140,16 @@ sealed class DeployClient(
         }
     }
 
-    abstract fun getAllDocumentObjectsToDeploy(): List<DocumentObjectModel>
-    abstract fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObjectModel>
-    abstract fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult
+    abstract fun getAllDocumentObjectsToDeploy(): List<DocumentObject>
+    abstract fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObject>
+    abstract fun deployDocumentObjectsInternal(documentObjects: List<DocumentObject>): DeploymentResult
     abstract fun deployStyles()
 
     protected fun addPostProcessor(processor: (DeploymentResult) -> Unit) {
         postProcessors.add(processor)
     }
 
-    abstract fun shouldIncludeDependency(documentObject: DocumentObjectModel): Boolean
+    abstract fun shouldIncludeDependency(documentObject: DocumentObject): Boolean
 
     fun deployDocumentObjects(): DeploymentResult {
         val result = deployDocumentObjectsInternal(getAllDocumentObjectsToDeploy())
@@ -166,7 +166,7 @@ sealed class DeployClient(
         val result = if (skipDependencies) {
             deployDocumentObjectsInternal(documentObjects)
         } else {
-            val dependencies = documentObjects.flatMap { it.findDependencies() }.filter { !it.internal }
+            val dependencies = documentObjects.flatMap { it.findDependencies() }.filter { it.internal != true }
             deployDocumentObjectsInternal((documentObjects + dependencies).toSet().toList())
         }
 
@@ -178,14 +178,14 @@ sealed class DeployClient(
     }
 
 
-    fun deployOrder(documentObjects: List<DocumentObjectModel>): List<DocumentObjectModel> {
+    fun deployOrder(documentObjects: List<DocumentObject>): List<DocumentObject> {
         val documentObjectIds = documentObjects.map { it.id }
 
-        val deployOrder = mutableListOf<DocumentObjectModel>()
+        val deployOrder = mutableListOf<DocumentObject>()
 
         var toCheck = documentObjects.map {
             DocObjectWithRef(
-                it, it.collectRefs().filterIsInstance<DocumentObjectModelRef>().map { it -> it.id }.toSet()
+                it, it.collectRefs().filterIsInstance<DocumentObjectRef>().map { it -> it.id }.toSet()
             )
         }
         val deployed = mutableSetOf<String>()
@@ -232,7 +232,7 @@ sealed class DeployClient(
         return deployOrder
     }
 
-    protected fun deployImagesAndFiles(documentObjects: List<DocumentObjectModel>, deploymentId: Uuid, deploymentTimestamp: Instant): DeploymentResult {
+    protected fun deployImagesAndFiles(documentObjects: List<DocumentObject>, deploymentId: Uuid, deploymentTimestamp: Instant): DeploymentResult {
         val deploymentResult = DeploymentResult(deploymentId)
         val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
 
@@ -259,7 +259,7 @@ sealed class DeployClient(
         return deploymentResult
     }
 
-    private fun deployImage(imageRef: ImageModelRef, deploymentResult: DeploymentResult, tracker: ResultTracker) {
+    private fun deployImage(imageRef: ImageRef, deploymentResult: DeploymentResult, tracker: ResultTracker) {
         if (!shouldDeployObject(imageRef.id, ResourceType.Image, imageRef.id, deploymentResult)) {
             logger.info("Skipping deployment of '${imageRef.id}' as it is not marked for deployment.")
             return
@@ -307,7 +307,8 @@ sealed class DeployClient(
         }
 
         logger.debug("Starting deployment of image '${imageModel.nameOrId()}'.")
-        val readResult = readStorageSafely(imageModel.sourcePath)
+        val sourcePath = imageModel.sourcePath!!
+        val readResult = readStorageSafely(sourcePath)
         if (readResult is ReadResult.Error) {
             val message = "Error while reading image source data: ${readResult.errorMessage}."
             logger.error(message)
@@ -328,7 +329,7 @@ sealed class DeployClient(
         tracker.deployedImage(imageModel.id, icmImagePath)
     }
 
-    private fun deployFile(fileRef: FileModelRef, deploymentResult: DeploymentResult, tracker: ResultTracker) {
+    private fun deployFile(fileRef: FileRef, deploymentResult: DeploymentResult, tracker: ResultTracker) {
         if (!shouldDeployObject(fileRef.id, ResourceType.File, fileRef.id, deploymentResult)) {
             logger.info("Skipping deployment of file '${fileRef.id}' as it is not marked for deployment.")
             return
@@ -360,7 +361,8 @@ sealed class DeployClient(
         }
 
         logger.debug("Starting deployment of file '${fileModel.nameOrId()}'.")
-        val readResult = readStorageSafely(fileModel.sourcePath)
+        val sourcePath = fileModel.sourcePath!!
+        val readResult = readStorageSafely(sourcePath)
         if (readResult is ReadResult.Error) {
             val message = "Error while reading file source data: ${readResult.errorMessage}."
             logger.error(message)
@@ -391,12 +393,12 @@ sealed class DeployClient(
         return progressReportInternal(objects, deployId)
     }
 
-    fun progressReportInternal(objects: List<DocumentObjectModel>, deployId: Uuid? = null): ProgressReport {
+    fun progressReportInternal(objects: List<DocumentObject>, deployId: Uuid? = null): ProgressReport {
         val lastDeployment = deployId?.let { LastDeployment(it, Clock.System.now()) } ?: getLastDeployEvent()
 
         val report = ProgressReport(deployId ?: Uuid.random(), mutableMapOf())
 
-        val queue: MutableList<RefModel> = mutableListOf()
+        val queue: MutableList<Ref> = mutableListOf()
         val alreadyVisitedRefs = mutableSetOf<Pair<String, KClass<*>>>()
 
         for (obj in objects) {
@@ -415,7 +417,7 @@ sealed class DeployClient(
                 deployKind = deployKind,
                 errorMessage = lastStatus.errorMessage,
             )
-            alreadyVisitedRefs.add(Pair(obj.id, DocumentObjectModelRef::class))
+            alreadyVisitedRefs.add(Pair(obj.id, DocumentObjectRef::class))
             val refs = obj.collectRefs()
             queue.addAll(refs)
         }
@@ -429,10 +431,10 @@ sealed class DeployClient(
             alreadyVisitedRefs.add(Pair(ref.id, ref::class))
 
             val resource = when (ref) {
-                is DocumentObjectModelRef -> {
+                is DocumentObjectRef -> {
                     val obj = documentObjectRepository.findModelOrFail(ref.id)
                     val nextIcmPath =
-                        if (obj.internal || (obj.type == DocumentObjectType.Page && output == InspireOutput.Designer)) {
+                        if (obj.internal == true || (obj.type == DocumentObjectType.Page && output == InspireOutput.Designer)) {
                             null
                         } else {
                             documentObjectBuilder.getDocumentObjectPath(obj)
@@ -455,7 +457,7 @@ sealed class DeployClient(
                     obj
                 }
 
-                is ImageModelRef -> {
+                is ImageRef -> {
                     val img = imageRepository.findModelOrFail(ref.id)
                     val nextIcmPath = documentObjectBuilder.getImagePath(img)
                     val deployKind = img.getDeployKind(nextIcmPath)
@@ -475,7 +477,7 @@ sealed class DeployClient(
                     img
                 }
 
-                is FileModelRef -> {
+                is FileRef -> {
                     val file = fileRepository.findModelOrFail(ref.id)
                     val nextIcmPath = documentObjectBuilder.getFilePath(file)
                     val deployKind = file.getDeployKind(nextIcmPath)
@@ -495,11 +497,11 @@ sealed class DeployClient(
                     file
                 }
 
-                is TextStyleModelRef -> null
-                is ParagraphStyleModelRef -> null
-                is DisplayRuleModelRef -> null
-                is VariableModelRef -> null
-                is VariableStructureModelRef -> null
+                is TextStyleRef -> null
+                is ParagraphStyleRef -> null
+                is DisplayRuleRef -> null
+                is VariableRef -> null
+                is VariableStructureRef -> null
             }
 
             if (resource != null) {
@@ -511,11 +513,11 @@ sealed class DeployClient(
         return report
     }
 
-    protected fun DocumentObjectModel.getInvalidMetadataKeys(): Set<String> {
+    protected fun DocumentObject.getInvalidMetadataKeys(): Set<String> {
         return this.metadata.keys.asSequence().filter { key -> DISALLOWED_METADATA.contains(key) }.toSet()
     }
 
-    protected fun ImageModel.getInvalidMetadataKeys(): Set<String> {
+    protected fun Image.getInvalidMetadataKeys(): Set<String> {
         return this.metadata.keys.asSequence().filter { key -> IMAGE_DISALLOWED_METADATA.contains(key) }.toSet()
     }
 
@@ -548,14 +550,14 @@ sealed class DeployClient(
         }
     }
 
-    fun DocumentObjectModel.findDependencies(): List<DocumentObjectModel> {
-        val dependencies = mutableListOf<DocumentObjectModel>()
+    fun DocumentObject.findDependencies(): List<DocumentObject> {
+        val dependencies = mutableListOf<DocumentObject>()
         this.collectRefs().forEach { ref ->
             when (ref) {
-                is DisplayRuleModelRef, is TextStyleModelRef, is ParagraphStyleModelRef, is VariableModelRef, is VariableStructureModelRef -> {}
-                is ImageModelRef -> {}
-                is FileModelRef -> {}
-                is DocumentObjectModelRef -> {
+                is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef -> {}
+                is ImageRef -> {}
+                is FileRef -> {}
+                is DocumentObjectRef -> {
                     val model = documentObjectRepository.findModelOrFail(ref.id)
                     if (shouldIncludeDependency(model)) {
                         dependencies.add(model)
@@ -567,16 +569,16 @@ sealed class DeployClient(
         return dependencies
     }
 
-    private fun DocumentObjectModel.getAllDocumentObjectImageAndFileRefs(): Pair<List<ImageModelRef>, List<FileModelRef>> {
-        val images = mutableListOf<ImageModelRef>()
-        val files = mutableListOf<FileModelRef>()
+    private fun DocumentObject.getAllDocumentObjectImageAndFileRefs(): Pair<List<ImageRef>, List<FileRef>> {
+        val images = mutableListOf<ImageRef>()
+        val files = mutableListOf<FileRef>()
 
         this.collectRefs().forEach { ref ->
             when (ref) {
-                is DisplayRuleModelRef, is TextStyleModelRef, is ParagraphStyleModelRef, is VariableModelRef, is VariableStructureModelRef -> {}
-                is ImageModelRef -> images.add(ref)
-                is FileModelRef -> files.add(ref)
-                is DocumentObjectModelRef -> {
+                is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef -> {}
+                is ImageRef -> images.add(ref)
+                is FileRef -> files.add(ref)
+                is DocumentObjectRef -> {
                     val model = documentObjectRepository.findModel(ref.id)
                         ?: error("Unable to collect image or file references because inner document object '${ref.id}' was not found.")
 
@@ -647,18 +649,18 @@ sealed class DeployClient(
         }
     }
 
-    private fun DocumentObjectModel.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
+    private fun DocumentObject.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
         return getLastStatus(
             id = this.id,
             lastDeployment = lastDeployment,
             resourceType = ResourceType.DocumentObject,
             output = output,
-            internal = this.internal,
+            internal = this.internal ?: false,
             isPage = this.type == DocumentObjectType.Page
         )
     }
 
-    private fun ImageModel.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
+    private fun Image.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
         return getLastStatus(
             id = this.id,
             lastDeployment = lastDeployment,
@@ -669,7 +671,7 @@ sealed class DeployClient(
         )
     }
 
-    private fun FileModel.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
+    private fun File.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
         return getLastStatus(
             id = this.id,
             lastDeployment = lastDeployment,
@@ -680,22 +682,22 @@ sealed class DeployClient(
         )
     }
 
-    private fun DocumentObjectModel.getDeployKind(nextIcmPath: String?): DeployKind {
+    private fun DocumentObject.getDeployKind(nextIcmPath: String?): DeployKind {
         return getDeployKind(
             this.id,
             ResourceType.DocumentObject,
             output,
-            this.internal,
+            this.internal ?: false,
             nextIcmPath,
             this.type == DocumentObjectType.Page
         )
     }
 
-    private fun ImageModel.getDeployKind(nextIcmPath: String?): DeployKind {
+    private fun Image.getDeployKind(nextIcmPath: String?): DeployKind {
         return getDeployKind(this.id, ResourceType.Image, output, false, nextIcmPath)
     }
 
-    private fun FileModel.getDeployKind(nextIcmPath: String?): DeployKind {
+    private fun File.getDeployKind(nextIcmPath: String?): DeployKind {
         return getDeployKind(this.id, ResourceType.File, output, false, nextIcmPath)
     }
 

@@ -1,33 +1,73 @@
 package com.quadient.migration.api.dto.migrationmodel
 
-import com.quadient.migration.data.ParagraphStyleDefinitionModel
-import com.quadient.migration.data.ParagraphStyleModel
-import com.quadient.migration.data.TabModel
-import com.quadient.migration.data.TabsModel
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefinitionEntity
 import com.quadient.migration.persistence.migrationmodel.TabEntity
 import com.quadient.migration.persistence.migrationmodel.TabsEntity
+import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.TabType
+import kotlinx.datetime.Instant
+import org.jetbrains.exposed.v1.core.ResultRow
 
 data class ParagraphStyle(
     override val id: String,
     override var name: String? = null,
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
+    override val created: Instant,
+    override val lastUpdated: Instant,
     var definition: ParagraphStyleDefOrRef,
-) : MigrationObject {
+) : MigrationObject, RefValidatable {
+    override fun collectRefs(): List<Ref> {
+        return when (definition) {
+            is ParagraphStyleDefinition -> emptyList()
+            is ParagraphStyleRef -> listOf(definition as Ref)
+        }
+    }
+
     companion object {
-        fun fromModel(model: ParagraphStyleModel) = ParagraphStyle(
-            id = model.id,
-            name = model.name,
-            originLocations = model.originLocations,
-            customFields = CustomFieldMap(model.customFields.toMutableMap()),
-            definition = ParagraphStyleDefOrRef.fromModel(model.definition),
-        )
+        fun fromDb(row: ResultRow): ParagraphStyle {
+            // Need to convert from Entity to DTO
+            val definitionEntity = row[ParagraphStyleTable.definition]
+            val definition = when (definitionEntity) {
+                is com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefinitionEntity -> {
+                    ParagraphStyleDefinition(
+                        leftIndent = definitionEntity.leftIndent,
+                        rightIndent = definitionEntity.rightIndent,
+                        defaultTabSize = definitionEntity.defaultTabSize,
+                        spaceBefore = definitionEntity.spaceBefore,
+                        spaceAfter = definitionEntity.spaceAfter,
+                        alignment = definitionEntity.alignment,
+                        firstLineIndent = definitionEntity.firstLineIndent,
+                        lineSpacing = definitionEntity.lineSpacing,
+                        keepWithNextParagraph = definitionEntity.keepWithNextParagraph,
+                        tabs = definitionEntity.tabs?.let { tabsEntity ->
+                            Tabs(
+                                tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
+                                useOutsideTabs = tabsEntity.useOutsideTabs
+                            )
+                        },
+                        pdfTaggingRule = definitionEntity.pdfTaggingRule,
+                    )
+                }
+                is com.quadient.migration.persistence.migrationmodel.ParagraphStyleEntityRef -> {
+                    ParagraphStyleRef.fromDb(definitionEntity)
+                }
+            }
+            
+            return ParagraphStyle(
+                id = row[ParagraphStyleTable.id].value,
+                name = row[ParagraphStyleTable.name],
+                originLocations = row[ParagraphStyleTable.originLocations],
+                customFields = CustomFieldMap(row[ParagraphStyleTable.customFields].toMutableMap()),
+                lastUpdated = row[ParagraphStyleTable.lastUpdated],
+                created = row[ParagraphStyleTable.created],
+                definition = definition,
+            )
+        }
     }
 }
 
@@ -44,22 +84,6 @@ data class ParagraphStyleDefinition(
     var tabs: Tabs?,
     var pdfTaggingRule: ParagraphPdfTaggingRule?,
 ) : ParagraphStyleDefOrRef {
-    companion object {
-        fun fromModel(model: ParagraphStyleDefinitionModel) = ParagraphStyleDefinition(
-            leftIndent = model.leftIndent,
-            rightIndent = model.rightIndent,
-            defaultTabSize = model.defaultTabSize,
-            spaceBefore = model.spaceBefore,
-            spaceAfter = model.spaceAfter,
-            alignment = model.alignment,
-            firstLineIndent = model.firstLineIndent,
-            lineSpacing = model.lineSpacing,
-            keepWithNextParagraph = model.keepWithNextParagraph,
-            tabs = model.tabs?.let(Tabs::fromModel),
-            pdfTaggingRule = model.pdfTaggingRule,
-        )
-    }
-
     override fun toDb() = ParagraphStyleDefinitionEntity(
         leftIndent = leftIndent,
         rightIndent = rightIndent,
@@ -73,40 +97,12 @@ data class ParagraphStyleDefinition(
         tabs = tabs?.toDb(),
         pdfTaggingRule = pdfTaggingRule,
     )
-
-    override fun toModel() = ParagraphStyleDefinitionModel(
-        leftIndent = leftIndent,
-        rightIndent = rightIndent,
-        defaultTabSize = defaultTabSize,
-        spaceBefore = spaceBefore,
-        spaceAfter = spaceAfter,
-        alignment = alignment,
-        firstLineIndent = firstLineIndent,
-        lineSpacing = lineSpacing,
-        keepWithNextParagraph = keepWithNextParagraph,
-        tabs = tabs?.toModel(),
-        pdfTaggingRule = pdfTaggingRule,
-    )
 }
 
 data class Tabs(val tabs: List<Tab>, val useOutsideTabs: Boolean) {
-    companion object {
-        fun fromModel(db: TabsModel) = Tabs(
-            tabs = db.tabs.map { Tab(it.position, it.type) },
-            useOutsideTabs = db.useOutsideTabs,
-        )
-    }
-
     fun toDb() = TabsEntity(
         tabs = tabs.map {
             TabEntity(position = it.position, type = it.type)
-        },
-        useOutsideTabs = useOutsideTabs,
-    )
-
-    fun toModel() = TabsModel(
-        tabs = tabs.map {
-            TabModel(position = it.position, type = it.type)
         },
         useOutsideTabs = useOutsideTabs,
     )

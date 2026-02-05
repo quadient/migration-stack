@@ -1,10 +1,7 @@
 package com.quadient.migration.api.repository
 
-import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.Variable
-import com.quadient.migration.data.VariableModel
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.VariableTable
@@ -16,23 +13,16 @@ import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import kotlin.collections.map
 
 class VariableRepository(internalRepository: VariableInternalRepository) :
-    Repository<Variable, VariableModel>(internalRepository) {
-    override fun toDto(model: VariableModel): Variable {
-        return Variable(
-            id = model.id,
-            name = model.name,
-            originLocations = model.originLocations,
-            customFields = CustomFieldMap(model.customFields.toMutableMap()),
-            dataType = model.dataType,
-            defaultValue = model.defaultValue
-        )
+    Repository<Variable>(internalRepository) {
+    override fun toDto(model: Variable): Variable {
+        return model
     }
 
     override fun findUsages(id: String): List<MigrationObject> {
         return transaction {
             DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq internalRepository.projectName }
                 .map { DocumentObjectTable.fromResultRow(it) }.filter { it.collectRefs().any { it.id == id } }
-                .map { DocumentObject.fromModel(it) }.distinct()
+                .distinct()
         }
     }
 

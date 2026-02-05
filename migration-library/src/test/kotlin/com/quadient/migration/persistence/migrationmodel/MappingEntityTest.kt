@@ -6,8 +6,10 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
@@ -19,17 +21,16 @@ import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.shared.points
+import com.quadient.migration.tools.aBlockDto
+import com.quadient.migration.tools.aImageDto
+import com.quadient.migration.tools.aParagraph
 import com.quadient.migration.tools.aParagraphStyle
 import com.quadient.migration.tools.aParagraphStyleDefinition
+import com.quadient.migration.tools.aText
 import com.quadient.migration.tools.aTextStyle
 import com.quadient.migration.tools.aTextStyleDefinition
 import com.quadient.migration.tools.aVariable
-import com.quadient.migration.tools.model.aDocObj
-import com.quadient.migration.tools.model.aImage
-import com.quadient.migration.tools.model.aParagraph
-import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
-import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -48,15 +49,12 @@ class MappingEntityTest {
                 variableStructureRef = null,
                 skip = null,
             )
-            val dto = DocumentObject.fromModel(
-                aDocObj(
-                    "doc1",
-                    name = "Test doc",
-                    internal = true,
-                    baseTemplate = "base1",
-                    targetFolder = "folder1",
-                    type = DocumentObjectType.Section
-                )
+            val dto = aBlockDto(
+                "doc1",
+                name = "Test doc",
+                internal = true,
+                targetFolder = "folder1",
+                type = DocumentObjectType.Section,
             )
 
             val result = mapping.apply(dto)
@@ -79,16 +77,14 @@ class MappingEntityTest {
                 variableStructureRef = "new structure",
                 skip = SkipOptions(true, "ph", "reason"),
             )
-            val dto = DocumentObject.fromModel(
-                aDocObj(
-                    "doc1",
-                    name = "Test doc",
-                    internal = true,
-                    baseTemplate = "base1",
-                    targetFolder = "folder1",
-                    type = DocumentObjectType.Section,
-                    variableStructureModelRef = "some structure",
-                )
+            val dto = aBlockDto(
+                "doc1",
+                name = "Test doc",
+                internal = true,
+                baseTemplate = "base1",
+                targetFolder = "folder1",
+                type = DocumentObjectType.Section,
+                variableStructureRef = VariableStructureRef("some structure"),
             )
 
             val result = mapping.apply(dto)
@@ -110,9 +106,7 @@ class MappingEntityTest {
         @Test
         fun `nothing changes with null mapping`() {
             val mapping = MappingItemEntity.Area(name = null, areas = mutableMapOf())
-            val dto = DocumentObject.fromModel(
-                aDocObj("doc1", content = listOf(anArea(emptyList(), null, "Area 1"), anArea(emptyList(), null, "Area 2")))
-            )
+            val dto = aBlockDto("doc1", content = listOf(Area(emptyList(), null, "Area 1"), Area(emptyList(), null, "Area 2")))
 
             val result = mapping.apply(dto)
 
@@ -125,15 +119,13 @@ class MappingEntityTest {
             val mapping = MappingItemEntity.Area(
                 name = null, areas = mutableMapOf(0 to "AddedFirstAreaName", 1 to null, 2 to "AddedLastAreaName")
             )
-            val dto = DocumentObject.fromModel(
-                aDocObj(
-                    "doc1", content = listOf(
-                        anArea(emptyList(), null, null),
-                        aParagraph("Default paragraph content"),
-                        anArea(emptyList(), null, "MiddleAreaFlow"),
-                        aParagraph("Another paragraph content"),
-                        anArea(emptyList(), null, null),
-                    )
+            val dto = aBlockDto(
+                "doc1", content = listOf(
+                    Area(emptyList(), null, null),
+                    aParagraph(content = listOf(aText(content = listOf(StringValue("Default paragraph content"))))),
+                    Area(emptyList(), null, "MiddleAreaFlow"),
+                    aParagraph(content = listOf(aText(content = listOf(StringValue("Another paragraph content"))))),
+                    Area(emptyList(), null, null),
                 )
             )
 
@@ -141,12 +133,12 @@ class MappingEntityTest {
 
             result.content.shouldBeEqualTo(
                 listOf(
-                    anArea(emptyList(), null, "AddedFirstAreaName"),
-                    aParagraph("Default paragraph content"),
-                    anArea(emptyList(), null, null),
-                    aParagraph("Another paragraph content"),
-                    anArea(emptyList(), null, "AddedLastAreaName"),
-                ).map { DocumentContent.fromModelContent(it) })
+                    Area(emptyList(), null, "AddedFirstAreaName"),
+                    aParagraph(content = listOf(aText(content = listOf(StringValue("Default paragraph content"))))),
+                    Area(emptyList(), null, null),
+                    aParagraph(content = listOf(aText(content = listOf(StringValue("Another paragraph content"))))),
+                    Area(emptyList(), null, "AddedLastAreaName"),
+                ))
         }
     }
 
@@ -160,7 +152,7 @@ class MappingEntityTest {
                 sourcePath = null,
                 skip = null,
             )
-            val dto = Image.fromModel(aImage("img1", name = "test img", targetFolder = "dir1", sourcePath = "source1"))
+            val dto = aImageDto("img1", name = "test img", targetFolder = "dir1", sourcePath = "source1")
 
             val result = mapping.apply(dto)
 
@@ -179,7 +171,7 @@ class MappingEntityTest {
                 imageType = ImageType.Gif,
                 skip = SkipOptions(true, "ph", "reason"),
             )
-            val dto = Image.fromModel(aImage("img1", name = "test img", targetFolder = "dir1", sourcePath = "source1"))
+            val dto = aImageDto("img1", name = "test img", targetFolder = "dir1", sourcePath = "source1")
 
             val result = mapping.apply(dto)
 

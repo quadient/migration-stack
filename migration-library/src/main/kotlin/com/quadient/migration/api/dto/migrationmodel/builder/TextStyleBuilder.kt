@@ -25,6 +25,8 @@ class TextStyleBuilder(id: String) : DtoBuilderBase<TextStyle, TextStyleBuilder>
             name = name,
             originLocations = originLocations,
             customFields = customFields,
+            created = created,
+            lastUpdated = lastUpdated,
             definition = definition ?: throw IllegalArgumentException("TextStyleDefinition must be provided"),
         )
     }

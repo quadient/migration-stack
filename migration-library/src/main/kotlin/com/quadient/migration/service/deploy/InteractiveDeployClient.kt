@@ -5,9 +5,9 @@ package com.quadient.migration.service.deploy
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.repository.StatusTrackingRepository
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.ParagraphStyleDefinitionModel
-import com.quadient.migration.data.TextStyleDefinitionModel
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.FileInternalRepository
@@ -61,11 +61,11 @@ class InteractiveDeployClient(
         }
     }
 
-    override fun shouldIncludeDependency(documentObject: DocumentObjectModel): Boolean {
-        return !documentObject.internal
+    override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
+        return documentObject.internal != true
     }
 
-    override fun getAllDocumentObjectsToDeploy(): List<DocumentObjectModel> {
+    override fun getAllDocumentObjectsToDeploy(): List<DocumentObject> {
         return documentObjectRepository.list(
             DocumentObjectTable.skip.extract<String>("skipped") eq "false" and DocumentObjectTable.internal.eq(
                 false
@@ -73,15 +73,15 @@ class InteractiveDeployClient(
         ).let { deployOrder(it) }
     }
 
-    override fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObjectModel> {
+    override fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObject> {
         val documentObjects = documentObjectRepository.list(DocumentObjectTable.id inList documentObjectIds)
         val skipped = mutableListOf<String>()
         val internal = mutableListOf<String>()
         for (documentObject in documentObjects) {
-            if (documentObject.skip.skipped) {
+            if (documentObject.skip.skipped == true) {
                 skipped.add(documentObject.id)
             }
-            if (documentObject.internal) {
+            if (documentObject.internal == true) {
                 internal.add(documentObject.id)
             }
         }
@@ -104,7 +104,7 @@ class InteractiveDeployClient(
         return documentObjects
     }
 
-    override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult {
+    override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObject>): DeploymentResult {
         val deploymentId = Uuid.random()
         val deploymentTimestamp = Clock.System.now()
         val deploymentResult = DeploymentResult(deploymentId)
@@ -185,9 +185,9 @@ class InteractiveDeployClient(
             }
         }
 
-        val textStyles = textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel }
+        val textStyles = textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinition }
         val paragraphStyles =
-            paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel }
+            paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinition }
 
         val styleLayoutDeltaXml = documentObjectBuilder.buildStyleLayoutDelta(
             textStyles = textStyles,

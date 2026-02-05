@@ -1,29 +1,13 @@
 package com.quadient.migration.persistence.repository
 
-import com.quadient.migration.data.ImageModel
-import com.quadient.migration.persistence.table.ImageTable
+import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.persistence.table.MigrationObjectTable
-import com.quadient.migration.shared.IcmPath
-import com.quadient.migration.shared.ImageType
 import org.jetbrains.exposed.v1.core.ResultRow
 
 class ImageInternalRepository(
     table: MigrationObjectTable, projectName: String
-) : InternalRepository<ImageModel>(table, projectName) {
-    override fun toModel(row: ResultRow): ImageModel {
-        return ImageModel(
-            id = row[table.id].value,
-            name = row[table.name],
-            originLocations = row[table.originLocations],
-            customFields = row[table.customFields],
-            created = row[table.created],
-            sourcePath = row[ImageTable.sourcePath],
-            imageType = ImageType.valueOf(row[ImageTable.imageType]),
-            options = row[ImageTable.options],
-            targetFolder = row[ImageTable.targetFolder]?.let(IcmPath::from),
-            metadata = row[ImageTable.metadata],
-            skip = row[ImageTable.skip],
-            alternateText = row[ImageTable.alternateText],
-        )
+) : InternalRepository<Image>(table, projectName) {
+    override fun toModel(row: ResultRow): Image {
+        return Image.fromDb(row)
     }
 }

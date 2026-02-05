@@ -4,7 +4,6 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectFilter
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.toDb
-import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.deploy.ResourceType
@@ -22,20 +21,20 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 
 class DocumentObjectRepository(internalRepository: DocumentObjectInternalRepository) :
-    Repository<DocumentObject, DocumentObjectModel>(internalRepository) {
+    Repository<DocumentObject>(internalRepository) {
     val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
 
     fun list(documentObjectFilter: DocumentObjectFilter): List<DocumentObject> {
         return internalRepository.list(filter(documentObjectFilter)).map(::toDto)
     }
 
-    override fun toDto(model: DocumentObjectModel): DocumentObject = DocumentObject.fromModel(model)
+    override fun toDto(model: DocumentObject): DocumentObject = model
 
     override fun findUsages(id: String): List<MigrationObject> {
         return transaction {
             DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq internalRepository.projectName }
                 .map { DocumentObjectTable.fromResultRow(it) }.filter { it.collectRefs().any { it.id == id } }
-                .map { DocumentObject.fromModel(it) }.distinct()
+                .distinct()
         }
     }
 

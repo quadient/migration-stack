@@ -123,6 +123,8 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
             targetFolder = targetFolder,
             originLocations = originLocations,
             customFields = customFields,
+            created = created,
+            lastUpdated = lastUpdated,
             displayRuleRef = displayRuleRef,
             variableStructureRef = variableStructureRef,
             baseTemplate = baseTemplate,

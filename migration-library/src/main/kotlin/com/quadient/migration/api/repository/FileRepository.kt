@@ -1,10 +1,8 @@
 package com.quadient.migration.api.repository
 
-import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.File
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
-import com.quadient.migration.data.FileModel
 import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.FileTable
@@ -15,27 +13,18 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 
-class FileRepository(internalRepository: FileInternalRepository) : Repository<File, FileModel>(internalRepository) {
+class FileRepository(internalRepository: FileInternalRepository) : Repository<File>(internalRepository) {
     val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
 
-    override fun toDto(model: FileModel): File {
-        return File(
-            id = model.id,
-            name = model.name,
-            originLocations = model.originLocations,
-            customFields = CustomFieldMap(model.customFields.toMutableMap()),
-            sourcePath = model.sourcePath,
-            targetFolder = model.targetFolder?.toString(),
-            fileType = model.fileType,
-            skip = model.skip,
-        )
+    override fun toDto(model: File): File {
+        return model
     }
 
     override fun findUsages(id: String): List<MigrationObject> {
         return transaction {
             DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq internalRepository.projectName }
                 .map { DocumentObjectTable.fromResultRow(it) }.filter { it.collectRefs().any { it.id == id } }
-                .map { DocumentObject.fromModel(it) }.distinct()
+                .distinct()
         }
     }
 

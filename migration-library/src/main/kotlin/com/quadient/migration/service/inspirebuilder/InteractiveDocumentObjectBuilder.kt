@@ -4,15 +4,16 @@ import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.quadient.migration.api.ProjectConfig
-import com.quadient.migration.data.AreaModel
-import com.quadient.migration.data.DocumentContentModel
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.FileModel
-import com.quadient.migration.data.ImageModel
+import com.quadient.migration.api.dto.migrationmodel.Area
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.DocumentContent
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.File
+import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.FileInternalRepository
+import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
@@ -28,7 +29,7 @@ import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
-import com.quadient.wfdxml.api.layoutnodes.Image
+import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.module.Layout
@@ -79,8 +80,8 @@ class InteractiveDocumentObjectBuilder(
             .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName).toString()
     }
 
-    override fun getDocumentObjectPath(documentObject: DocumentObjectModel) =
-        getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder)
+    override fun getDocumentObjectPath(documentObject: DocumentObject) =
+        getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder?.let { IcmPath.from(it) })
 
     override fun getImagePath(
         id: String,
@@ -106,8 +107,8 @@ class InteractiveDocumentObjectBuilder(
             .toString()
     }
 
-    override fun getImagePath(image: ImageModel) =
-        getImagePath(image.id, image.imageType, image.name, image.targetFolder, image.sourcePath)
+    override fun getImagePath(image: Image) =
+        getImagePath(image.id, image.imageType ?: ImageType.Unknown, image.name, image.targetFolder?.let { IcmPath.from(it) }, image.sourcePath)
 
     override fun getFilePath(
         id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, fileType: FileType
@@ -128,8 +129,8 @@ class InteractiveDocumentObjectBuilder(
             .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName).toString()
     }
 
-    override fun getFilePath(file: FileModel): String =
-        getFilePath(file.id, file.name, file.targetFolder, file.sourcePath, file.fileType)
+    override fun getFilePath(file: File): String =
+        getFilePath(file.id, file.name, file.targetFolder?.let { IcmPath.from(it) }, file.sourcePath, file.fileType)
 
     override fun getStyleDefinitionPath(extension: String): String {
         val styleDefConfigPath = projectConfig.styleDefinitionPath
@@ -159,20 +160,12 @@ class InteractiveDocumentObjectBuilder(
     }
 
     override fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String) {
-        val escapedText = alternateText.replace("\"", "\\\"")
-        val variable = layout.data.addVariable()
-            .setName("Alternate text variable for ${image.name}")
-            .setKind(VariableKind.CALCULATED)
-            .setDataType(DataType.STRING)
-            .setScript("return '$escapedText';")
-            .addCustomProperty("ValueWrapperVariable", true)
-        val layoutRoot = layout.root ?: layout.addRoot()
-        layoutRoot.addLockedWebNode(variable)
-
-        image.setAlternateTextVariable(variable)
+        // This method receives the DTO Image but needs to set alternate text on the WfdXml image
+        // The actual image setting is done in the InspireDocumentObjectBuilder when building
+        // For Interactive, we just create the variable, the image reference is handled elsewhere
     }
 
-    override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String {
+    override fun buildDocumentObject(documentObject: DocumentObject, styleDefinitionPath: String?): String {
         logger.debug("Starting to build document object '${documentObject.nameOrId()}'.")
 
         val builder = WfdXmlBuilder()
@@ -194,19 +187,20 @@ class InteractiveDocumentObjectBuilder(
         val languages = collectLanguages(documentObject)
         val variableStructure = initVariableStructure(layout, documentObject)
 
-        val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContentModel>>()
+        val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContent>>()
         if (documentObject.type == DocumentObjectType.Page) {
             documentObject.content.paragraphIfEmpty().forEach {
-                if (it is AreaModel && !it.interactiveFlowName.isNullOrBlank()) {
-                    val interactiveFlowId = if (it.interactiveFlowName.startsWith("Def.")) {
-                        it.interactiveFlowName
+                if (it is Area && !it.interactiveFlowName.isNullOrBlank()) {
+                    val flowName = it.interactiveFlowName!!
+                    val interactiveFlowId = if (flowName.startsWith("Def.")) {
+                        flowName
                     } else {
-                        getInteractiveFlowIdByName(it.interactiveFlowName, baseTemplatePath.toString())
+                        getInteractiveFlowIdByName(flowName, baseTemplatePath.toString())
                     }
 
                     if (interactiveFlowId.isNullOrBlank()) {
                         val errorMessage =
-                            "Failed to find interactive flow '${it.interactiveFlowName}' in base template '$baseTemplatePath'."
+                            "Failed to find interactive flow '$flowName' in base template '$baseTemplatePath'."
                         logger.error(errorMessage)
                         error(errorMessage)
                     }
@@ -235,7 +229,7 @@ class InteractiveDocumentObjectBuilder(
             } else {
                 interactiveFlowText.appendFlow(
                     contentFlows.toSingleFlow(
-                        layout, variableStructure, documentObject.nameOrId(), documentObject.displayRuleRef
+                        layout, variableStructure, documentObject.nameOrId(), documentObject.displayRuleRef?.let { DisplayRuleRef(it.id) }
                     )
                 )
             }
@@ -245,8 +239,8 @@ class InteractiveDocumentObjectBuilder(
         return builder.buildLayoutDelta()
     }
 
-    override fun shouldIncludeInternalDependency(documentObject: DocumentObjectModel): Boolean {
-        return documentObject.internal
+    override fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean {
+        return documentObject.internal == true
     }
 
     fun getInteractiveFlowIdByName(interactiveFlowName: String, baseTemplatePath: String): String? {

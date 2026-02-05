@@ -94,6 +94,8 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
             name = name,
             originLocations = originLocations,
             customFields = customFields,
+            created = created,
+            lastUpdated = lastUpdated,
             sourcePath = sourcePath,
             imageType = imageType,
             options = options,

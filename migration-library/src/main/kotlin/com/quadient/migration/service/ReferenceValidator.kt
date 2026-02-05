@@ -1,14 +1,15 @@
 package com.quadient.migration.service
 
-import com.quadient.migration.data.DisplayRuleModelRef
-import com.quadient.migration.data.DocumentObjectModelRef
-import com.quadient.migration.data.ImageModelRef
-import com.quadient.migration.data.FileModelRef
-import com.quadient.migration.data.ParagraphStyleModelRef
-import com.quadient.migration.data.RefModel
-import com.quadient.migration.data.TextStyleModelRef
-import com.quadient.migration.data.VariableModelRef
-import com.quadient.migration.data.VariableStructureModelRef
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.Ref
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.dto.migrationmodel.RefValidatable
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
@@ -17,10 +18,6 @@ import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepos
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
-
-interface RefValidatable {
-    fun collectRefs(): List<RefModel>
-}
 
 class ReferenceValidator(
     private val documentObjectRepository: DocumentObjectInternalRepository,
@@ -47,7 +44,7 @@ class ReferenceValidator(
         val displayRules = displayRuleRepository.listAllModel()
         val images = imageRepository.listAllModel()
         val files = fileRepository.listAllModel()
-        val alreadyValidatedRefs = mutableSetOf<RefModel>()
+        val alreadyValidatedRefs = mutableSetOf<Ref>()
 
         val missingRefs =
             (documentObjects + variables + paragraphStyles + textStyles + dataStructures + displayRules + images + files).mapNotNull {
@@ -61,11 +58,11 @@ class ReferenceValidator(
      * Validates the references of a single object.
      * @return ValidationResult containing validated references and missing references
      */
-    fun validate(input: RefValidatable, alreadyValidRefs: MutableSet<RefModel>): ValidationResult {
-        val queue: MutableList<RefModel> = input.collectRefs().toMutableList()
+    fun validate(input: RefValidatable, alreadyValidRefs: MutableSet<Ref>): ValidationResult {
+        val queue: MutableList<Ref> = input.collectRefs().toMutableList()
 
-        val missingRefs = mutableListOf<RefModel>()
-        val validatedRefs = mutableListOf<RefModel>()
+        val missingRefs = mutableListOf<Ref>()
+        val validatedRefs = mutableListOf<Ref>()
 
         while (queue.isNotEmpty()) {
             val current = queue.removeFirst()
@@ -74,7 +71,7 @@ class ReferenceValidator(
             }
 
             when (current) {
-                is DocumentObjectModelRef -> {
+                is DocumentObjectRef -> {
                     val documentObject = documentObjectRepository.findModel(current.id)
 
                     if (documentObject == null) {
@@ -86,7 +83,7 @@ class ReferenceValidator(
                     }
                 }
 
-                is VariableModelRef -> {
+                is VariableRef -> {
                     val variable = variableRepository.findModel(current.id)
 
                     if (variable != null) {
@@ -97,7 +94,7 @@ class ReferenceValidator(
                     }
                 }
 
-                is ParagraphStyleModelRef -> {
+                is ParagraphStyleRef -> {
                     val style = paragraphStyleRepository.findModel(current.id)
 
                     if (style != null) {
@@ -109,7 +106,7 @@ class ReferenceValidator(
                     }
                 }
 
-                is TextStyleModelRef -> {
+                is TextStyleRef -> {
                     val style = textStyleRepository.findModel(current.id)
 
                     if (style != null) {
@@ -121,7 +118,7 @@ class ReferenceValidator(
                     }
                 }
 
-                is DisplayRuleModelRef -> {
+                is DisplayRuleRef -> {
                     val rule = displayRuleRepository.findModel(current.id)
 
                     if (rule != null) {
@@ -133,7 +130,7 @@ class ReferenceValidator(
                     }
                 }
 
-                is ImageModelRef -> {
+                is ImageRef -> {
                     val image = imageRepository.findModel(current.id)
 
                     if (image != null) {
@@ -145,7 +142,7 @@ class ReferenceValidator(
                     }
                 }
 
-                is FileModelRef -> {
+                is FileRef -> {
                     val file = fileRepository.findModel(current.id)
 
                     if (file != null) {
@@ -157,7 +154,7 @@ class ReferenceValidator(
                     }
                 }
 
-                is VariableStructureModelRef -> {
+                is VariableStructureRef -> {
                     val variableStructure = variableStructureRepository.findModel(current.id)
                     
                     if (variableStructure != null) {
@@ -174,7 +171,7 @@ class ReferenceValidator(
         return ValidationResult(validatedRefs, missingRefs)
     }
 
-    data class ValidationResult(val validatedRefs: List<RefModel>, val missingRefs: List<RefModel>)
-    data class MissingRefs(val missingRefs: List<RefModel>)
+    data class ValidationResult(val validatedRefs: List<Ref>, val missingRefs: List<Ref>)
+    data class MissingRefs(val missingRefs: List<Ref>)
 }
 

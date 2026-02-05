@@ -1,27 +1,62 @@
 package com.quadient.migration.api.dto.migrationmodel
 
-import com.quadient.migration.data.TextStyleDefinitionModel
-import com.quadient.migration.data.TextStyleModel
 import com.quadient.migration.persistence.migrationmodel.TextStyleDefinitionEntity
+import com.quadient.migration.persistence.table.TextStyleTable
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SuperOrSubscript
+import kotlinx.datetime.Instant
+import org.jetbrains.exposed.v1.core.ResultRow
 
 data class TextStyle(
     override val id: String,
     override var name: String? = null,
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
+    override val created: Instant,
+    override val lastUpdated: Instant,
     var definition: TextStyleDefOrRef,
-) : MigrationObject {
+) : MigrationObject, RefValidatable {
+    override fun collectRefs(): List<Ref> {
+        return when (definition) {
+            is TextStyleDefinition -> emptyList()
+            is TextStyleRef -> listOf(definition as Ref)
+        }
+    }
+
     companion object {
-        fun fromModel(model: TextStyleModel) = TextStyle(
-            id = model.id,
-            name = model.name,
-            originLocations = model.originLocations,
-            customFields = CustomFieldMap(model.customFields.toMutableMap()),
-            definition = TextStyleDefOrRef.fromModel(model.definition),
-        )
+        fun fromDb(row: ResultRow): TextStyle {
+            // Need to convert from Entity to DTO
+            val definitionEntity = row[TextStyleTable.definition]
+            val definition = when (definitionEntity) {
+                is com.quadient.migration.persistence.migrationmodel.TextStyleDefinitionEntity -> {
+                    TextStyleDefinition(
+                        fontFamily = definitionEntity.fontFamily,
+                        foregroundColor = definitionEntity.foregroundColor,
+                        size = definitionEntity.size,
+                        bold = definitionEntity.bold,
+                        italic = definitionEntity.italic,
+                        underline = definitionEntity.underline,
+                        strikethrough = definitionEntity.strikethrough,
+                        superOrSubscript = definitionEntity.superOrSubscript,
+                        interspacing = definitionEntity.interspacing,
+                    )
+                }
+                is com.quadient.migration.persistence.migrationmodel.TextStyleEntityRef -> {
+                    TextStyleRef.fromDb(definitionEntity)
+                }
+            }
+            
+            return TextStyle(
+                id = row[TextStyleTable.id].value,
+                name = row[TextStyleTable.name],
+                originLocations = row[TextStyleTable.originLocations],
+                customFields = CustomFieldMap(row[TextStyleTable.customFields].toMutableMap()),
+                lastUpdated = row[TextStyleTable.lastUpdated],
+                created = row[TextStyleTable.created],
+                definition = definition,
+            )
+        }
     }
 }
 
@@ -36,33 +71,7 @@ data class TextStyleDefinition(
     var superOrSubscript: SuperOrSubscript = SuperOrSubscript.None,
     var interspacing: Size?,
 ) : TextStyleDefOrRef {
-    companion object {
-        fun fromModel(model: TextStyleDefinitionModel) = TextStyleDefinition(
-            fontFamily = model.fontFamily,
-            foregroundColor = model.foregroundColor,
-            size = model.size,
-            bold = model.bold,
-            italic = model.italic,
-            underline = model.underline,
-            strikethrough = model.strikethrough,
-            interspacing = model.interspacing,
-            superOrSubscript = model.superOrSubscript,
-        )
-    }
-
     override fun toDb() = TextStyleDefinitionEntity(
-        fontFamily = fontFamily,
-        foregroundColor = foregroundColor,
-        size = size,
-        bold = bold,
-        italic = italic,
-        underline = underline,
-        strikethrough = strikethrough,
-        superOrSubscript = superOrSubscript,
-        interspacing = interspacing,
-    )
-
-    override fun toModel() = TextStyleDefinitionModel(
         fontFamily = fontFamily,
         foregroundColor = foregroundColor,
         size = size,

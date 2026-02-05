@@ -1,11 +1,8 @@
 package com.quadient.migration.api.repository
 
-import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
-import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
-import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.VariableStructureTable
@@ -17,23 +14,16 @@ import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import kotlin.collections.map
 
 class VariableStructureRepository(internalRepository: VariableStructureInternalRepository) :
-    Repository<VariableStructure, VariableStructureModel>(internalRepository) {
-    override fun toDto(model: VariableStructureModel): VariableStructure {
-        return VariableStructure(
-            id = model.id,
-            name = model.name,
-            originLocations = model.originLocations,
-            customFields = CustomFieldMap(model.customFields.toMutableMap()),
-            structure = model.structure.map { (key, value) -> key.id to value }.toMap(),
-            languageVariable = model.languageVariable?.let { VariableRef.fromModel(it) }
-        )
+    Repository<VariableStructure>(internalRepository) {
+    override fun toDto(model: VariableStructure): VariableStructure {
+        return model
     }
 
     override fun findUsages(id: String): List<MigrationObject> {
         return transaction {
             DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq internalRepository.projectName }
                 .map { DocumentObjectTable.fromResultRow(it) }.filter { it.collectRefs().any { it.id == id } }
-                .map { DocumentObject.fromModel(it) }.distinct()
+                .distinct()
         }
     }
 

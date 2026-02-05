@@ -2,15 +2,14 @@ package com.quadient.migration.api.repository
 
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.Ref
-import com.quadient.migration.data.MigrationObjectModel
+import com.quadient.migration.api.dto.migrationmodel.RefValidatable
 import com.quadient.migration.persistence.repository.InternalRepository
-import com.quadient.migration.service.RefValidatable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
-abstract class Repository<T : MigrationObject, K : MigrationObjectModel>(
-    protected val internalRepository: InternalRepository<K>
+abstract class Repository<T : MigrationObject>(
+    protected val internalRepository: InternalRepository<T>
 ) {
-    abstract fun toDto(model: K): T
+    abstract fun toDto(model: T): T
 
     fun listAll(): List<T> = internalRepository.listAllModel().map(::toDto)
     fun find(id: String): T? = internalRepository.findModel(id)?.let(::toDto)
@@ -28,7 +27,7 @@ abstract class Repository<T : MigrationObject, K : MigrationObjectModel>(
     fun findRefs(id: String): List<Ref> {
         val model = internalRepository.findModel(id)
         if (model != null && model is RefValidatable) {
-            return model.collectRefs().map { Ref.fromModel(it) }
+            return model.collectRefs()
         }
         return emptyList()
     }

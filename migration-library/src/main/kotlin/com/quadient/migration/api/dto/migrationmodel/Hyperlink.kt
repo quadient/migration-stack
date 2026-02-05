@@ -1,6 +1,5 @@
 package com.quadient.migration.api.dto.migrationmodel
 
-import com.quadient.migration.data.HyperlinkModel
 import com.quadient.migration.persistence.migrationmodel.HyperlinkEntity
 
 data class Hyperlink(
@@ -9,18 +8,12 @@ data class Hyperlink(
     val alternateText: String? = null
 ) : TextContent {
     companion object {
-        fun fromModel(model: HyperlinkModel) = Hyperlink(
-            url = model.url,
-            displayText = model.displayText,
-            alternateText = model.alternateText
+        fun fromDb(entity: HyperlinkEntity) = Hyperlink(
+            url = entity.url,
+            displayText = entity.displayText,
+            alternateText = entity.alternateText
         )
     }
-
-    fun toModel() = HyperlinkModel(
-        url = url,
-        displayText = displayText,
-        alternateText = alternateText
-    )
 
     fun toDb() = HyperlinkEntity(
         url = url,

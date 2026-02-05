@@ -32,6 +32,8 @@ class VariableBuilder(id: String) : DtoBuilderBase<Variable, VariableBuilder>(id
             name = name,
             originLocations = originLocations,
             customFields = customFields,
+            created = created,
+            lastUpdated = lastUpdated,
             dataType = dataType ?: throw IllegalArgumentException("dataType is required"),
             defaultValue = defaultValue
         )

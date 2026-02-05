@@ -1,27 +1,26 @@
 package com.quadient.migration.api.dto.migrationmodel
 
-import com.quadient.migration.data.DocumentContentModel
-import com.quadient.migration.data.DocumentObjectModelRef
-import com.quadient.migration.data.FirstMatchModel
-import com.quadient.migration.data.AreaModel
-import com.quadient.migration.data.ImageModelRef
-import com.quadient.migration.data.FileModelRef
-import com.quadient.migration.data.ParagraphModel
-import com.quadient.migration.data.SelectByLanguageModel
-import com.quadient.migration.data.TableModel
 import com.quadient.migration.persistence.migrationmodel.DocumentContentEntity
+import com.quadient.migration.persistence.migrationmodel.AreaEntity
+import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
+import com.quadient.migration.persistence.migrationmodel.ParagraphEntity
+import com.quadient.migration.persistence.migrationmodel.SelectByLanguageEntity
+import com.quadient.migration.persistence.migrationmodel.TableEntity
+import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
+import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
+import com.quadient.migration.persistence.migrationmodel.FileEntityRef
 
 sealed interface DocumentContent {
     companion object {
-        fun fromModelContent(model: DocumentContentModel) = when (model) {
-            is TableModel -> Table.fromModel(model)
-            is ParagraphModel -> Paragraph.fromModel(model)
-            is DocumentObjectModelRef -> DocumentObjectRef.fromModel(model)
-            is ImageModelRef -> ImageRef.fromModel(model)
-            is FileModelRef -> FileRef.fromModel(model)
-            is AreaModel -> Area.fromModel(model)
-            is FirstMatchModel -> FirstMatch.fromModel(model)
-            is SelectByLanguageModel -> SelectByLanguage.fromModel(model)
+        fun fromDbContent(entity: DocumentContentEntity): DocumentContent = when (entity) {
+            is TableEntity -> Table.fromDb(entity)
+            is ParagraphEntity -> Paragraph.fromDb(entity)
+            is DocumentObjectEntityRef -> DocumentObjectRef.fromDb(entity)
+            is ImageEntityRef -> ImageRef.fromDb(entity)
+            is FileEntityRef -> FileRef.fromDb(entity)
+            is AreaEntity -> Area.fromDb(entity)
+            is FirstMatchEntity -> FirstMatch.fromDb(entity)
+            is SelectByLanguageEntity -> SelectByLanguage.fromDb(entity)
         }
     }
 }

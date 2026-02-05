@@ -1,10 +1,8 @@
 package com.quadient.migration.api.repository
 
-import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
-import com.quadient.migration.data.ImageModel
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.ImageTable
@@ -16,30 +14,18 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 
-class ImageRepository(internalRepository: ImageInternalRepository) : Repository<Image, ImageModel>(internalRepository) {
+class ImageRepository(internalRepository: ImageInternalRepository) : Repository<Image>(internalRepository) {
     val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
 
-    override fun toDto(model: ImageModel): Image {
-        return Image(
-            id = model.id,
-            name = model.name,
-            originLocations = model.originLocations,
-            customFields = CustomFieldMap(model.customFields.toMutableMap()),
-            sourcePath = model.sourcePath,
-            options = model.options,
-            imageType = model.imageType,
-            targetFolder = model.targetFolder?.toString(),
-            metadata = model.metadata,
-            skip = model.skip,
-            alternateText = model.alternateText,
-        )
+    override fun toDto(model: Image): Image {
+        return model
     }
 
     override fun findUsages(id: String): List<MigrationObject> {
         return transaction {
             DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq internalRepository.projectName }
                 .map { DocumentObjectTable.fromResultRow(it) }.filter { it.collectRefs().any { it.id == id } }
-                .map { DocumentObject.fromModel(it) }.distinct()
+                .distinct()
         }
     }
 

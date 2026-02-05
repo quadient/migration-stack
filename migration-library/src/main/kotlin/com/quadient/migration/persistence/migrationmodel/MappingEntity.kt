@@ -1,7 +1,6 @@
 package com.quadient.migration.persistence.migrationmodel
 
 import com.quadient.migration.api.dto.migrationmodel.*
-import com.quadient.migration.data.TabsModel
 import com.quadient.migration.persistence.table.MappingTable
 import com.quadient.migration.shared.*
 import com.quadient.migration.shared.LineSpacing.Additional
@@ -171,7 +170,12 @@ sealed class MappingItemEntity {
                                     firstLineIndent = definition.firstLineIndent,
                                     lineSpacing = definition.lineSpacing ?: Additional(null),
                                     keepWithNextParagraph = definition.keepWithNextParagraph,
-                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel),
+                                    tabs = definition.tabs?.let { tabsEntity ->
+                                        Tabs(
+                                            tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
+                                            useOutsideTabs = tabsEntity.useOutsideTabs
+                                        )
+                                    },
                                     pdfTaggingRule = definition.pdfTaggingRule
                                 )
                             )
@@ -189,7 +193,12 @@ sealed class MappingItemEntity {
                                     firstLineIndent = definition.firstLineIndent,
                                     lineSpacing = definition.lineSpacing ?: Additional(null),
                                     keepWithNextParagraph = definition.keepWithNextParagraph ?: false,
-                                    tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel),
+                                    tabs = definition.tabs?.let { tabsEntity ->
+                                        Tabs(
+                                            tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
+                                            useOutsideTabs = tabsEntity.useOutsideTabs
+                                        )
+                                    },
                                     pdfTaggingRule = definition.pdfTaggingRule
                                 )
                             )
@@ -352,7 +361,12 @@ sealed class MappingItemEntity {
                                 firstLineIndent = definition.firstLineIndent,
                                 lineSpacing = definition.lineSpacing,
                                 keepWithNextParagraph = definition.keepWithNextParagraph,
-                                tabs = definition.tabs?.let(TabsModel::fromDb)?.let(Tabs::fromModel),
+                                tabs = definition.tabs?.let { tabsEntity ->
+                                    Tabs(
+                                        tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
+                                        useOutsideTabs = tabsEntity.useOutsideTabs
+                                    )
+                                },
                                 pdfTaggingRule = definition.pdfTaggingRule
                             )
                         }

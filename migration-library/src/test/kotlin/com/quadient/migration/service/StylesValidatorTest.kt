@@ -2,11 +2,10 @@ package com.quadient.migration.service
 
 import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
-import com.quadient.migration.data.ParagraphStyleModelRef
-import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.service.deploy.DeployClient
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
@@ -57,16 +56,16 @@ class StylesValidatorTest {
             aBlock(
                 id = "id", content = listOf(
                     aParagraph(
-                        styleRef = ParagraphStyleModelRef("found-para"),
-                        content = listOf(aText(content = listOf(), styleRef = TextStyleModelRef("not-found-text")))
+                        styleRef = ParagraphStyleRef("found-para"),
+                        content = listOf(aText(content = listOf(), styleRef = TextStyleRef("not-found-text")))
                     )
                 )
             ),
             aBlock(
                 id = "id2", content = listOf(
                     aParagraph(
-                        styleRef = ParagraphStyleModelRef("not-found-para"),
-                        content = listOf(aText(content = listOf(), styleRef = TextStyleModelRef("found-text")))
+                        styleRef = ParagraphStyleRef("not-found-para"),
+                        content = listOf(aText(content = listOf(), styleRef = TextStyleRef("found-text")))
                     )
                 )
             )
@@ -94,16 +93,16 @@ class StylesValidatorTest {
             aBlock(
                 id = "id", content = listOf(
                     aParagraph(
-                        styleRef = ParagraphStyleModelRef("found-para"),
-                        content = listOf(aText(content = listOf(), styleRef = TextStyleModelRef("not-found-text")))
+                        styleRef = ParagraphStyleRef("found-para"),
+                        content = listOf(aText(content = listOf(), styleRef = TextStyleRef("not-found-text")))
                     )
                 )
             ),
             aBlock(
                 id = "id2", content = listOf(
                     aParagraph(
-                        styleRef = ParagraphStyleModelRef("not-found-para"),
-                        content = listOf(aText(content = listOf(), styleRef = TextStyleModelRef("found-text")))
+                        styleRef = ParagraphStyleRef("not-found-para"),
+                        content = listOf(aText(content = listOf(), styleRef = TextStyleRef("found-text")))
                     )
                 )
             )
@@ -129,7 +128,7 @@ class StylesValidatorTest {
     fun `resolves style references correctly`() {
         every { deployClient.getAllDocumentObjectsToDeploy() } returns listOf(
             aBlock(
-                id = "id", content = listOf(aParagraph(styleRef = ParagraphStyleModelRef("para1")))
+                id = "id", content = listOf(aParagraph(styleRef = ParagraphStyleRef("para1")))
             )
         )
         paraStyleRepository.upsert(aParagraphStyle(id = "para1", definition = ParagraphStyleRef("para2")))

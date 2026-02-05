@@ -28,16 +28,16 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
     private val projectName = projectConfig.name
     private val ipsConfig = config.inspireConfig.ipsConfig
     private val ipsService = IpsService(ipsConfig)
-    val repositories = mutableListOf<Repository<*, *>>()
+    val repositories = mutableListOf<Repository<*>>()
 
-    val variableRepository: Repository<Variable, VariableModel>
-    val documentObjectRepository: Repository<DocumentObject, DocumentObjectModel>
-    val textStyleRepository: Repository<TextStyle, TextStyleModel>
-    val paragraphStyleRepository: Repository<ParagraphStyle, ParagraphStyleModel>
-    val variableStructureRepository: Repository<VariableStructure, VariableStructureModel>
-    val displayRuleRepository: Repository<DisplayRule, DisplayRuleModel>
-    val imageRepository: Repository<Image, ImageModel>
-    val fileRepository: Repository<File, FileModel>
+    val variableRepository: Repository<Variable>
+    val documentObjectRepository: Repository<DocumentObject>
+    val textStyleRepository: Repository<TextStyle>
+    val paragraphStyleRepository: Repository<ParagraphStyle>
+    val variableStructureRepository: Repository<VariableStructure>
+    val displayRuleRepository: Repository<DisplayRule>
+    val imageRepository: Repository<Image>
+    val fileRepository: Repository<File>
     val statusTrackingRepository = StatusTrackingRepository(projectName)
     val mappingRepository: MappingRepository
 

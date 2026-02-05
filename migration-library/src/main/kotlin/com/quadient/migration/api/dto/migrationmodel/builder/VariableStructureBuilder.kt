@@ -89,6 +89,8 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
             name = name,
             originLocations = originLocations,
             customFields = customFields,
+            created = created,
+            lastUpdated = lastUpdated,
             structure = structure,
             languageVariable = languageVariable
         )

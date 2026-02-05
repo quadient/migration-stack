@@ -1,20 +1,11 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.quadient.migration.api.ProjectConfig
-import com.quadient.migration.data.AreaModel
-import com.quadient.migration.data.DocumentContentModel
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.DocumentObjectModelRef
-import com.quadient.migration.data.FileModel
-import com.quadient.migration.data.ImageModel
-import com.quadient.migration.data.ImageModelRef
-import com.quadient.migration.data.ParagraphStyleDefinitionModel
-import com.quadient.migration.data.TextStyleDefinitionModel
-import com.quadient.migration.data.VariableStructureModel
+import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.FileInternalRepository
+import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
@@ -33,7 +24,7 @@ import com.quadient.migration.shared.millimeters
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.FlowArea
-import com.quadient.wfdxml.api.layoutnodes.Image
+import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.Page
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
@@ -92,8 +83,8 @@ class DesignerDocumentObjectBuilder(
             .toString()
     }
 
-    override fun getDocumentObjectPath(documentObject: DocumentObjectModel) =
-        getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder)
+    override fun getDocumentObjectPath(documentObject: DocumentObject) =
+        getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder?.let { IcmPath.from(it) })
 
     override fun getImagePath(
         id: String, imageType: ImageType, name: String?, targetFolder: IcmPath?, sourcePath: String?
@@ -110,8 +101,8 @@ class DesignerDocumentObjectBuilder(
             .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName).toString()
     }
 
-    override fun getImagePath(image: ImageModel) =
-        getImagePath(image.id, image.imageType, image.name, image.targetFolder, image.sourcePath)
+    override fun getImagePath(image: Image) =
+        getImagePath(image.id, image.imageType!!, image.name, image.targetFolder?.let { IcmPath.from(it) }, image.sourcePath)
 
     override fun getFilePath(
         id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, fileType: FileType
@@ -132,8 +123,8 @@ class DesignerDocumentObjectBuilder(
             .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName).toString()
     }
 
-    override fun getFilePath(file: FileModel): String =
-        getFilePath(file.id, file.name, file.targetFolder, file.sourcePath, file.fileType)
+    override fun getFilePath(file: File): String =
+        getFilePath(file.id, file.name, file.targetFolder?.let { IcmPath.from(it) }, file.sourcePath, file.fileType)
 
     override fun getStyleDefinitionPath(extension: String): String {
         val styleDefinitionPath = projectConfig.styleDefinitionPath
@@ -155,16 +146,16 @@ class DesignerDocumentObjectBuilder(
     }
 
     override fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String) {
-        image.setAlternateText(alternateText)
+        getImageByName(layout, image.nameOrId())?.setAlternateText(alternateText)
     }
 
-    override fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String {
+    override fun buildDocumentObject(documentObject: DocumentObject, styleDefinitionPath: String?): String {
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
         layout.name = "DocumentLayout"
 
-        val pageModels = mutableListOf<DocumentObjectModel>()
-        val virtualPageContent = mutableListOf<DocumentContentModel>()
+        val pageModels = mutableListOf<DocumentObject>()
+        val virtualPageContent = mutableListOf<DocumentContent>()
 
         if (fontDataCache.isEmpty()) {
             val fontDataString = ipsService.gatherFontData(getFontRootFolder())
@@ -176,7 +167,7 @@ class DesignerDocumentObjectBuilder(
         val languageVariable = variableStructure.languageVariable
         if (languageVariable != null) {
             val languageVariableModel = variableRepository.findModelOrFail(languageVariable.id)
-            val languageVariablePathData = variableStructure.structure[languageVariable]
+            val languageVariablePathData = variableStructure.structure[languageVariable.id]
             if (languageVariablePathData == null || languageVariablePathData.path.isBlank()) {
                 error("Language variable '${languageVariable.id}' or its path not found in variable structure '${variableStructure.id}'.")
             }
@@ -185,7 +176,7 @@ class DesignerDocumentObjectBuilder(
         }
 
         documentObject.content.paragraphIfEmpty().forEach {
-            if (it is DocumentObjectModelRef) {
+            if (it is DocumentObjectRef) {
                 val documentObjectModel = documentObjectRepository.findModelOrFail(it.id)
                 if (documentObjectModel.type == DocumentObjectType.Page) {
                     pageModels.add(documentObjectModel)
@@ -198,14 +189,14 @@ class DesignerDocumentObjectBuilder(
         }
 
         pageModels.forEach {
-            if (it.skip.skipped && it.skip.placeholder != null) {
+            if (it.skip.skipped == true && it.skip.placeholder != null) {
                 val page = layout.addPage().setName("Page (skipped)").setType(Pages.PageConditionType.SIMPLE)
                 val flow = layout.addFlow().setType(Flow.Type.SIMPLE)
                 flow.addParagraph().addText().appendText("Skipped page: '${it.nameOrId()}'. Placeholder: ${it.skip.placeholder}")
                 page.addFlowArea().setPosX(defaultPosition.x.toMeters()).setPosY(defaultPosition.y.toMeters())
                     .setWidth(defaultPosition.width.toMeters()).setHeight(defaultPosition.height.toMeters())
                     .setFlow(flow)
-            } else if (!it.skip.skipped) {
+            } else if (it.skip.skipped != true) {
                 buildPage(
                     layout,
                     variableStructure,
@@ -230,9 +221,9 @@ class DesignerDocumentObjectBuilder(
         }
 
         buildTextStyles(
-            layout, textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel })
+            layout, textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinition })
         buildParagraphStyles(
-            layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel })
+            layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinition })
 
         val firstPageWithFlowArea =
             (layout.pages as PagesImpl).children.find { page -> (page as PageImpl).children.any { it is FlowArea } } as? PageImpl
@@ -249,12 +240,12 @@ class DesignerDocumentObjectBuilder(
         }
     }
 
-    override fun shouldIncludeInternalDependency(documentObject: DocumentObjectModel): Boolean {
-        return documentObject.internal || documentObject.type == DocumentObjectType.Page
+    override fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean {
+        return documentObject.internal == true || documentObject.type == DocumentObjectType.Page
     }
 
     override fun wrapSuccessFlowInConditionFlow(
-        layout: Layout, variableStructure: VariableStructureModel, ruleDef: DisplayRuleDefinition, successFlow: Flow,
+        layout: Layout, variableStructure: VariableStructure, ruleDef: DisplayRuleDefinition, successFlow: Flow,
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
             ruleDef.toScript(layout, variableStructure, variableRepository::findModelOrFail), successFlow
@@ -263,7 +254,7 @@ class DesignerDocumentObjectBuilder(
 
     override fun buildSuccessRowWrappedInConditionRow(
         layout: Layout,
-        variableStructure: VariableStructureModel,
+        variableStructure: VariableStructure,
         ruleDef: DisplayRuleDefinition,
         multipleRowSet: GeneralRowSet,
     ): GeneralRowSet {
@@ -280,10 +271,10 @@ class DesignerDocumentObjectBuilder(
 
     private fun buildPage(
         layout: Layout,
-        variableStructure: VariableStructureModel,
+        variableStructure: VariableStructure,
         name: String,
-        content: List<DocumentContentModel>,
-        mainObject: DocumentObjectModel,
+        content: List<DocumentContent>,
+        mainObject: DocumentObject,
         options: PageOptions? = null,
         languages: List<String>,
     ) {
@@ -291,11 +282,11 @@ class DesignerDocumentObjectBuilder(
         options?.height?.let { page.setHeight(it.toMeters()) }
         options?.width?.let { page.setWidth(it.toMeters()) }
 
-        val areaModels = mutableListOf<AreaModel>()
-        val virtualAreaContent = mutableListOf<DocumentContentModel>()
+        val areaModels = mutableListOf<Area>()
+        val virtualAreaContent = mutableListOf<DocumentContent>()
 
         content.forEach {
-            if (it is AreaModel) {
+            if (it is Area) {
                 areaModels.add(it)
             } else {
                 virtualAreaContent.add(it)
@@ -309,7 +300,7 @@ class DesignerDocumentObjectBuilder(
                 layout,
                 variableStructure,
                 page,
-                AreaModel(virtualAreaContent, defaultPosition, null),
+                Area(virtualAreaContent, defaultPosition, null),
                 mainObject,
                 languages
             )
@@ -318,17 +309,17 @@ class DesignerDocumentObjectBuilder(
 
     private fun buildArea(
         layout: Layout,
-        variableStructure: VariableStructureModel,
+        variableStructure: VariableStructure,
         page: Page,
-        areaModel: AreaModel,
-        mainObject: DocumentObjectModel,
+        areaModel: Area,
+        mainObject: DocumentObject,
         languages: List<String>
     ) {
         val position = areaModel.position ?: defaultPosition
 
         val content = areaModel.content
-        if (content.size == 1 && content.first() is ImageModelRef) {
-            val imageRef = content.first() as ImageModelRef
+        if (content.size == 1 && content.first() is ImageRef) {
+            val imageRef = content.first() as ImageRef
             val imageModel = imageRepository.findModelOrFail(imageRef.id)
 
             when (val imagePlaceholder = getImagePlaceholder(imageModel)) {

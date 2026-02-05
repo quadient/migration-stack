@@ -1,33 +1,24 @@
 package com.quadient.migration.persistence.repository
 
-import com.quadient.migration.data.TextStyleDefOrRefModel
-import com.quadient.migration.data.TextStyleDefinitionModel
-import com.quadient.migration.data.TextStyleModel
-import com.quadient.migration.data.TextStyleModelRef
+import com.quadient.migration.api.dto.migrationmodel.TextStyle
+import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.persistence.table.TextStyleTable
-import com.quadient.migration.persistence.table.TextStyleTable.definition
 import org.jetbrains.exposed.v1.core.ResultRow
 
 class TextStyleInternalRepository(table: TextStyleTable, projectName: String) :
-    InternalRepository<TextStyleModel>(table, projectName) {
+    InternalRepository<TextStyle>(table, projectName) {
 
-    override fun toModel(row: ResultRow): TextStyleModel {
-        return TextStyleModel(
-            id = row[table.id].value,
-            name = row[table.name],
-            originLocations = row[table.originLocations],
-            customFields = row[table.customFields],
-            lastUpdated = row[table.lastUpdated],
-            created = row[table.created],
-            definition = TextStyleDefOrRefModel.fromDb(row[definition]),
-        )
+    override fun toModel(row: ResultRow): TextStyle {
+        return TextStyle.fromDb(row)
     }
 
-    internal fun firstWithDefinitionModel(id: String): TextStyleModel? {
+    internal fun firstWithDefinition(id: String): TextStyle? {
         val model = findModel(id)
-        return when (model?.definition) {
-            is TextStyleDefinitionModel -> model
-            is TextStyleModelRef -> firstWithDefinitionModel(model.definition.id)
+        val def = model?.definition
+        return when (def) {
+            is TextStyleDefinition -> model
+            is TextStyleRef -> firstWithDefinition(def.id)
             null -> null
         }
     }

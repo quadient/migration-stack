@@ -28,6 +28,8 @@ class ParagraphStyleBuilder(id: String) : DtoBuilderBase<ParagraphStyle, Paragra
             name = name,
             originLocations = originLocations,
             customFields = customFields,
+            created = created,
+            lastUpdated = lastUpdated,
             definition = definition ?: throw IllegalArgumentException("ParagraphStyleDefinition must be provided"),
         )
     }

@@ -56,6 +56,8 @@ class FileBuilder(id: String) : DtoBuilderBase<File, FileBuilder>(id) {
             name = name,
             originLocations = originLocations,
             customFields = customFields,
+            created = created,
+            lastUpdated = lastUpdated,
             sourcePath = sourcePath,
             targetFolder = targetFolder,
             fileType = fileType,

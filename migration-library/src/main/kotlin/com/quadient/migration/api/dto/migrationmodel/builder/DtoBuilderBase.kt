@@ -2,6 +2,8 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 
 @Suppress("UNCHECKED_CAST")
 abstract class DtoBuilderBase<T : MigrationObject, K : DtoBuilderBase<T, K>>(
@@ -17,6 +19,8 @@ abstract class DtoBuilderBase<T : MigrationObject, K : DtoBuilderBase<T, K>>(
     protected var name: String? = null
     protected var originLocations: List<String> = emptyList()
     protected var customFields = CustomFieldMap()
+    protected var created: Instant = Clock.System.now()
+    protected var lastUpdated: Instant = Clock.System.now()
 
     /**
      * Sets the name of the object. If not provided the name will default to the id.
@@ -71,6 +75,26 @@ abstract class DtoBuilderBase<T : MigrationObject, K : DtoBuilderBase<T, K>>(
      */
     fun originLocations(originLocations: List<String>): K {
         this.originLocations = originLocations
+        return this as K
+    }
+
+    /**
+     * Sets the created timestamp for the object.
+     * @param created The created timestamp.
+     * @return The builder instance for method chaining.
+     */
+    fun created(created: Instant): K {
+        this.created = created
+        return this as K
+    }
+
+    /**
+     * Sets the lastUpdated timestamp for the object.
+     * @param lastUpdated The lastUpdated timestamp.
+     * @return The builder instance for method chaining.
+     */
+    fun lastUpdated(lastUpdated: Instant): K {
+        this.lastUpdated = lastUpdated
         return this as K
     }
 

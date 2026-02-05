@@ -1,11 +1,7 @@
 package com.quadient.migration.api.repository
 
-import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefOrRef
-import com.quadient.migration.data.TextStyleModel
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.TextStyleTable
@@ -18,24 +14,18 @@ import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import kotlin.collections.map
 
 class TextStyleRepository(internalRepository: TextStyleInternalRepository) :
-    Repository<TextStyle, TextStyleModel>(internalRepository) {
+    Repository<TextStyle>(internalRepository) {
     val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
 
-    override fun toDto(model: TextStyleModel): TextStyle {
-        return TextStyle(
-            id = model.id,
-            name = model.name,
-            originLocations = model.originLocations,
-            customFields = CustomFieldMap(model.customFields.toMutableMap()),
-            definition = TextStyleDefOrRef.fromModel(model.definition),
-        )
+    override fun toDto(model: TextStyle): TextStyle {
+        return model
     }
 
     override fun findUsages(id: String): List<MigrationObject> {
         return transaction {
             DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq internalRepository.projectName }
                 .map { DocumentObjectTable.fromResultRow(it) }
-                .filter { it.collectRefs().any { it.id == id } }.map { DocumentObject.fromModel(it) }
+                .filter { it.collectRefs().any { it.id == id } }
                 .distinct()
         }
     }

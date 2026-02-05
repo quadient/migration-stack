@@ -38,8 +38,6 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
-import com.quadient.migration.data.DocumentContentModel
-import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.persistence.table.StatusTrackingEntity
 import com.quadient.migration.persistence.table.StatusTrackingTable
@@ -51,6 +49,7 @@ import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.LineSpacing
+import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
@@ -80,6 +79,8 @@ fun aBlockDto(
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
     type: DocumentObjectType = DocumentObjectType.Block,
+    baseTemplate: String? = null,
+    variableStructureRef: VariableStructureRef? = null,
 ): DocumentObject {
     return DocumentObject(
         id = id,
@@ -90,9 +91,39 @@ fun aBlockDto(
         targetFolder = targetFolder,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
+        created = kotlinx.datetime.Clock.System.now(),
+        lastUpdated = kotlinx.datetime.Clock.System.now(),
         metadata = emptyMap(),
         skip = SkipOptions(false, null, null),
         subject = null,
+        baseTemplate = baseTemplate,
+        variableStructureRef = variableStructureRef,
+    )
+}
+
+fun aImageDto(
+    id: String,
+    name: String? = "Image_$id",
+    sourcePath: String? = "$name.jpg",
+    imageType: ImageType = ImageType.Jpeg,
+    targetFolder: String? = null,
+    originLocations: List<String> = emptyList(),
+    customFields: MutableMap<String, String> = mutableMapOf(),
+): Image {
+    return Image(
+        id = id,
+        name = name,
+        sourcePath = sourcePath,
+        imageType = imageType,
+        targetFolder = targetFolder,
+        originLocations = originLocations,
+        customFields = CustomFieldMap(customFields),
+        created = kotlinx.datetime.Clock.System.now(),
+        lastUpdated = kotlinx.datetime.Clock.System.now(),
+        options = null,
+        metadata = emptyMap(),
+        skip = SkipOptions(false, null, null),
+        alternateText = null,
     )
 }
 
@@ -107,14 +138,14 @@ fun aBlockModel(
     type: DocumentObjectType = DocumentObjectType.Block,
     baseTemplate: String? = null,
     options: DocumentObjectOptions? = null,
-): DocumentObjectModel {
-    return DocumentObjectModel(
+): DocumentObject {
+    return DocumentObject(
         id = id,
         content = content,
         name = name ?: "block$id",
         type = type,
         internal = internal,
-        targetFolder = targetFolder?.let(IcmPath::from),
+        targetFolder = targetFolder?.let { IcmPath.from(it).toString() },
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
         created = Clock.System.now(),
@@ -122,7 +153,7 @@ fun aBlockModel(
         displayRuleRef = null,
         baseTemplate = baseTemplate,
         options = options,
-        metadata = emptyMap(),
+        metadata = emptyMap<String, List<MetadataPrimitive>>(),
         skip = SkipOptions(false, null, null),
         subject = null,
     )
@@ -191,6 +222,8 @@ fun aVariable(
     name = name,
     originLocations = originLocations,
     customFields = CustomFieldMap(customFields),
+    created = kotlinx.datetime.Clock.System.now(),
+    lastUpdated = kotlinx.datetime.Clock.System.now(),
     dataType = dataType,
     defaultValue = defaultValue
 )
@@ -237,6 +270,8 @@ fun aParagraphStyle(
         name = name,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
+        created = kotlinx.datetime.Clock.System.now(),
+        lastUpdated = kotlinx.datetime.Clock.System.now(),
         definition = definition
     )
 }
@@ -281,6 +316,8 @@ fun aTextStyle(
         name = name,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
+        created = kotlinx.datetime.Clock.System.now(),
+        lastUpdated = kotlinx.datetime.Clock.System.now(),
         definition = definition
     )
 }
