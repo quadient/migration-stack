@@ -11,6 +11,7 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.FileBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
@@ -19,6 +20,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.FileType
 import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
@@ -148,6 +150,14 @@ def logo = new ImageBuilder("logo")
     .subject("Example logo")
     .alternateText("Example logo image")
     .build()
+
+def logoPdfFile = this.class.getClassLoader().getResource('exampleResources/migrationModelExample/logo.pdf')
+migration.storage.write("logo.pdf", logoPdfFile.bytes)
+def logoDocument = new FileBuilder("logoDocument").fileType(FileType.Document)
+        .sourcePath("logo.pdf")
+        .build()
+
+migration.fileRepository.upsert(logoDocument)
 
 // Table containing some data with the first address row being optionally hidden
 // by using displayRuleRef to the display displayHeaderRule defined above.
@@ -310,13 +320,13 @@ def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType
     .firstMatch { fb ->
         fb.case { cb ->
             cb.name("Czech Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                it.appendContent("Nashledanou.")
+                it.string("Nashledanou.")
             }.build()).displayRule(displayRuleStateCzechia.id)
         }.case { cb ->
             cb.name("French Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                it.appendContent("Au revoir.")
+                it.string("Au revoir.")
             }.build()).displayRule(displayRuleStateFrance.id)
-        }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.appendContent("Goodbye.") }.build())
+        }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.string("Goodbye.") }.build())
     }.build()
 
 // SelectByLanguage demonstrates language-based content selection.
@@ -326,17 +336,17 @@ def selectByLanguageBlock = new DocumentObjectBuilder("selectByLanguage", Docume
         sb.case { cb ->
             cb.language("en_us")
             cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                it.appendContent("This document was created in English.")
+                it.string("This document was created in English.")
             }.build())
         }.case { cb ->
             cb.language("de")
             cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                it.appendContent("Dieses Dokument wurde auf Deutsch erstellt.")
+                it.string("Dieses Dokument wurde auf Deutsch erstellt.")
             }.build())
         }.case { cb ->
             cb.language("es")
             cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                it.appendContent("Este documento fue creado en español.")
+                it.string("Este documento fue creado en español.")
             }.build())
         }
     }.build()
@@ -395,6 +405,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         }
             .documentObjectRef(signature.id)
     }
+    .fileRef(logoDocument.id)
     .variableStructureRef(variableStructure.id)
     .build()
 

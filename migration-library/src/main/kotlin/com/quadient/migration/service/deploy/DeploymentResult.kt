@@ -31,7 +31,7 @@ data class DeploymentInfo(
 )
 
 enum class ResourceType {
-    DocumentObject, Image, TextStyle, ParagraphStyle
+    DocumentObject, Image, File, TextStyle, ParagraphStyle
 }
 
 data class DeploymentError(val id: String, val message: String)
@@ -102,6 +102,44 @@ class ResultTracker(
             deploymentId = deploymentId,
             timestamp = timestamp,
             resourceType = ResourceType.Image,
+            output = inspireOutput,
+            icmPath = icmPath,
+            message = message,
+        )
+        deploymentResult.warnings.add(DeploymentWarning(id, message))
+    }
+
+    fun deployedFile(id: String, icmPath: String) {
+        statusTrackingRepository.deployed(
+            id = id,
+            deploymentId = deploymentId,
+            timestamp = timestamp,
+            resourceType = ResourceType.File,
+            output = inspireOutput,
+            icmPath = icmPath,
+        )
+        deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.File, icmPath))
+    }
+
+    fun errorFile(id: String, icmPath: String?, message: String) {
+        statusTrackingRepository.error(
+            id = id,
+            deploymentId = deploymentId,
+            timestamp = timestamp,
+            resourceType = ResourceType.File,
+            output = inspireOutput,
+            icmPath = icmPath,
+            message = message,
+        )
+        deploymentResult.errors.add(DeploymentError(id, message))
+    }
+
+    fun warningFile(id: String, icmPath: String?, message: String) {
+        statusTrackingRepository.error(
+            id = id,
+            deploymentId = deploymentId,
+            timestamp = timestamp,
+            resourceType = ResourceType.File,
             output = inspireOutput,
             icmPath = icmPath,
             message = message,

@@ -21,6 +21,7 @@ import com.quadient.migration.data.VariableModelRef
 import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
+import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
@@ -32,6 +33,7 @@ import com.quadient.migration.shared.BinOp.*
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.*
+import com.quadient.migration.shared.FileType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
@@ -53,6 +55,7 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aCell
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
+import com.quadient.migration.tools.model.aFile
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aRow
 import com.quadient.migration.tools.model.aSelectByLanguage
@@ -87,6 +90,7 @@ class InteractiveDocumentObjectBuilderTest {
     val variableStructureRepository = mockk<VariableStructureInternalRepository>()
     val displayRuleRepository = mockk<DisplayRuleInternalRepository>()
     val imageRepository = mockk<ImageInternalRepository>()
+    val fileRepository = mockk<FileInternalRepository>()
     val config = aProjectConfig()
     val ipsService = mockk<IpsService>()
 
@@ -1481,6 +1485,7 @@ class InteractiveDocumentObjectBuilderTest {
         variableStructureRepository,
         displayRuleRepository,
         imageRepository,
+        fileRepository,
         config,
         ipsService,
     )
@@ -1611,8 +1616,56 @@ class InteractiveDocumentObjectBuilderTest {
 
         private fun String?.nullToNull() = when (this?.trim()) {
             "null" -> null
-            null -> ""
+            null -> null
             else -> this.trim()
+        }
+
+        @ParameterizedTest
+        @CsvSource(
+            // fileType,paths.documents,paths.attachments,targetFolder,defaultTargetFolder,expected
+            "Document,,,,                   ,icm://Interactive/tenant/Documents/File_F1.pdf",
+            "Document,,,relative,           ,icm://Interactive/tenant/Documents/relative/File_F1.pdf",
+            "Document,Docs,,relative,       ,icm://Interactive/tenant/Docs/relative/File_F1.pdf",
+            "Document,,,icm://absolute/,    ,icm://absolute/File_F1.pdf",
+            "Document,,,                ,def,icm://Interactive/tenant/Documents/def/File_F1.pdf",
+            "Attachment,,,,                 ,icm://Interactive/tenant/Attachments/File_F1.pdf",
+            "Attachment,,Attach,relative,   ,icm://Interactive/tenant/Attach/relative/File_F1.pdf",
+            "Attachment,,,icm://absolute/,  ,icm://absolute/File_F1.pdf",
+        )
+        fun testFilePath(
+            fileType: String,
+            documentsPath: String?,
+            attachmentsPath: String?,
+            targetFolder: String?,
+            defaultTargetFolder: String?,
+            expected: String
+        ) {
+            val config = aProjectConfig(
+                output = InspireOutput.Interactive,
+                interactiveTenant = "tenant",
+                paths = PathsConfig(
+                    documents = documentsPath.nullToNull()?.let(IcmPath::from),
+                    attachments = attachmentsPath.nullToNull()?.let(IcmPath::from)
+                ),
+                targetDefaultFolder = defaultTargetFolder.nullToNull(),
+            )
+            val pathTestSubject = aSubject(config)
+            val file = aFile("F1", targetFolder = targetFolder.nullToNull(), fileType = FileType.valueOf(fileType))
+
+            val path = pathTestSubject.getFilePath(file)
+
+            path.shouldBeEqualTo(expected)
+        }
+
+        @Test
+        fun `file path appends extension from sourcePath when fileName lacks one`() {
+            val config = aProjectConfig(output = InspireOutput.Interactive, interactiveTenant = "tenant")
+            val pathTestSubject = aSubject(config)
+            val file = aFile("F1", name = "document", sourcePath = "C:/files/doc.pdf")
+
+            val path = pathTestSubject.getFilePath(file)
+
+            path.shouldBeEqualTo("icm://Interactive/tenant/Documents/document.pdf")
         }
     }
 }

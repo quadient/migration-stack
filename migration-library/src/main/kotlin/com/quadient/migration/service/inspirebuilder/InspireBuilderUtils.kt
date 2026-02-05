@@ -157,3 +157,31 @@ private val disallowedCharsRegex = Regex("[\\s\\-()?!.:;]")
 fun sanitizeVariablePart(part: String): String {
     return part.replace(disallowedCharsRegex, "_")
 }
+
+fun extractExtensionFromPath(path: String?): String? {
+    if (path.isNullOrBlank()) return null
+    val lastDot = path.lastIndexOf('.')
+    val lastSlash = maxOf(path.lastIndexOf('/'), path.lastIndexOf('\\'))
+
+    return if (lastDot > lastSlash && lastDot > 0 && lastDot < path.length - 1) {
+        ".${path.substring(lastDot + 1)}"
+    } else {
+        null
+    }
+}
+
+fun appendExtensionIfMissing(fileName: String, sourcePath: String?): String {
+    val lastDot = fileName.lastIndexOf('.')
+    val hasExtension = lastDot > 0 && lastDot < fileName.length - 1
+
+    if (hasExtension) {
+        return fileName
+    }
+
+    val extension = extractExtensionFromPath(sourcePath)
+    return if (extension != null) {
+        fileName + extension
+    } else {
+        fileName
+    }
+}

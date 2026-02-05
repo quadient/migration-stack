@@ -6,12 +6,14 @@ import com.quadient.migration.api.dto.migrationmodel.StatusTracking
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
+import com.quadient.migration.data.FileModelRef
 import com.quadient.migration.data.ImageModelRef
 import com.quadient.migration.data.ParagraphModel
 import com.quadient.migration.data.ParagraphStyleModelRef
 import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.data.TextStyleModelRef
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
+import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
@@ -27,6 +29,7 @@ import com.quadient.migration.tools.aDeployedStatusEvent
 import com.quadient.migration.tools.aErrorStatusEvent
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aBlock
+import com.quadient.migration.tools.model.aFile
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParaStyle
 import com.quadient.migration.tools.model.aTextStyle
@@ -51,6 +54,7 @@ import kotlin.uuid.Uuid
 class DeployClientTest {
     val documentObjectRepository = mockk<DocumentObjectInternalRepository>()
     val imageRepository = mockk<ImageInternalRepository>()
+    val fileRepository = mockk<FileInternalRepository>()
     val textStyleRepository = mockk<TextStyleInternalRepository>()
     val paragraphStyleRepository = mockk<ParagraphStyleInternalRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
@@ -61,6 +65,7 @@ class DeployClientTest {
     private val subject = DesignerDeployClient(
         documentObjectRepository,
         imageRepository,
+        fileRepository,
         statusTrackingRepository,
         textStyleRepository,
         paragraphStyleRepository,
@@ -76,6 +81,8 @@ class DeployClientTest {
         every { documentObjectBuilder.getDocumentObjectPath(any(), any(), any()) } answers { callOriginal() }
         every { documentObjectBuilder.getImagePath(any()) } answers { callOriginal() }
         every { documentObjectBuilder.getImagePath(any(), any(), any(), any(), any()) } answers { callOriginal() }
+        every { documentObjectBuilder.getFilePath(any()) } answers { callOriginal() }
+        every { documentObjectBuilder.getFilePath(any(), any(), any(), any(), any()) } answers { callOriginal() }
     }
 
     @Test
@@ -151,7 +158,7 @@ class DeployClientTest {
 
         givenNewExternalDocumentObject("1", deps = listOf("2"))
         givenNewExternalDocumentObject("2", deps = listOf("3", "4"))
-        givenNewExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"))
+        givenNewExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"), fileDeps = listOf("1", "2"))
         givenInternalDocumentObject("4", deps = listOf("1", "5"))
         givenInternalDocumentObject("5", deps = listOf("6"))
         givenNewExternalDocumentObject("6", deps = listOf("7"))
@@ -159,10 +166,12 @@ class DeployClientTest {
         givenNewImage("1")
         givenNewImage("2")
         givenNewImage("3")
+        givenNewFile("1")
+        givenNewFile("2")
 
         val result = subject.progressReport()
 
-        result.items.size.shouldBeEqualTo(10)
+        result.items.size.shouldBeEqualTo(12)
         for (i in arrayOf(1, 2, 3, 6, 7)) {
             result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeNew()
         }
@@ -171,6 +180,9 @@ class DeployClientTest {
         }
         for (i in arrayOf(1, 2, 3)) {
             result.items[Pair(i.toString(), ResourceType.Image)].shouldBeNew()
+        }
+        for (i in arrayOf(1, 2)) {
+            result.items[Pair(i.toString(), ResourceType.File)].shouldBeNew()
         }
     }
 
@@ -182,7 +194,7 @@ class DeployClientTest {
         givenNewExternalDocumentObject("1", deps = listOf("2"))
         givenChangedExternalDocumentObject("2", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
         givenChangedExternalDocumentObject("8", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp, icmPath = "icm://other.wfd", deploymentId = deploymentId)
-        givenExistingExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"), deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
+        givenExistingExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"), fileDeps = listOf("1", "2"), deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
         givenInternalDocumentObject("4", deps = listOf("1", "5"))
         givenInternalDocumentObject("5", deps = listOf("6"))
         givenNewExternalDocumentObject("6", deps = listOf("7"))
@@ -190,6 +202,8 @@ class DeployClientTest {
         givenNewImage("1")
         givenChangedImage("2", deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
         givenNewImage("3")
+        givenNewFile("1")
+        givenChangedFile("2", deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
 
         every { statusTrackingRepository.listAll() } returns listOf(
             aDeployedStatus("random", deploymentId = deploymentId, timestamp = currentDeployTimestamp),
@@ -197,7 +211,7 @@ class DeployClientTest {
 
         val result = subject.progressReport()
 
-        result.items.size.shouldBeEqualTo(11)
+        result.items.size.shouldBeEqualTo(13)
         for (i in arrayOf(1, 6, 7)) {
             result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeNew()
         }
@@ -212,6 +226,9 @@ class DeployClientTest {
         }
         for (i in arrayOf(1, 3)) {
             result.items[Pair(i.toString(), ResourceType.Image)].shouldBeNew()
+        }
+        for (i in arrayOf(1)) {
+            result.items[Pair(i.toString(), ResourceType.File)].shouldBeNew()
         }
         for (i in arrayOf(8)) {
             result.items[Pair(i.toString(), ResourceType.DocumentObject)].shouldBeChangedPath()
@@ -401,10 +418,34 @@ class DeployClientTest {
         } returns events
     }
 
+    private fun givenNewFile(id: String) {
+        givenFile(id = id, events = listOf(aActiveStatusEvent(Clock.System.now() - 1.hours)))
+    }
+
+    private fun givenChangedFile(id: String, deployTimestamp: Instant, deploymentId: Uuid) {
+        givenFile(
+            id = id, events = listOf(
+                aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds),
+                aDeployedStatusEvent(deploymentId, timestamp = deployTimestamp),
+                aActiveStatusEvent(timestamp = deployTimestamp + 1.seconds)
+            )
+        )
+    }
+
+    private fun givenFile(id: String, events: List<StatusEvent> = listOf()) {
+        every { fileRepository.findModelOrFail(id) } returns aFile(id = id)
+        every {
+            statusTrackingRepository.findEventsRelevantToOutput(
+                id, ResourceType.File, any()
+            )
+        } returns events
+    }
+
     private fun givenNewExternalDocumentObject(
         id: String,
         deps: List<String> = listOf(),
         imageDeps: List<String> = listOf(),
+        fileDeps: List<String> = listOf(),
         textStyles: List<String> = listOf(),
         paragraphStyles: List<String> = listOf(),
     ) {
@@ -412,6 +453,7 @@ class DeployClientTest {
             id = id,
             deps = deps,
             imageDeps = imageDeps,
+            fileDeps = fileDeps,
             textStyles = textStyles,
             paragraphStyles = paragraphStyles,
             events = listOf(aActiveStatusEvent(Clock.System.now() - 1.hours))
@@ -422,6 +464,7 @@ class DeployClientTest {
         id: String,
         deps: List<String> = listOf(),
         imageDeps: List<String> = listOf(),
+        fileDeps: List<String> = listOf(),
         textStyles: List<String> = listOf(),
         paragraphStyles: List<String> = listOf(),
         deployTimestamp: Instant,
@@ -432,6 +475,7 @@ class DeployClientTest {
             id = id,
             deps = deps,
             imageDeps = imageDeps,
+            fileDeps = fileDeps,
             textStyles = textStyles,
             paragraphStyles = paragraphStyles,
             events = listOf(aActiveStatusEvent(timestamp = deployTimestamp - 1.hours), aDeployedStatusEvent(deploymentId, icmPath, deployTimestamp), aActiveStatusEvent(timestamp = deployTimestamp + 1.seconds))
@@ -442,6 +486,7 @@ class DeployClientTest {
         id: String,
         deps: List<String> = listOf(),
         imageDeps: List<String> = listOf(),
+        fileDeps: List<String> = listOf(),
         textStyles: List<String> = listOf(),
         paragraphStyles: List<String> = listOf(),
         deployTimestamp: Instant,
@@ -451,6 +496,7 @@ class DeployClientTest {
             id,
             deps,
             imageDeps = imageDeps,
+            fileDeps = fileDeps,
             textStyles = textStyles,
             paragraphStyles = paragraphStyles, events = listOf(
                 aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds),
@@ -464,6 +510,7 @@ class DeployClientTest {
         id: String,
         deps: List<String> = listOf(),
         imageDeps: List<String> = listOf(),
+        fileDeps: List<String> = listOf(),
         textStyles: List<String> = listOf(),
         paragraphStyles: List<String> = listOf(),
         events: List<StatusEvent> = listOf(),
@@ -473,7 +520,7 @@ class DeployClientTest {
                 DocumentObjectModelRef(
                     it, null
                 )
-            } + imageDeps.map { ImageModelRef(it) } + textStyles.map {
+            } + imageDeps.map { ImageModelRef(it) } + fileDeps.map { FileModelRef(it) } + textStyles.map {
                 ParagraphModel(
                     listOf(
                         ParagraphModel.TextModel(

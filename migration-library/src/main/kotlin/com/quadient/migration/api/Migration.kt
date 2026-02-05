@@ -37,6 +37,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
     val variableStructureRepository: Repository<VariableStructure, VariableStructureModel>
     val displayRuleRepository: Repository<DisplayRule, DisplayRuleModel>
     val imageRepository: Repository<Image, ImageModel>
+    val fileRepository: Repository<File, FileModel>
     val statusTrackingRepository = StatusTrackingRepository(projectName)
     val mappingRepository: MappingRepository
 
@@ -67,6 +68,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
 
         val documentObjectInternalRepository = DocumentObjectInternalRepository(DocumentObjectTable, projectName)
         val imageInternalRepository = ImageInternalRepository(ImageTable, projectName)
+        val fileInternalRepository = FileInternalRepository(FileTable, projectName)
         val displayRuleInternalRepository = DisplayRuleInternalRepository(DisplayRuleTable, projectName)
         val variableInternalRepository = VariableInternalRepository(VariableTable, projectName)
         val variableStructureInternalRepository =
@@ -81,6 +83,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
         val variableStructureRepository = VariableStructureRepository(variableStructureInternalRepository)
         val displayRuleRepository = DisplayRuleRepository(displayRuleInternalRepository)
         val imageRepository = ImageRepository(imageInternalRepository)
+        val fileRepository = FileRepository(fileInternalRepository)
 
         this.variableRepository = variableRepository
         this.documentObjectRepository = documentObjectRepository
@@ -89,11 +92,13 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
         this.variableStructureRepository = variableStructureRepository
         this.displayRuleRepository = displayRuleRepository
         this.imageRepository = imageRepository
+        this.fileRepository = fileRepository
 
         this.mappingRepository = MappingRepository(
             projectName,
             documentObjectRepository,
             imageRepository,
+            fileRepository,
             textStyleRepository,
             paragraphStyleRepository,
             variableRepository,
@@ -107,6 +112,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
         repositories.add(variableStructureRepository)
         repositories.add(displayRuleRepository)
         repositories.add(imageRepository)
+        repositories.add(fileRepository)
 
         this.referenceValidator = ReferenceValidator(
             documentObjectInternalRepository,
@@ -116,6 +122,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
             variableStructureInternalRepository,
             displayRuleInternalRepository,
             imageInternalRepository,
+            fileInternalRepository,
         )
 
         val inspireDocumentObjectBuilder: InspireDocumentObjectBuilder
@@ -129,6 +136,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                     variableStructureInternalRepository,
                     displayRuleInternalRepository,
                     imageInternalRepository,
+                    fileInternalRepository,
                     projectConfig,
                     ipsService,
                 )
@@ -136,6 +144,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                 InteractiveDeployClient(
                     documentObjectInternalRepository,
                     imageInternalRepository,
+                    fileInternalRepository,
                     statusTrackingRepository,
                     textStyleInternalRepository,
                     paragraphStyleInternalRepository,
@@ -153,6 +162,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                     variableStructureInternalRepository,
                     displayRuleInternalRepository,
                     imageInternalRepository,
+                    fileInternalRepository,
                     projectConfig,
                     ipsService,
                 )
@@ -160,6 +170,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                 DesignerDeployClient(
                     documentObjectInternalRepository,
                     imageInternalRepository,
+                    fileInternalRepository,
                     statusTrackingRepository,
                     textStyleInternalRepository,
                     paragraphStyleInternalRepository,

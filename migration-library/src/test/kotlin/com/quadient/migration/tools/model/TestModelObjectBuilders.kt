@@ -6,6 +6,7 @@ import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentContentModel
 import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.DocumentObjectModelRef
+import com.quadient.migration.data.FileModel
 import com.quadient.migration.data.ImageModel
 import com.quadient.migration.data.ParagraphModel
 import com.quadient.migration.data.ParagraphModel.TextModel
@@ -28,6 +29,7 @@ import com.quadient.migration.data.VariableStructureModel
 import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
+import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
@@ -35,6 +37,7 @@ import com.quadient.migration.persistence.repository.VariableInternalRepository
 import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
 import com.quadient.migration.persistence.table.DisplayRuleTable
 import com.quadient.migration.persistence.table.DocumentObjectTable
+import com.quadient.migration.persistence.table.FileTable
 import com.quadient.migration.persistence.table.ImageTable
 import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.persistence.table.TextStyleTable
@@ -48,6 +51,7 @@ import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.FileType
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.IcmPath
@@ -402,6 +406,29 @@ fun aImage(
     )
 }
 
+fun aFile(
+    id: String,
+    name: String = "File_$id",
+    sourcePath: String? = "$name.pdf",
+    fileType: FileType = FileType.Document,
+    originLocations: List<String> = emptyList(),
+    customFields: MutableMap<String, String> = mutableMapOf(),
+    targetFolder: String? = null,
+    skip: SkipOptions = SkipOptions(false, null, null),
+): FileModel {
+    return FileModel(
+        id = id,
+        name = name,
+        originLocations = originLocations,
+        customFields = customFields,
+        created = Clock.System.now(),
+        sourcePath = sourcePath,
+        fileType = fileType,
+        targetFolder = targetFolder?.let(IcmPath::from),
+        skip = skip,
+    )
+}
+
 fun aDocumentObjectRef(id: String, displayRuleId: String? = null) =
     DocumentObjectModelRef(id, displayRuleId?.let { DisplayRuleModelRef(it) })
 
@@ -414,3 +441,4 @@ fun aParaStyleInternalRepository() = ParagraphStyleInternalRepository(ParagraphS
 fun aTextStyleInternalRepository() = TextStyleInternalRepository(TextStyleTable, aProjectConfig().name)
 fun aDisplayRuleInternalRepository() = DisplayRuleInternalRepository(DisplayRuleTable, aProjectConfig().name)
 fun aImageInternalRepository() = ImageInternalRepository(ImageTable, aProjectConfig().name)
+fun aFileInternalRepository() = FileInternalRepository(FileTable, aProjectConfig().name)

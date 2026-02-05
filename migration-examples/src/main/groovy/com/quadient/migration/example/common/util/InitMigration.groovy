@@ -48,11 +48,15 @@ static Migration initMigration(Binding binding) {
 
     def imagesPathArg = getValueOfArg("--images-path", argsList).orElse(fileProjectConfig.paths.images?.toString())
     def fontsPathArg = getValueOfArg("--fonts-path", argsList).orElse(fileProjectConfig.paths.fonts?.toString())
+    def documentsPathArg = getValueOfArg("--documents-path", argsList).orElse(fileProjectConfig.paths.documents?.toString())
+    def attachmentsPathArg = getValueOfArg("--attachments-path", argsList).orElse(fileProjectConfig.paths.attachments?.toString())
 
     def styleDefinitionPath = (styleDefinitionPathArg == null || styleDefinitionPathArg.isEmpty()) ? null : IcmPath.from(styleDefinitionPathArg)
     def defFolder = (defaultTargetFolder == null || defaultTargetFolder.isEmpty()) ? null : IcmPath.from(defaultTargetFolder)
     def imagesPath = (imagesPathArg == null || imagesPathArg.isEmpty()) ? null : IcmPath.from(imagesPathArg)
     def fontsPath = (fontsPathArg == null || fontsPathArg.isEmpty()) ? null : IcmPath.from(fontsPathArg)
+    def documentsPath = (documentsPathArg == null || documentsPathArg.isEmpty()) ? null : IcmPath.from(documentsPathArg)
+    def attachmentsPath = (attachmentsPathArg == null || attachmentsPathArg.isEmpty()) ? null : IcmPath.from(attachmentsPathArg)
 
     def projectConfig = new ProjectConfig(projectName,
             baseTemplatePath,
@@ -60,7 +64,7 @@ static Migration initMigration(Binding binding) {
             inputDataPath,
             interactiveTenant,
             defFolder,
-            new PathsConfig(imagesPath, fontsPath),
+            new PathsConfig(imagesPath, fontsPath, documentsPath, attachmentsPath),
             InspireOutput.valueOf(inspireOutput),
             sourceBaseTemplate,
             defaultVariableStructure,

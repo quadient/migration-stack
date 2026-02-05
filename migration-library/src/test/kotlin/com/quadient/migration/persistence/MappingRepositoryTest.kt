@@ -21,6 +21,7 @@ class MappingRepositoryTest {
     val projectConfig = aProjectConfig()
     val documentObjectRepository = mockk<DocumentObjectRepository>()
     val imageRepository = mockk<ImageRepository>()
+    val fileRepository = mockk<FileRepository>()
     val textStyleRepository = mockk<TextStyleRepository>()
     val paraStyleRepository = mockk<ParagraphStyleRepository>()
     val variableRepository = mockk<VariableRepository>()
@@ -30,6 +31,7 @@ class MappingRepositoryTest {
         projectConfig.name,
         documentObjectRepository,
         imageRepository,
+        fileRepository,
         textStyleRepository,
         paraStyleRepository,
         variableRepository,

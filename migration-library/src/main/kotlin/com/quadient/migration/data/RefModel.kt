@@ -5,6 +5,7 @@ import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
 import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
 import com.quadient.migration.persistence.migrationmodel.HyperlinkEntity
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
+import com.quadient.migration.persistence.migrationmodel.FileEntityRef
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefOrRefEntity
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefinitionEntity
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleEntityRef
@@ -29,6 +30,7 @@ sealed interface TextContentModel {
             is TableEntity -> TableModel.fromDb(entity)
             is DocumentObjectEntityRef -> DocumentObjectModelRef.fromDb(entity)
             is ImageEntityRef -> ImageModelRef.fromDb(entity)
+            is FileEntityRef -> FileModelRef.fromDb(entity)
             is FirstMatchEntity -> FirstMatchModel.fromDb(entity)
             is HyperlinkEntity -> HyperlinkModel.fromDb(entity)
         }
@@ -95,6 +97,16 @@ data class ImageModelRef(override val id: String) : RefModel, DocumentContentMod
 
     companion object {
         fun fromDb(entity: ImageEntityRef) = ImageModelRef(entity.id)
+    }
+}
+
+data class FileModelRef(override val id: String) : RefModel, DocumentContentModel, TextContentModel {
+    override fun collectRefs(): List<RefModel> {
+        return listOf(this)
+    }
+
+    companion object {
+        fun fromDb(entity: FileEntityRef) = FileModelRef(entity.id)
     }
 }
 

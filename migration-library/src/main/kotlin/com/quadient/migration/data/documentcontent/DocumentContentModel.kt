@@ -2,6 +2,7 @@ package com.quadient.migration.data
 
 import com.quadient.migration.persistence.migrationmodel.DocumentContentEntity
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
+import com.quadient.migration.persistence.migrationmodel.FileEntityRef
 import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
 import com.quadient.migration.persistence.migrationmodel.AreaEntity
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
@@ -17,6 +18,7 @@ sealed interface DocumentContentModel : RefValidatable {
             is ParagraphEntity -> ParagraphModel.fromDb(entity)
             is DocumentObjectEntityRef -> DocumentObjectModelRef.fromDb(entity)
             is ImageEntityRef -> ImageModelRef.fromDb(entity)
+            is FileEntityRef -> FileModelRef.fromDb(entity)
             is AreaEntity -> AreaModel.fromDb(entity)
             is FirstMatchEntity -> FirstMatchModel.fromDb(entity)
             is SelectByLanguageEntity -> SelectByLanguageModel.fromDb(entity)

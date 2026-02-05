@@ -15,6 +15,7 @@ import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDisplayRuleInternalRepository
 import com.quadient.migration.tools.model.aDocumentObjectInternalRepository
 import com.quadient.migration.tools.model.aDocumentObjectRef
+import com.quadient.migration.tools.model.aFileInternalRepository
 import com.quadient.migration.tools.model.aImageInternalRepository
 import com.quadient.migration.tools.model.aParaStyleInternalRepository
 import com.quadient.migration.tools.model.aTextStyleInternalRepository
@@ -34,6 +35,7 @@ class ReferenceValidatorTest {
     val dataStructureRepository = aVariableStructureInternalRepository()
     val displayRuleRepository = aDisplayRuleInternalRepository()
     val imageRuleRepository = aImageInternalRepository()
+    val fileRuleRepository = aFileInternalRepository()
 
     val docRepo = aDocumentObjectRepository()
     val paraStyleRepo = aParaStyleRepository()
@@ -47,6 +49,7 @@ class ReferenceValidatorTest {
         dataStructureRepository,
         displayRuleRepository,
         imageRuleRepository,
+        fileRuleRepository,
     )
 
     @Test

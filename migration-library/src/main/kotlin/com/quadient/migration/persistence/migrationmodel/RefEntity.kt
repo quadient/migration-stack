@@ -34,6 +34,9 @@ data class DisplayRuleEntityRef(val id: String)
 data class ImageEntityRef(val id: String) : RefEntity, DocumentContentEntity, TextContentEntity
 
 @Serializable
+data class FileEntityRef(val id: String) : RefEntity, DocumentContentEntity, TextContentEntity
+
+@Serializable
 data class VariableStructureEntityRef(val id: String) : RefEntity
 
 @Serializable

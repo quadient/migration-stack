@@ -3,6 +3,7 @@ package com.quadient.migration.service
 import com.quadient.migration.data.DisplayRuleModelRef
 import com.quadient.migration.data.DocumentObjectModelRef
 import com.quadient.migration.data.ImageModelRef
+import com.quadient.migration.data.FileModelRef
 import com.quadient.migration.data.ParagraphStyleModelRef
 import com.quadient.migration.data.RefModel
 import com.quadient.migration.data.TextStyleModelRef
@@ -11,6 +12,7 @@ import com.quadient.migration.data.VariableStructureModelRef
 import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
+import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
 import com.quadient.migration.persistence.repository.TextStyleInternalRepository
 import com.quadient.migration.persistence.repository.VariableInternalRepository
@@ -28,6 +30,7 @@ class ReferenceValidator(
     private val variableStructureRepository: VariableStructureInternalRepository,
     private val displayRuleRepository: DisplayRuleInternalRepository,
     private val imageRepository: ImageInternalRepository,
+    private val fileRepository: FileInternalRepository,
 ) {
     /**
      * Validates all objects in the database.
@@ -43,10 +46,11 @@ class ReferenceValidator(
         val dataStructures = variableStructureRepository.listAllModel()
         val displayRules = displayRuleRepository.listAllModel()
         val images = imageRepository.listAllModel()
+        val files = fileRepository.listAllModel()
         val alreadyValidatedRefs = mutableSetOf<RefModel>()
 
         val missingRefs =
-            (documentObjects + variables + paragraphStyles + textStyles + dataStructures + displayRules + images).mapNotNull {
+            (documentObjects + variables + paragraphStyles + textStyles + dataStructures + displayRules + images + files).mapNotNull {
                     validate(it, alreadyValidatedRefs).missingRefs.ifEmpty { null }
         }.flatten()
 
@@ -136,6 +140,18 @@ class ReferenceValidator(
                         validatedRefs.add(current)
                         alreadyValidRefs.add(current)
                         queue.addAll(image.collectRefs())
+                    } else {
+                        missingRefs.add(current)
+                    }
+                }
+
+                is FileModelRef -> {
+                    val file = fileRepository.findModel(current.id)
+
+                    if (file != null) {
+                        validatedRefs.add(current)
+                        alreadyValidRefs.add(current)
+                        queue.addAll(file.collectRefs())
                     } else {
                         missingRefs.add(current)
                     }

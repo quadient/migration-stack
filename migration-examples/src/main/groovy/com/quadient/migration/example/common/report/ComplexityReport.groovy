@@ -35,6 +35,7 @@ def header = ["Id",
               "Display rules",
               "Translated display rules",
               "Images",
+              "Files",
               "Hyperlinks",
               "Paragraph styles",
               "Text styles",
@@ -87,6 +88,7 @@ file.withWriter { writer ->
         writer.write("$stats.displayRulesCount,") // Display rules count
         writer.write("$stats.translatedDisplayRulesCount,") // Translated display rules
         writer.write("$stats.imagesCount,") // Images count
+        writer.write("$stats.filesCount,") // Files count
         writer.write("$stats.usedHyperlinksCount,") // Used Hyperlinks Count
         writer.write("$stats.usedParagraphStylesCount,") // Used Paragraph Styles Count
         writer.write("$stats.usedTextStylesCount,") // Used Text Styles Count
@@ -107,6 +109,7 @@ class Stats {
     Set<String> usedDisplayRules = new HashSet()
     Set<String> usedTranslatedDisplayRules = new HashSet()
     Set<String> usedImages = new HashSet()
+    Set<String> usedFiles = new HashSet()
     Set<String> usedHyperlinks = new HashSet()
     Set<String> usedParagraphStyles = new HashSet()
     Set<String> usedTextStyles = new HashSet()
@@ -134,6 +137,7 @@ class Stats {
             switch (content) {
                 case DocumentObjectRef -> this.collectDocumentObjectRef(content)
                 case ImageRef -> this.usedImages.add(content.id)
+                case FileRef -> this.usedFiles.add(content.id)
                 case Table -> this.collectTable(content)
                 case Paragraph -> this.collectParagraph(content)
                 case Area -> this.collectContent(content.content)
@@ -163,6 +167,7 @@ class Stats {
             switch (content) {
                 case DocumentObjectRef -> this.collectDocumentObjectRef(content)
                 case ImageRef -> this.usedImages.add(content.id)
+                case FileRef -> this.usedFiles.add(content.id)
                 case StringValue -> {
                     this.characterCount += content.value.chars.length
                     this.wordCount += content.value.split("\\s+").length
@@ -249,6 +254,10 @@ class Stats {
 
     Number getImagesCount() {
         return this.usedImages.size()
+    }
+
+    Number getFilesCount() {
+        return this.usedFiles.size()
     }
 
     Number getUsedHyperlinksCount() {
