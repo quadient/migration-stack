@@ -7,7 +7,14 @@
 package com.quadient.migration.example.docbook
 
 import com.quadient.migration.api.Migration
-import com.quadient.migration.api.dto.migrationmodel.*
+import com.quadient.migration.api.dto.migrationmodel.DocumentContent
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.Paragraph
+import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.TextContent
+import com.quadient.migration.api.dto.migrationmodel.Variable
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
