@@ -102,6 +102,7 @@ data class DocumentObjectRef(override val id: String, val displayRuleRef: Displa
     DocumentContent, TextContent {
 
     constructor(id: String) : this(id, null)
+    constructor(id: String, displayRuleId: String) : this(id, DisplayRuleRef(displayRuleId))
 
     companion object {
         fun fromModel(model: DocumentObjectModelRef) =
