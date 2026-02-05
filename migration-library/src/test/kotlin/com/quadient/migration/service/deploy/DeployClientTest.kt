@@ -4,14 +4,14 @@ package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.dto.migrationmodel.StatusTracking
 import com.quadient.migration.api.repository.StatusTrackingRepository
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.DocumentObjectModelRef
-import com.quadient.migration.data.FileModelRef
-import com.quadient.migration.data.ImageModelRef
-import com.quadient.migration.data.ParagraphModel
-import com.quadient.migration.data.ParagraphStyleModelRef
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.Paragraph
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.data.StatusEvent
-import com.quadient.migration.data.TextStyleModelRef
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
@@ -505,7 +505,7 @@ class DeployClientTest {
         )
     }
 
-    val externalObjects = mutableListOf<DocumentObjectModel>()
+    val externalObjects = mutableListOf<DocumentObject>()
     private fun givenExternalDocumentObject(
         id: String,
         deps: List<String> = listOf(),
@@ -517,18 +517,18 @@ class DeployClientTest {
     ) {
         externalObjects.add(
             aBlock(id = id, internal = false, content = deps.map {
-                DocumentObjectModelRef(
+                DocumentObjectRef(
                     it, null
                 )
-            } + imageDeps.map { ImageModelRef(it) } + fileDeps.map { FileModelRef(it) } + textStyles.map {
-                ParagraphModel(
+            } + imageDeps.map { ImageRef(it) } + fileDeps.map { FileRef(it) } + textStyles.map {
+                Paragraph(
                     listOf(
-                        ParagraphModel.TextModel(
-                            emptyList(), TextStyleModelRef(it), null
+                        Paragraph.Text(
+                            emptyList(), TextStyleRef(it), null
                         )
                     ), null, null
                 )
-            } + paragraphStyles.map { ParagraphModel(emptyList(), ParagraphStyleModelRef(it), null) })
+            } + paragraphStyles.map { Paragraph(emptyList(), ParagraphStyleRef(it), null) })
         )
         every { documentObjectRepository.list(any()) } returns externalObjects
         every {
@@ -546,6 +546,7 @@ class DeployClientTest {
 
     private fun givenInternalDocumentObject(id: String, deps: List<String> = listOf()) {
         every { documentObjectRepository.findModelOrFail(id) } returns aBlock(
-            id = id, internal = true, content = deps.map { DocumentObjectModelRef(it, null) })
+            id = id, internal = true, content = deps.map { DocumentObjectRef(it, null) })
     }
 }
+

@@ -6,13 +6,13 @@ import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
-import com.quadient.migration.data.DocumentObjectModel
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.data.Error
-import com.quadient.migration.data.FileModel
-import com.quadient.migration.data.FileModelRef
-import com.quadient.migration.data.ImageModel
-import com.quadient.migration.data.ImageModelRef
-import com.quadient.migration.data.StringModel
+import com.quadient.migration.api.dto.migrationmodel.File
+import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.repository.FileInternalRepository
 import com.quadient.migration.persistence.repository.ImageInternalRepository
@@ -79,7 +79,7 @@ class DesignerDeployClientTest {
     @BeforeEach
     fun setupAll() {
         every { documentObjectBuilder.shouldIncludeInternalDependency(any()) } answers {
-            val documentObject = firstArg<DocumentObjectModel>()
+            val documentObject = firstArg<DocumentObject>()
             documentObject.internal || documentObject.type == DocumentObjectType.Page
         }
         every { ipsService.writeMetadata(any()) } just runs
@@ -94,14 +94,14 @@ class DesignerDeployClientTest {
         val externalBlock = mockObj(
             aDocObj(
                 "Txt_Img_File_1", DocumentObjectType.Block, listOf(
-                    aParagraph(aText(StringModel("Image: "))), ImageModelRef(image1.id),
-                    aParagraph(aText(StringModel("File: "))), FileModelRef(file1.id)
+                    aParagraph(aText(StringValue("Image: "))), ImageRef(image1.id),
+                    aParagraph(aText(StringValue("File: "))), FileRef(file1.id)
                 )
             )
         )
         val internalBlock = mockObj(
             aDocObj(
-                "Img_2", DocumentObjectType.Block, listOf(ImageModelRef(image2.id)), internal = true
+                "Img_2", DocumentObjectType.Block, listOf(ImageRef(image2.id)), internal = true
             )
         )
         val page = mockObj(
@@ -338,7 +338,7 @@ class DesignerDeployClientTest {
         verify(exactly = 1) { ipsService.xml2wfd(any(), "icm://${template.nameOrId()}") }
     }
 
-    private fun mockImg(image: ImageModel, success: Boolean = true): ImageModel {
+    private fun mockImg(image: Image, success: Boolean = true): Image {
         val imagePath = "icm://${image.nameOrId()}"
 
         every { documentObjectBuilder.getImagePath(image) } returns imagePath
@@ -358,7 +358,7 @@ class DesignerDeployClientTest {
         return image
     }
 
-    private fun mockFile(file: FileModel, success: Boolean = true): FileModel {
+    private fun mockFile(file: File, success: Boolean = true): File {
         val filePath = "icm://${file.nameOrId()}"
 
         every { documentObjectBuilder.getFilePath(file) } returns filePath
@@ -378,7 +378,7 @@ class DesignerDeployClientTest {
         return file
     }
 
-    private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
+    private fun mockObj(documentObject: DocumentObject): DocumentObject {
         every { documentObjectRepository.findModel(documentObject.id) } returns documentObject
 
         if (documentObject.internal == false) {
@@ -407,9 +407,9 @@ class DesignerDeployClientTest {
         fun `deployDocumentObjects does not do anything when all objects are deployed`() {
             // given
             val docObjects = listOf(
-                aDocObj("D_1", content = listOf(ImageModelRef("I_1"))),
-                aDocObj("D_2", content = listOf(ImageModelRef("I_2"))),
-                aDocObj("D_3", content = listOf(ImageModelRef("I_3"))),
+                aDocObj("D_1", content = listOf(ImageRef("I_1"))),
+                aDocObj("D_2", content = listOf(ImageRef("I_2"))),
+                aDocObj("D_3", content = listOf(ImageRef("I_3"))),
             )
             givenObjectIsDeployed("D_1")
             givenObjectIsDeployed("I_1")
@@ -430,9 +430,9 @@ class DesignerDeployClientTest {
         fun `deployDocumentObjects skips deployed but deploys active and error`() {
             // given
             val docObjects = listOf(
-                aDocObj("D_1", content = listOf(ImageModelRef("I_1"))),
-                aDocObj("D_2", content = listOf(ImageModelRef("I_2"))),
-                aDocObj("D_3", content = listOf(ImageModelRef("I_3"))),
+                aDocObj("D_1", content = listOf(ImageRef("I_1"))),
+                aDocObj("D_2", content = listOf(ImageRef("I_2"))),
+                aDocObj("D_3", content = listOf(ImageRef("I_3"))),
             )
             mockImg(aImage("I_1"))
             mockImg(aImage("I_2"))
@@ -461,7 +461,7 @@ class DesignerDeployClientTest {
         @Test
         fun `deployDocumentObjects records errors`() {
             // given
-            val docObjects = listOf(aDocObj("D_1", content = listOf(ImageModelRef("I_1"))))
+            val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))))
             givenObjectIsActive("D_1")
             givenObjectIsActive("I_1")
             mockImg(aImage("I_1"), success = false)
