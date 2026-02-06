@@ -1,9 +1,13 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.Tab
+import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.service.deploy.ResourceType
@@ -18,9 +22,43 @@ import kotlin.collections.map
 class ParagraphStyleRepository(table: ParagraphStyleTable, projectName: String) :
     Repository<ParagraphStyle>(table, projectName) {
     val statusTrackingRepository = StatusTrackingRepository(projectName)
-
     override fun fromDb(row: ResultRow): ParagraphStyle {
-        return ParagraphStyle.fromDb(row)
+        val definitionEntity = row[ParagraphStyleTable.definition]
+        val definition = when (definitionEntity) {
+            is com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefinitionEntity -> {
+                ParagraphStyleDefinition(
+                    leftIndent = definitionEntity.leftIndent,
+                    rightIndent = definitionEntity.rightIndent,
+                    defaultTabSize = definitionEntity.defaultTabSize,
+                    spaceBefore = definitionEntity.spaceBefore,
+                    spaceAfter = definitionEntity.spaceAfter,
+                    alignment = definitionEntity.alignment,
+                    firstLineIndent = definitionEntity.firstLineIndent,
+                    lineSpacing = definitionEntity.lineSpacing,
+                    keepWithNextParagraph = definitionEntity.keepWithNextParagraph,
+                    tabs = definitionEntity.tabs?.let { tabsEntity ->
+                        Tabs(
+                            tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
+                            useOutsideTabs = tabsEntity.useOutsideTabs
+                        )
+                    },
+                    pdfTaggingRule = definitionEntity.pdfTaggingRule,
+                )
+            }
+            is com.quadient.migration.persistence.migrationmodel.ParagraphStyleEntityRef -> {
+                ParagraphStyleRef.fromDb(definitionEntity)
+            }
+        }
+        
+        return ParagraphStyle(
+            id = row[ParagraphStyleTable.id].value,
+            name = row[ParagraphStyleTable.name],
+            originLocations = row[ParagraphStyleTable.originLocations],
+            customFields = CustomFieldMap(row[ParagraphStyleTable.customFields].toMutableMap()),
+            lastUpdated = row[ParagraphStyleTable.lastUpdated],
+            created = row[ParagraphStyleTable.created],
+            definition = definition,
+        )
     }
 
     override fun findUsages(id: String): List<MigrationObject> {

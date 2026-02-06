@@ -1,10 +1,11 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.MigrationObjectTable
 import com.quadient.migration.persistence.table.VariableTable
+import com.quadient.migration.shared.DataType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -13,11 +14,20 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import kotlin.collections.map
 
-class VariableRepository(table: MigrationObjectTable, projectName: String) :
+class VariableRepository(override val table: VariableTable, projectName: String) :
     Repository<Variable>(table, projectName) {
 
     override fun fromDb(row: ResultRow): Variable {
-        return Variable.fromDb(row)
+        return Variable(
+            id = row[table.id].value,
+            name = row[table.name],
+            originLocations = row[table.originLocations],
+            customFields = CustomFieldMap(row[table.customFields].toMutableMap()),
+            lastUpdated = row[table.lastUpdated],
+            created = row[table.created],
+            dataType = DataType.valueOf(row[table.dataType]),
+            defaultValue = row[table.defaultValue]
+        )
     }
 
     override fun findUsages(id: String): List<MigrationObject> {
@@ -35,15 +45,15 @@ class VariableRepository(table: MigrationObjectTable, projectName: String) :
             val now = Clock.System.now()
 
             table.upsertReturning(table.id, table.projectName) {
-                it[VariableTable.id] = dto.id
-                it[VariableTable.projectName] = projectName
-                it[VariableTable.name] = dto.name
-                it[VariableTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-                it[VariableTable.customFields] = dto.customFields.inner
-                it[VariableTable.created] = existingItem?.created ?: now
-                it[VariableTable.lastUpdated] = now
-                it[VariableTable.dataType] = dto.dataType.toString()
-                it[VariableTable.defaultValue] = dto.defaultValue
+                it[table.id] = dto.id
+                it[table.projectName] = projectName
+                it[table.name] = dto.name
+                it[table.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+                it[table.customFields] = dto.customFields.inner
+                it[table.created] = existingItem?.created ?: now
+                it[table.lastUpdated] = now
+                it[table.dataType] = dto.dataType.toString()
+                it[table.defaultValue] = dto.defaultValue
             }.first()
         }
     }

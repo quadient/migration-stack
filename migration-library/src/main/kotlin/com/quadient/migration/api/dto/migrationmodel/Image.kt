@@ -1,13 +1,10 @@
 package com.quadient.migration.api.dto.migrationmodel
 
-import com.quadient.migration.persistence.table.ImageTable
-import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.SkipOptions
 import kotlinx.datetime.Instant
-import org.jetbrains.exposed.v1.core.ResultRow
 
 data class Image @JvmOverloads constructor(
     override val id: String,
@@ -26,25 +23,5 @@ data class Image @JvmOverloads constructor(
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
         return emptyList()
-    }
-
-    companion object {
-        fun fromDb(row: ResultRow): Image {
-            return Image(
-                id = row[ImageTable.id].value,
-                name = row[ImageTable.name],
-                originLocations = row[ImageTable.originLocations],
-                customFields = CustomFieldMap(row[ImageTable.customFields].toMutableMap()),
-                created = row[ImageTable.created],
-                lastUpdated = row[ImageTable.created],
-                sourcePath = row[ImageTable.sourcePath],
-                imageType = ImageType.valueOf(row[ImageTable.imageType]),
-                options = row[ImageTable.options],
-                targetFolder = row[ImageTable.targetFolder]?.let(IcmPath::from)?.toString(),
-                metadata = row[ImageTable.metadata],
-                skip = row[ImageTable.skip],
-                alternateText = row[ImageTable.alternateText],
-            )
-        }
     }
 }

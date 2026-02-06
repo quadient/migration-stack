@@ -1,10 +1,12 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.File
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.FileTable
 import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.shared.FileType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -14,9 +16,19 @@ import org.jetbrains.exposed.v1.jdbc.upsertReturning
 
 class FileRepository(table: FileTable, projectName: String) : Repository<File>(table, projectName) {
     val statusTrackingRepository = StatusTrackingRepository(projectName)
-
     override fun fromDb(row: ResultRow): File {
-        return File.fromDb(row)
+        return File(
+            id = row[FileTable.id].value,
+            name = row[FileTable.name],
+            originLocations = row[FileTable.originLocations],
+            customFields = CustomFieldMap(row[FileTable.customFields].toMutableMap()),
+            created = row[FileTable.created],
+            lastUpdated = row[FileTable.created],
+            sourcePath = row[FileTable.sourcePath],
+            targetFolder = row[FileTable.targetFolder],
+            fileType = FileType.valueOf(row[FileTable.fileType]),
+            skip = row[FileTable.skip],
+        )
     }
 
     override fun findUsages(id: String): List<MigrationObject> {

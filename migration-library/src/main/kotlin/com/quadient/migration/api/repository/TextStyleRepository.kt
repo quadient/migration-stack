@@ -1,5 +1,6 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
@@ -20,7 +21,35 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
     val statusTrackingRepository = StatusTrackingRepository(projectName)
 
     override fun fromDb(row: ResultRow): TextStyle {
-        return TextStyle.fromDb(row)
+        val definitionEntity = row[TextStyleTable.definition]
+        val definition = when (definitionEntity) {
+            is com.quadient.migration.persistence.migrationmodel.TextStyleDefinitionEntity -> {
+                TextStyleDefinition(
+                    fontFamily = definitionEntity.fontFamily,
+                    foregroundColor = definitionEntity.foregroundColor,
+                    size = definitionEntity.size,
+                    bold = definitionEntity.bold,
+                    italic = definitionEntity.italic,
+                    underline = definitionEntity.underline,
+                    strikethrough = definitionEntity.strikethrough,
+                    superOrSubscript = definitionEntity.superOrSubscript,
+                    interspacing = definitionEntity.interspacing,
+                )
+            }
+            is com.quadient.migration.persistence.migrationmodel.TextStyleEntityRef -> {
+                TextStyleRef.fromDb(definitionEntity)
+            }
+        }
+        
+        return TextStyle(
+            id = row[TextStyleTable.id].value,
+            name = row[TextStyleTable.name],
+            originLocations = row[TextStyleTable.originLocations],
+            customFields = CustomFieldMap(row[TextStyleTable.customFields].toMutableMap()),
+            lastUpdated = row[TextStyleTable.lastUpdated],
+            created = row[TextStyleTable.created],
+            definition = definition,
+        )
     }
 
     override fun findUsages(id: String): List<MigrationObject> {

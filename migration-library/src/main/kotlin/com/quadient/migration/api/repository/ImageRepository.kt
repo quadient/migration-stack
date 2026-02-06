@@ -1,10 +1,12 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.ImageTable
 import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
@@ -15,9 +17,22 @@ import org.jetbrains.exposed.v1.jdbc.upsertReturning
 
 class ImageRepository(table: ImageTable, projectName: String) : Repository<Image>(table, projectName) {
     val statusTrackingRepository = StatusTrackingRepository(projectName)
-
     override fun fromDb(row: ResultRow): Image {
-        return Image.fromDb(row)
+        return Image(
+            id = row[ImageTable.id].value,
+            name = row[ImageTable.name],
+            originLocations = row[ImageTable.originLocations],
+            customFields = CustomFieldMap(row[ImageTable.customFields].toMutableMap()),
+            created = row[ImageTable.created],
+            lastUpdated = row[ImageTable.created],
+            sourcePath = row[ImageTable.sourcePath],
+            imageType = ImageType.valueOf(row[ImageTable.imageType]),
+            options = row[ImageTable.options],
+            targetFolder = row[ImageTable.targetFolder]?.let(IcmPath::from)?.toString(),
+            metadata = row[ImageTable.metadata],
+            skip = row[ImageTable.skip],
+            alternateText = row[ImageTable.alternateText],
+        )
     }
 
     override fun findUsages(id: String): List<MigrationObject> {

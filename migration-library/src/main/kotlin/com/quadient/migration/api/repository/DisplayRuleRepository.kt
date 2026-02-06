@@ -1,5 +1,6 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.persistence.table.DisplayRuleTable
@@ -15,7 +16,15 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
     Repository<DisplayRule>(table, projectName) {
 
     override fun fromDb(row: ResultRow): DisplayRule {
-        return DisplayRule.fromDb(row)
+        return DisplayRule(
+            id = row[DisplayRuleTable.id].value,
+            name = row[DisplayRuleTable.name],
+            originLocations = row[DisplayRuleTable.originLocations],
+            customFields = CustomFieldMap(row[DisplayRuleTable.customFields].toMutableMap()),
+            lastUpdated = row[DisplayRuleTable.lastUpdated],
+            created = row[DisplayRuleTable.created],
+            definition = row[DisplayRuleTable.definition]
+        )
     }
 
     override fun findUsages(id: String): List<MigrationObject> {
