@@ -6,18 +6,19 @@ import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
-import com.quadient.migration.data.DocumentObjectModel
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectFilter
 import com.quadient.migration.data.Error
-import com.quadient.migration.data.FileModel
-import com.quadient.migration.data.FileModelRef
-import com.quadient.migration.data.ImageModel
-import com.quadient.migration.data.ImageModelRef
-import com.quadient.migration.data.StringModel
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
+import com.quadient.migration.api.dto.migrationmodel.File
+import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.FileRepository
+import com.quadient.migration.api.repository.ImageRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
@@ -44,6 +45,7 @@ import io.mockk.runs
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.datetime.Clock
+import org.jetbrains.exposed.v1.core.Op
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -54,11 +56,11 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class DesignerDeployClientTest {
-    val documentObjectRepository = mockk<DocumentObjectInternalRepository>()
-    val imageRepository = mockk<ImageInternalRepository>()
-    val fileRepository = mockk<FileInternalRepository>()
-    val textStyleRepository = mockk<TextStyleInternalRepository>()
-    val paragraphStyleRepository = mockk<ParagraphStyleInternalRepository>()
+    val documentObjectRepository = mockk<DocumentObjectRepository>()
+    val imageRepository = mockk<ImageRepository>()
+    val fileRepository = mockk<FileRepository>()
+    val textStyleRepository = mockk<TextStyleRepository>()
+    val paragraphStyleRepository = mockk<ParagraphStyleRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
     val documentObjectBuilder = mockk<DesignerDocumentObjectBuilder>()
     val ipsService = mockk<IpsService>()
@@ -79,8 +81,8 @@ class DesignerDeployClientTest {
     @BeforeEach
     fun setupAll() {
         every { documentObjectBuilder.shouldIncludeInternalDependency(any()) } answers {
-            val documentObject = firstArg<DocumentObjectModel>()
-            documentObject.internal || documentObject.type == DocumentObjectType.Page
+            val documentObject = firstArg<DocumentObject>()
+            (documentObject.internal ?: false) || documentObject.type == DocumentObjectType.Page
         }
         every { ipsService.writeMetadata(any()) } just runs
     }
@@ -94,14 +96,14 @@ class DesignerDeployClientTest {
         val externalBlock = mockObj(
             aDocObj(
                 "Txt_Img_File_1", DocumentObjectType.Block, listOf(
-                    aParagraph(aText(StringModel("Image: "))), ImageModelRef(image1.id),
-                    aParagraph(aText(StringModel("File: "))), FileModelRef(file1.id)
+                    aParagraph(aText(StringValue("Image: "))), ImageRef(image1.id),
+                    aParagraph(aText(StringValue("File: "))), FileRef(file1.id)
                 )
             )
         )
         val internalBlock = mockObj(
             aDocObj(
-                "Img_2", DocumentObjectType.Block, listOf(ImageModelRef(image2.id)), internal = true
+                "Img_2", DocumentObjectType.Block, listOf(ImageRef(image2.id)), internal = true
             )
         )
         val page = mockObj(
@@ -116,7 +118,7 @@ class DesignerDeployClientTest {
 
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
-        every { documentObjectRepository.list(any()) } returns listOf(template, externalBlock)
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, externalBlock)
         every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd"
         every { ipsService.fileExists(any()) } returns false
 
@@ -138,7 +140,7 @@ class DesignerDeployClientTest {
     fun `deploy list of document objects validates that no document objects are skipped`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
-        every { documentObjectRepository.list(any()) } returns listOf(
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", skip = SkipOptions(true, null, null)),
             aBlock(id = "2", type = DocumentObjectType.Block),
             aBlock(id = "3", type = DocumentObjectType.Page),
@@ -149,14 +151,14 @@ class DesignerDeployClientTest {
         val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(listOf("1", "2", "3")) }
 
         assertEquals("The following document objects are skipped: [1]. ", ex.message)
-        verify(exactly = 1) { documentObjectRepository.list(any()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
     }
 
     @Test
     fun `page objects are skipped in deploy`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
-        every { documentObjectRepository.list(any()) } returns listOf(
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", type = DocumentObjectType.Block),
             aBlock(id = "2", type = DocumentObjectType.Page),
             aBlock(id = "3", type = DocumentObjectType.Template),
@@ -165,7 +167,7 @@ class DesignerDeployClientTest {
 
         spy.deployDocumentObjects(listOf("1", "2", "3", "4"))
 
-        verify(exactly = 1) { documentObjectRepository.list(any()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
         verify {
             spy.deployDocumentObjectsInternal(match { docObjects ->
                 docObjects.size == 3 && docObjects.map { it.id }
@@ -178,7 +180,7 @@ class DesignerDeployClientTest {
     fun `deploy list of document objects validates that no document objects are internal`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
-        every { documentObjectRepository.list(any()) } returns listOf(
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", internal = true),
             aBlock(id = "2", internal = true),
             aBlock(id = "3", internal = false),
@@ -187,28 +189,28 @@ class DesignerDeployClientTest {
         val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(listOf("1", "2", "3")) }
 
         assertEquals("The following document objects are internal: [1, 2]. ", ex.message)
-        verify(exactly = 1) { documentObjectRepository.list(any()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
     }
 
     @Test
     fun `deploy list of document objects validates that no document are missing`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
-        every { documentObjectRepository.list(any()) } returns listOf(
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1"),
         )
 
         val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(listOf("1", "2", "3")) }
 
         assertEquals("The following document objects were not found: [2, 3]. ", ex.message)
-        verify(exactly = 1) { documentObjectRepository.list(any()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
     }
 
     @Test
     fun `deploy list of document objects has all kinds of problems`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
-        every { documentObjectRepository.list(any()) } returns listOf(
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1"),
             aBlock(id = "2", internal = true),
             aBlock(id = "3"),
@@ -229,7 +231,7 @@ class DesignerDeployClientTest {
             "The following document objects were not found: [8]. The following document objects are internal: [2]. The following document objects are skipped: [6]. ",
             ex.message
         )
-        verify(exactly = 1) { documentObjectRepository.list(any()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
     }
 
     @Test
@@ -242,11 +244,11 @@ class DesignerDeployClientTest {
             aBlock(id = "2", content = listOf(aDocumentObjectRef("5"))),
             aBlock(id = "3", content = listOf(aDocumentObjectRef("6"))),
         )
-        every { documentObjectRepository.list(any()) } returns docObjects
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns docObjects
 
         spy.deployDocumentObjects(toDeploy, true)
 
-        verify(exactly = 1) { documentObjectRepository.list(any()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
         verify { spy.deployDocumentObjectsInternal(docObjects) }
     }
 
@@ -267,15 +269,15 @@ class DesignerDeployClientTest {
             aBlock(id = "7", content = listOf(aDocumentObjectRef("8"))),
             aBlock(id = "8", internal = true),
         )
-        every { documentObjectRepository.list(any()) } returns docObjects
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns docObjects
         for (dependency in dependencies) {
-            every { documentObjectRepository.findModelOrFail(dependency.id) } returns dependency
+            every { documentObjectRepository.findOrFail(dependency.id) } returns dependency
         }
 
         spy.deployDocumentObjects(toDeploy)
 
-        verify(exactly = 1) { documentObjectRepository.list(any()) }
-        verify(exactly = 7) { documentObjectRepository.findModelOrFail(any()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
+        verify(exactly = 7) { documentObjectRepository.findOrFail(any()) }
         verify {
             spy.deployDocumentObjectsInternal(match { docObjects ->
                 docObjects.size == 7 && docObjects.map { it.id }
@@ -292,14 +294,14 @@ class DesignerDeployClientTest {
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
         )
-        every { documentObjectRepository.list(any()) } returns docObjects
-        every { documentObjectRepository.findModelOrFail(any()) } throws IllegalArgumentException("not found")
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns docObjects
+        every { documentObjectRepository.findOrFail(any()) } throws IllegalArgumentException("not found")
 
         val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(toDeploy) }
 
         assertEquals("not found", ex.message)
-        verify(exactly = 1) { documentObjectRepository.list(any()) }
-        verify(exactly = 1) { documentObjectRepository.findModelOrFail(any()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
+        verify(exactly = 1) { documentObjectRepository.findOrFail(any()) }
     }
 
     @Test
@@ -309,8 +311,8 @@ class DesignerDeployClientTest {
         val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, listOf(aDocumentObjectRef(innerBlock.id))))
         val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
 
-        every { documentObjectRepository.findModel(innerBlock.id) } throws IllegalStateException("Not found")
-        every { documentObjectRepository.list(any()) } returns listOf(template, block)
+        every { documentObjectRepository.find(innerBlock.id) } throws IllegalStateException("Not found")
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
         every { documentObjectBuilder.buildDocumentObject(block, any()) } throws IllegalStateException("Inner block not found")
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
@@ -338,14 +340,15 @@ class DesignerDeployClientTest {
         verify(exactly = 1) { ipsService.xml2wfd(any(), "icm://${template.nameOrId()}") }
     }
 
-    private fun mockImg(image: ImageModel, success: Boolean = true): ImageModel {
+    private fun mockImg(image: Image, success: Boolean = true): Image {
+        val sourcePath = image.sourcePath
         val imagePath = "icm://${image.nameOrId()}"
 
         every { documentObjectBuilder.getImagePath(image) } returns imagePath
-        every { imageRepository.findModel(image.id) } returns image
-        if (!image.sourcePath.isNullOrBlank()) {
+        every { imageRepository.find(image.id) } returns image
+        if (!sourcePath.isNullOrBlank()) {
             val byteArray = ByteArray(10)
-            every { storage.read(image.sourcePath) } answers {
+            every { storage.read(sourcePath) } answers {
                 if (success) {
                     byteArray
                 } else {
@@ -358,14 +361,15 @@ class DesignerDeployClientTest {
         return image
     }
 
-    private fun mockFile(file: FileModel, success: Boolean = true): FileModel {
+    private fun mockFile(file: File, success: Boolean = true): File {
+        val sourcePath = file.sourcePath
         val filePath = "icm://${file.nameOrId()}"
 
         every { documentObjectBuilder.getFilePath(file) } returns filePath
-        every { fileRepository.findModel(file.id) } returns file
-        if (!file.sourcePath.isNullOrBlank()) {
+        every { fileRepository.find(file.id) } returns file
+        if (!sourcePath.isNullOrBlank()) {
             val byteArray = ByteArray(10)
-            every { storage.read(file.sourcePath) } answers {
+            every { storage.read(sourcePath) } answers {
                 if (success) {
                     byteArray
                 } else {
@@ -378,8 +382,8 @@ class DesignerDeployClientTest {
         return file
     }
 
-    private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
-        every { documentObjectRepository.findModel(documentObject.id) } returns documentObject
+    private fun mockObj(documentObject: DocumentObject): DocumentObject {
+        every { documentObjectRepository.find(documentObject.id) } returns documentObject
 
         if (documentObject.internal == false) {
             val xml = "<xml>${documentObject.nameOrId()}</xml>"
@@ -407,9 +411,9 @@ class DesignerDeployClientTest {
         fun `deployDocumentObjects does not do anything when all objects are deployed`() {
             // given
             val docObjects = listOf(
-                aDocObj("D_1", content = listOf(ImageModelRef("I_1"))),
-                aDocObj("D_2", content = listOf(ImageModelRef("I_2"))),
-                aDocObj("D_3", content = listOf(ImageModelRef("I_3"))),
+                aDocObj("D_1", content = listOf(ImageRef("I_1"))),
+                aDocObj("D_2", content = listOf(ImageRef("I_2"))),
+                aDocObj("D_3", content = listOf(ImageRef("I_3"))),
             )
             givenObjectIsDeployed("D_1")
             givenObjectIsDeployed("I_1")
@@ -423,16 +427,16 @@ class DesignerDeployClientTest {
 
             // then
             verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any(), any()) }
-            verify(exactly = 0) { imageRepository.findModel(any()) }
+            verify(exactly = 0) { imageRepository.find(any()) }
         }
 
         @Test
         fun `deployDocumentObjects skips deployed but deploys active and error`() {
             // given
             val docObjects = listOf(
-                aDocObj("D_1", content = listOf(ImageModelRef("I_1"))),
-                aDocObj("D_2", content = listOf(ImageModelRef("I_2"))),
-                aDocObj("D_3", content = listOf(ImageModelRef("I_3"))),
+                aDocObj("D_1", content = listOf(ImageRef("I_1"))),
+                aDocObj("D_2", content = listOf(ImageRef("I_2"))),
+                aDocObj("D_3", content = listOf(ImageRef("I_3"))),
             )
             mockImg(aImage("I_1"))
             mockImg(aImage("I_2"))
@@ -461,7 +465,7 @@ class DesignerDeployClientTest {
         @Test
         fun `deployDocumentObjects records errors`() {
             // given
-            val docObjects = listOf(aDocObj("D_1", content = listOf(ImageModelRef("I_1"))))
+            val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))))
             givenObjectIsActive("D_1")
             givenObjectIsActive("I_1")
             mockImg(aImage("I_1"), success = false)
@@ -525,8 +529,8 @@ class DesignerDeployClientTest {
 
             every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
             every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any()) } returns aDeployedStatus("id")
-            every { textStyleRepository.listAllModel() } returns emptyList()
-            every { paragraphStyleRepository.listAllModel() } returns emptyList()
+            every { textStyleRepository.listAll() } returns emptyList()
+            every { paragraphStyleRepository.listAll() } returns emptyList()
             every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
 
             val definitionPathWfd = "icm://defaultFolder/CompanyStyles.wfd"
@@ -547,8 +551,8 @@ class DesignerDeployClientTest {
 
             every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
             every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any()) } returns aDeployedStatus("id")
-            every { textStyleRepository.listAllModel() } returns emptyList()
-            every { paragraphStyleRepository.listAllModel() } returns emptyList()
+            every { textStyleRepository.listAll() } returns emptyList()
+            every { paragraphStyleRepository.listAll() } returns emptyList()
             every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Failure("Problem")
 
             val definitionPath = "icm://defaultFolder/CompanyStyles.wfd"

@@ -13,6 +13,7 @@ import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
@@ -29,8 +30,10 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleDefOrRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.FileRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
@@ -38,11 +41,17 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
-import com.quadient.migration.data.DocumentContentModel
-import com.quadient.migration.data.DocumentObjectModel
 import com.quadient.migration.data.StatusEvent
+import com.quadient.migration.persistence.table.DisplayRuleTable
+import com.quadient.migration.persistence.table.DocumentObjectTable
+import com.quadient.migration.persistence.table.FileTable
+import com.quadient.migration.persistence.table.ImageTable
+import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.persistence.table.StatusTrackingEntity
 import com.quadient.migration.persistence.table.StatusTrackingTable
+import com.quadient.migration.persistence.table.TextStyleTable
+import com.quadient.migration.persistence.table.VariableStructureTable
+import com.quadient.migration.persistence.table.VariableTable
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.Color
@@ -50,18 +59,13 @@ import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
+import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
-import com.quadient.migration.tools.model.aDisplayRuleInternalRepository
-import com.quadient.migration.tools.model.aDocumentObjectInternalRepository
-import com.quadient.migration.tools.model.aImageInternalRepository
-import com.quadient.migration.tools.model.aParaStyleInternalRepository
-import com.quadient.migration.tools.model.aTextStyleInternalRepository
-import com.quadient.migration.tools.model.aVariableInternalRepository
-import com.quadient.migration.tools.model.aVariableStructureInternalRepository
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.datetime.Clock
@@ -80,6 +84,8 @@ fun aBlockDto(
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
     type: DocumentObjectType = DocumentObjectType.Block,
+    baseTemplate: String? = null,
+    variableStructureRef: VariableStructureRef? = null,
 ): DocumentObject {
     return DocumentObject(
         id = id,
@@ -90,15 +96,45 @@ fun aBlockDto(
         targetFolder = targetFolder,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
+        created = kotlinx.datetime.Clock.System.now(),
+        lastUpdated = kotlinx.datetime.Clock.System.now(),
         metadata = emptyMap(),
         skip = SkipOptions(false, null, null),
         subject = null,
+        baseTemplate = baseTemplate,
+        variableStructureRef = variableStructureRef,
+    )
+}
+
+fun aImageDto(
+    id: String,
+    name: String? = "Image_$id",
+    sourcePath: String? = "$name.jpg",
+    imageType: ImageType = ImageType.Jpeg,
+    targetFolder: String? = null,
+    originLocations: List<String> = emptyList(),
+    customFields: MutableMap<String, String> = mutableMapOf(),
+): Image {
+    return Image(
+        id = id,
+        name = name,
+        sourcePath = sourcePath,
+        imageType = imageType,
+        targetFolder = targetFolder,
+        originLocations = originLocations,
+        customFields = CustomFieldMap(customFields),
+        created = kotlinx.datetime.Clock.System.now(),
+        lastUpdated = kotlinx.datetime.Clock.System.now(),
+        options = null,
+        metadata = emptyMap(),
+        skip = SkipOptions(false, null, null),
+        alternateText = null,
     )
 }
 
 fun aBlockModel(
     id: String,
-    content: List<DocumentContentModel> = emptyList(),
+    content: List<DocumentContent> = emptyList(),
     name: String? = null,
     internal: Boolean = false,
     targetFolder: String? = null,
@@ -107,14 +143,14 @@ fun aBlockModel(
     type: DocumentObjectType = DocumentObjectType.Block,
     baseTemplate: String? = null,
     options: DocumentObjectOptions? = null,
-): DocumentObjectModel {
-    return DocumentObjectModel(
+): DocumentObject {
+    return DocumentObject(
         id = id,
         content = content,
         name = name ?: "block$id",
         type = type,
         internal = internal,
-        targetFolder = targetFolder?.let(IcmPath::from),
+        targetFolder = targetFolder?.let { IcmPath.from(it).toString() },
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
         created = Clock.System.now(),
@@ -122,7 +158,7 @@ fun aBlockModel(
         displayRuleRef = null,
         baseTemplate = baseTemplate,
         options = options,
-        metadata = emptyMap(),
+        metadata = emptyMap<String, List<MetadataPrimitive>>(),
         skip = SkipOptions(false, null, null),
         subject = null,
     )
@@ -237,6 +273,8 @@ fun aParagraphStyle(
         name = name,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
+        created = kotlinx.datetime.Clock.System.now(),
+        lastUpdated = kotlinx.datetime.Clock.System.now(),
         definition = definition
     )
 }
@@ -281,6 +319,8 @@ fun aTextStyle(
         name = name,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
+        created = kotlinx.datetime.Clock.System.now(),
+        lastUpdated = kotlinx.datetime.Clock.System.now(),
         definition = definition
     )
 }
@@ -461,10 +501,11 @@ fun aErrorStatus(
     )
 }
 
-fun aDocumentObjectRepository() = DocumentObjectRepository(aDocumentObjectInternalRepository())
-fun aVariableRepository() = VariableRepository(aVariableInternalRepository())
-fun aVariableStructureRepository() = VariableStructureRepository(aVariableStructureInternalRepository())
-fun aParaStyleRepository() = ParagraphStyleRepository(aParaStyleInternalRepository())
-fun aTextStyleRepository() = TextStyleRepository(aTextStyleInternalRepository())
-fun aDisplayRuleRepository() = DisplayRuleRepository(aDisplayRuleInternalRepository())
-fun aImageRepository() = ImageRepository(aImageInternalRepository())
+fun aDocumentObjectRepository() = DocumentObjectRepository(DocumentObjectTable, aProjectConfig().name)
+fun aVariableRepository() = VariableRepository(VariableTable, aProjectConfig().name)
+fun aVariableStructureRepository() = VariableStructureRepository(VariableStructureTable, aProjectConfig().name)
+fun aParaStyleRepository() = ParagraphStyleRepository(ParagraphStyleTable, aProjectConfig().name)
+fun aTextStyleRepository() = TextStyleRepository(TextStyleTable, aProjectConfig().name)
+fun aDisplayRuleRepository() = DisplayRuleRepository(DisplayRuleTable, aProjectConfig().name)
+fun aImageRepository() = ImageRepository(ImageTable, aProjectConfig().name)
+fun aFileRepository() = FileRepository(FileTable, aProjectConfig().name)

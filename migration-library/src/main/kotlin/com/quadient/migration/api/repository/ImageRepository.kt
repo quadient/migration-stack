@@ -1,56 +1,54 @@
 package com.quadient.migration.api.repository
 
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
-import com.quadient.migration.data.ImageModel
-import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.ImageTable
 import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
 import kotlinx.datetime.toJavaInstant
 import kotlinx.serialization.json.Json
 import java.sql.Types
+import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 
-class ImageRepository(internalRepository: ImageInternalRepository) : Repository<Image, ImageModel>(internalRepository) {
-    val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
-
-    override fun toDto(model: ImageModel): Image {
+class ImageRepository(table: ImageTable, projectName: String) : Repository<Image>(table, projectName) {
+    val statusTrackingRepository = StatusTrackingRepository(projectName)
+    override fun fromDb(row: ResultRow): Image {
         return Image(
-            id = model.id,
-            name = model.name,
-            originLocations = model.originLocations,
-            customFields = CustomFieldMap(model.customFields.toMutableMap()),
-            sourcePath = model.sourcePath,
-            options = model.options,
-            imageType = model.imageType,
-            targetFolder = model.targetFolder?.toString(),
-            metadata = model.metadata,
-            skip = model.skip,
-            alternateText = model.alternateText,
+            id = row[ImageTable.id].value,
+            name = row[ImageTable.name],
+            originLocations = row[ImageTable.originLocations],
+            customFields = CustomFieldMap(row[ImageTable.customFields].toMutableMap()),
+            created = row[ImageTable.created],
+            lastUpdated = row[ImageTable.created],
+            sourcePath = row[ImageTable.sourcePath],
+            imageType = ImageType.valueOf(row[ImageTable.imageType]),
+            options = row[ImageTable.options],
+            targetFolder = row[ImageTable.targetFolder]?.let(IcmPath::from)?.toString(),
+            metadata = row[ImageTable.metadata],
+            skip = row[ImageTable.skip],
+            alternateText = row[ImageTable.alternateText],
         )
     }
 
     override fun findUsages(id: String): List<MigrationObject> {
         return transaction {
-            DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq internalRepository.projectName }
+            DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq projectName }
                 .map { DocumentObjectTable.fromResultRow(it) }.filter { it.collectRefs().any { it.id == id } }
-                .map { DocumentObject.fromModel(it) }.distinct()
+                .distinct()
         }
     }
 
     override fun upsert(dto: Image) {
-        internalRepository.upsert {
-            val existingItem =
-                internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
-                    ?.let { internalRepository.toModel(it) }
+        upsertInternal {
+            val existingItem = table.selectAll().where(filter(dto.id)).firstOrNull()?.let(::fromDb)
 
             val now = Clock.System.now()
 
@@ -58,11 +56,9 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
                 statusTrackingRepository.active(dto.id, ResourceType.Image)
             }
 
-            internalRepository.table.upsertReturning(
-                internalRepository.table.id, internalRepository.table.projectName
-            ) {
+            table.upsertReturning(table.id, table.projectName) {
                 it[ImageTable.id] = dto.id
-                it[ImageTable.projectName] = internalRepository.projectName
+                it[ImageTable.projectName] = this@ImageRepository.projectName
                 it[ImageTable.name] = dto.name
                 it[ImageTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
                 it[ImageTable.customFields] = dto.customFields.inner
@@ -87,21 +83,21 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
             "created", "last_updated", "source_path", "image_type", "options",
             "target_folder", "metadata", "skip", "alternate_text"
         )
-        val sql = internalRepository.createSql(columns, dtos.size)
+        val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
 
-        internalRepository.upsertBatch(dtos) {
+        upsertBatchInternal(dtos) {
             val stmt = it.prepareStatement(sql)
             var index = 1
             dtos.forEach { dto ->
-                val existingItem = internalRepository.findModel(dto.id)
+                val existingItem = find(dto.id)
 
                 if (existingItem == null) {
                     statusTrackingRepository.active(dto.id, ResourceType.Image)
                 }
 
                 stmt.setString(index++, dto.id)
-                stmt.setString(index++, internalRepository.projectName)
+                stmt.setString(index++, this@ImageRepository.projectName)
                 stmt.setString(index++, dto.name)
                 stmt.setArray(index++, it.createArrayOf("text", existingItem?.originLocations.concat(dto.originLocations).distinct().toTypedArray()))
                 stmt.setObject(index++, Json.encodeToString(dto.customFields.inner), Types.OTHER)

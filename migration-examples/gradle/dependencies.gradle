@@ -15,6 +15,7 @@ project.dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-engine"
     testImplementation "org.postgresql:postgresql:42.2.27"
     testImplementation "org.mockito:mockito-core:5.+"
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-datetime:0.6.2'
 
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }

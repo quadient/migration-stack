@@ -7,16 +7,16 @@ import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
-import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.tools.aBlockDto
 import com.quadient.migration.tools.aCell
+import com.quadient.migration.tools.aDocumentObjectRepository
+import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.aRow
 import com.quadient.migration.tools.aTable
-import com.quadient.migration.tools.model.aDocumentObjectInternalRepository
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfSize
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -25,9 +25,9 @@ import org.junit.jupiter.api.Test
 
 @Postgres
 class DocumentObjectRepositoryTest {
-    private val internalRepo = aDocumentObjectInternalRepository()
-    private val repo = DocumentObjectRepository(internalRepo)
-    private val statusRepo = StatusTrackingRepository(internalRepo.projectName)
+    private val projectName = aProjectConfig().name
+    private val repo = aDocumentObjectRepository()
+    private val statusRepo = StatusTrackingRepository(projectName)
 
     @Test
     fun `roundtrip is correct`() {
@@ -58,10 +58,9 @@ class DocumentObjectRepositoryTest {
         repo.upsert(dto)
         val result = repo.listAll()
 
-        dto.lastUpdated = result.first().lastUpdated
-        dto.created = result.first().created
-        result.first().content[2].shouldBeEqualTo(dto.content[2])
-        result.first().shouldBeEqualTo(dto)
+        val updatedDto = dto.copy(lastUpdated = result.first().lastUpdated, created = result.first().created)
+        result.first().content[2].shouldBeEqualTo(updatedDto.content[2])
+        result.first().shouldBeEqualTo(updatedDto)
     }
 
     @Test
@@ -205,9 +204,8 @@ class DocumentObjectRepositoryTest {
         repo.upsert(input)
         val result = repo.listAll()
 
-        input.lastUpdated = result.first().lastUpdated
-        input.created = result.first().created
-        result.first().shouldBeEqualTo(input)
+        val updatedInput = input.copy(lastUpdated = result.first().lastUpdated, created = result.first().created)
+        result.first().shouldBeEqualTo(updatedInput)
     }
 
     @Test

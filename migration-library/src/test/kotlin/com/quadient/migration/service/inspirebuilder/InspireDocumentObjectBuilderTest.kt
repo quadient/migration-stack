@@ -2,15 +2,22 @@ package com.quadient.migration.service.inspirebuilder
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.api.InspireOutput
-import com.quadient.migration.data.DisplayRuleModel
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.FileModel
-import com.quadient.migration.data.FileModelRef
-import com.quadient.migration.data.HyperlinkModel
-import com.quadient.migration.data.StringModel
-import com.quadient.migration.data.TextStyleModel
-import com.quadient.migration.data.TextStyleModelRef
-import com.quadient.migration.persistence.repository.*
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.File
+import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.Hyperlink
+import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.TextStyle
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.repository.DisplayRuleRepository
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.FileRepository
+import com.quadient.migration.api.repository.ImageRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.TextStyleRepository
+import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Function
@@ -29,14 +36,14 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class InspireDocumentObjectBuilderTest {
-    private val documentObjectRepository = mockk<DocumentObjectInternalRepository>()
-    private val textStyleRepository = mockk<TextStyleInternalRepository>()
-    private val paragraphStyleRepository = mockk<ParagraphStyleInternalRepository>()
-    private val variableRepository = mockk<VariableInternalRepository>()
-    private val variableStructureRepository = mockk<VariableStructureInternalRepository>()
-    private val displayRuleRepository = mockk<DisplayRuleInternalRepository>()
-    private val imageRepository = mockk<ImageInternalRepository>()
-    private val fileRepository = mockk<FileInternalRepository>()
+    private val documentObjectRepository = mockk<DocumentObjectRepository>()
+    private val textStyleRepository = mockk<TextStyleRepository>()
+    private val paragraphStyleRepository = mockk<ParagraphStyleRepository>()
+    private val variableRepository = mockk<VariableRepository>()
+    private val variableStructureRepository = mockk<VariableStructureRepository>()
+    private val displayRuleRepository = mockk<DisplayRuleRepository>()
+    private val imageRepository = mockk<ImageRepository>()
+    private val fileRepository = mockk<FileRepository>()
     private val ipsService = mockk<IpsService>()
 
     private val xmlMapper = XmlMapper().also { it.findAndRegisterModules() }
@@ -56,9 +63,9 @@ class InspireDocumentObjectBuilderTest {
 
     @BeforeEach
     fun setUp() {
-        every { variableStructureRepository.listAllModel() } returns emptyList()
-        every { textStyleRepository.listAllModel() } returns emptyList()
-        every { paragraphStyleRepository.listAllModel() } returns emptyList()
+        every { variableStructureRepository.listAll() } returns emptyList()
+        every { textStyleRepository.listAll() } returns emptyList()
+        every { paragraphStyleRepository.listAll() } returns emptyList()
         every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Fonts/arial.ttf;"
         every { ipsService.fileExists(any()) } returns true
     }
@@ -73,7 +80,7 @@ class InspireDocumentObjectBuilderTest {
                 pdfTaggingRule = com.quadient.migration.shared.ParagraphPdfTaggingRule.Paragraph
             )
         )
-        every { paragraphStyleRepository.listAllModel() } returns listOf(paragraphStyle)
+        every { paragraphStyleRepository.listAll() } returns listOf(paragraphStyle)
 
         // when
         val result = subject.buildStyles(emptyList(), listOf(paragraphStyle))
@@ -90,8 +97,8 @@ class InspireDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject with hyperlink creates text style with URL variable and alternate text`() {
         // given
-        val hyperlink = HyperlinkModel("https://www.example.com", "Click here", "Link to example website")
-        val textContent = listOf(StringModel("Visit our site: "), hyperlink, StringModel(" for more info"))
+        val hyperlink = Hyperlink("https://www.example.com", "Click here", "Link to example website")
+        val textContent = listOf(StringValue("Visit our site: "), hyperlink, StringValue(" for more info"))
         val block = mockObj(aBlock("B_1", listOf(aParagraph(aText(textContent)))))
 
         // when
@@ -128,10 +135,10 @@ class InspireDocumentObjectBuilderTest {
                     aParagraph(
                         aText(
                             listOf(
-                                StringModel("Some text before link. "),
-                                HyperlinkModel("https://www.example.com", "Link text"),
-                                StringModel(" Some text after link.")
-                            ), TextStyleModelRef(textStyle.id)
+                                StringValue("Some text before link. "),
+                                Hyperlink("https://www.example.com", "Link text"),
+                                StringValue(" Some text after link.")
+                            ), TextStyleRef(textStyle.id)
                         )
                     )
                 )
@@ -161,9 +168,9 @@ class InspireDocumentObjectBuilderTest {
     fun `file reference creates DirectExternal flow with correct structure`() {
         // given
         val file = aFile("File_1", name = "document", sourcePath = "C:/files/document.pdf")
-        every { fileRepository.findModelOrFail(file.id) } returns file
+        every { fileRepository.findOrFail(file.id) } returns file
         val block = mockObj(
-            aBlock("B_1", listOf(aParagraph(aText(listOf(StringModel("See attached: "), FileModelRef(file.id))))))
+            aBlock("B_1", listOf(aParagraph(aText(listOf(StringValue("See attached: "), FileRef(file.id))))))
         )
 
         // when
@@ -186,9 +193,9 @@ class InspireDocumentObjectBuilderTest {
     fun `file reference with skip and placeholder creates simple flow with placeholder text`() {
         // given
         val file = aFile("File_1", skip = SkipOptions(true, "File not available", "Missing source"))
-        every { fileRepository.findModelOrFail(file.id) } returns file
+        every { fileRepository.findOrFail(file.id) } returns file
         val block = mockObj(
-            aBlock("B_1", listOf(aParagraph(aText(listOf(FileModelRef(file.id))))))
+            aBlock("B_1", listOf(aParagraph(aText(listOf(FileRef(file.id))))))
         )
 
         // when
@@ -209,7 +216,7 @@ class InspireDocumentObjectBuilderTest {
                     aParagraph(
                         aText(
                             listOf(
-                                StringModel("Text "), FileModelRef(file.id), StringModel(" more text")
+                                StringValue("Text "), FileRef(file.id), StringValue(" more text")
                             )
                         )
                     )
@@ -225,20 +232,20 @@ class InspireDocumentObjectBuilderTest {
         flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text  more text")
     }
 
-    private fun mockObj(documentObject: DocumentObjectModel): DocumentObjectModel {
-        every { documentObjectRepository.findModelOrFail(documentObject.id) } returns documentObject
+    private fun mockObj(documentObject: DocumentObject): DocumentObject {
+        every { documentObjectRepository.findOrFail(documentObject.id) } returns documentObject
         return documentObject
     }
 
-    private fun mockFile(file: FileModel): FileModel {
-        every { fileRepository.findModelOrFail(file.id) } returns file
+    private fun mockFile(file: File): File {
+        every { fileRepository.findOrFail(file.id) } returns file
         return file
     }
 
-    private fun mockTextStyle(textStyle: TextStyleModel): TextStyleModel {
-        every { textStyleRepository.firstWithDefinitionModel(textStyle.id) } returns textStyle
-        val currentAllStyles = textStyleRepository.listAllModel()
-        every { textStyleRepository.listAllModel() } returns currentAllStyles + textStyle
+    private fun mockTextStyle(textStyle: TextStyle): TextStyle {
+        every { textStyleRepository.firstWithDefinition(textStyle.id) } returns textStyle
+        val currentAllStyles = textStyleRepository.listAll()
+        every { textStyleRepository.listAll() } returns currentAllStyles + textStyle
         return textStyle
     }
 
@@ -286,7 +293,6 @@ class InspireDocumentObjectBuilderTest {
             operator = BinOp.EqualsCaseInsensitive,
             right = Literal("B", LiteralDataType.String)
         )
-
         val result = rule.toScript()
 
         result.shouldBeEqualTo("""return (String('A').equalCaseInsensitive(String('B')));""")
@@ -305,10 +311,10 @@ class InspireDocumentObjectBuilderTest {
         result.shouldBeEqualTo("""return ((not String('A').equalCaseInsensitive(String('B'))));""")
     }
 
-    private fun DisplayRuleModel.toScript(): String {
+    private fun DisplayRule.toScript(): String {
         return definition?.toScript(
             layout = LayoutImpl(),
-            variableStructure = aVariableStructureModel("some struct"),
+            variableStructure = aVariableStructure("some struct"),
             findVar = { aVariable(it) }
         ) ?: error("No definition")
     }

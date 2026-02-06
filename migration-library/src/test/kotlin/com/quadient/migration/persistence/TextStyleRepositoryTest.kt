@@ -33,9 +33,11 @@ class TextStyleRepositoryTest {
         }.build()
 
         repo.upsert(dto)
-        val result = repo.listAll()
+        val result = repo.listAll().first()
+        dto.created = result.created
+        dto.lastUpdated = result.lastUpdated
 
-        result.first().shouldBeEqualTo(dto)
+        result.shouldBeEqualTo(dto)
     }
 
     @Test
@@ -119,6 +121,11 @@ class TextStyleRepositoryTest {
 
         val resultStyle1 = result.first { it.id == "style1" }
         val resultStyle2 = result.first { it.id == "style2" }
+
+        style1.created = resultStyle1.created
+        style1.lastUpdated = resultStyle1.lastUpdated
+        style2.created = resultStyle2.created
+        style2.lastUpdated = resultStyle2.lastUpdated
 
         resultStyle1.shouldBeEqualTo(style1)
         resultStyle2.shouldBeEqualTo(style2)

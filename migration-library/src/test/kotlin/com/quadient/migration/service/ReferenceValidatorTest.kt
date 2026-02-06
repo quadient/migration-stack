@@ -1,26 +1,22 @@
 package com.quadient.migration.service
 
 import com.quadient.migration.Postgres
-import com.quadient.migration.api.dto.migrationmodel.DocumentContent
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.tools.aBlockDto
+import com.quadient.migration.tools.aDisplayRuleRepository
 import com.quadient.migration.tools.aDocumentObjectRepository
+import com.quadient.migration.tools.aFileRepository
+import com.quadient.migration.tools.aImageRepository
 import com.quadient.migration.tools.aParaStyleRepository
 import com.quadient.migration.tools.aParagraphStyle
 import com.quadient.migration.tools.aTextStyle
 import com.quadient.migration.tools.aTextStyleRepository
+import com.quadient.migration.tools.aVariableRepository
+import com.quadient.migration.tools.aVariableStructureRepository
 import com.quadient.migration.tools.model.aBlock
-import com.quadient.migration.tools.model.aDisplayRuleInternalRepository
-import com.quadient.migration.tools.model.aDocumentObjectInternalRepository
-import com.quadient.migration.tools.model.aDocumentObjectRef
-import com.quadient.migration.tools.model.aFileInternalRepository
-import com.quadient.migration.tools.model.aImageInternalRepository
-import com.quadient.migration.tools.model.aParaStyleInternalRepository
-import com.quadient.migration.tools.model.aTextStyleInternalRepository
-import com.quadient.migration.tools.model.aVariableInternalRepository
-import com.quadient.migration.tools.model.aVariableStructureInternalRepository
 import com.quadient.migration.tools.shouldBeEmpty
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfSize
@@ -28,24 +24,24 @@ import org.junit.jupiter.api.Test
 
 @Postgres
 class ReferenceValidatorTest {
-    val documentObjectInternalRepository = aDocumentObjectInternalRepository()
-    val variableRepository = aVariableInternalRepository()
-    val paraStyleInternalRepository = aParaStyleInternalRepository()
-    val textStyleInternalRepository = aTextStyleInternalRepository()
-    val dataStructureRepository = aVariableStructureInternalRepository()
-    val displayRuleRepository = aDisplayRuleInternalRepository()
-    val imageRuleRepository = aImageInternalRepository()
-    val fileRuleRepository = aFileInternalRepository()
+    val documentObjectRepository = aDocumentObjectRepository()
+    val variableRepository = aVariableRepository()
+    val paraStyleRepository = aParaStyleRepository()
+    val textStyleRepository = aTextStyleRepository()
+    val dataStructureRepository = aVariableStructureRepository()
+    val displayRuleRepository = aDisplayRuleRepository()
+    val imageRuleRepository = aImageRepository()
+    val fileRuleRepository = aFileRepository()
 
     val docRepo = aDocumentObjectRepository()
     val paraStyleRepo = aParaStyleRepository()
     val textStyleRepo = aTextStyleRepository()
 
     val subject = ReferenceValidator(
-        documentObjectInternalRepository,
+        documentObjectRepository,
         variableRepository,
-        textStyleInternalRepository,
-        paraStyleInternalRepository,
+        textStyleRepository,
+        paraStyleRepository,
         dataStructureRepository,
         displayRuleRepository,
         imageRuleRepository,
@@ -64,7 +60,7 @@ class ReferenceValidatorTest {
 
     @Test
     fun `validates block with missing ref`() {
-        val missingRef = aDocumentObjectRef("obj1")
+        val missingRef = DocumentObjectRef("obj1")
         val input = aBlock(
             id = "1", type = DocumentObjectType.Block, content = listOf(missingRef)
         )
@@ -78,10 +74,10 @@ class ReferenceValidatorTest {
 
     @Test
     fun `valid block with nested dependencies`() {
-        val blockRef1 = aDocumentObjectRef("obj1")
-        val blockRef2 = aDocumentObjectRef("obj2")
-        val blockRef11 = aDocumentObjectRef("obj11")
-        val blockRef21 = aDocumentObjectRef("obj21")
+        val blockRef1 = DocumentObjectRef("obj1")
+        val blockRef2 = DocumentObjectRef("obj2")
+        val blockRef11 = DocumentObjectRef("obj11")
+        val blockRef21 = DocumentObjectRef("obj21")
         val input = aBlock(
             id = "1", type = DocumentObjectType.Block, content = listOf(blockRef1, blockRef2)
         )
@@ -91,7 +87,8 @@ class ReferenceValidatorTest {
         docRepo.upsert(
             aBlockDto(
                 "obj1", content = listOf(
-                    DocumentContent.fromModelContent(blockRef11), DocumentContent.fromModelContent(blockRef21)
+                    blockRef11, 
+                    blockRef21
                 )
             )
         )
@@ -105,11 +102,11 @@ class ReferenceValidatorTest {
 
     @Test
     fun `valid block with nested dependencies and one missing in the end`() {
-        val blockRef1 = aDocumentObjectRef("obj1")
-        val blockRef2 = aDocumentObjectRef("obj2")
-        val blockRef11 = aDocumentObjectRef("obj11")
-        val blockRef21 = aDocumentObjectRef("obj21")
-        val missingVarRef = aDocumentObjectRef("obj111")
+        val blockRef1 = DocumentObjectRef("obj1")
+        val blockRef2 = DocumentObjectRef("obj2")
+        val blockRef11 = DocumentObjectRef("obj11")
+        val blockRef21 = DocumentObjectRef("obj21")
+        val missingVarRef = DocumentObjectRef("obj111")
         val input = aBlock(
             id = "1", type = DocumentObjectType.Block, content = listOf(blockRef1, blockRef2)
         )
@@ -119,13 +116,14 @@ class ReferenceValidatorTest {
         docRepo.upsert(
             aBlockDto(
                 "obj1", content = listOf(
-                    DocumentContent.fromModelContent(blockRef11), DocumentContent.fromModelContent(blockRef21)
+                    blockRef11, 
+                    blockRef21
                 )
             )
         )
         docRepo.upsert(
             aBlockDto(
-                "obj11", content = listOf(DocumentContent.fromModelContent(missingVarRef))
+                "obj11", content = listOf(missingVarRef)
             )
         )
 
@@ -139,11 +137,11 @@ class ReferenceValidatorTest {
 
     @Test
     fun `takes published if draft is missing`() {
-        val blockRef1 = aDocumentObjectRef("block1")
-        val missingRef = aDocumentObjectRef("missing")
+        val blockRef1 = DocumentObjectRef("block1")
+        val missingRef = DocumentObjectRef("missing")
         docRepo.upsert(
             aBlockDto(
-                "block1", content = listOf(DocumentContent.fromModelContent(missingRef))
+                "block1", content = listOf(missingRef)
             )
         )
         val input = aBlock(id = "1", type = DocumentObjectType.Block, content = listOf(blockRef1))

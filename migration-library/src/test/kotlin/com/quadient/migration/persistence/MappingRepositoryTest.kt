@@ -1,19 +1,19 @@
 package com.quadient.migration.persistence
 
 import com.quadient.migration.Postgres
+import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.repository.*
-import com.quadient.migration.data.VariableModelRef
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.aVariable
-import com.quadient.migration.tools.model.aVariableStructureModel
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.verify
+import kotlinx.datetime.Clock
 import org.junit.jupiter.api.Test
 
 @Postgres
@@ -41,10 +41,15 @@ class MappingRepositoryTest {
     @Test
     fun `apply variable mapping`() {
         every { variableRepository.find("varId") } returns aVariable(id = "varId", name = "Variable Name")
-        every { variableStructureRepository.find("varStructId") } returns VariableStructure.fromModel(
-            aVariableStructureModel(
-                id = "varStructId", name = "Variable Structure Name"
-            )
+        every { variableStructureRepository.find("varStructId") } returns VariableStructure(
+            id = "varStructId", 
+            name = "Variable Structure Name",
+            originLocations = emptyList(),
+            customFields = CustomFieldMap(mutableMapOf()),
+            created = Clock.System.now(),
+            lastUpdated = Clock.System.now(),
+            structure = emptyMap(),
+            languageVariable = null
         )
         every { variableStructureRepository.find(any()) } returns null
         every { variableStructureRepository.upsert(any()) } answers { firstArg() }
@@ -58,8 +63,15 @@ class MappingRepositoryTest {
 
     @Test
     fun `apply variable mapping structure`() {
-        every { variableStructureRepository.find("varStructId") } returns VariableStructure.fromModel(
-            aVariableStructureModel(id = "varStructId", name = null)
+        every { variableStructureRepository.find("varStructId") } returns VariableStructure(
+            id = "varStructId",
+            name = null,
+            originLocations = emptyList(),
+            customFields = CustomFieldMap(mutableMapOf()),
+            created = Clock.System.now(),
+            lastUpdated = Clock.System.now(),
+            structure = emptyMap(),
+            languageVariable = null
         )
         every { variableStructureRepository.upsert(any()) } just runs
         repo.upsert("varStructId", MappingItem.VariableStructure(
@@ -72,14 +84,14 @@ class MappingRepositoryTest {
 
         verify {
             variableStructureRepository.upsert(
-                VariableStructure.fromModel(
-                    aVariableStructureModel(
-                        id = "varStructId", name = "new name", structure = mapOf(
-                            VariableModelRef("varId") to VariablePathData("somePath"),
-                            VariableModelRef("anotherVarId") to VariablePathData("anotherPath")
-                        )
+                match {
+                    it.id == "varStructId" && 
+                    it.name == "new name" && 
+                    it.structure == mapOf(
+                        "varId" to VariablePathData("somePath"),
+                        "anotherVarId" to VariablePathData("anotherPath")
                     )
-                )
+                }
             )
         }
     }

@@ -191,6 +191,8 @@ class MappingRepository(
             name = null,
             originLocations = emptyList(),
             customFields = CustomFieldMap(),
+            created = kotlinx.datetime.Clock.System.now(),
+            lastUpdated = kotlinx.datetime.Clock.System.now(),
             structure = mutableMapOf(),
             languageVariable = null,
         )

@@ -23,9 +23,11 @@ class DisplayRuleRepositoryTest {
             .build()
 
         repo.upsert(dto)
-        val result = repo.listAll()
+        val result = repo.listAll().first()
+        dto.created = result.created
+        dto.lastUpdated = result.lastUpdated
 
-        result.first().shouldBeEqualTo(dto)
+        result.shouldBeEqualTo(dto)
     }
 
     @Test
@@ -54,6 +56,11 @@ class DisplayRuleRepositoryTest {
 
         val resultRule1 = result.first { it.id == "rule1" }
         val resultRule2 = result.first { it.id == "rule2" }
+
+        rule1.created = resultRule1.created
+        rule1.lastUpdated = resultRule1.lastUpdated
+        rule2.created = resultRule2.created
+        rule2.lastUpdated = resultRule2.lastUpdated
 
         resultRule1.shouldBeEqualTo(rule1)
         resultRule2.shouldBeEqualTo(rule2)

@@ -2,22 +2,18 @@ package com.quadient.migration.service
 
 import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
-import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.ParagraphStyleRepository
-import com.quadient.migration.api.repository.TextStyleRepository
-import com.quadient.migration.data.ParagraphStyleModelRef
-import com.quadient.migration.data.TextStyleModelRef
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.service.deploy.DeployClient
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.tools.aDocumentObjectRepository
+import com.quadient.migration.tools.aParaStyleRepository
 import com.quadient.migration.tools.aParagraphStyle
 import com.quadient.migration.tools.aTextStyle
+import com.quadient.migration.tools.aTextStyleRepository
 import com.quadient.migration.tools.model.aBlock
-import com.quadient.migration.tools.model.aDocumentObjectInternalRepository
-import com.quadient.migration.tools.model.aParaStyleInternalRepository
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aText
-import com.quadient.migration.tools.model.aTextStyleInternalRepository
 import com.quadient.migration.tools.shouldBeEmpty
 import com.quadient.migration.tools.shouldBeEqualTo
 import io.mockk.every
@@ -27,19 +23,17 @@ import org.junit.jupiter.api.Test
 
 @Postgres
 class StylesValidatorTest {
-    val documentObjectInternalRepository = aDocumentObjectInternalRepository()
-    val textStyleInternalRepository = aTextStyleInternalRepository()
-    val paraStyleInternalRepository = aParaStyleInternalRepository()
-    val textStyleRepository = TextStyleRepository(textStyleInternalRepository)
-    val paraStyleRepository = ParagraphStyleRepository(paraStyleInternalRepository)
+    val documentObjectRepository = aDocumentObjectRepository()
+    val textStyleRepository = aTextStyleRepository()
+    val paraStyleRepository = aParaStyleRepository()
 
     val ipsService = mockk<IpsService>()
     val documentObjectBuilder = mockk<InspireDocumentObjectBuilder>()
     val deployClient = mockk<DeployClient>()
     val subject = StylesValidator(
-        documentObjectRepository = documentObjectInternalRepository,
-        textStyleRepository = textStyleInternalRepository,
-        paragraphStyleRepository = paraStyleInternalRepository,
+        documentObjectRepository = documentObjectRepository,
+        textStyleRepository = textStyleRepository,
+        paragraphStyleRepository = paraStyleRepository,
         documentObjectBuilder = documentObjectBuilder,
         deployClient = deployClient,
         ipsService = ipsService
@@ -57,16 +51,16 @@ class StylesValidatorTest {
             aBlock(
                 id = "id", content = listOf(
                     aParagraph(
-                        styleRef = ParagraphStyleModelRef("found-para"),
-                        content = listOf(aText(content = listOf(), styleRef = TextStyleModelRef("not-found-text")))
+                        styleRef = ParagraphStyleRef("found-para"),
+                        content = listOf(aText(content = listOf(), styleRef = TextStyleRef("not-found-text")))
                     )
                 )
             ),
             aBlock(
                 id = "id2", content = listOf(
                     aParagraph(
-                        styleRef = ParagraphStyleModelRef("not-found-para"),
-                        content = listOf(aText(content = listOf(), styleRef = TextStyleModelRef("found-text")))
+                        styleRef = ParagraphStyleRef("not-found-para"),
+                        content = listOf(aText(content = listOf(), styleRef = TextStyleRef("found-text")))
                     )
                 )
             )
@@ -94,16 +88,16 @@ class StylesValidatorTest {
             aBlock(
                 id = "id", content = listOf(
                     aParagraph(
-                        styleRef = ParagraphStyleModelRef("found-para"),
-                        content = listOf(aText(content = listOf(), styleRef = TextStyleModelRef("not-found-text")))
+                        styleRef = ParagraphStyleRef("found-para"),
+                        content = listOf(aText(content = listOf(), styleRef = TextStyleRef("not-found-text")))
                     )
                 )
             ),
             aBlock(
                 id = "id2", content = listOf(
                     aParagraph(
-                        styleRef = ParagraphStyleModelRef("not-found-para"),
-                        content = listOf(aText(content = listOf(), styleRef = TextStyleModelRef("found-text")))
+                        styleRef = ParagraphStyleRef("not-found-para"),
+                        content = listOf(aText(content = listOf(), styleRef = TextStyleRef("found-text")))
                     )
                 )
             )
@@ -129,7 +123,7 @@ class StylesValidatorTest {
     fun `resolves style references correctly`() {
         every { deployClient.getAllDocumentObjectsToDeploy() } returns listOf(
             aBlock(
-                id = "id", content = listOf(aParagraph(styleRef = ParagraphStyleModelRef("para1")))
+                id = "id", content = listOf(aParagraph(styleRef = ParagraphStyleRef("para1")))
             )
         )
         paraStyleRepository.upsert(aParagraphStyle(id = "para1", definition = ParagraphStyleRef("para2")))

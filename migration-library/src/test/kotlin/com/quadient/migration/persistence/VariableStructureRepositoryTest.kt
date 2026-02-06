@@ -18,10 +18,12 @@ class VariableStructureRepositoryTest {
             .addVariable("var2", "Data.Test.Value2").build()
 
         repo.upsert(dto)
-        val result = repo.listAll()
+        val result = repo.listAll().first()
+        dto.created = result.created
+        dto.lastUpdated = result.lastUpdated
 
-        result.first().shouldBeEqualTo(dto)
-        result.first().structure.size.shouldBeEqualTo(2)
+        result.shouldBeEqualTo(dto)
+        result.structure.size.shouldBeEqualTo(2)
     }
 
     @Test
@@ -53,6 +55,11 @@ class VariableStructureRepositoryTest {
 
         val resultStruct1 = result.first { it.id == "struct1" }
         val resultStruct2 = result.first { it.id == "struct2" }
+
+        struct1.created = resultStruct1.created
+        struct1.lastUpdated = resultStruct1.lastUpdated
+        struct2.created = resultStruct2.created
+        struct2.lastUpdated = resultStruct2.lastUpdated
 
         resultStruct1.shouldBeEqualTo(struct1)
         resultStruct2.shouldBeEqualTo(struct2)

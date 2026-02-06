@@ -4,14 +4,13 @@ package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.repository.StatusTrackingRepository
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.ParagraphStyleDefinitionModel
-import com.quadient.migration.data.TextStyleDefinitionModel
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.Repository
+import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
@@ -27,12 +26,12 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class DesignerDeployClient(
-    documentObjectRepository: DocumentObjectInternalRepository,
-    imageRepository: ImageInternalRepository,
-    fileRepository: FileInternalRepository,
+    documentObjectRepository: DocumentObjectRepository,
+    imageRepository: Repository<com.quadient.migration.api.dto.migrationmodel.Image>,
+    fileRepository: Repository<com.quadient.migration.api.dto.migrationmodel.File>,
     statusTrackingRepository: StatusTrackingRepository,
-    textStyleRepository: TextStyleInternalRepository,
-    paragraphStyleRepository: ParagraphStyleInternalRepository,
+    textStyleRepository: TextStyleRepository,
+    paragraphStyleRepository: ParagraphStyleRepository,
     documentObjectBuilder: DesignerDocumentObjectBuilder,
     ipsService: IpsService,
     storage: Storage,
@@ -49,11 +48,11 @@ class DesignerDeployClient(
     InspireOutput.Designer,
 ) {
 
-    override fun shouldIncludeDependency(documentObject: DocumentObjectModel): Boolean {
-        return documentObject.type == DocumentObjectType.Page || !documentObject.internal
+    override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
+        return documentObject.type == DocumentObjectType.Page || documentObject.internal != true
     }
 
-    override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObjectModel>): DeploymentResult {
+    override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObject>): DeploymentResult {
         val deploymentId = kotlin.uuid.Uuid.random()
         val deploymentTimestamp = kotlinx.datetime.Clock.System.now()
         val deploymentResult = DeploymentResult(deploymentId)
@@ -113,14 +112,14 @@ class DesignerDeployClient(
         return deploymentResult
     }
 
-    override fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObjectModel> {
+    override fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObject> {
         val documentObjects = documentObjectRepository.list(DocumentObjectTable.id inList documentObjectIds)
         val skippedIds = mutableListOf<String>()
         val internal = mutableListOf<String>()
         for (documentObject in documentObjects) {
-            if (documentObject.skip.skipped) {
+            if (documentObject.skip.skipped == true) {
                 skippedIds.add(documentObject.id)
-            } else if (documentObject.internal) {
+            } else if (documentObject.internal == true) {
                 internal.add(documentObject.id)
             }
         }
@@ -146,7 +145,7 @@ class DesignerDeployClient(
         return documentObjectsWithoutPages
     }
 
-    override fun getAllDocumentObjectsToDeploy(): List<DocumentObjectModel> {
+    override fun getAllDocumentObjectsToDeploy(): List<DocumentObject> {
         return documentObjectRepository.list(
             (DocumentObjectTable.type inList listOf(
                 DocumentObjectType.Template.toString(),
@@ -160,9 +159,9 @@ class DesignerDeployClient(
         val deploymentId = Uuid.random()
         val deploymentTimestamp = Clock.System.now()
 
-        val textStyles = textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinitionModel }
+        val textStyles = textStyleRepository.listAll().filter { it.definition is TextStyleDefinition }
         val paragraphStyles =
-            paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinitionModel }
+            paragraphStyleRepository.listAll().filter { it.definition is ParagraphStyleDefinition }
         val outputPath = documentObjectBuilder.getStyleDefinitionPath()
         val xml2wfdResult =
             ipsService.xml2wfd(documentObjectBuilder.buildStyles(textStyles, paragraphStyles), outputPath)

@@ -5,9 +5,6 @@ package com.quadient.migration.service.deploy
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.File
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.ImageModel
-import com.quadient.migration.data.FileModel
 import kotlinx.datetime.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -159,7 +156,7 @@ data class ReportedFile(
 data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, ResourceType>, ProgressReportItem>) {
     fun addDocumentObject(
         id: String,
-        documentObject: DocumentObjectModel,
+        documentObject: DocumentObject,
         previousIcmPath: String? = null,
         nextIcmPath: String? = null,
         deployKind: DeployKind,
@@ -177,7 +174,7 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
                 lastStatus = lastStatus,
                 deploymentId = deploymentId,
                 deployTimestamp = deployTimestamp,
-                documentObject = DocumentObject.fromModel(documentObject),
+                documentObject = documentObject,
                 errorMessage = errorMessage,
             )
         }
@@ -185,7 +182,7 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
 
     fun addImage(
         id: String,
-        image: ImageModel,
+        image: Image,
         previousIcmPath: String? = null,
         nextIcmPath: String? = null,
         deployKind: DeployKind,
@@ -203,7 +200,7 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
                 lastStatus = lastStatus,
                 deploymentId = deploymentId,
                 deployTimestamp = deployTimestamp,
-                image = Image.fromModel(image),
+                image = image,
                 errorMessage = errorMessage,
             )
         }
@@ -211,7 +208,7 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
 
     fun addFile(
         id: String,
-        file: FileModel,
+        file: File,
         previousIcmPath: String? = null,
         nextIcmPath: String? = null,
         deployKind: DeployKind,
@@ -229,7 +226,7 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
                 lastStatus = lastStatus,
                 deploymentId = deploymentId,
                 deployTimestamp = deployTimestamp,
-                file = File.fromModel(file),
+                file = file,
                 errorMessage = errorMessage,
             )
         }

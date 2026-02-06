@@ -1,48 +1,35 @@
 package com.quadient.migration.tools.model
 
-import com.quadient.migration.data.AreaModel
-import com.quadient.migration.data.DisplayRuleModel
-import com.quadient.migration.data.DisplayRuleModelRef
-import com.quadient.migration.data.DocumentContentModel
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.DocumentObjectModelRef
-import com.quadient.migration.data.FileModel
-import com.quadient.migration.data.ImageModel
-import com.quadient.migration.data.ParagraphModel
-import com.quadient.migration.data.ParagraphModel.TextModel
-import com.quadient.migration.data.ParagraphStyleDefOrRefModel
-import com.quadient.migration.data.ParagraphStyleDefinitionModel
-import com.quadient.migration.data.ParagraphStyleModel
-import com.quadient.migration.data.ParagraphStyleModelRef
-import com.quadient.migration.data.SelectByLanguageModel
-import com.quadient.migration.data.StringModel
-import com.quadient.migration.data.TableModel
-import com.quadient.migration.data.TabsModel
-import com.quadient.migration.data.TextContentModel
-import com.quadient.migration.data.TextStyleDefOrRefModel
-import com.quadient.migration.data.TextStyleDefinitionModel
-import com.quadient.migration.data.TextStyleModel
-import com.quadient.migration.data.TextStyleModelRef
-import com.quadient.migration.data.VariableModel
-import com.quadient.migration.data.VariableModelRef
-import com.quadient.migration.data.VariableStructureModel
-import com.quadient.migration.data.VariableStructureModelRef
-import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
-import com.quadient.migration.persistence.repository.VariableInternalRepository
-import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
-import com.quadient.migration.persistence.table.DisplayRuleTable
-import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.FileTable
-import com.quadient.migration.persistence.table.ImageTable
-import com.quadient.migration.persistence.table.ParagraphStyleTable
-import com.quadient.migration.persistence.table.TextStyleTable
-import com.quadient.migration.persistence.table.VariableStructureTable
-import com.quadient.migration.persistence.table.VariableTable
+import com.quadient.migration.api.dto.migrationmodel.Area
+import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.DocumentContent
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.File
+import com.quadient.migration.api.dto.migrationmodel.FirstMatch
+import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.Paragraph
+import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefOrRef
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
+import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.Table
+import com.quadient.migration.api.dto.migrationmodel.Tabs
+import com.quadient.migration.api.dto.migrationmodel.TextContent
+import com.quadient.migration.api.dto.migrationmodel.TextStyleDefOrRef
+import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.TextStyle
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.Variable
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
@@ -66,38 +53,36 @@ import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.VariablePathData
-import com.quadient.migration.tools.aProjectConfig
-import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlin.collections.emptyMap
 
 fun aDocObj(
     id: String,
     type: DocumentObjectType = DocumentObjectType.Block,
-    content: List<DocumentContentModel> = emptyList(),
+    content: List<DocumentContent> = emptyList(),
     internal: Boolean = false,
     name: String? = id + "name",
     targetFolder: String? = null,
     options: DocumentObjectOptions? = null,
     displayRuleRef: String? = null,
     baseTemplate: String? = null,
-    variableStructureModelRef: String? = null,
+    VariableStructureRef: String? = null,
     metadata: Map<String, List<MetadataPrimitive>> = emptyMap(),
-): DocumentObjectModel {
-    return DocumentObjectModel(
+): DocumentObject {
+    return DocumentObject(
         id = id,
         name = name,
         type = type,
         content = content,
         internal = internal,
-        targetFolder = targetFolder?.let(IcmPath::from),
+        targetFolder = targetFolder?.let { IcmPath.from(it).toString() },
         originLocations = emptyList(),
-        customFields = emptyMap<String, String>(),
-        created = Clock.System.now(),
-        lastUpdated = Clock.System.now(),
-        displayRuleRef = displayRuleRef?.let { DisplayRuleModelRef(it) },
+        customFields = CustomFieldMap(),
+        created = null,
+        lastUpdated = null,
+        displayRuleRef = displayRuleRef?.let { DisplayRuleRef(it) },
         baseTemplate = baseTemplate,
-        variableStructureRef = variableStructureModelRef?.let { VariableStructureModelRef(it) },
+        variableStructureRef = VariableStructureRef?.let { VariableStructureRef(it) },
         options = options,
         metadata = metadata,
         skip = SkipOptions(false, null, null),
@@ -107,29 +92,29 @@ fun aDocObj(
 
 fun aBlock(
     id: String = "block",
-    content: List<DocumentContentModel> = emptyList(),
+    content: List<DocumentContent> = emptyList(),
     name: String? = null,
     internal: Boolean = false,
     targetFolder: String? = null,
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
-    created: Instant = Clock.System.now(),
-    lastUpdated: Instant = Clock.System.now(),
+    created: Instant? = null,
+    lastUpdated: Instant? = null,
     type: DocumentObjectType = DocumentObjectType.Block,
-    displayRuleRef: DisplayRuleModelRef? = null,
+    displayRuleRef: DisplayRuleRef? = null,
     baseTemplate: String? = null,
     metadata : Map<String, List<MetadataPrimitive>> = emptyMap(),
     skip: SkipOptions = SkipOptions(false, null, null),
-): DocumentObjectModel {
-    return DocumentObjectModel(
+): DocumentObject {
+    return DocumentObject(
         id = id,
         name = name,
         type = type,
         content = content,
         internal = internal,
-        targetFolder = targetFolder?.let(IcmPath::from),
+        targetFolder = targetFolder,
         originLocations = originLocations,
-        customFields = customFields,
+        customFields = CustomFieldMap(customFields),
         created = created,
         lastUpdated = lastUpdated,
         displayRuleRef = displayRuleRef,
@@ -142,19 +127,19 @@ fun aBlock(
 }
 
 fun anArea(
-    content: List<DocumentContentModel>,
+    content: List<DocumentContent>,
     position: Position? = null,
     interactiveFlowName: String? = null,
-): AreaModel {
-    return AreaModel(content, position, interactiveFlowName)
+): Area {
+    return Area(content, position, interactiveFlowName)
 }
 
 fun aTemplate(
     id: String,
-    content: List<DocumentContentModel>,
+    content: List<DocumentContent>,
     baseTemplate: String? = null,
-): DocumentObjectModel {
-    return DocumentObjectModel(
+): DocumentObject {
+    return DocumentObject(
         id = id,
         name = null,
         type = DocumentObjectType.Template,
@@ -162,9 +147,9 @@ fun aTemplate(
         internal = false,
         targetFolder = null,
         originLocations = emptyList(),
-        customFields = emptyMap(),
-        created = Clock.System.now(),
-        lastUpdated = Clock.System.now(),
+        customFields = CustomFieldMap(),
+        created = null,
+        lastUpdated = null,
         baseTemplate = baseTemplate,
         options = null,
         metadata = emptyMap(),
@@ -180,15 +165,15 @@ fun aVariable(
     customFields: MutableMap<String, String> = mutableMapOf(),
     dataType: DataType = DataType.String,
     defaultValue: String? = null
-) = VariableModel(
+) = Variable(
     id = id,
     name = name,
     originLocations = originLocations,
-    customFields = customFields,
+    customFields = CustomFieldMap(customFields),
     dataType = dataType,
     defaultValue = defaultValue,
-    lastUpdated = Clock.System.now(),
-    created = Clock.System.now(),
+    lastUpdated = null,
+    created = null,
 )
 
 fun aParaStyle(
@@ -196,16 +181,16 @@ fun aParaStyle(
     name: String? = "style$id",
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
-    definition: ParagraphStyleDefOrRefModel = aParaDef()
-): ParagraphStyleModel {
-    return ParagraphStyleModel(
+    definition: ParagraphStyleDefOrRef = aParaDef()
+): ParagraphStyle {
+    return ParagraphStyle(
         id = id,
         name = name,
         originLocations = originLocations,
-        customFields = customFields,
+        customFields = CustomFieldMap(customFields),
         definition = definition,
-        lastUpdated = Clock.System.now(),
-        created = Clock.System.now(),
+        lastUpdated = null,
+        created = null,
     )
 }
 
@@ -219,10 +204,10 @@ fun aParaDef(
     firstLineIndent: Size? = null,
     lineSpacing: LineSpacing = LineSpacing.Additional(null),
     keepWithNextParagraph: Boolean? = null,
-    tabs: TabsModel? = null,
+    tabs: Tabs? = null,
     pdfTaggingRule: ParagraphPdfTaggingRule? = null,
-): ParagraphStyleDefinitionModel {
-    return ParagraphStyleDefinitionModel(
+): ParagraphStyleDefinition {
+    return ParagraphStyleDefinition(
         leftIndent = leftIndent,
         rightIndent = rightIndent,
         defaultTabSize = defaultTabSize,
@@ -242,16 +227,16 @@ fun aTextStyle(
     name: String? = "style$id",
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
-    definition: TextStyleDefOrRefModel = aTextDef(),
-): TextStyleModel {
-    return TextStyleModel(
+    definition: TextStyleDefOrRef = aTextDef(),
+): TextStyle {
+    return TextStyle(
         id = id,
         name = name,
         originLocations = originLocations,
-        customFields = customFields,
+        customFields = CustomFieldMap(customFields),
         definition = definition,
-        lastUpdated = Clock.System.now(),
-        created = Clock.System.now(),
+        lastUpdated = null,
+        created = null,
     )
 }
 
@@ -265,8 +250,8 @@ fun aTextDef(
     strikethrough: Boolean = false,
     superOrSubscript: SuperOrSubscript = SuperOrSubscript.None,
     interspacing: Size? = null,
-): TextStyleDefinitionModel {
-    return TextStyleDefinitionModel(
+): TextStyleDefinition {
+    return TextStyleDefinition(
         fontFamily = fontFamily,
         foregroundColor = foregroundColor,
         size = size,
@@ -279,24 +264,24 @@ fun aTextDef(
     )
 }
 
-fun aVariableStructureModel(
+fun aVariableStructure(
     id: String = "variableStructure",
     name: String? = "variableStructureName",
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
-    structure: Map<VariableModelRef, VariablePathData> = emptyMap(),
+    structure: Map<String, VariablePathData> = emptyMap(),
     languageVariable: String? = null,
-    lastUpdated: Instant = Clock.System.now(),
-): VariableStructureModel {
-    return VariableStructureModel(
+    lastUpdated: Instant? = null,
+): VariableStructure {
+    return VariableStructure(
         id = id,
         name = name,
         originLocations = originLocations,
-        customFields = customFields,
+        customFields = CustomFieldMap(customFields),
         lastUpdated = lastUpdated,
-        created = Clock.System.now(),
+        created = null,
         structure = structure,
-        languageVariable = languageVariable?.let { VariableModelRef(it) }
+        languageVariable = languageVariable?.let { VariableRef(it) }
     )
 }
 
@@ -306,14 +291,14 @@ fun aDisplayRule(
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
     definition: DisplayRuleDefinition? = null
-): DisplayRuleModel {
-    return DisplayRuleModel(
+): DisplayRule {
+    return DisplayRule(
         id = id,
         name = name,
         originLocations = originLocations,
-        customFields = customFields,
-        lastUpdated = Clock.System.now(),
-        created = Clock.System.now(),
+        customFields = CustomFieldMap(customFields),
+        lastUpdated = null,
+        created = null,
         definition = definition
     )
 }
@@ -325,7 +310,7 @@ fun aDisplayRule(
     groupOp: GroupOp = GroupOp.And,
     negation: Boolean = false,
     id: String = "R_1",
-): DisplayRuleModel {
+): DisplayRule {
     return aDisplayRule(
         id, definition = DisplayRuleDefinition(
             Group(
@@ -336,44 +321,44 @@ fun aDisplayRule(
 }
 
 fun aParagraph(
-    content: List<TextModel> = listOf<TextModel>(),
-    styleRef: ParagraphStyleModelRef? = null,
-    displayRuleRef: DisplayRuleModelRef? = null
-): ParagraphModel = ParagraphModel(content, styleRef, displayRuleRef)
+    content: List<Text> = listOf<Text>(),
+    styleRef: ParagraphStyleRef? = null,
+    displayRuleRef: DisplayRuleRef? = null
+): Paragraph = Paragraph(content, styleRef, displayRuleRef)
 
 fun aParagraph(
-    content: TextModel, styleRef: String? = null, displayRuleRef: DisplayRuleModelRef? = null
-): ParagraphModel = ParagraphModel(listOf(content), styleRef?.let { ParagraphStyleModelRef(it) }, displayRuleRef)
+    content: Text, styleRef: String? = null, displayRuleRef: DisplayRuleRef? = null
+): Paragraph = Paragraph(listOf(content), styleRef?.let { ParagraphStyleRef(it) }, displayRuleRef)
 
-fun aParagraph(string: String): ParagraphModel = aParagraph(aText(string))
+fun aParagraph(string: String): Paragraph = aParagraph(aText(string))
 
-fun aText(string: String): TextModel = TextModel(listOf(StringModel(string)), null, null)
-
-fun aText(
-    content: List<TextContentModel> = listOf<TextContentModel>(),
-    styleRef: TextStyleModelRef? = null,
-    displayRuleRef: DisplayRuleModelRef? = null
-): TextModel = TextModel(content, styleRef, displayRuleRef)
+fun aText(string: String): Text = Text(listOf(StringValue(string)), null, null)
 
 fun aText(
-    content: TextContentModel, styleRef: String? = null, displayRuleRef: DisplayRuleModelRef? = null
-): TextModel = TextModel(listOf(content), styleRef?.let { TextStyleModelRef(it) }, displayRuleRef)
+    content: List<TextContent> = listOf<TextContent>(),
+    styleRef: TextStyleRef? = null,
+    displayRuleRef: DisplayRuleRef? = null
+): Text = Text(content, styleRef, displayRuleRef)
+
+fun aText(
+    content: TextContent, styleRef: String? = null, displayRuleRef: DisplayRuleRef? = null
+): Text = Text(listOf(content), styleRef?.let { TextStyleRef(it) }, displayRuleRef)
 
 fun aRow(
-    cells: List<TableModel.CellModel>, displayRuleRef: String? = null
-): TableModel.RowModel {
-    return TableModel.RowModel(cells, displayRuleRef?.let { DisplayRuleModelRef(it) })
+    cells: List<Table.Cell>, displayRuleRef: String? = null
+): Table.Row {
+    return Table.Row(cells, displayRuleRef?.let { DisplayRuleRef(it) })
 }
 
-fun aCell(content: DocumentContentModel, mergeLeft: Boolean = false, mergeUp: Boolean = false): TableModel.CellModel {
-    return TableModel.CellModel(listOf(content), mergeLeft, mergeUp)
+fun aCell(content: DocumentContent, mergeLeft: Boolean = false, mergeUp: Boolean = false): Table.Cell {
+    return Table.Cell(listOf(content), mergeLeft, mergeUp)
 }
 
 fun aSelectByLanguage(
-    cases: Map<String, List<DocumentContentModel>> = emptyMap()
-): SelectByLanguageModel {
-    return SelectByLanguageModel(
-        cases = cases.entries.map { SelectByLanguageModel.CaseModel(it.key, it.value) }
+    cases: Map<String, List<DocumentContent>> = emptyMap()
+): SelectByLanguage {
+    return SelectByLanguage(
+        cases = cases.entries.map { SelectByLanguage.Case(it.value, it.key) }
     )
 }
 
@@ -389,17 +374,18 @@ fun aImage(
     metadata : Map<String, List<MetadataPrimitive>> = emptyMap(),
     skip : SkipOptions = SkipOptions(false, null, null),
     alternateText: String? = null,
-): ImageModel {
-    return ImageModel(
+): Image {
+    return Image(
         id = id,
         name = name,
         originLocations = originLocations,
-        customFields = customFields,
-        created = Clock.System.now(),
+        customFields = CustomFieldMap(customFields),
+        created = null,
+        lastUpdated = null,
         sourcePath = sourcePath,
         imageType = imageType,
         options = options,
-        targetFolder = targetFolder?.let(IcmPath::from),
+        targetFolder = targetFolder,
         metadata = metadata,
         skip = skip,
         alternateText = alternateText,
@@ -415,30 +401,20 @@ fun aFile(
     customFields: MutableMap<String, String> = mutableMapOf(),
     targetFolder: String? = null,
     skip: SkipOptions = SkipOptions(false, null, null),
-): FileModel {
-    return FileModel(
+): File {
+    return File(
         id = id,
         name = name,
         originLocations = originLocations,
-        customFields = customFields,
-        created = Clock.System.now(),
+        customFields = CustomFieldMap(customFields),
+        created = null,
+        lastUpdated = null,
         sourcePath = sourcePath,
         fileType = fileType,
-        targetFolder = targetFolder?.let(IcmPath::from),
+        targetFolder = targetFolder,
         skip = skip,
     )
 }
 
 fun aDocumentObjectRef(id: String, displayRuleId: String? = null) =
-    DocumentObjectModelRef(id, displayRuleId?.let { DisplayRuleModelRef(it) })
-
-fun aDocumentObjectInternalRepository() = DocumentObjectInternalRepository(DocumentObjectTable, aProjectConfig().name)
-fun aVariableInternalRepository() = VariableInternalRepository(VariableTable, aProjectConfig().name)
-fun aVariableStructureInternalRepository() =
-    VariableStructureInternalRepository(VariableStructureTable, aProjectConfig().name)
-
-fun aParaStyleInternalRepository() = ParagraphStyleInternalRepository(ParagraphStyleTable, aProjectConfig().name)
-fun aTextStyleInternalRepository() = TextStyleInternalRepository(TextStyleTable, aProjectConfig().name)
-fun aDisplayRuleInternalRepository() = DisplayRuleInternalRepository(DisplayRuleTable, aProjectConfig().name)
-fun aImageInternalRepository() = ImageInternalRepository(ImageTable, aProjectConfig().name)
-fun aFileInternalRepository() = FileInternalRepository(FileTable, aProjectConfig().name)
+    DocumentObjectRef(id, displayRuleId?.let { DisplayRuleRef(it) })

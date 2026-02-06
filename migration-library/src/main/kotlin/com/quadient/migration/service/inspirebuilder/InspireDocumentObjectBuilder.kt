@@ -1,40 +1,35 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
-import com.quadient.migration.data.DisplayRuleModelRef
-import com.quadient.migration.data.DocumentContentModel
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.DocumentObjectModelRef
-import com.quadient.migration.data.FirstMatchModel
-import com.quadient.migration.data.AreaModel
-import com.quadient.migration.data.HyperlinkModel
-import com.quadient.migration.data.ImageModel
-import com.quadient.migration.data.ImageModelRef
-import com.quadient.migration.data.FileModel
-import com.quadient.migration.data.FileModelRef
-import com.quadient.migration.data.ParagraphModel
-import com.quadient.migration.data.ParagraphModel.TextModel
-import com.quadient.migration.data.ParagraphStyleDefinitionModel
-import com.quadient.migration.data.ParagraphStyleModel
-import com.quadient.migration.data.ParagraphStyleModelRef
-import com.quadient.migration.data.SelectByLanguageModel
-import com.quadient.migration.data.StringModel
-import com.quadient.migration.data.TableModel
-import com.quadient.migration.data.TextStyleDefinitionModel
-import com.quadient.migration.data.TextStyleModel
-import com.quadient.migration.data.TextStyleModelRef
-import com.quadient.migration.data.VariableModel
-import com.quadient.migration.data.VariableModelRef
-import com.quadient.migration.data.VariableStructureModel
-import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
-import com.quadient.migration.persistence.repository.VariableInternalRepository
-import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.DocumentContent
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.File
+import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.FirstMatch
+import com.quadient.migration.api.dto.migrationmodel.Hyperlink
+import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.Paragraph
+import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
+import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.Table as TableDTO
+import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.Variable
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.Repository
+import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.FlowModel.*
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.ScriptResult
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.ScriptResult.*
@@ -59,7 +54,7 @@ import com.quadient.migration.shared.TabType
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Font
-import com.quadient.wfdxml.api.layoutnodes.Image
+import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.LocationType
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle
@@ -67,19 +62,19 @@ import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType.*
 import com.quadient.wfdxml.api.layoutnodes.TabulatorType
 import com.quadient.wfdxml.api.layoutnodes.data.Data
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
-import com.quadient.wfdxml.api.layoutnodes.data.Variable
+import com.quadient.wfdxml.api.layoutnodes.data.Variable as WfdXmlVariable
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
-import com.quadient.wfdxml.api.layoutnodes.flow.Text
+import com.quadient.wfdxml.api.layoutnodes.flow.Text as WfdXmlText
 import com.quadient.wfdxml.api.layoutnodes.font.SubFont
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
-import com.quadient.wfdxml.api.layoutnodes.tables.Table
+import com.quadient.wfdxml.api.layoutnodes.tables.Table as WfdXmlTable
 import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.ParagraphPdfTaggingRule
 import com.quadient.wfdxml.api.layoutnodes.TextStyle
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.api.layoutnodes.TextStyleType
-import com.quadient.wfdxml.api.layoutnodes.flow.Paragraph
+import com.quadient.wfdxml.api.layoutnodes.flow.Paragraph as WfdXmlParagraph
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.data.WorkFlowTreeDefinition
 import com.quadient.wfdxml.internal.layoutnodes.TextStyleImpl
@@ -91,16 +86,18 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ifEmpty
 import com.quadient.migration.shared.DataType as DataTypeModel
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle as ParagraphStyleDTO
+import com.quadient.migration.api.dto.migrationmodel.TextStyle as TextStyleDTO
 
 abstract class InspireDocumentObjectBuilder(
-    protected val documentObjectRepository: DocumentObjectInternalRepository,
-    protected val textStyleRepository: TextStyleInternalRepository,
-    protected val paragraphStyleRepository: ParagraphStyleInternalRepository,
-    protected val variableRepository: VariableInternalRepository,
-    protected val variableStructureRepository: VariableStructureInternalRepository,
-    protected val displayRuleRepository: DisplayRuleInternalRepository,
-    protected val imageRepository: ImageInternalRepository,
-    protected val fileRepository: FileInternalRepository,
+    protected val documentObjectRepository: DocumentObjectRepository,
+    protected val textStyleRepository: TextStyleRepository,
+    protected val paragraphStyleRepository: ParagraphStyleRepository,
+    protected val variableRepository: Repository<Variable>,
+    protected val variableStructureRepository: Repository<VariableStructure>,
+    protected val displayRuleRepository: Repository<DisplayRule>,
+    protected val imageRepository: Repository<Image>,
+    protected val fileRepository: Repository<File>,
     protected val projectConfig: ProjectConfig,
     protected val ipsService: IpsService,
 ) {
@@ -110,66 +107,66 @@ abstract class InspireDocumentObjectBuilder(
 
     abstract fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String
 
-    abstract fun getDocumentObjectPath(documentObject: DocumentObjectModel): String
+    abstract fun getDocumentObjectPath(documentObject: DocumentObject): String
 
     abstract fun getImagePath(
         id: String, imageType: ImageType, name: String?, targetFolder: IcmPath?, sourcePath: String?
     ): String
 
-    abstract fun getImagePath(image: ImageModel): String
+    abstract fun getImagePath(image: Image): String
 
     abstract fun getFilePath(
         id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, fileType: FileType
     ): String
 
-    abstract fun getFilePath(file: FileModel): String
+    abstract fun getFilePath(file: File): String
 
     abstract fun getStyleDefinitionPath(extension: String = "wfd"): String
 
     abstract fun getFontRootFolder(): String
 
-    abstract fun buildDocumentObject(documentObject: DocumentObjectModel, styleDefinitionPath: String?): String
+    abstract fun buildDocumentObject(documentObject: DocumentObject, styleDefinitionPath: String?): String
 
-    abstract fun shouldIncludeInternalDependency(documentObject: DocumentObjectModel): Boolean
+    abstract fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean
 
-    protected fun collectLanguages(documentObject: DocumentObjectModel): List<String> {
+    protected fun collectLanguages(documentObject: DocumentObject): List<String> {
         val languages = mutableSetOf<String>()
 
-        fun collectLanguagesFromContent(content: List<DocumentContentModel>) {
+        fun collectLanguagesFromContent(content: List<DocumentContent>) {
             for (item in content) {
                 when (item) {
-                    is SelectByLanguageModel -> item.cases.forEach { languages.add(it.language) }
-                    is AreaModel -> collectLanguagesFromContent(item.content)
-                    is FirstMatchModel -> {
+                    is SelectByLanguage -> item.cases.forEach { languages.add(it.language) }
+                    is Area -> collectLanguagesFromContent(item.content)
+                    is FirstMatch -> {
                         item.cases.forEach { case -> collectLanguagesFromContent(case.content) }
                         collectLanguagesFromContent(item.default)
                     }
 
-                    is TableModel -> item.rows.forEach { row ->
+                    is TableDTO -> item.rows.forEach { row ->
                         row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) }
                     }
 
-                    is DocumentObjectModelRef -> {
-                        val documentObject = documentObjectRepository.findModelOrFail(item.id)
+                    is DocumentObjectRef -> {
+                        val documentObject = documentObjectRepository.findOrFail(item.id)
                         if (shouldIncludeInternalDependency(documentObject)) {
                             collectLanguagesFromContent(documentObject.content)
                         }
                     }
 
-                    is ParagraphModel -> item.content.forEach { textModel ->
+                    is Paragraph -> item.content.forEach { textModel ->
                         textModel.content.forEach { textContent ->
                             when (textContent) {
-                                is FirstMatchModel -> {
+                                is FirstMatch -> {
                                     textContent.cases.forEach { case -> collectLanguagesFromContent(case.content) }
                                     collectLanguagesFromContent(textContent.default)
                                 }
 
-                                is TableModel -> textContent.rows.forEach { row ->
+                                is TableDTO -> textContent.rows.forEach { row ->
                                     row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) }
                                 }
 
-                                is DocumentObjectModelRef -> {
-                                    val documentObject = documentObjectRepository.findModelOrFail(textContent.id)
+                                is DocumentObjectRef -> {
+                                    val documentObject = documentObjectRepository.findOrFail(textContent.id)
                                     if (shouldIncludeInternalDependency(documentObject)) {
                                         collectLanguagesFromContent(documentObject.content)
                                     }
@@ -191,18 +188,18 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     protected open fun wrapSuccessFlowInConditionFlow(
-        layout: Layout, variableStructure: VariableStructureModel, ruleDef: DisplayRuleDefinition, successFlow: Flow
+        layout: Layout, variableStructure: VariableStructure, ruleDef: DisplayRuleDefinition, successFlow: Flow
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
             layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
-                .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findModelOrFail)),
+                .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail)),
             successFlow
         )
     }
 
     protected open fun buildSuccessRowWrappedInConditionRow(
         layout: Layout,
-        variableStructure: VariableStructureModel,
+        variableStructure: VariableStructure,
         ruleDef: DisplayRuleDefinition,
         multipleRowSet: GeneralRowSet
     ): GeneralRowSet {
@@ -211,7 +208,7 @@ abstract class InspireDocumentObjectBuilder(
         multipleRowSet.addRowSet(
             layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
                 layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
-                    .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findModelOrFail)),
+                    .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail)),
                 successRow
             )
         )
@@ -219,7 +216,7 @@ abstract class InspireDocumentObjectBuilder(
         return successRow
     }
 
-    fun buildStyleLayoutDelta(textStyles: List<TextStyleModel>, paragraphStyles: List<ParagraphStyleModel>): String {
+    fun buildStyleLayoutDelta(textStyles: List<TextStyleDTO>, paragraphStyles: List<ParagraphStyleDTO>): String {
         logger.debug("Starting to build style layout delta.")
 
         val builder = WfdXmlBuilder()
@@ -238,8 +235,8 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     fun buildStyles(
-        textStyles: List<TextStyleModel>,
-        paragraphStyles: List<ParagraphStyleModel>,
+        textStyles: List<TextStyleDTO>,
+        paragraphStyles: List<ParagraphStyleDTO>,
     ): String {
         logger.debug("Starting to build style definition.")
 
@@ -266,8 +263,8 @@ abstract class InspireDocumentObjectBuilder(
 
     fun buildDocumentContentAsFlows(
         layout: Layout,
-        variableStructure: VariableStructureModel,
-        content: List<DocumentContentModel>,
+        variableStructure: VariableStructure,
+        content: List<DocumentContent>,
         flowName: String? = null,
         languages: List<String>,
     ): List<Flow> {
@@ -277,17 +274,17 @@ abstract class InspireDocumentObjectBuilder(
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
             when (val contentPart = mutableContent[idx]) {
-                is TableModel, is ParagraphModel, is ImageModelRef -> {
+                is TableDTO, is Paragraph, is ImageRef -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
                     flowModels.add(Composite(flowParts))
                 }
 
-                is DocumentObjectModelRef -> flowModels.add(DocumentObject(contentPart))
-                is FileModelRef -> flowModels.add(File(contentPart))
-                is AreaModel -> mutableContent.addAll(idx + 1, contentPart.content)
-                is FirstMatchModel -> flowModels.add(FirstMatch(contentPart))
-                is SelectByLanguageModel -> flowModels.add(SelectByLanguage(contentPart))
+                is DocumentObjectRef -> flowModels.add(DocumentObject(contentPart))
+                is FileRef -> flowModels.add(File(contentPart))
+                is Area -> mutableContent.addAll(idx + 1, contentPart.content)
+                is FirstMatch -> flowModels.add(FirstMatch(contentPart))
+                is SelectByLanguage -> flowModels.add(SelectByLanguage(contentPart))
             }
             idx++
         }
@@ -296,9 +293,9 @@ abstract class InspireDocumentObjectBuilder(
         var flowSuffix = 1
         return flowModels.mapNotNull {
             when (it) {
-                is DocumentObject -> buildDocumentObjectRef(layout, variableStructure, it.ref, languages)
-                is File -> buildFileRef(layout, it.ref)
-                is Composite -> {
+                is FlowModel.DocumentObject -> buildDocumentObjectRef(layout, variableStructure, it.ref, languages)
+                is FlowModel.File -> buildFileRef(layout, it.ref)
+                is FlowModel.Composite -> {
                     if (flowName == null) {
                         buildCompositeFlow(layout, variableStructure, it.parts, null, languages)
                     } else {
@@ -308,7 +305,7 @@ abstract class InspireDocumentObjectBuilder(
                     }
                 }
 
-                is FirstMatch -> {
+                is FlowModel.FirstMatch -> {
                     if (flowName == null) {
                         buildFirstMatch(layout, variableStructure, it.model, false, null, languages)
                     } else {
@@ -318,7 +315,7 @@ abstract class InspireDocumentObjectBuilder(
                     }
                 }
 
-                is SelectByLanguage -> {
+                is FlowModel.SelectByLanguage -> {
                     if (flowName == null) {
                         buildSelectByLanguage(layout, variableStructure, it.model, null, languages)
                     } else {
@@ -332,18 +329,18 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     sealed interface FlowModel {
-        data class Composite(val parts: List<DocumentContentModel>) : FlowModel
-        data class DocumentObject(val ref: DocumentObjectModelRef) : FlowModel
-        data class File(val ref: FileModelRef) : FlowModel
-        data class FirstMatch(val model: FirstMatchModel) : FlowModel
-        data class SelectByLanguage(val model: SelectByLanguageModel) : FlowModel
+        data class Composite(val parts: List<DocumentContent>) : FlowModel
+        data class DocumentObject(val ref: DocumentObjectRef) : FlowModel
+        data class File(val ref: FileRef) : FlowModel
+        data class FirstMatch(val model: com.quadient.migration.api.dto.migrationmodel.FirstMatch) : FlowModel
+        data class SelectByLanguage(val model: com.quadient.migration.api.dto.migrationmodel.SelectByLanguage) : FlowModel
     }
 
     protected fun List<Flow>.toSingleFlow(
         layout: Layout,
-        variableStructure: VariableStructureModel,
+        variableStructure: VariableStructure,
         flowName: String? = null,
-        displayRuleRef: DisplayRuleModelRef? = null,
+        displayRuleRef: DisplayRuleRef? = null,
     ): Flow {
         val singleFlow = if (this.size == 1) {
             this[0]
@@ -361,21 +358,22 @@ abstract class InspireDocumentObjectBuilder(
         return if (displayRuleRef == null) {
             singleFlow
         } else {
-            val displayRule = displayRuleRepository.findModelOrFail(displayRuleRef.id)
-            if (displayRule.definition == null) {
+            val displayRule = displayRuleRepository.findOrFail(displayRuleRef.id)
+            val def = displayRule.definition
+            if (def == null) {
                 error("Display rule '${displayRuleRef.id}' definition is null.")
             }
 
-            wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule.definition, singleFlow)
+            wrapSuccessFlowInConditionFlow(layout, variableStructure, def, singleFlow)
         }
     }
 
     protected fun buildDocumentContentAsSingleFlow(
         layout: Layout,
-        variableStructure: VariableStructureModel,
-        content: List<DocumentContentModel>,
+        variableStructure: VariableStructure,
+        content: List<DocumentContent>,
         flowName: String? = null,
-        displayRuleRef: DisplayRuleModelRef? = null,
+        displayRuleRef: DisplayRuleRef? = null,
         languages: List<String>,
     ): Flow {
         return buildDocumentContentAsFlows(layout, variableStructure, content, flowName, languages).toSingleFlow(
@@ -383,11 +381,11 @@ abstract class InspireDocumentObjectBuilder(
         )
     }
 
-    protected fun initVariableStructure(layout: Layout, documentObject: DocumentObjectModel): VariableStructureModel {
+    protected fun initVariableStructure(layout: Layout, documentObject: DocumentObject): VariableStructure {
         val variableStructureId = documentObject.variableStructureRef?.id ?: projectConfig.defaultVariableStructure
 
         val variableStructureModel =
-            variableStructureId?.let { variableStructureRepository.findModelOrFail(it) } ?: VariableStructureModel(
+            variableStructureId?.let { variableStructureRepository.findOrFail(it) } ?: VariableStructure(
                 id = "defaultVariableStructure",
                 lastUpdated = Clock.System.now(),
                 created = Clock.System.now(),
@@ -444,7 +442,7 @@ abstract class InspireDocumentObjectBuilder(
             .setLocation(fontLocation, LocationType.ICM)
     }
 
-    fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyleModel>) {
+    fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyleDTO>) {
         val arialFont = getFontByName(layout, "Arial")
         require(arialFont != null) { "Layout must contain Arial font." }
         arialFont.setName("Arial").setFontName("Arial")
@@ -457,7 +455,7 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun applyTextStyleProperties(layout: Layout, textStyle: TextStyle, definition: TextStyleDefinitionModel) {
+    private fun applyTextStyleProperties(layout: Layout, textStyle: TextStyle, definition: TextStyleDefinition) {
         val fontFamily = definition.fontFamily ?: "Arial"
 
         val font = getFontByName(layout, fontFamily) ?: layout.addFont().setName(fontFamily).setFontName(fontFamily)
@@ -491,7 +489,7 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    fun buildParagraphStyles(layout: Layout, paragraphStyleModels: List<ParagraphStyleModel>) {
+    fun buildParagraphStyles(layout: Layout, paragraphStyleModels: List<ParagraphStyleDTO>) {
         paragraphStyleModels.forEach { styleModel ->
             val definition = styleModel.resolve()
 
@@ -572,7 +570,7 @@ abstract class InspireDocumentObjectBuilder(
         object Skip : ImagePlaceholderResult
         data class Placeholder(val value: String) : ImagePlaceholderResult
     }
-    protected fun getImagePlaceholder(imageModel: ImageModel): ImagePlaceholderResult {
+    protected fun getImagePlaceholder(imageModel: Image): ImagePlaceholderResult {
         if (imageModel.imageType == ImageType.Unknown && !imageModel.skip.skipped) {
             throw IllegalStateException(
                 "Image '${imageModel.nameOrId()}' has unknown type and is not set to be skipped."
@@ -593,13 +591,14 @@ abstract class InspireDocumentObjectBuilder(
         return ImagePlaceholderResult.RenderAsNormal
     }
 
-    protected fun getOrBuildImage(layout: Layout, imageModel: ImageModel, alternateText: String? = null): Image {
+    protected fun getOrBuildImage(layout: Layout, imageModel: Image, alternateText: String? = null): WfdXmlImage {
         val image = getImageByName(layout, imageModel.nameOrId()) ?: layout.addImage().setName(imageModel.nameOrId())
             .setImageLocation(getImagePath(imageModel), LocationType.ICM)
 
-        if (imageModel.options != null) {
-            imageModel.options.resizeWidth?.let { image.setResizeWidth(it.toMeters()) }
-            imageModel.options.resizeHeight?.let { image.setResizeHeight(it.toMeters()) }
+        val options = imageModel.options
+        if (options != null) {
+            options.resizeWidth?.let { image.setResizeWidth(it.toMeters()) }
+            options.resizeHeight?.let { image.setResizeHeight(it.toMeters()) }
         }
 
         if (!alternateText.isNullOrBlank()) {
@@ -609,13 +608,13 @@ abstract class InspireDocumentObjectBuilder(
         return image
     }
 
-    protected abstract fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String)
+    protected abstract fun applyImageAlternateText(layout: Layout, image: WfdXmlImage, alternateText: String)
 
     private fun buildFileRef(
         layout: Layout,
-        fileRef: FileModelRef,
+        fileRef: FileRef,
     ): Flow? {
-        val fileModel = fileRepository.findModelOrFail(fileRef.id)
+        val fileModel = fileRepository.findOrFail(fileRef.id)
 
         if (fileModel.skip.skipped && fileModel.skip.placeholder == null) {
             val reason = fileModel.skip.reason?.let { "with reason: $it" } ?: "without reason"
@@ -647,8 +646,8 @@ abstract class InspireDocumentObjectBuilder(
 
     private fun buildCompositeFlow(
         layout: Layout,
-        variableStructure: VariableStructureModel,
-        documentContentModelParts: List<DocumentContentModel>,
+        variableStructure: VariableStructure,
+        documentContentModelParts: List<DocumentContent>,
         flowName: String? = null,
         languages: List<String>
     ): Flow {
@@ -657,11 +656,11 @@ abstract class InspireDocumentObjectBuilder(
 
         documentContentModelParts.forEach {
             when (it) {
-                is ParagraphModel -> buildParagraph(layout, variableStructure, flow, it, languages)
-                is TableModel -> flow.addParagraph().addText()
+                is Paragraph -> buildParagraph(layout, variableStructure, flow, it, languages)
+                is TableDTO -> flow.addParagraph().addText()
                     .appendTable(buildTable(layout, variableStructure, it, languages))
 
-                is ImageModelRef -> buildAndAppendImage(layout, flow.addParagraph().addText(), it)
+                is ImageRef -> buildAndAppendImage(layout, flow.addParagraph().addText(), it)
                 else -> error("Content part type ${it::class.simpleName} is not allowed in composite flow.")
             }
         }
@@ -671,11 +670,11 @@ abstract class InspireDocumentObjectBuilder(
 
     private fun buildDocumentObjectRef(
         layout: Layout,
-        variableStructure: VariableStructureModel,
-        documentObjectRef: DocumentObjectModelRef,
+        variableStructure: VariableStructure,
+        documentObjectRef: DocumentObjectRef,
         languages: List<String>,
     ): Flow? {
-        val documentModel = documentObjectRepository.findModelOrFail(documentObjectRef.id)
+        val documentModel = documentObjectRepository.findOrFail(documentObjectRef.id)
 
         if (documentModel.skip.skipped && documentModel.skip.placeholder == null) {
             val reason = documentModel.skip.reason?.let { "with reason: $it" } ?: "without reason"
@@ -689,13 +688,13 @@ abstract class InspireDocumentObjectBuilder(
             return flow
         }
 
-        val flow = getFlowByName(layout, documentModel.nameOrId()) ?: if (documentModel.internal) {
+        val flow = getFlowByName(layout, documentModel.nameOrId()) ?: if (documentModel.internal == true) {
             buildDocumentContentAsSingleFlow(
                 layout,
                 variableStructure,
                 documentModel.content,
                 documentModel.nameOrId(),
-                documentModel.displayRuleRef,
+                documentModel.displayRuleRef?.let { DisplayRuleRef(it.id) },
                 languages
             )
         } else {
@@ -704,25 +703,26 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         if (documentObjectRef.displayRuleRef != null) {
-            val displayRule = displayRuleRepository.findModelOrFail(documentObjectRef.displayRuleRef.id)
-            if (displayRule.definition == null) {
+            val displayRule = displayRuleRepository.findOrFail(documentObjectRef.displayRuleRef.id)
+            val def = displayRule.definition
+            if (def == null) {
                 error("Display rule '${documentObjectRef.displayRuleRef.id}' definition is null.")
             }
 
-            return wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule.definition, flow)
+            return wrapSuccessFlowInConditionFlow(layout, variableStructure, def, flow)
         }
 
         return flow
     }
 
-    private fun gatherFlowParts(content: List<DocumentContentModel>, startIndex: Int): List<DocumentContentModel> {
-        val flowParts = mutableListOf<DocumentContentModel>()
+    private fun gatherFlowParts(content: List<DocumentContent>, startIndex: Int): List<DocumentContent> {
+        val flowParts = mutableListOf<DocumentContent>()
 
         var index = startIndex
 
         do {
             val contentPart = content[index]
-            if (contentPart is TableModel || contentPart is ParagraphModel || contentPart is ImageModelRef) {
+            if (contentPart is TableDTO || contentPart is Paragraph || contentPart is ImageRef) {
                 flowParts.add(contentPart)
                 index++
             } else {
@@ -735,9 +735,9 @@ abstract class InspireDocumentObjectBuilder(
 
     private fun buildParagraph(
         layout: Layout,
-        variableStructure: VariableStructureModel,
+        variableStructure: VariableStructure,
         flow: Flow,
-        paragraphModel: ParagraphModel,
+        paragraphModel: Paragraph,
         languages: List<String>
     ) {
         val paragraph = if (paragraphModel.displayRuleRef == null) {
@@ -770,22 +770,22 @@ abstract class InspireDocumentObjectBuilder(
 
             textModel.content.forEach {
                 when (it) {
-                    is StringModel -> currentText.appendText(it.value)
-                    is VariableModelRef -> currentText.appendVariable(it, layout, variableStructure)
-                    is TableModel -> currentText.appendTable(buildTable(layout, variableStructure, it, languages))
-                    is DocumentObjectModelRef -> buildDocumentObjectRef(
+                    is StringValue -> currentText.appendText(it.value)
+                    is VariableRef -> currentText.appendVariable(it, layout, variableStructure)
+                    is TableDTO -> currentText.appendTable(buildTable(layout, variableStructure, it, languages))
+                    is DocumentObjectRef -> buildDocumentObjectRef(
                         layout, variableStructure, it, languages
                     )?.also { flow ->
                         currentText.appendFlow(flow)
                     }
 
-                    is FileModelRef -> buildFileRef(layout, it)?.also { flow ->
+                    is FileRef -> buildFileRef(layout, it)?.also { flow ->
                         currentText.appendFlow(flow)
                     }
 
-                    is ImageModelRef -> buildAndAppendImage(layout, currentText, it)
-                    is HyperlinkModel -> currentText = buildAndAppendHyperlink(layout, paragraph, baseTextStyleModel, it)
-                    is FirstMatchModel -> currentText.appendFlow(
+                    is ImageRef -> buildAndAppendImage(layout, currentText, it)
+                    is Hyperlink -> currentText = buildAndAppendHyperlink(layout, paragraph, baseTextStyleModel, it)
+                    is FirstMatch -> currentText.appendFlow(
                         buildFirstMatch(layout, variableStructure, it, true, null, languages)
                     )
                 }
@@ -794,7 +794,7 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun createHyperlinkTextStyle(
-        layout: Layout, baseTextStyleModel: TextStyleModel?, hyperlinkModel: HyperlinkModel
+        layout: Layout, baseTextStyleModel: TextStyleDTO?, hyperlinkModel: Hyperlink
     ): TextStyle {
         val baseStyleName = baseTextStyleModel?.nameOrId() ?: "text"
         val hyperlinkName = generateUniqueHyperlinkStyleName(layout, baseStyleName)
@@ -830,13 +830,13 @@ abstract class InspireDocumentObjectBuilder(
         return candidateName
     }
 
-    private fun createUrlVariable(layout: Layout, variableName: String, url: String): Variable {
+    private fun createUrlVariable(layout: Layout, variableName: String, url: String): WfdXmlVariable {
         return layout.data.addVariable().setName(variableName).setKind(VariableKind.CONSTANT)
             .setDataType(DataType.STRING).setValue(url)
     }
 
-    private fun buildAndAppendImage(layout: Layout, text: Text, ref: ImageModelRef) {
-        val imageModel = imageRepository.findModelOrFail(ref.id)
+    private fun buildAndAppendImage(layout: Layout, text: WfdXmlText, ref: ImageRef) {
+        val imageModel = imageRepository.findOrFail(ref.id)
 
         when (val imagePlaceholder = getImagePlaceholder(imageModel)) {
             is ImagePlaceholderResult.Placeholder -> {
@@ -851,8 +851,8 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun buildAndAppendHyperlink(
-        layout: Layout, paragraph: Paragraph, baseTextStyleModel: TextStyleModel?, hyperlinkModel: HyperlinkModel
-    ): Text {
+        layout: Layout, paragraph: WfdXmlParagraph, baseTextStyleModel: TextStyleDTO?, hyperlinkModel: Hyperlink
+    ): WfdXmlText {
         val hyperlinkText = paragraph.addText()
         val hyperlinkStyle = createHyperlinkTextStyle(layout, baseTextStyleModel, hyperlinkModel)
         hyperlinkText.setTextStyle(hyperlinkStyle)
@@ -863,12 +863,12 @@ abstract class InspireDocumentObjectBuilder(
         return newText
     }
 
-    private fun Text.appendVariable(
-        ref: VariableModelRef, layout: Layout, variableStructure: VariableStructureModel
-    ): Text {
-        val variableModel = variableRepository.findModelOrFail(ref.id)
+    private fun WfdXmlText.appendVariable(
+        ref: VariableRef, layout: Layout, variableStructure: VariableStructure
+    ): WfdXmlText {
+        val variableModel = variableRepository.findOrFail(ref.id)
 
-        val variablePathData = variableStructure.structure[ref]
+        val variablePathData = variableStructure.structure[ref.id]
         if (variablePathData == null || variablePathData.path.isBlank()) {
             this.appendText("""$${variablePathData?.name ?: variableModel.nameOrId()}$""")
         } else {
@@ -879,37 +879,38 @@ abstract class InspireDocumentObjectBuilder(
         return this
     }
 
-    private fun findParagraphStyle(paragraphModel: ParagraphModel): ParagraphStyleModel? {
+    private fun findParagraphStyle(paragraphModel: Paragraph): ParagraphStyleDTO? {
         if (paragraphModel.styleRef == null) return null
 
-        val paraStyleModel = paragraphStyleRepository.firstWithDefinitionModel(paragraphModel.styleRef.id)
+        val paraStyleModel = paragraphStyleRepository.firstWithDefinition(paragraphModel.styleRef.id)
             ?: error("Paragraph style definition for ${paragraphModel.styleRef.id} not found.")
 
         return paraStyleModel
     }
 
-    private fun findTextStyle(textModel: TextModel): TextStyleModel? {
+    private fun findTextStyle(textModel: Text): TextStyleDTO? {
         if (textModel.styleRef == null) return null
 
-        val textStyleModel = textStyleRepository.firstWithDefinitionModel(textModel.styleRef.id)
+        val textStyleModel = textStyleRepository.firstWithDefinition(textModel.styleRef.id)
             ?: error("Text style definition for ${textModel.styleRef.id} not found.")
 
         return textStyleModel
     }
 
     private fun buildSuccessFlowWrappedInInlineConditionFlow(
-        layout: Layout, variableStructure: VariableStructureModel, displayRuleId: String, text: Text
+        layout: Layout, variableStructure: VariableStructure, displayRuleId: String, text: WfdXmlText
     ): Flow {
-        val displayRule = displayRuleRepository.findModelOrFail(displayRuleId)
+        val displayRule = displayRuleRepository.findOrFail(displayRuleId)
         if (displayRule.definition == null) {
             error("Display rule '$displayRuleId' definition is null.")
         }
 
         val successFlow = layout.addFlow().setType(Flow.Type.SIMPLE)
+        val def = displayRule.definition!!
 
         text.appendFlow(
             layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
-                displayRule.definition.toScript(layout, variableStructure, variableRepository::findModelOrFail),
+                def.toScript(layout, variableStructure, variableRepository::findOrFail),
                 successFlow
             )
         )
@@ -918,8 +919,8 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun buildTable(
-        layout: Layout, variableStructure: VariableStructureModel, model: TableModel, languages: List<String>
-    ): Table {
+        layout: Layout, variableStructure: VariableStructure, model: TableDTO, languages: List<String>
+    ): WfdXmlTable {
         val table = layout.addTable().setDisplayAsImage(false)
 
         if (model.columnWidths.isNotEmpty()) {
@@ -936,13 +937,14 @@ abstract class InspireDocumentObjectBuilder(
             val row = if (rowModel.displayRuleRef == null) {
                 layout.addRowSet().setType(RowSet.Type.SINGLE_ROW).also { rowset.addRowSet(it) }
             } else {
-                val displayRule = displayRuleRepository.findModelOrFail(rowModel.displayRuleRef.id)
-                if (displayRule.definition == null) {
+                val displayRule = displayRuleRepository.findOrFail(rowModel.displayRuleRef.id)
+                val def = displayRule.definition
+                if (def == null) {
                     error("Display rule '${rowModel.displayRuleRef.id}' definition is null.")
                 }
 
                 buildSuccessRowWrappedInConditionRow(
-                    layout, variableStructure, displayRule.definition, rowset
+                    layout, variableStructure, def, rowset
                 )
             }
 
@@ -964,10 +966,10 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         when (model.pdfTaggingRule) {
-            TablePdfTaggingRule.None -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.NONE)
-            TablePdfTaggingRule.Default -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.DEFAULT)
-            TablePdfTaggingRule.Table -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.TABLE)
-            TablePdfTaggingRule.Artifact -> table.setTablePdfTaggingRule(Table.TablePdfTaggingRule.ARTIFACT)
+            TablePdfTaggingRule.None -> table.setTablePdfTaggingRule(WfdXmlTable.TablePdfTaggingRule.NONE)
+            TablePdfTaggingRule.Default -> table.setTablePdfTaggingRule(WfdXmlTable.TablePdfTaggingRule.DEFAULT)
+            TablePdfTaggingRule.Table -> table.setTablePdfTaggingRule(WfdXmlTable.TablePdfTaggingRule.TABLE)
+            TablePdfTaggingRule.Artifact -> table.setTablePdfTaggingRule(WfdXmlTable.TablePdfTaggingRule.ARTIFACT)
         }
         table.setTablePdfAlternateText(model.pdfAlternateText)
 
@@ -976,8 +978,8 @@ abstract class InspireDocumentObjectBuilder(
 
     private fun buildFirstMatch(
         layout: Layout,
-        variableStructure: VariableStructureModel,
-        model: FirstMatchModel,
+        variableStructure: VariableStructure,
+        model: FirstMatch,
         isInline: Boolean,
         flowName: String? = null,
         languages: List<String>,
@@ -986,7 +988,7 @@ abstract class InspireDocumentObjectBuilder(
         flowName?.let { firstMatchFlow.setName(it) }
 
         model.cases.forEachIndexed { i, case ->
-            val displayRule = displayRuleRepository.findModelOrFail(case.displayRuleRef.id)
+            val displayRule = displayRuleRepository.findOrFail(case.displayRuleRef.id)
             if (displayRule.definition == null) {
                 error("Display rule '${case.displayRuleRef.id}' definition is null.")
             }
@@ -1001,8 +1003,9 @@ abstract class InspireDocumentObjectBuilder(
                     .setWebEditingType(Flow.WebEditingType.SECTION).setDisplayName(caseName)
                     .also { it.addParagraph().addText().appendFlow(contentFlow) }
 
+            val def = displayRule.definition!!
             firstMatchFlow.addLineForSelectByInlineCondition(
-                displayRule.definition.toScript(layout, variableStructure, variableRepository::findModelOrFail),
+                def.toScript(layout, variableStructure, variableRepository::findOrFail),
                 caseFlow
             )
         }
@@ -1024,8 +1027,8 @@ abstract class InspireDocumentObjectBuilder(
 
     private fun buildSelectByLanguage(
         layout: Layout,
-        variableStructure: VariableStructureModel,
-        model: SelectByLanguageModel,
+        variableStructure: VariableStructure,
+        model: SelectByLanguage,
         flowName: String?,
         languages: List<String>,
     ): Flow {
@@ -1044,8 +1047,7 @@ abstract class InspireDocumentObjectBuilder(
 
         var defaultLanguageFlow: Flow? = null
         for (language in languages) {
-            val contentFlow =
-                caseFlows[language] ?: layout.addFlow().setType(Flow.Type.SIMPLE).setDisplayName("Case $language")
+            val contentFlow: Flow = (caseFlows[language] as Flow?) ?: layout.addFlow().setType(Flow.Type.SIMPLE).setDisplayName("Case $language")
             languageFlow.addLineForSelectByInlineCondition(language, contentFlow)
 
             if (language == defaultLanguage) {
@@ -1058,11 +1060,12 @@ abstract class InspireDocumentObjectBuilder(
         return languageFlow
     }
 
-    protected fun List<DocumentContentModel>.paragraphIfEmpty(): List<DocumentContentModel> {
+
+    protected fun List<DocumentContent>.paragraphIfEmpty(): List<DocumentContent> {
         return this.ifEmpty {
             listOf(
-                ParagraphModel(
-                    listOf(TextModel(listOf(), null, null)),
+                com.quadient.migration.api.dto.migrationmodel.Paragraph(
+                    listOf(com.quadient.migration.api.dto.migrationmodel.Paragraph.Text(listOf(), null, null)),
                     null,
                     null
                 )
@@ -1070,19 +1073,23 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun TextStyleModel.resolve(): TextStyleDefinitionModel {
-        return when (this.definition) {
-            is TextStyleDefinitionModel -> this.definition
-            is TextStyleModelRef -> {
-                textStyleRepository.findModel(this.definition.id)?.resolve() ?: error("Invalid text style reference")
+    private fun TextStyleDTO.resolve(): TextStyleDefinition {
+        val def = this.definition
+        return when (def) {
+            is TextStyleDefinition -> def
+            is TextStyleRef -> {
+                textStyleRepository.find(def.id)?.resolve() ?: error("Invalid text style reference")
             }
+            else -> error("Invalid text style definition type")
         }
     }
 
-    private fun ParagraphStyleModel.resolve(): ParagraphStyleDefinitionModel {
-        return when (this.definition) {
-            is ParagraphStyleDefinitionModel -> this.definition
-            is ParagraphStyleModelRef -> paragraphStyleRepository.findModelOrFail(this.definition.id).resolve()
+    private fun ParagraphStyleDTO.resolve(): ParagraphStyleDefinition {
+        val def = this.definition
+        return when (def) {
+            is ParagraphStyleDefinition -> def
+            is ParagraphStyleRef -> paragraphStyleRepository.findOrFail(def.id).resolve()
+            else -> error("Invalid paragraph style definition type")
         }
     }
 
@@ -1098,13 +1105,13 @@ abstract class InspireDocumentObjectBuilder(
 }
 
 fun DisplayRuleDefinition.toScript(
-    layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel
+    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): String {
     return "return ${this.group.toScript(layout, variableStructure, findVar)};"
 }
 
 fun Group.toScript(
-    layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel
+    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): String {
     val expressions = """(${
         items.joinToString(
@@ -1123,7 +1130,7 @@ fun Group.toScript(
 }
 
 fun Binary.toScript(
-    layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel
+    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): String {
     val leftScriptResult = left.toScript(layout, variableStructure, findVar)
     val rightScriptResult = right.toScript(layout, variableStructure, findVar)
@@ -1152,7 +1159,7 @@ fun BinOp.toScript(left: ScriptResult, right: ScriptResult): String {
 }
 
 fun LiteralOrFunctionCall.toScript(
-    layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel
+    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): ScriptResult {
     return when (this) {
         is Literal -> this.toScript(layout, variableStructure, findVar)
@@ -1161,7 +1168,7 @@ fun LiteralOrFunctionCall.toScript(
 }
 
 fun Function.toScript(
-    layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel
+    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): ScriptResult {
     when (this) {
         is Function.UpperCase -> {
@@ -1177,7 +1184,7 @@ fun Function.toScript(
 }
 
 fun Literal.toScript(
-    layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel
+    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): ScriptResult {
     return when (dataType) {
         LiteralDataType.Variable -> variableToScript(value, layout, variableStructure, findVar)
@@ -1193,10 +1200,10 @@ fun Literal.toScript(
 }
 
 fun variableToScript(
-    id: String, layout: Layout, variableStructure: VariableStructureModel, findVar: (String) -> VariableModel
+    id: String, layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): ScriptResult {
     val variableModel = findVar(id)
-    val variablePathData = variableStructure.structure[VariableModelRef(id)]
+    val variablePathData = variableStructure.structure[id]
     return if (variablePathData == null || variablePathData.path.isBlank()) {
         Failure(variablePathData?.name ?: variableModel.nameOrId())
     } else {
@@ -1215,23 +1222,24 @@ fun variableToScript(
 }
 
 fun getOrCreateVariable(
-    data: Data, variableName: String, variableModel: VariableModel, variablePath: String
-): Variable {
+    data: Data, variableName: String, variableModel: Variable, variablePath: String
+): WfdXmlVariable {
     val variable = getVariable(data as DataImpl, variableName, variablePath)
     return variable ?: data.addVariable().setName(variableName).setKind(VariableKind.DISCONNECTED)
         .setDataType(getDataType(variableModel.dataType)).setExistingParentId(variablePath)
         .setValueIfAvailable(variableModel)
 }
 
-fun Variable.setValueIfAvailable(variableModel: VariableModel): Variable {
-    if (!variableModel.defaultValue.isNullOrBlank()) {
+fun WfdXmlVariable.setValueIfAvailable(variableModel: Variable): WfdXmlVariable {
+    val defaultVal = variableModel.defaultValue
+    if (!defaultVal.isNullOrBlank()) {
         when (variableModel.dataType) {
-            DataTypeModel.String, DataTypeModel.DateTime -> this.setValue(variableModel.defaultValue)
-            DataTypeModel.Integer -> this.setValue(variableModel.defaultValue.toInt())
-            DataTypeModel.Integer64 -> this.setValue(variableModel.defaultValue.toLong())
-            DataTypeModel.Double, DataTypeModel.Currency -> this.setValue(variableModel.defaultValue.toDouble())
+            DataTypeModel.String, DataTypeModel.DateTime -> this.setValue(defaultVal)
+            DataTypeModel.Integer -> this.setValue(defaultVal.toInt())
+            DataTypeModel.Integer64 -> this.setValue(defaultVal.toLong())
+            DataTypeModel.Double, DataTypeModel.Currency -> this.setValue(defaultVal.toDouble())
             DataTypeModel.Boolean -> this.setValue(
-                variableModel.defaultValue.lowercase().toBooleanStrict()
+                defaultVal.lowercase().toBooleanStrict()
             )
         }
     }

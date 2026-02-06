@@ -2,12 +2,12 @@ package com.quadient.migration.persistence
 
 import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
-import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.ImageType
-import com.quadient.migration.tools.model.aImageInternalRepository
+import com.quadient.migration.tools.aImageRepository
+import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfSize
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test
 
 @Postgres
 class ImageRepositoryTest {
-    private val internalRepo = aImageInternalRepository()
-    private val repo = ImageRepository(internalRepo)
-    private val statusRepo = StatusTrackingRepository(internalRepo.projectName)
+    private val projectName = aProjectConfig().name
+    private val repo = aImageRepository()
+    private val statusRepo = StatusTrackingRepository(projectName)
 
     @Test
     fun roundtrip() {
@@ -36,9 +36,11 @@ class ImageRepositoryTest {
             .build()
 
         repo.upsert(dto)
-        val result = repo.listAll()
+        val result = repo.listAll().first()
+        dto.created = result.created
+        dto.lastUpdated = result.lastUpdated
 
-        result.first().shouldBeEqualTo(dto)
+        result.shouldBeEqualTo(dto)
     }
 
     @Test
@@ -79,6 +81,11 @@ class ImageRepositoryTest {
 
         val resultImage1 = result.first { it.id == "image1" }
         val resultImage2 = result.first { it.id == "image2" }
+
+        image1.created = resultImage1.created
+        image1.lastUpdated = resultImage1.lastUpdated
+        image2.created = resultImage2.created
+        image2.lastUpdated = resultImage2.lastUpdated
 
         resultImage1.shouldBeEqualTo(image1)
         resultImage2.shouldBeEqualTo(image2)

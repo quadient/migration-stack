@@ -2,30 +2,30 @@ package com.quadient.migration.service
 
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
-import com.quadient.migration.data.DisplayRuleModelRef
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.data.DocumentObjectModelRef
-import com.quadient.migration.data.FileModelRef
-import com.quadient.migration.data.ImageModelRef
-import com.quadient.migration.data.ParagraphStyleDefinitionModel
-import com.quadient.migration.data.ParagraphStyleModel
-import com.quadient.migration.data.ParagraphStyleModelRef
-import com.quadient.migration.data.TextStyleDefinitionModel
-import com.quadient.migration.data.TextStyleModel
-import com.quadient.migration.data.TextStyleModelRef
-import com.quadient.migration.data.VariableModelRef
-import com.quadient.migration.data.VariableStructureModelRef
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.TextStyle
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.deploy.DeployClient
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 
 class StylesValidator(
-    private val documentObjectRepository: DocumentObjectInternalRepository,
-    private val textStyleRepository: TextStyleInternalRepository,
-    private val paragraphStyleRepository: ParagraphStyleInternalRepository,
+    private val documentObjectRepository: DocumentObjectRepository,
+    private val textStyleRepository: TextStyleRepository,
+    private val paragraphStyleRepository: ParagraphStyleRepository,
     private val documentObjectBuilder: InspireDocumentObjectBuilder,
     private val deployClient: DeployClient,
     private val ipsService: IpsService,
@@ -40,10 +40,10 @@ class StylesValidator(
         return validateInternal(documentObjects)
     }
 
-    private fun validateInternal(objects: List<DocumentObjectModel>): ValidationResult {
+    private fun validateInternal(objects: List<DocumentObject>): ValidationResult {
         val refs = resolveDocumentObjects(objects).flatMap { it.collectRefs() }.toSet()
-        val textStyles = mutableSetOf<TextStyleModel>()
-        val paragraphStyles = mutableSetOf<ParagraphStyleModel>()
+        val textStyles = mutableSetOf<TextStyle>()
+        val paragraphStyles = mutableSetOf<ParagraphStyle>()
 
         val neededTextStyleIds = mutableSetOf<String>()
         val neededParagraphStyleIds = mutableSetOf<String>()
@@ -53,8 +53,8 @@ class StylesValidator(
 
         for (style in refs) {
             when (style) {
-                is ParagraphStyleModelRef -> {
-                    val model = paragraphStyleRepository.findModel(style.id)
+                is ParagraphStyleRef -> {
+                    val model = paragraphStyleRepository.find(style.id)
                     if (model == null) {
                         missingParagraphStyleIds.add(style.id)
                     } else {
@@ -62,8 +62,8 @@ class StylesValidator(
                     }
                 }
 
-                is TextStyleModelRef -> {
-                    val model = textStyleRepository.findModel(style.id)
+                is TextStyleRef -> {
+                    val model = textStyleRepository.find(style.id)
                     if (model == null) {
                         missingTextStyleIds.add(style.id)
                     } else {
@@ -71,12 +71,12 @@ class StylesValidator(
                     }
                 }
 
-                is DisplayRuleModelRef -> {}
-                is DocumentObjectModelRef -> {}
-                is ImageModelRef -> {}
-                is FileModelRef -> {}
-                is VariableModelRef -> {}
-                is VariableStructureModelRef -> {}
+                is DisplayRuleRef -> {}
+                is DocumentObjectRef -> {}
+                is ImageRef -> {}
+                is FileRef -> {}
+                is VariableRef -> {}
+                is VariableStructureRef -> {}
             }
         }
 
@@ -133,8 +133,8 @@ class StylesValidator(
         )
     }
 
-    private fun resolveDocumentObjects(objects: List<DocumentObjectModel>): List<DocumentObjectModel> {
-        val result = mutableListOf<DocumentObjectModel>()
+    private fun resolveDocumentObjects(objects: List<DocumentObject>): List<DocumentObject> {
+        val result = mutableListOf<DocumentObject>()
         val visited = mutableSetOf<String>()
         val queue = objects.toMutableList()
 
@@ -146,9 +146,9 @@ class StylesValidator(
             result.add(current)
             visited.add(current.id)
 
-            val refs = current.collectRefs().filterIsInstance<DocumentObjectModelRef>()
+            val refs = current.collectRefs().filterIsInstance<DocumentObjectRef>()
             for (ref in refs) {
-                val model = documentObjectRepository.findModelOrFail(ref.id)
+                val model = documentObjectRepository.findOrFail(ref.id)
                 if (!visited.contains(model.id)) {
                     queue.add(model)
                 }
@@ -158,39 +158,45 @@ class StylesValidator(
         return result
     }
 
-    private fun TextStyleModel.resolveTextStyle(
+    private fun TextStyle.resolveTextStyle(
         textStyleIds: MutableSet<String>, missingTextStyles: MutableSet<String>
     ) {
         when (this.definition) {
-            is TextStyleDefinitionModel -> {
+            is TextStyleDefinition -> {
                 textStyleIds.add(this.nameOrId())
             }
 
-            is TextStyleModelRef -> {
-                val model = textStyleRepository.findModel(this.definition.id)
-                if (model != null) {
-                    model.resolveTextStyle(textStyleIds, missingTextStyles)
-                } else {
-                    missingTextStyles.add(this.id)
+            is TextStyleRef -> {
+                val def = this.definition
+                if (def is TextStyleRef) {
+                    val model = textStyleRepository.find(def.id)
+                    if (model != null) {
+                        model.resolveTextStyle(textStyleIds, missingTextStyles)
+                    } else {
+                        missingTextStyles.add(this.id)
+                    }
                 }
             }
         }
     }
 
-    private fun ParagraphStyleModel.resolveParagraphStyle(
+    private fun ParagraphStyle.resolveParagraphStyle(
         paragraphStyleIds: MutableSet<String>, missingParagraphStyles: MutableSet<String>
     ) {
         when (this.definition) {
-            is ParagraphStyleDefinitionModel -> {
+            is ParagraphStyleDefinition -> {
                 paragraphStyleIds.add(this.nameOrId())
             }
 
-            is ParagraphStyleModelRef -> {
-                val model = paragraphStyleRepository.findModel(this.definition.id)
-                if (model != null) {
-                    model.resolveParagraphStyle(paragraphStyleIds, missingParagraphStyles)
-                } else {
-                    missingParagraphStyles.add(this.id)
+            is ParagraphStyleRef -> {
+                val def = this.definition
+                if (def is ParagraphStyleRef) {
+                    val model = paragraphStyleRepository.find(def.id)
+                    if (model != null) {
+                        model.resolveParagraphStyle(paragraphStyleIds, missingParagraphStyles)
+                    } else {
+                        missingParagraphStyles.add(this.id)
+                    }
                 }
             }
         }

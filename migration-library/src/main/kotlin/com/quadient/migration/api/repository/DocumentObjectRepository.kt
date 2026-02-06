@@ -4,8 +4,6 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectFilter
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.toDb
-import com.quadient.migration.data.DocumentObjectModel
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
@@ -15,6 +13,7 @@ import kotlinx.datetime.Clock
 import kotlinx.datetime.toJavaInstant
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.v1.core.and
@@ -24,23 +23,23 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import java.sql.Types
 
-class DocumentObjectRepository(internalRepository: DocumentObjectInternalRepository) :
-    Repository<DocumentObject, DocumentObjectModel>(internalRepository) {
-    val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
+class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) :
+    Repository<DocumentObject>(table, projectName) {
+    val statusTrackingRepository = StatusTrackingRepository(projectName)
 
     val logger = org.slf4j.LoggerFactory.getLogger(DocumentObjectRepository::class.java)!!
 
     fun list(documentObjectFilter: DocumentObjectFilter): List<DocumentObject> {
-        return internalRepository.list(filter(documentObjectFilter)).map(::toDto)
+        return list(filterByDocumentObjectFilter(documentObjectFilter))
     }
 
-    override fun toDto(model: DocumentObjectModel): DocumentObject = DocumentObject.fromModel(model)
+    override fun fromDb(row: ResultRow): DocumentObject = DocumentObjectTable.fromResultRow(row)
 
     override fun findUsages(id: String): List<MigrationObject> {
         return transaction {
-            DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq internalRepository.projectName }
+            DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq projectName }
                 .map { DocumentObjectTable.fromResultRow(it) }.filter { it.collectRefs().any { it.id == id } }
-                .map { DocumentObject.fromModel(it) }.distinct()
+                .distinct()
         }
     }
 
@@ -53,14 +52,14 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
             "origin_locations", "custom_fields", "created", "last_updated", "display_rule_ref",
             "variable_structure_ref", "base_template", "options", "metadata", "skip", "subject"
         )
-        val sql = internalRepository.createSql(columns, dtos.size)
+        val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
 
-        internalRepository.upsertBatch(dtos) {
+        upsertBatchInternal(dtos) {
             val stmt = it.prepareStatement(sql)
             var index = 1
             dtos.forEach { dto ->
-                val existingItem = internalRepository.findModel(dto.id)
+                val existingItem = find(dto.id)
                 when (dto.type) {
                     DocumentObjectType.Page -> require(dto.options == null || dto.options is PageOptions)
                     else -> require(dto.options == null || dto.options !is PageOptions)
@@ -73,7 +72,7 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
                 }
 
                 stmt.setString(index++, dto.id)
-                stmt.setString(index++, internalRepository.projectName)
+                stmt.setString(index++, this@DocumentObjectRepository.projectName)
                 stmt.setString(index++, dto.type.name)
                 stmt.setString(index++, dto.name)
                 stmt.setObject(index++, Json.encodeToString(dto.content.toDb()), Types.OTHER)
@@ -97,8 +96,8 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
     }
 
     override fun upsert(dto: DocumentObject) {
-        internalRepository.upsert {
-            val existingItem = internalRepository.findModel(dto.id)
+        upsertInternal {
+            val existingItem = find(dto.id)
 
             when (dto.type) {
                 DocumentObjectType.Page -> require(dto.options == null || dto.options is PageOptions)
@@ -113,11 +112,9 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
                 )
             }
 
-            internalRepository.table.upsertReturning(
-                internalRepository.table.id, internalRepository.table.projectName
-            ) {
+            table.upsertReturning(table.id, table.projectName) {
                 it[DocumentObjectTable.id] = dto.id
-                it[DocumentObjectTable.projectName] = internalRepository.projectName
+                it[DocumentObjectTable.projectName] = this@DocumentObjectRepository.projectName
                 it[DocumentObjectTable.type] = dto.type.name
                 it[DocumentObjectTable.name] = dto.name
                 it[DocumentObjectTable.content] = dto.content.toDb()
@@ -138,8 +135,8 @@ class DocumentObjectRepository(internalRepository: DocumentObjectInternalReposit
         }
     }
 
-    private fun filter(filter: DocumentObjectFilter): Op<Boolean> {
-        var result = DocumentObjectTable.projectName eq internalRepository.projectName
+    private fun filterByDocumentObjectFilter(filter: DocumentObjectFilter): Op<Boolean> {
+        var result = DocumentObjectTable.projectName eq projectName
         if (filter.ids != null && filter.ids.isNotEmpty()) {
             result = result and (DocumentObjectTable.id inList filter.ids)
         }

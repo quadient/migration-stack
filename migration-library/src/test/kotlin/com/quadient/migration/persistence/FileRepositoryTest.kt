@@ -2,12 +2,12 @@ package com.quadient.migration.persistence
 
 import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.builder.FileBuilder
-import com.quadient.migration.api.repository.FileRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.FileType
-import com.quadient.migration.tools.model.aFileInternalRepository
+import com.quadient.migration.tools.aFileRepository
+import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfSize
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test
 
 @Postgres
 class FileRepositoryTest {
-    private val internalRepo = aFileInternalRepository()
-    private val repo = FileRepository(internalRepo)
-    private val statusRepo = StatusTrackingRepository(internalRepo.projectName)
+    private val projectName = aProjectConfig().name
+    private val repo = aFileRepository()
+    private val statusRepo = StatusTrackingRepository(projectName)
 
     @Test
     fun roundtrip() {
@@ -31,9 +31,11 @@ class FileRepositoryTest {
             .build()
 
         repo.upsert(dto)
-        val result = repo.listAll()
+        val result = repo.listAll().first()
+        dto.created = result.created
+        dto.lastUpdated = result.lastUpdated
 
-        result.first().shouldBeEqualTo(dto)
+        result.shouldBeEqualTo(dto)
     }
 
     @Test
@@ -66,6 +68,11 @@ class FileRepositoryTest {
 
         val resultFile1 = result.first { it.id == "file1" }
         val resultFile2 = result.first { it.id == "file2" }
+
+        file1.created = resultFile1.created
+        file1.lastUpdated = resultFile1.lastUpdated
+        file2.created = resultFile2.created
+        file2.lastUpdated = resultFile2.lastUpdated
 
         resultFile1.shouldBeEqualTo(file1)
         resultFile2.shouldBeEqualTo(file2)
