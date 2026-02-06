@@ -28,7 +28,7 @@ import kotlin.uuid.Uuid
 class DesignerDeployClient(
     documentObjectRepository: DocumentObjectRepository,
     imageRepository: Repository<com.quadient.migration.api.dto.migrationmodel.Image>,
-    fileRepository: Repository<com.quadient.migration.api.dto.migrationmodel.File>,
+    attachmentRepository: Repository<com.quadient.migration.api.dto.migrationmodel.Attachment>,
     statusTrackingRepository: StatusTrackingRepository,
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
@@ -38,7 +38,7 @@ class DesignerDeployClient(
 ) : DeployClient(
     documentObjectRepository,
     imageRepository,
-    fileRepository,
+    attachmentRepository,
     statusTrackingRepository,
     textStyleRepository,
     paragraphStyleRepository,
@@ -58,7 +58,7 @@ class DesignerDeployClient(
         val deploymentResult = DeploymentResult(deploymentId)
 
         val orderedDocumentObject = deployOrder(documentObjects)
-        deploymentResult += deployImagesAndFiles(orderedDocumentObject, deploymentId, deploymentTimestamp)
+        deploymentResult += deployImagesAndAttachments(orderedDocumentObject, deploymentId, deploymentTimestamp)
         val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
 
         for (it in orderedDocumentObject) {

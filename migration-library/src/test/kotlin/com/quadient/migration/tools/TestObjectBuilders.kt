@@ -31,9 +31,9 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.FileRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
@@ -42,9 +42,9 @@ import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.StatusEvent
+import com.quadient.migration.persistence.table.AttachmentTable
 import com.quadient.migration.persistence.table.DisplayRuleTable
 import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.FileTable
 import com.quadient.migration.persistence.table.ImageTable
 import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.persistence.table.StatusTrackingEntity
@@ -508,4 +508,4 @@ fun aParaStyleRepository() = ParagraphStyleRepository(ParagraphStyleTable, aProj
 fun aTextStyleRepository() = TextStyleRepository(TextStyleTable, aProjectConfig().name)
 fun aDisplayRuleRepository() = DisplayRuleRepository(DisplayRuleTable, aProjectConfig().name)
 fun aImageRepository() = ImageRepository(ImageTable, aProjectConfig().name)
-fun aFileRepository() = FileRepository(FileTable, aProjectConfig().name)
+fun aAttachmentRepository() = AttachmentRepository(AttachmentTable, aProjectConfig().name)

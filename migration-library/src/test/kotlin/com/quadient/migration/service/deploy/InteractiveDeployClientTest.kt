@@ -3,17 +3,16 @@
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.DocumentObjectFilter
-import com.quadient.migration.api.dto.migrationmodel.File
-import com.quadient.migration.api.dto.migrationmodel.FileRef
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.FileRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
@@ -39,7 +38,7 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
-import com.quadient.migration.tools.model.aFile
+import com.quadient.migration.tools.model.aAttachment
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aTemplate
@@ -64,7 +63,7 @@ import kotlin.uuid.Uuid
 class InteractiveDeployClientTest {
     val documentObjectRepository = mockk<DocumentObjectRepository>()
     val imageRepository = mockk<ImageRepository>()
-    val fileRepository = mockk<FileRepository>()
+    val attachmentRepository = mockk<AttachmentRepository>()
     val textStyleRepository = mockk<TextStyleRepository>()
     val paragraphStyleRepository = mockk<ParagraphStyleRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
@@ -77,7 +76,7 @@ class InteractiveDeployClientTest {
     private val subject = InteractiveDeployClient(
         documentObjectRepository,
         imageRepository,
-        fileRepository,
+        attachmentRepository,
         statusTrackingRepository,
         textStyleRepository,
         paragraphStyleRepository,
@@ -104,7 +103,11 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { documentObjectRepository.find(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every {
+            statusTrackingRepository.deployed(
+                any(), any<Uuid>(), any(), any(), any(), any(), any()
+            )
+        } returns aDeployedStatus("id")
 
         // when
         subject.deployDocumentObjects()
@@ -152,7 +155,11 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { documentObjectRepository.find(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every {
+            statusTrackingRepository.deployed(
+                any(), any<Uuid>(), any(), any(), any(), any(), any()
+            )
+        } returns aDeployedStatus("id")
 
         mockBasicSuccessfulIpsOperations()
 
@@ -182,8 +189,16 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { documentObjectRepository.find(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
-        every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
+        every {
+            statusTrackingRepository.deployed(
+                any(), any<Uuid>(), any(), any(), any(), any(), any()
+            )
+        } returns aDeployedStatus("id")
+        every {
+            statusTrackingRepository.error(
+                any(), any(), any(), any(), any(), any(), any(), any()
+            )
+        } returns aErrorStatus("id")
 
         // when
         subject.deployDocumentObjects()
@@ -223,7 +238,11 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { documentObjectRepository.find(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every {
+            statusTrackingRepository.deployed(
+                any(), any<Uuid>(), any(), any(), any(), any(), any()
+            )
+        } returns aDeployedStatus("id")
 
         mockBasicSuccessfulIpsOperations()
 
@@ -244,18 +263,22 @@ class InteractiveDeployClientTest {
     fun `deployDocumentObjects deploys images and files when used in document objects`() {
         // given
         val image = mockImage(aImage("Bunny"))
-        val file = mockFile(aFile("Report"))
-        val block = mockDocumentObject(aBlock(id = "1", listOf(ImageRef(image.id), FileRef(file.id))))
+        val attachment = mockAttachment(aAttachment("Report"))
+        val block = mockDocumentObject(aBlock(id = "1", listOf(ImageRef(image.id), AttachmentRef(attachment.id))))
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every {
+            statusTrackingRepository.deployed(
+                any(), any<Uuid>(), any(), any(), any(), any(), any()
+            )
+        } returns aDeployedStatus("id")
 
         mockBasicSuccessfulIpsOperations()
         val expectedImageIcmPath = "icm://Interactive/$tenant/Resources/Images/defaultFolder/${image.sourcePath}"
-        val expectedFileIcmPath = "icm://Interactive/$tenant/Resources/Files/defaultFolder/${file.sourcePath}"
+        val expectedFileIcmPath = "icm://Interactive/$tenant/Resources/Files/defaultFolder/${attachment.sourcePath}"
 
         // when
         val deploymentResult = subject.deployDocumentObjects()
@@ -268,7 +291,9 @@ class InteractiveDeployClientTest {
         verify { ipsService.tryUpload(expectedFileIcmPath, any()) }
         verifyBasicIpsOperations(
             listOf(
-                expectedImageIcmPath, expectedFileIcmPath, "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"
+                expectedImageIcmPath,
+                expectedFileIcmPath,
+                "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"
             ), 1
         )
     }
@@ -278,24 +303,34 @@ class InteractiveDeployClientTest {
         // given
         val catImage = mockImage(aImage("Cat", imageType = ImageType.Unknown))
         val dogImage = mockImage(aImage("Dog", sourcePath = null))
-        val missingFile = mockFile(aFile("MissingDoc", sourcePath = null))
-        val skippedFile = mockFile(aFile("SkippedDoc", skip = SkipOptions(true, null, "Not needed")))
+        val missingAttachment = mockAttachment(aAttachment("MissingDoc", sourcePath = null))
+        val skippedAttachment = mockAttachment(aAttachment("SkippedDoc", skip = SkipOptions(true, null, "Not needed")))
 
         val block = mockDocumentObject(
-            aBlock("1", listOf(
-                ImageRef(catImage.id), 
-                ImageRef(dogImage.id),
-                FileRef(missingFile.id),
-                FileRef(skippedFile.id)
-            ))
+            aBlock(
+                "1", listOf(
+                    ImageRef(catImage.id),
+                    ImageRef(dogImage.id),
+                    AttachmentRef(missingAttachment.id),
+                    AttachmentRef(skippedAttachment.id)
+                )
+            )
         )
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { ipsService.upload(any(), any()) } just runs
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
-        every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
+        every {
+            statusTrackingRepository.deployed(
+                any(), any<Uuid>(), any(), any(), any(), any(), any()
+            )
+        } returns aDeployedStatus("id")
+        every {
+            statusTrackingRepository.error(
+                any(), any(), any(), any(), any(), any(), any(), any()
+            )
+        } returns aErrorStatus("id")
 
         mockBasicSuccessfulIpsOperations()
 
@@ -315,14 +350,14 @@ class InteractiveDeployClientTest {
     fun `Multiple times used image or file is deployed only once`() {
         // given
         val image = mockImage(aImage("Bunny"))
-        val file = mockFile(aFile("Report"))
-        val innerBlock = aBlock("10", listOf(ImageRef(image.id), FileRef(file.id)), internal = true)
+        val attachment = mockAttachment(aAttachment("Report"))
+        val innerBlock = aBlock("10", listOf(ImageRef(image.id), AttachmentRef(attachment.id)), internal = true)
         val block = mockDocumentObject(
             aBlock(
                 "1", listOf(
                     aDocumentObjectRef(innerBlock.id),
                     aParagraph(aText(ImageRef(image.id))),
-                    aParagraph(aText(FileRef(file.id)))
+                    aParagraph(aText(AttachmentRef(attachment.id)))
                 )
             )
         )
@@ -331,12 +366,16 @@ class InteractiveDeployClientTest {
         every { documentObjectRepository.find(innerBlock.id) } returns innerBlock
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every {
+            statusTrackingRepository.deployed(
+                any(), any<Uuid>(), any(), any(), any(), any(), any()
+            )
+        } returns aDeployedStatus("id")
         every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
 
         mockBasicSuccessfulIpsOperations()
         val expectedImageIcmPath = "icm://Interactive/$tenant/Resources/Images/defaultFolder/${image.sourcePath}"
-        val expectedFileIcmPath = "icm://Interactive/$tenant/Resources/Files/defaultFolder/${file.sourcePath}"
+        val expectedFileIcmPath = "icm://Interactive/$tenant/Resources/Files/defaultFolder/${attachment.sourcePath}"
 
         // when
         subject.deployDocumentObjects()
@@ -346,7 +385,9 @@ class InteractiveDeployClientTest {
         verify(exactly = 1) { ipsService.tryUpload(expectedFileIcmPath, any()) }
         verifyBasicIpsOperations(
             listOf(
-                expectedImageIcmPath, expectedFileIcmPath, "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"
+                expectedImageIcmPath,
+                expectedFileIcmPath,
+                "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"
             ), 1
         )
     }
@@ -358,7 +399,11 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildStyleLayoutDelta(any(), any()) } returns "<xml />"
 
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every {
+            statusTrackingRepository.deployed(
+                any(), any<Uuid>(), any(), any(), any(), any()
+            )
+        } returns aDeployedStatus("id")
         every { textStyleRepository.listAll() } returns emptyList()
         every { paragraphStyleRepository.listAll() } returns emptyList()
         every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
@@ -388,7 +433,11 @@ class InteractiveDeployClientTest {
         every { documentObjectBuilder.buildStyles(any(), any()) } returns "<xml />"
 
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every {
+            statusTrackingRepository.deployed(
+                any(), any<Uuid>(), any(), any(), any(), any()
+            )
+        } returns aDeployedStatus("id")
         every { textStyleRepository.listAll() } returns emptyList()
         every { paragraphStyleRepository.listAll() } returns emptyList()
         every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Failure("Problem")
@@ -575,8 +624,7 @@ class InteractiveDeployClientTest {
         verify(exactly = 7) { documentObjectRepository.findOrFail(any()) }
         verify {
             spy.deployDocumentObjectsInternal(match { docObjects ->
-                docObjects.size == 7 && docObjects.map { it.id }
-                    .containsAll(listOf("1", "2", "3", "4", "5", "6", "7"))
+                docObjects.size == 7 && docObjects.map { it.id }.containsAll(listOf("1", "2", "3", "4", "5", "6", "7"))
             })
         }
     }
@@ -608,11 +656,23 @@ class InteractiveDeployClientTest {
 
         mockBasicSuccessfulIpsOperations()
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every {
+            statusTrackingRepository.deployed(
+                any(), any<Uuid>(), any(), any(), any(), any(), any()
+            )
+        } returns aDeployedStatus("id")
         every { documentObjectRepository.find(innerBlock.id) } throws IllegalStateException("Not found")
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
-        every { documentObjectBuilder.buildDocumentObject(block, any()) } throws IllegalStateException("Inner block not found")
-        every { statusTrackingRepository.error("B_1", any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("B_1")
+        every {
+            documentObjectBuilder.buildDocumentObject(
+                block, any()
+            )
+        } throws IllegalStateException("Inner block not found")
+        every {
+            statusTrackingRepository.error(
+                "B_1", any(), any(), any(), any(), any(), any(), any()
+            )
+        } returns aErrorStatus("B_1")
 
         // when
         val result = subject.deployDocumentObjects()
@@ -671,7 +731,11 @@ class InteractiveDeployClientTest {
         val dir = resolveTargetDir(config.defaultTargetFolder)
         every { documentObjectBuilder.getImagePath(image) } returns "icm://Interactive/$tenant/Resources/Images/$dir/${image.sourcePath}"
 
-        every { imageRepository.find(image.id) } returns if (success) { image } else { null }
+        every { imageRepository.find(image.id) } returns if (success) {
+            image
+        } else {
+            null
+        }
         if (!sourcePath.isNullOrBlank()) {
             every { storage.read(sourcePath) } returns ByteArray(10)
         }
@@ -679,17 +743,21 @@ class InteractiveDeployClientTest {
         return image
     }
 
-    private fun mockFile(file: File, success: Boolean = true): File {
-        val sourcePath = file.sourcePath
+    private fun mockAttachment(attachment: Attachment, success: Boolean = true): Attachment {
+        val sourcePath = attachment.sourcePath
         val dir = resolveTargetDir(config.defaultTargetFolder)
-        every { documentObjectBuilder.getFilePath(file) } returns "icm://Interactive/$tenant/Resources/Files/$dir/${file.sourcePath}"
+        every { documentObjectBuilder.getAttachmentPath(attachment) } returns "icm://Interactive/$tenant/Resources/Files/$dir/${attachment.sourcePath}"
 
-        every { fileRepository.find(file.id) } returns if (success) { file } else { null }
+        every { attachmentRepository.find(attachment.id) } returns if (success) {
+            attachment
+        } else {
+            null
+        }
         if (!sourcePath.isNullOrBlank()) {
             every { storage.read(sourcePath) } returns ByteArray(10)
         }
 
-        return file
+        return attachment
     }
 
     private fun mockBasicSuccessfulIpsOperations() {
@@ -723,8 +791,16 @@ class InteractiveDeployClientTest {
         @BeforeEach
         fun setup() {
             every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns ""
-            every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns  aDeployedStatus("id")
-            every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
+            every {
+                statusTrackingRepository.deployed(
+                    any(), any<Uuid>(), any(), any(), any(), any(), any()
+                )
+            } returns aDeployedStatus("id")
+            every {
+                statusTrackingRepository.error(
+                    any(), any(), any(), any(), any(), any(), any(), any()
+                )
+            } returns aErrorStatus("id")
             every { statusTrackingRepository.active(any(), any()) } returns aActiveStatus("id")
             every { documentObjectBuilder.getDocumentObjectPath(any()) } returns "icm://path"
             every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
@@ -779,10 +855,26 @@ class InteractiveDeployClientTest {
 
             // then
             verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("D_2", any<Uuid>(), any(), any(), any(), any(), any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("D_3", any<Uuid>(), any(), any(), any(), any(), any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("I_1", any<Uuid>(), any(), any(), any(), any(), any()) }
-            verify(exactly = 1) { statusTrackingRepository.deployed("I_2", any<Uuid>(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) {
+                statusTrackingRepository.deployed(
+                    "D_2", any<Uuid>(), any(), any(), any(), any(), any()
+                )
+            }
+            verify(exactly = 1) {
+                statusTrackingRepository.deployed(
+                    "D_3", any<Uuid>(), any(), any(), any(), any(), any()
+                )
+            }
+            verify(exactly = 1) {
+                statusTrackingRepository.deployed(
+                    "I_1", any<Uuid>(), any(), any(), any(), any(), any()
+                )
+            }
+            verify(exactly = 1) {
+                statusTrackingRepository.deployed(
+                    "I_2", any<Uuid>(), any(), any(), any(), any(), any()
+                )
+            }
         }
 
         @Test
@@ -792,16 +884,23 @@ class InteractiveDeployClientTest {
             givenObjectIsActive("D_1")
             givenObjectIsActive("I_1")
             mockImage(aImage("I_1"), success = false)
-            every { ipsService.deployJld(any(), any(), any(), any(), any()) } returns
-                    OperationResult.Failure("oops")
+            every { ipsService.deployJld(any(), any(), any(), any(), any()) } returns OperationResult.Failure("oops")
 
             // when
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
             verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any(), any()) }
-            verify(exactly = 1) { statusTrackingRepository.error("D_1", any(), any(), any(), any(), any(), "oops", any()) }
-            verify(exactly = 1) { statusTrackingRepository.error("I_1", any(), any(), any(), any(), any(), any(), any()) }
+            verify(exactly = 1) {
+                statusTrackingRepository.error(
+                    "D_1", any(), any(), any(), any(), any(), "oops", any()
+                )
+            }
+            verify(exactly = 1) {
+                statusTrackingRepository.error(
+                    "I_1", any(), any(), any(), any(), any(), any(), any()
+                )
+            }
         }
 
         @Test
@@ -845,7 +944,7 @@ class InteractiveDeployClientTest {
             var count = 0
             for (key in DeployClient.IMAGE_DISALLOWED_METADATA) {
                 // given
-                val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))) )
+                val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))))
                 givenObjectIsActive("D_1")
                 givenObjectIsActive("I_1")
                 mockImage(aImage("I_1", metadata = mapOf(key to listOf(MetadataPrimitive.Str("value")))))
@@ -868,7 +967,7 @@ class InteractiveDeployClientTest {
         @Test
         fun `deployImages allows Subject metadata`() {
             // given
-            val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))) )
+            val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))))
             givenObjectIsActive("D_1")
             givenObjectIsActive("I_1")
             mockImage(aImage("I_1", metadata = mapOf("other" to listOf(MetadataPrimitive.Str("value")))))
@@ -877,10 +976,16 @@ class InteractiveDeployClientTest {
             val result = subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            assertEquals(listOf(
-                DeploymentInfo("I_1", ResourceType.Image, "icm://Interactive/tenant/Resources/Images/defaultFolder/Image_I_1.jpg"),
-                DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path"),
-            ), result.deployed)
+            assertEquals(
+                listOf(
+                    DeploymentInfo(
+                        "I_1",
+                        ResourceType.Image,
+                        "icm://Interactive/tenant/Resources/Images/defaultFolder/Image_I_1.jpg"
+                    ),
+                    DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path"),
+                ), result.deployed
+            )
         }
 
         private fun givenObjectIsActive(id: String) {

@@ -3,7 +3,7 @@ package com.quadient.migration.service
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.FileRepository
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
@@ -18,7 +18,7 @@ class ReferenceValidator(
     private val variableStructureRepository: VariableStructureRepository,
     private val displayRuleRepository: DisplayRuleRepository,
     private val imageRepository: ImageRepository,
-    private val fileRepository: FileRepository,
+    private val attachmentRepository: AttachmentRepository,
 ) {
     /**
      * Validates all objects in the database.
@@ -34,11 +34,11 @@ class ReferenceValidator(
         val dataStructures = variableStructureRepository.listAll()
         val displayRules = displayRuleRepository.listAll()
         val images = imageRepository.listAll()
-        val files = fileRepository.listAll()
+        val attachments = attachmentRepository.listAll()
         val alreadyValidatedRefs = mutableSetOf<Ref>()
 
         val missingRefs =
-            (documentObjects + variables + paragraphStyles + textStyles + dataStructures + displayRules + images + files).mapNotNull {
+            (documentObjects + variables + paragraphStyles + textStyles + dataStructures + displayRules + images + attachments).mapNotNull {
                     validate(it, alreadyValidatedRefs).missingRefs.ifEmpty { null }
         }.flatten()
 
@@ -133,13 +133,13 @@ class ReferenceValidator(
                     }
                 }
 
-                is FileRef -> {
-                    val file = fileRepository.find(current.id)
+                is AttachmentRef -> {
+                    val attachment = attachmentRepository.find(current.id)
 
-                    if (file != null) {
+                    if (attachment != null) {
                         validatedRefs.add(current)
                         alreadyValidRefs.add(current)
-                        queue.addAll(file.collectRefs())
+                        queue.addAll(attachment.collectRefs())
                     } else {
                         missingRefs.add(current)
                     }

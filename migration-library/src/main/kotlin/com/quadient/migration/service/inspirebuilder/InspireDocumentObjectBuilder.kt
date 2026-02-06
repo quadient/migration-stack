@@ -8,8 +8,8 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
-import com.quadient.migration.api.dto.migrationmodel.File
-import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
 import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.Image
@@ -39,7 +39,7 @@ import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.FileType
+import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.IcmPath
@@ -97,7 +97,7 @@ abstract class InspireDocumentObjectBuilder(
     protected val variableStructureRepository: Repository<VariableStructure>,
     protected val displayRuleRepository: Repository<DisplayRule>,
     protected val imageRepository: Repository<Image>,
-    protected val fileRepository: Repository<File>,
+    protected val attachmentRepository: Repository<Attachment>,
     protected val projectConfig: ProjectConfig,
     protected val ipsService: IpsService,
 ) {
@@ -115,11 +115,11 @@ abstract class InspireDocumentObjectBuilder(
 
     abstract fun getImagePath(image: Image): String
 
-    abstract fun getFilePath(
-        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, fileType: FileType
+    abstract fun getAttachmentPath(
+        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType
     ): String
 
-    abstract fun getFilePath(file: File): String
+    abstract fun getAttachmentPath(attachment: Attachment): String
 
     abstract fun getStyleDefinitionPath(extension: String = "wfd"): String
 
@@ -281,7 +281,7 @@ abstract class InspireDocumentObjectBuilder(
                 }
 
                 is DocumentObjectRef -> flowModels.add(DocumentObject(contentPart))
-                is FileRef -> flowModels.add(File(contentPart))
+                is AttachmentRef -> flowModels.add(Attachment(contentPart))
                 is Area -> mutableContent.addAll(idx + 1, contentPart.content)
                 is FirstMatch -> flowModels.add(FirstMatch(contentPart))
                 is SelectByLanguage -> flowModels.add(SelectByLanguage(contentPart))
@@ -294,7 +294,7 @@ abstract class InspireDocumentObjectBuilder(
         return flowModels.mapNotNull {
             when (it) {
                 is FlowModel.DocumentObject -> buildDocumentObjectRef(layout, variableStructure, it.ref, languages)
-                is FlowModel.File -> buildFileRef(layout, it.ref)
+                is FlowModel.Attachment -> buildAttachmentRef(layout, it.ref)
                 is FlowModel.Composite -> {
                     if (flowName == null) {
                         buildCompositeFlow(layout, variableStructure, it.parts, null, languages)
@@ -331,7 +331,7 @@ abstract class InspireDocumentObjectBuilder(
     sealed interface FlowModel {
         data class Composite(val parts: List<DocumentContent>) : FlowModel
         data class DocumentObject(val ref: DocumentObjectRef) : FlowModel
-        data class File(val ref: FileRef) : FlowModel
+        data class Attachment(val ref: AttachmentRef) : FlowModel
         data class FirstMatch(val model: com.quadient.migration.api.dto.migrationmodel.FirstMatch) : FlowModel
         data class SelectByLanguage(val model: com.quadient.migration.api.dto.migrationmodel.SelectByLanguage) : FlowModel
     }
@@ -610,35 +610,35 @@ abstract class InspireDocumentObjectBuilder(
 
     protected abstract fun applyImageAlternateText(layout: Layout, image: WfdXmlImage, alternateText: String)
 
-    private fun buildFileRef(
+    private fun buildAttachmentRef(
         layout: Layout,
-        fileRef: FileRef,
+        attachmentRef: AttachmentRef,
     ): Flow? {
-        val fileModel = fileRepository.findOrFail(fileRef.id)
+        val attachmentModel = attachmentRepository.findOrFail(attachmentRef.id)
 
-        if (fileModel.skip.skipped && fileModel.skip.placeholder == null) {
-            val reason = fileModel.skip.reason?.let { "with reason: $it" } ?: "without reason"
-            logger.debug("File ${fileRef.id} is set to be skipped without placeholder $reason.")
+        if (attachmentModel.skip.skipped && attachmentModel.skip.placeholder == null) {
+            val reason = attachmentModel.skip.reason?.let { "with reason: $it" } ?: "without reason"
+            logger.debug("Attachment ${attachmentRef.id} is set to be skipped without placeholder $reason.")
             return null
-        } else if (fileModel.skip.skipped && fileModel.skip.placeholder != null) {
-            val reason = fileModel.skip.reason?.let { "and reason: $it" } ?: "without reason"
-            logger.debug("File ${fileRef.id} is set to be skipped with placeholder $reason.")
+        } else if (attachmentModel.skip.skipped && attachmentModel.skip.placeholder != null) {
+            val reason = attachmentModel.skip.reason?.let { "and reason: $it" } ?: "without reason"
+            logger.debug("Attachment ${attachmentRef.id} is set to be skipped with placeholder $reason.")
             val flow = layout.addFlow().setType(Flow.Type.SIMPLE)
-            flow.addParagraph().addText().appendText(fileModel.skip.placeholder)
+            flow.addParagraph().addText().appendText(attachmentModel.skip.placeholder)
             return flow
         }
 
-        if (fileModel.sourcePath.isNullOrBlank()) {
+        if (attachmentModel.sourcePath.isNullOrBlank()) {
             throw IllegalStateException(
-                "File '${fileModel.nameOrId()}' has missing source path and is not set to be skipped."
+                "Attachment '${attachmentModel.nameOrId()}' has missing source path and is not set to be skipped."
             )
         }
 
-        val flow = getFlowByName(layout, fileModel.nameOrId()) ?: run {
+        val flow = getFlowByName(layout, attachmentModel.nameOrId()) ?: run {
             layout.addFlow()
-                .setName(fileModel.nameOrId())
+                .setName(attachmentModel.nameOrId())
                 .setType(Flow.Type.DIRECT_EXTERNAL)
-                .setLocation(getFilePath(fileModel))
+                .setLocation(getAttachmentPath(attachmentModel))
         }
 
         return flow
@@ -779,7 +779,7 @@ abstract class InspireDocumentObjectBuilder(
                         currentText.appendFlow(flow)
                     }
 
-                    is FileRef -> buildFileRef(layout, it)?.also { flow ->
+                    is AttachmentRef -> buildAttachmentRef(layout, it)?.also { flow ->
                         currentText.appendFlow(flow)
                     }
 

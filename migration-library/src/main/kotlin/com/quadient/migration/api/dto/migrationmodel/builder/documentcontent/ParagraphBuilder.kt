@@ -4,7 +4,7 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
@@ -276,20 +276,20 @@ class ParagraphBuilder {
         }
 
         /**
-         * Adds a file reference to the text content.
-         * @param fileId The ID of the file to reference.
+         * Adds an attachment reference to the text content.
+         * @param attachmentId The ID of the attachment to reference.
          * @return The current instance of [TextBuilder] for method chaining.
          */
-        fun fileRef(fileId: String) = apply {
-            content.add(FileRef(fileId))
+        fun attachmentRef(attachmentId: String) = apply {
+            content.add(AttachmentRef(attachmentId))
         }
 
         /**
-         * Adds a file reference to the text content.
-         * @param ref The file reference to add.
+         * Adds an attachment reference to the text content.
+         * @param ref The attachment reference to add.
          * @return The current instance of [TextBuilder] for method chaining.
          */
-        fun fileRef(ref: FileRef) = apply {
+        fun attachmentRef(ref: AttachmentRef) = apply {
             content.add(ref)
         }
 

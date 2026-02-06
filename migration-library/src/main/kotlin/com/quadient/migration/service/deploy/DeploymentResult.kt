@@ -31,7 +31,7 @@ data class DeploymentInfo(
 )
 
 enum class ResourceType {
-    DocumentObject, Image, File, TextStyle, ParagraphStyle
+    DocumentObject, Image, Attachment, TextStyle, ParagraphStyle
 }
 
 data class DeploymentError(val id: String, val message: String)
@@ -109,24 +109,24 @@ class ResultTracker(
         deploymentResult.warnings.add(DeploymentWarning(id, message))
     }
 
-    fun deployedFile(id: String, icmPath: String) {
+    fun deployedAttachment(id: String, icmPath: String) {
         statusTrackingRepository.deployed(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
-            resourceType = ResourceType.File,
+            resourceType = ResourceType.Attachment,
             output = inspireOutput,
             icmPath = icmPath,
         )
-        deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.File, icmPath))
+        deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.Attachment, icmPath))
     }
 
-    fun errorFile(id: String, icmPath: String?, message: String) {
+    fun errorAttachment(id: String, icmPath: String?, message: String) {
         statusTrackingRepository.error(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
-            resourceType = ResourceType.File,
+            resourceType = ResourceType.Attachment,
             output = inspireOutput,
             icmPath = icmPath,
             message = message,
@@ -134,12 +134,12 @@ class ResultTracker(
         deploymentResult.errors.add(DeploymentError(id, message))
     }
 
-    fun warningFile(id: String, icmPath: String?, message: String) {
+    fun warningAttachment(id: String, icmPath: String?, message: String) {
         statusTrackingRepository.error(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
-            resourceType = ResourceType.File,
+            resourceType = ResourceType.Attachment,
             output = inspireOutput,
             icmPath = icmPath,
             message = message,

@@ -37,7 +37,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
     val variableStructureRepository: Repository<VariableStructure>
     val displayRuleRepository: Repository<DisplayRule>
     val imageRepository: Repository<Image>
-    val fileRepository: Repository<File>
+    val attachmentRepository: Repository<Attachment>
     val statusTrackingRepository = StatusTrackingRepository(projectName)
     val mappingRepository: MappingRepository
 
@@ -73,7 +73,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
         val variableStructureRepository = VariableStructureRepository(VariableStructureTable, projectName)
         val displayRuleRepository = DisplayRuleRepository(DisplayRuleTable, projectName)
         val imageRepository = ImageRepository(ImageTable, projectName)
-        val fileRepository = FileRepository(FileTable, projectName)
+        val attachmentRepository = AttachmentRepository(AttachmentTable, projectName)
 
         this.variableRepository = variableRepository
         this.documentObjectRepository = documentObjectRepository
@@ -82,13 +82,13 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
         this.variableStructureRepository = variableStructureRepository
         this.displayRuleRepository = displayRuleRepository
         this.imageRepository = imageRepository
-        this.fileRepository = fileRepository
+        this.attachmentRepository = attachmentRepository
 
         this.mappingRepository = MappingRepository(
             projectName,
             documentObjectRepository,
             imageRepository,
-            fileRepository,
+            attachmentRepository,
             textStyleRepository,
             paragraphStyleRepository,
             variableRepository,
@@ -102,7 +102,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
         repositories.add(variableStructureRepository)
         repositories.add(displayRuleRepository)
         repositories.add(imageRepository)
-        repositories.add(fileRepository)
+        repositories.add(attachmentRepository)
 
         this.referenceValidator = ReferenceValidator(
             documentObjectRepository,
@@ -112,7 +112,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
             variableStructureRepository,
             displayRuleRepository,
             imageRepository,
-            fileRepository,
+            attachmentRepository,
         )
 
         val inspireDocumentObjectBuilder: InspireDocumentObjectBuilder
@@ -126,7 +126,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                     variableStructureRepository,
                     displayRuleRepository,
                     imageRepository,
-                    fileRepository,
+                    attachmentRepository,
                     projectConfig,
                     ipsService,
                 )
@@ -134,7 +134,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                 InteractiveDeployClient(
                     documentObjectRepository,
                     imageRepository,
-                    fileRepository,
+                    attachmentRepository,
                     statusTrackingRepository,
                     textStyleRepository,
                     paragraphStyleRepository,
@@ -152,7 +152,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                     variableStructureRepository,
                     displayRuleRepository,
                     imageRepository,
-                    fileRepository,
+                    attachmentRepository,
                     projectConfig,
                     ipsService,
                 )
@@ -160,7 +160,7 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                 DesignerDeployClient(
                     documentObjectRepository,
                     imageRepository,
-                    fileRepository,
+                    attachmentRepository,
                     statusTrackingRepository,
                     textStyleRepository,
                     paragraphStyleRepository,

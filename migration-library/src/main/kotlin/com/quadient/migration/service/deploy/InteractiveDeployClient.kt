@@ -6,7 +6,7 @@ import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.File
+import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
@@ -31,7 +31,7 @@ import kotlin.uuid.Uuid
 class InteractiveDeployClient(
     documentObjectRepository: DocumentObjectRepository,
     imageRepository: Repository<Image>,
-    fileRepository: Repository<File>,
+    attachmentRepository: Repository<Attachment>,
     statusTrackingRepository: StatusTrackingRepository,
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
@@ -42,7 +42,7 @@ class InteractiveDeployClient(
 ) : DeployClient(
     documentObjectRepository,
     imageRepository,
-    fileRepository,
+    attachmentRepository,
     statusTrackingRepository,
     textStyleRepository,
     paragraphStyleRepository,
@@ -112,7 +112,7 @@ class InteractiveDeployClient(
 
         val orderedDocumentObject = deployOrder(documentObjects)
 
-        deploymentResult += deployImagesAndFiles(orderedDocumentObject, deploymentId, deploymentTimestamp)
+        deploymentResult += deployImagesAndAttachments(orderedDocumentObject, deploymentId, deploymentTimestamp)
         val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
 
         for (it in orderedDocumentObject) {

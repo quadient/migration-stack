@@ -11,7 +11,7 @@ class MappingRepository(
     private val projectName: String,
     private val documentObjectRepository: DocumentObjectRepository,
     private val imageRepository: ImageRepository,
-    private val fileRepository: FileRepository,
+    private val attachmentRepository: AttachmentRepository,
     private val textStyleRepository: TextStyleRepository,
     private val paragraphStyleRepository: ParagraphStyleRepository,
     private val variableRepository: VariableRepository,
@@ -28,7 +28,7 @@ class MappingRepository(
             when (mapping.mapping) {
                 is MappingItem.DocumentObject -> applyDocumentObjectMapping(mapping.id)
                 is MappingItem.Image -> applyImageMapping(mapping.id)
-                is MappingItem.File -> applyFileMapping(mapping.id)
+                is MappingItem.Attachment -> applyAttachmentMapping(mapping.id)
                 is MappingItem.TextStyle -> applyTextStyleMapping(mapping.id)
                 is MappingItem.ParagraphStyle -> applyParagraphStyleMapping(mapping.id)
                 is MappingItem.Variable -> applyVariableMapping(mapping.id)
@@ -105,25 +105,25 @@ class MappingRepository(
         imageRepository.upsert(mapping.apply(img))
     }
 
-    fun getFileMapping(id: String): MappingItem.File {
-        return (internalRepository.find<MappingItemEntity.File>(id) ?: MappingItemEntity.File(
+    fun getAttachmentMapping(id: String): MappingItem.Attachment {
+        return (internalRepository.find<MappingItemEntity.Attachment>(id) ?: MappingItemEntity.Attachment(
             name = null,
             targetFolder = null,
             sourcePath = null,
-            fileType = null,
+            attachmentType = null,
             skip = null,
-        )).toDto() as MappingItem.File
+        )).toDto() as MappingItem.Attachment
     }
 
-    fun applyFileMapping(id: String) {
-        val mapping = internalRepository.find<MappingItemEntity.File>(id)
-        val file = fileRepository.find(id)
+    fun applyAttachmentMapping(id: String) {
+        val mapping = internalRepository.find<MappingItemEntity.Attachment>(id)
+        val attachment = attachmentRepository.find(id)
 
-        if (mapping == null || file == null) {
+        if (mapping == null || attachment == null) {
             return
         }
 
-        fileRepository.upsert(mapping.apply(file))
+        attachmentRepository.upsert(mapping.apply(attachment))
     }
 
     fun getTextStyleMapping(id: String): MappingItem.TextStyle {

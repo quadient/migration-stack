@@ -1,7 +1,7 @@
 //! ---
-//! displayName: Export Files
+//! displayName: Export Attachments
 //! category: Mapping
-//! description: Creates CSV files with file details from the migration project. The generated CSV columns can be updated and later imported back into the database using a dedicated import task.
+//! description: Creates CSV files with attachment details from the migration project. The generated CSV columns can be updated and later imported back into the database using a dedicated import task.
 //! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping
@@ -17,28 +17,28 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def filesPath = Mapping.csvPath(binding, migration.projectConfig.name, "files")
+def attachmentsPath = Mapping.csvPath(binding, migration.projectConfig.name, "attachments")
 
-run(migration, filesPath)
+run(migration, attachmentsPath)
 
-static void run(Migration migration, Path filesDstPath) {
-    def files = migration.fileRepository.listAll()
+static void run(Migration migration, Path attachmentsDstPath) {
+    def attachments = migration.attachmentRepository.listAll()
 
-    filesDstPath.toFile().createParentDirectories()
+    attachmentsDstPath.toFile().createParentDirectories()
 
-    filesDstPath.toFile().withWriter { writer ->
-        def headers = ["id", "name", "sourcePath", "fileType", "targetFolder", "status", "skip", "skipPlaceholder", "skipReason", Mapping.displayHeader("originalName", true), Mapping.displayHeader("originLocations", true)]
+    attachmentsDstPath.toFile().withWriter { writer ->
+        def headers = ["id", "name", "sourcePath", "attachmentType", "targetFolder", "status", "skip", "skipPlaceholder", "skipReason", Mapping.displayHeader("originalName", true), Mapping.displayHeader("originLocations", true)]
         writer.writeLine(headers.join(","))
-        files.each { obj ->
+        attachments.each { obj ->
             def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(obj.id,
-                    ResourceType.File,
+                    ResourceType.Attachment,
                     migration.projectConfig.inspireOutput)
 
             def builder = new StringBuilder()
             builder.append(Csv.serialize(obj.id))
             builder.append("," + Csv.serialize(obj.name))
             builder.append("," + Csv.serialize(obj.sourcePath))
-            builder.append("," + Csv.serialize(obj.fileType))
+            builder.append("," + Csv.serialize(obj.attachmentType))
             builder.append("," + Csv.serialize(obj.targetFolder))
             builder.append("," + Csv.serialize(status.class.simpleName))
             builder.append("," + Csv.serialize(obj.skip.skipped))

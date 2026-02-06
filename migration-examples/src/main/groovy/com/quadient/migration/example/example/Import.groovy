@@ -9,18 +9,18 @@ package com.quadient.migration.example.example
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
-import com.quadient.migration.api.dto.migrationmodel.builder.FileBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
+import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.FileType
 import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
@@ -153,11 +153,11 @@ def logo = new ImageBuilder("logo")
 
 def logoPdfFile = this.class.getClassLoader().getResource('exampleResources/migrationModelExample/logo.pdf')
 migration.storage.write("logo.pdf", logoPdfFile.bytes)
-def logoDocument = new FileBuilder("logoDocument").fileType(FileType.Document)
+def logoAttachment = new AttachmentBuilder("logoAttachment").attachmentType(AttachmentType.Attachment)
         .sourcePath("logo.pdf")
         .build()
 
-migration.fileRepository.upsert(logoDocument)
+migration.attachmentRepository.upsert(logoAttachment)
 
 // Table containing some data with the first address row being optionally hidden
 // by using displayRuleRef to the display displayHeaderRule defined above.
@@ -405,7 +405,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         }
             .documentObjectRef(signature.id)
     }
-    .fileRef(logoDocument.id)
+    .fileRef(logoAttachment.id)
     .variableStructureRef(variableStructure.id)
     .build()
 

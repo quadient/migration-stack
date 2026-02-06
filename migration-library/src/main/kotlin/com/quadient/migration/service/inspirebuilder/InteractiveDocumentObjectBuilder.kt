@@ -8,7 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.File
+import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
@@ -19,7 +19,7 @@ import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.FileType
+import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
@@ -40,7 +40,7 @@ class InteractiveDocumentObjectBuilder(
     variableStructureRepository: Repository<com.quadient.migration.api.dto.migrationmodel.VariableStructure>,
     displayRuleRepository: Repository<com.quadient.migration.api.dto.migrationmodel.DisplayRule>,
     imageRepository: Repository<Image>,
-    fileRepository: Repository<File>,
+    attachmentRepository: Repository<Attachment>,
     projectConfig: ProjectConfig,
     ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(
@@ -51,7 +51,7 @@ class InteractiveDocumentObjectBuilder(
     variableStructureRepository,
     displayRuleRepository,
     imageRepository,
-    fileRepository,
+    attachmentRepository,
     projectConfig,
     ipsService,
 ) {
@@ -106,27 +106,27 @@ class InteractiveDocumentObjectBuilder(
     override fun getImagePath(image: Image) =
         getImagePath(image.id, image.imageType ?: ImageType.Unknown, image.name, image.targetFolder?.let { IcmPath.from(it) }, image.sourcePath)
 
-    override fun getFilePath(
-        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, fileType: FileType
+    override fun getAttachmentPath(
+        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType
     ): String {
-        val baseFileName = name ?: id
-        val fileName = appendExtensionIfMissing(baseFileName, sourcePath)
+        val baseAttachmentName = name ?: id
+        val attachmentName = appendExtensionIfMissing(baseAttachmentName, sourcePath)
 
         if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(fileName).toString()
+            return targetFolder.join(attachmentName).toString()
         }
 
-        val fileConfigPath = when (fileType) {
-            FileType.Document -> projectConfig.paths.documents.orDefault("Documents")
-            FileType.Attachment -> projectConfig.paths.attachments.orDefault("Attachments")
+        val fileConfigPath = when (attachmentType) {
+            AttachmentType.Attachment -> projectConfig.paths.attachments.orDefault("Attachments")
+            AttachmentType.Document -> projectConfig.paths.documents.orDefault("Documents")
         }
 
         return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant).join(fileConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName).toString()
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(attachmentName).toString()
     }
 
-    override fun getFilePath(file: File): String =
-        getFilePath(file.id, file.name, file.targetFolder?.let { IcmPath.from(it) }, file.sourcePath, file.fileType)
+    override fun getAttachmentPath(attachment: Attachment): String =
+        getAttachmentPath(attachment.id, attachment.name, attachment.targetFolder?.let { IcmPath.from(it) }, attachment.sourcePath, attachment.attachmentType)
 
     override fun getStyleDefinitionPath(extension: String): String {
         val styleDefConfigPath = projectConfig.styleDefinitionPath

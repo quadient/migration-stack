@@ -1,16 +1,14 @@
 package com.quadient.migration.tools.model
 
 import com.quadient.migration.api.dto.migrationmodel.Area
+import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
-import com.quadient.migration.api.dto.migrationmodel.File
-import com.quadient.migration.api.dto.migrationmodel.FirstMatch
 import com.quadient.migration.api.dto.migrationmodel.Image
-import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefOrRef
@@ -31,6 +29,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.shared.Alignment
+import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
 import com.quadient.migration.shared.Color
@@ -38,7 +37,6 @@ import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.FileType
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.IcmPath
@@ -392,17 +390,17 @@ fun aImage(
     )
 }
 
-fun aFile(
+fun aAttachment(
     id: String,
-    name: String = "File_$id",
+    name: String = "Attachment_$id",
     sourcePath: String? = "$name.pdf",
-    fileType: FileType = FileType.Document,
+    attachmentType: AttachmentType = AttachmentType.Document,
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
     targetFolder: String? = null,
     skip: SkipOptions = SkipOptions(false, null, null),
-): File {
-    return File(
+): Attachment {
+    return Attachment(
         id = id,
         name = name,
         originLocations = originLocations,
@@ -410,7 +408,7 @@ fun aFile(
         created = null,
         lastUpdated = null,
         sourcePath = sourcePath,
-        fileType = fileType,
+        attachmentType = attachmentType,
         targetFolder = targetFolder,
         skip = skip,
     )

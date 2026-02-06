@@ -15,20 +15,20 @@ import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.FileRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.*
-import com.quadient.migration.shared.FileType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
@@ -46,7 +46,7 @@ import com.quadient.migration.tools.model.aVariable
 import com.quadient.migration.tools.model.aDisplayRule
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
-import com.quadient.migration.tools.model.aFile
+import com.quadient.migration.tools.model.aAttachment
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aRow
@@ -77,7 +77,7 @@ class DesignerDocumentObjectBuilderTest {
     val variableStructureRepository = mockk<VariableStructureRepository>()
     val displayRuleRepository = mockk<DisplayRuleRepository>()
     val imageRepository = mockk<ImageRepository>()
-    val fileRepository = mockk<FileRepository>()
+    val attachmentRepository = mockk<AttachmentRepository>()
     val ipsService = mockk<IpsService>()
     val config = aProjectConfig(targetDefaultFolder = "defaultFolder")
 
@@ -742,7 +742,7 @@ class DesignerDocumentObjectBuilderTest {
         variableStructureRepository,
         displayRuleRepository,
         imageRepository,
-        fileRepository,
+        attachmentRepository,
         config,
         ipsService,
     )
@@ -905,17 +905,17 @@ class DesignerDocumentObjectBuilderTest {
         @ParameterizedTest
         @CsvSource(
             // fileType,paths.documents,paths.attachments,targetFolder,defaultTargetFolder,expected
-            "Document,,,,                   ,icm://File_F1.pdf",
-            "Document,,,relative,           ,icm://relative/File_F1.pdf",
-            "Document,Docs,,relative,       ,icm://Docs/relative/File_F1.pdf",
-            "Document,,,icm://absolute/,    ,icm://absolute/File_F1.pdf",
-            "Document,,,                ,def,icm://def/File_F1.pdf",
-            "Attachment,,,,                 ,icm://File_F1.pdf",
-            "Attachment,,Attach,relative,   ,icm://Attach/relative/File_F1.pdf",
-            "Attachment,,,icm://absolute/,  ,icm://absolute/File_F1.pdf",
+            "Document,,,,                   ,icm://Attachment_F1.pdf",
+            "Document,,,relative,           ,icm://relative/Attachment_F1.pdf",
+            "Document,Docs,,relative,       ,icm://Docs/relative/Attachment_F1.pdf",
+            "Document,,,icm://absolute/,    ,icm://absolute/Attachment_F1.pdf",
+            "Document,,,                ,def,icm://def/Attachment_F1.pdf",
+            "Attachment,,,,                 ,icm://Attachment_F1.pdf",
+            "Attachment,,Attach,relative,   ,icm://Attach/relative/Attachment_F1.pdf",
+            "Attachment,,,icm://absolute/,  ,icm://absolute/Attachment_F1.pdf",
         )
-        fun testFilePath(
-            fileType: String,
+        fun testAttachmentPath(
+            attachmentType: String,
             documentsPath: String?,
             attachmentsPath: String?,
             targetFolder: String?,
@@ -931,20 +931,20 @@ class DesignerDocumentObjectBuilderTest {
                 targetDefaultFolder = defaultTargetFolder.nullToNull(),
             )
             val pathTestSubject = aSubject(config)
-            val file = aFile("F1", targetFolder = targetFolder.nullToNull(), fileType = FileType.valueOf(fileType))
+            val attachment = aAttachment("F1", targetFolder = targetFolder.nullToNull(), attachmentType = AttachmentType.valueOf(attachmentType))
 
-            val path = pathTestSubject.getFilePath(file)
+            val path = pathTestSubject.getAttachmentPath(attachment)
 
             path.shouldBeEqualTo(expected)
         }
 
         @Test
-        fun `file path appends extension from sourcePath when fileName lacks one`() {
+        fun `attachment path appends extension from sourcePath when fileName lacks one`() {
             val config = aProjectConfig(output = InspireOutput.Designer)
             val pathTestSubject = aSubject(config)
-            val file = aFile("F1", name = "document", sourcePath = "C:/files/doc.pdf")
+            val attachment = aAttachment("F1", name = "document", sourcePath = "C:/files/doc.pdf")
 
-            val path = pathTestSubject.getFilePath(file)
+            val path = pathTestSubject.getAttachmentPath(attachment)
 
             path.shouldBeEqualTo("icm://document.pdf")
         }
@@ -953,9 +953,9 @@ class DesignerDocumentObjectBuilderTest {
         fun `file path preserves fileName extension when present`() {
             val config = aProjectConfig(output = InspireOutput.Designer)
             val pathTestSubject = aSubject(config)
-            val file = aFile("F1", name = "report.docx", sourcePath = "file.pdf")
+            val attachment = aAttachment("F1", name = "report.docx", sourcePath = "file.pdf")
 
-            val path = pathTestSubject.getFilePath(file)
+            val path = pathTestSubject.getAttachmentPath(attachment)
 
             path.shouldBeEqualTo("icm://report.docx")
         }

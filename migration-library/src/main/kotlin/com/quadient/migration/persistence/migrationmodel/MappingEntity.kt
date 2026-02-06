@@ -12,7 +12,7 @@ import org.jetbrains.exposed.v1.dao.CompositeEntity
 import org.jetbrains.exposed.v1.dao.CompositeEntityClass
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject as DocumentObjectDto
 import com.quadient.migration.api.dto.migrationmodel.Image as ImageDto
-import com.quadient.migration.api.dto.migrationmodel.File as FileDto
+import com.quadient.migration.api.dto.migrationmodel.Attachment as AttachmentDto
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle as ParagraphStyleDto
 import com.quadient.migration.api.dto.migrationmodel.TextStyle as TextStyleDto
 import com.quadient.migration.api.dto.migrationmodel.Variable as VariableDto
@@ -106,19 +106,19 @@ sealed class MappingItemEntity {
     }
 
     @Serializable
-    data class File(
+    data class Attachment(
         override val name: String?,
         val targetFolder: String?,
         val sourcePath: String?,
-        val fileType: FileType?,
+        val attachmentType: AttachmentType?,
         var skip: SkipOptions? = null,
     ) : MappingItemEntity() {
-        fun apply(item: FileDto): FileDto {
+        fun apply(item: AttachmentDto): AttachmentDto {
             return item.copy(
                 name = name,
                 targetFolder = targetFolder,
                 sourcePath = sourcePath,
-                fileType = fileType ?: item.fileType,
+                attachmentType = attachmentType ?: item.attachmentType,
                 skip = skip ?: SkipOptions(false, null, null),
             )
         }
@@ -337,12 +337,12 @@ sealed class MappingItemEntity {
                 )
             }
 
-            is File -> {
-                MappingItem.File(
+            is Attachment -> {
+                MappingItem.Attachment(
                     name = this.name,
                     targetFolder = this.targetFolder,
                     sourcePath = this.sourcePath,
-                    fileType = this.fileType,
+                    attachmentType = this.attachmentType,
                     skip = this.skip,
                 )
             }
