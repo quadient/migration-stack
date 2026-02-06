@@ -16,8 +16,8 @@ data class ParagraphStyle @JvmOverloads constructor(
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
     var definition: ParagraphStyleDefOrRef,
-    override val created: Instant? = null,
-    override val lastUpdated: Instant? = null,
+    override var created: Instant? = null,
+    override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
         return when (definition) {

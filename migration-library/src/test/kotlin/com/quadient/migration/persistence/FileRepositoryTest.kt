@@ -31,9 +31,11 @@ class FileRepositoryTest {
             .build()
 
         repo.upsert(dto)
-        val result = repo.listAll()
+        val result = repo.listAll().first()
+        dto.created = result.created
+        dto.lastUpdated = result.lastUpdated
 
-        result.first().shouldBeEqualTo(dto)
+        result.shouldBeEqualTo(dto)
     }
 
     @Test

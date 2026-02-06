@@ -56,7 +56,7 @@ class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) 
             }
 
             this[DocumentObjectTable.id] = dto.id
-            this[DocumentObjectTable.projectName] = projectName
+            this[DocumentObjectTable.projectName] = this@DocumentObjectRepository.projectName
             this[DocumentObjectTable.type] = dto.type.name
             this[DocumentObjectTable.name] = dto.name
             this[DocumentObjectTable.content] = dto.content.toDb()
@@ -95,7 +95,7 @@ class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) 
 
             table.upsertReturning(table.id, table.projectName) {
                 it[DocumentObjectTable.id] = dto.id
-                it[DocumentObjectTable.projectName] = projectName
+                it[DocumentObjectTable.projectName] = this@DocumentObjectRepository.projectName
                 it[DocumentObjectTable.type] = dto.type.name
                 it[DocumentObjectTable.name] = dto.name
                 it[DocumentObjectTable.content] = dto.content.toDb()

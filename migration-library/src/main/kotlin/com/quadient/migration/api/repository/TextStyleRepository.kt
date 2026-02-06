@@ -73,7 +73,7 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
 
             table.upsertReturning(table.id, table.projectName) {
                 it[TextStyleTable.id] = dto.id
-                it[TextStyleTable.projectName] = projectName
+                it[TextStyleTable.projectName] = this@TextStyleRepository.projectName
                 it[TextStyleTable.name] = dto.name
                 it[TextStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
                 it[TextStyleTable.customFields] = dto.customFields.inner
@@ -95,7 +95,7 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
             }
 
             this[TextStyleTable.id] = dto.id
-            this[TextStyleTable.projectName] = projectName
+            this[TextStyleTable.projectName] = this@TextStyleRepository.projectName
             this[TextStyleTable.name] = dto.name
             this[TextStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
             this[TextStyleTable.customFields] = dto.customFields.inner

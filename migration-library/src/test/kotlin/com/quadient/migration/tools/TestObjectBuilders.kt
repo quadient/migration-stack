@@ -227,8 +227,6 @@ fun aVariable(
     name = name,
     originLocations = originLocations,
     customFields = CustomFieldMap(customFields),
-    created = kotlinx.datetime.Clock.System.now(),
-    lastUpdated = kotlinx.datetime.Clock.System.now(),
     dataType = dataType,
     defaultValue = defaultValue
 )

@@ -13,8 +13,8 @@ data class File @JvmOverloads constructor(
     var targetFolder: String?,
     var fileType: FileType,
     val skip: SkipOptions,
-    override val created: Instant? = null,
-    override val lastUpdated: Instant? = null,
+    override var created: Instant? = null,
+    override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
         return emptyList()

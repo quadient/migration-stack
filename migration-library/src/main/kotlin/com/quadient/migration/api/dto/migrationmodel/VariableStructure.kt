@@ -10,8 +10,8 @@ data class VariableStructure @JvmOverloads constructor(
     override var customFields: CustomFieldMap,
     val structure: Map<String, VariablePathData>,
     val languageVariable: VariableRef?,
-    override val created: Instant? = null,
-    override val lastUpdated: Instant? = null,
+    override var created: Instant? = null,
+    override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
         return structure.keys.map { VariableRef(it) }

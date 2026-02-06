@@ -23,9 +23,11 @@ class VariableRepositoryTest {
             .build()
 
         variableRepo.upsert(dto)
-        val result = variableRepo.listAll()
+        val result = variableRepo.listAll().first()
+        dto.created = result.created
+        dto.lastUpdated = result.lastUpdated
 
-        result.first().shouldBeEqualTo(dto)
+        result.shouldBeEqualTo(dto)
     }
 
     @Test

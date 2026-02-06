@@ -17,9 +17,11 @@ class VariableStructureRepositoryTest {
             .addVariable("var2", "Data.Test.Value2").build()
 
         repo.upsert(dto)
-        val result = repo.listAll()
+        val result = repo.listAll().first()
+        dto.created = result.created
+        dto.lastUpdated = result.lastUpdated
 
-        result.first().shouldBeEqualTo(dto)
-        result.first().structure.size.shouldBeEqualTo(2)
+        result.shouldBeEqualTo(dto)
+        result.structure.size.shouldBeEqualTo(2)
     }
 }

@@ -14,19 +14,19 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import kotlin.collections.map
 
-class VariableRepository(override val table: VariableTable, projectName: String) :
+class VariableRepository(table: VariableTable, projectName: String) :
     Repository<Variable>(table, projectName) {
 
     override fun fromDb(row: ResultRow): Variable {
         return Variable(
-            id = row[table.id].value,
-            name = row[table.name],
-            originLocations = row[table.originLocations],
-            customFields = CustomFieldMap(row[table.customFields].toMutableMap()),
-            lastUpdated = row[table.lastUpdated],
-            created = row[table.created],
-            dataType = DataType.valueOf(row[table.dataType]),
-            defaultValue = row[table.defaultValue]
+            id = row[VariableTable.id].value,
+            name = row[VariableTable.name],
+            originLocations = row[VariableTable.originLocations],
+            customFields = CustomFieldMap(row[VariableTable.customFields].toMutableMap()),
+            lastUpdated = row[VariableTable.lastUpdated],
+            created = row[VariableTable.created],
+            dataType = DataType.valueOf(row[VariableTable.dataType]),
+            defaultValue = row[VariableTable.defaultValue]
         )
     }
 
@@ -45,15 +45,15 @@ class VariableRepository(override val table: VariableTable, projectName: String)
             val now = Clock.System.now()
 
             table.upsertReturning(table.id, table.projectName) {
-                it[table.id] = dto.id
-                it[table.projectName] = projectName
-                it[table.name] = dto.name
-                it[table.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-                it[table.customFields] = dto.customFields.inner
-                it[table.created] = existingItem?.created ?: now
-                it[table.lastUpdated] = now
-                it[table.dataType] = dto.dataType.toString()
-                it[table.defaultValue] = dto.defaultValue
+                it[VariableTable.id] = dto.id
+                it[VariableTable.projectName] = this@VariableRepository.projectName
+                it[VariableTable.name] = dto.name
+                it[VariableTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
+                it[VariableTable.customFields] = dto.customFields.inner
+                it[VariableTable.created] = existingItem?.created ?: now
+                it[VariableTable.lastUpdated] = now
+                it[VariableTable.dataType] = dto.dataType.toString()
+                it[VariableTable.defaultValue] = dto.defaultValue
             }.first()
         }
     }
@@ -65,7 +65,7 @@ class VariableRepository(override val table: VariableTable, projectName: String)
             val now = Clock.System.now()
 
             this[VariableTable.id] = dto.id
-            this[VariableTable.projectName] = projectName
+            this[VariableTable.projectName] = this@VariableRepository.projectName
             this[VariableTable.name] = dto.name
             this[VariableTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
             this[VariableTable.customFields] = dto.customFields.inner

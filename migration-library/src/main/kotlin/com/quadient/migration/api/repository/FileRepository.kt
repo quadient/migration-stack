@@ -51,7 +51,7 @@ class FileRepository(table: FileTable, projectName: String) : Repository<File>(t
 
             table.upsertReturning(table.id, table.projectName) {
                 it[FileTable.id] = dto.id
-                it[FileTable.projectName] = projectName
+                it[FileTable.projectName] = this@FileRepository.projectName
                 it[FileTable.name] = dto.name
                 it[FileTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
                 it[FileTable.customFields] = dto.customFields.inner
@@ -76,7 +76,7 @@ class FileRepository(table: FileTable, projectName: String) : Repository<File>(t
             }
 
             this[FileTable.id] = dto.id
-            this[FileTable.projectName] = projectName
+            this[FileTable.projectName] = this@FileRepository.projectName
             this[FileTable.name] = dto.name
             this[FileTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
             this[FileTable.customFields] = dto.customFields.inner

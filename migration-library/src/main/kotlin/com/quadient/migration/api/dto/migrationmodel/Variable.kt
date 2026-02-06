@@ -10,8 +10,8 @@ data class Variable @JvmOverloads constructor(
     override var customFields: CustomFieldMap,
     var dataType: DataType,
     var defaultValue: String?,
-    override val created: Instant? = null,
-    override val lastUpdated: Instant? = null,
+    override var created: Instant? = null,
+    override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
         return emptyList()

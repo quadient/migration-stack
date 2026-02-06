@@ -14,8 +14,12 @@ import com.quadient.migration.persistence.migrationmodel.TextStyleEntityRef
 import com.quadient.migration.persistence.migrationmodel.VariableEntityRef
 import com.quadient.migration.persistence.migrationmodel.VariableStructureEntityRef
 
-sealed interface Ref {
+sealed interface Ref : RefValidatable {
     val id: String
+
+    override fun collectRefs(): List<Ref> {
+        return listOf(this)
+    }
 }
 
 sealed interface TextContent {
@@ -64,7 +68,7 @@ data class DocumentObjectRef(override val id: String, val displayRuleRef: Displa
     fun toDb() = DocumentObjectEntityRef(id, displayRuleRef?.toDb())
 }
 
-data class VariableRef(override val id: String) : Ref, TextContent {
+data class VariableRef(override val id: String) : Ref, TextContent, RefValidatable {
     companion object {
         fun fromDb(entity: VariableEntityRef) = VariableRef(entity.id)
     }
@@ -72,7 +76,7 @@ data class VariableRef(override val id: String) : Ref, TextContent {
     fun toDb() = VariableEntityRef(id)
 }
 
-data class TextStyleRef(override val id: String) : Ref, TextStyleDefOrRef {
+data class TextStyleRef(override val id: String) : Ref, TextStyleDefOrRef, RefValidatable {
     companion object {
         fun fromDb(entity: TextStyleEntityRef) = TextStyleRef(entity.id)
     }
@@ -97,10 +101,6 @@ data class DisplayRuleRef(override val id: String) : Ref {
 }
 
 data class ImageRef(override val id: String) : Ref, DocumentContent, TextContent, RefValidatable {
-    override fun collectRefs(): List<Ref> {
-        return listOf(this)
-    }
-
     companion object {
         fun fromDb(entity: ImageEntityRef) = ImageRef(entity.id)
     }
@@ -109,10 +109,6 @@ data class ImageRef(override val id: String) : Ref, DocumentContent, TextContent
 }
 
 data class FileRef(override val id: String) : Ref, DocumentContent, TextContent, RefValidatable {
-    override fun collectRefs(): List<Ref> {
-        return listOf(this)
-    }
-
     companion object {
         fun fromDb(entity: FileEntityRef) = FileRef(entity.id)
     }

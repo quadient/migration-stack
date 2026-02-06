@@ -55,7 +55,7 @@ class ImageRepository(table: ImageTable, projectName: String) : Repository<Image
 
             table.upsertReturning(table.id, table.projectName) {
                 it[ImageTable.id] = dto.id
-                it[ImageTable.projectName] = projectName
+                it[ImageTable.projectName] = this@ImageRepository.projectName
                 it[ImageTable.name] = dto.name
                 it[ImageTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
                 it[ImageTable.customFields] = dto.customFields.inner
@@ -83,7 +83,7 @@ class ImageRepository(table: ImageTable, projectName: String) : Repository<Image
             }
 
             this[ImageTable.id] = dto.id
-            this[ImageTable.projectName] = projectName
+            this[ImageTable.projectName] = this@ImageRepository.projectName
             this[ImageTable.name] = dto.name
             this[ImageTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
             this[ImageTable.customFields] = dto.customFields.inner

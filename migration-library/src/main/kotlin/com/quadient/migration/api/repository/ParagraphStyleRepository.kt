@@ -81,7 +81,7 @@ class ParagraphStyleRepository(table: ParagraphStyleTable, projectName: String) 
 
             table.upsertReturning(table.id, table.projectName) {
                 it[ParagraphStyleTable.id] = dto.id
-                it[ParagraphStyleTable.projectName] = projectName
+                it[ParagraphStyleTable.projectName] = this@ParagraphStyleRepository.projectName
                 it[ParagraphStyleTable.name] = dto.name
                 it[ParagraphStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
                 it[ParagraphStyleTable.customFields] = dto.customFields.inner
@@ -103,7 +103,7 @@ class ParagraphStyleRepository(table: ParagraphStyleTable, projectName: String) 
             }
 
             this[ParagraphStyleTable.id] = dto.id
-            this[ParagraphStyleTable.projectName] = projectName
+            this[ParagraphStyleTable.projectName] = this@ParagraphStyleRepository.projectName
             this[ParagraphStyleTable.name] = dto.name
             this[ParagraphStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
             this[ParagraphStyleTable.customFields] = dto.customFields.inner

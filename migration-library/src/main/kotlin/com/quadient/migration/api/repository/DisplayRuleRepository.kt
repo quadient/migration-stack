@@ -43,7 +43,7 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
             val now = Clock.System.now()
 
             this[DisplayRuleTable.id] = dto.id
-            this[DisplayRuleTable.projectName] = projectName
+            this[DisplayRuleTable.projectName] = this@DisplayRuleRepository.projectName
             this[DisplayRuleTable.name] = dto.name
             this[DisplayRuleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
             this[DisplayRuleTable.customFields] = dto.customFields.inner
@@ -61,7 +61,7 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
 
             table.upsertReturning(table.id, table.projectName) {
                 it[DisplayRuleTable.id] = dto.id
-                it[DisplayRuleTable.projectName] = projectName
+                it[DisplayRuleTable.projectName] = this@DisplayRuleRepository.projectName
                 it[DisplayRuleTable.name] = dto.name
                 it[DisplayRuleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
                 it[DisplayRuleTable.customFields] = dto.customFields.inner

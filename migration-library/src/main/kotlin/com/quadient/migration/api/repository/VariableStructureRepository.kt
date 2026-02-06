@@ -46,7 +46,7 @@ class VariableStructureRepository(table: VariableStructureTable, projectName: St
 
             table.upsertReturning(table.id, table.projectName) {
                 it[VariableStructureTable.id] = dto.id
-                it[VariableStructureTable.projectName] = projectName
+                it[VariableStructureTable.projectName] = this@VariableStructureRepository.projectName
                 it[VariableStructureTable.name] = dto.name
                 it[VariableStructureTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
                 it[VariableStructureTable.customFields] = dto.customFields.inner
@@ -65,7 +65,7 @@ class VariableStructureRepository(table: VariableStructureTable, projectName: St
             val now = Clock.System.now()
 
             this[VariableStructureTable.id] = dto.id
-            this[VariableStructureTable.projectName] = projectName
+            this[VariableStructureTable.projectName] = this@VariableStructureRepository.projectName
             this[VariableStructureTable.name] = dto.name
             this[VariableStructureTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
             this[VariableStructureTable.customFields] = dto.customFields.inner
