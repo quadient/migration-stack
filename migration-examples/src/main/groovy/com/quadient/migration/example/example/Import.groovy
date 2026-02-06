@@ -405,7 +405,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         }
             .documentObjectRef(signature.id)
     }
-    .fileRef(logoAttachment.id)
+    .attachmentRef(logoAttachment.id)
     .variableStructureRef(variableStructure.id)
     .build()
 
