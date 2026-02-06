@@ -7,8 +7,8 @@ interface MigrationObject {
     var name: String?
     var originLocations: List<String>
     var customFields: CustomFieldMap
-    val created: Instant
-    val lastUpdated: Instant
+    val created: Instant?
+    val lastUpdated: Instant?
 
     fun nameOrId(): String {
         val name = name

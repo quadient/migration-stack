@@ -12,14 +12,14 @@ import com.quadient.migration.shared.TabType
 import kotlinx.datetime.Instant
 import org.jetbrains.exposed.v1.core.ResultRow
 
-data class ParagraphStyle(
+data class ParagraphStyle @JvmOverloads constructor(
     override val id: String,
     override var name: String? = null,
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
-    override val created: Instant,
-    override val lastUpdated: Instant,
     var definition: ParagraphStyleDefOrRef,
+    override val created: Instant? = null,
+    override val lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
         return when (definition) {

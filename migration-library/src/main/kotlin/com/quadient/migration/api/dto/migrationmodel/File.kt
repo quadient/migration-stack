@@ -7,17 +7,17 @@ import com.quadient.migration.shared.SkipOptions
 import kotlinx.datetime.Instant
 import org.jetbrains.exposed.v1.core.ResultRow
 
-data class File(
+data class File @JvmOverloads constructor(
     override val id: String,
     override var name: String?,
     override var originLocations: List<String>,
     override var customFields: CustomFieldMap,
-    override val created: Instant,
-    override val lastUpdated: Instant,
     var sourcePath: String?,
     var targetFolder: String?,
     var fileType: FileType,
     val skip: SkipOptions,
+    override val created: Instant? = null,
+    override val lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
         return emptyList()

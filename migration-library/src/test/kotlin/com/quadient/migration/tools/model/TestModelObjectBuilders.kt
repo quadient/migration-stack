@@ -53,8 +53,6 @@ import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.VariablePathData
-import com.quadient.migration.tools.aProjectConfig
-import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlin.collections.emptyMap
 
@@ -80,8 +78,8 @@ fun aDocObj(
         targetFolder = targetFolder?.let { IcmPath.from(it).toString() },
         originLocations = emptyList(),
         customFields = CustomFieldMap(),
-        created = Clock.System.now(),
-        lastUpdated = Clock.System.now(),
+        created = null,
+        lastUpdated = null,
         displayRuleRef = displayRuleRef?.let { DisplayRuleRef(it) },
         baseTemplate = baseTemplate,
         variableStructureRef = VariableStructureRef?.let { VariableStructureRef(it) },
@@ -100,8 +98,8 @@ fun aBlock(
     targetFolder: String? = null,
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
-    created: Instant = Clock.System.now(),
-    lastUpdated: Instant = Clock.System.now(),
+    created: Instant? = null,
+    lastUpdated: Instant? = null,
     type: DocumentObjectType = DocumentObjectType.Block,
     displayRuleRef: DisplayRuleRef? = null,
     baseTemplate: String? = null,
@@ -150,8 +148,8 @@ fun aTemplate(
         targetFolder = null,
         originLocations = emptyList(),
         customFields = CustomFieldMap(),
-        created = Clock.System.now(),
-        lastUpdated = Clock.System.now(),
+        created = null,
+        lastUpdated = null,
         baseTemplate = baseTemplate,
         options = null,
         metadata = emptyMap(),
@@ -174,8 +172,8 @@ fun aVariable(
     customFields = CustomFieldMap(customFields),
     dataType = dataType,
     defaultValue = defaultValue,
-    lastUpdated = Clock.System.now(),
-    created = Clock.System.now(),
+    lastUpdated = null,
+    created = null,
 )
 
 fun aParaStyle(
@@ -191,8 +189,8 @@ fun aParaStyle(
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
         definition = definition,
-        lastUpdated = Clock.System.now(),
-        created = Clock.System.now(),
+        lastUpdated = null,
+        created = null,
     )
 }
 
@@ -237,8 +235,8 @@ fun aTextStyle(
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
         definition = definition,
-        lastUpdated = Clock.System.now(),
-        created = Clock.System.now(),
+        lastUpdated = null,
+        created = null,
     )
 }
 
@@ -273,7 +271,7 @@ fun aVariableStructure(
     customFields: MutableMap<String, String> = mutableMapOf(),
     structure: Map<String, VariablePathData> = emptyMap(),
     languageVariable: String? = null,
-    lastUpdated: Instant = Clock.System.now(),
+    lastUpdated: Instant? = null,
 ): VariableStructure {
     return VariableStructure(
         id = id,
@@ -281,7 +279,7 @@ fun aVariableStructure(
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
         lastUpdated = lastUpdated,
-        created = Clock.System.now(),
+        created = null,
         structure = structure,
         languageVariable = languageVariable?.let { VariableRef(it) }
     )
@@ -299,8 +297,8 @@ fun aDisplayRule(
         name = name,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
-        lastUpdated = Clock.System.now(),
-        created = Clock.System.now(),
+        lastUpdated = null,
+        created = null,
         definition = definition
     )
 }
@@ -382,8 +380,8 @@ fun aImage(
         name = name,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
-        created = Clock.System.now(),
-        lastUpdated = Clock.System.now(),
+        created = null,
+        lastUpdated = null,
         sourcePath = sourcePath,
         imageType = imageType,
         options = options,
@@ -409,8 +407,8 @@ fun aFile(
         name = name,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
-        created = Clock.System.now(),
-        lastUpdated = Clock.System.now(),
+        created = null,
+        lastUpdated = null,
         sourcePath = sourcePath,
         fileType = fileType,
         targetFolder = targetFolder,

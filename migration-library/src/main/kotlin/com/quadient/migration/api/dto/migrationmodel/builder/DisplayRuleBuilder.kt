@@ -60,8 +60,8 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
             name = name,
             originLocations = originLocations,
             customFields = customFields,
-            created = created,
-            lastUpdated = lastUpdated,
+            created = null,
+            lastUpdated = null,
             definition = definition,
         )
     }
