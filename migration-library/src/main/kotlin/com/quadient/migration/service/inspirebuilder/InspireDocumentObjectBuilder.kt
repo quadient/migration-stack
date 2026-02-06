@@ -26,14 +26,10 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
-import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
-import com.quadient.migration.persistence.repository.VariableInternalRepository
-import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.Repository
+import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.FlowModel.*
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.ScriptResult
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.ScriptResult.*
@@ -94,14 +90,14 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle as Paragraph
 import com.quadient.migration.api.dto.migrationmodel.TextStyle as TextStyleDTO
 
 abstract class InspireDocumentObjectBuilder(
-    protected val documentObjectRepository: DocumentObjectInternalRepository,
-    protected val textStyleRepository: TextStyleInternalRepository,
-    protected val paragraphStyleRepository: ParagraphStyleInternalRepository,
-    protected val variableRepository: VariableInternalRepository,
-    protected val variableStructureRepository: VariableStructureInternalRepository,
-    protected val displayRuleRepository: DisplayRuleInternalRepository,
-    protected val imageRepository: ImageInternalRepository,
-    protected val fileRepository: FileInternalRepository,
+    protected val documentObjectRepository: DocumentObjectRepository,
+    protected val textStyleRepository: TextStyleRepository,
+    protected val paragraphStyleRepository: ParagraphStyleRepository,
+    protected val variableRepository: Repository<Variable>,
+    protected val variableStructureRepository: Repository<VariableStructure>,
+    protected val displayRuleRepository: Repository<DisplayRule>,
+    protected val imageRepository: Repository<Image>,
+    protected val fileRepository: Repository<File>,
     protected val projectConfig: ProjectConfig,
     protected val ipsService: IpsService,
 ) {
@@ -151,7 +147,7 @@ abstract class InspireDocumentObjectBuilder(
                     }
 
                     is DocumentObjectRef -> {
-                        val documentObject = documentObjectRepository.findModelOrFail(item.id)
+                        val documentObject = documentObjectRepository.findOrFail(item.id)
                         if (shouldIncludeInternalDependency(documentObject)) {
                             collectLanguagesFromContent(documentObject.content)
                         }
@@ -170,7 +166,7 @@ abstract class InspireDocumentObjectBuilder(
                                 }
 
                                 is DocumentObjectRef -> {
-                                    val documentObject = documentObjectRepository.findModelOrFail(textContent.id)
+                                    val documentObject = documentObjectRepository.findOrFail(textContent.id)
                                     if (shouldIncludeInternalDependency(documentObject)) {
                                         collectLanguagesFromContent(documentObject.content)
                                     }
@@ -196,7 +192,7 @@ abstract class InspireDocumentObjectBuilder(
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
             layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
-                .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findModelOrFail)),
+                .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail)),
             successFlow
         )
     }
@@ -212,7 +208,7 @@ abstract class InspireDocumentObjectBuilder(
         multipleRowSet.addRowSet(
             layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
                 layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
-                    .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findModelOrFail)),
+                    .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail)),
                 successRow
             )
         )
@@ -362,7 +358,7 @@ abstract class InspireDocumentObjectBuilder(
         return if (displayRuleRef == null) {
             singleFlow
         } else {
-            val displayRule = displayRuleRepository.findModelOrFail(displayRuleRef.id)
+            val displayRule = displayRuleRepository.findOrFail(displayRuleRef.id)
             val def = displayRule.definition
             if (def == null) {
                 error("Display rule '${displayRuleRef.id}' definition is null.")
@@ -389,7 +385,7 @@ abstract class InspireDocumentObjectBuilder(
         val variableStructureId = documentObject.variableStructureRef?.id ?: projectConfig.defaultVariableStructure
 
         val variableStructureModel =
-            variableStructureId?.let { variableStructureRepository.findModelOrFail(it) } ?: VariableStructure(
+            variableStructureId?.let { variableStructureRepository.findOrFail(it) } ?: VariableStructure(
                 id = "defaultVariableStructure",
                 lastUpdated = Clock.System.now(),
                 created = Clock.System.now(),
@@ -618,7 +614,7 @@ abstract class InspireDocumentObjectBuilder(
         layout: Layout,
         fileRef: FileRef,
     ): Flow? {
-        val fileModel = fileRepository.findModelOrFail(fileRef.id)
+        val fileModel = fileRepository.findOrFail(fileRef.id)
 
         if (fileModel.skip.skipped && fileModel.skip.placeholder == null) {
             val reason = fileModel.skip.reason?.let { "with reason: $it" } ?: "without reason"
@@ -678,7 +674,7 @@ abstract class InspireDocumentObjectBuilder(
         documentObjectRef: DocumentObjectRef,
         languages: List<String>,
     ): Flow? {
-        val documentModel = documentObjectRepository.findModelOrFail(documentObjectRef.id)
+        val documentModel = documentObjectRepository.findOrFail(documentObjectRef.id)
 
         if (documentModel.skip.skipped && documentModel.skip.placeholder == null) {
             val reason = documentModel.skip.reason?.let { "with reason: $it" } ?: "without reason"
@@ -707,7 +703,7 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         if (documentObjectRef.displayRuleRef != null) {
-            val displayRule = displayRuleRepository.findModelOrFail(documentObjectRef.displayRuleRef.id)
+            val displayRule = displayRuleRepository.findOrFail(documentObjectRef.displayRuleRef.id)
             val def = displayRule.definition
             if (def == null) {
                 error("Display rule '${documentObjectRef.displayRuleRef.id}' definition is null.")
@@ -840,7 +836,7 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun buildAndAppendImage(layout: Layout, text: WfdXmlText, ref: ImageRef) {
-        val imageModel = imageRepository.findModelOrFail(ref.id)
+        val imageModel = imageRepository.findOrFail(ref.id)
 
         when (val imagePlaceholder = getImagePlaceholder(imageModel)) {
             is ImagePlaceholderResult.Placeholder -> {
@@ -870,7 +866,7 @@ abstract class InspireDocumentObjectBuilder(
     private fun WfdXmlText.appendVariable(
         ref: VariableRef, layout: Layout, variableStructure: VariableStructure
     ): WfdXmlText {
-        val variableModel = variableRepository.findModelOrFail(ref.id)
+        val variableModel = variableRepository.findOrFail(ref.id)
 
         val variablePathData = variableStructure.structure[ref.id]
         if (variablePathData == null || variablePathData.path.isBlank()) {
@@ -904,7 +900,7 @@ abstract class InspireDocumentObjectBuilder(
     private fun buildSuccessFlowWrappedInInlineConditionFlow(
         layout: Layout, variableStructure: VariableStructure, displayRuleId: String, text: WfdXmlText
     ): Flow {
-        val displayRule = displayRuleRepository.findModelOrFail(displayRuleId)
+        val displayRule = displayRuleRepository.findOrFail(displayRuleId)
         if (displayRule.definition == null) {
             error("Display rule '$displayRuleId' definition is null.")
         }
@@ -914,7 +910,7 @@ abstract class InspireDocumentObjectBuilder(
 
         text.appendFlow(
             layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
-                def.toScript(layout, variableStructure, variableRepository::findModelOrFail),
+                def.toScript(layout, variableStructure, variableRepository::findOrFail),
                 successFlow
             )
         )
@@ -941,7 +937,7 @@ abstract class InspireDocumentObjectBuilder(
             val row = if (rowModel.displayRuleRef == null) {
                 layout.addRowSet().setType(RowSet.Type.SINGLE_ROW).also { rowset.addRowSet(it) }
             } else {
-                val displayRule = displayRuleRepository.findModelOrFail(rowModel.displayRuleRef.id)
+                val displayRule = displayRuleRepository.findOrFail(rowModel.displayRuleRef.id)
                 val def = displayRule.definition
                 if (def == null) {
                     error("Display rule '${rowModel.displayRuleRef.id}' definition is null.")
@@ -992,7 +988,7 @@ abstract class InspireDocumentObjectBuilder(
         flowName?.let { firstMatchFlow.setName(it) }
 
         model.cases.forEachIndexed { i, case ->
-            val displayRule = displayRuleRepository.findModelOrFail(case.displayRuleRef.id)
+            val displayRule = displayRuleRepository.findOrFail(case.displayRuleRef.id)
             if (displayRule.definition == null) {
                 error("Display rule '${case.displayRuleRef.id}' definition is null.")
             }
@@ -1009,7 +1005,7 @@ abstract class InspireDocumentObjectBuilder(
 
             val def = displayRule.definition!!
             firstMatchFlow.addLineForSelectByInlineCondition(
-                def.toScript(layout, variableStructure, variableRepository::findModelOrFail),
+                def.toScript(layout, variableStructure, variableRepository::findOrFail),
                 caseFlow
             )
         }
@@ -1081,7 +1077,7 @@ abstract class InspireDocumentObjectBuilder(
         return when (def) {
             is TextStyleDefinition -> def
             is TextStyleRef -> {
-                textStyleRepository.findModel(def.id)?.resolve() ?: error("Invalid text style reference")
+                textStyleRepository.find(def.id)?.resolve() ?: error("Invalid text style reference")
             }
             else -> error("Invalid text style definition type")
         }
@@ -1091,7 +1087,7 @@ abstract class InspireDocumentObjectBuilder(
         val def = this.definition
         return when (def) {
             is ParagraphStyleDefinition -> def
-            is ParagraphStyleRef -> paragraphStyleRepository.findModelOrFail(def.id).resolve()
+            is ParagraphStyleRef -> paragraphStyleRepository.findOrFail(def.id).resolve()
             else -> error("Invalid paragraph style definition type")
         }
     }

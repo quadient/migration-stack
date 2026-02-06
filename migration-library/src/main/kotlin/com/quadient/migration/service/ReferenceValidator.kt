@@ -1,33 +1,24 @@
 package com.quadient.migration.service
 
-import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
-import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
-import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.FileRef
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
-import com.quadient.migration.api.dto.migrationmodel.Ref
-import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
-import com.quadient.migration.api.dto.migrationmodel.VariableRef
-import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
-import com.quadient.migration.api.dto.migrationmodel.RefValidatable
-import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
-import com.quadient.migration.persistence.repository.VariableInternalRepository
-import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.api.dto.migrationmodel.*
+import com.quadient.migration.api.repository.DisplayRuleRepository
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.FileRepository
+import com.quadient.migration.api.repository.ImageRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.TextStyleRepository
+import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 
 class ReferenceValidator(
-    private val documentObjectRepository: DocumentObjectInternalRepository,
-    private val variableRepository: VariableInternalRepository,
-    private val textStyleRepository: TextStyleInternalRepository,
-    private val paragraphStyleRepository: ParagraphStyleInternalRepository,
-    private val variableStructureRepository: VariableStructureInternalRepository,
-    private val displayRuleRepository: DisplayRuleInternalRepository,
-    private val imageRepository: ImageInternalRepository,
-    private val fileRepository: FileInternalRepository,
+    private val documentObjectRepository: DocumentObjectRepository,
+    private val variableRepository: VariableRepository,
+    private val textStyleRepository: TextStyleRepository,
+    private val paragraphStyleRepository: ParagraphStyleRepository,
+    private val variableStructureRepository: VariableStructureRepository,
+    private val displayRuleRepository: DisplayRuleRepository,
+    private val imageRepository: ImageRepository,
+    private val fileRepository: FileRepository,
 ) {
     /**
      * Validates all objects in the database.
@@ -36,14 +27,14 @@ class ReferenceValidator(
      * @return MissingRefs containing list of missing references
      */
     fun validateAll(): MissingRefs {
-        val documentObjects = documentObjectRepository.listAllModel()
-        val variables = variableRepository.listAllModel()
-        val paragraphStyles = paragraphStyleRepository.listAllModel()
-        val textStyles = textStyleRepository.listAllModel()
-        val dataStructures = variableStructureRepository.listAllModel()
-        val displayRules = displayRuleRepository.listAllModel()
-        val images = imageRepository.listAllModel()
-        val files = fileRepository.listAllModel()
+        val documentObjects = documentObjectRepository.listAll()
+        val variables = variableRepository.listAll()
+        val paragraphStyles = paragraphStyleRepository.listAll()
+        val textStyles = textStyleRepository.listAll()
+        val dataStructures = variableStructureRepository.listAll()
+        val displayRules = displayRuleRepository.listAll()
+        val images = imageRepository.listAll()
+        val files = fileRepository.listAll()
         val alreadyValidatedRefs = mutableSetOf<Ref>()
 
         val missingRefs =
@@ -72,7 +63,7 @@ class ReferenceValidator(
 
             when (current) {
                 is DocumentObjectRef -> {
-                    val documentObject = documentObjectRepository.findModel(current.id)
+                    val documentObject = documentObjectRepository.find(current.id)
 
                     if (documentObject == null) {
                         missingRefs.add(current)
@@ -84,7 +75,7 @@ class ReferenceValidator(
                 }
 
                 is VariableRef -> {
-                    val variable = variableRepository.findModel(current.id)
+                    val variable = variableRepository.find(current.id)
 
                     if (variable != null) {
                         validatedRefs.add(current)
@@ -95,7 +86,7 @@ class ReferenceValidator(
                 }
 
                 is ParagraphStyleRef -> {
-                    val style = paragraphStyleRepository.findModel(current.id)
+                    val style = paragraphStyleRepository.find(current.id)
 
                     if (style != null) {
                         validatedRefs.add(current)
@@ -107,7 +98,7 @@ class ReferenceValidator(
                 }
 
                 is TextStyleRef -> {
-                    val style = textStyleRepository.findModel(current.id)
+                    val style = textStyleRepository.find(current.id)
 
                     if (style != null) {
                         validatedRefs.add(current)
@@ -119,7 +110,7 @@ class ReferenceValidator(
                 }
 
                 is DisplayRuleRef -> {
-                    val rule = displayRuleRepository.findModel(current.id)
+                    val rule = displayRuleRepository.find(current.id)
 
                     if (rule != null) {
                         validatedRefs.add(current)
@@ -131,7 +122,7 @@ class ReferenceValidator(
                 }
 
                 is ImageRef -> {
-                    val image = imageRepository.findModel(current.id)
+                    val image = imageRepository.find(current.id)
 
                     if (image != null) {
                         validatedRefs.add(current)
@@ -143,7 +134,7 @@ class ReferenceValidator(
                 }
 
                 is FileRef -> {
-                    val file = fileRepository.findModel(current.id)
+                    val file = fileRepository.find(current.id)
 
                     if (file != null) {
                         validatedRefs.add(current)
@@ -155,7 +146,7 @@ class ReferenceValidator(
                 }
 
                 is VariableStructureRef -> {
-                    val variableStructure = variableStructureRepository.findModel(current.id)
+                    val variableStructure = variableStructureRepository.find(current.id)
                     
                     if (variableStructure != null) {
                         validatedRefs.add(current)

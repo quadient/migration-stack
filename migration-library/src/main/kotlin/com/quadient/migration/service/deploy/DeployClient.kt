@@ -18,11 +18,10 @@ import com.quadient.migration.api.dto.migrationmodel.Ref
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.Repository
+import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
@@ -46,12 +45,12 @@ import com.quadient.migration.data.Error as StatusError
 data class DocObjectWithRef(val obj: DocumentObject, val documentObjectRefs: Set<String>)
 
 sealed class DeployClient(
-    protected val documentObjectRepository: DocumentObjectInternalRepository,
-    protected val imageRepository: ImageInternalRepository,
-    protected val fileRepository: FileInternalRepository,
+    protected val documentObjectRepository: DocumentObjectRepository,
+    protected val imageRepository: Repository<Image>,
+    protected val fileRepository: Repository<File>,
     protected val statusTrackingRepository: StatusTrackingRepository,
-    protected val textStyleRepository: TextStyleInternalRepository,
-    protected val paragraphStyleRepository: ParagraphStyleInternalRepository,
+    protected val textStyleRepository: TextStyleRepository,
+    protected val paragraphStyleRepository: ParagraphStyleRepository,
     val documentObjectBuilder: InspireDocumentObjectBuilder,
     protected val ipsService: IpsService,
     protected val storage: Storage,
@@ -108,8 +107,8 @@ sealed class DeployClient(
                 deploymentResult.deployed.filter { it.type == ResourceType.DocumentObject || it.type == ResourceType.Image }
                     .mapNotNull { info ->
                         val obj = when (info.type) {
-                            ResourceType.DocumentObject -> documentObjectRepository.findModel(info.id)
-                            ResourceType.Image -> imageRepository.findModel(info.id)
+                            ResourceType.DocumentObject -> documentObjectRepository.find(info.id)
+                            ResourceType.Image -> imageRepository.find(info.id)
                             else -> null
                         }
                         if (obj == null) {
@@ -265,7 +264,7 @@ sealed class DeployClient(
             return
         }
 
-        val imageModel = imageRepository.findModel(imageRef.id)
+        val imageModel = imageRepository.find(imageRef.id)
         if (imageModel == null) {
             val message = "Image '${imageRef.id}' not found."
             logger.error(message)
@@ -335,7 +334,7 @@ sealed class DeployClient(
             return
         }
 
-        val fileModel = fileRepository.findModel(fileRef.id)
+        val fileModel = fileRepository.find(fileRef.id)
         if (fileModel == null) {
             val message = "File '${fileRef.id}' not found."
             logger.error(message)
@@ -432,7 +431,7 @@ sealed class DeployClient(
 
             val resource = when (ref) {
                 is DocumentObjectRef -> {
-                    val obj = documentObjectRepository.findModelOrFail(ref.id)
+                    val obj = documentObjectRepository.findOrFail(ref.id)
                     val nextIcmPath =
                         if (obj.internal == true || (obj.type == DocumentObjectType.Page && output == InspireOutput.Designer)) {
                             null
@@ -458,7 +457,7 @@ sealed class DeployClient(
                 }
 
                 is ImageRef -> {
-                    val img = imageRepository.findModelOrFail(ref.id)
+                    val img = imageRepository.findOrFail(ref.id)
                     val nextIcmPath = documentObjectBuilder.getImagePath(img)
                     val deployKind = img.getDeployKind(nextIcmPath)
                     val lastStatus = img.getLastStatus(lastDeployment)
@@ -478,7 +477,7 @@ sealed class DeployClient(
                 }
 
                 is FileRef -> {
-                    val file = fileRepository.findModelOrFail(ref.id)
+                    val file = fileRepository.findOrFail(ref.id)
                     val nextIcmPath = documentObjectBuilder.getFilePath(file)
                     val deployKind = file.getDeployKind(nextIcmPath)
                     val lastStatus = file.getLastStatus(lastDeployment)
@@ -558,7 +557,7 @@ sealed class DeployClient(
                 is ImageRef -> {}
                 is FileRef -> {}
                 is DocumentObjectRef -> {
-                    val model = documentObjectRepository.findModelOrFail(ref.id)
+                    val model = documentObjectRepository.findOrFail(ref.id)
                     if (shouldIncludeDependency(model)) {
                         dependencies.add(model)
                         dependencies.addAll(model.findDependencies())
@@ -579,7 +578,7 @@ sealed class DeployClient(
                 is ImageRef -> images.add(ref)
                 is FileRef -> files.add(ref)
                 is DocumentObjectRef -> {
-                    val model = documentObjectRepository.findModel(ref.id)
+                    val model = documentObjectRepository.find(ref.id)
                         ?: error("Unable to collect image or file references because inner document object '${ref.id}' was not found.")
 
                     if (documentObjectBuilder.shouldIncludeInternalDependency(model)) {

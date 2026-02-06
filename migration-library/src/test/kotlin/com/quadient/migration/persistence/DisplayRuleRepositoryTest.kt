@@ -2,14 +2,10 @@ package com.quadient.migration.persistence
 
 import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
-import com.quadient.migration.api.repository.DisplayRuleRepository
-import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
-import com.quadient.migration.persistence.table.DisplayRuleTable
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.tools.aDisplayRuleRepository
-import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.shouldBeEqualTo
 import org.junit.jupiter.api.Test
 

@@ -7,16 +7,16 @@ import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
-import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.tools.aBlockDto
 import com.quadient.migration.tools.aCell
+import com.quadient.migration.tools.aDocumentObjectRepository
+import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.aRow
 import com.quadient.migration.tools.aTable
-import com.quadient.migration.tools.model.aDocumentObjectInternalRepository
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfSize
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -25,9 +25,9 @@ import org.junit.jupiter.api.Test
 
 @Postgres
 class DocumentObjectRepositoryTest {
-    private val internalRepo = aDocumentObjectInternalRepository()
-    private val repo = DocumentObjectRepository(internalRepo)
-    private val statusRepo = StatusTrackingRepository(internalRepo.projectName)
+    private val projectName = aProjectConfig().name
+    private val repo = aDocumentObjectRepository()
+    private val statusRepo = StatusTrackingRepository(projectName)
 
     @Test
     fun `roundtrip is correct`() {

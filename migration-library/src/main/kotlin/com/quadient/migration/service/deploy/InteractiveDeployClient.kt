@@ -6,13 +6,14 @@ import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.File
+import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.Repository
+import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.getBaseTemplateFullPath
@@ -28,12 +29,12 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class InteractiveDeployClient(
-    documentObjectRepository: DocumentObjectInternalRepository,
-    imageRepository: ImageInternalRepository,
-    fileRepository: FileInternalRepository,
+    documentObjectRepository: DocumentObjectRepository,
+    imageRepository: Repository<Image>,
+    fileRepository: Repository<File>,
     statusTrackingRepository: StatusTrackingRepository,
-    textStyleRepository: TextStyleInternalRepository,
-    paragraphStyleRepository: ParagraphStyleInternalRepository,
+    textStyleRepository: TextStyleRepository,
+    paragraphStyleRepository: ParagraphStyleRepository,
     documentObjectBuilder: InteractiveDocumentObjectBuilder,
     ipsService: IpsService,
     storage: Storage,
@@ -78,7 +79,7 @@ class InteractiveDeployClient(
         val skipped = mutableListOf<String>()
         val internal = mutableListOf<String>()
         for (documentObject in documentObjects) {
-            if (documentObject.skip.skipped == true) {
+            if (documentObject.skip.skipped) {
                 skipped.add(documentObject.id)
             }
             if (documentObject.internal == true) {
@@ -185,9 +186,9 @@ class InteractiveDeployClient(
             }
         }
 
-        val textStyles = textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinition }
+        val textStyles = textStyleRepository.listAll().filter { it.definition is TextStyleDefinition }
         val paragraphStyles =
-            paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinition }
+            paragraphStyleRepository.listAll().filter { it.definition is ParagraphStyleDefinition }
 
         val styleLayoutDeltaXml = documentObjectBuilder.buildStyleLayoutDelta(
             textStyles = textStyles,

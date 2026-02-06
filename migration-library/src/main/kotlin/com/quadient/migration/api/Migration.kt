@@ -66,24 +66,14 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
             .load()
             .migrate()
 
-        val documentObjectInternalRepository = DocumentObjectInternalRepository(DocumentObjectTable, projectName)
-        val imageInternalRepository = ImageInternalRepository(ImageTable, projectName)
-        val fileInternalRepository = FileInternalRepository(FileTable, projectName)
-        val displayRuleInternalRepository = DisplayRuleInternalRepository(DisplayRuleTable, projectName)
-        val variableInternalRepository = VariableInternalRepository(VariableTable, projectName)
-        val variableStructureInternalRepository =
-            VariableStructureInternalRepository(VariableStructureTable, projectName)
-        val textStyleInternalRepository = TextStyleInternalRepository(TextStyleTable, projectName)
-        val paragraphStyleInternalRepository = ParagraphStyleInternalRepository(ParagraphStyleTable, projectName)
-
-        val variableRepository = VariableRepository(variableInternalRepository)
-        val documentObjectRepository = DocumentObjectRepository(documentObjectInternalRepository)
-        val textStyleRepository = TextStyleRepository(textStyleInternalRepository)
-        val paragraphStyleRepository = ParagraphStyleRepository(paragraphStyleInternalRepository)
-        val variableStructureRepository = VariableStructureRepository(variableStructureInternalRepository)
-        val displayRuleRepository = DisplayRuleRepository(displayRuleInternalRepository)
-        val imageRepository = ImageRepository(imageInternalRepository)
-        val fileRepository = FileRepository(fileInternalRepository)
+        val variableRepository = VariableRepository(VariableTable, projectName)
+        val documentObjectRepository = DocumentObjectRepository(DocumentObjectTable, projectName)
+        val textStyleRepository = TextStyleRepository(TextStyleTable, projectName)
+        val paragraphStyleRepository = ParagraphStyleRepository(ParagraphStyleTable, projectName)
+        val variableStructureRepository = VariableStructureRepository(VariableStructureTable, projectName)
+        val displayRuleRepository = DisplayRuleRepository(DisplayRuleTable, projectName)
+        val imageRepository = ImageRepository(ImageTable, projectName)
+        val fileRepository = FileRepository(FileTable, projectName)
 
         this.variableRepository = variableRepository
         this.documentObjectRepository = documentObjectRepository
@@ -115,39 +105,39 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
         repositories.add(fileRepository)
 
         this.referenceValidator = ReferenceValidator(
-            documentObjectInternalRepository,
-            variableInternalRepository,
-            textStyleInternalRepository,
-            paragraphStyleInternalRepository,
-            variableStructureInternalRepository,
-            displayRuleInternalRepository,
-            imageInternalRepository,
-            fileInternalRepository,
+            documentObjectRepository,
+            variableRepository,
+            textStyleRepository,
+            paragraphStyleRepository,
+            variableStructureRepository,
+            displayRuleRepository,
+            imageRepository,
+            fileRepository,
         )
 
         val inspireDocumentObjectBuilder: InspireDocumentObjectBuilder
         this.deployClient =
             if (projectConfig.inspireOutput == InspireOutput.Interactive || projectConfig.inspireOutput == InspireOutput.Evolve) {
                 inspireDocumentObjectBuilder = InteractiveDocumentObjectBuilder(
-                    documentObjectInternalRepository,
-                    textStyleInternalRepository,
-                    paragraphStyleInternalRepository,
-                    variableInternalRepository,
-                    variableStructureInternalRepository,
-                    displayRuleInternalRepository,
-                    imageInternalRepository,
-                    fileInternalRepository,
+                    documentObjectRepository,
+                    textStyleRepository,
+                    paragraphStyleRepository,
+                    variableRepository,
+                    variableStructureRepository,
+                    displayRuleRepository,
+                    imageRepository,
+                    fileRepository,
                     projectConfig,
                     ipsService,
                 )
 
                 InteractiveDeployClient(
-                    documentObjectInternalRepository,
-                    imageInternalRepository,
-                    fileInternalRepository,
+                    documentObjectRepository,
+                    imageRepository,
+                    fileRepository,
                     statusTrackingRepository,
-                    textStyleInternalRepository,
-                    paragraphStyleInternalRepository,
+                    textStyleRepository,
+                    paragraphStyleRepository,
                     inspireDocumentObjectBuilder,
                     ipsService,
                     storage,
@@ -155,25 +145,25 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                 )
             } else {
                 inspireDocumentObjectBuilder  = DesignerDocumentObjectBuilder(
-                    documentObjectInternalRepository,
-                    textStyleInternalRepository,
-                    paragraphStyleInternalRepository,
-                    variableInternalRepository,
-                    variableStructureInternalRepository,
-                    displayRuleInternalRepository,
-                    imageInternalRepository,
-                    fileInternalRepository,
+                    documentObjectRepository,
+                    textStyleRepository,
+                    paragraphStyleRepository,
+                    variableRepository,
+                    variableStructureRepository,
+                    displayRuleRepository,
+                    imageRepository,
+                    fileRepository,
                     projectConfig,
                     ipsService,
                 )
 
                 DesignerDeployClient(
-                    documentObjectInternalRepository,
-                    imageInternalRepository,
-                    fileInternalRepository,
+                    documentObjectRepository,
+                    imageRepository,
+                    fileRepository,
                     statusTrackingRepository,
-                    textStyleInternalRepository,
-                    paragraphStyleInternalRepository,
+                    textStyleRepository,
+                    paragraphStyleRepository,
                     inspireDocumentObjectBuilder,
                     ipsService,
                     storage,
@@ -181,9 +171,9 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
             }
 
         this.stylesValidator = StylesValidator(
-            documentObjectInternalRepository,
-            textStyleInternalRepository,
-            paragraphStyleInternalRepository,
+            documentObjectRepository,
+            textStyleRepository,
+            paragraphStyleRepository,
             inspireDocumentObjectBuilder,
             deployClient,
             ipsService

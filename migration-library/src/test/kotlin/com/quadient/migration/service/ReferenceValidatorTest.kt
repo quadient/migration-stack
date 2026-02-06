@@ -1,26 +1,22 @@
 package com.quadient.migration.service
 
 import com.quadient.migration.Postgres
-import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.tools.aBlockDto
+import com.quadient.migration.tools.aDisplayRuleRepository
 import com.quadient.migration.tools.aDocumentObjectRepository
+import com.quadient.migration.tools.aFileRepository
+import com.quadient.migration.tools.aImageRepository
 import com.quadient.migration.tools.aParaStyleRepository
 import com.quadient.migration.tools.aParagraphStyle
 import com.quadient.migration.tools.aTextStyle
 import com.quadient.migration.tools.aTextStyleRepository
+import com.quadient.migration.tools.aVariableRepository
+import com.quadient.migration.tools.aVariableStructureRepository
 import com.quadient.migration.tools.model.aBlock
-import com.quadient.migration.tools.model.aDisplayRuleInternalRepository
-import com.quadient.migration.tools.model.aDocumentObjectInternalRepository
-import com.quadient.migration.tools.model.aFileInternalRepository
-import com.quadient.migration.tools.model.aImageInternalRepository
-import com.quadient.migration.tools.model.aParaStyleInternalRepository
-import com.quadient.migration.tools.model.aTextStyleInternalRepository
-import com.quadient.migration.tools.model.aVariableInternalRepository
-import com.quadient.migration.tools.model.aVariableStructureInternalRepository
 import com.quadient.migration.tools.shouldBeEmpty
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfSize
@@ -28,24 +24,24 @@ import org.junit.jupiter.api.Test
 
 @Postgres
 class ReferenceValidatorTest {
-    val documentObjectInternalRepository = aDocumentObjectInternalRepository()
-    val variableRepository = aVariableInternalRepository()
-    val paraStyleInternalRepository = aParaStyleInternalRepository()
-    val textStyleInternalRepository = aTextStyleInternalRepository()
-    val dataStructureRepository = aVariableStructureInternalRepository()
-    val displayRuleRepository = aDisplayRuleInternalRepository()
-    val imageRuleRepository = aImageInternalRepository()
-    val fileRuleRepository = aFileInternalRepository()
+    val documentObjectRepository = aDocumentObjectRepository()
+    val variableRepository = aVariableRepository()
+    val paraStyleRepository = aParaStyleRepository()
+    val textStyleRepository = aTextStyleRepository()
+    val dataStructureRepository = aVariableStructureRepository()
+    val displayRuleRepository = aDisplayRuleRepository()
+    val imageRuleRepository = aImageRepository()
+    val fileRuleRepository = aFileRepository()
 
     val docRepo = aDocumentObjectRepository()
     val paraStyleRepo = aParaStyleRepository()
     val textStyleRepo = aTextStyleRepository()
 
     val subject = ReferenceValidator(
-        documentObjectInternalRepository,
+        documentObjectRepository,
         variableRepository,
-        textStyleInternalRepository,
-        paraStyleInternalRepository,
+        textStyleRepository,
+        paraStyleRepository,
         dataStructureRepository,
         displayRuleRepository,
         imageRuleRepository,

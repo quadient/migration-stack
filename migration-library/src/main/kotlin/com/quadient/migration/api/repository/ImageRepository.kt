@@ -1,39 +1,36 @@
 package com.quadient.migration.api.repository
 
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
-import com.quadient.migration.persistence.repository.ImageInternalRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.ImageTable
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
+import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 
-class ImageRepository(internalRepository: ImageInternalRepository) : Repository<Image>(internalRepository) {
-    val statusTrackingRepository = StatusTrackingRepository(internalRepository.projectName)
+class ImageRepository(table: ImageTable, projectName: String) : Repository<Image>(table, projectName) {
+    val statusTrackingRepository = StatusTrackingRepository(projectName)
 
-    override fun toDto(model: Image): Image {
-        return model
+    override fun fromDb(row: ResultRow): Image {
+        return Image.fromDb(row)
     }
 
     override fun findUsages(id: String): List<MigrationObject> {
         return transaction {
-            DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq internalRepository.projectName }
+            DocumentObjectTable.selectAll().where { DocumentObjectTable.projectName eq projectName }
                 .map { DocumentObjectTable.fromResultRow(it) }.filter { it.collectRefs().any { it.id == id } }
                 .distinct()
         }
     }
 
     override fun upsert(dto: Image) {
-        internalRepository.upsert {
-            val existingItem =
-                internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
-                    ?.let { internalRepository.toModel(it) }
+        upsertInternal {
+            val existingItem = table.selectAll().where(filter(dto.id)).firstOrNull()?.let(::fromDb)
 
             val now = Clock.System.now()
 
@@ -41,11 +38,9 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
                 statusTrackingRepository.active(dto.id, ResourceType.Image)
             }
 
-            internalRepository.table.upsertReturning(
-                internalRepository.table.id, internalRepository.table.projectName
-            ) {
+            table.upsertReturning(table.id, table.projectName) {
                 it[ImageTable.id] = dto.id
-                it[ImageTable.projectName] = internalRepository.projectName
+                it[ImageTable.projectName] = projectName
                 it[ImageTable.name] = dto.name
                 it[ImageTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
                 it[ImageTable.customFields] = dto.customFields.inner
@@ -63,10 +58,8 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
     }
 
     override fun upsertBatch(dtos: Collection<Image>) {
-        internalRepository.upsertBatch(dtos) { dto ->
-            val existingItem =
-                internalRepository.table.selectAll().where(internalRepository.filter(dto.id)).firstOrNull()
-                    ?.let { internalRepository.toModel(it) }
+        upsertBatchInternal(dtos) { dto ->
+            val existingItem = table.selectAll().where(filter(dto.id)).firstOrNull()?.let(::fromDb)
 
             val now = Clock.System.now()
 
@@ -75,7 +68,7 @@ class ImageRepository(internalRepository: ImageInternalRepository) : Repository<
             }
 
             this[ImageTable.id] = dto.id
-            this[ImageTable.projectName] = internalRepository.projectName
+            this[ImageTable.projectName] = projectName
             this[ImageTable.name] = dto.name
             this[ImageTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
             this[ImageTable.customFields] = dto.customFields.inner

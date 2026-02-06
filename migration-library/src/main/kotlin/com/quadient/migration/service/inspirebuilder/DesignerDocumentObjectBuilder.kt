@@ -2,14 +2,10 @@ package com.quadient.migration.service.inspirebuilder
 
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.*
-import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
-import com.quadient.migration.persistence.repository.VariableInternalRepository
-import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.Repository
+import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveTargetDir
@@ -24,7 +20,6 @@ import com.quadient.migration.shared.millimeters
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.FlowArea
-import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.Page
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
@@ -46,14 +41,14 @@ import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 
 class DesignerDocumentObjectBuilder(
-    documentObjectRepository: DocumentObjectInternalRepository,
-    textStyleRepository: TextStyleInternalRepository,
-    paragraphStyleRepository: ParagraphStyleInternalRepository,
-    variableRepository: VariableInternalRepository,
-    variableStructureRepository: VariableStructureInternalRepository,
-    displayRuleRepository: DisplayRuleInternalRepository,
-    imageRepository: ImageInternalRepository,
-    fileRepository: FileInternalRepository,
+    documentObjectRepository: DocumentObjectRepository,
+    textStyleRepository: TextStyleRepository,
+    paragraphStyleRepository: ParagraphStyleRepository,
+    variableRepository: Repository<Variable>,
+    variableStructureRepository: Repository<VariableStructure>,
+    displayRuleRepository: Repository<DisplayRule>,
+    imageRepository: Repository<Image>,
+    fileRepository: Repository<File>,
     projectConfig: ProjectConfig,
     ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(
@@ -166,7 +161,7 @@ class DesignerDocumentObjectBuilder(
 
         val languageVariable = variableStructure.languageVariable
         if (languageVariable != null) {
-            val languageVariableModel = variableRepository.findModelOrFail(languageVariable.id)
+            val languageVariableModel = variableRepository.findOrFail(languageVariable.id)
             val languageVariablePathData = variableStructure.structure[languageVariable.id]
             if (languageVariablePathData == null || languageVariablePathData.path.isBlank()) {
                 error("Language variable '${languageVariable.id}' or its path not found in variable structure '${variableStructure.id}'.")
@@ -177,7 +172,7 @@ class DesignerDocumentObjectBuilder(
 
         documentObject.content.paragraphIfEmpty().forEach {
             if (it is DocumentObjectRef) {
-                val documentObjectModel = documentObjectRepository.findModelOrFail(it.id)
+                val documentObjectModel = documentObjectRepository.findOrFail(it.id)
                 if (documentObjectModel.type == DocumentObjectType.Page) {
                     pageModels.add(documentObjectModel)
                 } else {
@@ -221,9 +216,9 @@ class DesignerDocumentObjectBuilder(
         }
 
         buildTextStyles(
-            layout, textStyleRepository.listAllModel().filter { it.definition is TextStyleDefinition })
+            layout, textStyleRepository.listAll().filter { it.definition is TextStyleDefinition })
         buildParagraphStyles(
-            layout, paragraphStyleRepository.listAllModel().filter { it.definition is ParagraphStyleDefinition })
+            layout, paragraphStyleRepository.listAll().filter { it.definition is ParagraphStyleDefinition })
 
         val firstPageWithFlowArea =
             (layout.pages as PagesImpl).children.find { page -> (page as PageImpl).children.any { it is FlowArea } } as? PageImpl
@@ -248,7 +243,7 @@ class DesignerDocumentObjectBuilder(
         layout: Layout, variableStructure: VariableStructure, ruleDef: DisplayRuleDefinition, successFlow: Flow,
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
-            ruleDef.toScript(layout, variableStructure, variableRepository::findModelOrFail), successFlow
+            ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail), successFlow
         )
     }
 
@@ -262,7 +257,7 @@ class DesignerDocumentObjectBuilder(
 
         multipleRowSet.addRowSet(
             layout.addRowSet().setType(RowSet.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
-                ruleDef.toScript(layout, variableStructure, variableRepository::findModelOrFail), successRow
+                ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail), successRow
             )
         )
 
@@ -320,7 +315,7 @@ class DesignerDocumentObjectBuilder(
         val content = areaModel.content
         if (content.size == 1 && content.first() is ImageRef) {
             val imageRef = content.first() as ImageRef
-            val imageModel = imageRepository.findModelOrFail(imageRef.id)
+            val imageModel = imageRepository.findOrFail(imageRef.id)
 
             when (val imagePlaceholder = getImagePlaceholder(imageModel)) {
                 is ImagePlaceholderResult.Skip -> return

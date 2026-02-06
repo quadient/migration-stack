@@ -5,14 +5,8 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Tab
 import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
-import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.LineSpacing

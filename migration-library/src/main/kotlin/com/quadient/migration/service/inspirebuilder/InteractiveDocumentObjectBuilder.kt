@@ -10,14 +10,10 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.File
 import com.quadient.migration.api.dto.migrationmodel.Image
-import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
-import com.quadient.migration.persistence.repository.VariableInternalRepository
-import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.Repository
+import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
@@ -29,22 +25,19 @@ import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
-import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
-import com.quadient.wfdxml.api.layoutnodes.data.DataType
-import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.module.Layout
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 class InteractiveDocumentObjectBuilder(
-    documentObjectRepository: DocumentObjectInternalRepository,
-    textStyleRepository: TextStyleInternalRepository,
-    paragraphStyleRepository: ParagraphStyleInternalRepository,
-    variableRepository: VariableInternalRepository,
-    variableStructureRepository: VariableStructureInternalRepository,
-    displayRuleRepository: DisplayRuleInternalRepository,
-    imageRepository: ImageInternalRepository,
-    fileRepository: FileInternalRepository,
+    documentObjectRepository: DocumentObjectRepository,
+    textStyleRepository: TextStyleRepository,
+    paragraphStyleRepository: ParagraphStyleRepository,
+    variableRepository: Repository<com.quadient.migration.api.dto.migrationmodel.Variable>,
+    variableStructureRepository: Repository<com.quadient.migration.api.dto.migrationmodel.VariableStructure>,
+    displayRuleRepository: Repository<com.quadient.migration.api.dto.migrationmodel.DisplayRule>,
+    imageRepository: Repository<Image>,
+    fileRepository: Repository<File>,
     projectConfig: ProjectConfig,
     ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(

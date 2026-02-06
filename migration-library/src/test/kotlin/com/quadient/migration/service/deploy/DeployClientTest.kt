@@ -5,6 +5,7 @@ package com.quadient.migration.service.deploy
 import com.quadient.migration.api.dto.migrationmodel.StatusTracking
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectFilter
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.FileRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
@@ -12,11 +13,11 @@ import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.FileRepository
+import com.quadient.migration.api.repository.ImageRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
@@ -52,11 +53,11 @@ import kotlin.uuid.Uuid
 
 
 class DeployClientTest {
-    val documentObjectRepository = mockk<DocumentObjectInternalRepository>()
-    val imageRepository = mockk<ImageInternalRepository>()
-    val fileRepository = mockk<FileInternalRepository>()
-    val textStyleRepository = mockk<TextStyleInternalRepository>()
-    val paragraphStyleRepository = mockk<ParagraphStyleInternalRepository>()
+    val documentObjectRepository = mockk<DocumentObjectRepository>()
+    val imageRepository = mockk<ImageRepository>()
+    val fileRepository = mockk<FileRepository>()
+    val textStyleRepository = mockk<TextStyleRepository>()
+    val paragraphStyleRepository = mockk<ParagraphStyleRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
     val documentObjectBuilder = mockk<DesignerDocumentObjectBuilder>()
     val ipsService = mockk<IpsService>()
@@ -92,10 +93,10 @@ class DeployClientTest {
         val img1 = aImage(id = "img2", metadata = mapOf("imgMeta" to listOf(MetadataPrimitive.Str("v3"))))
         val img2 = aImage(id = "img2", metadata = mapOf("imgMeta" to listOf(MetadataPrimitive.Str("v4"))))
 
-        every { documentObjectRepository.findModel("doc1") } returns doc1
-        every { documentObjectRepository.findModel("doc2") } returns doc2
-        every { imageRepository.findModel("img1") } returns img1
-        every { imageRepository.findModel("img2") } returns img2
+        every { documentObjectRepository.find("doc1") } returns doc1
+        every { documentObjectRepository.find("doc2") } returns doc2
+        every { imageRepository.find("img1") } returns img1
+        every { imageRepository.find("img2") } returns img2
         every { ipsService.writeMetadata(any()) } returns Unit
 
         val deploymentResult = DeploymentResult(Uuid.random()).apply {
@@ -159,8 +160,8 @@ class DeployClientTest {
         givenNewExternalDocumentObject("1", deps = listOf("2"))
         givenNewExternalDocumentObject("2", deps = listOf("3", "4"))
         givenNewExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"), fileDeps = listOf("1", "2"))
-        givenInternalDocumentObject("4", deps = listOf("1", "5"))
-        givenInternalDocumentObject("5", deps = listOf("6"))
+        givenDocumentObject("4", deps = listOf("1", "5"))
+        givenDocumentObject("5", deps = listOf("6"))
         givenNewExternalDocumentObject("6", deps = listOf("7"))
         givenNewExternalDocumentObject("7", deps = listOf())
         givenNewImage("1")
@@ -195,8 +196,8 @@ class DeployClientTest {
         givenChangedExternalDocumentObject("2", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
         givenChangedExternalDocumentObject("8", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp, icmPath = "icm://other.wfd", deploymentId = deploymentId)
         givenExistingExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"), fileDeps = listOf("1", "2"), deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
-        givenInternalDocumentObject("4", deps = listOf("1", "5"))
-        givenInternalDocumentObject("5", deps = listOf("6"))
+        givenDocumentObject("4", deps = listOf("1", "5"))
+        givenDocumentObject("5", deps = listOf("6"))
         givenNewExternalDocumentObject("6", deps = listOf("7"))
         givenNewExternalDocumentObject("7", deps = listOf())
         givenNewImage("1")
@@ -410,7 +411,7 @@ class DeployClientTest {
     }
 
     private fun givenImage(id: String, events: List<StatusEvent> = listOf()) {
-        every { imageRepository.findModelOrFail(id) } returns aImage(id = id)
+        every { imageRepository.findOrFail(id) } returns aImage(id = id)
         every {
             statusTrackingRepository.findEventsRelevantToOutput(
                 id, ResourceType.Image, any()
@@ -433,7 +434,7 @@ class DeployClientTest {
     }
 
     private fun givenFile(id: String, events: List<StatusEvent> = listOf()) {
-        every { fileRepository.findModelOrFail(id) } returns aFile(id = id)
+        every { fileRepository.findOrFail(id) } returns aFile(id = id)
         every {
             statusTrackingRepository.findEventsRelevantToOutput(
                 id, ResourceType.File, any()
@@ -530,22 +531,22 @@ class DeployClientTest {
                 )
             } + paragraphStyles.map { Paragraph(emptyList(), ParagraphStyleRef(it), null) })
         )
-        every { documentObjectRepository.list(any()) } returns externalObjects
+        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns externalObjects
         every {
             statusTrackingRepository.findEventsRelevantToOutput(
                 id, ResourceType.DocumentObject, any()
             )
         } returns events
         for (id in textStyles) {
-            every { textStyleRepository.findModelOrFail(id) } returns aTextStyle(id = id)
+            every { textStyleRepository.findOrFail(id) } returns aTextStyle(id = id)
         }
         for (id in paragraphStyles) {
-            every { paragraphStyleRepository.findModelOrFail(id) } returns aParaStyle(id)
+            every { paragraphStyleRepository.findOrFail(id) } returns aParaStyle(id)
         }
     }
 
-    private fun givenInternalDocumentObject(id: String, deps: List<String> = listOf()) {
-        every { documentObjectRepository.findModelOrFail(id) } returns aBlock(
+    private fun givenDocumentObject(id: String, deps: List<String> = listOf()) {
+        every { documentObjectRepository.findOrFail(id) } returns aBlock(
             id = id, internal = true, content = deps.map { DocumentObjectRef(it, null) })
     }
 }

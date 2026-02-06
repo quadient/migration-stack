@@ -30,22 +30,6 @@ import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
-import com.quadient.migration.persistence.repository.DisplayRuleInternalRepository
-import com.quadient.migration.persistence.repository.DocumentObjectInternalRepository
-import com.quadient.migration.persistence.repository.FileInternalRepository
-import com.quadient.migration.persistence.repository.ImageInternalRepository
-import com.quadient.migration.persistence.repository.ParagraphStyleInternalRepository
-import com.quadient.migration.persistence.repository.TextStyleInternalRepository
-import com.quadient.migration.persistence.repository.VariableInternalRepository
-import com.quadient.migration.persistence.repository.VariableStructureInternalRepository
-import com.quadient.migration.persistence.table.DisplayRuleTable
-import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.FileTable
-import com.quadient.migration.persistence.table.ImageTable
-import com.quadient.migration.persistence.table.ParagraphStyleTable
-import com.quadient.migration.persistence.table.TextStyleTable
-import com.quadient.migration.persistence.table.VariableStructureTable
-import com.quadient.migration.persistence.table.VariableTable
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
@@ -436,17 +420,3 @@ fun aFile(
 
 fun aDocumentObjectRef(id: String, displayRuleId: String? = null) =
     DocumentObjectRef(id, displayRuleId?.let { DisplayRuleRef(it) })
-
-fun aDocumentObjectInternalRepository() = DocumentObjectInternalRepository(DocumentObjectTable, aProjectConfig().name)
-fun aVariableInternalRepository() = VariableInternalRepository(VariableTable, aProjectConfig().name)
-fun aVariableStructureInternalRepository() =
-    VariableStructureInternalRepository(VariableStructureTable, aProjectConfig().name)
-
-fun aParaStyleInternalRepository() = ParagraphStyleInternalRepository(ParagraphStyleTable, aProjectConfig().name)
-fun aTextStyleInternalRepository() = TextStyleInternalRepository(TextStyleTable, aProjectConfig().name)
-fun aDisplayRuleInternalRepository() = DisplayRuleInternalRepository(DisplayRuleTable, aProjectConfig().name)
-fun aImageInternalRepository() = ImageInternalRepository(ImageTable, aProjectConfig().name)
-fun aFileInternalRepository() = FileInternalRepository(FileTable, aProjectConfig().name)
-
-
-
