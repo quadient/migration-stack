@@ -52,6 +52,7 @@ import io.mockk.runs
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.datetime.Clock
+import org.jetbrains.exposed.v1.core.Op
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -147,7 +148,7 @@ class InteractiveDeployClientTest {
         val template =
             mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("block1"), aDocumentObjectRef("block2"))))
 
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns listOf(externalBlock, template)
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(externalBlock, template)
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { documentObjectRepository.find(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
@@ -218,7 +219,7 @@ class InteractiveDeployClientTest {
         val template =
             mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("block1"), aDocumentObjectRef("block2"))))
 
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns listOf(block, template)
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block, template)
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { documentObjectRepository.find(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
@@ -246,7 +247,7 @@ class InteractiveDeployClientTest {
         val file = mockFile(aFile("Report"))
         val block = mockDocumentObject(aBlock(id = "1", listOf(ImageRef(image.id), FileRef(file.id))))
 
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns listOf(block)
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
@@ -289,7 +290,7 @@ class InteractiveDeployClientTest {
             ))
         )
 
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns listOf(block)
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { ipsService.upload(any(), any()) } just runs
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
@@ -326,7 +327,7 @@ class InteractiveDeployClientTest {
             )
         )
 
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns listOf(block)
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
         every { documentObjectRepository.find(innerBlock.id) } returns innerBlock
         every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
@@ -458,7 +459,7 @@ class InteractiveDeployClientTest {
     fun `deploy list of document objects validates that no document objects are unsupported`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns listOf(
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", skip = SkipOptions(true, null, null)),
             aBlock(id = "2", type = DocumentObjectType.Block),
             aBlock(id = "3", skip = SkipOptions(true, null, null)),
@@ -467,14 +468,14 @@ class InteractiveDeployClientTest {
         val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(listOf("1", "2", "3")) }
 
         assertEquals("The following document objects are skipped: [1, 3]. ", ex.message)
-        verify(exactly = 1) { documentObjectRepository.list(any<DocumentObjectFilter>()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
     }
 
     @Test
     fun `deploy list of document objects validates that no document objects are `() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns listOf(
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", internal = true),
             aBlock(id = "2", internal = true),
             aBlock(id = "3", internal = false),
@@ -483,28 +484,28 @@ class InteractiveDeployClientTest {
         val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(listOf("1", "2", "3")) }
 
         assertEquals("The following document objects are internal: [1, 2]. ", ex.message)
-        verify(exactly = 1) { documentObjectRepository.list(any<DocumentObjectFilter>()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
     }
 
     @Test
     fun `deploy list of document objects validates that no document are missing`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns listOf(
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1"),
         )
 
         val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(listOf("1", "2", "3")) }
 
         assertEquals("The following document objects were not found: [2, 3]. ", ex.message)
-        verify(exactly = 1) { documentObjectRepository.list(any<DocumentObjectFilter>()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
     }
 
     @Test
     fun `deploy list of document objects has all kinds of problems`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns listOf(
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1"),
             aBlock(id = "2", internal = true),
             aBlock(id = "3"),
@@ -525,7 +526,7 @@ class InteractiveDeployClientTest {
             "The following document objects were not found: [8]. The following document objects are skipped: [6]. The following document objects are internal: [2]. ",
             ex.message
         )
-        verify(exactly = 1) { documentObjectRepository.list(any<DocumentObjectFilter>()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
     }
 
     @Test
@@ -538,11 +539,11 @@ class InteractiveDeployClientTest {
             aBlock(id = "2", content = listOf(aDocumentObjectRef("5"))),
             aBlock(id = "3", content = listOf(aDocumentObjectRef("6"))),
         )
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns docObjects
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns docObjects
 
         spy.deployDocumentObjects(toDeploy, true)
 
-        verify(exactly = 1) { documentObjectRepository.list(any<DocumentObjectFilter>()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
         verify { spy.deployDocumentObjectsInternal(docObjects) }
     }
 
@@ -563,14 +564,14 @@ class InteractiveDeployClientTest {
             aBlock(id = "7", content = listOf(aDocumentObjectRef("8"))),
             aBlock(id = "8", internal = true),
         )
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns docObjects
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns docObjects
         for (dependency in dependencies) {
             every { documentObjectRepository.findOrFail(dependency.id) } returns dependency
         }
 
         spy.deployDocumentObjects(toDeploy)
 
-        verify(exactly = 1) { documentObjectRepository.list(any<DocumentObjectFilter>()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
         verify(exactly = 7) { documentObjectRepository.findOrFail(any()) }
         verify {
             spy.deployDocumentObjectsInternal(match { docObjects ->
@@ -588,13 +589,13 @@ class InteractiveDeployClientTest {
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
         )
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns docObjects
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns docObjects
         every { documentObjectRepository.findOrFail(any()) } throws IllegalArgumentException("not found")
 
         val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(toDeploy) }
 
         assertEquals("not found", ex.message)
-        verify(exactly = 1) { documentObjectRepository.list(any<DocumentObjectFilter>()) }
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
         verify(exactly = 1) { documentObjectRepository.findOrFail(any()) }
     }
 
@@ -609,7 +610,7 @@ class InteractiveDeployClientTest {
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { documentObjectRepository.find(innerBlock.id) } throws IllegalStateException("Not found")
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns listOf(template, block)
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
         every { documentObjectBuilder.buildDocumentObject(block, any()) } throws IllegalStateException("Inner block not found")
         every { statusTrackingRepository.error("B_1", any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("B_1")
 
@@ -652,7 +653,7 @@ class InteractiveDeployClientTest {
         val templates = List(1) {
             mockDocumentObject(aTemplate(it.toString(), listOf(aDocumentObjectRef("block$it"))))
         }
-        every { documentObjectRepository.list(any<DocumentObjectFilter>()) } returns blocks + templates
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns blocks + templates
     }
 
     private fun mockDocumentObject(documentObject: DocumentObject): DocumentObject {

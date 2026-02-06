@@ -24,6 +24,7 @@ import com.quadient.wfdxml.api.layoutnodes.Page
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
+import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.layoutnodes.FlowAreaImpl
 import com.quadient.wfdxml.internal.layoutnodes.PageImpl
@@ -140,8 +141,8 @@ class DesignerDocumentObjectBuilder(
         return IcmPath.root().join(fontConfigPath).toString()
     }
 
-    override fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String) {
-        getImageByName(layout, image.nameOrId())?.setAlternateText(alternateText)
+    override fun applyImageAlternateText(layout: Layout, image: WfdXmlImage, alternateText: String) {
+        image.setAlternateText(alternateText)
     }
 
     override fun buildDocumentObject(documentObject: DocumentObject, styleDefinitionPath: String?): String {

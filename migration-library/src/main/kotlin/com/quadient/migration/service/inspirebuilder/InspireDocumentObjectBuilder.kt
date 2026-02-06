@@ -602,13 +602,13 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         if (!alternateText.isNullOrBlank()) {
-            applyImageAlternateText(layout, imageModel, alternateText)
+            applyImageAlternateText(layout, image, alternateText)
         }
 
         return image
     }
 
-    protected abstract fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String)
+    protected abstract fun applyImageAlternateText(layout: Layout, image: WfdXmlImage, alternateText: String)
 
     private fun buildFileRef(
         layout: Layout,
@@ -1059,7 +1059,8 @@ abstract class InspireDocumentObjectBuilder(
 
         return languageFlow
     }
-
+
+
     protected fun List<DocumentContent>.paragraphIfEmpty(): List<DocumentContent> {
         return this.ifEmpty {
             listOf(

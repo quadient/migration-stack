@@ -25,6 +25,9 @@ import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
+import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
+import com.quadient.wfdxml.api.layoutnodes.data.DataType
+import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.module.Layout
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -152,10 +155,18 @@ class InteractiveDocumentObjectBuilder(
             .join(fontConfigPath.orDefault("Resources/Fonts")).toString()
     }
 
-    override fun applyImageAlternateText(layout: Layout, image: Image, alternateText: String) {
-        // This method receives the DTO Image but needs to set alternate text on the WfdXml image
-        // The actual image setting is done in the InspireDocumentObjectBuilder when building
-        // For Interactive, we just create the variable, the image reference is handled elsewhere
+    override fun applyImageAlternateText(layout: Layout, image: WfdXmlImage, alternateText: String) {
+        val escapedText = alternateText.replace("\"", "\\\"")
+        val variable = layout.data.addVariable()
+            .setName("Alternate text variable for ${image.name}")
+            .setKind(VariableKind.CALCULATED)
+            .setDataType(DataType.STRING)
+            .setScript("return '$escapedText';")
+            .addCustomProperty("ValueWrapperVariable", true)
+        val layoutRoot = layout.root ?: layout.addRoot()
+        layoutRoot.addLockedWebNode(variable)
+
+        image.setAlternateTextVariable(variable)
     }
 
     override fun buildDocumentObject(documentObject: DocumentObject, styleDefinitionPath: String?): String {

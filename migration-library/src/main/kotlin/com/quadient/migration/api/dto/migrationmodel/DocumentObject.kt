@@ -26,7 +26,12 @@ data class DocumentObject(
     val subject: String?,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
-        // Refs are collected from content via proper traversal
-        return listOfNotNull(displayRuleRef, variableStructureRef)
+        val contentRefs = content.flatMap {
+            when (it) {
+                is RefValidatable -> it.collectRefs()
+                else -> emptyList()
+            }
+        }
+        return contentRefs + listOfNotNull(displayRuleRef, variableStructureRef)
     }
 }
