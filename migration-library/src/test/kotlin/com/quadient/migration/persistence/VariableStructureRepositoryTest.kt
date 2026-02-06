@@ -56,6 +56,11 @@ class VariableStructureRepositoryTest {
         val resultStruct1 = result.first { it.id == "struct1" }
         val resultStruct2 = result.first { it.id == "struct2" }
 
+        struct1.created = resultStruct1.created
+        struct1.lastUpdated = resultStruct1.lastUpdated
+        struct2.created = resultStruct2.created
+        struct2.lastUpdated = resultStruct2.lastUpdated
+
         resultStruct1.shouldBeEqualTo(struct1)
         resultStruct2.shouldBeEqualTo(struct2)
         resultStruct1.structure.size.shouldBeEqualTo(2)

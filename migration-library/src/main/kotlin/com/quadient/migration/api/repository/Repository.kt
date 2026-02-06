@@ -18,8 +18,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 abstract class Repository<T : MigrationObject>(
-    protected val table: MigrationObjectTable,
-    protected val projectName: String
+    protected val table: MigrationObjectTable, protected val projectName: String
 ) {
     private val cache = mutableMapOf<String, T>()
     private var allCached = false
@@ -132,16 +131,36 @@ abstract class Repository<T : MigrationObject>(
         }
     }
 
-    protected fun <D : MigrationObject> upsertBatchInternal(
-        dto: Collection<D>,
-        block: BatchUpsertStatement.(D) -> Unit
-    ) {
-        val ids = dto.map { it.id }.toSet()
+    fun count(): Long {
         return transaction {
-            table.batchUpsert(dto) {
-                block(it)
-            }
+            table.selectAll().where(filter()).count()
+        }
+    }
 
+    protected fun <D : MigrationObject> upsertBatchInternal(dtos: Collection<D>, block: (java.sql.Connection) -> Unit) {
+        transaction {
+            block(connection.connection as java.sql.Connection)
+        }
+        cacheObjects(dtos)
+    }
+
+    protected fun createSql(columns: List<String>, dtoCount: Int): String {
+        val placeholders = (1..columns.size).joinToString(",", prefix = "(", postfix = ")") { "?" }
+        val values = (1..dtoCount).joinToString(",") { placeholders }
+        val setOnConflict = columns.filter { it != "created" }.joinToString(", ") { "$it = EXCLUDED.$it" }
+
+        val sql = """
+        INSERT INTO ${table.tableName} (${columns.joinToString(", ")})
+        VALUES $values
+        ON CONFLICT (id, project_name) DO UPDATE SET $setOnConflict
+        """.trimIndent()
+
+        return sql
+    }
+
+    protected fun <D : MigrationObject> cacheObjects(dto: Collection<D>) {
+        val ids = dto.map { it.id }.toSet()
+        transaction {
             for (obj in table.selectAll().where(table.projectName eq projectName and (table.id inList ids))
                 .map(::fromDb)) {
                 cache[obj.id] = obj
@@ -149,8 +168,15 @@ abstract class Repository<T : MigrationObject>(
         }
     }
 
-    protected fun updateCache(id: String, obj: T) {
-        cache[id] = obj
+    fun listAllBatched(limit: Int, offset: Long): List<T> {
+        return transaction {
+            val result = table.selectAll().orderBy(table.id).limit(limit).offset(offset).where(filter()).map {
+                val result = fromDb(it)
+                cache[result.id] = result
+                result
+            }
+            result
+        }
     }
 
     abstract fun findUsages(id: String): List<MigrationObject>

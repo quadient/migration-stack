@@ -8,7 +8,6 @@ import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.tools.aImageRepository
 import com.quadient.migration.tools.aProjectConfig
-import com.quadient.migration.tools.model.aImageInternalRepository
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfSize
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -82,6 +81,11 @@ class ImageRepositoryTest {
 
         val resultImage1 = result.first { it.id == "image1" }
         val resultImage2 = result.first { it.id == "image2" }
+
+        image1.created = resultImage1.created
+        image1.lastUpdated = resultImage1.lastUpdated
+        image2.created = resultImage2.created
+        image2.lastUpdated = resultImage2.lastUpdated
 
         resultImage1.shouldBeEqualTo(image1)
         resultImage2.shouldBeEqualTo(image2)

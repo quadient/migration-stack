@@ -52,14 +52,14 @@ class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) 
             "origin_locations", "custom_fields", "created", "last_updated", "display_rule_ref",
             "variable_structure_ref", "base_template", "options", "metadata", "skip", "subject"
         )
-        val sql = internalRepository.createSql(columns, dtos.size)
+        val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
 
-        internalRepository.upsertBatch(dtos) {
+        upsertBatchInternal(dtos) {
             val stmt = it.prepareStatement(sql)
             var index = 1
             dtos.forEach { dto ->
-                val existingItem = internalRepository.findModel(dto.id)
+                val existingItem = find(dto.id)
                 when (dto.type) {
                     DocumentObjectType.Page -> require(dto.options == null || dto.options is PageOptions)
                     else -> require(dto.options == null || dto.options !is PageOptions)
@@ -72,7 +72,7 @@ class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) 
                 }
 
                 stmt.setString(index++, dto.id)
-                stmt.setString(index++, internalRepository.projectName)
+                stmt.setString(index++, this@DocumentObjectRepository.projectName)
                 stmt.setString(index++, dto.type.name)
                 stmt.setString(index++, dto.name)
                 stmt.setObject(index++, Json.encodeToString(dto.content.toDb()), Types.OTHER)

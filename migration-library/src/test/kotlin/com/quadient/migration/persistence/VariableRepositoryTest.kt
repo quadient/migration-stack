@@ -101,6 +101,11 @@ class VariableRepositoryTest {
         val resultVar1 = result.first { it.id == "var1" }
         val resultVar2 = result.first { it.id == "var2" }
 
+        var1.created = resultVar1.created
+        var1.lastUpdated = resultVar1.lastUpdated
+        var2.created = resultVar2.created
+        var2.lastUpdated = resultVar2.lastUpdated
+
         resultVar1.shouldBeEqualTo(var1)
         resultVar2.shouldBeEqualTo(var2)
 

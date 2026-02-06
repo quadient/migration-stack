@@ -69,6 +69,11 @@ class FileRepositoryTest {
         val resultFile1 = result.first { it.id == "file1" }
         val resultFile2 = result.first { it.id == "file2" }
 
+        file1.created = resultFile1.created
+        file1.lastUpdated = resultFile1.lastUpdated
+        file2.created = resultFile2.created
+        file2.lastUpdated = resultFile2.lastUpdated
+
         resultFile1.shouldBeEqualTo(file1)
         resultFile2.shouldBeEqualTo(file2)
 

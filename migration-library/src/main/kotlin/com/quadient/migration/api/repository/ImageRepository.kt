@@ -83,21 +83,21 @@ class ImageRepository(table: ImageTable, projectName: String) : Repository<Image
             "created", "last_updated", "source_path", "image_type", "options",
             "target_folder", "metadata", "skip", "alternate_text"
         )
-        val sql = internalRepository.createSql(columns, dtos.size)
+        val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
 
-        internalRepository.upsertBatch(dtos) {
+        upsertBatchInternal(dtos) {
             val stmt = it.prepareStatement(sql)
             var index = 1
             dtos.forEach { dto ->
-                val existingItem = internalRepository.findModel(dto.id)
+                val existingItem = find(dto.id)
 
                 if (existingItem == null) {
                     statusTrackingRepository.active(dto.id, ResourceType.Image)
                 }
 
                 stmt.setString(index++, dto.id)
-                stmt.setString(index++, internalRepository.projectName)
+                stmt.setString(index++, this@ImageRepository.projectName)
                 stmt.setString(index++, dto.name)
                 stmt.setArray(index++, it.createArrayOf("text", existingItem?.originLocations.concat(dto.originLocations).distinct().toTypedArray()))
                 stmt.setObject(index++, Json.encodeToString(dto.customFields.inner), Types.OTHER)

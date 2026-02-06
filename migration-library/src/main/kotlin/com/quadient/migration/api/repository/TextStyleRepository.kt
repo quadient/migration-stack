@@ -94,21 +94,21 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
             "id", "project_name", "name", "origin_locations", "custom_fields",
             "created", "last_updated", "definition"
         )
-        val sql = internalRepository.createSql(columns, dtos.size)
+        val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
 
-        internalRepository.upsertBatch(dtos) {
+        upsertBatchInternal(dtos) {
             val stmt = it.prepareStatement(sql)
             var index = 1
             dtos.forEach { dto ->
-                val existingItem = internalRepository.findModel(dto.id)
+                val existingItem = find(dto.id)
 
                 if (existingItem == null) {
                     statusTrackingRepository.active(dto.id, ResourceType.TextStyle)
                 }
 
                 stmt.setString(index++, dto.id)
-                stmt.setString(index++, internalRepository.projectName)
+                stmt.setString(index++, this@TextStyleRepository.projectName)
                 stmt.setString(index++, dto.name)
                 stmt.setArray(index++, it.createArrayOf("text", existingItem?.originLocations.concat(dto.originLocations).distinct().toTypedArray()))
                 stmt.setObject(index++, Json.encodeToString(dto.customFields.inner), Types.OTHER)
