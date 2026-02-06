@@ -1659,10 +1659,10 @@ class InteractiveDocumentObjectBuilderTest {
         }
 
         @Test
-        fun `file path appends extension from sourcePath when fileName lacks one`() {
+        fun `attachment path appends extension from sourcePath when attachmentName lacks one`() {
             val config = aProjectConfig(output = InspireOutput.Interactive, interactiveTenant = "tenant")
             val pathTestSubject = aSubject(config)
-            val attachment = aAttachment("F1", name = "document", sourcePath = "C:/files/doc.pdf")
+            val attachment = aAttachment("F1", name = "document", sourcePath = "C:/attachments/doc.pdf")
 
             val path = pathTestSubject.getAttachmentPath(attachment)
 

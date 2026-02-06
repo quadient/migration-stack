@@ -57,7 +57,7 @@ import kotlin.uuid.Uuid
 class DesignerDeployClientTest {
     val documentObjectRepository = mockk<DocumentObjectRepository>()
     val imageRepository = mockk<ImageRepository>()
-    val AttachmentRepository = mockk<AttachmentRepository>()
+    val attachmentRepository = mockk<AttachmentRepository>()
     val textStyleRepository = mockk<TextStyleRepository>()
     val paragraphStyleRepository = mockk<ParagraphStyleRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
@@ -68,7 +68,7 @@ class DesignerDeployClientTest {
     private val subject = DesignerDeployClient(
         documentObjectRepository,
         imageRepository,
-        AttachmentRepository,
+        attachmentRepository,
         statusTrackingRepository,
         textStyleRepository,
         paragraphStyleRepository,
@@ -94,9 +94,9 @@ class DesignerDeployClientTest {
         val attachment1 = mockAttachment(aAttachment("F_1"))
         val externalBlock = mockObj(
             aDocObj(
-                "Txt_Img_File_1", DocumentObjectType.Block, listOf(
+                "Txt_Img_Attachment_1", DocumentObjectType.Block, listOf(
                     aParagraph(aText(StringValue("Image: "))), ImageRef(image1.id),
-                    aParagraph(aText(StringValue("File: "))), AttachmentRef(attachment1.id)
+                    aParagraph(aText(StringValue("Attachment: "))), AttachmentRef(attachment1.id)
                 )
             )
         )
@@ -365,7 +365,7 @@ class DesignerDeployClientTest {
         val attachmentPath = "icm://${attachment.nameOrId()}"
 
         every { documentObjectBuilder.getAttachmentPath(attachment) } returns attachmentPath
-        every { AttachmentRepository.find(attachment.id) } returns attachment
+        every { attachmentRepository.find(attachment.id) } returns attachment
         if (!sourcePath.isNullOrBlank()) {
             val byteArray = ByteArray(10)
             every { storage.read(sourcePath) } answers {

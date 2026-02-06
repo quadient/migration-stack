@@ -182,17 +182,17 @@ class InspireDocumentObjectBuilderTest {
         val flowAreaFlow = result["Flow"].last { it["Id"].textValue() == flowAreaFlowId }
 
         flowAreaFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("See attached: ")
-        val fileFlowId = flowAreaFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val attachmentFlowId = flowAreaFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
 
-        val fileFlow = result["Flow"].last { it["Id"].textValue() == fileFlowId }
-        fileFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
-        fileFlow["ExternalLocation"].textValue().shouldBeEqualTo("icm://document.pdf")
+        val attachmentFlow = result["Flow"].last { it["Id"].textValue() == attachmentFlowId }
+        attachmentFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
+        attachmentFlow["ExternalLocation"].textValue().shouldBeEqualTo("icm://document.pdf")
     }
 
     @Test
-    fun `file reference with skip and placeholder creates simple flow with placeholder text`() {
+    fun `attachment reference with skip and placeholder creates simple flow with placeholder text`() {
         // given
-        val attachment = aAttachment("File_1", skip = SkipOptions(true, "File not available", "Missing source"))
+        val attachment = aAttachment("Attachment_1", skip = SkipOptions(true, "Attachment not available", "Missing source"))
         every { attachmentRepository.findOrFail(attachment.id) } returns attachment
         val block = mockObj(
             aBlock("B_1", listOf(aParagraph(aText(listOf(AttachmentRef(attachment.id))))))
@@ -203,13 +203,13 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val placeholderFlow = result["Flow"].last()
-        placeholderFlow["FlowContent"]["P"]["T"][""].textValue() == "File not available"
+        placeholderFlow["FlowContent"]["P"]["T"][""].textValue() == "Attachment not available"
     }
 
     @Test
-    fun `file reference with skip but no placeholder does not create flow`() {
+    fun `attachment reference with skip but no placeholder does not create flow`() {
         // given
-        val attachment = mockAttachment(aAttachment("File_1", skip = SkipOptions(true, null, "Not needed")))
+        val attachment = mockAttachment(aAttachment("Attachment_", skip = SkipOptions(true, null, "Not needed")))
         val block = mockObj(
             aBlock(
                 "B_1", listOf(

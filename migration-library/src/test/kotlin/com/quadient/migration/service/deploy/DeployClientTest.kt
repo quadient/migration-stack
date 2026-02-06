@@ -167,8 +167,8 @@ class DeployClientTest {
         givenNewImage("1")
         givenNewImage("2")
         givenNewImage("3")
-        givenNewFile("1")
-        givenNewFile("2")
+        givenNewAttachment("1")
+        givenNewAttachment("2")
 
         val result = subject.progressReport()
 
@@ -195,7 +195,7 @@ class DeployClientTest {
         givenNewExternalDocumentObject("1", deps = listOf("2"))
         givenChangedExternalDocumentObject("2", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
         givenChangedExternalDocumentObject("8", deps = listOf("3", "4"), deployTimestamp = currentDeployTimestamp, icmPath = "icm://other.wfd", deploymentId = deploymentId)
-        givenExistingExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"), fileDeps = listOf("1", "2"), deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
+        givenExistingExternalDocumentObject("3", imageDeps = listOf("1", "2", "3"), attachmentDeps = listOf("1", "2"), deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
         givenDocumentObject("4", deps = listOf("1", "5"))
         givenDocumentObject("5", deps = listOf("6"))
         givenNewExternalDocumentObject("6", deps = listOf("7"))
@@ -203,8 +203,8 @@ class DeployClientTest {
         givenNewImage("1")
         givenChangedImage("2", deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
         givenNewImage("3")
-        givenNewFile("1")
-        givenChangedFile("2", deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
+        givenNewAttachment("1")
+        givenChangedAttachment("2", deployTimestamp = currentDeployTimestamp, deploymentId = deploymentId)
 
         every { statusTrackingRepository.listAll() } returns listOf(
             aDeployedStatus("random", deploymentId = deploymentId, timestamp = currentDeployTimestamp),
@@ -419,11 +419,11 @@ class DeployClientTest {
         } returns events
     }
 
-    private fun givenNewFile(id: String) {
+    private fun givenNewAttachment(id: String) {
         givenAttachment(id = id, events = listOf(aActiveStatusEvent(Clock.System.now() - 1.hours)))
     }
 
-    private fun givenChangedFile(id: String, deployTimestamp: Instant, deploymentId: Uuid) {
+    private fun givenChangedAttachment(id: String, deployTimestamp: Instant, deploymentId: Uuid) {
         givenAttachment(
             id = id, events = listOf(
                 aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds),
@@ -465,7 +465,7 @@ class DeployClientTest {
         id: String,
         deps: List<String> = listOf(),
         imageDeps: List<String> = listOf(),
-        fileDeps: List<String> = listOf(),
+        attachmentDeps: List<String> = listOf(),
         textStyles: List<String> = listOf(),
         paragraphStyles: List<String> = listOf(),
         deployTimestamp: Instant,
@@ -476,7 +476,7 @@ class DeployClientTest {
             id = id,
             deps = deps,
             imageDeps = imageDeps,
-            attachmentDeps = fileDeps,
+            attachmentDeps = attachmentDeps,
             textStyles = textStyles,
             paragraphStyles = paragraphStyles,
             events = listOf(aActiveStatusEvent(timestamp = deployTimestamp - 1.hours), aDeployedStatusEvent(deploymentId, icmPath, deployTimestamp), aActiveStatusEvent(timestamp = deployTimestamp + 1.seconds))
@@ -487,7 +487,7 @@ class DeployClientTest {
         id: String,
         deps: List<String> = listOf(),
         imageDeps: List<String> = listOf(),
-        fileDeps: List<String> = listOf(),
+        attachmentDeps: List<String> = listOf(),
         textStyles: List<String> = listOf(),
         paragraphStyles: List<String> = listOf(),
         deployTimestamp: Instant,
@@ -497,7 +497,7 @@ class DeployClientTest {
             id,
             deps,
             imageDeps = imageDeps,
-            attachmentDeps = fileDeps,
+            attachmentDeps = attachmentDeps,
             textStyles = textStyles,
             paragraphStyles = paragraphStyles, events = listOf(
                 aActiveStatusEvent(timestamp = deployTimestamp - 1.seconds),

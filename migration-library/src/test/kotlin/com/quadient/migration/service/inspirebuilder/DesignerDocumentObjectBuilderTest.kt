@@ -904,7 +904,7 @@ class DesignerDocumentObjectBuilderTest {
 
         @ParameterizedTest
         @CsvSource(
-            // fileType,paths.documents,paths.attachments,targetFolder,defaultTargetFolder,expected
+            // attachmentType,paths.documents,paths.attachments,targetFolder,defaultTargetFolder,expected
             "Document,,,,                   ,icm://Attachment_F1.pdf",
             "Document,,,relative,           ,icm://relative/Attachment_F1.pdf",
             "Document,Docs,,relative,       ,icm://Docs/relative/Attachment_F1.pdf",
@@ -939,10 +939,10 @@ class DesignerDocumentObjectBuilderTest {
         }
 
         @Test
-        fun `attachment path appends extension from sourcePath when fileName lacks one`() {
+        fun `attachment path appends extension from sourcePath when attachmentName lacks one`() {
             val config = aProjectConfig(output = InspireOutput.Designer)
             val pathTestSubject = aSubject(config)
-            val attachment = aAttachment("F1", name = "document", sourcePath = "C:/files/doc.pdf")
+            val attachment = aAttachment("F1", name = "document", sourcePath = "C:/attachments/doc.pdf")
 
             val path = pathTestSubject.getAttachmentPath(attachment)
 
@@ -950,10 +950,10 @@ class DesignerDocumentObjectBuilderTest {
         }
 
         @Test
-        fun `file path preserves fileName extension when present`() {
+        fun `attachment path preserves attachmentName extension when present`() {
             val config = aProjectConfig(output = InspireOutput.Designer)
             val pathTestSubject = aSubject(config)
-            val attachment = aAttachment("F1", name = "report.docx", sourcePath = "file.pdf")
+            val attachment = aAttachment("F1", name = "report.docx", sourcePath = "attachment.pdf")
 
             val path = pathTestSubject.getAttachmentPath(attachment)
 

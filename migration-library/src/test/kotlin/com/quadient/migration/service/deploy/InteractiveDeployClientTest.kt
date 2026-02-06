@@ -260,7 +260,7 @@ class InteractiveDeployClientTest {
     }
 
     @Test
-    fun `deployDocumentObjects deploys images and files when used in document objects`() {
+    fun `deployDocumentObjects deploys images and attachments when used in document objects`() {
         // given
         val image = mockImage(aImage("Bunny"))
         val attachment = mockAttachment(aAttachment("Report"))
@@ -278,7 +278,7 @@ class InteractiveDeployClientTest {
 
         mockBasicSuccessfulIpsOperations()
         val expectedImageIcmPath = "icm://Interactive/$tenant/Resources/Images/defaultFolder/${image.sourcePath}"
-        val expectedFileIcmPath = "icm://Interactive/$tenant/Resources/Files/defaultFolder/${attachment.sourcePath}"
+        val expectedAttachmentIcmPath = "icm://Interactive/$tenant/Resources/Attachments/defaultFolder/${attachment.sourcePath}"
 
         // when
         val deploymentResult = subject.deployDocumentObjects()
@@ -288,18 +288,18 @@ class InteractiveDeployClientTest {
         deploymentResult.errors.shouldBeEqualTo(emptyList())
 
         verify { ipsService.tryUpload(expectedImageIcmPath, any()) }
-        verify { ipsService.tryUpload(expectedFileIcmPath, any()) }
+        verify { ipsService.tryUpload(expectedAttachmentIcmPath, any()) }
         verifyBasicIpsOperations(
             listOf(
                 expectedImageIcmPath,
-                expectedFileIcmPath,
+                expectedAttachmentIcmPath,
                 "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"
             ), 1
         )
     }
 
     @Test
-    fun `Images with unknown type or missing source path and files with missing source path or skip flag are omitted from deployment`() {
+    fun `Images with unknown type or missing source path and attachments with missing source path or skip flag are omitted from deployment`() {
         // given
         val catImage = mockImage(aImage("Cat", imageType = ImageType.Unknown))
         val dogImage = mockImage(aImage("Dog", sourcePath = null))
@@ -347,7 +347,7 @@ class InteractiveDeployClientTest {
     }
 
     @Test
-    fun `Multiple times used image or file is deployed only once`() {
+    fun `Multiple times used image or attachment is deployed only once`() {
         // given
         val image = mockImage(aImage("Bunny"))
         val attachment = mockAttachment(aAttachment("Report"))
@@ -375,18 +375,18 @@ class InteractiveDeployClientTest {
 
         mockBasicSuccessfulIpsOperations()
         val expectedImageIcmPath = "icm://Interactive/$tenant/Resources/Images/defaultFolder/${image.sourcePath}"
-        val expectedFileIcmPath = "icm://Interactive/$tenant/Resources/Files/defaultFolder/${attachment.sourcePath}"
+        val expectedAttachmentIcmPath = "icm://Interactive/$tenant/Resources/Attachments/defaultFolder/${attachment.sourcePath}"
 
         // when
         subject.deployDocumentObjects()
 
         // then
         verify(exactly = 1) { ipsService.tryUpload(expectedImageIcmPath, any()) }
-        verify(exactly = 1) { ipsService.tryUpload(expectedFileIcmPath, any()) }
+        verify(exactly = 1) { ipsService.tryUpload(expectedAttachmentIcmPath, any()) }
         verifyBasicIpsOperations(
             listOf(
                 expectedImageIcmPath,
-                expectedFileIcmPath,
+                expectedAttachmentIcmPath,
                 "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"
             ), 1
         )
@@ -746,7 +746,7 @@ class InteractiveDeployClientTest {
     private fun mockAttachment(attachment: Attachment, success: Boolean = true): Attachment {
         val sourcePath = attachment.sourcePath
         val dir = resolveTargetDir(config.defaultTargetFolder)
-        every { documentObjectBuilder.getAttachmentPath(attachment) } returns "icm://Interactive/$tenant/Resources/Files/$dir/${attachment.sourcePath}"
+        every { documentObjectBuilder.getAttachmentPath(attachment) } returns "icm://Interactive/$tenant/Resources/Attachments/$dir/${attachment.sourcePath}"
 
         every { attachmentRepository.find(attachment.id) } returns if (success) {
             attachment
