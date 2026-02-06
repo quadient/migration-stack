@@ -10,6 +10,8 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
+import kotlinx.datetime.toJavaInstant
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
@@ -19,10 +21,13 @@ import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
+import java.sql.Types
 
 class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) :
     Repository<DocumentObject>(table, projectName) {
     val statusTrackingRepository = StatusTrackingRepository(projectName)
+
+    val logger = org.slf4j.LoggerFactory.getLogger(DocumentObjectRepository::class.java)!!
 
     fun list(documentObjectFilter: DocumentObjectFilter): List<DocumentObject> {
         return list(filterByDocumentObjectFilter(documentObjectFilter))
@@ -38,41 +43,55 @@ class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) 
         }
     }
 
+
     override fun upsertBatch(dtos: Collection<DocumentObject>) {
-        upsertBatchInternal(dtos) { dto ->
-            val now = Clock.System.now()
+        if (dtos.isEmpty()) return
 
-            val existingItem = find(dto.id)
+        val columns = listOf(
+            "id", "project_name", "type", "name", "content", "internal", "target_folder",
+            "origin_locations", "custom_fields", "created", "last_updated", "display_rule_ref",
+            "variable_structure_ref", "base_template", "options", "metadata", "skip", "subject"
+        )
+        val sql = internalRepository.createSql(columns, dtos.size)
+        val now = Clock.System.now()
 
-            when (dto.type) {
-                DocumentObjectType.Page -> require(dto.options == null || dto.options is PageOptions)
-                else -> require(dto.options == null || dto.options !is PageOptions)
+        internalRepository.upsertBatch(dtos) {
+            val stmt = it.prepareStatement(sql)
+            var index = 1
+            dtos.forEach { dto ->
+                val existingItem = internalRepository.findModel(dto.id)
+                when (dto.type) {
+                    DocumentObjectType.Page -> require(dto.options == null || dto.options is PageOptions)
+                    else -> require(dto.options == null || dto.options !is PageOptions)
+                }
+
+                if ((existingItem == null && dto.internal != true) || (dto.internal == false && existingItem?.internal == true)) {
+                    statusTrackingRepository.active(
+                        dto.id, ResourceType.DocumentObject, mapOf("type" to dto.type.toString())
+                    )
+                }
+
+                stmt.setString(index++, dto.id)
+                stmt.setString(index++, internalRepository.projectName)
+                stmt.setString(index++, dto.type.name)
+                stmt.setString(index++, dto.name)
+                stmt.setObject(index++, Json.encodeToString(dto.content.toDb()), Types.OTHER)
+                stmt.setBoolean(index++, dto.internal == true)
+                stmt.setString(index++, dto.targetFolder)
+                stmt.setArray(index++, it.createArrayOf("text", existingItem?.originLocations.concat(dto.originLocations).distinct().toTypedArray()))
+                stmt.setObject(index++, Json.encodeToString(dto.customFields.inner), Types.OTHER)
+                stmt.setTimestamp(index++, java.sql.Timestamp.from((existingItem?.created ?: now).toJavaInstant()))
+                stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
+                stmt.setString(index++, dto.displayRuleRef?.id)
+                stmt.setString(index++, dto.variableStructureRef?.id)
+                stmt.setString(index++, dto.baseTemplate)
+                stmt.setObject(index++, dto.options?.let { Json.encodeToString(it) }, Types.OTHER)
+                stmt.setObject(index++, dto.metadata.let { Json.encodeToString(it) }, Types.OTHER)
+                stmt.setObject(index++, Json.encodeToString(dto.skip), Types.OTHER)
+                stmt.setString(index++, dto.subject)
             }
 
-            if ((existingItem == null && dto.internal != true) || (dto.internal == false && existingItem?.internal == true)) {
-                statusTrackingRepository.active(
-                    dto.id, ResourceType.DocumentObject, mapOf("type" to dto.type.toString())
-                )
-            }
-
-            this[DocumentObjectTable.id] = dto.id
-            this[DocumentObjectTable.projectName] = this@DocumentObjectRepository.projectName
-            this[DocumentObjectTable.type] = dto.type.name
-            this[DocumentObjectTable.name] = dto.name
-            this[DocumentObjectTable.content] = dto.content.toDb()
-            this[DocumentObjectTable.internal] = dto.internal == true
-            this[DocumentObjectTable.targetFolder] = dto.targetFolder
-            this[DocumentObjectTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-            this[DocumentObjectTable.customFields] = dto.customFields.inner
-            this[DocumentObjectTable.created] = existingItem?.created ?: now
-            this[DocumentObjectTable.lastUpdated] = now
-            this[DocumentObjectTable.displayRuleRef] = dto.displayRuleRef?.id
-            this[DocumentObjectTable.variableStructureRef] = dto.variableStructureRef?.id
-            this[DocumentObjectTable.baseTemplate] = dto.baseTemplate
-            this[DocumentObjectTable.options] = dto.options
-            this[DocumentObjectTable.metadata] = dto.metadata
-            this[DocumentObjectTable.skip] = dto.skip
-            this[DocumentObjectTable.subject] = dto.subject
+            stmt.executeUpdate()
         }
     }
 

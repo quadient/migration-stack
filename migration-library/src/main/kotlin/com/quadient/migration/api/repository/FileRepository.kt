@@ -9,10 +9,13 @@ import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.FileType
 import com.quadient.migration.tools.concat
 import kotlinx.datetime.Clock
+import kotlinx.datetime.toJavaInstant
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
+import java.sql.Types
 
 class FileRepository(table: FileTable, projectName: String) : Repository<File>(table, projectName) {
     val statusTrackingRepository = StatusTrackingRepository(projectName)
@@ -66,26 +69,39 @@ class FileRepository(table: FileTable, projectName: String) : Repository<File>(t
     }
 
     override fun upsertBatch(dtos: Collection<File>) {
-        upsertBatchInternal(dtos) { dto ->
-            val existingItem = table.selectAll().where(filter(dto.id)).firstOrNull()?.let(::fromDb)
+        if (dtos.isEmpty()) return
 
-            val now = Clock.System.now()
+        val columns = listOf(
+            "id", "project_name", "name", "origin_locations", "custom_fields",
+            "created", "last_updated", "source_path", "target_folder", "file_type", "skip"
+        )
+        val sql = internalRepository.createSql(columns, dtos.size)
+        val now = Clock.System.now()
 
-            if (existingItem == null) {
-                statusTrackingRepository.active(dto.id, ResourceType.File)
+        internalRepository.upsertBatch(dtos) {
+            val stmt = it.prepareStatement(sql)
+            var index = 1
+            dtos.forEach { dto ->
+                val existingItem = internalRepository.findModel(dto.id)
+
+                if (existingItem == null) {
+                    statusTrackingRepository.active(dto.id, ResourceType.File)
+                }
+
+                stmt.setString(index++, dto.id)
+                stmt.setString(index++, internalRepository.projectName)
+                stmt.setString(index++, dto.name)
+                stmt.setArray(index++, it.createArrayOf("text", existingItem?.originLocations.concat(dto.originLocations).distinct().toTypedArray()))
+                stmt.setObject(index++, Json.encodeToString(dto.customFields.inner), Types.OTHER)
+                stmt.setTimestamp(index++, java.sql.Timestamp.from((existingItem?.created ?: now).toJavaInstant()))
+                stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
+                stmt.setString(index++, dto.sourcePath)
+                stmt.setString(index++, dto.targetFolder)
+                stmt.setString(index++, dto.fileType.name)
+                stmt.setObject(index++, Json.encodeToString(dto.skip), Types.OTHER)
             }
 
-            this[FileTable.id] = dto.id
-            this[FileTable.projectName] = this@FileRepository.projectName
-            this[FileTable.name] = dto.name
-            this[FileTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
-            this[FileTable.customFields] = dto.customFields.inner
-            this[FileTable.created] = existingItem?.created ?: now
-            this[FileTable.lastUpdated] = now
-            this[FileTable.sourcePath] = dto.sourcePath
-            this[FileTable.targetFolder] = dto.targetFolder
-            this[FileTable.fileType] = dto.fileType.name
-            this[FileTable.skip] = dto.skip
+            stmt.executeUpdate()
         }
     }
 }
