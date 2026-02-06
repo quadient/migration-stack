@@ -2,17 +2,17 @@ package com.quadient.migration.service.inspirebuilder
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.File
-import com.quadient.migration.api.dto.migrationmodel.FileRef
 import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.FileRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
@@ -43,7 +43,7 @@ class InspireDocumentObjectBuilderTest {
     private val variableStructureRepository = mockk<VariableStructureRepository>()
     private val displayRuleRepository = mockk<DisplayRuleRepository>()
     private val imageRepository = mockk<ImageRepository>()
-    private val fileRepository = mockk<FileRepository>()
+    private val attachmentRepository = mockk<AttachmentRepository>()
     private val ipsService = mockk<IpsService>()
 
     private val xmlMapper = XmlMapper().also { it.findAndRegisterModules() }
@@ -56,7 +56,7 @@ class InspireDocumentObjectBuilderTest {
         variableStructureRepository,
         displayRuleRepository,
         imageRepository,
-        fileRepository,
+        attachmentRepository,
         aProjectConfig(output = InspireOutput.Designer),
         ipsService,
     )
@@ -165,12 +165,12 @@ class InspireDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `file reference creates DirectExternal flow with correct structure`() {
+    fun `attachment reference creates DirectExternal flow with correct structure`() {
         // given
-        val file = aFile("File_1", name = "document", sourcePath = "C:/files/document.pdf")
-        every { fileRepository.findOrFail(file.id) } returns file
+        val attachment = aAttachment("Attachment_1", name = "document", sourcePath = "C:/attachments/document.pdf")
+        every { attachmentRepository.findOrFail(attachment.id) } returns attachment
         val block = mockObj(
-            aBlock("B_1", listOf(aParagraph(aText(listOf(StringValue("See attached: "), FileRef(file.id))))))
+            aBlock("B_1", listOf(aParagraph(aText(listOf(StringValue("See attached: "), AttachmentRef(attachment.id))))))
         )
 
         // when
@@ -182,20 +182,20 @@ class InspireDocumentObjectBuilderTest {
         val flowAreaFlow = result["Flow"].last { it["Id"].textValue() == flowAreaFlowId }
 
         flowAreaFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("See attached: ")
-        val fileFlowId = flowAreaFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val attachmentFlowId = flowAreaFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
 
-        val fileFlow = result["Flow"].last { it["Id"].textValue() == fileFlowId }
-        fileFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
-        fileFlow["ExternalLocation"].textValue().shouldBeEqualTo("icm://document.pdf")
+        val attachmentFlow = result["Flow"].last { it["Id"].textValue() == attachmentFlowId }
+        attachmentFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
+        attachmentFlow["ExternalLocation"].textValue().shouldBeEqualTo("icm://document.pdf")
     }
 
     @Test
-    fun `file reference with skip and placeholder creates simple flow with placeholder text`() {
+    fun `attachment reference with skip and placeholder creates simple flow with placeholder text`() {
         // given
-        val file = aFile("File_1", skip = SkipOptions(true, "File not available", "Missing source"))
-        every { fileRepository.findOrFail(file.id) } returns file
+        val attachment = aAttachment("Attachment_1", skip = SkipOptions(true, "Attachment not available", "Missing source"))
+        every { attachmentRepository.findOrFail(attachment.id) } returns attachment
         val block = mockObj(
-            aBlock("B_1", listOf(aParagraph(aText(listOf(FileRef(file.id))))))
+            aBlock("B_1", listOf(aParagraph(aText(listOf(AttachmentRef(attachment.id))))))
         )
 
         // when
@@ -203,20 +203,20 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val placeholderFlow = result["Flow"].last()
-        placeholderFlow["FlowContent"]["P"]["T"][""].textValue() == "File not available"
+        placeholderFlow["FlowContent"]["P"]["T"][""].textValue() == "Attachment not available"
     }
 
     @Test
-    fun `file reference with skip but no placeholder does not create flow`() {
+    fun `attachment reference with skip but no placeholder does not create flow`() {
         // given
-        val file = mockFile(aFile("File_1", skip = SkipOptions(true, null, "Not needed")))
+        val attachment = mockAttachment(aAttachment("Attachment_", skip = SkipOptions(true, null, "Not needed")))
         val block = mockObj(
             aBlock(
                 "B_1", listOf(
                     aParagraph(
                         aText(
                             listOf(
-                                StringValue("Text "), FileRef(file.id), StringValue(" more text")
+                                StringValue("Text "), AttachmentRef(attachment.id), StringValue(" more text")
                             )
                         )
                     )
@@ -237,9 +237,9 @@ class InspireDocumentObjectBuilderTest {
         return documentObject
     }
 
-    private fun mockFile(file: File): File {
-        every { fileRepository.findOrFail(file.id) } returns file
-        return file
+    private fun mockAttachment(attachment: Attachment): Attachment {
+        every { attachmentRepository.findOrFail(attachment.id) } returns attachment
+        return attachment
     }
 
     private fun mockTextStyle(textStyle: TextStyle): TextStyle {

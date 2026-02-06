@@ -9,8 +9,8 @@ import com.quadient.migration.data.Deployed
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
-import com.quadient.migration.api.dto.migrationmodel.File
-import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
@@ -47,7 +47,7 @@ data class DocObjectWithRef(val obj: DocumentObject, val documentObjectRefs: Set
 sealed class DeployClient(
     protected val documentObjectRepository: DocumentObjectRepository,
     protected val imageRepository: Repository<Image>,
-    protected val fileRepository: Repository<File>,
+    protected val attachmentRepository: Repository<Attachment>,
     protected val statusTrackingRepository: StatusTrackingRepository,
     protected val textStyleRepository: TextStyleRepository,
     protected val paragraphStyleRepository: ParagraphStyleRepository,
@@ -231,13 +231,13 @@ sealed class DeployClient(
         return deployOrder
     }
 
-    protected fun deployImagesAndFiles(documentObjects: List<DocumentObject>, deploymentId: Uuid, deploymentTimestamp: Instant): DeploymentResult {
+    protected fun deployImagesAndAttachments(documentObjects: List<DocumentObject>, deploymentId: Uuid, deploymentTimestamp: Instant): DeploymentResult {
         val deploymentResult = DeploymentResult(deploymentId)
         val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
 
         val allRefs = documentObjects.map {
             try {
-                it.getAllDocumentObjectImageAndFileRefs()
+                it.getAllDocumentObjectImageAndAttachmentRefs()
             } catch (e: IllegalStateException) {
                 deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
                 Pair(emptyList(), emptyList())
@@ -245,14 +245,14 @@ sealed class DeployClient(
         }
         
         val imageRefs = allRefs.flatMap { pair -> pair.first }.distinct()
-        val fileRefs = allRefs.flatMap { pair -> pair.second }.distinct()
+        val attachmentRefs = allRefs.flatMap { pair -> pair.second }.distinct()
 
         for (imageRef in imageRefs) {
             deployImage(imageRef, deploymentResult, tracker)
         }
 
-        for (fileRef in fileRefs) {
-            deployFile(fileRef, deploymentResult, tracker)
+        for (attachmentRef in attachmentRefs) {
+            deployAttachment(attachmentRef, deploymentResult, tracker)
         }
 
         return deploymentResult
@@ -328,58 +328,58 @@ sealed class DeployClient(
         tracker.deployedImage(imageModel.id, icmImagePath)
     }
 
-    private fun deployFile(fileRef: FileRef, deploymentResult: DeploymentResult, tracker: ResultTracker) {
-        if (!shouldDeployObject(fileRef.id, ResourceType.File, fileRef.id, deploymentResult)) {
-            logger.info("Skipping deployment of file '${fileRef.id}' as it is not marked for deployment.")
+    private fun deployAttachment(attachmentRef: AttachmentRef, deploymentResult: DeploymentResult, tracker: ResultTracker) {
+        if (!shouldDeployObject(attachmentRef.id, ResourceType.Attachment, attachmentRef.id, deploymentResult)) {
+            logger.info("Skipping deployment of attachment '${attachmentRef.id}' as it is not marked for deployment.")
             return
         }
 
-        val fileModel = fileRepository.find(fileRef.id)
-        if (fileModel == null) {
-            val message = "File '${fileRef.id}' not found."
+        val attachmentModel = attachmentRepository.find(attachmentRef.id)
+        if (attachmentModel == null) {
+            val message = "Attachment '${attachmentRef.id}' not found."
             logger.error(message)
-            tracker.errorFile(fileRef.id, null, message)
+            tracker.errorAttachment(attachmentRef.id, null, message)
             return
         }
 
-        val icmFilePath = documentObjectBuilder.getFilePath(fileModel)
+        val icmFilePath = documentObjectBuilder.getAttachmentPath(attachmentModel)
 
-        if (fileModel.skip.skipped) {
-            val reason = fileModel.skip.reason?.let { " Reason: $it" } ?: ""
-            val message = "File '${fileModel.nameOrId()}' is skipped.$reason"
+        if (attachmentModel.skip.skipped) {
+            val reason = attachmentModel.skip.reason?.let { " Reason: $it" } ?: ""
+            val message = "Attachment '${attachmentModel.nameOrId()}' is skipped.$reason"
             logger.warn(message)
-            tracker.warningFile(fileModel.id, icmFilePath, message)
+            tracker.warningAttachment(attachmentModel.id, icmFilePath, message)
             return
         }
 
-        if (fileModel.sourcePath.isNullOrBlank()) {
-            val message = "Skipping deployment of file '${fileModel.nameOrId()}' due to missing source path."
+        if (attachmentModel.sourcePath.isNullOrBlank()) {
+            val message = "Skipping deployment of attachment '${attachmentModel.nameOrId()}' due to missing source path."
             logger.warn(message)
-            tracker.warningFile(fileModel.id, icmFilePath, message)
+            tracker.warningAttachment(attachmentModel.id, icmFilePath, message)
             return
         }
 
-        logger.debug("Starting deployment of file '${fileModel.nameOrId()}'.")
-        val sourcePath = fileModel.sourcePath!!
+        logger.debug("Starting deployment of attachment '${attachmentModel.nameOrId()}'.")
+        val sourcePath = attachmentModel.sourcePath!!
         val readResult = readStorageSafely(sourcePath)
         if (readResult is ReadResult.Error) {
-            val message = "Error while reading file source data: ${readResult.errorMessage}."
+            val message = "Error while reading attachment source data: ${readResult.errorMessage}."
             logger.error(message)
-            tracker.errorFile(fileModel.id, icmFilePath, message)
+            tracker.errorAttachment(attachmentModel.id, icmFilePath, message)
             return
         }
 
-        val fileData = (readResult as ReadResult.Success).result
-        logger.trace("Loaded file data of size ${fileData.size} from storage.")
+        val attachmentData = (readResult as ReadResult.Success).result
+        logger.trace("Loaded attachment data of size ${attachmentData.size} from storage.")
 
-        val uploadResult = ipsService.tryUpload(icmFilePath, fileData)
+        val uploadResult = ipsService.tryUpload(icmFilePath, attachmentData)
         if (uploadResult is OperationResult.Failure) {
-            tracker.errorFile(fileModel.id, icmFilePath, uploadResult.message)
+            tracker.errorAttachment(attachmentModel.id, icmFilePath, uploadResult.message)
             return
         }
 
-        logger.debug("Deployment of file '${fileModel.nameOrId()}' to '${icmFilePath}' is successful.")
-        tracker.deployedFile(fileModel.id, icmFilePath)
+        logger.debug("Deployment of attachment '${attachmentModel.nameOrId()}' to '${icmFilePath}' is successful.")
+        tracker.deployedAttachment(attachmentModel.id, icmFilePath)
     }
 
     fun progressReport(deployId: Uuid? = null): ProgressReport {
@@ -476,15 +476,15 @@ sealed class DeployClient(
                     img
                 }
 
-                is FileRef -> {
-                    val file = fileRepository.findOrFail(ref.id)
-                    val nextIcmPath = documentObjectBuilder.getFilePath(file)
-                    val deployKind = file.getDeployKind(nextIcmPath)
-                    val lastStatus = file.getLastStatus(lastDeployment)
+                is AttachmentRef -> {
+                    val attachment = attachmentRepository.findOrFail(ref.id)
+                    val nextIcmPath = documentObjectBuilder.getAttachmentPath(attachment)
+                    val deployKind = attachment.getDeployKind(nextIcmPath)
+                    val lastStatus = attachment.getLastStatus(lastDeployment)
 
-                    report.addFile(
-                        id = file.id,
-                        file = file,
+                    report.addAttachment(
+                        id = attachment.id,
+                        attachment = attachment,
                         deploymentId = lastStatus.deployId,
                         deployTimestamp = lastStatus.deployTimestamp,
                         previousIcmPath = lastStatus.icmPath,
@@ -493,7 +493,7 @@ sealed class DeployClient(
                         deployKind = deployKind,
                         errorMessage = lastStatus.errorMessage,
                     )
-                    file
+                    attachment
                 }
 
                 is TextStyleRef -> null
@@ -555,7 +555,7 @@ sealed class DeployClient(
             when (ref) {
                 is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef -> {}
                 is ImageRef -> {}
-                is FileRef -> {}
+                is AttachmentRef -> {}
                 is DocumentObjectRef -> {
                     val model = documentObjectRepository.findOrFail(ref.id)
                     if (shouldIncludeDependency(model)) {
@@ -568,29 +568,29 @@ sealed class DeployClient(
         return dependencies
     }
 
-    private fun DocumentObject.getAllDocumentObjectImageAndFileRefs(): Pair<List<ImageRef>, List<FileRef>> {
+    private fun DocumentObject.getAllDocumentObjectImageAndAttachmentRefs(): Pair<List<ImageRef>, List<AttachmentRef>> {
         val images = mutableListOf<ImageRef>()
-        val files = mutableListOf<FileRef>()
+        val attachments = mutableListOf<AttachmentRef>()
 
         this.collectRefs().forEach { ref ->
             when (ref) {
                 is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef -> {}
                 is ImageRef -> images.add(ref)
-                is FileRef -> files.add(ref)
+                is AttachmentRef -> attachments.add(ref)
                 is DocumentObjectRef -> {
                     val model = documentObjectRepository.find(ref.id)
-                        ?: error("Unable to collect image or file references because inner document object '${ref.id}' was not found.")
+                        ?: error("Unable to collect image or attachment references because inner document object '${ref.id}' was not found.")
 
                     if (documentObjectBuilder.shouldIncludeInternalDependency(model)) {
-                        val (nestedImages, nestedFiles) = model.getAllDocumentObjectImageAndFileRefs()
+                        val (nestedImages, nestedAttachments) = model.getAllDocumentObjectImageAndAttachmentRefs()
                         images.addAll(nestedImages)
-                        files.addAll(nestedFiles)
+                        attachments.addAll(nestedAttachments)
                     }
                 }
             }
         }
 
-        return Pair(images, files)
+        return Pair(images, attachments)
     }
 
     private fun getLastDeployEvent(): LastDeployment? {
@@ -670,11 +670,11 @@ sealed class DeployClient(
         )
     }
 
-    private fun File.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
+    private fun Attachment.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
         return getLastStatus(
             id = this.id,
             lastDeployment = lastDeployment,
-            resourceType = ResourceType.File,
+            resourceType = ResourceType.Attachment,
             output = output,
             internal = false,
             isPage = false
@@ -696,8 +696,8 @@ sealed class DeployClient(
         return getDeployKind(this.id, ResourceType.Image, output, false, nextIcmPath)
     }
 
-    private fun File.getDeployKind(nextIcmPath: String?): DeployKind {
-        return getDeployKind(this.id, ResourceType.File, output, false, nextIcmPath)
+    private fun Attachment.getDeployKind(nextIcmPath: String?): DeployKind {
+        return getDeployKind(this.id, ResourceType.Attachment, output, false, nextIcmPath)
     }
 
     private fun getDeployKind(

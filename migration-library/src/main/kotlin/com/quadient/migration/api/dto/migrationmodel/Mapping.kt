@@ -33,11 +33,11 @@ sealed class MappingItem {
         var alternateText: String? = null,
     ) : MappingItem()
 
-    data class File(
+    data class Attachment(
         override var name: String?,
         var targetFolder: String?,
         var sourcePath: String?,
-        var fileType: FileType?,
+        var attachmentType: AttachmentType?,
         var skip: SkipOptions? = null,
     ) : MappingItem()
 
@@ -113,12 +113,12 @@ sealed class MappingItem {
                 )
             }
 
-            is MappingItem.File -> {
-                MappingItemEntity.File(
+            is MappingItem.Attachment -> {
+                MappingItemEntity.Attachment(
                     name = this.name,
                     targetFolder = this.targetFolder,
                     sourcePath = this.sourcePath,
-                    fileType = this.fileType,
+                    attachmentType = this.attachmentType,
                     skip = this.skip,
                 )
             }

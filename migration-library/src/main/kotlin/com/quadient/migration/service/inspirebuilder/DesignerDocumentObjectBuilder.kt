@@ -11,7 +11,7 @@ import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.FileType
+import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
@@ -49,7 +49,7 @@ class DesignerDocumentObjectBuilder(
     variableStructureRepository: Repository<VariableStructure>,
     displayRuleRepository: Repository<DisplayRule>,
     imageRepository: Repository<Image>,
-    fileRepository: Repository<File>,
+    attachmentRepository: Repository<Attachment>,
     projectConfig: ProjectConfig,
     ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(
@@ -60,7 +60,7 @@ class DesignerDocumentObjectBuilder(
     variableStructureRepository,
     displayRuleRepository,
     imageRepository,
-    fileRepository,
+    attachmentRepository,
     projectConfig,
     ipsService,
 ) {
@@ -100,27 +100,27 @@ class DesignerDocumentObjectBuilder(
     override fun getImagePath(image: Image) =
         getImagePath(image.id, image.imageType!!, image.name, image.targetFolder?.let { IcmPath.from(it) }, image.sourcePath)
 
-    override fun getFilePath(
-        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, fileType: FileType
+    override fun getAttachmentPath(
+        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType
     ): String {
-        val baseFileName = name ?: id
-        val fileName = appendExtensionIfMissing(baseFileName, sourcePath)
+        val baseAttachmentName = name ?: id
+        val attachmentName = appendExtensionIfMissing(baseAttachmentName, sourcePath)
 
         if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(fileName).toString()
+            return targetFolder.join(attachmentName).toString()
         }
 
-        val fileConfigPath = when (fileType) {
-            FileType.Document -> projectConfig.paths.documents
-            FileType.Attachment -> projectConfig.paths.attachments
+        val fileConfigPath = when (attachmentType) {
+            AttachmentType.Attachment -> projectConfig.paths.attachments
+            AttachmentType.Document -> projectConfig.paths.documents
         }
 
         return IcmPath.root().join(fileConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName).toString()
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(attachmentName).toString()
     }
 
-    override fun getFilePath(file: File): String =
-        getFilePath(file.id, file.name, file.targetFolder?.let { IcmPath.from(it) }, file.sourcePath, file.fileType)
+    override fun getAttachmentPath(attachment: Attachment): String =
+        getAttachmentPath(attachment.id, attachment.name, attachment.targetFolder?.let { IcmPath.from(it) }, attachment.sourcePath, attachment.attachmentType)
 
     override fun getStyleDefinitionPath(extension: String): String {
         val styleDefinitionPath = projectConfig.styleDefinitionPath

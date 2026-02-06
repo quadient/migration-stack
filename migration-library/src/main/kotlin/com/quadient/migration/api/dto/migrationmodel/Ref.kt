@@ -5,7 +5,7 @@ import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
 import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
 import com.quadient.migration.persistence.migrationmodel.HyperlinkEntity
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
-import com.quadient.migration.persistence.migrationmodel.FileEntityRef
+import com.quadient.migration.persistence.migrationmodel.AttachmentEntityRef
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleEntityRef
 import com.quadient.migration.persistence.migrationmodel.StringEntity
 import com.quadient.migration.persistence.migrationmodel.TableEntity
@@ -30,7 +30,7 @@ sealed interface TextContent {
             is TableEntity -> Table.fromDb(entity)
             is DocumentObjectEntityRef -> DocumentObjectRef.fromDb(entity)
             is ImageEntityRef -> ImageRef.fromDb(entity)
-            is FileEntityRef -> FileRef.fromDb(entity)
+            is AttachmentEntityRef -> AttachmentRef.fromDb(entity)
             is FirstMatchEntity -> FirstMatch.fromDb(entity)
             is HyperlinkEntity -> Hyperlink.fromDb(entity)
         }
@@ -108,12 +108,12 @@ data class ImageRef(override val id: String) : Ref, DocumentContent, TextContent
     fun toDb() = ImageEntityRef(id)
 }
 
-data class FileRef(override val id: String) : Ref, DocumentContent, TextContent, RefValidatable {
+data class AttachmentRef(override val id: String) : Ref, DocumentContent, TextContent, RefValidatable {
     companion object {
-        fun fromDb(entity: FileEntityRef) = FileRef(entity.id)
+        fun fromDb(entity: AttachmentEntityRef) = AttachmentRef(entity.id)
     }
 
-    fun toDb() = FileEntityRef(id)
+    fun toDb() = AttachmentEntityRef(id)
 }
 
 data class VariableStructureRef(override val id: String) : Ref {

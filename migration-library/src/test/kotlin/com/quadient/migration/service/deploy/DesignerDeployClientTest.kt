@@ -3,19 +3,18 @@
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.DocumentObjectFilter
 import com.quadient.migration.data.Error
-import com.quadient.migration.api.dto.migrationmodel.File
-import com.quadient.migration.api.dto.migrationmodel.FileRef
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.FileRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
@@ -32,7 +31,7 @@ import com.quadient.migration.tools.aErrorStatus
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
-import com.quadient.migration.tools.model.aFile
+import com.quadient.migration.tools.model.aAttachment
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aTemplate
@@ -58,7 +57,7 @@ import kotlin.uuid.Uuid
 class DesignerDeployClientTest {
     val documentObjectRepository = mockk<DocumentObjectRepository>()
     val imageRepository = mockk<ImageRepository>()
-    val fileRepository = mockk<FileRepository>()
+    val attachmentRepository = mockk<AttachmentRepository>()
     val textStyleRepository = mockk<TextStyleRepository>()
     val paragraphStyleRepository = mockk<ParagraphStyleRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
@@ -69,7 +68,7 @@ class DesignerDeployClientTest {
     private val subject = DesignerDeployClient(
         documentObjectRepository,
         imageRepository,
-        fileRepository,
+        attachmentRepository,
         statusTrackingRepository,
         textStyleRepository,
         paragraphStyleRepository,
@@ -88,16 +87,16 @@ class DesignerDeployClientTest {
     }
 
     @Test
-    fun `deployDocumentObjects deploys complex structure template with images and files`() {
+    fun `deployDocumentObjects deploys complex structure template with images and attachments`() {
         // given
         val image1 = mockImg(aImage("I_1"))
         val image2 = mockImg(aImage("I_2"))
-        val file1 = mockFile(aFile("F_1"))
+        val attachment1 = mockAttachment(aAttachment("F_1"))
         val externalBlock = mockObj(
             aDocObj(
-                "Txt_Img_File_1", DocumentObjectType.Block, listOf(
+                "Txt_Img_Attachment_1", DocumentObjectType.Block, listOf(
                     aParagraph(aText(StringValue("Image: "))), ImageRef(image1.id),
-                    aParagraph(aText(StringValue("File: "))), FileRef(file1.id)
+                    aParagraph(aText(StringValue("Attachment: "))), AttachmentRef(attachment1.id)
                 )
             )
         )
@@ -133,7 +132,7 @@ class DesignerDeployClientTest {
         verify { ipsService.xml2wfd(any(), "icm://${externalBlock.nameOrId()}") }
         verify { ipsService.tryUpload("icm://${image1.nameOrId()}", any()) }
         verify { ipsService.tryUpload("icm://${image2.nameOrId()}", any()) }
-        verify { ipsService.tryUpload("icm://${file1.nameOrId()}", any()) }
+        verify { ipsService.tryUpload("icm://${attachment1.nameOrId()}", any()) }
     }
 
     @Test
@@ -361,12 +360,12 @@ class DesignerDeployClientTest {
         return image
     }
 
-    private fun mockFile(file: File, success: Boolean = true): File {
-        val sourcePath = file.sourcePath
-        val filePath = "icm://${file.nameOrId()}"
+    private fun mockAttachment(attachment: Attachment, success: Boolean = true): Attachment {
+        val sourcePath = attachment.sourcePath
+        val attachmentPath = "icm://${attachment.nameOrId()}"
 
-        every { documentObjectBuilder.getFilePath(file) } returns filePath
-        every { fileRepository.find(file.id) } returns file
+        every { documentObjectBuilder.getAttachmentPath(attachment) } returns attachmentPath
+        every { attachmentRepository.find(attachment.id) } returns attachment
         if (!sourcePath.isNullOrBlank()) {
             val byteArray = ByteArray(10)
             every { storage.read(sourcePath) } answers {
@@ -376,10 +375,10 @@ class DesignerDeployClientTest {
                     throw Exception()
                 }
             }
-            every { ipsService.tryUpload(filePath, byteArray) } returns OperationResult.Success
+            every { ipsService.tryUpload(attachmentPath, byteArray) } returns OperationResult.Success
         }
 
-        return file
+        return attachment
     }
 
     private fun mockObj(documentObject: DocumentObject): DocumentObject {

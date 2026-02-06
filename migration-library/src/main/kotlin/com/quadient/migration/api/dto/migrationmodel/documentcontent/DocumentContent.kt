@@ -8,7 +8,7 @@ import com.quadient.migration.persistence.migrationmodel.SelectByLanguageEntity
 import com.quadient.migration.persistence.migrationmodel.TableEntity
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
-import com.quadient.migration.persistence.migrationmodel.FileEntityRef
+import com.quadient.migration.persistence.migrationmodel.AttachmentEntityRef
 
 sealed interface DocumentContent {
     companion object {
@@ -17,7 +17,7 @@ sealed interface DocumentContent {
             is ParagraphEntity -> Paragraph.fromDb(entity)
             is DocumentObjectEntityRef -> DocumentObjectRef.fromDb(entity)
             is ImageEntityRef -> ImageRef.fromDb(entity)
-            is FileEntityRef -> FileRef.fromDb(entity)
+            is AttachmentEntityRef -> AttachmentRef.fromDb(entity)
             is AreaEntity -> Area.fromDb(entity)
             is FirstMatchEntity -> FirstMatch.fromDb(entity)
             is SelectByLanguageEntity -> SelectByLanguage.fromDb(entity)
@@ -32,7 +32,7 @@ fun List<DocumentContent>.toDb(): List<DocumentContentEntity> {
             is Paragraph -> it.toDb()
             is DocumentObjectRef -> it.toDb()
             is ImageRef -> it.toDb()
-            is FileRef -> it.toDb()
+            is AttachmentRef -> it.toDb()
             is Area -> it.toDb()
             is FirstMatch -> it.toDb()
             is SelectByLanguage -> it.toDb()

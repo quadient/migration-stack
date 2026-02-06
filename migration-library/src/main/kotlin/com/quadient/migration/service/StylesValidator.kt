@@ -5,7 +5,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
-import com.quadient.migration.api.dto.migrationmodel.FileRef
+import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
@@ -74,7 +74,7 @@ class StylesValidator(
                 is DisplayRuleRef -> {}
                 is DocumentObjectRef -> {}
                 is ImageRef -> {}
-                is FileRef -> {}
+                is AttachmentRef -> {}
                 is VariableRef -> {}
                 is VariableStructureRef -> {}
             }

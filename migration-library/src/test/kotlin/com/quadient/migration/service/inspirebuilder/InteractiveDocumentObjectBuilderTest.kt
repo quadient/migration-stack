@@ -19,9 +19,9 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.FileRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
@@ -33,7 +33,7 @@ import com.quadient.migration.shared.BinOp.*
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.*
-import com.quadient.migration.shared.FileType
+import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
@@ -56,7 +56,7 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aCell
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
-import com.quadient.migration.tools.model.aFile
+import com.quadient.migration.tools.model.aAttachment
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.model.aRow
 import com.quadient.migration.tools.model.aSelectByLanguage
@@ -91,7 +91,7 @@ class InteractiveDocumentObjectBuilderTest {
     val variableStructureRepository = mockk<VariableStructureRepository>()
     val displayRuleRepository = mockk<DisplayRuleRepository>()
     val imageRepository = mockk<ImageRepository>()
-    val fileRepository = mockk<FileRepository>()
+    val attachmentRepository = mockk<AttachmentRepository>()
     val config = aProjectConfig()
     val ipsService = mockk<IpsService>()
 
@@ -1486,7 +1486,7 @@ class InteractiveDocumentObjectBuilderTest {
         variableStructureRepository,
         displayRuleRepository,
         imageRepository,
-        fileRepository,
+        attachmentRepository,
         config,
         ipsService,
     )
@@ -1623,18 +1623,18 @@ class InteractiveDocumentObjectBuilderTest {
 
         @ParameterizedTest
         @CsvSource(
-            // fileType,paths.documents,paths.attachments,targetFolder,defaultTargetFolder,expected
-            "Document,,,,                   ,icm://Interactive/tenant/Documents/File_F1.pdf",
-            "Document,,,relative,           ,icm://Interactive/tenant/Documents/relative/File_F1.pdf",
-            "Document,Docs,,relative,       ,icm://Interactive/tenant/Docs/relative/File_F1.pdf",
-            "Document,,,icm://absolute/,    ,icm://absolute/File_F1.pdf",
-            "Document,,,                ,def,icm://Interactive/tenant/Documents/def/File_F1.pdf",
-            "Attachment,,,,                 ,icm://Interactive/tenant/Attachments/File_F1.pdf",
-            "Attachment,,Attach,relative,   ,icm://Interactive/tenant/Attach/relative/File_F1.pdf",
-            "Attachment,,,icm://absolute/,  ,icm://absolute/File_F1.pdf",
+            // attachmentType,paths.documents,paths.attachments,targetFolder,defaultTargetFolder,expected
+            "Document,,,,                   ,icm://Interactive/tenant/Documents/Attachment_F1.pdf",
+            "Document,,,relative,           ,icm://Interactive/tenant/Documents/relative/Attachment_F1.pdf",
+            "Document,Docs,,relative,       ,icm://Interactive/tenant/Docs/relative/Attachment_F1.pdf",
+            "Document,,,icm://absolute/,    ,icm://absolute/Attachment_F1.pdf",
+            "Document,,,                ,def,icm://Interactive/tenant/Documents/def/Attachment_F1.pdf",
+            "Attachment,,,,                 ,icm://Interactive/tenant/Attachments/Attachment_F1.pdf",
+            "Attachment,,Attach,relative,   ,icm://Interactive/tenant/Attach/relative/Attachment_F1.pdf",
+            "Attachment,,,icm://absolute/,  ,icm://absolute/Attachment_F1.pdf",
         )
-        fun testFilePath(
-            fileType: String,
+        fun testAttachmentPath(
+            attachmentType: String,
             documentsPath: String?,
             attachmentsPath: String?,
             targetFolder: String?,
@@ -1651,20 +1651,20 @@ class InteractiveDocumentObjectBuilderTest {
                 targetDefaultFolder = defaultTargetFolder.nullToNull(),
             )
             val pathTestSubject = aSubject(config)
-            val file = aFile("F1", targetFolder = targetFolder.nullToNull(), fileType = FileType.valueOf(fileType))
+            val attachment = aAttachment("F1", targetFolder = targetFolder.nullToNull(), attachmentType = AttachmentType.valueOf(attachmentType))
 
-            val path = pathTestSubject.getFilePath(file)
+            val path = pathTestSubject.getAttachmentPath(attachment)
 
             path.shouldBeEqualTo(expected)
         }
 
         @Test
-        fun `file path appends extension from sourcePath when fileName lacks one`() {
+        fun `attachment path appends extension from sourcePath when attachmentName lacks one`() {
             val config = aProjectConfig(output = InspireOutput.Interactive, interactiveTenant = "tenant")
             val pathTestSubject = aSubject(config)
-            val file = aFile("F1", name = "document", sourcePath = "C:/files/doc.pdf")
+            val attachment = aAttachment("F1", name = "document", sourcePath = "C:/attachments/doc.pdf")
 
-            val path = pathTestSubject.getFilePath(file)
+            val path = pathTestSubject.getAttachmentPath(attachment)
 
             path.shouldBeEqualTo("icm://Interactive/tenant/Documents/document.pdf")
         }

@@ -8,7 +8,7 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.tools.aBlockDto
 import com.quadient.migration.tools.aDisplayRuleRepository
 import com.quadient.migration.tools.aDocumentObjectRepository
-import com.quadient.migration.tools.aFileRepository
+import com.quadient.migration.tools.aAttachmentRepository
 import com.quadient.migration.tools.aImageRepository
 import com.quadient.migration.tools.aParaStyleRepository
 import com.quadient.migration.tools.aParagraphStyle
@@ -30,8 +30,8 @@ class ReferenceValidatorTest {
     val textStyleRepository = aTextStyleRepository()
     val dataStructureRepository = aVariableStructureRepository()
     val displayRuleRepository = aDisplayRuleRepository()
-    val imageRuleRepository = aImageRepository()
-    val fileRuleRepository = aFileRepository()
+    val imageRepository = aImageRepository()
+    val attachmentRepository = aAttachmentRepository()
 
     val docRepo = aDocumentObjectRepository()
     val paraStyleRepo = aParaStyleRepository()
@@ -44,8 +44,8 @@ class ReferenceValidatorTest {
         paraStyleRepository,
         dataStructureRepository,
         displayRuleRepository,
-        imageRuleRepository,
-        fileRuleRepository,
+        imageRepository,
+        attachmentRepository,
     )
 
     @Test

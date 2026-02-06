@@ -4,7 +4,7 @@ package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
-import com.quadient.migration.api.dto.migrationmodel.File
+import com.quadient.migration.api.dto.migrationmodel.Attachment
 import kotlinx.datetime.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -141,7 +141,7 @@ data class ReportedFile(
     override val deploymentId: Uuid?,
     override val deployTimestamp: Instant?,
     override val errorMessage: String?,
-    val file: File,
+    val attachment: Attachment,
 ) : ProgressReportItem(
     id,
     previousIcmPath,
@@ -206,9 +206,9 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
         }
     }
 
-    fun addFile(
+    fun addAttachment(
         id: String,
-        file: File,
+        attachment: Attachment,
         previousIcmPath: String? = null,
         nextIcmPath: String? = null,
         deployKind: DeployKind,
@@ -217,7 +217,7 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
         deployTimestamp: Instant?,
         errorMessage: String?,
     ): ProgressReportItem {
-        return items.getOrPut(Pair(id, ResourceType.File)) {
+        return items.getOrPut(Pair(id, ResourceType.Attachment)) {
             ReportedFile(
                 id = id,
                 previousIcmPath = previousIcmPath,
@@ -226,7 +226,7 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
                 lastStatus = lastStatus,
                 deploymentId = deploymentId,
                 deployTimestamp = deployTimestamp,
-                file = file,
+                attachment = attachment,
                 errorMessage = errorMessage,
             )
         }
