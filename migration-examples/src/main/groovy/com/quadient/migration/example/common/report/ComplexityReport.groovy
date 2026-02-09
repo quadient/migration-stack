@@ -137,7 +137,7 @@ class Stats {
             switch (content) {
                 case DocumentObjectRef -> this.collectDocumentObjectRef(content)
                 case ImageRef -> this.usedImages.add(content.id)
-                case FileRef -> this.usedAttachments.add(content.id)
+                case AttachmentRef -> this.usedAttachments.add(content.id)
                 case Table -> this.collectTable(content)
                 case Paragraph -> this.collectParagraph(content)
                 case Area -> this.collectContent(content.content)
