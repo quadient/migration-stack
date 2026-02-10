@@ -26,6 +26,7 @@ import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.tools.aProjectConfig
+import com.quadient.migration.tools.getFlowAreaContentFlow
 import com.quadient.migration.tools.model.*
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
@@ -178,11 +179,9 @@ class InspireDocumentObjectBuilderTest {
             subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val flowAreaFlowId = result["FlowArea"].last()["FlowId"].textValue()
-        val flowAreaFlow = result["Flow"].last { it["Id"].textValue() == flowAreaFlowId }
-
-        flowAreaFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("See attached: ")
-        val attachmentFlowId = flowAreaFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val contentFlow = getFlowAreaContentFlow(result)
+        contentFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("See attached: ")
+        val attachmentFlowId = contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
 
         val attachmentFlow = result["Flow"].last { it["Id"].textValue() == attachmentFlowId }
         attachmentFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
@@ -202,7 +201,9 @@ class InspireDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val placeholderFlow = result["Flow"].last()
+        val contentFlow = getFlowAreaContentFlow(result)
+        val placeholderFlowId = contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val placeholderFlow = result["Flow"].last { it["Id"].textValue() == placeholderFlowId }
         placeholderFlow["FlowContent"]["P"]["T"][""].textValue() == "Attachment not available"
     }
 
@@ -228,7 +229,7 @@ class InspireDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val flow = result["Flow"].last()
+        val flow = getFlowAreaContentFlow(result)
         flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text  more text")
     }
 

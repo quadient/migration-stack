@@ -8,6 +8,8 @@ public interface Flow extends Node<Flow> {
 
     Paragraph addParagraph();
 
+    boolean isSectionFlow();
+
     Flow setSectionFlow(boolean sectionFlow);
 
     Type getType();

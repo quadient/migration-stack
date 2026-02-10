@@ -36,11 +36,11 @@ import static com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 
 Migration migration = initMigration(this.binding)
 
-def pageWidth = Size.ofMillimeters(148)
-def pageHeight = Size.ofMillimeters(210)
+def pageWidth = Size.ofMillimeters(210)
+def pageHeight = Size.ofMillimeters(297)
 def leftMargin = Size.ofCentimeters(1)
 def topMargin = Size.ofCentimeters(1)
-def contentWidth = Size.ofMillimeters(128)
+def contentWidth = pageWidth - Size.ofMillimeters(20)
 def logoWidth = Size.ofMillimeters(30)
 def logoHeight = Size.ofMillimeters(13)
 
@@ -151,13 +151,13 @@ def logo = new ImageBuilder("logo")
     .alternateText("Example logo image")
     .build()
 
-def logoPdfFile = this.class.getClassLoader().getResource('exampleResources/migrationModelExample/logo.pdf')
-migration.storage.write("logo.pdf", logoPdfFile.bytes)
-def logoAttachment = new AttachmentBuilder("logoAttachment").attachmentType(AttachmentType.Attachment)
-        .sourcePath("logo.pdf")
+def ExampleAttachmentFile = this.class.getClassLoader().getResource('exampleResources/migrationModelExample/ExampleAttachment.pdf')
+migration.storage.write("exampleAttachment.pdf", ExampleAttachmentFile.bytes)
+def exampleAttachment = new AttachmentBuilder("exampleAttachment").attachmentType(AttachmentType.Attachment)
+        .sourcePath("exampleAttachment.pdf")
         .build()
 
-migration.attachmentRepository.upsert(logoAttachment)
+migration.attachmentRepository.upsert(exampleAttachment)
 
 // Table containing some data with the first address row being optionally hidden
 // by using displayRuleRef to the display displayHeaderRule defined above.
@@ -380,7 +380,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.left(leftMargin)
             it.top(paragraph1TopMargin)
             it.width(contentWidth)
-            it.height(pageHeight - Size.ofCentimeters(4))
+            it.height(pageHeight - Size.ofCentimeters(6))
         }
             .documentObjectRef(paragraph1.id)
             .documentObjectRef(paragraph2.id)
@@ -404,8 +404,8 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.height(Size.ofCentimeters(2))
         }
             .documentObjectRef(signature.id)
+            .attachmentRef(exampleAttachment.id)
     }
-    .attachmentRef(logoAttachment.id)
     .variableStructureRef(variableStructure.id)
     .build()
 

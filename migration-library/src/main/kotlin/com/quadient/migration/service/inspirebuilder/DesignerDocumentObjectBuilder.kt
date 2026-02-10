@@ -333,16 +333,21 @@ class DesignerDocumentObjectBuilder(
                 }
             }
         } else {
+            val areaFlow = buildDocumentContentAsSingleFlow(
+                layout,
+                variableStructure,
+                areaModel.content,
+                displayRuleRef = mainObject.displayRuleRef,
+                languages = languages
+            )
+
+            val sectionAreaFlow = if (areaFlow.isSectionFlow) areaFlow else layout.addFlow().setType(Flow.Type.SIMPLE)
+                .setSectionFlow(true).also {
+                    it.addParagraph().addText().appendFlow(areaFlow)
+                }
+
             page.addFlowArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
-                .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlow(
-                    buildDocumentContentAsSingleFlow(
-                        layout,
-                        variableStructure,
-                        areaModel.content,
-                        displayRuleRef = mainObject.displayRuleRef,
-                        languages = languages
-                    )
-                )
+                .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlow(sectionAreaFlow)
         }
     }
 

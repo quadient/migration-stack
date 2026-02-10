@@ -85,6 +85,7 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
         return flowContent.addParagraph(new ParagraphImpl(this));
     }
 
+    @Override
     public boolean isSectionFlow() {
         return sectionFlow;
     }

@@ -41,6 +41,8 @@ import com.quadient.migration.shared.centimeters
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aProjectConfig
+import com.quadient.migration.tools.getFlowAreaContentFlow
+import com.quadient.migration.tools.getFlowAreaContentFlowId
 import com.quadient.migration.tools.model.aCell
 import com.quadient.migration.tools.model.aVariable
 import com.quadient.migration.tools.model.aDisplayRule
@@ -145,8 +147,9 @@ class DesignerDocumentObjectBuilderTest {
         pageFlowArea["Size"]["X"].textValue().shouldBeEqualTo("0.16")
         pageFlowArea["Size"]["Y"].textValue().shouldBeEqualTo("0.1")
         val flowId = pageFlowArea["FlowId"].textValue()
-        result["Flow"].first { it["Id"].textValue() == flowId }["Name"].textValue().shouldBeEqualTo(block.nameOrId())
-        result["Flow"].last { it["Id"].textValue() == flowId }["FlowContent"]["P"]["T"][""].textValue()
+        val contentFlowId = getFlowAreaContentFlowId(result, flowId)
+        result["Flow"].first { it["Id"].textValue() == contentFlowId }["Name"].textValue().shouldBeEqualTo(block.nameOrId())
+        result["Flow"].last { it["Id"].textValue() == contentFlowId }["FlowContent"]["P"]["T"][""].textValue()
             .shouldBeEqualTo("Hello there!")
 
         val virtualPageFlowAreaId =
@@ -157,9 +160,10 @@ class DesignerDocumentObjectBuilderTest {
         virtualPageFlowArea["Size"]["X"].textValue().shouldBeEqualTo("0.18")
         virtualPageFlowArea["Size"]["Y"].textValue().shouldBeEqualTo("0.267")
         val virtualFlowId = virtualPageFlowArea["FlowId"].textValue()
-        result["Flow"].first { it["Id"].textValue() == virtualFlowId }["Name"].textValue()
+        val virtualContentFlowId = getFlowAreaContentFlowId(result, virtualFlowId)
+        result["Flow"].first { it["Id"].textValue() == virtualContentFlowId }["Name"].textValue()
             .shouldBeEqualTo(standaloneBlock.nameOrId())
-        result["Flow"].last { it["Id"].textValue() == virtualFlowId }["ExternalLocation"].textValue()
+        result["Flow"].last { it["Id"].textValue() == virtualContentFlowId }["ExternalLocation"].textValue()
             .shouldBeEqualTo("icm://${config.defaultTargetFolder}/${standaloneBlock.nameOrId()}.wfd")
 
         result["Root"]["AllowRuntimeModifications"].textValue().shouldBeEqualTo("True")
@@ -282,10 +286,9 @@ class DesignerDocumentObjectBuilderTest {
             subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val areaFlowId = result["FlowArea"].last()["FlowId"].textValue()
-        val areaFlow = result["Flow"].last { it["Id"].textValue() == areaFlowId }
-        areaFlow["Type"].textValue().shouldBeEqualTo("InlCond")
-        val condition = areaFlow["Condition"]
+        val contentFlow = getFlowAreaContentFlow(result)
+        contentFlow["Type"].textValue().shouldBeEqualTo("InlCond")
+        val condition = contentFlow["Condition"]
         condition["Value"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
         val successFlowId = condition[""].textValue()
         result["Flow"].first { it["Id"].textValue() == successFlowId }["Name"].textValue()
@@ -543,15 +546,13 @@ class DesignerDocumentObjectBuilderTest {
             mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText(StringValue("Text")))), displayRuleRef = rule.id))
 
         // when
-        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val result =
+            subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val flowAreaFlowId = result["FlowArea"].last()["FlowId"].textValue()
-        val flowAreaFlow = result["Flow"].last { it["Id"].textValue() == flowAreaFlowId }
-
-        flowAreaFlow["Type"].textValue().shouldBeEqualTo("InlCond")
-
-        result["Flow"].last { it["Id"].textValue() == flowAreaFlow["Condition"][""].textValue() }["FlowContent"]["P"]["T"][""].textValue()
+        val contentFlow = getFlowAreaContentFlow(result)
+        contentFlow["Type"].textValue().shouldBeEqualTo("InlCond")
+        result["Flow"].last { it["Id"].textValue() == contentFlow["Condition"][""].textValue() }["FlowContent"]["P"]["T"][""].textValue()
             .shouldBeEqualTo("Text")
     }
 
@@ -600,7 +601,8 @@ class DesignerDocumentObjectBuilderTest {
             .shouldBeEqualTo("HtmlPreview\nPagePreview\nSMSPreview")
         result["DataInput"].shouldNotBeNull()
         val layout = result["Layout"]["Layout"]
-        layout["Flow"].last()["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text")
+        val contentFlow = getFlowAreaContentFlow(layout)
+        contentFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text")
     }
 
     @Test
