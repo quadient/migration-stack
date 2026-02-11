@@ -25,6 +25,7 @@ import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Function
+import com.quadient.migration.shared.ImageType.*
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.Size
@@ -33,6 +34,7 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.getFlowAreaContentFlow
 import com.quadient.migration.tools.model.*
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldNotBeNull
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.internal.module.layout.LayoutImpl
 import io.mockk.every
@@ -244,7 +246,7 @@ class InspireDocumentObjectBuilderTest {
         )
         val image = mockImage(
             ImageBuilder("Image_1").sourcePath("C:/images/original.png")
-                .imageType(com.quadient.migration.shared.ImageType.Png).targetAttachmentId(targetAttachment.id).build()
+                .imageType(Png).targetAttachmentId(targetAttachment.id).build()
         )
         val block =
             mockObj(DocumentObjectBuilder("B_1", DocumentObjectType.Block).string("Image: ").imageRef(image.id).build())
@@ -261,6 +263,30 @@ class InspireDocumentObjectBuilderTest {
 
         attachmentFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
         attachmentFlow["ExternalLocation"].textValue().shouldBeEqualTo("icm://resolved.pdf")
+    }
+
+    @Test
+    fun `attachment reference with targetImageId resolves to image in wfd-xml`() {
+        // given
+        val targetImage = mockImage(
+            ImageBuilder("Image_Target").name("resolved").sourcePath("C:/images/resolved.png").imageType(Png).build()
+        )
+        val attachment = mockAttachment(
+            AttachmentBuilder("Attachment_1").sourcePath("C:/attachments/original.pdf").targetImageId(targetImage.id)
+                .build()
+        )
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", DocumentObjectType.Block).attachmentRef(attachment.id).build()
+        )
+
+        // when
+        val result =
+            subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val contentFlow = getFlowAreaContentFlow(result)
+        val image = result["Image"].last { it["Id"].textValue() == contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+        image["ImageLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://resolved.png")
     }
 
     private fun mockObj(documentObject: DocumentObject): DocumentObject {
