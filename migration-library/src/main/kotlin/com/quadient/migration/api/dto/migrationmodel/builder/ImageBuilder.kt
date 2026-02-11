@@ -16,6 +16,7 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
     var placeholder: String? = null
     var reason: String? = null
     var alternateText: String? = null
+    var targetAttachmentId: String? = null
 
     /**
      * Sets source path of the image. This path is relative to the storage root folder.
@@ -85,6 +86,14 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
     fun alternateText(alternateText: String) = apply { this.alternateText = alternateText }
 
     /**
+     * Sets the target attachment ID for alias resolution.
+     * When set, this image reference will resolve to the specified attachment.
+     * @param targetAttachmentId the ID of the attachment to resolve to
+     * @return the builder instance for chaining
+     */
+    fun targetAttachmentId(targetAttachmentId: String) = apply { this.targetAttachmentId = targetAttachmentId }
+
+    /**
      * Builds the Image instance with the provided properties.
      * @return the built Image instance
      */
@@ -101,6 +110,7 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id) {
             metadata = metadata,
             skip = SkipOptions(skipped = skip, reason = reason, placeholder = placeholder),
             alternateText = alternateText,
+            targetAttachmentId = targetAttachmentId,
         )
     }
 }
