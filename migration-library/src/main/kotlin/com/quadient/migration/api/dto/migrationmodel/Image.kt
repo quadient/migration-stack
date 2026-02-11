@@ -18,6 +18,7 @@ data class Image @JvmOverloads constructor(
     val metadata: Map<String, List<MetadataPrimitive>>,
     val skip: SkipOptions,
     var alternateText: String? = null,
+    var targetAttachmentId: String? = null,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {

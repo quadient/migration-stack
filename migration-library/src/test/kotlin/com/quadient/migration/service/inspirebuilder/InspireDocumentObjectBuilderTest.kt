@@ -10,6 +10,9 @@ import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -20,7 +23,9 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.BinOp
+import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Function
+import com.quadient.migration.shared.ImageType.*
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.Size
@@ -29,12 +34,14 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.getFlowAreaContentFlow
 import com.quadient.migration.tools.model.*
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldNotBeNull
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.internal.module.layout.LayoutImpl
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import kotlin.collections.last
 
 class InspireDocumentObjectBuilderTest {
     private val documentObjectRepository = mockk<DocumentObjectRepository>()
@@ -168,8 +175,7 @@ class InspireDocumentObjectBuilderTest {
     @Test
     fun `attachment reference creates DirectExternal flow with correct structure`() {
         // given
-        val attachment = aAttachment("Attachment_1", name = "document", sourcePath = "C:/attachments/document.pdf")
-        every { attachmentRepository.findOrFail(attachment.id) } returns attachment
+        val attachment = mockAttachment(aAttachment("Attachment_1", name = "document", sourcePath = "C:/attachments/document.pdf"))
         val block = mockObj(
             aBlock("B_1", listOf(aParagraph(aText(listOf(StringValue("See attached: "), AttachmentRef(attachment.id))))))
         )
@@ -191,8 +197,7 @@ class InspireDocumentObjectBuilderTest {
     @Test
     fun `attachment reference with skip and placeholder creates simple flow with placeholder text`() {
         // given
-        val attachment = aAttachment("Attachment_1", skip = SkipOptions(true, "Attachment not available", "Missing source"))
-        every { attachmentRepository.findOrFail(attachment.id) } returns attachment
+        val attachment = mockAttachment(aAttachment("Attachment_1", skip = SkipOptions(true, "Attachment not available", "Missing source")))
         val block = mockObj(
             aBlock("B_1", listOf(aParagraph(aText(listOf(AttachmentRef(attachment.id))))))
         )
@@ -233,6 +238,57 @@ class InspireDocumentObjectBuilderTest {
         flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text  more text")
     }
 
+    @Test
+    fun `image reference with targetAttachmentId resolves to attachment in wfd-xml`() {
+        // given
+        val targetAttachment = mockAttachment(
+            AttachmentBuilder("Attachment_Target").name("resolved").sourcePath("C:/attachments/resolved.pdf").build()
+        )
+        val image = mockImage(
+            ImageBuilder("Image_1").sourcePath("C:/images/original.png")
+                .imageType(Png).targetAttachmentId(targetAttachment.id).build()
+        )
+        val block =
+            mockObj(DocumentObjectBuilder("B_1", DocumentObjectType.Block).string("Image: ").imageRef(image.id).build())
+
+        // when
+        val result =
+            subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val flowId = result["FlowArea"].last()["FlowId"].textValue()
+        val flowAreaFlow = result["Flow"].last { it["Id"].textValue() == flowId }
+        val refIds = flowAreaFlow["FlowContent"]["P"]["T"]["O"]
+        val attachmentFlow = result["Flow"].last { it["Id"].textValue() == refIds[1]["Id"].textValue() }
+
+        attachmentFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
+        attachmentFlow["ExternalLocation"].textValue().shouldBeEqualTo("icm://resolved.pdf")
+    }
+
+    @Test
+    fun `attachment reference with targetImageId resolves to image in wfd-xml`() {
+        // given
+        val targetImage = mockImage(
+            ImageBuilder("Image_Target").name("resolved").sourcePath("C:/images/resolved.png").imageType(Png).build()
+        )
+        val attachment = mockAttachment(
+            AttachmentBuilder("Attachment_1").sourcePath("C:/attachments/original.pdf").targetImageId(targetImage.id)
+                .build()
+        )
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", DocumentObjectType.Block).attachmentRef(attachment.id).build()
+        )
+
+        // when
+        val result =
+            subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val contentFlow = getFlowAreaContentFlow(result)
+        val image = result["Image"].last { it["Id"].textValue() == contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+        image["ImageLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://resolved.png")
+    }
+
     private fun mockObj(documentObject: DocumentObject): DocumentObject {
         every { documentObjectRepository.findOrFail(documentObject.id) } returns documentObject
         return documentObject
@@ -240,6 +296,7 @@ class InspireDocumentObjectBuilderTest {
 
     private fun mockAttachment(attachment: Attachment): Attachment {
         every { attachmentRepository.findOrFail(attachment.id) } returns attachment
+        every { attachmentRepository.find(attachment.id) } returns attachment
         return attachment
     }
 
@@ -248,6 +305,12 @@ class InspireDocumentObjectBuilderTest {
         val currentAllStyles = textStyleRepository.listAll()
         every { textStyleRepository.listAll() } returns currentAllStyles + textStyle
         return textStyle
+    }
+
+    private fun mockImage(image: com.quadient.migration.api.dto.migrationmodel.Image): com.quadient.migration.api.dto.migrationmodel.Image {
+        every { imageRepository.findOrFail(image.id) } returns image
+        every { imageRepository.find(image.id) } returns image
+        return image
     }
 
     @Test

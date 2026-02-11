@@ -15,6 +15,7 @@ import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Ref
+import com.quadient.migration.api.dto.migrationmodel.ResourceRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
@@ -26,6 +27,7 @@ import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
+import com.quadient.migration.service.resolveAlias
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.ImageType
@@ -235,24 +237,21 @@ sealed class DeployClient(
         val deploymentResult = DeploymentResult(deploymentId)
         val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
 
-        val allRefs = documentObjects.map {
+        val allResourceRefs = documentObjects.flatMap {
             try {
-                it.getAllDocumentObjectImageAndAttachmentRefs()
+                it.getAllDocumentObjectResourceRefs()
             } catch (e: IllegalStateException) {
                 deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
-                Pair(emptyList(), emptyList())
+                emptyList()
             }
-        }
-        
-        val imageRefs = allRefs.flatMap { pair -> pair.first }.distinct()
-        val attachmentRefs = allRefs.flatMap { pair -> pair.second }.distinct()
+        }.map { resolveAlias(it, imageRepository, attachmentRepository) }
+         .distinct()
 
-        for (imageRef in imageRefs) {
-            deployImage(imageRef, deploymentResult, tracker)
-        }
-
-        for (attachmentRef in attachmentRefs) {
-            deployAttachment(attachmentRef, deploymentResult, tracker)
+        for (resourceRef in allResourceRefs) {
+            when (resourceRef) {
+                is ImageRef -> deployImage(resourceRef, deploymentResult, tracker)
+                is AttachmentRef -> deployAttachment(resourceRef, deploymentResult, tracker)
+            }
         }
 
         return deploymentResult
@@ -568,29 +567,25 @@ sealed class DeployClient(
         return dependencies
     }
 
-    private fun DocumentObject.getAllDocumentObjectImageAndAttachmentRefs(): Pair<List<ImageRef>, List<AttachmentRef>> {
-        val images = mutableListOf<ImageRef>()
-        val attachments = mutableListOf<AttachmentRef>()
+    private fun DocumentObject.getAllDocumentObjectResourceRefs(): List<ResourceRef> {
+        val resources = mutableListOf<ResourceRef>()
 
         this.collectRefs().forEach { ref ->
             when (ref) {
                 is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef -> {}
-                is ImageRef -> images.add(ref)
-                is AttachmentRef -> attachments.add(ref)
+                is ResourceRef -> resources.add(ref)
                 is DocumentObjectRef -> {
                     val model = documentObjectRepository.find(ref.id)
-                        ?: error("Unable to collect image or attachment references because inner document object '${ref.id}' was not found.")
+                        ?: error("Unable to collect resource references because inner document object '${ref.id}' was not found.")
 
                     if (documentObjectBuilder.shouldIncludeInternalDependency(model)) {
-                        val (nestedImages, nestedAttachments) = model.getAllDocumentObjectImageAndAttachmentRefs()
-                        images.addAll(nestedImages)
-                        attachments.addAll(nestedAttachments)
+                        resources.addAll(model.getAllDocumentObjectResourceRefs())
                     }
                 }
             }
         }
 
-        return Pair(images, attachments)
+        return resources
     }
 
     private fun getLastDeployEvent(): LastDeployment? {

@@ -92,6 +92,7 @@ sealed class MappingItemEntity {
         val imageType: ImageType? = null,
         var skip: SkipOptions? = null,
         val alternateText: String? = null,
+        val targetAttachmentId: String? = null,
     ) : MappingItemEntity() {
         fun apply(item: ImageDto): ImageDto {
             return item.copy(
@@ -112,6 +113,7 @@ sealed class MappingItemEntity {
         val sourcePath: String?,
         val attachmentType: AttachmentType?,
         var skip: SkipOptions? = null,
+        val targetImageId: String? = null,
     ) : MappingItemEntity() {
         fun apply(item: AttachmentDto): AttachmentDto {
             return item.copy(
@@ -334,6 +336,7 @@ sealed class MappingItemEntity {
                     imageType = this.imageType,
                     skip = this.skip,
                     alternateText = this.alternateText,
+                    targetAttachmentId = this.targetAttachmentId,
                 )
             }
 
@@ -344,6 +347,7 @@ sealed class MappingItemEntity {
                     sourcePath = this.sourcePath,
                     attachmentType = this.attachmentType,
                     skip = this.skip,
+                    targetImageId = this.targetImageId,
                 )
             }
 

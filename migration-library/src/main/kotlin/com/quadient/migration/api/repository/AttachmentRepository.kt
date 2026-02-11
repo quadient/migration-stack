@@ -31,6 +31,7 @@ class AttachmentRepository(table: AttachmentTable, projectName: String) : Reposi
             targetFolder = row[AttachmentTable.targetFolder],
             attachmentType = AttachmentType.valueOf(row[AttachmentTable.attachmentType]),
             skip = row[AttachmentTable.skip],
+            targetImageId = row[AttachmentTable.targetImageId],
         )
     }
 
@@ -64,6 +65,7 @@ class AttachmentRepository(table: AttachmentTable, projectName: String) : Reposi
                 it[AttachmentTable.targetFolder] = dto.targetFolder
                 it[AttachmentTable.attachmentType] = dto.attachmentType.name
                 it[AttachmentTable.skip] = dto.skip
+                it[AttachmentTable.targetImageId] = dto.targetImageId
             }.first()
         }
     }
@@ -73,7 +75,7 @@ class AttachmentRepository(table: AttachmentTable, projectName: String) : Reposi
 
         val columns = listOf(
             "id", "project_name", "name", "origin_locations", "custom_fields",
-            "created", "last_updated", "source_path", "target_folder", "attachment_type", "skip"
+            "created", "last_updated", "source_path", "target_folder", "attachment_type", "skip", "target_image_id"
         )
         val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
@@ -99,6 +101,7 @@ class AttachmentRepository(table: AttachmentTable, projectName: String) : Reposi
                 stmt.setString(index++, dto.targetFolder)
                 stmt.setString(index++, dto.attachmentType.name)
                 stmt.setObject(index++, Json.encodeToString(dto.skip), Types.OTHER)
+                stmt.setString(index++, dto.targetImageId)
             }
 
             stmt.executeUpdate()

@@ -725,10 +725,8 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with image`() {
         // given
-        val image = aImage("Dog", options = ImageOptions(Size.ofPoints(120), Size.ofPoints(90)))
+        val image = mockImage(aImage("Dog", options = ImageOptions(Size.ofPoints(120), Size.ofPoints(90))))
         val block = aBlock("1", listOf(ImageRef(image.id)))
-
-        every { imageRepository.findOrFail(image.id) } returns image
 
         // when
         val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
@@ -748,10 +746,8 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with image uses alternateText from Image`() {
         // given
-        val image = aImage("Dog", alternateText = "A cute dog picture")
+        val image = mockImage(aImage("Dog", alternateText = "A cute dog picture"))
         val block = aBlock("1", listOf(ImageRef(image.id)))
-
-        every { imageRepository.findOrFail(image.id) } returns image
 
         // when
         val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
@@ -798,15 +794,13 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with unknown image and image with missing source path renders placeholder texts instead`() {
         // given
-        val catImage = aImage("Cat", imageType = ImageType.Unknown, skip = SkipOptions(true, "Cat placeholder", null))
-        val dogImage = aImage("Dog", sourcePath = "", skip = SkipOptions(true, "Dog placeholder", null))
+        val catImage =
+            mockImage(aImage("Cat", imageType = ImageType.Unknown, skip = SkipOptions(true, "Cat placeholder", null)))
+        val dogImage = mockImage(aImage("Dog", sourcePath = "", skip = SkipOptions(true, "Dog placeholder", null)))
 
         val block = aBlock(
             "1", listOf(ImageRef(catImage.id), aParagraph(aText(ImageRef(dogImage.id))))
         )
-
-        every { imageRepository.findOrFail(catImage.id) } returns catImage
-        every { imageRepository.findOrFail(dogImage.id) } returns dogImage
 
         // when
         val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
@@ -1460,6 +1454,7 @@ class InteractiveDocumentObjectBuilderTest {
 
     private fun mockImage(image: Image): Image {
         every { imageRepository.findOrFail(image.id) } returns image
+        every { imageRepository.find(image.id) } returns image
         return image
     }
 
