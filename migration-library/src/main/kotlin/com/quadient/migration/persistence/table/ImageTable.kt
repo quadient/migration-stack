@@ -14,4 +14,5 @@ object ImageTable : MigrationObjectTable("image") {
     val metadata = jsonb<Map<String, List<MetadataPrimitive>>>("metadata", Json)
     val skip = jsonb<SkipOptions>("skip", Json)
     val alternateText = varchar("alternate_text", 255).nullable()
+    val targetAttachmentId = varchar("target_attachment_id", 255).nullable()
 }

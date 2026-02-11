@@ -404,6 +404,7 @@ class DesignerDeployClientTest {
             every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
             every { statusTrackingRepository.active(any(), any()) } returns aActiveStatus("id")
             every { documentObjectBuilder.getDocumentObjectPath(any()) } returns "icm://path"
+            every { imageRepository.find(any()) } returns null
         }
 
         @Test
@@ -426,7 +427,7 @@ class DesignerDeployClientTest {
 
             // then
             verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any(), any()) }
-            verify(exactly = 0) { imageRepository.find(any()) }
+            verify(exactly = 3) { imageRepository.find(any()) }
         }
 
         @Test

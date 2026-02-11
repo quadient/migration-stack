@@ -806,6 +806,7 @@ class InteractiveDeployClientTest {
             every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
             every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
             every { ipsService.deployJld(any(), any(), any(), any(), any()) } returns OperationResult.Success
+            every { imageRepository.find(any()) } returns null
         }
 
         @Test
@@ -828,7 +829,7 @@ class InteractiveDeployClientTest {
 
             // then
             verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any(), any()) }
-            verify(exactly = 0) { imageRepository.find(any()) }
+            verify(exactly = 3) { imageRepository.find(any()) }
         }
 
         @Test

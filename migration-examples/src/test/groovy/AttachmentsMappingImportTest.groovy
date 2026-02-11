@@ -20,9 +20,9 @@ class AttachmentsMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def input = """\
-            id,name,sourcePath,attachmentType,targetFolder,status,originLocations,skip,skipPlaceholder,skipReason
-            attachment1,newName,newPath,Attachment,newFolder,Active,[],false,,
-            attachment2,,,Document,,Active,[],true,placeholder,reason
+            id,name,sourcePath,attachmentType,targetFolder,targetImageId,status,originLocations,skip,skipPlaceholder,skipReason
+            attachment1,newName,newPath,Attachment,newFolder,img123,Active,[],false,,
+            attachment2,,,Document,,,Active,[],true,placeholder,reason
             """.stripIndent()
         mappingFile.toFile().write(input)
         
@@ -33,14 +33,14 @@ class AttachmentsMappingImportTest {
 
         AttachmentsImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("attachment1", new MappingItem.Attachment("newName", "newFolder", "newPath", AttachmentType.Attachment, new SkipOptions(false, null, null)))
+        verify(migration.mappingRepository, times(1)).upsert("attachment1", new MappingItem.Attachment("newName", "newFolder", "newPath", AttachmentType.Attachment, new SkipOptions(false, null, null), "img123"))
         verify(migration.mappingRepository, times(1)).applyAttachmentMapping("attachment1")
-        verify(migration.mappingRepository, times(1)).upsert("attachment2", new MappingItem.Attachment(null, null, null, AttachmentType.Document, new SkipOptions(true, "placeholder", "reason")))
+        verify(migration.mappingRepository, times(1)).upsert("attachment2", new MappingItem.Attachment(null, null, null, AttachmentType.Document, new SkipOptions(true, "placeholder", "reason"), null))
         verify(migration.mappingRepository, times(1)).applyAttachmentMapping("attachment2")
     }
 
     static void givenExistingAttachment(Migration mig, String id, String name, String targetFolder, String sourcePath, AttachmentType attachmentType) {
-        when(mig.attachmentRepository.find(id)).thenReturn(new Attachment(id, name, [], new CustomFieldMap([:]), sourcePath, targetFolder, attachmentType, new SkipOptions(false, null, null)))
+        when(mig.attachmentRepository.find(id)).thenReturn(new Attachment(id, name, [], new CustomFieldMap([:]), sourcePath, targetFolder, attachmentType, new SkipOptions(false, null, null), null))
     }
 
     static void givenExistingAttachmentMapping(Migration mig,
@@ -50,6 +50,6 @@ class AttachmentsMappingImportTest {
                                                String sourcePath,
                                                AttachmentType attachmentType) {
         when(mig.mappingRepository.getAttachmentMapping(id))
-                .thenReturn(new MappingItem.Attachment(name, targetFolder, sourcePath, attachmentType, null))
+                .thenReturn(new MappingItem.Attachment(name, targetFolder, sourcePath, attachmentType, null, null))
     }
 }

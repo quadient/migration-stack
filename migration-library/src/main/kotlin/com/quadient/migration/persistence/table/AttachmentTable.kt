@@ -10,4 +10,5 @@ object AttachmentTable : MigrationObjectTable("attachment") {
     val targetFolder = varchar("target_folder", 255).nullable()
     val attachmentType = varchar("attachment_type", 50).default(AttachmentType.Attachment.name)
     val skip = jsonb<SkipOptions>("skip", Json)
+    val targetImageId = varchar("target_image_id", 255).nullable()
 }

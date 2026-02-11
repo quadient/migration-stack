@@ -11,6 +11,7 @@ class AttachmentBuilder(id: String) : DtoBuilderBase<Attachment, AttachmentBuild
     var skip = false
     var placeholder: String? = null
     var reason: String? = null
+    var targetImageId: String? = null
 
     /**
      * Sets source path of the attachment. This path is relative to the storage root folder.
@@ -47,6 +48,14 @@ class AttachmentBuilder(id: String) : DtoBuilderBase<Attachment, AttachmentBuild
     }
 
     /**
+     * Sets the target image ID for alias resolution.
+     * When set, this attachment reference will resolve to the specified image.
+     * @param targetImageId the ID of the image to resolve to
+     * @return the builder instance for chaining
+     */
+    fun targetImageId(targetImageId: String) = apply { this.targetImageId = targetImageId }
+
+    /**
      * Builds the Attachment instance with the provided properties.
      * @return the built Attachment instance
      */
@@ -60,6 +69,7 @@ class AttachmentBuilder(id: String) : DtoBuilderBase<Attachment, AttachmentBuild
             targetFolder = targetFolder,
             attachmentType = attachmentType,
             skip = SkipOptions(skipped = skip, reason = reason, placeholder = placeholder),
+            targetImageId = targetImageId,
         )
     }
 }

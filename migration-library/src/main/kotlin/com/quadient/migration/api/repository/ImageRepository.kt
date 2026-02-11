@@ -35,6 +35,7 @@ class ImageRepository(table: ImageTable, projectName: String) : Repository<Image
             metadata = row[ImageTable.metadata],
             skip = row[ImageTable.skip],
             alternateText = row[ImageTable.alternateText],
+            targetAttachmentId = row[ImageTable.targetAttachmentId],
         )
     }
 
@@ -71,6 +72,7 @@ class ImageRepository(table: ImageTable, projectName: String) : Repository<Image
                 it[ImageTable.metadata] = dto.metadata
                 it[ImageTable.skip] = dto.skip
                 it[ImageTable.alternateText] = dto.alternateText
+                it[ImageTable.targetAttachmentId] = dto.targetAttachmentId
             }.first()
         }
     }
@@ -81,7 +83,7 @@ class ImageRepository(table: ImageTable, projectName: String) : Repository<Image
         val columns = listOf(
             "id", "project_name", "name", "origin_locations", "custom_fields",
             "created", "last_updated", "source_path", "image_type", "options",
-            "target_folder", "metadata", "skip", "alternate_text"
+            "target_folder", "metadata", "skip", "alternate_text", "target_attachment_id"
         )
         val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
@@ -110,6 +112,7 @@ class ImageRepository(table: ImageTable, projectName: String) : Repository<Image
                 stmt.setObject(index++, Json.encodeToString(dto.metadata), Types.OTHER)
                 stmt.setObject(index++, Json.encodeToString(dto.skip), Types.OTHER)
                 stmt.setString(index++, dto.alternateText)
+                stmt.setString(index++, dto.targetAttachmentId)
             }
 
             stmt.executeUpdate()

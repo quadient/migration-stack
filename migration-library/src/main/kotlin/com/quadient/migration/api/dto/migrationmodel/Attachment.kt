@@ -13,6 +13,7 @@ data class Attachment @JvmOverloads constructor(
     var targetFolder: String?,
     var attachmentType: AttachmentType,
     val skip: SkipOptions,
+    var targetImageId: String? = null,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {

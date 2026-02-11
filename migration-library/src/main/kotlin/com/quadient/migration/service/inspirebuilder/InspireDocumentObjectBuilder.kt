@@ -18,9 +18,10 @@ import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.ResourceRef
 import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
 import com.quadient.migration.api.dto.migrationmodel.StringValue
-import com.quadient.migration.api.dto.migrationmodel.Table as TableDTO
+import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
@@ -34,6 +35,7 @@ import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilde
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.ScriptResult
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.ScriptResult.*
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.service.resolveAlias
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
@@ -142,7 +144,7 @@ abstract class InspireDocumentObjectBuilder(
                         collectLanguagesFromContent(item.default)
                     }
 
-                    is TableDTO -> item.rows.forEach { row ->
+                    is Table -> item.rows.forEach { row ->
                         row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) }
                     }
 
@@ -161,7 +163,7 @@ abstract class InspireDocumentObjectBuilder(
                                     collectLanguagesFromContent(textContent.default)
                                 }
 
-                                is TableDTO -> textContent.rows.forEach { row ->
+                                is Table -> textContent.rows.forEach { row ->
                                     row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) }
                                 }
 
@@ -268,13 +270,18 @@ abstract class InspireDocumentObjectBuilder(
         flowName: String? = null,
         languages: List<String>,
     ): List<Flow> {
-        val mutableContent = content.toMutableList()
+        val mutableContent = content.map { item ->
+            when (item) {
+                is ResourceRef -> resolveAlias(item, imageRepository, attachmentRepository)
+                else -> item
+            }
+        }.toMutableList()
 
         var idx = 0
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
             when (val contentPart = mutableContent[idx]) {
-                is TableDTO, is Paragraph, is ImageRef -> {
+                is Table, is Paragraph, is ImageRef -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
                     flowModels.add(Composite(flowParts))
@@ -657,7 +664,7 @@ abstract class InspireDocumentObjectBuilder(
         documentContentModelParts.forEach {
             when (it) {
                 is Paragraph -> buildParagraph(layout, variableStructure, flow, it, languages)
-                is TableDTO -> flow.addParagraph().addText()
+                is Table -> flow.addParagraph().addText()
                     .appendTable(buildTable(layout, variableStructure, it, languages))
 
                 is ImageRef -> buildAndAppendImage(layout, flow.addParagraph().addText(), it)
@@ -722,7 +729,7 @@ abstract class InspireDocumentObjectBuilder(
 
         do {
             val contentPart = content[index]
-            if (contentPart is TableDTO || contentPart is Paragraph || contentPart is ImageRef) {
+            if (contentPart is Table || contentPart is Paragraph || contentPart is ImageRef) {
                 flowParts.add(contentPart)
                 index++
             } else {
@@ -768,25 +775,29 @@ abstract class InspireDocumentObjectBuilder(
 
             var currentText = baseText
 
-            textModel.content.forEach {
-                when (it) {
-                    is StringValue -> currentText.appendText(it.value)
-                    is VariableRef -> currentText.appendVariable(it, layout, variableStructure)
-                    is TableDTO -> currentText.appendTable(buildTable(layout, variableStructure, it, languages))
+            textModel.content.forEach { textContent ->
+                when (textContent) {
+                    is ResourceRef -> {
+                        when (val resolved = resolveAlias(textContent, imageRepository, attachmentRepository)) {
+                            is ImageRef -> buildAndAppendImage(layout, currentText, resolved)
+                            is AttachmentRef -> buildAttachmentRef(layout, resolved)?.also { flow ->
+                                currentText.appendFlow(flow)
+                            }
+                        }
+                    }
+                    
+                    is StringValue -> currentText.appendText(textContent.value)
+                    is VariableRef -> currentText.appendVariable(textContent, layout, variableStructure)
+                    is Table -> currentText.appendTable(buildTable(layout, variableStructure, textContent, languages))
                     is DocumentObjectRef -> buildDocumentObjectRef(
-                        layout, variableStructure, it, languages
+                        layout, variableStructure, textContent, languages
                     )?.also { flow ->
                         currentText.appendFlow(flow)
                     }
 
-                    is AttachmentRef -> buildAttachmentRef(layout, it)?.also { flow ->
-                        currentText.appendFlow(flow)
-                    }
-
-                    is ImageRef -> buildAndAppendImage(layout, currentText, it)
-                    is Hyperlink -> currentText = buildAndAppendHyperlink(layout, paragraph, baseTextStyleModel, it)
+                    is Hyperlink -> currentText = buildAndAppendHyperlink(layout, paragraph, baseTextStyleModel, textContent)
                     is FirstMatch -> currentText.appendFlow(
-                        buildFirstMatch(layout, variableStructure, it, true, null, languages)
+                        buildFirstMatch(layout, variableStructure, textContent, true, null, languages)
                     )
                 }
             }
@@ -919,7 +930,7 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun buildTable(
-        layout: Layout, variableStructure: VariableStructure, model: TableDTO, languages: List<String>
+        layout: Layout, variableStructure: VariableStructure, model: Table, languages: List<String>
     ): WfdXmlTable {
         val table = layout.addTable().setDisplayAsImage(false)
 

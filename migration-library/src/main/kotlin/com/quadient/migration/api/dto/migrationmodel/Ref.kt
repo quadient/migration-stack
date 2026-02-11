@@ -100,7 +100,9 @@ data class DisplayRuleRef(override val id: String) : Ref {
     fun toDb() = DisplayRuleEntityRef(id)
 }
 
-data class ImageRef(override val id: String) : Ref, DocumentContent, TextContent, RefValidatable {
+sealed interface ResourceRef : Ref, DocumentContent, TextContent, RefValidatable
+
+data class ImageRef(override val id: String) : ResourceRef {
     companion object {
         fun fromDb(entity: ImageEntityRef) = ImageRef(entity.id)
     }
@@ -108,7 +110,7 @@ data class ImageRef(override val id: String) : Ref, DocumentContent, TextContent
     fun toDb() = ImageEntityRef(id)
 }
 
-data class AttachmentRef(override val id: String) : Ref, DocumentContent, TextContent, RefValidatable {
+data class AttachmentRef(override val id: String) : ResourceRef {
     companion object {
         fun fromDb(entity: AttachmentEntityRef) = AttachmentRef(entity.id)
     }

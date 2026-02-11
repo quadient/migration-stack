@@ -31,6 +31,7 @@ sealed class MappingItem {
         var imageType: ImageType?,
         var skip: SkipOptions? = null,
         var alternateText: String? = null,
+        var targetAttachmentId: String? = null,
     ) : MappingItem()
 
     data class Attachment(
@@ -39,6 +40,7 @@ sealed class MappingItem {
         var sourcePath: String?,
         var attachmentType: AttachmentType?,
         var skip: SkipOptions? = null,
+        var targetImageId: String? = null,
     ) : MappingItem()
 
     data class ParagraphStyle(override var name: String?, var definition: Definition?) : MappingItem() {
@@ -110,6 +112,7 @@ sealed class MappingItem {
                     imageType = this.imageType,
                     skip = this.skip,
                     alternateText = this.alternateText,
+                    targetAttachmentId = this.targetAttachmentId,
                 )
             }
 
@@ -120,6 +123,7 @@ sealed class MappingItem {
                     sourcePath = this.sourcePath,
                     attachmentType = this.attachmentType,
                     skip = this.skip,
+                    targetImageId = this.targetImageId,
                 )
             }
 
