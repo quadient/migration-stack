@@ -53,6 +53,8 @@ class DocumentObjectRepositoryTest {
             .displayRuleRef("someruleref")
             .baseTemplate("someBaseTemplate")
             .skip("reason", "placeholder")
+            .variableStructureRef("someVarStructRef")
+            .subject("somesubject")
             .build()
 
         repo.upsert(dto)

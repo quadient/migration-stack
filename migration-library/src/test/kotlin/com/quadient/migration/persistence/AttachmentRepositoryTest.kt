@@ -28,6 +28,7 @@ class AttachmentRepositoryTest {
             .sourcePath("path/to/attachment.pdf")
             .attachmentType(AttachmentType.Attachment)
             .skip("reason", "placeholder")
+            .targetImageId("imageId")
             .build()
 
         repo.upsert(dto)

@@ -33,6 +33,7 @@ class ImageRepositoryTest {
             .imageType(ImageType.Gif)
             .skip("reason", "placeholder")
             .alternateText("some alt text")
+            .targetAttachmentId("attachmentId")
             .build()
 
         repo.upsert(dto)
