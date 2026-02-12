@@ -1,6 +1,9 @@
+import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.*
+import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.example.common.mapping.ImagesImport
+import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.SkipOptions
 import org.junit.jupiter.api.Test
@@ -9,6 +12,8 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.nio.file.Paths
 
+import static org.mockito.ArgumentMatchers.any
+import static org.mockito.ArgumentMatchers.eq
 import static org.mockito.Mockito.*
 
 class ImagesMappingImportTest {
@@ -212,7 +217,8 @@ class ImagesMappingImportTest {
     }
 
     static void givenExistingImage(Migration mig, String id, String name, String targetFolder, String sourcePath, ImageType imageType) {
-        when(mig.imageRepository.find(id)).thenReturn(new Image(id, name, [], new CustomFieldMap([:]), sourcePath, null, imageType, targetFolder, [:], new SkipOptions(false, null, null), null, null))
+        def image = new Image(id, name, [], new CustomFieldMap([:]), sourcePath, null, imageType, targetFolder, [:], new SkipOptions(false, null, null), null, null)
+        when(mig.imageRepository.find(id)).thenReturn(image)
     }
 
     static void givenExistingImageMapping(Migration mig,
@@ -223,5 +229,51 @@ class ImagesMappingImportTest {
                                           ImageType imageType) {
         when(mig.mappingRepository.getImageMapping(id))
                 .thenReturn(new MappingItem.Image(name, targetFolder, sourcePath, imageType, null, null, null))
+    }
+
+    @Test
+    void createsNewImageWithStatus() {
+        def migration = Utils.mockMigration()
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        def input = """\
+            id,name,sourcePath,imageType,targetFolder,alternateText,targetAttachmentId,status,originLocations,skip,skipPlaceholder,skipReason
+            newImage1,ImageName,path/to/image.png,Png,ImageFolder,Alt text,att1,Active,[],false,,
+            newImage2,AnotherImage,another/path.jpg,Jpeg,AnotherFolder,Another alt,,,[],false,,
+            newImage3,DeployedImage,deployed/image.gif,Gif,,Deployed alt,att99,Deployed,[],true,skip-placeholder,skip-reason
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+
+        givenNewImage(migration, "newImage1")
+        givenNewImageMapping(migration, "newImage1")
+        givenNewImage(migration, "newImage2")
+        givenNewImageMapping(migration, "newImage2")
+        givenNewImage(migration, "newImage3")
+        givenNewImageMapping(migration, "newImage3")
+
+        ImagesImport.run(migration, mappingFile)
+
+        verify(migration.imageRepository, times(3)).upsert(any(Image.class))
+        verify(migration.statusTrackingRepository, times(1)).active(eq("newImage1"), eq(ResourceType.Image), any(Map.class))
+        verify(migration.mappingRepository, times(1)).upsert("newImage1", new MappingItem.Image("ImageName", "ImageFolder", "path/to/image.png", ImageType.Png, new SkipOptions(false, null, null), "Alt text", "att1"))
+        verify(migration.mappingRepository, times(1)).applyImageMapping("newImage1")
+
+        verify(migration.statusTrackingRepository, times(1)).active(eq("newImage2"), eq(ResourceType.Image), any(Map.class))
+        verify(migration.mappingRepository, times(1)).upsert("newImage2", new MappingItem.Image("AnotherImage", "AnotherFolder", "another/path.jpg", ImageType.Jpeg, new SkipOptions(false, null, null), "Another alt", null))
+        verify(migration.mappingRepository, times(1)).applyImageMapping("newImage2")
+
+        verify(migration.statusTrackingRepository, times(1)).deployed(eq("newImage3"), anyString(), anyLong(), eq(ResourceType.Image), eq((String) null), eq(InspireOutput.Interactive), eq(["reason": "Manual"]))
+        verify(migration.mappingRepository, times(1)).upsert("newImage3", new MappingItem.Image("DeployedImage", null, "deployed/image.gif", ImageType.Gif, new SkipOptions(true, "skip-placeholder", "skip-reason"), "Deployed alt", "att99"))
+        verify(migration.mappingRepository, times(1)).applyImageMapping("newImage3")
+    }
+
+    static void givenNewImage(Migration mig, String id) {
+        def newImage = new ImageBuilder(id).build()
+        when(mig.imageRepository.find(id)).thenReturn(null, newImage)
+        when(mig.statusTrackingRepository.findLastEventRelevantToOutput(eq(id), any(), any())).thenReturn(null)
+    }
+
+    static void givenNewImageMapping(Migration mig, String id) {
+        when(mig.mappingRepository.getImageMapping(id))
+                .thenReturn(new MappingItem.Image(null, null, null, null, null, null, null))
     }
 }

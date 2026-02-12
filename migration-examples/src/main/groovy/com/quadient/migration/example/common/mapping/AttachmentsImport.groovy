@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.ResourceType
@@ -34,43 +35,44 @@ static void run(Migration migration, Path attachmentsFilePath) {
         def values = Csv.getCells(line, attachmentColumnNames)
         def id = values.get("id")
         def existingAttachment = migration.attachmentRepository.find(id)
+        if (existingAttachment == null) {
+            migration.attachmentRepository.upsert(new AttachmentBuilder(id).build())
+            existingAttachment = migration.attachmentRepository.find(id)
+        }
         def existingMapping = migration.mappingRepository.getAttachmentMapping(id)
 
-        if (existingAttachment == null) {
-            throw new Exception("Attachment with id ${id} not found")
-        }
         def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(existingAttachment.id,
                 ResourceType.Attachment,
                 migration.projectConfig.inspireOutput)
 
         def newName = Csv.deserialize(values.get("name"), String.class)
-        Mapping.mapProp(existingMapping, existingAttachment, "name", newName)
+        existingMapping.name = newName
 
         def newSourcePath = Csv.deserialize(values.get("sourcePath"), String.class)
-        Mapping.mapProp(existingMapping, existingAttachment, "sourcePath", newSourcePath)
+        existingMapping.sourcePath = newSourcePath
 
         def newAttachmentType = Csv.deserialize(values.get("attachmentType"), AttachmentType.class)
-        Mapping.mapProp(existingMapping, existingAttachment, "attachmentType", newAttachmentType)
+        existingMapping.attachmentType = newAttachmentType
 
         def newTargetFolder = Csv.deserialize(values.get("targetFolder"), String.class)
-        Mapping.mapProp(existingMapping, existingAttachment, "targetFolder", newTargetFolder)
+        existingMapping.targetFolder = newTargetFolder
 
         def newTargetImageId = Csv.deserialize(values.get("targetImageId"), String.class)
-        Mapping.mapProp(existingMapping, existingAttachment, "targetImageId", newTargetImageId)
+        existingMapping.targetImageId = newTargetImageId
 
         def csvStatus = values.get("status")
-        if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {
+        if ((csvStatus == null || csvStatus == "") && status == null) {
             migration.statusTrackingRepository.active(existingAttachment.id, ResourceType.Attachment, [reason: "Manual"])
-        }
-        if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deployed") {
+        } else if (csvStatus == "Active" && status?.class?.simpleName != "Active") {
+            migration.statusTrackingRepository.active(existingAttachment.id, ResourceType.Attachment, [reason: "Manual"])
+        } else if (csvStatus == "Deployed" && status?.class?.simpleName != "Deployed") {
             migration.statusTrackingRepository.deployed(existingAttachment.id, deploymentId, now, ResourceType.Attachment, null, output, [reason: "Manual"])
         }
 
         boolean newSkip = Csv.deserialize(values.get("skip"), boolean)
         def newSkipReason = Csv.deserialize(values.get("skipReason"), String.class)
         def newSkipPlaceholder = Csv.deserialize(values.get("skipPlaceholder"), String.class)
-        def skipObj = new SkipOptions(newSkip, newSkipPlaceholder, newSkipReason)
-        Mapping.mapProp(existingMapping, existingAttachment, "skip", skipObj)
+        existingMapping.skip = new SkipOptions(newSkip, newSkipPlaceholder, newSkipReason)
 
         migration.mappingRepository.upsert(id, existingMapping)
         migration.mappingRepository.applyAttachmentMapping(id)

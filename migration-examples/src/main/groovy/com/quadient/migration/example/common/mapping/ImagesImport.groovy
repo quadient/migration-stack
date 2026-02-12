@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.ResourceType
@@ -34,46 +35,47 @@ static void run(Migration migration, Path imagesFilePath) {
         def values = Csv.getCells(line, imageColumnNames)
         def id = values.get("id")
         def existingImage = migration.imageRepository.find(id)
+        if (existingImage == null) {
+            migration.imageRepository.upsert(new ImageBuilder(id).build())
+            existingImage = migration.imageRepository.find(id)
+        }
         def existingMapping = migration.mappingRepository.getImageMapping(id)
 
-        if (existingImage == null) {
-            throw new Exception("Image with id ${id} not found")
-        }
         def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(existingImage.id,
                 ResourceType.Image,
                 migration.projectConfig.inspireOutput)
 
         def newName = Csv.deserialize(values.get("name"), String.class)
-        Mapping.mapProp(existingMapping, existingImage, "name", newName)
+        existingMapping.name = newName
 
         def newSourcePath = Csv.deserialize(values.get("sourcePath"), String.class)
-        Mapping.mapProp(existingMapping, existingImage, "sourcePath", newSourcePath)
+        existingMapping.sourcePath = newSourcePath
 
         def newImageType = Csv.deserialize(values.get("imageType"), ImageType.class)
-        Mapping.mapProp(existingMapping, existingImage, "imageType", newImageType)
+        existingMapping.imageType = newImageType
 
         def newTargetFolder = Csv.deserialize(values.get("targetFolder"), String.class)
-        Mapping.mapProp(existingMapping, existingImage, "targetFolder", newTargetFolder)
+        existingMapping.targetFolder = newTargetFolder
 
         def newAlternateText = Csv.deserialize(values.get("alternateText"), String.class)
-        Mapping.mapProp(existingMapping, existingImage, "alternateText", newAlternateText)
+        existingMapping.alternateText = newAlternateText
 
         def newTargetAttachmentId = Csv.deserialize(values.get("targetAttachmentId"), String.class)
-        Mapping.mapProp(existingMapping, existingImage, "targetAttachmentId", newTargetAttachmentId)
+        existingMapping.targetAttachmentId = newTargetAttachmentId
 
         def csvStatus = values.get("status")
-        if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {
+        if ((csvStatus == null || csvStatus == "") && status == null) {
             migration.statusTrackingRepository.active(existingImage.id, ResourceType.Image, [reason: "Manual"])
-        }
-        if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deployed") {
+        } else if (csvStatus == "Active" && status?.class?.simpleName != "Active") {
+            migration.statusTrackingRepository.active(existingImage.id, ResourceType.Image, [reason: "Manual"])
+        } else if (csvStatus == "Deployed" && status?.class?.simpleName != "Deployed") {
             migration.statusTrackingRepository.deployed(existingImage.id, deploymentId, now, ResourceType.Image, null, output, [reason: "Manual"])
         }
 
         boolean newSkip = Csv.deserialize(values.get("skip"), boolean)
         def newSkipReason = Csv.deserialize(values.get("skipReason"), String.class)
         def newSkipPlaceholder = Csv.deserialize(values.get("skipPlaceholder"), String.class)
-        def skipObj = new SkipOptions(newSkip, newSkipPlaceholder, newSkipReason)
-        Mapping.mapProp(existingMapping, existingImage, "skip", skipObj)
+        existingMapping.skip = new SkipOptions(newSkip, newSkipPlaceholder, newSkipReason)
 
         migration.mappingRepository.upsert(id, existingMapping)
         migration.mappingRepository.applyImageMapping(id)

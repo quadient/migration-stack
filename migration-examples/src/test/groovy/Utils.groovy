@@ -1,3 +1,4 @@
+import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -19,6 +20,7 @@ static Migration mockMigration() {
     def projectConfig = mock(ProjectConfig.class)
     when(migration.getProjectConfig()).thenReturn(projectConfig)
     when(projectConfig.getName()).thenReturn("testProject")
+    when(projectConfig.getInspireOutput()).thenReturn(InspireOutput.Interactive)
 
     def varRepo = mock(VariableRepository.class)
     def structureRepo = mock(VariableStructureRepository.class)
