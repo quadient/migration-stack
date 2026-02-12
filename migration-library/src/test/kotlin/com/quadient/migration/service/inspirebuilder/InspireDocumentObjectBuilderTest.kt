@@ -34,7 +34,6 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.getFlowAreaContentFlow
 import com.quadient.migration.tools.model.*
 import com.quadient.migration.tools.shouldBeEqualTo
-import com.quadient.migration.tools.shouldNotBeNull
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.internal.module.layout.LayoutImpl
 import io.mockk.every
@@ -284,8 +283,8 @@ class InspireDocumentObjectBuilderTest {
             subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val contentFlow = getFlowAreaContentFlow(result)
-        val image = result["Image"].last { it["Id"].textValue() == contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+        val imageId = result["ImageObject"].last()["ImageId"].textValue()
+        val image = result["Image"].last { it["Id"].textValue() == imageId }
         image["ImageLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://resolved.png")
     }
 

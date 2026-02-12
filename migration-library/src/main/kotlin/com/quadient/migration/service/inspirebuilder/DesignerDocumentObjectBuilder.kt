@@ -8,6 +8,7 @@ import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.service.resolveAliases
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
@@ -313,7 +314,7 @@ class DesignerDocumentObjectBuilder(
     ) {
         val position = areaModel.position ?: defaultPosition
 
-        val content = areaModel.content
+        val content = areaModel.content.resolveAliases(imageRepository, attachmentRepository)
         if (content.size == 1 && content.first() is ImageRef) {
             val imageRef = content.first() as ImageRef
             val imageModel = imageRepository.findOrFail(imageRef.id)

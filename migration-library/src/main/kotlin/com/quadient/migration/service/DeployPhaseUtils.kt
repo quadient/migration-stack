@@ -3,6 +3,7 @@ package com.quadient.migration.service
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.ResourceRef
@@ -14,6 +15,16 @@ import com.quadient.migration.shared.toIcmPath
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("com.quadient.migration.service.DeployPhaseUtils")
+
+fun List<DocumentContent>.resolveAliases(
+    imageRepository: Repository<Image>,
+    attachmentRepository: Repository<Attachment>
+): List<DocumentContent> = map { item ->
+    when (item) {
+        is ResourceRef -> resolveAlias(item, imageRepository, attachmentRepository)
+        else -> item
+    }
+}
 
 fun resolveAlias(
     ref: ResourceRef,

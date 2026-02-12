@@ -18,6 +18,6 @@ data class Attachment @JvmOverloads constructor(
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
-        return emptyList()
+        return listOfNotNull(targetImageId?.let { ImageRef(it) })
     }
 }

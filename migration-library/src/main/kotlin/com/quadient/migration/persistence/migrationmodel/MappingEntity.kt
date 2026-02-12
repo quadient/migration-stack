@@ -102,6 +102,7 @@ sealed class MappingItemEntity {
                 imageType = imageType,
                 skip = skip ?: SkipOptions(false, null, null),
                 alternateText = alternateText,
+                targetAttachmentId = targetAttachmentId,
             )
         }
     }
@@ -122,6 +123,7 @@ sealed class MappingItemEntity {
                 sourcePath = sourcePath,
                 attachmentType = attachmentType ?: item.attachmentType,
                 skip = skip ?: SkipOptions(false, null, null),
+                targetImageId = targetImageId,
             )
         }
     }

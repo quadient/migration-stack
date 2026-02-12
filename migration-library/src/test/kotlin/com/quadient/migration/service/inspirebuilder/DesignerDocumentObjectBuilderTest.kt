@@ -718,6 +718,7 @@ class DesignerDocumentObjectBuilderTest {
 
     private fun mockImg(image: Image): Image {
         every { imageRepository.findOrFail(image.id) } returns image
+        every { imageRepository.find(image.id) } returns image
         return image
     }
 

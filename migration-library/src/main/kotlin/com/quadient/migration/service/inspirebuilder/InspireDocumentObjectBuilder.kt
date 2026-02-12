@@ -36,6 +36,7 @@ import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilde
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.ScriptResult.*
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveAlias
+import com.quadient.migration.service.resolveAliases
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
@@ -270,12 +271,7 @@ abstract class InspireDocumentObjectBuilder(
         flowName: String? = null,
         languages: List<String>,
     ): List<Flow> {
-        val mutableContent = content.map { item ->
-            when (item) {
-                is ResourceRef -> resolveAlias(item, imageRepository, attachmentRepository)
-                else -> item
-            }
-        }.toMutableList()
+        val mutableContent = content.resolveAliases(imageRepository, attachmentRepository).toMutableList()
 
         var idx = 0
         val flowModels = mutableListOf<FlowModel>()
@@ -289,7 +285,7 @@ abstract class InspireDocumentObjectBuilder(
 
                 is DocumentObjectRef -> flowModels.add(DocumentObject(contentPart))
                 is AttachmentRef -> flowModels.add(Attachment(contentPart))
-                is Area -> mutableContent.addAll(idx + 1, contentPart.content)
+                is Area -> mutableContent.addAll(idx + 1, contentPart.content.resolveAliases(imageRepository, attachmentRepository))
                 is FirstMatch -> flowModels.add(FirstMatch(contentPart))
                 is SelectByLanguage -> flowModels.add(SelectByLanguage(contentPart))
             }
@@ -1075,8 +1071,8 @@ abstract class InspireDocumentObjectBuilder(
     protected fun List<DocumentContent>.paragraphIfEmpty(): List<DocumentContent> {
         return this.ifEmpty {
             listOf(
-                com.quadient.migration.api.dto.migrationmodel.Paragraph(
-                    listOf(com.quadient.migration.api.dto.migrationmodel.Paragraph.Text(listOf(), null, null)),
+                Paragraph(
+                    listOf(Text(listOf(), null, null)),
                     null,
                     null
                 )
