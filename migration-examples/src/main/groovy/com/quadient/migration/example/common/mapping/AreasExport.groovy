@@ -43,6 +43,7 @@ static void run(Migration migration, Path path) {
             Mapping.displayHeader("pageId", false),
             Mapping.displayHeader("pageName", true),
             Mapping.displayHeader("interactiveFlowName", false),
+            Mapping.displayHeader("flowToNextPage", false),
             Mapping.displayHeader("x", true),
             Mapping.displayHeader("y", true),
             Mapping.displayHeader("width", true),
@@ -85,6 +86,7 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     builder.append(Csv.serialize(page.id) + ",")
     builder.append(Csv.serialize(page.name) + ",")
     builder.append(Csv.serialize(area.interactiveFlowName) + ",")
+    builder.append(Csv.serialize(area.flowToNextPage) + ",")
     builder.append(Csv.serialize(area.position.x) + ",")
     builder.append(Csv.serialize(area.position.y) + ",")
     builder.append(Csv.serialize(area.position.width) + ",")

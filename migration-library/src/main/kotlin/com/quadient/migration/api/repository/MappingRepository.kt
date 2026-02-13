@@ -68,7 +68,7 @@ class MappingRepository(
 
     fun getAreaMapping(id: String): MappingItem.Area {
         return (internalRepository.find<MappingItemEntity.Area>(id) ?: MappingItemEntity.Area(
-            name = null, areas = mutableMapOf()
+            name = null, areas = mutableMapOf(), flowToNextPage = mutableMapOf()
         )).toDto() as MappingItem.Area
     }
 

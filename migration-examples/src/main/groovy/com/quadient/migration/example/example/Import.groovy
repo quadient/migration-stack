@@ -403,8 +403,9 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.width(contentWidth)
             it.height(Size.ofCentimeters(2))
         }
-            .documentObjectRef(signature.id)
-            .attachmentRef(exampleAttachment.id)
+        .documentObjectRef(signature.id)
+        .attachmentRef(exampleAttachment.id)
+        .flowToNextPage(true)
     }
     .variableStructureRef(variableStructure.id)
     .build()
