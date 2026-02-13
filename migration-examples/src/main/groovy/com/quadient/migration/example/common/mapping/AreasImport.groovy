@@ -27,7 +27,6 @@ static void run(Migration migration, Path path) {
     def columnNames = Csv.parseColumnNames(fileLines.removeFirst()).collect { Mapping.normalizeHeader(it) }
 
     DocumentObject currentPage = null
-    def areas = null
     MappingItem.Area mapping = null
     int areaIndex = 0
     for (line in fileLines) {
@@ -37,7 +36,8 @@ static void run(Migration migration, Path path) {
 
         if (currentPage?.id != pageId) {
             if (currentPage != null) {
-                migration.mappingRepository.upsert(pageId, mapping)
+                migration.mappingRepository.upsert(currentPage.id, mapping)
+                migration.mappingRepository.applyAreaMapping(currentPage.id)
             }
 
             def pageModel = migration.documentObjectRepository.find(pageId)
@@ -45,16 +45,16 @@ static void run(Migration migration, Path path) {
                 throw new IllegalStateException("Page '${pageId}' not found.")
             }
 
-            areas = pageModel.content.findAll { it instanceof Area } as List<Area>
             mapping = migration.mappingRepository.getAreaMapping(pageId)
             currentPage = pageModel
             areaIndex = 0
         }
 
         def interactiveFlowName = Csv.deserialize(values.get("interactiveFlowName"), String.class)
-        if (interactiveFlowName != mapping.areas.get(areaIndex) && areas[areaIndex].interactiveFlowName != interactiveFlowName) {
-            mapping.areas[areaIndex] = interactiveFlowName
-        }
+        mapping.areas[areaIndex] = interactiveFlowName
+
+        def flowToNextPage = Csv.deserialize(values.get("flowToNextPage"), Boolean.class)
+        mapping.flowToNextPage[areaIndex] = flowToNextPage ?: false
 
         areaIndex++
     }

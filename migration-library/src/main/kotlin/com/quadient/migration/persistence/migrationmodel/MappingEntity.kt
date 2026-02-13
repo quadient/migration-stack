@@ -10,14 +10,14 @@ import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.dao.CompositeEntity
 import org.jetbrains.exposed.v1.dao.CompositeEntityClass
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject as DocumentObjectDto
-import com.quadient.migration.api.dto.migrationmodel.Image as ImageDto
-import com.quadient.migration.api.dto.migrationmodel.Attachment as AttachmentDto
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle as ParagraphStyleDto
-import com.quadient.migration.api.dto.migrationmodel.TextStyle as TextStyleDto
-import com.quadient.migration.api.dto.migrationmodel.Variable as VariableDto
-import com.quadient.migration.api.dto.migrationmodel.VariableStructure as VariableStructureDto
-import com.quadient.migration.api.dto.migrationmodel.Area as AreaDto
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject as DocumentObjectModel
+import com.quadient.migration.api.dto.migrationmodel.Image as ImageModel
+import com.quadient.migration.api.dto.migrationmodel.Attachment as AttachmentModel
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle as ParagraphStyleModel
+import com.quadient.migration.api.dto.migrationmodel.TextStyle as TextStyleModel
+import com.quadient.migration.api.dto.migrationmodel.Variable as VariableModel
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure as VariableStructureModel
+import com.quadient.migration.api.dto.migrationmodel.Area as AreaModel
 
 class MappingEntity(id: EntityID<CompositeID>) : CompositeEntity(id) {
     companion object : CompositeEntityClass<MappingEntity>(MappingTable)
@@ -49,7 +49,7 @@ sealed class MappingItemEntity {
         var skip: SkipOptions? = null,
     ) : MappingItemEntity() {
 
-        fun apply(item: DocumentObjectDto): DocumentObjectDto {
+        fun apply(item: DocumentObjectModel): DocumentObjectModel {
             return item.copy(
                 name = name,
                 internal = internal ?: false,
@@ -64,25 +64,30 @@ sealed class MappingItemEntity {
 
     @Serializable
     data class Area(
-        override val name: String?, val areas: MutableMap<Int, String?>
+        override val name: String?,
+        val areas: MutableMap<Int, String?>,
+        val flowToNextPage: MutableMap<Int, Boolean> = mutableMapOf()
     ) : MappingItemEntity() {
-        fun apply(item: DocumentObjectDto): DocumentObjectDto {
-            if (areas.isEmpty()) {
+        fun apply(item: DocumentObjectModel): DocumentObjectModel {
+            if (areas.isEmpty() && flowToNextPage.isEmpty()) {
                 return item
             }
 
-            val objectAreas = item.content.filter { it is AreaDto }
-
-            if (objectAreas.size == areas.size) {
-                for ((idx, obj) in objectAreas.withIndex()) {
-                    (obj as AreaDto).interactiveFlowName = areas[idx]
+            var areaIndex = 0
+            val updatedContent = item.content.map { contentItem ->
+                if (contentItem is AreaModel) {
+                    val idx = areaIndex++
+                    contentItem.copy(
+                        interactiveFlowName = if (areas.containsKey(idx)) areas[idx] else contentItem.interactiveFlowName,
+                        flowToNextPage = if (flowToNextPage.containsKey(idx)) (flowToNextPage[idx] ?: false) else false
+                    )
+                } else {
+                    contentItem
                 }
             }
-
-            return item.copy(content = item.content)
+            return item.copy(content = updatedContent)
         }
     }
-
 
     @Serializable
     data class Image(
@@ -94,7 +99,7 @@ sealed class MappingItemEntity {
         val alternateText: String? = null,
         val targetAttachmentId: String? = null,
     ) : MappingItemEntity() {
-        fun apply(item: ImageDto): ImageDto {
+        fun apply(item: ImageModel): ImageModel {
             return item.copy(
                 name = name,
                 targetFolder = targetFolder,
@@ -116,7 +121,7 @@ sealed class MappingItemEntity {
         var skip: SkipOptions? = null,
         val targetImageId: String? = null,
     ) : MappingItemEntity() {
-        fun apply(item: AttachmentDto): AttachmentDto {
+        fun apply(item: AttachmentModel): AttachmentModel {
             return item.copy(
                 name = name,
                 targetFolder = targetFolder,
@@ -151,7 +156,7 @@ sealed class MappingItemEntity {
             var pdfTaggingRule: ParagraphPdfTaggingRule?
         ) : Definition
 
-        fun apply(item: ParagraphStyleDto): ParagraphStyleDto {
+        fun apply(item: ParagraphStyleModel): ParagraphStyleModel {
             return when (definition) {
                 is Ref -> {
                     item.copy(
@@ -220,7 +225,7 @@ sealed class MappingItemEntity {
         override val name: String?,
         val dataType: DataType?,
     ) : MappingItemEntity() {
-        fun apply(variable: VariableDto): VariableDto {
+        fun apply(variable: VariableModel): VariableModel {
             return variable.copy(
                 name = name, dataType = dataType ?: variable.dataType,
             )
@@ -233,7 +238,7 @@ sealed class MappingItemEntity {
         val mappings: MutableMap<String, VariablePathData>?,
         val languageVariable: VariableEntityRef?,
     ) : MappingItemEntity() {
-        fun apply(item: VariableStructureDto): VariableStructureDto {
+        fun apply(item: VariableStructureModel): VariableStructureModel {
             return item.copy(
                 name = name,
                 structure = mappings ?: mutableMapOf(),
@@ -263,7 +268,7 @@ sealed class MappingItemEntity {
             var interspacing: Size?
         ) : Definition
 
-        fun apply(item: TextStyleDto): TextStyleDto {
+        fun apply(item: TextStyleModel): TextStyleModel {
             return when (definition) {
                 is Ref -> {
                     item.copy(

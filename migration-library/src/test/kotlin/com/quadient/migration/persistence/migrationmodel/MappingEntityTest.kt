@@ -1,15 +1,13 @@
 package com.quadient.migration.persistence.migrationmodel
 
 import com.quadient.migration.api.dto.migrationmodel.Area
-import com.quadient.migration.api.dto.migrationmodel.DocumentContent
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
@@ -117,15 +115,17 @@ class MappingEntityTest {
         @Test
         fun `maps interactiveFlowName`() {
             val mapping = MappingItemEntity.Area(
-                name = null, areas = mutableMapOf(0 to "AddedFirstAreaName", 1 to null, 2 to "AddedLastAreaName")
+                name = null,
+                areas = mutableMapOf(0 to "AddedFirstAreaName", 1 to null, 2 to "AddedLastAreaName"),
+                flowToNextPage = mutableMapOf(0 to false, 1 to false, 2 to true)
             )
             val dto = aBlockDto(
                 "doc1", content = listOf(
-                    Area(emptyList(), null, null),
+                    Area(emptyList(), null, null, true),
                     aParagraph(content = listOf(aText(content = listOf(StringValue("Default paragraph content"))))),
-                    Area(emptyList(), null, "MiddleAreaFlow"),
+                    Area(emptyList(), null, "MiddleAreaFlow", false),
                     aParagraph(content = listOf(aText(content = listOf(StringValue("Another paragraph content"))))),
-                    Area(emptyList(), null, null),
+                    Area(emptyList(), null, null, false),
                 )
             )
 
@@ -133,12 +133,40 @@ class MappingEntityTest {
 
             result.content.shouldBeEqualTo(
                 listOf(
-                    Area(emptyList(), null, "AddedFirstAreaName"),
+                    Area(emptyList(), null, "AddedFirstAreaName", false),
                     aParagraph(content = listOf(aText(content = listOf(StringValue("Default paragraph content"))))),
-                    Area(emptyList(), null, null),
+                    Area(emptyList(), null, null, false),
                     aParagraph(content = listOf(aText(content = listOf(StringValue("Another paragraph content"))))),
-                    Area(emptyList(), null, "AddedLastAreaName"),
-                ))
+                    Area(emptyList(), null, "AddedLastAreaName", true),
+                )
+            )
+        }
+
+        @Test
+        fun `flowToNextPage are mapped correctly when are missing entirely from the mapping`() {
+            val mapping = MappingItemEntity.Area(
+                name = null,
+                areas = mutableMapOf(0 to "FirstArea", 1 to "SecondAreaModified"),
+            )
+            val block = aBlockDto(
+                "doc1", content = listOf(
+                    AreaBuilder().interactiveFlowName("FirstArea").build(),
+                    AreaBuilder().interactiveFlowName("SecondArea").build(),
+                    AreaBuilder().build(),
+                    AreaBuilder().interactiveFlowName("FourthArea").build(),
+                )
+            )
+
+            val result = mapping.apply(block)
+
+            result.content.shouldBeEqualTo(
+                listOf(
+                    AreaBuilder().interactiveFlowName("FirstArea").flowToNextPage(false).build(),
+                    AreaBuilder().interactiveFlowName("SecondAreaModified").flowToNextPage(false).build(),
+                    AreaBuilder().flowToNextPage(false).build(),
+                    AreaBuilder().interactiveFlowName("FourthArea").flowToNextPage(false).build(),
+                )
+            )
         }
     }
 
@@ -278,7 +306,7 @@ class MappingEntityTest {
 
             val result = mapping.apply(dto)
             val resultDef = result.definition
-            if (resultDef !is ParagraphStyleDefinition ) {
+            if (resultDef !is ParagraphStyleDefinition) {
                 throw AssertionError("Expected ParagraphStyleDefinition, got ${resultDef::class.simpleName}")
             }
 
@@ -317,7 +345,7 @@ class MappingEntityTest {
 
             val result = mapping.apply(dto)
             val resultDef = result.definition
-            if (resultDef !is ParagraphStyleDefinition ) {
+            if (resultDef !is ParagraphStyleDefinition) {
                 throw AssertionError("Expected ParagraphStyleDefinition, got ${resultDef::class.simpleName}")
             }
 

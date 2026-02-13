@@ -3,7 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.persistence.migrationmodel.AreaEntity
 import com.quadient.migration.shared.Position
 
-data class Area(var content: List<DocumentContent>, var position: Position?, var interactiveFlowName: String?) :
+data class Area(var content: List<DocumentContent>, var position: Position?, var interactiveFlowName: String?, var flowToNextPage: Boolean = false) :
     DocumentContent, RefValidatable {
     override fun collectRefs(): List<Ref> {
         return content.flatMap {
@@ -16,9 +16,9 @@ data class Area(var content: List<DocumentContent>, var position: Position?, var
 
     companion object {
         fun fromDb(entity: AreaEntity): Area = Area(
-            entity.content.map { DocumentContent.fromDbContent(it) }, entity.position, entity.interactiveFlowName
+            entity.content.map { DocumentContent.fromDbContent(it) }, entity.position, entity.interactiveFlowName, entity.flowToNextPage
         )
     }
 
-    fun toDb() = AreaEntity(content.toDb(), position, interactiveFlowName)
+    fun toDb() = AreaEntity(content.toDb(), position, interactiveFlowName, flowToNextPage)
 }

@@ -22,6 +22,7 @@ sealed class MappingItem {
     data class Area(
         override var name: String?,
         var areas: MutableMap<Int, String?>,
+        var flowToNextPage: MutableMap<Int, Boolean> = mutableMapOf(),
     ) : MappingItem()
 
     data class Image(
@@ -102,7 +103,9 @@ sealed class MappingItem {
                 )
             }
 
-            is MappingItem.Area ->  MappingItemEntity.Area( name = this.name, areas = this.areas)
+            is MappingItem.Area -> MappingItemEntity.Area(
+                name = this.name, areas = this.areas, flowToNextPage = this.flowToNextPage
+            )
 
             is MappingItem.Image -> {
                 MappingItemEntity.Image(

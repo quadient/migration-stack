@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - Added azureAI sample files
 - Introduced attachment table that allows to work with static files. Export/import, path config and other support included
+- Areas have flowToNextPage property (false by default) available in Area builder and import/export scripts.
 
 ### Changed
 

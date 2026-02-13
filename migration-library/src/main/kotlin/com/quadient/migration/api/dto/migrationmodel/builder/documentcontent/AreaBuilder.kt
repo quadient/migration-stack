@@ -10,6 +10,7 @@ class AreaBuilder : DocumentContentBuilderBase<AreaBuilder> {
     override val content = mutableListOf<DocumentContent>()
     private var position: Position? = null
     private var interactiveFlowName: String? = null
+    private var flowToNextPage: Boolean = false
 
     /**
      * Sets the position of the flow area.
@@ -37,6 +38,13 @@ class AreaBuilder : DocumentContentBuilderBase<AreaBuilder> {
     fun interactiveFlowName(interactiveFlowName: String) = apply { this.interactiveFlowName = interactiveFlowName }
 
     /**
+     * Set whether the flow area should flow to the next page.
+     * @param flowToNextPage Whether the flow area should flow to the next page. Default is false.
+     * @return The [AreaBuilder] instance for method chaining.
+     */
+    fun flowToNextPage(flowToNextPage: Boolean) = apply { this.flowToNextPage = flowToNextPage }
+
+    /**
      * Builds the [Area] instance.
      * @return The constructed [Area] instance.
      */
@@ -45,6 +53,7 @@ class AreaBuilder : DocumentContentBuilderBase<AreaBuilder> {
             content = content,
             position = position,
             interactiveFlowName = interactiveFlowName,
+            flowToNextPage = flowToNextPage,
         )
     }
 }
