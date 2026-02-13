@@ -2,10 +2,14 @@
 
 ## Overview
 
-The migration script must produce objects using the Migration Library's domain model. This model represents the target
-format for Quadient Inspire content. All objects are created using **Builder classes** that provide a fluent API.
+This document describes the Migration Library API used in parsing scripts. Your parser transforms source format data (
+XML, JSON, CSV, etc.) into the **Migration Model** - a common intermediate representation for Quadient Inspire content.
 
-## Initialization
+All objects are created using **Builder classes** with a fluent API and stored in repositories.
+
+**Related:** See `AGENT.md` for your role and workflow guidance.
+
+## Getting Started
 
 Every parser script starts with:
 
@@ -65,7 +69,7 @@ All **top-level migration objects** inherit from `MigrationObject`:
 - `customFields: CustomFieldMap` - Additional custom metadata (String key-value pairs only)
 
 **Top-level objects** are those stored in repositories: DocumentObject, Variable, DisplayRule, Image, TextStyle,
-ParagraphStyle, VariableStructure.
+ParagraphStyle, VariableStructure, Attachment.
 
 **Content elements** (Paragraph, Area, Table, FirstMatch, SelectByLanguage) are NOT top-level objects and do **NOT**
 have `customFields`, `originLocations`, or `name` properties.
@@ -79,7 +83,16 @@ have `customFields`, `originLocations`, or `name` properties.
 - **Name uniqueness** - While not required by model, names become file names in Inspire; duplicates will shadow each
   other
 
-### 4. Repository API
+## Best Practices
+
+- **Use Meaningful IDs** - Unique, descriptive identifiers with consistent naming (avoid random UUIDs)
+- **Define Styles Separately** - Create TextStyle and ParagraphStyle as top-level objects, reference them by ID
+- **Organize with Target Folders** - Use logical folder structure: `.targetFolder("blocks/invoices/headers")`
+- **Use Skip for Non-Migratable Content** - Mark complex/unsupported content: `.skip("manual-name", "reason...")`
+- **Check for Null** - Verify data exists before calling builder methods that expect non-null values
+- **Test Iteratively** - Run your script frequently to catch errors early (see AGENT.md workflow)
+
+## Repository API
 
 The `Migration` object provides repositories for storing and retrieving model objects:
 
@@ -92,9 +105,10 @@ migration.paragraphStyleRepository
 migration.textStyleRepository
 migration.displayRuleRepository
 migration.imageRepository
+migration.attachmentRepository
 ```
 
-**Core Methods:**
+Store and retrieve migration objects using repository methods:
 
 ```groovy
 // Save or update object
@@ -112,6 +126,10 @@ if (variable != null) {
 // List all objects
 def variables = migration.variableRepository.listAll()
 ```
+
+---
+
+# Migration Model Objects
 
 ## Top-Level Objects
 
@@ -228,6 +246,20 @@ def logo = new ImageBuilder("logo-image")
         .targetFolder("images/logos")
         .build()
 ```
+
+### Attachment
+
+**Builder:** `AttachmentBuilder(id: String)` | **Key Properties:** `sourcePath`, `attachmentType`, `targetFolder`
+
+```groovy
+def pdfAttachment = new AttachmentBuilder("terms-and-conditions")
+        .sourcePath("attachments/terms.pdf")
+        .attachmentType(AttachmentType.Pdf)  // Pdf, Xml, Other
+        .targetFolder("attachments/legal")
+        .build()
+```
+
+**Note:** Attachments represent files that should be included with the output (e.g., PDF attachments in emails).
 
 ### TextStyle
 
@@ -358,6 +390,8 @@ def standalone = new ParagraphBuilder()
 - `.string("text")` - Add plain string content (most common for simple text)
 - `.variableRef("variable-id")` - Add variable reference
 - `.imageRef("image-id")` - Add inline image
+- `.attachmentRef("attachment-id")` - Add attachment reference
+- `.hyperlink("url", "display text")` - Add clickable hyperlink
 - `.documentObjectRef("block-id")` - Add nested block reference
 - `.table { }` - Add inline table
 - `.firstMatch { }` - Add inline conditional content
@@ -376,6 +410,7 @@ Positioned or flow content container on a page object.
 - `content: List<DocumentContent>` - Nested content
 - `position: Position?` - Absolute position (x, y, width, height)
 - `interactiveFlowName: String?` - Flow name in base template
+- `flowToNextPage: Boolean` - Whether content can flow to next page (default: false)
 
 **Example:**
 
@@ -389,7 +424,8 @@ def page = new DocumentObjectBuilder("my-page", DocumentObjectType.Page)
                 it.width(Size.ofMillimeters(190))
                 it.height(Size.ofMillimeters(50))
             }
-            it.paragraph { it.content("Header content") }
+            it.flowToNextPage(true)
+            it.paragraph { it.addText().string("Header content") }
             it.documentObjectRef("nested-block")
             it.imageRef("logo")
         }
@@ -516,11 +552,13 @@ All references point to other objects by ID:
 - `DocumentObjectRef(id)` or `DocumentObjectRef(id, displayRuleRef)` - Reference to templates/pages/blocks/sections
 - `VariableRef(id)` - Reference to variables
 - `ImageRef(id)` - Reference to images
+- `AttachmentRef(id)` - Reference to attachments
 - `TextStyleRef(id)` - Reference to text styles
 - `ParagraphStyleRef(id)` - Reference to paragraph styles
 - `DisplayRuleRef(id)` - Reference to display rules
 - `VariableStructureRef(id)` - Reference to variable structures
 - `StringValue(text)` - Plain text content
+- `Hyperlink(url, displayText?, alternateText?)` - Clickable hyperlink with optional display and accessibility text
 
 ## Supporting Types
 
@@ -603,17 +641,14 @@ Mark objects that cannot be automatically migrated:
 . skip("placeholder-name", "reason for skipping")
 ```
 
-## Best Practices
+---
 
-- **Use Meaningful IDs** - Unique, descriptive, with consistent naming (NOT randomly generated UUIDs, etc.)
-- **Define Styles Separately** - Inspire requires all text/paragraph styles as separate objects referenced by ID
-- **Use Skip for Non-Migratable Content** - Mark complex content: `.skip("manual-name", "reason...")`
-- **Organize with Target Folders** - Use logical folder structure: `.targetFolder("blocks/invoices/headers")`
+# Additional Information
 
 ## Validation Rules
 
-The library enforces: non-empty `id`, required `dataType` for Variables, consistent table cell counts, valid Size/Color
-values, and existence of referenced objects.
+The library validates: non-empty `id`, required `dataType` for Variables, consistent table cell counts, valid Size/Color
+values, and existence of referenced objects. Validation errors will fail at runtime.
 
 ## Working Example
 
