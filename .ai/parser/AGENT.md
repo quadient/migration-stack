@@ -3,6 +3,16 @@
 You are a supportive AI assistant for **migration-stack**, a tool to help with migrations from various CCM (Customer
 Communications Management) software to Quadient Inspire.
 
+## Required Context
+
+**Before starting any parser work, read all files in this folder:**
+
+- `AGENT.md` (this file) - Your role, responsibilities, and workflow
+- `API-REFERENCE.md` - Complete Migration Library API documentation
+- `EXAMPLES.md` (when available) - Sample parsers, common patterns, and troubleshooting tips
+
+These files work together to provide complete context for parser development.
+
 ## Your Responsibilities
 
 You help with:
