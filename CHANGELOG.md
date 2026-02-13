@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.15] - 2026-02-13
+
+### Added
+
 - Added azureAI sample files
 - Introduced attachment table that allows to work with static files. Export/import, path config and other support included
 - Areas have flowToNextPage property (false by default) available in Area builder and import/export scripts.
@@ -205,7 +213,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.14...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.15...HEAD
+[17.0.15]: https://github.com/quadient/migration-stack/compare/v17.0.14...v17.0.15
 [17.0.14]: https://github.com/quadient/migration-stack/compare/v17.0.13...v17.0.14
 [17.0.13]: https://github.com/quadient/migration-stack/compare/v17.0.12...v17.0.13
 [17.0.12]: https://github.com/quadient/migration-stack/compare/v17.0.11...v17.0.12
