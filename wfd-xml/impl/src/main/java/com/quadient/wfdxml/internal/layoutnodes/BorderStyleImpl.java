@@ -616,10 +616,32 @@ public class BorderStyleImpl extends NodeImpl<BorderStyle> implements BorderStyl
         }
 
         @Override
+        public SelectedLinesAndCorners setLineFillStyle(LinesAndCorners line, FillStyle lineFillStyle) {
+            if (!linesAndCorners.contains(line)) {
+                throw new IllegalArgumentException("Line '" + line + "' is not selected.");
+            }
+
+            BorderStyleImpl.this.outlineStyle.set(lineOrCornerToIndex(line), (FillStyleImpl) lineFillStyle);
+
+            return this;
+        }
+
+        @Override
         public SelectedLinesAndCorners setLineWidth(double lineWidth) {
             for (LinesAndCorners linesOrCorner : linesAndCorners) {
                 BorderStyleImpl.this.lineWidth.set(lineOrCornerToIndex(linesOrCorner), lineWidth);
             }
+            return this;
+        }
+
+        @Override
+        public SelectedLinesAndCorners setLineWidth(LinesAndCorners line, double lineWidth) {
+            if (!linesAndCorners.contains(line)) {
+                throw new IllegalArgumentException("Line '" + line + "' is not selected.");
+            }
+
+            BorderStyleImpl.this.lineWidth.set(lineOrCornerToIndex(line), lineWidth);
+
             return this;
         }
 

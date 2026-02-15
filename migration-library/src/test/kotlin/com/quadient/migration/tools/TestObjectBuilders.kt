@@ -54,6 +54,7 @@ import com.quadient.migration.persistence.table.VariableStructureTable
 import com.quadient.migration.persistence.table.VariableTable
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.shared.Alignment
+import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectOptions
@@ -66,6 +67,8 @@ import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
+import com.quadient.migration.shared.TableAlignment
+import com.quadient.migration.tools.model.aRow
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.datetime.Clock
@@ -244,9 +247,31 @@ fun aText(
 }
 
 fun aTable(
-    columnWidths: List<Table.ColumnWidth> = listOf(), rows: List<Table.Row> = listOf(aRow())
+    columnWidths: List<Table.ColumnWidth> = listOf(),
+    rows: List<Table.Row> = listOf(aRow()),
+    header: List<Table.Row> = listOf(aRow()),
+    firstHeader: List<Table.Row> = listOf(aRow()),
+    footer: List<Table.Row> = listOf(aRow()),
+    lastFooter: List<Table.Row> = listOf(aRow()),
+    minWidth: Size? = null,
+    maxWidth: Size? = null,
+    percentWidth: Double? = null,
+    border: BorderOptions? = null,
+    alignment: TableAlignment = TableAlignment.Left
 ): Table {
-    return Table(columnWidths = columnWidths, rows = rows)
+    return Table(
+        columnWidths = columnWidths,
+        rows = rows,
+        header = header,
+        firstHeader = firstHeader,
+        footer = footer,
+        lastFooter = lastFooter,
+        minWidth = minWidth,
+        maxWidth = maxWidth,
+        percentWidth = percentWidth,
+        border = border,
+        alignment = alignment
+    )
 }
 
 fun aRow(
@@ -258,7 +283,7 @@ fun aRow(
 fun aCell(
     content: List<DocumentContent> = listOf(aParagraph()), mergeLeft: Boolean = false, mergeUp: Boolean = false
 ): Table.Cell {
-    return Table.Cell(content = content, mergeLeft = mergeLeft, mergeUp = mergeUp)
+    return Table.Cell(content = content, mergeLeft = mergeLeft, mergeUp = mergeUp, height = null, border = null, alignment = null)
 }
 
 fun aParagraphStyle(

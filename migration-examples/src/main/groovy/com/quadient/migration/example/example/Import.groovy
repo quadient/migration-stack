@@ -19,6 +19,8 @@ import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.shared.AttachmentType
+import com.quadient.migration.shared.CellAlignment
+import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.GroupOp
@@ -26,6 +28,7 @@ import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
+import com.quadient.migration.shared.TableAlignment
 import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.shared.Size
 
@@ -168,55 +171,112 @@ def table = table {
     it.addColumnWidth(Size.ofMillimeters(10), 10)
     it.addColumnWidth(Size.ofMillimeters(20), 20)
     it.addColumnWidth(Size.ofMillimeters(98), 70)
-    it.row {
+    it.minWidth(Size.ofMillimeters(11))
+    it.maxWidth(Size.ofMillimeters(1111))
+    it.percentWidth(100)
+    it.alignment(TableAlignment.Right)
+
+    def borderColor = Color.fromHex("#000000")
+    def borderWidth = Size.ofMillimeters(0.3)
+    def headerPadding = Size.ofMillimeters(2)
+
+    it.border { it.allBorders(borderColor, borderWidth) }
+
+    it.firstHeaderRow {
         it.displayRuleRef = new DisplayRuleRef(displayHeaderRule.id)
         it.cell {
+            it.border {
+                it.allBorders(borderColor, borderWidth)
+                it.padding(headerPadding)
+                it.paddingLeft(Size.ofMillimeters(0))
+                it.paddingRight(Size.ofMillimeters(0))
+            }
             it.paragraph { it.string("ID") }
+            it.alignment(CellAlignment.Bottom)
         }
         it.cell {
+            it.border {
+                it.allBorders(borderColor, borderWidth)
+                it.padding(headerPadding)
+                it.paddingLeft(Size.ofMillimeters(0))
+                it.paddingRight(Size.ofMillimeters(0))
+            }
             it.paragraph { it.string("key") }
         }
         it.cell {
+            it.border {
+                it.allBorders(borderColor, borderWidth)
+                it.padding(headerPadding)
+                it.paddingLeft(Size.ofMillimeters(0))
+                it.paddingRight(Size.ofMillimeters(0))
+            }
             it.paragraph { it.string("value") }
         }
     }
 
     it.row {
         it.cell {
+            it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.text { it.string("1") } }
+            it.heightFixed(Size.ofMillimeters(10))
         }
         it.cell {
             // This cell is merged with the cell to the left on the same row
             // and contains the value of the left cell.
             it.mergeLeft = true
+            it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("key1") }
+            it.heightFixed(Size.ofMillimeters(20))
         }
         it.cell {
+            it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("value1") }
+            it.heightCustom(Size.ofMillimeters(10), Size.ofMillimeters(20))
         }
     }
 
     it.row {
         it.cell {
+            it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("2") }
         }
         it.cell {
+            it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("key2") }
         }
         it.cell {
+            it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("value2") }
         }
     }
 
     it.row {
         it.cell {
+            it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("3") }
         }
         it.cell {
+            it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("key3") }
         }
         it.cell {
+            it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("value3") }
+        }
+    }
+
+    it.lastFooterRow {
+        it.cell {
+            it.border { it.allBorders(borderColor, borderWidth) }
+            it.paragraph { it.string("Total") }
+        }
+        it.cell {
+            it.border { it.allBorders(borderColor, borderWidth) }
+            it.paragraph { it.string("3 keys") }
+        }
+        it.cell {
+            it.border { it.allBorders(borderColor, borderWidth) }
+            it.paragraph { it.string("") }
         }
     }
 }
