@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.16] - 2026-02-17
+
+### Added
+
 - Agent instructions and API reference for writing to help with writing new parsers with AI help
 
 ### Changed
@@ -215,7 +223,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.15...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.16...HEAD
+[17.0.16]: https://github.com/quadient/migration-stack/compare/v17.0.15...v17.0.16
 [17.0.15]: https://github.com/quadient/migration-stack/compare/v17.0.14...v17.0.15
 [17.0.14]: https://github.com/quadient/migration-stack/compare/v17.0.13...v17.0.14
 [17.0.13]: https://github.com/quadient/migration-stack/compare/v17.0.12...v17.0.13
