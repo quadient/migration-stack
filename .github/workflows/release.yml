@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-    - 'v*.*.*'
+      - 'v*.*.*'
   workflow_dispatch:
 
 concurrency:
@@ -19,6 +19,10 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
 
+    env:
+      ADO_ORG: ${{ secrets.ADO_ORG }}
+      ADO_TOKEN: ${{ secrets.ADO_TOKEN }}
+
     steps:
       - name: Read release tag
         run: |
@@ -27,6 +31,10 @@ jobs:
           else
               echo "RELEASE_TAG=${GITHUB_REF#refs/tags/}"  >> "$GITHUB_ENV"
           fi
+
+      - name: Derive version
+        run: |
+          echo "VERSION=${RELEASE_TAG#v}" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
 
@@ -52,3 +60,20 @@ jobs:
           prerelease: false
           draft: true
           artifacts: migration-app/build/dist/*.zip
+
+      - name: Trigger version update
+        run: |
+          payload=$(cat <<EOF
+          {
+            "templateParameters": {
+              "version": "$VERSION"
+            }
+          }
+          EOF
+          )
+
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -u ":$ADO_TOKEN" \
+            -d "$payload" \
+            "https://dev.azure.com/$ADO_ORG/migration/_apis/pipelines/2399/runs?api-version=7.1-preview.1"
