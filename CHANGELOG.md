@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+- Agent instructions and API reference for writing to help with writing new parsers with AI help
+
 ### Changed
 
 ### Fixed
