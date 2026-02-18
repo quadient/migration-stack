@@ -32,6 +32,7 @@ import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
+import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DisplayRuleDefinition
@@ -348,8 +349,8 @@ fun aRow(
     return Table.Row(cells, displayRuleRef?.let { DisplayRuleRef(it) })
 }
 
-fun aCell(content: DocumentContent, mergeLeft: Boolean = false, mergeUp: Boolean = false): Table.Cell {
-    return Table.Cell(listOf(content), mergeLeft, mergeUp)
+fun aCell(content: DocumentContent, mergeLeft: Boolean = false, mergeUp: Boolean = false, border: BorderOptions? = null): Table.Cell {
+    return Table.Cell(listOf(content), mergeLeft, mergeUp, null, border, null)
 }
 
 fun aSelectByLanguage(

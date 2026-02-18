@@ -26,6 +26,9 @@ import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.BinOp
+import com.quadient.migration.shared.BorderLine
+import com.quadient.migration.shared.BorderOptions
+import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.*
@@ -34,13 +37,16 @@ import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.Position
+import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
+import com.quadient.migration.shared.TableAlignment
 import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.shared.centimeters
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aProjectConfig
+import com.quadient.migration.tools.aTable
 import com.quadient.migration.tools.getFlowAreaContentFlow
 import com.quadient.migration.tools.getFlowAreaContentFlowId
 import com.quadient.migration.tools.model.aCell
@@ -61,6 +67,7 @@ import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldNotBeEmpty
 import com.quadient.migration.tools.shouldNotBeNull
+import io.mockk.InternalPlatformDsl.toArray
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -319,7 +326,19 @@ class DesignerDocumentObjectBuilderTest {
                                     aCell(aParagraph(aText(StringValue("D"))))
                                 ), rule.id
                             )
-                        ), listOf(), pdfTaggingRule = TablePdfTaggingRule.Table, pdfAlternateText = "Table alt text"
+                        ),
+                        listOf(),
+                        pdfTaggingRule = TablePdfTaggingRule.Table,
+                        pdfAlternateText = "Table alt text",
+                        firstHeader = emptyList(),
+                        footer = emptyList(),
+                        lastFooter = emptyList(),
+                        columnWidths = emptyList(),
+                        minWidth = null,
+                        maxWidth = null,
+                        percentWidth = null,
+                        border = null,
+                        alignment = TableAlignment.Left,
                     )
                 )
             )
@@ -360,6 +379,165 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         result["Flow"].filter { it["Name"]?.textValue() == block.nameOrId() }.size.shouldBeEqualTo(1)
+    }
+
+    @Test
+    fun `buildDocumentObject correctly sets table widths`() {
+        val table = aTable(
+            minWidth = Size.ofMillimeters(111),
+            maxWidth = Size.ofMillimeters(222),
+            percentWidth = 66.6
+        )
+        val block = mockObj(aDocObj("T1", Block, listOf(table)))
+
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        result["Table"].last()["MinWidth"].textValue().toDouble().shouldBeEqualTo(0.111)
+        result["Table"].last()["MaxWidth"].textValue().toDouble().shouldBeEqualTo(0.222)
+        result["Table"].last()["PercentWidth"].textValue().toDouble().shouldBeEqualTo(66.6)
+    }
+
+    @Test
+    fun `buildDocumentObject correctly sets table alignment`() {
+        val table = aTable(alignment = TableAlignment.Center)
+        val block = mockObj(aDocObj("T1", Block, listOf(table)))
+
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        result["Table"].last()["TableAlignment"].textValue().shouldBeEqualTo("Center")
+    }
+
+    @Test
+    fun `buildDocumentObject correctly sets table border options`() {
+        val table = aTable(border = BorderOptions(
+            leftLine = BorderLine(color = Color(255, 0, 0), width = Size.ofMillimeters(0.5)),
+            rightLine = BorderLine(color = Color(0, 255, 0), width = Size.ofMillimeters(0.3)),
+            topLine = BorderLine(color = Color(0, 0, 255), width = Size.ofMillimeters(0.2)),
+            bottomLine = BorderLine(color = Color(255, 255, 0), width = Size.ofMillimeters(0.4)),
+            paddingTop = Size.ofMillimeters(1),
+            paddingBottom = Size.ofMillimeters(2),
+            paddingLeft = Size.ofMillimeters(3),
+            paddingRight = Size.ofMillimeters(4),
+            fill = Color(128, 128, 128),
+        ))
+        val block = mockObj(aDocObj("T1", Block, listOf(table)))
+
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        val borderId = result["Table"].last()["BorderId"].textValue()
+        val borderStyle = result["BorderStyle"]?.last { it["Id"]?.textValue() == borderId }
+        val fillStyleId = borderStyle?.get("FillStyleId")?.textValue()
+        val fillStyle = result["FillStyle"]?.last { it["Id"]?.textValue() == fillStyleId }
+        val colorId = fillStyle?.get("ColorId")?.textValue()
+        val color = result["Color"]?.last { it["Id"]?.textValue() == colorId }
+
+        color?.get("RGB")?.textValue().shouldBeEqualTo("0.5019607843137255,0.5019607843137255,0.5019607843137255")
+
+        borderStyle?.get("Margin")["UpperLeft"]["Y"]?.textValue().shouldBeEqualTo("0.001")
+        borderStyle?.get("Margin")["LowerRight"]["Y"]?.textValue().shouldBeEqualTo("0.002")
+        borderStyle?.get("Margin")["UpperLeft"]["X"]?.textValue().shouldBeEqualTo("0.003")
+        borderStyle?.get("Margin")["LowerRight"]["X"]?.textValue().shouldBeEqualTo("0.004")
+
+        result.assertLine(borderId, "LeftLine", expectedColor = Color(255, 0, 0), expectedWidth = 5.0E-4)
+        result.assertLine(borderId, "RightLine", expectedColor = Color(0, 255, 0), expectedWidth = 3.0E-4)
+        result.assertLine(borderId, "TopLine", expectedColor = Color(0, 0, 255), expectedWidth = 2.0E-4)
+        result.assertLine(borderId, "BottomLine", expectedColor = Color(255, 255, 0), expectedWidth = 4.0E-4)
+    }
+
+    @Test
+    fun `buildDocumentObject correctly sets border options for a cell`() {
+        // given
+        val bodyRow = aRow(listOf(aCell(aParagraph("test"), border = BorderOptions(
+            leftLine = BorderLine(color = Color(255, 0, 0), width = Size.ofMillimeters(0.5)),
+            rightLine = BorderLine(color = Color(0, 255, 0), width = Size.ofMillimeters(0.3)),
+            topLine = BorderLine(color = Color(0, 0, 255), width = Size.ofMillimeters(0.2)),
+            bottomLine = BorderLine(color = Color(255, 255, 0), width = Size.ofMillimeters(0.4)),
+            paddingTop = Size.ofMillimeters(1),
+            paddingBottom = Size.ofMillimeters(2),
+            paddingLeft = Size.ofMillimeters(3),
+            paddingRight = Size.ofMillimeters(4),
+            fill = Color(128, 128, 128),
+        ))))
+        val table = aTable(rows = listOf(bodyRow))
+        val block = mockObj(aDocObj("T1", Block, listOf(table)))
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val borderId = result["Cell"].last()["BorderId"].textValue()
+        val borderStyle = result["BorderStyle"]?.last { it["Id"]?.textValue() == borderId }
+        val fillStyleId = borderStyle?.get("FillStyleId")?.textValue()
+        val fillStyle = result["FillStyle"]?.last { it["Id"]?.textValue() == fillStyleId }
+        val colorId = fillStyle?.get("ColorId")?.textValue()
+        val color = result["Color"]?.last { it["Id"]?.textValue() == colorId }
+
+        color?.get("RGB")?.textValue().shouldBeEqualTo("0.5019607843137255,0.5019607843137255,0.5019607843137255")
+
+        borderStyle?.get("Margin")["UpperLeft"]["Y"]?.textValue().shouldBeEqualTo("0.001")
+        borderStyle?.get("Margin")["LowerRight"]["Y"]?.textValue().shouldBeEqualTo("0.002")
+        borderStyle?.get("Margin")["UpperLeft"]["X"]?.textValue().shouldBeEqualTo("0.003")
+        borderStyle?.get("Margin")["LowerRight"]["X"]?.textValue().shouldBeEqualTo("0.004")
+
+        result.assertLine(borderId, "LeftLine", expectedColor = Color(255, 0, 0), expectedWidth = 5.0E-4)
+        result.assertLine(borderId, "RightLine", expectedColor = Color(0, 255, 0), expectedWidth = 3.0E-4)
+        result.assertLine(borderId, "TopLine", expectedColor = Color(0, 0, 255), expectedWidth = 2.0E-4)
+        result.assertLine(borderId, "BottomLine", expectedColor = Color(255, 255, 0), expectedWidth = 4.0E-4)
+    }
+
+    @Test
+    fun `buildDocumentObject correctly creates header, first header, footer and last footer rows`() {
+        // given
+        val headerRow = aRow(listOf(aCell(aParagraph(aText(StringValue("Header"))))) )
+        val firstHeaderRow = aRow(listOf(aCell(aParagraph(aText(StringValue("FirstHeader"))))) )
+        val bodyRow = aRow(listOf(aCell(aParagraph(aText(StringValue("Body"))))) )
+        val footerRow = aRow(listOf(aCell(aParagraph(aText(StringValue("Footer"))))) )
+        val lastFooterRow = aRow(listOf(aCell(aParagraph(aText(StringValue("LastFooter"))))) )
+        val table = aTable(
+            rows = listOf(bodyRow),
+            header = listOf(headerRow),
+            firstHeader = listOf(firstHeaderRow),
+            footer = listOf(footerRow),
+            lastFooter = listOf(lastFooterRow),
+        )
+        val block = mockObj(aDocObj("T1", Block, listOf(table)))
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val tableNode = result["Table"].last()
+        val rowSetId = tableNode["RowSetId"].textValue()
+        val rowSet = result["RowSet"].last { it["Id"].textValue() == rowSetId }
+        val subRowIds = rowSet["SubRowId"]
+        subRowIds.size().shouldBeEqualTo(5) // first header, header, body, footer, last footer
+
+        result.assertRowContent(subRowIds[0].textValue(), "FirstHeader")
+        result.assertRowContent(subRowIds[1].textValue(), "Header")
+        result.assertRowContent(subRowIds[2].textValue(), "Body")
+        result.assertRowContent(subRowIds[3].textValue(), "Footer")
+        result.assertRowContent(subRowIds[4].textValue(), "LastFooter")
+    }
+
+    private fun com.fasterxml.jackson.databind.JsonNode.assertRowContent(rowSetId: String, expectedText: String) {
+        val rowSet = this["RowSet"].last { it["Id"].textValue() == rowSetId }
+        val contentRowSet = this["RowSet"].last { it["Id"].textValue() == rowSet["SubRowId"].textValue() }
+        val cell = this["Cell"].last { it["Id"].textValue() == contentRowSet["SubRowId"].textValue() }
+        val flowId = cell["FlowId"].textValue()
+        val flow = this["Flow"].last { it["Id"].textValue() == flowId }
+        flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo(expectedText)
+    }
+
+    private fun com.fasterxml.jackson.databind.JsonNode?.assertLine(borderStyleId: String, line: String, expectedColor: Color, expectedWidth: Double) {
+        val borderStyle = this?.get("BorderStyle")?.last { it["Id"]?.textValue() == borderStyleId }
+
+        val lineFillStyleId = borderStyle?.get(line)?.get("FillStyle")?.textValue()
+        val lineFillStyle = this?.get("FillStyle")?.last { it["Id"]?.textValue() == lineFillStyleId }
+        val lineColorId = lineFillStyle?.get("ColorId")?.textValue()
+        val lineColor = this?.get("Color")?.last { it["Id"]?.textValue() == lineColorId }
+        lineColor?.get("RGB")?.textValue().shouldBeEqualTo("${expectedColor.red.toDouble() / 255.0},${expectedColor.green.toDouble() / 255.0},${expectedColor.blue.toDouble() / 255.0}")
+
+        borderStyle?.get(line)["LineWidth"]?.textValue()?.toDouble().shouldBeEqualTo(expectedWidth)
     }
 
     @Test
@@ -964,3 +1142,4 @@ class DesignerDocumentObjectBuilderTest {
         }
     }
 }
+

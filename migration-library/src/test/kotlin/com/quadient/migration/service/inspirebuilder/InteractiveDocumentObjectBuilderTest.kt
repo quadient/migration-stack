@@ -43,6 +43,7 @@ import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.TabType
+import com.quadient.migration.shared.TableAlignment
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.shared.toIcmPath
@@ -82,6 +83,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import kotlin.collections.emptyList
 
 class InteractiveDocumentObjectBuilderTest {
     val documentObjectRepository = mockk<DocumentObjectRepository>()
@@ -202,10 +204,18 @@ class InteractiveDocumentObjectBuilderTest {
                                 aCell(aParagraph(aText(StringValue("Second row, second cell"))), mergeLeft = true)
                             )
                         )
-                    ), listOf(
+                    ), columnWidths = listOf(
                         Table.ColumnWidth(Size.ofMillimeters(150), 10.0),
                         Table.ColumnWidth(Size.ofCentimeters(3), 1.0)
-                    )
+                    ),
+                    firstHeader = emptyList(),
+                    footer = emptyList(),
+                    lastFooter = emptyList(),
+                    minWidth = null,
+                    maxWidth = null,
+                    percentWidth = null,
+                    border = null,
+                    alignment = TableAlignment.Left,
                 )
             )
         )
@@ -563,7 +573,16 @@ class InteractiveDocumentObjectBuilderTest {
                                 aCell(listOf(aParagraph(aText(StringValue("Second row, second cell")))))
                             ), displayRule.id
                         )
-                    ), listOf()
+                    ),
+                    columnWidths = listOf(),
+                    firstHeader = emptyList(),
+                    footer = emptyList(),
+                    lastFooter = emptyList(),
+                    minWidth = null,
+                    maxWidth = null,
+                    percentWidth = null,
+                    border = null,
+                    alignment = TableAlignment.Left,
                 )
             )
         )

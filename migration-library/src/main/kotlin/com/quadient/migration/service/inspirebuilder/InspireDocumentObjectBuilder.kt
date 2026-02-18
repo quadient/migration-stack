@@ -43,6 +43,9 @@ import com.quadient.migration.shared.Binary
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.AttachmentType
+import com.quadient.migration.shared.BorderOptions
+import com.quadient.migration.shared.CellAlignment
+import com.quadient.migration.shared.CellHeight
 import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.IcmPath
@@ -54,6 +57,7 @@ import com.quadient.migration.shared.LiteralOrFunctionCall
 import com.quadient.migration.shared.ParagraphPdfTaggingRule as ParagraphPdfTaggingRuleModel
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.TabType
+import com.quadient.migration.shared.TableAlignment
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Font
@@ -77,6 +81,8 @@ import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.ParagraphPdfTaggingRul
 import com.quadient.wfdxml.api.layoutnodes.TextStyle
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.api.layoutnodes.TextStyleType
+import com.quadient.wfdxml.api.layoutnodes.tables.BorderStyle
+import com.quadient.wfdxml.api.layoutnodes.tables.Cell
 import com.quadient.wfdxml.api.layoutnodes.flow.Paragraph as WfdXmlParagraph
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.data.WorkFlowTreeDefinition
@@ -925,22 +931,91 @@ abstract class InspireDocumentObjectBuilder(
         return successFlow
     }
 
-    private fun buildTable(
-        layout: Layout, variableStructure: VariableStructure, model: Table, languages: List<String>
-    ): WfdXmlTable {
-        val table = layout.addTable().setDisplayAsImage(false)
-
-        if (model.columnWidths.isNotEmpty()) {
-            model.columnWidths.forEach { table.addColumn(it.minWidth.toMeters(), it.percentWidth) }
-        } else {
-            val numberOfColumns = model.rows.firstOrNull()?.cells?.size ?: 0
-            repeat(numberOfColumns) { table.addColumn() }
+    private fun buildTableBorderStyle(border: BorderOptions?, layout: Layout, setStyle: (BorderStyle) -> Unit) {
+        if (border == null) {
+            return
         }
 
-        val rowset = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-        table.setRowSet(rowset)
+        val borderStyle = layout.addBorderStyle()
+        setStyle(borderStyle)
 
-        model.rows.forEach { rowModel ->
+        val borderLines = borderStyle.select(
+            *listOfNotNull(
+                border.leftLine?.let { BorderStyle.LinesAndCorners.LEFT_LINE },
+                border.rightLine?.let { BorderStyle.LinesAndCorners.RIGHT_LINE },
+                border.topLine?.let { BorderStyle.LinesAndCorners.TOP_LINE },
+                border.bottomLine?.let { BorderStyle.LinesAndCorners.BOTTOM_LINE },
+            ).toTypedArray()
+        )
+
+        borderStyle.setMargins(
+            border.paddingTop.toMeters(),
+            border.paddingRight.toMeters(),
+            border.paddingBottom.toMeters(),
+            border.paddingLeft.toMeters()
+        )
+
+        if (border.fill != null) {
+            borderStyle.setFill(
+                layout.addFillStyle().setColor(
+                    layout.addColor().setRGB(
+                        border.fill.red(), border.fill.green(), border.fill.blue()
+                    )
+                )
+            )
+        }
+
+        if (border.leftLine != null) {
+            val fillStyle = layout.addFillStyle().setColor(
+                layout.addColor().setRGB(
+                    border.leftLine.color.red(),
+                    border.leftLine.color.green(),
+                    border.leftLine.color.blue()
+                )
+            )
+            borderLines.setLineWidth(BorderStyle.LinesAndCorners.LEFT_LINE, border.leftLine.width.toMeters())
+            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.LEFT_LINE, fillStyle)
+        }
+
+        if (border.rightLine != null) {
+            val fillStyle = layout.addFillStyle().setColor(
+                layout.addColor().setRGB(
+                    border.rightLine.color.red(),
+                    border.rightLine.color.green(),
+                    border.rightLine.color.blue()
+                )
+            )
+            borderLines.setLineWidth(BorderStyle.LinesAndCorners.RIGHT_LINE, border.rightLine.width.toMeters())
+            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.RIGHT_LINE, fillStyle)
+        }
+
+        if (border.topLine != null) {
+            val fillStyle = layout.addFillStyle().setColor(
+                layout.addColor().setRGB(
+                    border.topLine.color.red(),
+                    border.topLine.color.green(),
+                    border.topLine.color.blue()
+                )
+            )
+            borderLines.setLineWidth(BorderStyle.LinesAndCorners.TOP_LINE, border.topLine.width.toMeters())
+            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.TOP_LINE, fillStyle)
+        }
+
+        if (border.bottomLine != null) {
+            val fillStyle = layout.addFillStyle().setColor(
+                layout.addColor().setRGB(
+                    border.bottomLine.color.red(),
+                    border.bottomLine.color.green(),
+                    border.bottomLine.color.blue()
+                )
+            )
+            borderLines.setLineWidth(BorderStyle.LinesAndCorners.BOTTOM_LINE, border.bottomLine.width.toMeters())
+            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.BOTTOM_LINE, fillStyle)
+        }
+    }
+
+    private fun List<Table.Row>.buildRows(layout: Layout, rowset: GeneralRowSet, variableStructure: VariableStructure, languages: List<String>) {
+        this.forEach { rowModel ->
             val row = if (rowModel.displayRuleRef == null) {
                 layout.addRowSet().setType(RowSet.Type.SINGLE_ROW).also { rowset.addRowSet(it) }
             } else {
@@ -965,11 +1040,106 @@ abstract class InspireDocumentObjectBuilder(
                         .also { it.addParagraph().addText().appendFlow(cellContentFlow) }
                 } else cellContentFlow
 
-                row.addCell(
-                    layout.addCell().setSpanLeft(cellModel.mergeLeft).setSpanUp(cellModel.mergeUp)
-                        .setFlowToNextPage(true).setFlow(cellFlow)
-                )
+                val cell = layout.addCell().setSpanLeft(cellModel.mergeLeft).setSpanUp(cellModel.mergeUp)
+                    .setFlowToNextPage(true).setFlow(cellFlow)
+
+                when (cellModel.height) {
+                    is CellHeight.Custom -> {
+                        cell.setType(Cell.CellType.CUSTOM)
+                            .setMinHeight(cellModel.height.minHeight.toMeters())
+                            .setMaxHeight(cellModel.height.maxHeight.toMeters())
+                    }
+                    is CellHeight.Fixed -> {
+                        cell.setType(Cell.CellType.FIXED_HEIGHT)
+                            .setFixedHeight(cellModel.height.size.toMeters())
+                    }
+                    null -> {}
+                }
+
+                when (cellModel.alignment) {
+                    CellAlignment.Top -> cell.setAlignment(Cell.CellVerticalAlignment.TOP)
+                    CellAlignment.Center -> cell.setAlignment(Cell.CellVerticalAlignment.CENTER)
+                    CellAlignment.Bottom -> cell.setAlignment(Cell.CellVerticalAlignment.BOTTOM)
+                    null -> {}
+                }
+
+                buildTableBorderStyle(cellModel.border, layout, cell::setBorderStyle)
+
+                row.addCell(cell)
             }
+        }
+    }
+
+    fun buildTable(
+        layout: Layout, variableStructure: VariableStructure, model: Table, languages: List<String>
+    ): WfdXmlTable {
+        val table = layout.addTable().setDisplayAsImage(false)
+
+        if (model.columnWidths.isNotEmpty()) {
+            model.columnWidths.forEach { table.addColumn(it.minWidth.toMeters(), it.percentWidth) }
+        } else {
+            val numberOfColumns = model.rows.firstOrNull()?.cells?.size ?: 0
+            repeat(numberOfColumns) { table.addColumn() }
+        }
+
+        if (model.minWidth != null) {
+            table.setMinWidth(model.minWidth.toMeters())
+        }
+        if (model.maxWidth != null) {
+            table.setMaxWidth(model.maxWidth.toMeters())
+        }
+        if (model.percentWidth != null) {
+            table.setPercentWidth(model.percentWidth)
+        }
+
+        table.setAlignment(
+            when (model.alignment) {
+                TableAlignment.Left -> WfdXmlTable.TableAlignment.LEFT
+                TableAlignment.Center -> WfdXmlTable.TableAlignment.CENTER
+                TableAlignment.Right -> WfdXmlTable.TableAlignment.RIGHT
+                TableAlignment.Inherit -> WfdXmlTable.TableAlignment.INHERIT
+            }
+        )
+
+        buildTableBorderStyle(model.border, layout, table::setBorderStyle)
+
+        if (model.header.isNotEmpty() || model.firstHeader.isNotEmpty() || model.footer.isNotEmpty() || model.lastFooter.isNotEmpty()) {
+            val headerFooterRowSet = layout.addRowSetHeaderFooter()
+            table.setRowSet(headerFooterRowSet)
+
+            if (model.header.isNotEmpty()) {
+                val headerRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
+                headerFooterRowSet.setHeader(headerRowSet)
+                model.header.buildRows(layout, headerRowSet, variableStructure, languages)
+            }
+
+            if (model.firstHeader.isNotEmpty()) {
+                val firstHeaderRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
+                headerFooterRowSet.setFirstHeader(firstHeaderRowSet)
+                model.firstHeader.buildRows(layout, firstHeaderRowSet, variableStructure, languages)
+            }
+
+            if (model.footer.isNotEmpty()) {
+                val footerRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
+                headerFooterRowSet.setFooter(footerRowSet)
+                model.footer.buildRows(layout, footerRowSet, variableStructure, languages)
+            }
+
+            if (model.lastFooter.isNotEmpty()) {
+                val lastFooterRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
+                headerFooterRowSet.setLastFooter(lastFooterRowSet)
+                model.lastFooter.buildRows(layout, lastFooterRowSet, variableStructure, languages)
+            }
+
+            val bodyRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
+            headerFooterRowSet.setBody(bodyRowSet)
+
+            model.rows.buildRows(layout, bodyRowSet, variableStructure, languages)
+        } else {
+            val rowset = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
+            table.setRowSet(rowset)
+
+            model.rows.buildRows(layout, rowset, variableStructure, languages)
         }
 
         when (model.pdfTaggingRule) {

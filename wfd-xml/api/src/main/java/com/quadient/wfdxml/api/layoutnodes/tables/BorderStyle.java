@@ -45,7 +45,11 @@ public interface BorderStyle extends Node<BorderStyle> {
 
         SelectedLinesAndCorners setLineFillStyle(FillStyle lineFillStyle);
 
+        SelectedLinesAndCorners setLineFillStyle(LinesAndCorners line, FillStyle lineFillStyle);
+
         SelectedLinesAndCorners setLineWidth(double lineWidth);
+
+        SelectedLinesAndCorners setLineWidth(LinesAndCorners line, double lineWidth);
 
         SelectedLinesAndCorners setCap(CapType cap);
 
