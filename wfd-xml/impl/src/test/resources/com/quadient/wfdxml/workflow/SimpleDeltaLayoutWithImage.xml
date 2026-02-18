@@ -10,6 +10,14 @@
         <ParentId>Def.ImagesGroup</ParentId>
         <Forward/>
     </Image>
+    <Color>
+        <Id>Def.Color</Id>
+        <RGB>0.0,0.0,0.0</RGB>
+    </Color>
+    <FillStyle>
+        <Id>Def.BlackFill</Id>
+        <ColorId>Def.Color</ColorId>
+    </FillStyle>
     <Flow>
         <Id>SR_1</Id>
         <Type>Simple</Type>
@@ -46,6 +54,99 @@
             </Tagging>
         </PDFAdvanced>
     </Image>
+    <BorderStyle>
+        <Id>Def.BorderStyle</Id>
+        <FillStyleId>Def.BlackFill</FillStyleId>
+        <ShadowStyleId/>
+        <Margin>
+            <UpperLeft X="0.0" Y="0.0"/>
+            <LowerRight X="0.0" Y="0.0"/>
+        </Margin>
+        <Offset>
+            <UpperLeft X="0.0" Y="0.0"/>
+            <LowerRight X="0.0" Y="0.0"/>
+        </Offset>
+        <ShadowOffset X="0.0" Y="0.0"/>
+        <JoinType>Miter</JoinType>
+        <Miter>10.0</Miter>
+        <LeftLine>
+            <FillStyle/>
+            <LineWidth>2.0E-4</LineWidth>
+            <CapType>Butt</CapType>
+            <LineStyle/>
+        </LeftLine>
+        <UpperLeftCorner>
+            <FillStyle/>
+            <LineWidth>2.0E-4</LineWidth>
+            <CapType>Butt</CapType>
+            <LineStyle/>
+        </UpperLeftCorner>
+        <TopLine>
+            <FillStyle/>
+            <LineWidth>2.0E-4</LineWidth>
+            <CapType>Butt</CapType>
+            <LineStyle/>
+        </TopLine>
+        <RightTopCorner>
+            <FillStyle/>
+            <LineWidth>2.0E-4</LineWidth>
+            <CapType>Butt</CapType>
+            <LineStyle/>
+        </RightTopCorner>
+        <RightLine>
+            <FillStyle/>
+            <LineWidth>2.0E-4</LineWidth>
+            <CapType>Butt</CapType>
+            <LineStyle/>
+        </RightLine>
+        <LowerRightCorner>
+            <FillStyle/>
+            <LineWidth>2.0E-4</LineWidth>
+            <CapType>Butt</CapType>
+            <LineStyle/>
+        </LowerRightCorner>
+        <BottomLine>
+            <FillStyle/>
+            <LineWidth>2.0E-4</LineWidth>
+            <CapType>Butt</CapType>
+            <LineStyle/>
+        </BottomLine>
+        <LowerLeftCorner>
+            <FillStyle/>
+            <LineWidth>2.0E-4</LineWidth>
+            <CapType>Butt</CapType>
+            <LineStyle/>
+        </LowerLeftCorner>
+        <LeftRightLine>
+            <FillStyle/>
+            <LineWidth>2.0E-4</LineWidth>
+            <CapType>Butt</CapType>
+            <LineStyle/>
+        </LeftRightLine>
+        <RightLeftLine>
+            <FillStyle/>
+            <LineWidth>2.0E-4</LineWidth>
+            <CapType>Butt</CapType>
+            <LineStyle/>
+        </RightLeftLine>
+        <UpperLeftCornerType>
+            <CornerType>StandardCorner</CornerType>
+            <CornerRadius X="0.0" Y="0.0"/>
+        </UpperLeftCornerType>
+        <UpperRightCornerType>
+            <CornerType>StandardCorner</CornerType>
+            <CornerRadius X="0.0" Y="0.0"/>
+        </UpperRightCornerType>
+        <LowerRightCornerType>
+            <CornerType>StandardCorner</CornerType>
+            <CornerRadius X="0.0" Y="0.0"/>
+        </LowerRightCornerType>
+        <LowerLeftCornerType>
+            <CornerType>StandardCorner</CornerType>
+            <CornerRadius X="0.0" Y="0.0"/>
+        </LowerLeftCornerType>
+        <Type>Simple</Type>
+    </BorderStyle>
     <Data>
         <Id>Def.Data</Id>
     </Data>
