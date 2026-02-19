@@ -41,6 +41,15 @@ class TableBuilder {
     fun addRow() = Row().apply { rows.add(this) }
 
     /**
+     * Adds multiple rows to the table. This will append the rows to any existing rows.
+     * @param rows The list of rows to add.
+     * @return The builder instance for method chaining.
+     */
+    fun addRows(rows: List<Row>) = apply {
+        this.rows.addAll(rows)
+    }
+
+    /**
      * Add a column width to the table. Column widths are added in the order they are defined.
      */
     fun addColumnWidth(minWidth: Size, percentWidth: Double) = apply {
@@ -50,8 +59,12 @@ class TableBuilder {
     /**
      * Set the column widths for the table. This will replace any existing column widths.
      * @param width The list of column widths to set.
+     * @return The builder instance for method chaining.
      */
-    fun columnWidths(width: List<ColumnWidth>) = columnWidths.apply { clear() }.addAll(width)
+    fun columnWidths(width: List<ColumnWidth>) = apply {
+        columnWidths.clear()
+        columnWidths.addAll(width)
+    }
 
     fun addHeaderRow() = Row().apply { header.add(this) }
     fun addFirstHeaderRow() = Row().apply { firstHeader.add(this) }
@@ -85,6 +98,16 @@ class TableBuilder {
          * And all rows must have the same number of cells.
          */
         fun addCell() = Cell().apply { cells.add(this) }
+
+        /**
+         * Adds multiple cells to the row. This will append the cells to any existing cells.
+         * @param cells The list of cells to add.
+         * @return The builder instance for method chaining.
+         */
+        fun addCells(cells: List<Cell>) = apply {
+            this.cells.addAll(cells)
+        }
+
         fun displayRuleRef(id: String) = this.apply { this.displayRuleRef = DisplayRuleRef(id) }
         fun displayRuleRef(ref: DisplayRuleRef) = this.apply { this.displayRuleRef = ref }
 

@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 
 - Border configuration options to tables
+- Option to add list of rows to table and list of cells to table row in their respective builders
 
 ### Changed
 

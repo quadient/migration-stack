@@ -60,10 +60,29 @@ class TableDsl {
      * And all rows must have the same number of cells.
      */
     fun row(init: Row.() -> Unit) = Row().apply(init).apply(rows::add)
+
+    /**
+     * Adds multiple rows to the table. This will append the rows to any existing rows.
+     * @param rows The list of rows to add.
+     * @return The builder instance for method chaining.
+     */
+    fun rows(rows: List<Row>) = apply {
+        this.rows.addAll(rows)
+    }
+
     fun addColumnWidth(minWidth: Size, percentWidth: Double) = apply {
         columnWidths.add(ColumnWidth(minWidth, percentWidth))
     }
-    fun columnWidths(widths: List<ColumnWidth>) = columnWidths.apply { clear() }.addAll(widths)
+
+    /**
+     * Set the column widths for the table. This will replace any existing column widths.
+     * @param widths The list of column widths to set.
+     * @return The builder instance for method chaining.
+     */
+    fun columnWidths(widths: List<ColumnWidth>) = apply {
+        columnWidths.clear()
+        columnWidths.addAll(widths)
+    }
 
     fun headerRow(init: Row.() -> Unit) = Row().apply(init).apply(header::add)
     fun firstHeaderRow(init: Row.() -> Unit) = Row().apply(init).apply(firstHeader::add)
@@ -82,6 +101,16 @@ class TableDsl {
          * And all rows must have the same number of cells.
          */
         fun cell(init: Cell.() -> Unit) = Cell().apply(init).apply(cells::add)
+
+        /**
+         * Adds multiple cells to the row. This will append the cells to any existing cells.
+         * @param cells The list of cells to add.
+         * @return The builder instance for method chaining.
+         */
+        fun cells(cells: List<Cell>) = apply {
+            this.cells.addAll(cells)
+        }
+
         fun displayRuleRef(id: String) = this.apply { this.displayRuleRef = DisplayRuleRef(id) }
         fun displayRuleRef(ref: DisplayRuleRef) = this.apply { this.displayRuleRef = ref }
 
