@@ -24,7 +24,7 @@ data class Table(
     val alignment: TableAlignment = TableAlignment.Left
 ) : DocumentContent, TextContent, RefValidatable {
     override fun collectRefs(): List<Ref> {
-        return rows.flatMap { it.collectRefs() }
+        return (rows + header + firstHeader + footer + lastFooter).flatMap { it.collectRefs() }
     }
 
     companion object {
