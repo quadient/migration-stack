@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+- Changed variable paths in Migration Model Example to Data.Clients.Value and cleansed their names of variable suffix
+
 ### Fixed
 
 ## [17.0.16] - 2026-02-17
