@@ -33,7 +33,6 @@ import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.BinOp.*
 import com.quadient.migration.shared.DataType
-import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.*
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.IcmPath
@@ -251,19 +250,19 @@ class InteractiveDocumentObjectBuilderTest {
     fun `build of more nested and complex structure is correctly wrapped into section if required`() {
         // given
         val externalBlock = aBlock("1", listOf(aParagraph(aText(StringValue("Hello")))))
-        val Block = aBlock("2", listOf(aParagraph(aText(StringValue("Sir")))), internal = true)
+        val block = aBlock("2", listOf(aParagraph(aText(StringValue("Sir")))), internal = true)
 
         val section = aBlock(
             "5", type = Section, content = listOf(
                 aDocumentObjectRef(externalBlock.id),
                 aParagraph(aText(StringValue("In between"))),
-                aDocumentObjectRef(Block.id)
+                aDocumentObjectRef(block.id)
             ), internal = true
         )
         val template = aTemplate("10", listOf(aDocumentObjectRef(section.id)))
 
         every { documentObjectRepository.findOrFail(externalBlock.id) } returns externalBlock
-        every { documentObjectRepository.findOrFail(Block.id) } returns Block
+        every { documentObjectRepository.findOrFail(block.id) } returns block
         every { documentObjectRepository.findOrFail(section.id) } returns section
 
         // when
@@ -294,7 +293,7 @@ class InteractiveDocumentObjectBuilderTest {
 
         val nestedFlowRef = sectionRefs[2]["Id"].textValue()
         result["Flow"].first { it["Id"].textValue() == nestedFlowRef }["Name"].textValue()
-            .shouldBeEqualTo(Block.nameOrId())
+            .shouldBeEqualTo(block.nameOrId())
         val nestedFlow = result["Flow"].last { it["Id"].textValue() == nestedFlowRef }
         nestedFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Sir")
     }
@@ -700,7 +699,7 @@ class InteractiveDocumentObjectBuilderTest {
         // given
         val variable = aVariable("V_100", "Salutation")
 
-        val Block = aBlock(
+        val innerBlock = aBlock(
             "1", listOf(
                 aParagraph(
                     aText(listOf(StringValue("Dear "), VariableRef(variable.id)))
@@ -716,7 +715,7 @@ class InteractiveDocumentObjectBuilderTest {
                     aText(
                         listOf(
                             StringValue("Hello, "),
-                            aDocumentObjectRef(Block.id),
+                            aDocumentObjectRef(innerBlock.id),
                             StringValue(". How are you?"),
                             aDocumentObjectRef(externalBlock.id)
                         )
@@ -725,7 +724,7 @@ class InteractiveDocumentObjectBuilderTest {
             )
         )
 
-        every { documentObjectRepository.findOrFail(Block.id) } returns Block
+        every { documentObjectRepository.findOrFail(innerBlock.id) } returns innerBlock
         every { documentObjectRepository.findOrFail(externalBlock.id) } returns externalBlock
         every { variableRepository.findOrFail(variable.id) } returns variable
         every { variableStructureRepository.listAll() } returns listOf()
@@ -908,17 +907,17 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `build of  flow under display rule wraps in in condition flow`() {
+    fun `build of flow under display rule wraps in in condition flow`() {
         // given
         val rule = mockRule(
             aDisplayRule(Literal("C", LiteralDataType.String), Equals, Literal("C", LiteralDataType.String))
         )
-        val Block = mockObj(
+        val innerBlock = mockObj(
             aDocObj(
                 "B_1", Block, listOf(aParagraph(aText(StringValue("Text")))), true, displayRuleRef = rule.id
             )
         )
-        val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(Block.id)))
+        val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(innerBlock.id)))
 
         // when
         val result = subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }
@@ -1171,8 +1170,6 @@ class InteractiveDocumentObjectBuilderTest {
         val refBlock = mockObj(DocumentObjectBuilder("RefBlock", Block).string("ref content").build())
         val displayRule = mockRule(DisplayRuleBuilder("rule").comparison { value("C").equals().value("C") }.build())
         
-        val docObjectRef = aDocumentObjectRef(refBlock.id, displayRule.id)
-
         val template = DocumentObjectBuilder("T1", Template).table {
             addRow().addCell().documentObjectRef(refBlock.id, displayRule.id)
         }.build()
@@ -1598,7 +1595,7 @@ class InteractiveDocumentObjectBuilderTest {
                 interactiveTenant = "tenant"
             )
             val pathTestSubject = aSubject(config)
-            val image = aDocObj("T_1", type = DocumentObjectType.Template, targetFolder = targetFolder.nullToNull())
+            val image = aDocObj("T_1", type = Template, targetFolder = targetFolder.nullToNull())
 
             val path = pathTestSubject.getDocumentObjectPath(image)
 
