@@ -112,16 +112,7 @@ class TableBuilder {
         fun displayRuleRef(ref: DisplayRuleRef) = this.apply { this.displayRuleRef = ref }
 
         fun build(): Table.Row {
-            return Table.Row(cells = cells.map { cell ->
-                Table.Cell(
-                    content = cell.content,
-                    mergeUp = cell.mergeUp,
-                    mergeLeft = cell.mergeLeft,
-                    height = cell.height,
-                    border = cell.border,
-                    alignment = cell.alignment,
-                )
-            }, displayRuleRef = displayRuleRef)
+            return Table.Row(cells = cells.map { it.build() }, displayRuleRef = displayRuleRef)
         }
     }
 
@@ -139,6 +130,17 @@ class TableBuilder {
         fun heightCustom(minHeight: Size, maxHeight: Size) = apply { height = CellHeight.Custom(minHeight, maxHeight) }
         fun alignment(alignment: CellAlignment) = apply { this.alignment = alignment }
         fun border(init: BorderOptionsBuilder.() -> Unit) = apply { this.border = BorderOptionsBuilder().apply(init).build() }
+
+        fun build(): Table.Cell {
+            return Table.Cell(
+                content = content,
+                mergeUp = mergeUp,
+                mergeLeft = mergeLeft,
+                height = height,
+                border = border,
+                alignment = alignment,
+            )
+        }
     }
 
     data class ColumnWidth(val minWidth: Size, val percentWidth: Double)
