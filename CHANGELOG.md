@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Fixed
 
+- Cell condition flows are now wrapped in simple section flows to work properly in Interactive output
+
 ## [17.0.16] - 2026-02-17
 
 ### Added

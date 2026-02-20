@@ -19,6 +19,8 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -1085,7 +1087,7 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `first match in cell is wrapped in simple flow`() {
+    fun `first match in cell is wrapped in simple section flow`() {
         // given
         val rule1 = mockRule(
             aDisplayRule(
@@ -1161,6 +1163,33 @@ class InteractiveDocumentObjectBuilderTest {
         val defaultFlow =
             result["Flow"].last { it["Id"].textValue() == default["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
         defaultFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("default case")
+    }
+
+    @Test
+    fun `Condition flow in cell is wrapped in simple section flow`() {
+        // given
+        val refBlock = mockObj(DocumentObjectBuilder("RefBlock", Block).string("ref content").build())
+        val displayRule = mockRule(DisplayRuleBuilder("rule").comparison { value("C").equals().value("C") }.build())
+        
+        val docObjectRef = aDocumentObjectRef(refBlock.id, displayRule.id)
+
+        val template = DocumentObjectBuilder("T1", Template).table {
+            addRow().addCell().documentObjectRef(refBlock.id, displayRule.id)
+        }.build()
+
+        // when
+        val result = subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val cellNode = result["Cell"].last()
+        val cellFlow = result["Flow"].last { it["Id"].textValue() == cellNode["FlowId"].textValue() }
+        cellFlow["Type"].textValue().shouldBeEqualTo("Simple")
+        cellFlow["SectionFlow"].textValue().shouldBeEqualTo("True")
+        cellFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
+
+        val condFlowId = cellFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val condFlow = result["Flow"].last { it["Id"].textValue() == condFlowId }
+        condFlow["Type"].textValue().shouldBeEqualTo("Condition")
     }
 
     @Test
