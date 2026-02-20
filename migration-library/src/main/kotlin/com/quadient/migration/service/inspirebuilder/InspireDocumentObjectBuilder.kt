@@ -939,21 +939,25 @@ abstract class InspireDocumentObjectBuilder(
         val borderStyle = layout.addBorderStyle()
         setStyle(borderStyle)
 
-        val borderLines = borderStyle.select(
-            *listOfNotNull(
-                border.leftLine?.let { BorderStyle.LinesAndCorners.LEFT_LINE },
-                border.rightLine?.let { BorderStyle.LinesAndCorners.RIGHT_LINE },
-                border.topLine?.let { BorderStyle.LinesAndCorners.TOP_LINE },
-                border.bottomLine?.let { BorderStyle.LinesAndCorners.BOTTOM_LINE },
-            ).toTypedArray()
-        )
-
         borderStyle.setMargins(
             border.paddingTop.toMeters(),
             border.paddingRight.toMeters(),
             border.paddingBottom.toMeters(),
             border.paddingLeft.toMeters()
         )
+
+        val toSelect = listOfNotNull(
+            border.leftLine?.let { BorderStyle.LinesAndCorners.LEFT_LINE },
+            border.rightLine?.let { BorderStyle.LinesAndCorners.RIGHT_LINE },
+            border.topLine?.let { BorderStyle.LinesAndCorners.TOP_LINE },
+            border.bottomLine?.let { BorderStyle.LinesAndCorners.BOTTOM_LINE },
+        ).toTypedArray()
+
+        if (toSelect.isEmpty()) {
+            return
+        }
+
+        val borderLines = borderStyle.select(*toSelect)
 
         if (border.fill != null) {
             borderStyle.setFill(
