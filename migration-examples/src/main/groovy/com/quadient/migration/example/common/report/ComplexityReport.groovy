@@ -205,6 +205,30 @@ class Stats {
                 this.collectContent(cell.content)
             }
         }
+        for (row in table.header) {
+            this.collectDisplayRule(row.displayRuleRef)
+            for (cell in row.cells) {
+                this.collectContent(cell.content)
+            }
+        }
+        for (row in table.footer) {
+            this.collectDisplayRule(row.displayRuleRef)
+            for (cell in row.cells) {
+                this.collectContent(cell.content)
+            }
+        }
+        for (row in table.firstHeader) {
+            this.collectDisplayRule(row.displayRuleRef)
+            for (cell in row.cells) {
+                this.collectContent(cell.content)
+            }
+        }
+        for (row in table.lastFooter) {
+            this.collectDisplayRule(row.displayRuleRef)
+            for (cell in row.cells) {
+                this.collectContent(cell.content)
+            }
+        }
     }
 
     void collectDocumentObjectRef(DocumentObjectRef ref) {
