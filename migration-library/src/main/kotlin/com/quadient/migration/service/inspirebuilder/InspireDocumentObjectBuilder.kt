@@ -1289,10 +1289,11 @@ abstract class InspireDocumentObjectBuilder(
         
         metadataMap.forEach { (type, value) ->
             if (value != null) {
+                val variableName =
+                    type.name.split("_").joinToString("") { it.lowercase().replaceFirstChar { c -> c.uppercase() } }
                 val variable = layout.data.addVariable()
-                    .setName("Pdf${type.name.lowercase().replaceFirstChar { it.uppercase() }}")
+                    .setName(variableName)
                     .setKind(VariableKind.CALCULATED)
-                    .setDataType(DataType.STRING)
                     .setScript("return '$value';")
                 layout.pages.addSheetName(type, variable)
             }

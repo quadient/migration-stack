@@ -473,6 +473,13 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
 def template = new DocumentObjectBuilder("template", DocumentObjectType.Template)
     .documentObjectRef(page.id)
     .subject("Document example template")
+    .pdfMetadata {
+        it.author("John Smith")
+        it.title("Migration Model Example Template")
+        it.producer("Quadient")
+        it.keywords("Migration, Model, Example, Test, Import")
+        it.subject("Lorem ipsum dolor sit amet")
+    }
     .variableStructureRef(variableStructure.id)
     .build()
 
