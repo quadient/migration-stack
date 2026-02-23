@@ -66,6 +66,7 @@ import com.quadient.wfdxml.api.layoutnodes.LocationType
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType.*
+import com.quadient.wfdxml.api.layoutnodes.SheetNameType
 import com.quadient.wfdxml.api.layoutnodes.TabulatorType
 import com.quadient.wfdxml.api.layoutnodes.data.Data
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
@@ -1272,6 +1273,29 @@ abstract class InspireDocumentObjectBuilder(
             is ParagraphStyleDefinition -> def
             is ParagraphStyleRef -> paragraphStyleRepository.findOrFail(def.id).resolve()
             else -> error("Invalid paragraph style definition type")
+        }
+    }
+
+    protected fun addPdfMetadataToPages(layout: Layout, documentObject: DocumentObject) {
+        val pdfMetadata = documentObject.pdfMetadata ?: return
+        
+        val metadataMap = mapOf(
+            SheetNameType.PDF_TITLE to pdfMetadata.title,
+            SheetNameType.PDF_AUTHOR to pdfMetadata.author,
+            SheetNameType.PDF_SUBJECT to pdfMetadata.subject,
+            SheetNameType.PDF_KEYWORDS to pdfMetadata.keywords,
+            SheetNameType.PDF_PRODUCER to pdfMetadata.producer
+        )
+        
+        metadataMap.forEach { (type, value) ->
+            if (value != null) {
+                val variable = layout.data.addVariable()
+                    .setName("Pdf${type.name.lowercase().replaceFirstChar { it.uppercase() }}")
+                    .setKind(VariableKind.CALCULATED)
+                    .setDataType(DataType.STRING)
+                    .setScript("return '$value';")
+                layout.pages.addSheetName(type, variable)
+            }
         }
     }
 

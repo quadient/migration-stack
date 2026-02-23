@@ -9,6 +9,7 @@ import com.quadient.migration.persistence.migrationmodel.DocumentContentEntity
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.PdfMetadata
 import com.quadient.migration.shared.SkipOptions
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -23,6 +24,7 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
     val variableStructureRef = varchar("variable_structure_ref", 255).nullable()
     val baseTemplate = varchar("base_template", 255).nullable()
     val options = jsonb<DocumentObjectOptions>("options", Json).nullable()
+    val pdfMetadata = jsonb<PdfMetadata>("pdf_metadata", Json).nullable()
     val metadata = jsonb<Map<String, List<MetadataPrimitive>>>("metadata", Json)
     val skip = jsonb<SkipOptions>("skip", Json)
     val subject = varchar("subject", 255).nullable()
@@ -43,6 +45,7 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
             variableStructureRef = result[variableStructureRef]?.let { VariableStructureRef(it) },
             baseTemplate = result[baseTemplate],
             options = result[options],
+            pdfMetadata = result[pdfMetadata],
             metadata = result[metadata],
             skip = result[skip],
             subject = result[subject],

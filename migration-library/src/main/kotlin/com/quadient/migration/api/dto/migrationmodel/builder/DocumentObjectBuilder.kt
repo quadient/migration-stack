@@ -8,6 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.Are
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.PdfMetadata
 import com.quadient.migration.shared.SkipOptions
 
 class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
@@ -19,6 +20,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     private var variableStructureRef: VariableStructureRef? = null
     private var baseTemplate: String? = null
     private var options: DocumentObjectOptions? = null
+    private var pdfMetadata: PdfMetadata? = null
     private var metadata: MutableMap<String, List<MetadataPrimitive>> = mutableMapOf()
     private var skip = false
     private var placeholder: String? = null
@@ -113,6 +115,15 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
         this.subject = subject
     }
 
+    /**
+     * Set PDF metadata for the document object.
+     * @param builder Builder function where receiver is a [PdfMetadataBuilder].
+     * @return This builder instance for method chaining.
+     */
+    fun pdfMetadata(builder: PdfMetadataBuilder.() -> Unit) = apply {
+        this.pdfMetadata = PdfMetadataBuilder().apply(builder).build()
+    }
+
     override fun build(): DocumentObject {
         return DocumentObject(
             id = id,
@@ -127,6 +138,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
             variableStructureRef = variableStructureRef,
             baseTemplate = baseTemplate,
             options = options,
+            pdfMetadata = pdfMetadata,
             metadata = metadata,
             skip = SkipOptions(skipped = skip, reason = reason, placeholder = placeholder),
             subject = subject,

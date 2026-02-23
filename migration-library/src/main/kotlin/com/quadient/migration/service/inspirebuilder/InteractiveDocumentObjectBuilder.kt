@@ -191,6 +191,8 @@ class InteractiveDocumentObjectBuilder(
         val languages = collectLanguages(documentObject)
         val variableStructure = initVariableStructure(layout, documentObject)
 
+        addPdfMetadataToPages(layout, documentObject)
+
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContent>>()
         if (documentObject.type == DocumentObjectType.Page) {
             documentObject.content.paragraphIfEmpty().forEach {

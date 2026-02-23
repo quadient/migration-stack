@@ -3,6 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.PdfMetadata
 import com.quadient.migration.shared.SkipOptions
 import kotlinx.datetime.Instant
 
@@ -19,6 +20,7 @@ data class DocumentObject(
     var variableStructureRef: VariableStructureRef? = null,
     var baseTemplate: String? = null,
     var options: DocumentObjectOptions? = null,
+    var pdfMetadata: PdfMetadata? = null,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
     val metadata: Map<String, List<MetadataPrimitive>>,

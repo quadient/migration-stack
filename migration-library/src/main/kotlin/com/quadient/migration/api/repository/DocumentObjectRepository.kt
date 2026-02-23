@@ -50,7 +50,7 @@ class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) 
         val columns = listOf(
             "id", "project_name", "type", "name", "content", "internal", "target_folder",
             "origin_locations", "custom_fields", "created", "last_updated", "display_rule_ref",
-            "variable_structure_ref", "base_template", "options", "metadata", "skip", "subject"
+            "variable_structure_ref", "base_template", "options", "pdf_metadata", "metadata", "skip", "subject"
         )
         val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
@@ -86,6 +86,7 @@ class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) 
                 stmt.setString(index++, dto.variableStructureRef?.id)
                 stmt.setString(index++, dto.baseTemplate)
                 stmt.setObject(index++, dto.options?.let { Json.encodeToString(it) }, Types.OTHER)
+                stmt.setObject(index++, dto.pdfMetadata?.let { Json.encodeToString(it) }, Types.OTHER)
                 stmt.setObject(index++, dto.metadata.let { Json.encodeToString(it) }, Types.OTHER)
                 stmt.setObject(index++, Json.encodeToString(dto.skip), Types.OTHER)
                 stmt.setString(index++, dto.subject)
@@ -128,6 +129,7 @@ class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) 
                 it[DocumentObjectTable.variableStructureRef] = dto.variableStructureRef?.id
                 it[DocumentObjectTable.baseTemplate] = dto.baseTemplate
                 it[DocumentObjectTable.options] = dto.options
+                it[DocumentObjectTable.pdfMetadata] = dto.pdfMetadata
                 it[DocumentObjectTable.metadata] = dto.metadata
                 it[DocumentObjectTable.skip] = dto.skip
                 it[DocumentObjectTable.subject] = dto.subject
