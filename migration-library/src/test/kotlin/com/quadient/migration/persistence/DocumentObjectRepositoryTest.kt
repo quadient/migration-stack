@@ -235,4 +235,26 @@ class DocumentObjectRepositoryTest {
         result.shouldBeOfSize(1)
         result.first().id.shouldBeEqualTo("parablock")
     }
+
+    @Test
+    fun `pdfMetadata roundtrip with all fields`() {
+        val dto = DocumentObjectBuilder("doc1", DocumentObjectType.Block).pdfMetadata {
+                title("Test Document")
+                author("John Doe")
+                subject("Test Subject")
+                keywords("test, metadata, pdf")
+                producer("Quadient Migration")
+            }.build()
+
+        repo.upsert(dto)
+        val result = repo.find(dto.id)!!
+
+        val updatedDto = dto.copy(lastUpdated = result.lastUpdated, created = result.created)
+        result.shouldBeEqualTo(updatedDto)
+        result.pdfMetadata?.title.shouldBeEqualTo("Test Document")
+        result.pdfMetadata?.author.shouldBeEqualTo("John Doe")
+        result.pdfMetadata?.subject.shouldBeEqualTo("Test Subject")
+        result.pdfMetadata?.keywords.shouldBeEqualTo("test, metadata, pdf")
+        result.pdfMetadata?.producer.shouldBeEqualTo("Quadient Migration")
+    }
 }
