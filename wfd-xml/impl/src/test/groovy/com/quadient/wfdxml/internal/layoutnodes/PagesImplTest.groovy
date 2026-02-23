@@ -110,22 +110,6 @@ class PagesImplTest extends Specification {
         """)
     }
 
-    def "add sheet names to Pages"() {
-        given:
-        PagesImpl pages = new PagesImpl()
-        VariableImpl var1 = new VariableImpl()
-        VariableImpl var2 = new VariableImpl()
-
-        when:
-        pages.addSheetName(SheetNameType.PDF_TITLE, var1)
-        pages.addSheetName(SheetNameType.PDF_AUTHOR, var2)
-
-        then:
-        pages.getSheetNames().size() == 2
-        pages.getSheetNames().get(SheetNameType.PDF_TITLE) == var1
-        pages.getSheetNames().get(SheetNameType.PDF_AUTHOR) == var2
-    }
-
     def "export Pages with sheet names - all PDF metadata fields"() {
         given:
         VariableImpl var37 = new VariableImpl()

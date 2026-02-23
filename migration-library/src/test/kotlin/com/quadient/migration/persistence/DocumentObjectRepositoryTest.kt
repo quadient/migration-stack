@@ -251,10 +251,5 @@ class DocumentObjectRepositoryTest {
 
         val updatedDto = dto.copy(lastUpdated = result.lastUpdated, created = result.created)
         result.shouldBeEqualTo(updatedDto)
-        result.pdfMetadata?.title.shouldBeEqualTo("Test Document")
-        result.pdfMetadata?.author.shouldBeEqualTo("John Doe")
-        result.pdfMetadata?.subject.shouldBeEqualTo("Test Subject")
-        result.pdfMetadata?.keywords.shouldBeEqualTo("test, metadata, pdf")
-        result.pdfMetadata?.producer.shouldBeEqualTo("Quadient Migration")
     }
 }
