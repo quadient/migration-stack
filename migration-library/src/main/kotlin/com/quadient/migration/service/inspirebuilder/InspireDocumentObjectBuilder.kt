@@ -1278,19 +1278,18 @@ abstract class InspireDocumentObjectBuilder(
 
     protected fun addPdfMetadataToPages(layout: Layout, documentObject: DocumentObject) {
         val pdfMetadata = documentObject.pdfMetadata ?: return
-        
+
         val metadataMap = mapOf(
-            SheetNameType.PDF_TITLE to pdfMetadata.title,
-            SheetNameType.PDF_AUTHOR to pdfMetadata.author,
-            SheetNameType.PDF_SUBJECT to pdfMetadata.subject,
-            SheetNameType.PDF_KEYWORDS to pdfMetadata.keywords,
-            SheetNameType.PDF_PRODUCER to pdfMetadata.producer
+            SheetNameType.PDF_TITLE to Pair("TaggingTitle", pdfMetadata.title),
+            SheetNameType.PDF_AUTHOR to Pair("TaggingAuthor", pdfMetadata.author),
+            SheetNameType.PDF_SUBJECT to Pair("TaggingSubject", pdfMetadata.subject),
+            SheetNameType.PDF_KEYWORDS to Pair("TaggingKeywords", pdfMetadata.keywords),
+            SheetNameType.PDF_PRODUCER to Pair("TaggingProduce", pdfMetadata.producer)
         )
-        
-        metadataMap.forEach { (type, value) ->
+
+        metadataMap.forEach { (type, data) ->
+            val (variableName, value) = data
             if (value != null) {
-                val variableName =
-                    type.name.split("_").joinToString("") { it.lowercase().replaceFirstChar { c -> c.uppercase() } }
                 val variable = layout.data.addVariable()
                     .setName(variableName)
                     .setKind(VariableKind.CALCULATED)

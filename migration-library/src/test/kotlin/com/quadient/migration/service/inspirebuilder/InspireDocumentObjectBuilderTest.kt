@@ -288,6 +288,48 @@ class InspireDocumentObjectBuilderTest {
         image["ImageLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://resolved.png")
     }
 
+    @Test
+    fun `build template with pdf metadata creates sheet names with correct values`() {
+        // given
+        val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template)
+            .string("Template content")
+            .pdfMetadata {
+                title("Test Title")
+                author("Test Author")
+                subject("Test Subject")
+                keywords("a,b,c")
+                producer("Test Producer")
+            }
+            .build()
+
+        // when
+        val result =
+            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val allSheetNameVariableIds = result["Pages"]["SheetNameVariableId"].map { it.textValue() }
+
+        // then
+        allSheetNameVariableIds.count { it.isBlank() }.shouldBeEqualTo(37)
+
+        val pdfSheetNameVariableIds = allSheetNameVariableIds.filter { it.isNotBlank() }
+        pdfSheetNameVariableIds.size.shouldBeEqualTo(5)
+
+        val variableNames =
+            pdfSheetNameVariableIds.map { varId -> result["Variable"].first { it["Id"].textValue() == varId }["Name"].textValue() }
+        variableNames.shouldBeEqualTo(listOf("TaggingTitle", "TaggingAuthor", "TaggingSubject", "TaggingKeywords", "TaggingProduce"))
+
+        val variableScripts =
+            pdfSheetNameVariableIds.map { varId -> result["Variable"].last { it["Id"].textValue() == varId }["Script"].textValue() }
+        variableScripts.shouldBeEqualTo(
+            listOf(
+                "return 'Test Title';",
+                "return 'Test Author';",
+                "return 'Test Subject';",
+                "return 'a,b,c';",
+                "return 'Test Producer';"
+            )
+        )
+    }
+
     private fun mockObj(documentObject: DocumentObject): DocumentObject {
         every { documentObjectRepository.findOrFail(documentObject.id) } returns documentObject
         return documentObject
