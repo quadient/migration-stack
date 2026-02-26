@@ -9,6 +9,7 @@ package com.quadient.migration.example.example
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
@@ -474,11 +475,11 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
     .documentObjectRef(page.id)
     .subject("Document example template")
     .pdfMetadata {
-        it.author("John Smith")
+        it.author(new VariableRef(nameVariable.id))
         it.title("Migration Model Example Template")
         it.producer("Quadient")
         it.keywords("Migration, Model, Example, Test, Import")
-        it.subject("Lorem ipsum dolor sit amet")
+        it.subject { it.string("Lorem ipsum dolor sit amet from: ").variableRef(cityVariable.id) }
     }
     .variableStructureRef(variableStructure.id)
     .build()
