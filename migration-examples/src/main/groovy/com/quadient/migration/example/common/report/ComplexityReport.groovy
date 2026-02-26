@@ -129,6 +129,11 @@ class Stats {
         this.id = obj.id
         this.collectContent(obj.content)
         this.collectDisplayRule(obj.displayRuleRef)
+
+        if (obj.pdfMetadata != null) {
+            obj.pdfMetadata.collectRefs().each { this.usedVariables.add(it.id) }
+        }
+
         return this
     }
 
@@ -235,6 +240,7 @@ class Stats {
         def dependency = migration.documentObjectRepository.find(ref.id)
         if (dependency.internal) {
             this.usedInternalObjects.add(ref.id)
+            this.collectDisplayRule(dependency.displayRuleRef)
             this.collectContent(dependency.content)
         } else {
             if (this.usageMap[ref.id] == null) {
