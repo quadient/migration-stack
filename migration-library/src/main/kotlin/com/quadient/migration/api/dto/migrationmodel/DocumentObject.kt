@@ -34,9 +34,7 @@ data class DocumentObject(
             }
         }
 
-        val pdfMetadataRefs = listOfNotNull(
-            pdfMetadata?.title, pdfMetadata?.author, pdfMetadata?.subject, pdfMetadata?.keywords, pdfMetadata?.producer
-        ).flatten().flatMap { it.collectRefs() }
+        val pdfMetadataRefs = pdfMetadata?.collectRefs().orEmpty()
 
         return contentRefs + pdfMetadataRefs + listOfNotNull(displayRuleRef, variableStructureRef)
     }
