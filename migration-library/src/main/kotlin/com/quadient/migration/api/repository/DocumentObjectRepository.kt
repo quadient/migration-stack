@@ -86,7 +86,7 @@ class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) 
                 stmt.setString(index++, dto.variableStructureRef?.id)
                 stmt.setString(index++, dto.baseTemplate)
                 stmt.setObject(index++, dto.options?.let { Json.encodeToString(it) }, Types.OTHER)
-                stmt.setObject(index++, dto.pdfMetadata?.let { Json.encodeToString(it) }, Types.OTHER)
+                stmt.setObject(index++, dto.pdfMetadata?.let { Json.encodeToString(it.toDb()) }, Types.OTHER)
                 stmt.setObject(index++, dto.metadata.let { Json.encodeToString(it) }, Types.OTHER)
                 stmt.setObject(index++, Json.encodeToString(dto.skip), Types.OTHER)
                 stmt.setString(index++, dto.subject)
@@ -129,7 +129,7 @@ class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) 
                 it[DocumentObjectTable.variableStructureRef] = dto.variableStructureRef?.id
                 it[DocumentObjectTable.baseTemplate] = dto.baseTemplate
                 it[DocumentObjectTable.options] = dto.options
-                it[DocumentObjectTable.pdfMetadata] = dto.pdfMetadata
+                it[DocumentObjectTable.pdfMetadata] = dto.pdfMetadata?.toDb()
                 it[DocumentObjectTable.metadata] = dto.metadata
                 it[DocumentObjectTable.skip] = dto.skip
                 it[DocumentObjectTable.subject] = dto.subject

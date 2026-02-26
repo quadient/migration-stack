@@ -185,3 +185,7 @@ fun appendExtensionIfMissing(fileName: String, sourcePath: String?): String {
         fileName
     }
 }
+
+fun toScriptStringLiteral(value: String): String = "'${
+    value.replace("\\", "\\\\").replace("\"", "\\\"").replace("'", "\\'")
+}'"

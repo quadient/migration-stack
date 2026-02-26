@@ -172,7 +172,7 @@ class DesignerDocumentObjectBuilder(
             layout.data.setLanguageVariable(variable)
         }
 
-        addPdfMetadataToPages(layout, documentObject)
+        addPdfMetadataToPages(layout, documentObject, variableStructure)
 
         documentObject.content.paragraphIfEmpty().forEach {
             if (it is DocumentObjectRef) {

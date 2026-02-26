@@ -26,6 +26,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
@@ -1276,7 +1277,9 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    protected fun addPdfMetadataToPages(layout: Layout, documentObject: DocumentObject) {
+    protected fun addPdfMetadataToPages(
+        layout: Layout, documentObject: DocumentObject, variableStructure: VariableStructure
+    ) {
         val pdfMetadata = documentObject.pdfMetadata ?: return
 
         val metadataMap = mapOf(
@@ -1289,11 +1292,13 @@ abstract class InspireDocumentObjectBuilder(
 
         metadataMap.forEach { (type, data) ->
             val (variableName, value) = data
-            if (value != null) {
-                val variable = layout.data.addVariable()
-                    .setName(variableName)
-                    .setKind(VariableKind.CALCULATED)
-                    .setScript("return '$value';")
+            if (!value.isNullOrEmpty()) {
+                val variable =
+                    layout.data.addVariable().setName(variableName).setKind(VariableKind.CALCULATED).setScript(
+                        variableStringContentToScript(
+                            value, layout, variableStructure, variableRepository::findOrFail
+                        )
+                    )
                 layout.pages.addSheetName(type, variable)
             }
         }
@@ -1394,18 +1399,34 @@ fun Literal.toScript(
 ): ScriptResult {
     return when (dataType) {
         LiteralDataType.Variable -> variableToScript(value, layout, variableStructure, findVar)
-        LiteralDataType.String -> Success(
-            "String('${
-                value.replace("\\", "\\\\").replace("\"", "\\\"")
-            }')"
-        )
-
+        LiteralDataType.String -> Success("String(${toScriptStringLiteral(value)})")
         LiteralDataType.Number -> Success(value)
         LiteralDataType.Boolean -> Success(value.lowercase().toBooleanStrict().toString())
     }
 }
 
-fun variableToScript(
+private fun variableStringContentToScript(
+    variableStringContent: List<VariableStringContent>,
+    layout: Layout,
+    variableStructure: VariableStructure,
+    findVar: (String) -> Variable
+): String {
+    val scriptParts = variableStringContent.map {
+        when (it) {
+            is StringValue -> toScriptStringLiteral(it.value)
+            is VariableRef -> {
+                when (val variableScript = variableToScript(it.id, layout, variableStructure, findVar)) {
+                    is Success -> "$variableScript.toString()"
+                    is Failure -> toScriptStringLiteral("$${variableScript.variableName}$")
+                }
+            }
+        }
+    }
+
+    return "return ${scriptParts.joinToString(" + ")};"
+}
+
+private fun variableToScript(
     id: String, layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): ScriptResult {
     val variableModel = findVar(id)

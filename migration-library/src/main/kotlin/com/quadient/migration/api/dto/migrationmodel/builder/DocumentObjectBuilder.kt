@@ -4,11 +4,11 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.dto.migrationmodel.PdfMetadata
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataPrimitive
-import com.quadient.migration.shared.PdfMetadata
 import com.quadient.migration.shared.SkipOptions
 
 class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :

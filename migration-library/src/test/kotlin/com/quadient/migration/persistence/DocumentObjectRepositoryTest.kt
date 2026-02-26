@@ -4,6 +4,7 @@ import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
@@ -239,12 +240,11 @@ class DocumentObjectRepositoryTest {
     @Test
     fun `pdfMetadata roundtrip with all fields`() {
         val dto = DocumentObjectBuilder("doc1", DocumentObjectType.Block).pdfMetadata {
-                title("Test Document")
-                author("John Doe")
-                subject("Test Subject")
-                keywords("test, metadata, pdf")
-                producer("Quadient Migration")
-            }.build()
+            title("Test Document")
+            author(StringValue("John"), StringValue(" "), StringValue("Doe"))
+            keywords("test, metadata, pdf")
+            producer { variableRef("companyName").string(" Migration").build() }
+        }.build()
 
         repo.upsert(dto)
         val result = repo.find(dto.id)!!

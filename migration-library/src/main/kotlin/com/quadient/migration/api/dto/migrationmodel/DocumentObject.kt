@@ -3,7 +3,6 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataPrimitive
-import com.quadient.migration.shared.PdfMetadata
 import com.quadient.migration.shared.SkipOptions
 import kotlinx.datetime.Instant
 
@@ -34,6 +33,11 @@ data class DocumentObject(
                 else -> emptyList()
             }
         }
-        return contentRefs + listOfNotNull(displayRuleRef, variableStructureRef)
+
+        val pdfMetadataRefs = listOfNotNull(
+            pdfMetadata?.title, pdfMetadata?.author, pdfMetadata?.subject, pdfMetadata?.keywords, pdfMetadata?.producer
+        ).flatten().flatMap { it.collectRefs() }
+
+        return contentRefs + pdfMetadataRefs + listOfNotNull(displayRuleRef, variableStructureRef)
     }
 }
