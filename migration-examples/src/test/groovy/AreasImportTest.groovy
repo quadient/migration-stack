@@ -1,10 +1,11 @@
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.*
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.example.common.mapping.AreasImport
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
-import com.quadient.migration.shared.SkipOptions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -63,14 +64,21 @@ class AreasImportTest {
     }
 
     static Area createArea(String flowName, boolean flowToNextPage) {
-        return new Area([], new Position(Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0)), flowName, flowToNextPage)
+        def areaBuilder = new AreaBuilder()
+                .position(new Position(Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0)))
+                .flowToNextPage(flowToNextPage)
+
+        if (flowName != null) {
+            areaBuilder.interactiveFlowName(flowName)
+        }
+
+        return areaBuilder.build()
     }
 
     void givenPageExists(String pageId, List<String> flowNames, List<Boolean> flowToNextPageValues = null) {
         def values = flowToNextPageValues ?: flowNames.collect { false }
         def content = [flowNames, values].transpose()
                 .collect { String flowName, Boolean flowToNextPage -> createArea(flowName, flowToNextPage) }
-        when(migration.documentObjectRepository.find(pageId))
-                .thenReturn(new DocumentObject(pageId, null, [], new CustomFieldMap([:]), DocumentObjectType.Page, content, false, null, null, null, null, null, null, null, [:], new SkipOptions(false, null, null), null))
+        when(migration.documentObjectRepository.find(pageId)).thenReturn(new DocumentObjectBuilder(pageId, DocumentObjectType.Page).content(content).build())
     }
 }
