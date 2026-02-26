@@ -20,27 +20,27 @@ class BorderOptionsBuilder {
 
     fun leftLine(color: Color?, width: Size?) = apply {
         val builder = BorderLineBuilder()
-        color?.let { this.leftLine = this.leftLine?.copy(color = it) }
-        width?.let { this.leftLine = this.leftLine?.copy(width = it) }
-        builder.build()
+        color?.let(builder::color)
+        width?.let(builder::width)
+        this.leftLine = builder.build()
     }
     fun rightLine(color: Color?, width: Size?) = apply {
         val builder = BorderLineBuilder()
-        color?.let { this.rightLine = this.rightLine?.copy(color = it) }
-        width?.let { this.rightLine = this.rightLine?.copy(width = it) }
-        builder.build()
+        color?.let(builder::color)
+        width?.let(builder::width)
+        this.rightLine = builder.build()
     }
     fun topLine(color: Color?, width: Size?) = apply {
         val builder = BorderLineBuilder()
-        color?.let { this.topLine = this.topLine?.copy(color = it) }
-        width?.let { this.topLine = this.topLine?.copy(width = it) }
-        builder.build()
+        color?.let(builder::color)
+        width?.let(builder::width)
+        this.topLine = builder.build()
     }
     fun bottomLine(color: Color?, width: Size?) = apply {
         val builder = BorderLineBuilder()
-        color?.let { this.bottomLine = this.bottomLine?.copy(color = it) }
-        width?.let { this.bottomLine = this.bottomLine?.copy(width = it) }
-        builder.build()
+        color?.let(builder::color)
+        width?.let(builder::width)
+        this.bottomLine = builder.build()
     }
     fun allBorders(color: Color?, width: Size?) = apply {
         val builder = BorderLineBuilder()
