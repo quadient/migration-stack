@@ -1,8 +1,6 @@
 import com.quadient.migration.api.Migration
-import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
-import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.example.common.mapping.DocumentObjectsImport
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.SkipOptions
@@ -214,7 +212,24 @@ class DocumentObjectsMappingImportTest {
     }
 
     static void givenExistingDocumentObject(Migration mig, String id, String name, Boolean internal, String baseTemplate, String targetFolder, DocumentObjectType type, String varStructureRef) {
-        when(mig.documentObjectRepository.find(id)).thenReturn(new DocumentObject(id, name, [], new CustomFieldMap([:]), type ?: DocumentObjectType.Block, [], internal, targetFolder, null, varStructureRef ? new VariableStructureRef(varStructureRef) : null, baseTemplate, null, null, null, [:], new SkipOptions(false, null, null), null))
+        def builder = new DocumentObjectBuilder(id, type ?: DocumentObjectType.Block)
+        if (name != null) {
+            builder.name(name)
+        }
+        if (internal != null) {
+            builder.internal(internal)
+        }
+        if (targetFolder != null) {
+            builder.targetFolder(targetFolder)
+        }
+        if (varStructureRef != null) {
+            builder.variableStructureRef(varStructureRef)
+        }
+        if (baseTemplate != null) {
+            builder.baseTemplate(baseTemplate)
+        }
+
+        when(mig.documentObjectRepository.find(id)).thenReturn(builder.build())
     }
 
     static void givenExistingDocumentObjectMapping(Migration mig,

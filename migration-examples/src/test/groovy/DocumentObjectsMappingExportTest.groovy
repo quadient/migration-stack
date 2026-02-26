@@ -1,10 +1,7 @@
-import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.data.Active
 import com.quadient.migration.example.common.mapping.DocumentObjectsExport
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.SkipOptions
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
@@ -23,11 +20,25 @@ class DocumentObjectsMappingExportTest {
         def migration = Utils.mockMigration()
 
         when(migration.documentObjectRepository.listAll()).thenReturn([
-                new DocumentObject("empty", null, [], new CustomFieldMap([:]), DocumentObjectType.Block, [], false, null, null, null, null, null, null, null, [:], emptySkipOptions(), null),
-                new DocumentObject("should not be listed because internal", null, [], new CustomFieldMap([:]), DocumentObjectType.Block, [], true, null, null, null, null, null, null, null, [:], emptySkipOptions(), null),
-                new DocumentObject("full", "full", ["foo", "bar"], new CustomFieldMap([:]), DocumentObjectType.Page, [], false, "someDir", null, new VariableStructureRef("struct"), "tmpl.wfd", null, null, null, [:], new SkipOptions(true, "placeholder", "reason"), null),
-                new DocumentObject("overridden empty", null, [], new CustomFieldMap([:]), DocumentObjectType.Block, [], false, null, null, null, null, null, null, null, [:], emptySkipOptions(), null),
-                new DocumentObject("overridden full", "full", ["foo", "bar"], new CustomFieldMap(["originalName": "originalFull"]), DocumentObjectType.Page, [], false, "someDir", null, new VariableStructureRef("struct"), "tmpl.wfd", null, null, null, [:], emptySkipOptions(), null),
+                new DocumentObjectBuilder("empty", DocumentObjectType.Block).build(),
+                new DocumentObjectBuilder("should not be listed because internal", DocumentObjectType.Block).internal(true).build(),
+                new DocumentObjectBuilder("full", DocumentObjectType.Page)
+                        .name("full")
+                        .originLocations(["foo", "bar"])
+                        .targetFolder("someDir")
+                        .variableStructureRef("struct")
+                        .baseTemplate("tmpl.wfd")
+                        .skip("placeholder", "reason")
+                        .build(),
+                new DocumentObjectBuilder("overridden empty", DocumentObjectType.Block).build(),
+                new DocumentObjectBuilder("overridden full", DocumentObjectType.Page)
+                        .name("full")
+                        .originLocations(["foo", "bar"])
+                        .customFields(["originalName": "originalFull"])
+                        .targetFolder("someDir")
+                        .variableStructureRef("struct")
+                        .baseTemplate("tmpl.wfd")
+                        .build(),
         ])
 
         when(migration.statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any())).thenReturn(new Active())
@@ -42,9 +53,5 @@ class DocumentObjectsMappingExportTest {
             overridden full,full,Page,false,tmpl.wfd,someDir,struct,Active,false,,,originalFull,[foo; bar]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
-    }
-
-    static SkipOptions emptySkipOptions() {
-        return new SkipOptions(false, null, null)
     }
 }

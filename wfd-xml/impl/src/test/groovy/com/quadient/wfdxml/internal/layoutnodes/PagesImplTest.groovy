@@ -2,6 +2,8 @@ package com.quadient.wfdxml.internal.layoutnodes
 
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Pages
+import com.quadient.wfdxml.api.layoutnodes.SheetNameType
+import com.quadient.wfdxml.internal.layoutnodes.data.VariableImpl
 import com.quadient.wfdxml.internal.xml.export.XmlExporter
 import com.quadient.wfdxml.utils.AssertXml
 import spock.lang.Specification
@@ -106,5 +108,110 @@ class PagesImplTest extends Specification {
                 <FlowType>Normal</FlowType>
             </InteractiveFlow>
         """)
+    }
+
+    def "export Pages with sheet names - all PDF metadata fields"() {
+        given:
+        VariableImpl var37 = new VariableImpl()
+        VariableImpl var38 = new VariableImpl()
+        VariableImpl var39 = new VariableImpl()
+        VariableImpl var40 = new VariableImpl()
+        VariableImpl var41 = new VariableImpl()
+        
+        String id37 = exporter.idRegister.getOrCreateId(var37)
+        String id38 = exporter.idRegister.getOrCreateId(var38)
+        String id39 = exporter.idRegister.getOrCreateId(var39)
+        String id40 = exporter.idRegister.getOrCreateId(var40)
+        String id41 = exporter.idRegister.getOrCreateId(var41)
+        
+        PagesImpl pages = new PagesImpl()
+                .addSheetName(SheetNameType.PDF_TITLE, var37)
+                .addSheetName(SheetNameType.PDF_AUTHOR, var38)
+                .addSheetName(SheetNameType.PDF_SUBJECT, var39)
+                .addSheetName(SheetNameType.PDF_KEYWORDS, var40)
+                .addSheetName(SheetNameType.PDF_PRODUCER, var41)
+
+        when:
+        pages.export(exporter)
+
+        then:
+        def xml = exporter.buildString()
+        (xml =~ /<SheetNameVariableId>[^<]+<\/SheetNameVariableId>/).count == 5
+        (xml =~ /<SheetNameVariableId><\/SheetNameVariableId>/).count == 37
+        AssertXml.assertXmlEqualsWrapRoot(xml, """
+            <SelectionType>Simple</SelectionType>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId></SheetNameVariableId>
+            <SheetNameVariableId>$id37</SheetNameVariableId>
+            <SheetNameVariableId>$id38</SheetNameVariableId>
+            <SheetNameVariableId>$id39</SheetNameVariableId>
+            <SheetNameVariableId>$id40</SheetNameVariableId>
+            <SheetNameVariableId>$id41</SheetNameVariableId>
+        """)
+    }
+
+    def "export Pages with sheet names - partial PDF metadata"() {
+        given:
+        VariableImpl var37 = new VariableImpl()
+        VariableImpl var40 = new VariableImpl()
+        
+        PagesImpl pages = new PagesImpl()
+                .addSheetName(SheetNameType.PDF_TITLE, var37)
+                .addSheetName(SheetNameType.PDF_KEYWORDS, var40)
+
+        when:
+        pages.export(exporter)
+
+        then:
+        def xml = exporter.buildString()
+        (xml =~ /<SheetNameVariableId>[^<]+<\/SheetNameVariableId>/).count == 2
+        (xml =~ /<SheetNameVariableId><\/SheetNameVariableId>/).count == 39
+    }
+
+    def "export Pages without sheet names - should not add SheetNameVariableId"() {
+        given:
+        PagesImpl pages = new PagesImpl()
+
+        when:
+        pages.export(exporter)
+
+        then:
+        def xml = exporter.buildString()
+        !xml.contains("SheetNameVariableId")
     }
 }

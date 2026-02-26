@@ -9,6 +9,9 @@ sealed interface RefEntity
 sealed interface TextContentEntity
 
 @Serializable
+sealed interface VariableStringContentEntity : TextContentEntity
+
+@Serializable
 sealed interface TextStyleDefOrRefEntity
 
 @Serializable
@@ -19,7 +22,7 @@ data class DocumentObjectEntityRef(val id: String, val displayRuleRef: DisplayRu
     DocumentContentEntity, TextContentEntity
 
 @Serializable
-data class VariableEntityRef(val id: String) : RefEntity, TextContentEntity
+data class VariableEntityRef(val id: String) : RefEntity, VariableStringContentEntity
 
 @Serializable
 data class TextStyleEntityRef(val id: String) : RefEntity, TextStyleDefOrRefEntity
@@ -40,7 +43,7 @@ data class AttachmentEntityRef(val id: String) : RefEntity, DocumentContentEntit
 data class VariableStructureEntityRef(val id: String) : RefEntity
 
 @Serializable
-data class StringEntity(val value: String) : TextContentEntity
+data class StringEntity(val value: String) : VariableStringContentEntity
 
 @Serializable
 data class FirstMatchEntity(val cases: List<CaseEntity>, val default: List<DocumentContentEntity>) :

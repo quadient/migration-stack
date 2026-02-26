@@ -71,7 +71,7 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
     private DataImpl data;
     private PagesImpl pages;
 
-    private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images", "TextStyles", "Colors", "FillStyles", "BorderStyles");
+    private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images", "TextStyles", "Colors", "FillStyles", "BorderStyles", "Pages");
     private final List<String> styleLayoutDeltaAllowedGroups = List.of("TextStyles", "FillStyles", "ParagraphStyles", "Colors", "Fonts");
 
     public LayoutImpl() {
@@ -363,6 +363,10 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
                     if (child.getName().equals("TextStyles") && child instanceof Tree<?> textStylesNode) {
                         textStylesNode.children = textStylesNode.children.stream().filter(textStyleChild -> !textStyleChild.getName().equals("Normal")).toList();
                         return textStylesNode;
+                    }
+                    if (child.getName().equals("Pages") && child instanceof Tree<?> pagesNode) {
+                        pagesNode.children = pagesNode.children.stream().filter(c -> false).toList();
+                        return pagesNode;
                     }
                     return child;
                 }).collect(Collectors.toList());

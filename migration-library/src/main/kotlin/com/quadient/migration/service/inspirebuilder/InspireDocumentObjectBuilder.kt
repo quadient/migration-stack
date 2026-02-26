@@ -26,6 +26,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
@@ -66,6 +67,7 @@ import com.quadient.wfdxml.api.layoutnodes.LocationType
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType.*
+import com.quadient.wfdxml.api.layoutnodes.SheetNameType
 import com.quadient.wfdxml.api.layoutnodes.TabulatorType
 import com.quadient.wfdxml.api.layoutnodes.data.Data
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
@@ -1275,6 +1277,33 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
+    protected fun addPdfMetadataToPages(
+        layout: Layout, documentObject: DocumentObject, variableStructure: VariableStructure
+    ) {
+        val pdfMetadata = documentObject.pdfMetadata ?: return
+
+        val metadataMap = mapOf(
+            SheetNameType.PDF_TITLE to Pair("TaggingTitle", pdfMetadata.title),
+            SheetNameType.PDF_AUTHOR to Pair("TaggingAuthor", pdfMetadata.author),
+            SheetNameType.PDF_SUBJECT to Pair("TaggingSubject", pdfMetadata.subject),
+            SheetNameType.PDF_KEYWORDS to Pair("TaggingKeywords", pdfMetadata.keywords),
+            SheetNameType.PDF_PRODUCER to Pair("TaggingProduce", pdfMetadata.producer)
+        )
+
+        metadataMap.forEach { (type, data) ->
+            val (variableName, value) = data
+            if (!value.isNullOrEmpty()) {
+                val variable =
+                    layout.data.addVariable().setName(variableName).setKind(VariableKind.CALCULATED).setScript(
+                        variableStringContentToScript(
+                            value, layout, variableStructure, variableRepository::findOrFail
+                        )
+                    )
+                layout.pages.addSheetName(type, variable)
+            }
+        }
+    }
+
     sealed interface ScriptResult {
         data class Success(val variableScript: String) : ScriptResult {
             override fun toString() = variableScript
@@ -1370,18 +1399,34 @@ fun Literal.toScript(
 ): ScriptResult {
     return when (dataType) {
         LiteralDataType.Variable -> variableToScript(value, layout, variableStructure, findVar)
-        LiteralDataType.String -> Success(
-            "String('${
-                value.replace("\\", "\\\\").replace("\"", "\\\"")
-            }')"
-        )
-
+        LiteralDataType.String -> Success("String(${toScriptStringLiteral(value)})")
         LiteralDataType.Number -> Success(value)
         LiteralDataType.Boolean -> Success(value.lowercase().toBooleanStrict().toString())
     }
 }
 
-fun variableToScript(
+private fun variableStringContentToScript(
+    variableStringContent: List<VariableStringContent>,
+    layout: Layout,
+    variableStructure: VariableStructure,
+    findVar: (String) -> Variable
+): String {
+    val scriptParts = variableStringContent.map {
+        when (it) {
+            is StringValue -> toScriptStringLiteral(it.value)
+            is VariableRef -> {
+                when (val variableScript = variableToScript(it.id, layout, variableStructure, findVar)) {
+                    is Success -> "$variableScript.toString()"
+                    is Failure -> toScriptStringLiteral("$${variableScript.variableName}$")
+                }
+            }
+        }
+    }
+
+    return "return ${scriptParts.joinToString(" + ")};"
+}
+
+private fun variableToScript(
     id: String, layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): ScriptResult {
     val variableModel = findVar(id)

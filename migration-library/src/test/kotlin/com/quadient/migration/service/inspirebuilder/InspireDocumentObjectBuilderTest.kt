@@ -10,9 +10,13 @@ import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.Variable
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -23,6 +27,7 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.BinOp
+import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.ImageType.*
@@ -288,6 +293,83 @@ class InspireDocumentObjectBuilderTest {
         image["ImageLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://resolved.png")
     }
 
+    @Test
+    fun `build template with pdf metadata creates sheet names with correct values`() {
+        // given
+        val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template)
+            .string("Template content")
+            .pdfMetadata {
+                title("Test Title")
+                author("Test Author")
+                subject("Test Subject")
+                keywords("a,b,c")
+                producer("Test Producer")
+            }
+            .build()
+
+        // when
+        val result =
+            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val allSheetNameVariableIds = result["Pages"]["SheetNameVariableId"].map { it.textValue() }
+
+        // then
+        allSheetNameVariableIds.count { it.isBlank() }.shouldBeEqualTo(37)
+
+        val pdfSheetNameVariableIds = allSheetNameVariableIds.filter { it.isNotBlank() }
+        pdfSheetNameVariableIds.size.shouldBeEqualTo(5)
+
+        val variableNames =
+            pdfSheetNameVariableIds.map { varId -> result["Variable"].first { it["Id"].textValue() == varId }["Name"].textValue() }
+        variableNames.shouldBeEqualTo(listOf("TaggingTitle", "TaggingAuthor", "TaggingSubject", "TaggingKeywords", "TaggingProduce"))
+
+        val variableScripts =
+            pdfSheetNameVariableIds.map { varId -> result["Variable"].last { it["Id"].textValue() == varId }["Script"].textValue() }
+        variableScripts.shouldBeEqualTo(
+            listOf(
+                "return 'Test Title';",
+                "return 'Test Author';",
+                "return 'Test Subject';",
+                "return 'a,b,c';",
+                "return 'Test Producer';"
+            )
+        )
+    }
+
+    @Test
+    fun `build template with variable string pdf metadata creates concatenated script`() {
+        // given
+        val variable = mockVar(
+            VariableBuilder("middleName").name("Middle Name").dataType(DataType.String).build())
+        val varNoStruct = mockVar(VariableBuilder("noStruct").dataType(DataType.String).build())
+        val variableStructure = mockVarStructure(
+            VariableStructureBuilder("vs1").addVariable("middleName", "Data.Clients.Value").build())
+
+        val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template)
+            .variableStructureRef(variableStructure.id)
+            .string("Template content")
+            .pdfMetadata {
+                author {
+                    string("Jon ")
+                    variableRef(variable.id)
+                    string(" Doe ")
+                    variableRef(varNoStruct.id)
+                }
+            }
+            .build()
+
+        // when
+        val result =
+            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val allSheetNameVariableIds = result["Pages"]["SheetNameVariableId"].map { it.textValue() }
+        allSheetNameVariableIds.size.shouldBeEqualTo(39)
+        val pdfAuthorSheetName = allSheetNameVariableIds[38]
+
+        val variableScript = result["Variable"].last { it["Id"].textValue() == pdfAuthorSheetName }["Script"].textValue()
+        variableScript.shouldBeEqualTo("return 'Jon ' + DATA.Clients.Current.Middle_Name.toString() + ' Doe ' + '\$noStruct$';")
+    }
+
     private fun mockObj(documentObject: DocumentObject): DocumentObject {
         every { documentObjectRepository.findOrFail(documentObject.id) } returns documentObject
         return documentObject
@@ -297,6 +379,19 @@ class InspireDocumentObjectBuilderTest {
         every { attachmentRepository.findOrFail(attachment.id) } returns attachment
         every { attachmentRepository.find(attachment.id) } returns attachment
         return attachment
+    }
+
+    private fun mockVar(variable: Variable): Variable {
+        every { variableRepository.findOrFail(variable.id) } returns variable
+        every { variableRepository.find(variable.id) } returns variable
+        return variable
+    }
+
+    private fun mockVarStructure(variableStructure: VariableStructure): VariableStructure {
+        every { variableStructureRepository.findOrFail(variableStructure.id) } returns variableStructure
+        val currentAllStructures = variableStructureRepository.listAll()
+        every { variableStructureRepository.listAll() } returns currentAllStructures + variableStructure
+        return variableStructure
     }
 
     private fun mockTextStyle(textStyle: TextStyle): TextStyle {

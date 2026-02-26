@@ -172,6 +172,8 @@ class DesignerDocumentObjectBuilder(
             layout.data.setLanguageVariable(variable)
         }
 
+        addPdfMetadataToPages(layout, documentObject, variableStructure)
+
         documentObject.content.paragraphIfEmpty().forEach {
             if (it is DocumentObjectRef) {
                 val documentObjectModel = documentObjectRepository.findOrFail(it.id)

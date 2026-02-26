@@ -130,6 +130,10 @@
         </LowerLeftCornerType>
         <Type>Simple</Type>
     </BorderStyle>
+    <Pages>
+        <Id>Def.Pages</Id>
+        <SelectionType>Simple</SelectionType>
+    </Pages>
     <Data>
         <Id>Def.Data</Id>
     </Data>

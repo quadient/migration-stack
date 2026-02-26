@@ -68,7 +68,9 @@ data class DocumentObjectRef(override val id: String, val displayRuleRef: Displa
     fun toDb() = DocumentObjectEntityRef(id, displayRuleRef?.toDb())
 }
 
-data class VariableRef(override val id: String) : Ref, TextContent, RefValidatable {
+data class VariableRef(override val id: String) : Ref, VariableStringContent, RefValidatable {
+    override fun collectRefs(): List<Ref> = listOf(this)
+
     companion object {
         fun fromDb(entity: VariableEntityRef) = VariableRef(entity.id)
     }
@@ -122,10 +124,12 @@ data class VariableStructureRef(override val id: String) : Ref {
     fun toDb() = VariableStructureEntityRef(id)
 }
 
-data class StringValue(val value: String) : TextContent {
+data class StringValue(val value: String) : VariableStringContent {
     companion object {
         fun fromDb(entity: StringEntity) = StringValue(entity.value)
     }
 
     fun toDb() = StringEntity(value)
+
+    override fun collectRefs(): List<Ref> = emptyList()
 }

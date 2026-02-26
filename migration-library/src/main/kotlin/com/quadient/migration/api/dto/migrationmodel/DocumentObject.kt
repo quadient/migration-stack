@@ -19,6 +19,7 @@ data class DocumentObject(
     var variableStructureRef: VariableStructureRef? = null,
     var baseTemplate: String? = null,
     var options: DocumentObjectOptions? = null,
+    var pdfMetadata: PdfMetadata? = null,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
     val metadata: Map<String, List<MetadataPrimitive>>,
@@ -32,6 +33,9 @@ data class DocumentObject(
                 else -> emptyList()
             }
         }
-        return contentRefs + listOfNotNull(displayRuleRef, variableStructureRef)
+
+        val pdfMetadataRefs = pdfMetadata?.collectRefs().orEmpty()
+
+        return contentRefs + pdfMetadataRefs + listOfNotNull(displayRuleRef, variableStructureRef)
     }
 }

@@ -1,6 +1,7 @@
 package com.quadient.wfdxml.api.layoutnodes;
 
 import com.quadient.wfdxml.api.Node;
+import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 
 import java.util.List;
 
@@ -15,6 +16,8 @@ public interface Pages extends Node<Pages> {
     Pages setMainFlow(Flow mainFlow);
 
     Pages setInteractiveFlows(List<Flow> interactiveFlows);
+
+    Pages addSheetName(SheetNameType type, Variable variable);
 
     enum PageOrder {
         SIMPLE,

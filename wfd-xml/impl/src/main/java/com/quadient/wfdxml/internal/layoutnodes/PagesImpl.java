@@ -3,10 +3,14 @@ package com.quadient.wfdxml.internal.layoutnodes;
 import com.quadient.wfdxml.api.layoutnodes.Flow;
 import com.quadient.wfdxml.api.layoutnodes.Page;
 import com.quadient.wfdxml.api.layoutnodes.Pages;
+import com.quadient.wfdxml.api.layoutnodes.SheetNameType;
+import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.internal.Tree;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.quadient.wfdxml.internal.layoutnodes.PagesImpl.PageConditionType.SIMPLE;
 import static com.quadient.wfdxml.internal.layoutnodes.PagesImpl.PageConditionType.SWITCH_COND;
@@ -20,6 +24,7 @@ public class PagesImpl extends Tree<Pages> implements Pages {
     private PageImpl page = null;
     private Flow mainFlow = null;
     private List<Flow> interactiveFlows = null;
+    private final Map<SheetNameType, Variable> sheetNames = new HashMap<>();
 
     public static String pageConditionTypeToXml(PageConditionType type) {
         switch (type) {
@@ -109,6 +114,16 @@ public class PagesImpl extends Tree<Pages> implements Pages {
         return this;
     }
 
+    public Map<SheetNameType, Variable> getSheetNames() {
+        return sheetNames;
+    }
+
+    @Override
+    public Pages addSheetName(SheetNameType type, Variable variable) {
+        this.sheetNames.put(type, variable);
+        return this;
+    }
+
     @Override
     public String getXmlElementName() {
         return "Pages";
@@ -143,6 +158,33 @@ public class PagesImpl extends Tree<Pages> implements Pages {
             throw new IllegalArgumentException("Type '" + type + "' is not supported.");
         }
 
+        exportSheetNames(exporter);
+    }
+
+    private void exportSheetNames(XmlExporter exporter) {
+        if (sheetNames.isEmpty()) {
+            return;
+        }
+
+        int maxIndex = sheetNames.keySet().stream()
+                .mapToInt(SheetNameType::getIndex)
+                .max()
+                .orElse(-1);
+
+        if (maxIndex < 0) {
+            return;
+        }
+
+        for (int i = 0; i <= maxIndex; i++) {
+            final int index = i;
+            Variable variable = sheetNames.entrySet().stream()
+                    .filter(entry -> entry.getKey().getIndex() == index)
+                    .map(Map.Entry::getValue)
+                    .findFirst()
+                    .orElse(null);
+
+            exporter.addElementWithIface("SheetNameVariableId", variable);
+        }
     }
 
     public String pageSelectionTypeToXml() {

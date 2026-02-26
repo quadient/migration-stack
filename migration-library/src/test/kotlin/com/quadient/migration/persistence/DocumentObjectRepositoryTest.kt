@@ -4,6 +4,7 @@ import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
@@ -234,5 +235,21 @@ class DocumentObjectRepositoryTest {
 
         result.shouldBeOfSize(1)
         result.first().id.shouldBeEqualTo("parablock")
+    }
+
+    @Test
+    fun `pdfMetadata roundtrip with all fields`() {
+        val dto = DocumentObjectBuilder("doc1", DocumentObjectType.Block).pdfMetadata {
+            title("Test Document")
+            author(StringValue("John"), StringValue(" "), StringValue("Doe"))
+            keywords("test, metadata, pdf")
+            producer { variableRef("companyName").string(" Migration").build() }
+        }.build()
+
+        repo.upsert(dto)
+        val result = repo.find(dto.id)!!
+
+        val updatedDto = dto.copy(lastUpdated = result.lastUpdated, created = result.created)
+        result.shouldBeEqualTo(updatedDto)
     }
 }
