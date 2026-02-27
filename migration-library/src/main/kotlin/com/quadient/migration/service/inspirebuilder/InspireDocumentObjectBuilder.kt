@@ -65,7 +65,7 @@ import com.quadient.wfdxml.api.layoutnodes.Font
 import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.LocationType
 import com.quadient.wfdxml.api.layoutnodes.Pages
-import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle
+import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle as WfdXmlParagraphStyle
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType.*
 import com.quadient.wfdxml.api.layoutnodes.SheetNameType
 import com.quadient.wfdxml.api.layoutnodes.TabulatorType
@@ -80,7 +80,7 @@ import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.Table as WfdXmlTable
 import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.ParagraphPdfTaggingRule
-import com.quadient.wfdxml.api.layoutnodes.TextStyle
+import com.quadient.wfdxml.api.layoutnodes.TextStyle as WfdXmlTextStyle
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.api.layoutnodes.TextStyleType
 import com.quadient.wfdxml.api.layoutnodes.tables.BorderStyle
@@ -97,8 +97,8 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ifEmpty
 import com.quadient.migration.shared.DataType as DataTypeModel
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle as ParagraphStyleDTO
-import com.quadient.migration.api.dto.migrationmodel.TextStyle as TextStyleDTO
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
+import com.quadient.migration.api.dto.migrationmodel.TextStyle
 
 abstract class InspireDocumentObjectBuilder(
     protected val documentObjectRepository: DocumentObjectRepository,
@@ -153,7 +153,7 @@ abstract class InspireDocumentObjectBuilder(
                         collectLanguagesFromContent(item.default)
                     }
 
-                    is Table -> item.rows.forEach { row ->
+                    is Table -> (item.rows + item.header + item.firstHeader + item.footer + item.lastFooter).forEach { row ->
                         row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) }
                     }
 
@@ -172,7 +172,7 @@ abstract class InspireDocumentObjectBuilder(
                                     collectLanguagesFromContent(textContent.default)
                                 }
 
-                                is Table -> textContent.rows.forEach { row ->
+                                is Table -> (textContent.rows + textContent.header + textContent.firstHeader + textContent.footer + textContent.lastFooter).forEach { row ->
                                     row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) }
                                 }
 
@@ -227,7 +227,7 @@ abstract class InspireDocumentObjectBuilder(
         return successRow
     }
 
-    fun buildStyleLayoutDelta(textStyles: List<TextStyleDTO>, paragraphStyles: List<ParagraphStyleDTO>): String {
+    fun buildStyleLayoutDelta(textStyles: List<TextStyle>, paragraphStyles: List<ParagraphStyle>): String {
         logger.debug("Starting to build style layout delta.")
 
         val builder = WfdXmlBuilder()
@@ -246,8 +246,8 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     fun buildStyles(
-        textStyles: List<TextStyleDTO>,
-        paragraphStyles: List<ParagraphStyleDTO>,
+        textStyles: List<TextStyle>,
+        paragraphStyles: List<ParagraphStyle>,
     ): String {
         logger.debug("Starting to build style definition.")
 
@@ -306,7 +306,7 @@ abstract class InspireDocumentObjectBuilder(
             when (it) {
                 is FlowModel.DocumentObject -> buildDocumentObjectRef(layout, variableStructure, it.ref, languages)
                 is FlowModel.Attachment -> buildAttachmentRef(layout, it.ref)
-                is FlowModel.Composite -> {
+                is Composite -> {
                     if (flowName == null) {
                         buildCompositeFlow(layout, variableStructure, it.parts, null, languages)
                     } else {
@@ -453,7 +453,7 @@ abstract class InspireDocumentObjectBuilder(
             .setLocation(fontLocation, LocationType.ICM)
     }
 
-    fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyleDTO>) {
+    fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyle>) {
         val arialFont = getFontByName(layout, "Arial")
         require(arialFont != null) { "Layout must contain Arial font." }
         arialFont.setName("Arial").setFontName("Arial")
@@ -466,7 +466,7 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun applyTextStyleProperties(layout: Layout, textStyle: TextStyle, definition: TextStyleDefinition) {
+    private fun applyTextStyleProperties(layout: Layout, textStyle: WfdXmlTextStyle, definition: TextStyleDefinition) {
         val fontFamily = definition.fontFamily ?: "Arial"
 
         val font = getFontByName(layout, fontFamily) ?: layout.addFont().setName(fontFamily).setFontName(fontFamily)
@@ -500,7 +500,7 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    fun buildParagraphStyles(layout: Layout, paragraphStyleModels: List<ParagraphStyleDTO>) {
+    fun buildParagraphStyles(layout: Layout, paragraphStyleModels: List<ParagraphStyle>) {
         paragraphStyleModels.forEach { styleModel ->
             val definition = styleModel.resolve()
 
@@ -512,15 +512,15 @@ abstract class InspireDocumentObjectBuilder(
             definition.spaceBefore?.let { paragraphStyle.setSpaceBefore(it.toMeters()) }
             definition.spaceAfter?.let { paragraphStyle.setSpaceAfter(it.toMeters()) }
             val alignType = when (definition.alignment) {
-                Alignment.Left -> ParagraphStyle.AlignType.LEFT
-                Alignment.Right -> ParagraphStyle.AlignType.RIGHT
-                Alignment.Center -> ParagraphStyle.AlignType.CENTER
-                Alignment.JustifyLeft -> ParagraphStyle.AlignType.JUSTIFY_lEFT
-                Alignment.JustifyRight -> ParagraphStyle.AlignType.JUSTIFY_RIGHT
-                Alignment.JustifyCenter -> ParagraphStyle.AlignType.JUSTIFY_CENTER
-                Alignment.JustifyBlock -> ParagraphStyle.AlignType.JUSTIFY_BLOCK
-                Alignment.JustifyWithMargins -> ParagraphStyle.AlignType.JUSTIFY_WITH_MARGIN
-                Alignment.JustifyBlockUniform -> ParagraphStyle.AlignType.JUSTIFY_BLOCK_UNIFORM
+                Alignment.Left -> WfdXmlParagraphStyle.AlignType.LEFT
+                Alignment.Right -> WfdXmlParagraphStyle.AlignType.RIGHT
+                Alignment.Center -> WfdXmlParagraphStyle.AlignType.CENTER
+                Alignment.JustifyLeft -> WfdXmlParagraphStyle.AlignType.JUSTIFY_lEFT
+                Alignment.JustifyRight -> WfdXmlParagraphStyle.AlignType.JUSTIFY_RIGHT
+                Alignment.JustifyCenter -> WfdXmlParagraphStyle.AlignType.JUSTIFY_CENTER
+                Alignment.JustifyBlock -> WfdXmlParagraphStyle.AlignType.JUSTIFY_BLOCK
+                Alignment.JustifyWithMargins -> WfdXmlParagraphStyle.AlignType.JUSTIFY_WITH_MARGIN
+                Alignment.JustifyBlockUniform -> WfdXmlParagraphStyle.AlignType.JUSTIFY_BLOCK_UNIFORM
             }
             paragraphStyle.setAlignType(alignType)
 
@@ -809,8 +809,8 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun createHyperlinkTextStyle(
-        layout: Layout, baseTextStyleModel: TextStyleDTO?, hyperlinkModel: Hyperlink
-    ): TextStyle {
+        layout: Layout, baseTextStyleModel: TextStyle?, hyperlinkModel: Hyperlink
+    ): WfdXmlTextStyle {
         val baseStyleName = baseTextStyleModel?.nameOrId() ?: "text"
         val hyperlinkName = generateUniqueHyperlinkStyleName(layout, baseStyleName)
 
@@ -866,7 +866,7 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun buildAndAppendHyperlink(
-        layout: Layout, paragraph: WfdXmlParagraph, baseTextStyleModel: TextStyleDTO?, hyperlinkModel: Hyperlink
+        layout: Layout, paragraph: WfdXmlParagraph, baseTextStyleModel: TextStyle?, hyperlinkModel: Hyperlink
     ): WfdXmlText {
         val hyperlinkText = paragraph.addText()
         val hyperlinkStyle = createHyperlinkTextStyle(layout, baseTextStyleModel, hyperlinkModel)
@@ -894,7 +894,7 @@ abstract class InspireDocumentObjectBuilder(
         return this
     }
 
-    private fun findParagraphStyle(paragraphModel: Paragraph): ParagraphStyleDTO? {
+    private fun findParagraphStyle(paragraphModel: Paragraph): ParagraphStyle? {
         if (paragraphModel.styleRef == null) return null
 
         val paraStyleModel = paragraphStyleRepository.firstWithDefinition(paragraphModel.styleRef.id)
@@ -903,7 +903,7 @@ abstract class InspireDocumentObjectBuilder(
         return paraStyleModel
     }
 
-    private fun findTextStyle(textModel: Text): TextStyleDTO? {
+    private fun findTextStyle(textModel: Text): TextStyle? {
         if (textModel.styleRef == null) return null
 
         val textStyleModel = textStyleRepository.firstWithDefinition(textModel.styleRef.id)
@@ -1231,7 +1231,7 @@ abstract class InspireDocumentObjectBuilder(
 
         var defaultLanguageFlow: Flow? = null
         for (language in languages) {
-            val contentFlow: Flow = (caseFlows[language] as Flow?) ?: layout.addFlow().setType(Flow.Type.SIMPLE).setDisplayName("Case $language")
+            val contentFlow: Flow = caseFlows[language] ?: layout.addFlow().setType(Flow.Type.SIMPLE).setDisplayName("Case $language")
             languageFlow.addLineForSelectByInlineCondition(language, contentFlow)
 
             if (language == defaultLanguage) {
@@ -1257,23 +1257,19 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun TextStyleDTO.resolve(): TextStyleDefinition {
-        val def = this.definition
-        return when (def) {
+    private fun TextStyle.resolve(): TextStyleDefinition {
+        return when (val def = this.definition) {
             is TextStyleDefinition -> def
             is TextStyleRef -> {
                 textStyleRepository.find(def.id)?.resolve() ?: error("Invalid text style reference")
             }
-            else -> error("Invalid text style definition type")
         }
     }
 
-    private fun ParagraphStyleDTO.resolve(): ParagraphStyleDefinition {
-        val def = this.definition
-        return when (def) {
+    private fun ParagraphStyle.resolve(): ParagraphStyleDefinition {
+        return when (val def = this.definition) {
             is ParagraphStyleDefinition -> def
             is ParagraphStyleRef -> paragraphStyleRepository.findOrFail(def.id).resolve()
-            else -> error("Invalid paragraph style definition type")
         }
     }
 
