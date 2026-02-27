@@ -1,6 +1,10 @@
 logs/
-mapping/
-report/
+**/mapping/
+**/report/
+!src/main/groovy/com/quadient/migration/example/common/mapping/
+!src/main/groovy/com/quadient/migration/example/common/mapping/*.groovy
+!src/main/groovy/com/quadient/migration/example/common/report/
+!src/main/groovy/com/quadient/migration/example/common/report/*.groovy
 deploy/
 
 src/main/resources/active-project-config
