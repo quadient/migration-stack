@@ -7,7 +7,6 @@ class V12__style_target_id_split : BaseJavaMigration() {
     override fun migrate(context: Context) {
         val connection = context.connection
 
-        // Split style table representation into explicit definition + target_id columns.
         connection.prepareStatement("ALTER TABLE text_style ADD COLUMN IF NOT EXISTS target_id varchar(255)").execute()
         connection.prepareStatement("ALTER TABLE paragraph_style ADD COLUMN IF NOT EXISTS target_id varchar(255)")
             .execute()
@@ -60,13 +59,10 @@ class V12__style_target_id_split : BaseJavaMigration() {
             """.trimIndent()
         ).executeUpdate()
 
-        // Split style mapping representation in mapping table to explicit targetId + definition fields.
         migrateStyleMappings(connection, "TextStyle")
         migrateStyleMappings(connection, "ParagraphStyle")
     }
 
-    // Uses createStatement with string interpolation instead of prepareStatement
-    // to avoid JDBC ? parameter placeholder conflicting with PostgreSQL JSONB ? operator.
     private fun migrateStyleMappings(connection: java.sql.Connection, type: String) {
         val refPredicate = """
             mappings ? 'definition'
