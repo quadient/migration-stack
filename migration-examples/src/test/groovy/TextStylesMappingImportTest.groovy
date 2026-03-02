@@ -13,13 +13,12 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import static org.mockito.ArgumentMatchers.argThat
 import static org.mockito.Mockito.verify
 import static org.mockito.Mockito.when
 
 class TextStylesMappingImportTest {
     @TempDir
-    java.io.File dir
+    File dir
 
     Migration migration
 
@@ -58,7 +57,7 @@ class TextStylesMappingImportTest {
     }
 
     @Test
-    void createsPersistentRefMappingForExistingStyleAndBacksDefinitionUp() {
+    void createsPersistentMappingWithTargetIdForExistingStyle() {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         mappingFile.toFile().write("""\
             id,name,targetId,originLocations,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing
@@ -74,11 +73,21 @@ class TextStylesMappingImportTest {
 
         TextStylesImport.run(migration, mappingFile)
 
-        verify(migration.textStyleRepository).upsert(argThat { style ->
-            style.id == "existing" &&
-                style.customFields["originalDefinition"]?.contains("\"fontFamily\":\"CsvFont\"")
-        })
-        verify(migration.mappingRepository).upsert("existing", new MappingItem.TextStyle("someNewName", "otherRef", null))
+        verify(migration.mappingRepository).upsert("existing", new MappingItem.TextStyle(
+            "someNewName",
+            "otherRef",
+            new MappingItem.TextStyle.Def(
+                "CsvFont",
+                Color.fromHex("#00ff00"),
+                Size.ofPoints(13),
+                false,
+                false,
+                false,
+                false,
+                SuperOrSubscript.Subscript,
+                Size.ofPoints(2)
+            )
+        ))
         verify(migration.mappingRepository).applyTextStyleMapping("existing")
     }
 }

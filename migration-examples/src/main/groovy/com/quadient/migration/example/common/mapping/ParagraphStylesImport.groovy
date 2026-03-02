@@ -8,7 +8,6 @@ package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleDefinitionBuilder
 import com.quadient.migration.example.common.util.Csv
@@ -17,7 +16,6 @@ import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
-import groovy.json.JsonOutput
 
 import java.nio.file.Path
 
@@ -36,54 +34,27 @@ static void run(Migration migration, Path path) {
     for (line in file) {
         def values = Csv.getCells(line, columnNames)
         def id = values.get("id")
-        def styleRefId = normalizeTargetId(values.get("targetId"))
+
         def existingStyle = migration.paragraphStyleRepository.find(id)
-        def shouldUpsertStyle = false
         if (existingStyle == null) {
-            existingStyle = new ParagraphStyleBuilder(id)
-                .definition(new ParagraphStyleDefinitionBuilder().build())
-                .build()
-            shouldUpsertStyle = true
+            migration.paragraphStyleRepository.upsert(
+                new ParagraphStyleBuilder(id)
+                    .definition(new ParagraphStyleDefinitionBuilder().build())
+                    .build()
+            )
         }
 
-        if (styleRefId != null) {
-            backupDefinitionFromCsv(existingStyle, values)
-            shouldUpsertStyle = true
-        }
-
-        if (shouldUpsertStyle) {
-            migration.paragraphStyleRepository.upsert(existingStyle)
-        }
-
-        def mapping = toMapping(values, styleRefId)
+        def mapping = toMapping(values)
         migration.mappingRepository.upsert(id, mapping)
         migration.mappingRepository.applyParagraphStyleMapping(id)
     }
 }
 
-private static void backupDefinitionFromCsv(ParagraphStyle style, Map<String, String> values) {
-    style.customFields["originalDefinition"] = JsonOutput.toJson([
-        leftIndent: Csv.serialize(Csv.deserialize(values.get("leftIndent"), Size.class)),
-        rightIndent: Csv.serialize(Csv.deserialize(values.get("rightIndent"), Size.class)),
-        defaultTabSize: Csv.serialize(Csv.deserialize(values.get("defaultTabSize"), Size.class)),
-        spaceBefore: Csv.serialize(Csv.deserialize(values.get("spaceBefore"), Size.class)),
-        spaceAfter: Csv.serialize(Csv.deserialize(values.get("spaceAfter"), Size.class)),
-        alignment: Csv.serialize(Csv.deserialize(values.get("alignment"), Alignment.class)),
-        firstLineIndent: Csv.serialize(Csv.deserialize(values.get("firstLineIndent"), Size.class)),
-        keepWithNextParagraph: Csv.serialize(Csv.deserialize(values.get("keepWithNextParagraph"), Boolean.class)),
-        lineSpacingType: normalizeLineSpacingType(values.get("lineSpacingType")),
-        lineSpacingValue: normalizeLineSpacingValue(values.get("lineSpacingValue")),
-        pdfTaggingRule: Csv.serialize(Csv.deserialize(values.get("pdfTaggingRule"), ParagraphPdfTaggingRule.class)),
-    ])
-}
-
-private static MappingItem.ParagraphStyle toMapping(Map<String, String> values, String styleRefId) {
+private static MappingItem.ParagraphStyle toMapping(Map<String, String> values) {
     def name = Csv.deserialize(values.get("name"), String.class)
-    if (styleRefId != null) {
-        return new MappingItem.ParagraphStyle(name, styleRefId, null)
-    }
+    def targetId = Csv.deserialize(values.get("targetId"), String.class)
 
-    return new MappingItem.ParagraphStyle(name, null, new MappingItem.ParagraphStyle.Def(
+    return new MappingItem.ParagraphStyle(name, targetId, new MappingItem.ParagraphStyle.Def(
         Csv.deserialize(values.get("leftIndent"), Size.class),
         Csv.deserialize(values.get("rightIndent"), Size.class),
         Csv.deserialize(values.get("defaultTabSize"), Size.class),
@@ -111,18 +82,3 @@ static LineSpacing createLineSpacingInstance(String type, String value) {
     }
 }
 
-private static String normalizeLineSpacingType(String value) {
-    if (value == null) return ""
-    return value.trim()
-}
-
-private static String normalizeLineSpacingValue(String value) {
-    if (value == null) return ""
-    return value.trim()
-}
-
-private static String normalizeTargetId(String targetId) {
-    if (targetId == null) return null
-    def normalized = targetId.trim()
-    return normalized.isEmpty() ? null : normalized
-}

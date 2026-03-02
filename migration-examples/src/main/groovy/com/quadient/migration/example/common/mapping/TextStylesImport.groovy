@@ -8,14 +8,12 @@ package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
-import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleDefinitionBuilder
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SuperOrSubscript
-import groovy.json.JsonOutput
 
 import java.nio.file.Path
 
@@ -34,52 +32,27 @@ static void run(Migration migration, Path path) {
     for (line in file) {
         def values = Csv.getCells(line, columnNames)
         def id = values.get("id")
-        def styleRefId = normalizeTargetId(values.get("targetId"))
-        def style = migration.textStyleRepository.find(id)
-        def shouldUpsertStyle = false
-        if (style == null) {
-            style = new TextStyleBuilder(id)
-                .definition(new TextStyleDefinitionBuilder().build())
-                .build()
-            shouldUpsertStyle = true
+
+        def existingStyle = migration.textStyleRepository.find(id)
+        if (existingStyle == null) {
+            migration.textStyleRepository.upsert(
+                new TextStyleBuilder(id)
+                    .definition(new TextStyleDefinitionBuilder().build())
+                    .build()
+            )
         }
 
-        if (styleRefId != null) {
-            backupDefinitionFromCsv(style, values)
-            shouldUpsertStyle = true
-        }
-
-        if (shouldUpsertStyle) {
-            migration.textStyleRepository.upsert(style)
-        }
-
-        def mapping = toMapping(values, styleRefId)
+        def mapping = toMapping(values)
         migration.mappingRepository.upsert(id, mapping)
         migration.mappingRepository.applyTextStyleMapping(id)
     }
 }
 
-private static void backupDefinitionFromCsv(TextStyle style, Map<String, String> values) {
-    style.customFields["originalDefinition"] = JsonOutput.toJson([
-        fontFamily: Csv.serialize(Csv.deserialize(values.get("fontFamily"), String.class)),
-        foregroundColor: Csv.serialize(Csv.deserialize(values.get("foregroundColor"), com.quadient.migration.shared.Color.class)),
-        size: Csv.serialize(Csv.deserialize(values.get("size"), Size.class), Size.Unit.Points),
-        bold: Csv.serialize(Csv.deserialize(values.get("bold"), Boolean.class)),
-        italic: Csv.serialize(Csv.deserialize(values.get("italic"), Boolean.class)),
-        underline: Csv.serialize(Csv.deserialize(values.get("underline"), Boolean.class)),
-        strikethrough: Csv.serialize(Csv.deserialize(values.get("strikethrough"), Boolean.class)),
-        superOrSubscript: Csv.serialize(Csv.deserialize(values.get("superOrSubscript"), SuperOrSubscript.class)),
-        interspacing: Csv.serialize(Csv.deserialize(values.get("interspacing"), Size.class)),
-    ])
-}
-
-private static MappingItem.TextStyle toMapping(Map<String, String> values, String styleRefId) {
+private static MappingItem.TextStyle toMapping(Map<String, String> values) {
     def name = Csv.deserialize(values.get("name"), String.class)
-    if (styleRefId != null) {
-        return new MappingItem.TextStyle(name, styleRefId, null)
-    }
+    def targetId = Csv.deserialize(values.get("targetId"), String.class)
 
-    return new MappingItem.TextStyle(name, null, new MappingItem.TextStyle.Def(
+    return new MappingItem.TextStyle(name, targetId, new MappingItem.TextStyle.Def(
         Csv.deserialize(values.get("fontFamily"), String.class),
         Csv.deserialize(values.get("foregroundColor"), com.quadient.migration.shared.Color.class),
         Csv.deserialize(values.get("size"), Size.class),
@@ -92,8 +65,3 @@ private static MappingItem.TextStyle toMapping(Map<String, String> values, Strin
     ))
 }
 
-private static String normalizeTargetId(String targetId) {
-    if (targetId == null) return null
-    def normalized = targetId.trim()
-    return normalized.isEmpty() ? null : normalized
-}

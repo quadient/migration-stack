@@ -13,13 +13,12 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import static org.mockito.ArgumentMatchers.argThat
 import static org.mockito.Mockito.verify
 import static org.mockito.Mockito.when
 
 class ParagraphStylesMappingImportTest {
     @TempDir
-    java.io.File dir
+    File dir
 
     Migration migration
 
@@ -60,7 +59,7 @@ class ParagraphStylesMappingImportTest {
     }
 
     @Test
-    void createsPersistentRefMappingForExistingStyleAndBacksDefinitionUp() {
+    void createsPersistentMappingWithTargetIdForExistingStyle() {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         mappingFile.toFile().write("""\
             id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue,pdfTaggingRule
@@ -76,11 +75,23 @@ class ParagraphStylesMappingImportTest {
 
         ParagraphStylesImport.run(migration, mappingFile)
 
-        verify(migration.paragraphStyleRepository).upsert(argThat { style ->
-            style.id == "existing" &&
-                style.customFields["originalDefinition"]?.contains("\"alignment\":\"Right\"")
-        })
-        verify(migration.mappingRepository).upsert("existing", new MappingItem.ParagraphStyle("someNewName", "otherRef", null))
+        verify(migration.mappingRepository).upsert("existing", new MappingItem.ParagraphStyle(
+            "someNewName",
+            "otherRef",
+            new MappingItem.ParagraphStyle.Def(
+                Size.ofMeters(2),
+                Size.ofMeters(2),
+                Size.ofMeters(2),
+                Size.ofMeters(2),
+                Size.ofMeters(2),
+                Alignment.Right,
+                Size.ofMeters(2),
+                new LineSpacing.AtLeast(Size.ofMeters(2)),
+                false,
+                null,
+                null
+            )
+        ))
         verify(migration.mappingRepository).applyParagraphStyleMapping("existing")
     }
 }

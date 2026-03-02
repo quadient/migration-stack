@@ -127,7 +127,10 @@ static <T> T deserialize(String value, Class<T> cls) {
     }
 
     switch (cls) {
-        case String: return value as T
+        case String: {
+            def trimmed = value.trim()
+            return (trimmed.isEmpty() ? null : trimmed) as T
+        }
         case Color: return Color.fromHex(value) as T
         case Size: return Size.fromString(value) as T
         case Boolean:
