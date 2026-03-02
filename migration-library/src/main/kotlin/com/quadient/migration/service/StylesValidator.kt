@@ -7,10 +7,8 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
@@ -161,21 +159,15 @@ class StylesValidator(
     private fun TextStyle.resolveTextStyle(
         textStyleIds: MutableSet<String>, missingTextStyles: MutableSet<String>
     ) {
-        when (this.definition) {
-            is TextStyleDefinition -> {
-                textStyleIds.add(this.nameOrId())
-            }
-
-            is TextStyleRef -> {
-                val def = this.definition
-                if (def is TextStyleRef) {
-                    val model = textStyleRepository.find(def.id)
-                    if (model != null) {
-                        model.resolveTextStyle(textStyleIds, missingTextStyles)
-                    } else {
-                        missingTextStyles.add(this.id)
-                    }
-                }
+        val targetId = this.targetId
+        if (targetId == null) {
+            textStyleIds.add(this.nameOrId())
+        } else {
+            val model = textStyleRepository.find(targetId)
+            if (model != null) {
+                model.resolveTextStyle(textStyleIds, missingTextStyles)
+            } else {
+                missingTextStyles.add(this.id)
             }
         }
     }
@@ -183,21 +175,15 @@ class StylesValidator(
     private fun ParagraphStyle.resolveParagraphStyle(
         paragraphStyleIds: MutableSet<String>, missingParagraphStyles: MutableSet<String>
     ) {
-        when (this.definition) {
-            is ParagraphStyleDefinition -> {
-                paragraphStyleIds.add(this.nameOrId())
-            }
-
-            is ParagraphStyleRef -> {
-                val def = this.definition
-                if (def is ParagraphStyleRef) {
-                    val model = paragraphStyleRepository.find(def.id)
-                    if (model != null) {
-                        model.resolveParagraphStyle(paragraphStyleIds, missingParagraphStyles)
-                    } else {
-                        missingParagraphStyles.add(this.id)
-                    }
-                }
+        val targetId = this.targetId
+        if (targetId == null) {
+            paragraphStyleIds.add(this.nameOrId())
+        } else {
+            val model = paragraphStyleRepository.find(targetId)
+            if (model != null) {
+                model.resolveParagraphStyle(paragraphStyleIds, missingParagraphStyles)
+            } else {
+                missingParagraphStyles.add(this.id)
             }
         }
     }

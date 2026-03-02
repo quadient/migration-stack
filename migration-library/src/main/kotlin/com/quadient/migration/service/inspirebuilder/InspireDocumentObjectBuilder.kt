@@ -1258,18 +1258,20 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun TextStyle.resolve(): TextStyleDefinition {
-        return when (val def = this.definition) {
-            is TextStyleDefinition -> def
-            is TextStyleRef -> {
-                textStyleRepository.find(def.id)?.resolve() ?: error("Invalid text style reference")
-            }
+        val targetId = this.targetId
+        return if (targetId == null) {
+            this.definition
+        } else {
+            textStyleRepository.findOrFail(targetId).resolve()
         }
     }
 
     private fun ParagraphStyle.resolve(): ParagraphStyleDefinition {
-        return when (val def = this.definition) {
-            is ParagraphStyleDefinition -> def
-            is ParagraphStyleRef -> paragraphStyleRepository.findOrFail(def.id).resolve()
+        val targetId = this.targetId
+        return if (targetId == null) {
+            this.definition
+        } else {
+            paragraphStyleRepository.findOrFail(targetId).resolve()
         }
     }
 

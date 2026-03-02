@@ -9,17 +9,16 @@ package com.quadient.migration.example.common.mapping
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleDefinitionBuilder
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
+import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.LineSpacing
+import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
+import groovy.json.JsonOutput
 
-import java.lang.reflect.Field
-import java.lang.reflect.Modifier
 import java.nio.file.Path
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
@@ -34,100 +33,69 @@ static void run(Migration migration, Path path) {
     def file = path.toFile().readLines()
     def columnNames = Csv.parseColumnNames(file.removeFirst()).collect { Mapping.normalizeHeader(it) }
 
-    def definitionFields = ParagraphStyleDefinition.declaredFields.findAll { !it.synthetic && !Modifier.isStatic(it.getModifiers()) }
     for (line in file) {
         def values = Csv.getCells(line, columnNames)
-
-        def existingStyle = migration.paragraphStyleRepository.find(values.get("id"))
-        def styleRefId = values.get("targetId")
-
+        def id = values.get("id")
+        def styleRefId = normalizeTargetId(values.get("targetId"))
+        def existingStyle = migration.paragraphStyleRepository.find(id)
+        def shouldUpsertStyle = false
         if (existingStyle == null) {
-            createNewStyle(migration, styleRefId, values, definitionFields)
-        } else {
-            mapStyle(migration, existingStyle, styleRefId, values, definitionFields)
+            existingStyle = new ParagraphStyleBuilder(id)
+                .definition(new ParagraphStyleDefinitionBuilder().build())
+                .build()
+            shouldUpsertStyle = true
         }
+
+        if (styleRefId != null) {
+            backupDefinitionFromCsv(existingStyle, values)
+            shouldUpsertStyle = true
+        }
+
+        if (shouldUpsertStyle) {
+            migration.paragraphStyleRepository.upsert(existingStyle)
+        }
+
+        def mapping = toMapping(values, styleRefId)
+        migration.mappingRepository.upsert(id, mapping)
+        migration.mappingRepository.applyParagraphStyleMapping(id)
     }
 }
 
-static void mapStyle(Migration migration, ParagraphStyle existingStyle, String styleRefId, Map<String, String> values, List<Field> definitionFields) {
-    def mapping = migration.mappingRepository.getParagraphStyleMapping(existingStyle.id)
+private static void backupDefinitionFromCsv(ParagraphStyle style, Map<String, String> values) {
+    style.customFields["originalDefinition"] = JsonOutput.toJson([
+        leftIndent: Csv.serialize(Csv.deserialize(values.get("leftIndent"), Size.class)),
+        rightIndent: Csv.serialize(Csv.deserialize(values.get("rightIndent"), Size.class)),
+        defaultTabSize: Csv.serialize(Csv.deserialize(values.get("defaultTabSize"), Size.class)),
+        spaceBefore: Csv.serialize(Csv.deserialize(values.get("spaceBefore"), Size.class)),
+        spaceAfter: Csv.serialize(Csv.deserialize(values.get("spaceAfter"), Size.class)),
+        alignment: Csv.serialize(Csv.deserialize(values.get("alignment"), Alignment.class)),
+        firstLineIndent: Csv.serialize(Csv.deserialize(values.get("firstLineIndent"), Size.class)),
+        keepWithNextParagraph: Csv.serialize(Csv.deserialize(values.get("keepWithNextParagraph"), Boolean.class)),
+        lineSpacingType: normalizeLineSpacingType(values.get("lineSpacingType")),
+        lineSpacingValue: normalizeLineSpacingValue(values.get("lineSpacingValue")),
+        pdfTaggingRule: Csv.serialize(Csv.deserialize(values.get("pdfTaggingRule"), ParagraphPdfTaggingRule.class)),
+    ])
+}
+
+private static MappingItem.ParagraphStyle toMapping(Map<String, String> values, String styleRefId) {
     def name = Csv.deserialize(values.get("name"), String.class)
-    Mapping.mapProp(mapping, existingStyle, "name", name)
-    def existingDefinition = existingStyle.definition
-
-    if (styleRefId.empty) {
-        MappingItem.ParagraphStyle.Def mappingDefinition
-        if (!(mapping.definition instanceof MappingItem.ParagraphStyle.Def)) {
-            mappingDefinition = new MappingItem.ParagraphStyle.Def(null, null, null, null, null, null, null, null, null, null, null)
-        } else {
-            mappingDefinition = mapping.definition as MappingItem.ParagraphStyle.Def
-        }
-
-        if (existingDefinition instanceof ParagraphStyleDefinition) {
-            for (field in definitionFields) {
-                mapDefinitionField(existingDefinition, mappingDefinition, field, values)
-            }
-        } else {
-            for (field in definitionFields) {
-                updateDefinitionField(mappingDefinition, field, values)
-            }
-        }
-
-        if (mappingDefinition != mapping.definition) {
-            mapping.definition = mappingDefinition
-        }
-    } else {
-        if (existingDefinition instanceof ParagraphStyleDefinition || (existingDefinition instanceof ParagraphStyleRef && existingDefinition.id != styleRefId)) {
-            mapping.definition = new MappingItem.ParagraphStyle.Ref(styleRefId)
-        }
+    if (styleRefId != null) {
+        return new MappingItem.ParagraphStyle(name, styleRefId, null)
     }
 
-    migration.mappingRepository.upsert(existingStyle.id, mapping)
-    migration.mappingRepository.applyParagraphStyleMapping(existingStyle.id)
-}
-
-static void createNewStyle(Migration migration, String styleRefId, Map<String, String> values, List<Field> definitionFields) {
-    def style
-    if (styleRefId.empty) {
-        def definition = new ParagraphStyleDefinitionBuilder().build()
-        for (field in definitionFields) {
-            updateDefinitionField(definition, field, values)
-        }
-        style = new ParagraphStyleBuilder(Csv.deserialize(values.get("id"), String.class))
-            .name(Csv.deserialize(values.get("name"), String.class))
-            .definition(definition)
-            .build()
-    } else {
-        style = new ParagraphStyleBuilder(Csv.deserialize(values.get("id"), String.class))
-            .name(Csv.deserialize(values.get("name"), String.class))
-            .styleRef(styleRefId)
-            .build()
-    }
-    migration.paragraphStyleRepository.upsert(style)
-}
-
-private static void updateDefinitionField(Object paraStyleDefinition, Field definitionField, Map<String, String> values) {
-    if (definitionField.name == "lineSpacing") {
-        def lineSpacingType = values.get("lineSpacingType")
-        def lineSpacingValue = values.get("lineSpacingValue")
-        def lineSpacing = createLineSpacingInstance(lineSpacingType, lineSpacingValue)
-
-        paraStyleDefinition.lineSpacing = lineSpacing
-    } else {
-        paraStyleDefinition."${definitionField.name}" = Csv.deserialize(values.get(definitionField.name), definitionField.type)
-    }
-}
-
-private static void mapDefinitionField(ParagraphStyleDefinition paraStyleDefinition, MappingItem.ParagraphStyle.Def mapping, Field definitionField, Map<String, String> values) {
-    if (definitionField.name == "lineSpacing") {
-        def lineSpacingType = values.get("lineSpacingType")
-        def lineSpacingValue = values.get("lineSpacingValue")
-        def lineSpacing = createLineSpacingInstance(lineSpacingType, lineSpacingValue)
-
-        Mapping.mapProp(mapping, paraStyleDefinition, "lineSpacing", lineSpacing)
-    } else {
-        Mapping.mapProp(mapping, paraStyleDefinition, definitionField.name, Csv.deserialize(values.get(definitionField.name), definitionField.type))
-    }
+    return new MappingItem.ParagraphStyle(name, null, new MappingItem.ParagraphStyle.Def(
+        Csv.deserialize(values.get("leftIndent"), Size.class),
+        Csv.deserialize(values.get("rightIndent"), Size.class),
+        Csv.deserialize(values.get("defaultTabSize"), Size.class),
+        Csv.deserialize(values.get("spaceBefore"), Size.class),
+        Csv.deserialize(values.get("spaceAfter"), Size.class),
+        Csv.deserialize(values.get("alignment"), Alignment.class),
+        Csv.deserialize(values.get("firstLineIndent"), Size.class),
+        createLineSpacingInstance(values.get("lineSpacingType"), values.get("lineSpacingValue")),
+        Csv.deserialize(values.get("keepWithNextParagraph"), Boolean.class),
+        null,
+        Csv.deserialize(values.get("pdfTaggingRule"), ParagraphPdfTaggingRule.class),
+    ))
 }
 
 static LineSpacing createLineSpacingInstance(String type, String value) {
@@ -141,4 +109,20 @@ static LineSpacing createLineSpacingInstance(String type, String value) {
         case "ExactFromPrevious" -> new LineSpacing.ExactFromPrevious(value ? Size.fromString(value) : null)
         default -> throw new IllegalArgumentException("Unknown line spacing type: $type")
     }
+}
+
+private static String normalizeLineSpacingType(String value) {
+    if (value == null) return ""
+    return value.trim()
+}
+
+private static String normalizeLineSpacingValue(String value) {
+    if (value == null) return ""
+    return value.trim()
+}
+
+private static String normalizeTargetId(String targetId) {
+    if (targetId == null) return null
+    def normalized = targetId.trim()
+    return normalized.isEmpty() ? null : normalized
 }

@@ -1,7 +1,6 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefOrRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Tabs
@@ -11,16 +10,21 @@ import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 
 class ParagraphStyleBuilder(id: String) : DtoBuilderBase<ParagraphStyle, ParagraphStyleBuilder>(id) {
-    var definition: ParagraphStyleDefOrRef? = null
+    private var definition: ParagraphStyleDefinition? = null
+    private var targetId: String? = null
 
     fun definition(builder: ParagraphStyleDefinitionBuilder.() -> Unit) = apply {
         this.definition = ParagraphStyleDefinitionBuilder().apply(builder).build()
     }
 
-    fun definition(definition: ParagraphStyleDefinition) = apply { this.definition = definition }
+    fun definition(definition: ParagraphStyleDefinition) = apply {
+        this.definition = definition
+    }
 
-    fun styleRef(id: String) = apply { this.definition = ParagraphStyleRef(id) }
-    fun styleRef(ref: ParagraphStyleRef) = apply { this.definition = ref }
+    fun styleRef(id: String) = apply {
+        this.targetId = id
+    }
+    fun styleRef(ref: ParagraphStyleRef) = styleRef(ref.id)
 
     override fun build(): ParagraphStyle {
         return ParagraphStyle(
@@ -29,6 +33,7 @@ class ParagraphStyleBuilder(id: String) : DtoBuilderBase<ParagraphStyle, Paragra
             originLocations = originLocations,
             customFields = customFields,
             definition = definition ?: throw IllegalArgumentException("ParagraphStyleDefinition must be provided"),
+            targetId = targetId,
         )
     }
 }

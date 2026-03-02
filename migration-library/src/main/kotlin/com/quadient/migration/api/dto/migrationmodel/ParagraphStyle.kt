@@ -15,15 +15,13 @@ data class ParagraphStyle @JvmOverloads constructor(
     override var name: String? = null,
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
-    var definition: ParagraphStyleDefOrRef,
+    var definition: ParagraphStyleDefinition,
+    var targetId: String? = null,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
-        return when (definition) {
-            is ParagraphStyleDefinition -> emptyList()
-            is ParagraphStyleRef -> listOf(definition as Ref)
-        }
+        return targetId?.let { listOf(ParagraphStyleRef(it)) } ?: emptyList()
     }
 }
 
@@ -39,8 +37,8 @@ data class ParagraphStyleDefinition(
     var keepWithNextParagraph: Boolean?,
     var tabs: Tabs?,
     var pdfTaggingRule: ParagraphPdfTaggingRule?,
-) : ParagraphStyleDefOrRef {
-    override fun toDb() = ParagraphStyleDefinitionEntity(
+) {
+    fun toDb() = ParagraphStyleDefinitionEntity(
         leftIndent = leftIndent,
         rightIndent = rightIndent,
         defaultTabSize = defaultTabSize,

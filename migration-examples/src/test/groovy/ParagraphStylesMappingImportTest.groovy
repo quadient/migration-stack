@@ -1,7 +1,11 @@
 import com.quadient.migration.api.Migration
-import com.quadient.migration.api.dto.migrationmodel.*
+import com.quadient.migration.api.dto.migrationmodel.MappingItem
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleDefinitionBuilder
 import com.quadient.migration.example.common.mapping.ParagraphStylesImport
-import com.quadient.migration.shared.*
+import com.quadient.migration.shared.Alignment
+import com.quadient.migration.shared.LineSpacing
+import com.quadient.migration.shared.Size
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -9,6 +13,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.nio.file.Paths
 
+import static org.mockito.ArgumentMatchers.argThat
 import static org.mockito.Mockito.verify
 import static org.mockito.Mockito.when
 
@@ -24,206 +29,58 @@ class ParagraphStylesMappingImportTest {
     }
 
     @Test
-    void createsNewStyleWithDefinition() {
+    void createsPersistentDefMappingForNewStyle() {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
-
-        def input = """\
-            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
-            new,newName,,[foo; bar],1m,1m,1m,1m,1m,Center,1m,true,Exact,
-            """.stripIndent()
-        mappingFile.toFile().write(input)
+        mappingFile.toFile().write("""\
+            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue,pdfTaggingRule
+            new,newName,,[],1m,1m,1m,1m,1m,Center,1m,true,AtLeast,1m,
+            """.stripIndent())
+        when(migration.paragraphStyleRepository.find("new")).thenReturn(null)
 
         ParagraphStylesImport.run(migration, mappingFile)
 
-        verify(migration.paragraphStyleRepository).upsert(new ParagraphStyle("new", "newName", [], new CustomFieldMap([:]),
-            new ParagraphStyleDefinition(Size.ofMeters(1),
+        verify(migration.mappingRepository).upsert("new", new MappingItem.ParagraphStyle(
+            "newName",
+            null,
+            new MappingItem.ParagraphStyle.Def(
+                Size.ofMeters(1),
                 Size.ofMeters(1),
                 Size.ofMeters(1),
                 Size.ofMeters(1),
                 Size.ofMeters(1),
                 Alignment.Center,
                 Size.ofMeters(1),
-                new LineSpacing.Exact(null),
+                new LineSpacing.AtLeast(Size.ofMeters(1)),
                 true,
                 null,
-                null)))
+                null
+            )
+        ))
+        verify(migration.mappingRepository).applyParagraphStyleMapping("new")
     }
 
     @Test
-    void createsNewStyleWithRef() {
+    void createsPersistentRefMappingForExistingStyleAndBacksDefinitionUp() {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        mappingFile.toFile().write("""\
+            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue,pdfTaggingRule
+            existing,someNewName,otherRef,[],2m,2m,2m,2m,2m,Right,2m,false,AtLeast,2m,
+            """.stripIndent())
 
-        def input = """\
-            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
-            new,newName,otherStyle,[foo; bar],,,,,,,,,,
-            """.stripIndent()
-        mappingFile.toFile().write(input)
+        when(migration.paragraphStyleRepository.find("existing")).thenReturn(
+            new ParagraphStyleBuilder("existing")
+                .name("someName")
+                .definition(new ParagraphStyleDefinitionBuilder().build())
+                .build()
+        )
 
         ParagraphStylesImport.run(migration, mappingFile)
 
-        verify(migration.paragraphStyleRepository).upsert(new ParagraphStyle("new", "newName", [], new CustomFieldMap([:]),
-            new ParagraphStyleRef("otherStyle")))
-    }
-
-    @Test
-    void remapsExistingRefStyleToDef() {
-        Path mappingFile = Paths.get(dir.path, "testProject.csv")
-
-        def input = """\
-            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
-            existing,someNewName,,[foo; bar],1m,1m,1m,1m,1m,Center,1m,true,AtLeast,1m
-            """.stripIndent()
-        mappingFile.toFile().write(input)
-        givenExistingRefStyle("existing", "someName", "someRef")
-        givenExistingNoDefStyleMapping("existing", null)
-
-        ParagraphStylesImport.run(migration, mappingFile)
-
-        verify(migration.mappingRepository)
-            .upsert("existing", new MappingItem.ParagraphStyle("someNewName",
-                new MappingItem.ParagraphStyle.Def(Size.ofMeters(1),
-                    Size.ofMeters(1),
-                    Size.ofMeters(1),
-                    Size.ofMeters(1),
-                    Size.ofMeters(1),
-                    Alignment.Center,
-                    Size.ofMeters(1),
-                    new LineSpacing.AtLeast(Size.ofMeters(1)),
-                    true,
-                    null,
-                    null)))
+        verify(migration.paragraphStyleRepository).upsert(argThat { style ->
+            style.id == "existing" &&
+                style.customFields["originalDefinition"]?.contains("\"alignment\":\"Right\"")
+        })
+        verify(migration.mappingRepository).upsert("existing", new MappingItem.ParagraphStyle("someNewName", "otherRef", null))
         verify(migration.mappingRepository).applyParagraphStyleMapping("existing")
-    }
-
-    @Test
-    void remapsExistingRefStyleToRef() {
-        Path mappingFile = Paths.get(dir.path, "testProject.csv")
-
-        def input = """\
-            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
-            existing,someNewName,otherRef,[foo; bar],,,,,,,,,,
-            """.stripIndent()
-        mappingFile.toFile().write(input)
-        givenExistingRefStyle("existing", "someName", "someRef")
-        givenExistingNoDefStyleMapping("existing", null)
-
-        ParagraphStylesImport.run(migration, mappingFile)
-
-        verify(migration.mappingRepository)
-            .upsert("existing", new MappingItem.ParagraphStyle("someNewName", new MappingItem.ParagraphStyle.Ref("otherRef")))
-        verify(migration.mappingRepository).applyParagraphStyleMapping("existing")
-    }
-
-    @Test
-    void remapsExistingDefStyleToRef() {
-        Path mappingFile = Paths.get(dir.path, "testProject.csv")
-
-        def input = """\
-            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
-            existing,someNewName,otherRef,[foo; bar],,,,,,,,,,
-            """.stripIndent()
-        mappingFile.toFile().write(input)
-        givenExistingDefinitionStyle("existing", "someName", 1, 1, 1, 1, 1, Alignment.Center, 1, new LineSpacing.Exact(Size.ofMeters(1)), true)
-        givenExistingNoDefStyleMapping("existing", null)
-
-        ParagraphStylesImport.run(migration, mappingFile)
-
-        verify(migration.mappingRepository)
-            .upsert("existing", new MappingItem.ParagraphStyle("someNewName", new MappingItem.ParagraphStyle.Ref("otherRef")))
-        verify(migration.mappingRepository).applyParagraphStyleMapping("existing")
-    }
-
-    @Test
-    void remapsExistingDefStyleToDef() {
-        Path mappingFile = Paths.get(dir.path, "testProject.csv")
-
-        def input = """\
-            id,name,targetId,originLocations,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue
-            existing,someNewName,,[foo; bar],2m,2m,2m,2m,2m,Right,2m,false,AtLeast,2m
-            """.stripIndent()
-        mappingFile.toFile().write(input)
-        givenExistingDefinitionStyle("existing", "someName", 1, 1, 1, 1, 1, Alignment.Center, 1, new LineSpacing.Exact(Size.ofMeters(1)), true)
-        givenExistingNoDefStyleMapping("existing", null)
-
-        ParagraphStylesImport.run(migration, mappingFile)
-
-        verify(migration.mappingRepository)
-            .upsert("existing", new MappingItem.ParagraphStyle("someNewName",
-                new MappingItem.ParagraphStyle.Def(Size.ofMeters(2),
-                    Size.ofMeters(2),
-                    Size.ofMeters(2),
-                    Size.ofMeters(2),
-                    Size.ofMeters(2),
-                    Alignment.Right,
-                    Size.ofMeters(2),
-                    new LineSpacing.AtLeast(Size.ofMeters(2)),
-                    false,
-                    null,
-                    null)))
-        verify(migration.mappingRepository).applyParagraphStyleMapping("existing")
-    }
-
-    void givenExistingRefStyle(String id, String name, String ref) {
-        when(migration.paragraphStyleRepository.find(id))
-            .thenReturn(new ParagraphStyle(id, name, [], new CustomFieldMap([:]), new ParagraphStyleRef(ref)))
-    }
-
-    void givenExistingDefinitionStyle(String id,
-                                      String name,
-                                      Double leftIndentM,
-                                      Double rightIndentM,
-                                      Double defaultTabSizeM,
-                                      Double spaceBeforeM,
-                                      Double spaceAfterM,
-                                      Alignment alignment,
-                                      Double firstLineIndentM,
-                                      LineSpacing lineSpacing,
-                                      Boolean keepWithNextParagraph) {
-        when(migration.paragraphStyleRepository.find(id)).thenReturn(new ParagraphStyle(id, name, [], new CustomFieldMap([:]),
-            new ParagraphStyleDefinition(leftIndentM != null ? Size.ofMeters(leftIndentM) : null,
-                rightIndentM != null ? Size.ofMeters(rightIndentM) : null,
-                defaultTabSizeM != null ? Size.ofMeters(defaultTabSizeM) : null,
-                spaceBeforeM != null ? Size.ofMeters(spaceBeforeM) : null,
-                spaceAfterM != null ? Size.ofMeters(spaceAfterM) : null,
-                alignment,
-                firstLineIndentM != null ? Size.ofMeters(firstLineIndentM) : null,
-                lineSpacing,
-                keepWithNextParagraph,
-                null,
-                null)))
-    }
-
-    void givenExistingNoDefStyleMapping(String id, String name) {
-        when(migration.mappingRepository.getParagraphStyleMapping(id)).thenReturn(new MappingItem.ParagraphStyle(name, null))
-    }
-
-    void givenExistingRefStyleMapping(String id, String name, String targetId) {
-        when(migration.mappingRepository.getParagraphStyleMapping(id))
-            .thenReturn(new MappingItem.ParagraphStyle(name, new MappingItem.ParagraphStyle.Ref(targetId)))
-    }
-
-    void givenExistingDefinitionStyleMapping(String id,
-                                             String name,
-                                             Double leftIndentM,
-                                             Double rightIndentM,
-                                             Double defaultTabSizeM,
-                                             Double spaceBeforeM,
-                                             Double spaceAfterM,
-                                             Alignment alignment,
-                                             Double firstLineIndentM,
-                                             LineSpacing lineSpacing,
-                                             Boolean keepWithNextParagraph) {
-        when(migration.mappingRepository.getParagraphStyleMapping(id))
-            .thenReturn(new MappingItem.ParagraphStyle(name, new MappingItem.ParagraphStyle.Def(leftIndentM != null ? Size.ofMeters(leftIndentM) : null,
-                rightIndentM != null ? Size.ofMeters(rightIndentM) : null,
-                defaultTabSizeM != null ? Size.ofMeters(defaultTabSizeM) : null,
-                spaceBeforeM != null ? Size.ofMeters(spaceBeforeM) : null,
-                spaceAfterM != null ? Size.ofMeters(spaceAfterM) : null,
-                alignment,
-                firstLineIndentM != null ? Size.ofMeters(firstLineIndentM) : null,
-                lineSpacing,
-                keepWithNextParagraph,
-                null,
-                null)))
     }
 }

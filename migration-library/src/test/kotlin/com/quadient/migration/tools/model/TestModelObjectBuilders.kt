@@ -11,7 +11,6 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefOrRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
@@ -20,7 +19,6 @@ import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.api.dto.migrationmodel.TextContent
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefOrRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
@@ -180,7 +178,8 @@ fun aParaStyle(
     name: String? = "style$id",
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
-    definition: ParagraphStyleDefOrRef = aParaDef()
+    definition: ParagraphStyleDefinition = aParaDef(),
+    targetId: String? = null,
 ): ParagraphStyle {
     return ParagraphStyle(
         id = id,
@@ -188,6 +187,7 @@ fun aParaStyle(
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
         definition = definition,
+        targetId = targetId,
         lastUpdated = null,
         created = null,
     )
@@ -226,7 +226,8 @@ fun aTextStyle(
     name: String? = "style$id",
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
-    definition: TextStyleDefOrRef = aTextDef(),
+    definition: TextStyleDefinition = aTextDef(),
+    targetId: String? = null,
 ): TextStyle {
     return TextStyle(
         id = id,
@@ -234,6 +235,7 @@ fun aTextStyle(
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
         definition = definition,
+        targetId = targetId,
         lastUpdated = null,
         created = null,
     )

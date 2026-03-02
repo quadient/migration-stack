@@ -219,10 +219,8 @@ class DesignerDocumentObjectBuilder(
             root.setExternalStylesLayout(styleDefinitionPath)
         }
 
-        buildTextStyles(
-            layout, textStyleRepository.listAll().filter { it.definition is TextStyleDefinition })
-        buildParagraphStyles(
-            layout, paragraphStyleRepository.listAll().filter { it.definition is ParagraphStyleDefinition })
+        buildTextStyles(layout, textStyleRepository.listAll().filter { it.targetId == null })
+        buildParagraphStyles(layout, paragraphStyleRepository.listAll().filter { it.targetId == null })
 
         val firstPageWithFlowArea =
             (layout.pages as PagesImpl).children.find { page -> (page as PageImpl).children.any { it is FlowArea } } as? PageImpl
