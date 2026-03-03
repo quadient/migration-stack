@@ -16,12 +16,12 @@ data class ParagraphStyle @JvmOverloads constructor(
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
     var definition: ParagraphStyleDefinition,
-    var targetId: String? = null,
+    var targetId: ParagraphStyleRef? = null,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
-        return targetId?.let { listOf(ParagraphStyleRef(it)) } ?: emptyList()
+        return listOfNotNull(targetId)
     }
 }
 

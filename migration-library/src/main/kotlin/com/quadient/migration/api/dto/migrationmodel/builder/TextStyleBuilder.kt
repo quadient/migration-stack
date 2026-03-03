@@ -9,7 +9,7 @@ import com.quadient.migration.shared.SuperOrSubscript
 
 class TextStyleBuilder(id: String) : DtoBuilderBase<TextStyle, TextStyleBuilder>(id) {
     private var definition: TextStyleDefinition? = null
-    private var targetId: String? = null
+    private var targetId: TextStyleRef? = null
 
     fun definition(builder: TextStyleDefinitionBuilder.() -> Unit) = apply {
         this.definition = TextStyleDefinitionBuilder().apply(builder).build()
@@ -19,10 +19,8 @@ class TextStyleBuilder(id: String) : DtoBuilderBase<TextStyle, TextStyleBuilder>
         this.definition = definition
     }
 
-    fun styleRef(id: String) = apply {
-        this.targetId = id
-    }
-    fun styleRef(ref: TextStyleRef) = styleRef(ref.id)
+    fun styleRef(id: String) = apply { this.targetId = TextStyleRef(id) }
+    fun styleRef(ref: TextStyleRef) = apply { this.targetId = ref }
 
     override fun build(): TextStyle {
         return TextStyle(

@@ -1,7 +1,8 @@
 import com.quadient.migration.api.dto.migrationmodel.*
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleDefinitionBuilder
 import com.quadient.migration.example.common.mapping.ParagraphStylesExport
 import com.quadient.migration.shared.Alignment
-import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.TabType
 import org.junit.jupiter.api.Assertions
@@ -15,20 +16,33 @@ import static org.mockito.Mockito.when
 
 class ParagraphStylesMappingExportTest {
     @TempDir
-    java.io.File dir
+    File dir
 
     @Test
     void exportWorksCorrectlyForAllVariants() {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def migration = Utils.mockMigration()
-        def emptyDefinition = new ParagraphStyleDefinition(null, null, null, null, null, Alignment.Left, null, new LineSpacing.Additional(Size.ofInches(0)), null, null, null)
-        def fullDefinition = new ParagraphStyleDefinition(Size.ofInches(1), Size.ofInches(1), Size.ofInches(1), Size.ofInches(1), Size.ofInches(1), Alignment.Center, Size.ofInches(1), new LineSpacing.Additional(Size.ofInches(1)), true, new Tabs([new Tab(Size.ofInches(1), TabType.Right)], true), null)
+        def emptyDefinition = new ParagraphStyleDefinitionBuilder()
+            .additionalLineSpacing(Size.ofInches(0))
+            .build()
+        def fullDefinition = new ParagraphStyleDefinitionBuilder()
+            .leftIndent(Size.ofInches(1))
+            .rightIndent(Size.ofInches(1))
+            .defaultTabSize(Size.ofInches(1))
+            .spaceBefore(Size.ofInches(1))
+            .spaceAfter(Size.ofInches(1))
+            .alignment(Alignment.Center)
+            .firstLineIndent(Size.ofInches(1))
+            .additionalLineSpacing(Size.ofInches(1))
+            .keepWithNextParagraph(true)
+            .tabs(new Tabs([new Tab(Size.ofInches(1), TabType.Right)], true))
+            .build()
 
         when(migration.paragraphStyleRepository.listAll()).thenReturn([
-            new ParagraphStyle("empty", null, [], new CustomFieldMap([:]), emptyDefinition),
-            new ParagraphStyle("empty with targetId", null, [], new CustomFieldMap([:]), emptyDefinition, "other"),
-            new ParagraphStyle("full", "full", ["foo", "bar"], new CustomFieldMap([:]), fullDefinition),
-            new ParagraphStyle("full with targetId", "full", ["foo", "bar"], new CustomFieldMap([:]), fullDefinition, "other"),
+            new ParagraphStyleBuilder("empty").definition(emptyDefinition).build(),
+            new ParagraphStyleBuilder("empty with targetId").definition(emptyDefinition).styleRef("other").build(),
+            new ParagraphStyleBuilder("full").name("full").originLocations(["foo", "bar"]).definition(fullDefinition).build(),
+            new ParagraphStyleBuilder("full with targetId").name("full").originLocations(["foo", "bar"]).definition(fullDefinition).styleRef("other").build(),
         ])
 
         ParagraphStylesExport.run(migration, mappingFile)

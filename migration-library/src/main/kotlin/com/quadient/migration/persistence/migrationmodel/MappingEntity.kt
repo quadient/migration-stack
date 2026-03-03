@@ -179,7 +179,7 @@ sealed class MappingItemEntity {
             return item.copy(
                 name = name,
                 definition = updatedDefinition,
-                targetId = targetId
+                targetId = targetId?.let { ParagraphStyleRef(it) }
             )
         }
     }
@@ -248,7 +248,7 @@ sealed class MappingItemEntity {
             return item.copy(
                 name = name,
                 definition = updatedDefinition,
-                targetId = targetId,
+                targetId = targetId?.let { TextStyleRef(it) },
             )
         }
     }

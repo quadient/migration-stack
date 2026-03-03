@@ -47,7 +47,7 @@ static void run(Migration migration, Path dstPath) {
             def builder = new StringBuilder()
             builder << "${Csv.serialize(style.id)},"
             builder << "${Csv.serialize(style.name)},"
-            builder << "${Csv.serialize(style.targetId)},"
+            builder << "${Csv.serialize(style.targetId?.id)},"
             builder << definitionOrder.collect {
                 Csv.serialize(definition?."$it", getUnit(it))
             }.join(",")

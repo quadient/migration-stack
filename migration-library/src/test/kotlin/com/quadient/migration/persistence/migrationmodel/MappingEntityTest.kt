@@ -251,7 +251,7 @@ class MappingEntityTest {
             val resultDef = result.definition
 
             assertEquals("new name", result.name)
-            assertEquals("new other", result.targetId)
+            assertEquals("new other", result.targetId?.id)
             assertEquals(15.0.millimeters(), resultDef.defaultTabSize)
             assertEquals(6.0.millimeters(), resultDef.leftIndent)
             assertEquals(6.0.millimeters(), resultDef.rightIndent)
@@ -279,7 +279,7 @@ class MappingEntityTest {
             val result = mapping.apply(dto)
 
             assertEquals("new name", result.name)
-            assertEquals("new other", result.targetId)
+            assertEquals("new other", result.targetId?.id)
             assertEquals(dto.definition, result.definition)
         }
     }
@@ -323,7 +323,7 @@ class MappingEntityTest {
             val resultDef = result.definition
 
             assertEquals("new name", result.name)
-            assertEquals("new other", result.targetId)
+            assertEquals("new other", result.targetId?.id)
             assertEquals("New Font", resultDef.fontFamily)
             assertEquals(12.0.points(), resultDef.size)
             assertEquals(Color.fromHex("#FF0000"), resultDef.foregroundColor)
@@ -345,7 +345,7 @@ class MappingEntityTest {
             val result = mapping.apply(dto)
 
             assertEquals("new name", result.name)
-            assertEquals("new other", result.targetId)
+            assertEquals("new other", result.targetId?.id)
             assertEquals(dto.definition, result.definition)
         }
     }

@@ -12,6 +12,8 @@ import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -31,8 +33,6 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aAttachment
 import com.quadient.migration.tools.model.aImage
-import com.quadient.migration.tools.model.aParaStyle
-import com.quadient.migration.tools.model.aTextStyle
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
 import com.quadient.migration.tools.shouldNotBeNull
@@ -538,10 +538,10 @@ class DeployClientTest {
             )
         } returns events
         for (id in textStyles) {
-            every { textStyleRepository.findOrFail(id) } returns aTextStyle(id = id)
+            every { textStyleRepository.findOrFail(id) } returns TextStyleBuilder(id).build()
         }
         for (id in paragraphStyles) {
-            every { paragraphStyleRepository.findOrFail(id) } returns aParaStyle(id)
+            every { paragraphStyleRepository.findOrFail(id) } returns ParagraphStyleBuilder(id).build()
         }
     }
 

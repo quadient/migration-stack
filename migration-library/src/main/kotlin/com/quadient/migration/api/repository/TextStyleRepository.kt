@@ -4,6 +4,7 @@ import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.TextStyleTable
 import com.quadient.migration.service.deploy.ResourceType
@@ -44,7 +45,7 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
             lastUpdated = row[TextStyleTable.lastUpdated],
             created = row[TextStyleTable.created],
             definition = definition,
-            targetId = row[TextStyleTable.targetId],
+            targetId = row[TextStyleTable.targetId]?.let { TextStyleRef(it) },
         )
     }
 
@@ -74,7 +75,7 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
                 it[TextStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
                 it[TextStyleTable.customFields] = dto.customFields.inner
                 it[TextStyleTable.definition] = dto.definition.toDb()
-                it[TextStyleTable.targetId] = dto.targetId
+                it[TextStyleTable.targetId] = dto.targetId?.id
                 it[TextStyleTable.created] = existingItem?.created ?: now
                 it[TextStyleTable.lastUpdated] = now
             }.first()
@@ -109,7 +110,7 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
                 stmt.setTimestamp(index++, java.sql.Timestamp.from((existingItem?.created ?: now).toJavaInstant()))
                 stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
                 stmt.setObject(index++, Json.encodeToString(dto.definition.toDb()), Types.OTHER)
-                stmt.setString(index++, dto.targetId)
+                stmt.setString(index++, dto.targetId?.id)
             }
 
             stmt.executeUpdate()

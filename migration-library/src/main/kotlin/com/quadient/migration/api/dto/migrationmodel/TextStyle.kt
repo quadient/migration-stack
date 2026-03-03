@@ -12,12 +12,12 @@ data class TextStyle @JvmOverloads constructor(
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
     var definition: TextStyleDefinition,
-    var targetId: String? = null,
+    var targetId: TextStyleRef? = null,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
-        return targetId?.let { listOf(TextStyleRef(it)) } ?: emptyList()
+        return listOfNotNull(targetId)
     }
 }
 

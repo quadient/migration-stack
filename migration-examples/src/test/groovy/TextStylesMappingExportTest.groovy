@@ -1,6 +1,6 @@
-import com.quadient.migration.api.dto.migrationmodel.*
+import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleDefinitionBuilder
 import com.quadient.migration.example.common.mapping.TextStylesExport
-import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SuperOrSubscript
 import org.junit.jupiter.api.Assertions
@@ -20,14 +20,24 @@ class TextStylesMappingExportTest {
     void exportWorksCorrectlyForAllVariants() {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def migration = Utils.mockMigration()
-        def emptyDefinition = new TextStyleDefinition(null, null, null, false, false, false, false, SuperOrSubscript.None, null)
-        def fullDefinition = new TextStyleDefinition("Arial", Color.fromHex("#FF0000"), Size.ofInches(1), true, true, true, true, SuperOrSubscript.Superscript, Size.ofCentimeters(1))
+        def emptyDefinition = new TextStyleDefinitionBuilder().build()
+        def fullDefinition = new TextStyleDefinitionBuilder()
+            .fontFamily("Arial")
+            .foregroundColor("#FF0000")
+            .size(Size.ofInches(1))
+            .bold(true)
+            .italic(true)
+            .underline(true)
+            .strikethrough(true)
+            .superOrSubscript(SuperOrSubscript.Superscript)
+            .interspacing(Size.ofCentimeters(1))
+            .build()
 
         when(migration.textStyleRepository.listAll()).thenReturn([
-            new TextStyle("empty", null, [], new CustomFieldMap([:]), emptyDefinition),
-            new TextStyle("empty with targetId", null, [], new CustomFieldMap([:]), emptyDefinition, "other"),
-            new TextStyle("full", "full", ["foo", "bar"], new CustomFieldMap([:]), fullDefinition),
-            new TextStyle("full with targetId", "full", ["foo", "bar"], new CustomFieldMap([:]), fullDefinition, "other"),
+            new TextStyleBuilder("empty").definition(emptyDefinition).build(),
+            new TextStyleBuilder("empty with targetId").definition(emptyDefinition).styleRef("other").build(),
+            new TextStyleBuilder("full").name("full").originLocations(["foo", "bar"]).definition(fullDefinition).build(),
+            new TextStyleBuilder("full with targetId").name("full").originLocations(["foo", "bar"]).definition(fullDefinition).styleRef("other").build(),
         ])
 
         TextStylesExport.run(migration, mappingFile)

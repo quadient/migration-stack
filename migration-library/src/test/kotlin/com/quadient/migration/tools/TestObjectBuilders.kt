@@ -290,7 +290,7 @@ fun aParagraphStyle(
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
     definition: ParagraphStyleDefinition = aParagraphStyleDefinition(),
-    targetId: String? = null,
+    targetId: ParagraphStyleRef? = null,
 ): ParagraphStyle {
     return ParagraphStyle(
         id = id,
@@ -338,7 +338,7 @@ fun aTextStyle(
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
     definition: TextStyleDefinition = aTextStyleDefinition(),
-    targetId: String? = null,
+    targetId: TextStyleRef? = null,
 ): TextStyle {
     return TextStyle(
         id = id,

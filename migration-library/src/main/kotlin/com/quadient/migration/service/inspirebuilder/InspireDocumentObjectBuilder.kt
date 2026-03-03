@@ -1243,7 +1243,7 @@ abstract class InspireDocumentObjectBuilder(
         return if (targetId == null) {
             this
         } else {
-            textStyleRepository.findOrFail(targetId).resolve()
+            textStyleRepository.findOrFail(targetId.id).resolve()
         }
     }
 
@@ -1252,7 +1252,7 @@ abstract class InspireDocumentObjectBuilder(
         return if (targetId == null) {
             this
         } else {
-            paragraphStyleRepository.findOrFail(targetId).resolve()
+            paragraphStyleRepository.findOrFail(targetId.id).resolve()
         }
     }
 

@@ -173,61 +173,13 @@ fun aVariable(
     created = null,
 )
 
-fun aParaStyle(
-    id: String,
-    name: String? = "style$id",
-    originLocations: List<String> = emptyList(),
-    customFields: MutableMap<String, String> = mutableMapOf(),
-    definition: ParagraphStyleDefinition = aParaDef(),
-    targetId: String? = null,
-): ParagraphStyle {
-    return ParagraphStyle(
-        id = id,
-        name = name,
-        originLocations = originLocations,
-        customFields = CustomFieldMap(customFields),
-        definition = definition,
-        targetId = targetId,
-        lastUpdated = null,
-        created = null,
-    )
-}
-
-fun aParaDef(
-    leftIndent: Size? = null,
-    rightIndent: Size? = null,
-    defaultTabSize: Size? = null,
-    spaceBefore: Size? = null,
-    spaceAfter: Size? = null,
-    alignment: Alignment = Alignment.Left,
-    firstLineIndent: Size? = null,
-    lineSpacing: LineSpacing = LineSpacing.Additional(null),
-    keepWithNextParagraph: Boolean? = null,
-    tabs: Tabs? = null,
-    pdfTaggingRule: ParagraphPdfTaggingRule? = null,
-): ParagraphStyleDefinition {
-    return ParagraphStyleDefinition(
-        leftIndent = leftIndent,
-        rightIndent = rightIndent,
-        defaultTabSize = defaultTabSize,
-        spaceBefore = spaceBefore,
-        spaceAfter = spaceAfter,
-        alignment = alignment,
-        firstLineIndent = firstLineIndent,
-        lineSpacing = lineSpacing,
-        keepWithNextParagraph = keepWithNextParagraph,
-        tabs = tabs,
-        pdfTaggingRule = pdfTaggingRule,
-    )
-}
-
 fun aTextStyle(
     id: String,
     name: String? = "style$id",
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
     definition: TextStyleDefinition = aTextDef(),
-    targetId: String? = null,
+    targetId: TextStyleRef? = null,
 ): TextStyle {
     return TextStyle(
         id = id,

@@ -35,7 +35,7 @@ static void run(Migration migration, Path exportFilePath) {
             def builder = new StringBuilder()
             builder << "${Csv.serialize(style.id)},"
             builder << "${Csv.serialize(style.name)},"
-            builder << "${Csv.serialize(style.targetId)},"
+            builder << "${Csv.serialize(style.targetId?.id)},"
             builder << serializeDefinition(definition)
             builder << ",${Csv.serialize(style.originLocations)}"
 

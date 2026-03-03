@@ -163,7 +163,7 @@ class StylesValidator(
         if (targetId == null) {
             textStyleIds.add(this.nameOrId())
         } else {
-            val model = textStyleRepository.find(targetId)
+            val model = textStyleRepository.find(targetId.id)
             if (model != null) {
                 model.resolveTextStyle(textStyleIds, missingTextStyles)
             } else {
@@ -179,7 +179,7 @@ class StylesValidator(
         if (targetId == null) {
             paragraphStyleIds.add(this.nameOrId())
         } else {
-            val model = paragraphStyleRepository.find(targetId)
+            val model = paragraphStyleRepository.find(targetId.id)
             if (model != null) {
                 model.resolveParagraphStyle(paragraphStyleIds, missingParagraphStyles)
             } else {

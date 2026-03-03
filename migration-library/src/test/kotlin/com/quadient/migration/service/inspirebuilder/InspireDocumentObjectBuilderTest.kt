@@ -37,6 +37,7 @@ import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.ImageType.*
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
+import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.tools.aProjectConfig
@@ -89,14 +90,10 @@ class InspireDocumentObjectBuilderTest {
     @Test
     fun `buildStyles creates ParagraphStyle with PdfTaggingRule Paragraph`() {
         // given
-        val paragraphStyle = aParaStyle(
-            "PS_Para",
-            definition = aParaDef(
-                leftIndent = Size.ofMillimeters(0),
-                pdfTaggingRule = com.quadient.migration.shared.ParagraphPdfTaggingRule.Paragraph
-            )
-        )
-        every { paragraphStyleRepository.listAll() } returns listOf(paragraphStyle)
+        val paragraphStyle = mockParagraphStyle(ParagraphStyleBuilder("PS_Para").name("PS_Para").definition {
+            leftIndent(Size.ofMillimeters(0))
+            pdfTaggingRule(ParagraphPdfTaggingRule.Paragraph)
+        }.build())
 
         // when
         val result = subject.buildStyles(emptyList(), listOf(paragraphStyle))

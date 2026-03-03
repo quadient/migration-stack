@@ -126,8 +126,8 @@ class StylesValidatorTest {
                 id = "id", content = listOf(aParagraph(styleRef = ParagraphStyleRef("para1")))
             )
         )
-        paraStyleRepository.upsert(aParagraphStyle(id = "para1", targetId = "para2"))
-        paraStyleRepository.upsert(aParagraphStyle(id = "para2", targetId = "para3"))
+        paraStyleRepository.upsert(aParagraphStyle(id = "para1", targetId = ParagraphStyleRef("para2")))
+        paraStyleRepository.upsert(aParagraphStyle(id = "para2", targetId = ParagraphStyleRef("para3")))
         paraStyleRepository.upsert(aParagraphStyle(id = "para3"))
 
         val xml = buildXml(textStyles = listOf(), paraStyles = listOf("stylefound-para"))
