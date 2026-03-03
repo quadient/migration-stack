@@ -11,7 +11,6 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefOrRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
@@ -20,7 +19,6 @@ import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.api.dto.migrationmodel.TextContent
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefOrRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
@@ -175,58 +173,13 @@ fun aVariable(
     created = null,
 )
 
-fun aParaStyle(
-    id: String,
-    name: String? = "style$id",
-    originLocations: List<String> = emptyList(),
-    customFields: MutableMap<String, String> = mutableMapOf(),
-    definition: ParagraphStyleDefOrRef = aParaDef()
-): ParagraphStyle {
-    return ParagraphStyle(
-        id = id,
-        name = name,
-        originLocations = originLocations,
-        customFields = CustomFieldMap(customFields),
-        definition = definition,
-        lastUpdated = null,
-        created = null,
-    )
-}
-
-fun aParaDef(
-    leftIndent: Size? = null,
-    rightIndent: Size? = null,
-    defaultTabSize: Size? = null,
-    spaceBefore: Size? = null,
-    spaceAfter: Size? = null,
-    alignment: Alignment = Alignment.Left,
-    firstLineIndent: Size? = null,
-    lineSpacing: LineSpacing = LineSpacing.Additional(null),
-    keepWithNextParagraph: Boolean? = null,
-    tabs: Tabs? = null,
-    pdfTaggingRule: ParagraphPdfTaggingRule? = null,
-): ParagraphStyleDefinition {
-    return ParagraphStyleDefinition(
-        leftIndent = leftIndent,
-        rightIndent = rightIndent,
-        defaultTabSize = defaultTabSize,
-        spaceBefore = spaceBefore,
-        spaceAfter = spaceAfter,
-        alignment = alignment,
-        firstLineIndent = firstLineIndent,
-        lineSpacing = lineSpacing,
-        keepWithNextParagraph = keepWithNextParagraph,
-        tabs = tabs,
-        pdfTaggingRule = pdfTaggingRule,
-    )
-}
-
 fun aTextStyle(
     id: String,
     name: String? = "style$id",
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
-    definition: TextStyleDefOrRef = aTextDef(),
+    definition: TextStyleDefinition = aTextDef(),
+    targetId: TextStyleRef? = null,
 ): TextStyle {
     return TextStyle(
         id = id,
@@ -234,6 +187,7 @@ fun aTextStyle(
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
         definition = definition,
+        targetId = targetId,
         lastUpdated = null,
         created = null,
     )

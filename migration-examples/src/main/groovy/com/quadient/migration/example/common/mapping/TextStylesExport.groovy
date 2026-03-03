@@ -7,11 +7,8 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
-import com.quadient.migration.shared.Size
 import groovy.transform.Field
 
 import java.nio.file.Path
@@ -49,28 +46,13 @@ static void run(Migration migration, Path dstPath) {
             def builder = new StringBuilder()
             builder << "${Csv.serialize(style.id)},"
             builder << "${Csv.serialize(style.name)},"
-
-            if (definition instanceof TextStyleDefinition) {
-                builder << "," // targetId (empty)
-                builder << definitionOrder.collect {
-                    Csv.serialize(definition?."$it", getUnit(it))
-                }.join(",")
-                builder << ",${Csv.serialize(style.originLocations)}"
-            } else if (definition instanceof TextStyleRef) {
-                builder << "${Csv.serialize(definition.id)}," // targetId
-                builder << definitionOrder.collect { "" }.join(",")
-                builder << ",${Csv.serialize(style.originLocations)}"
-            }
+            builder << "${Csv.serialize(style.targetId?.id)},"
+            builder << definitionOrder.collect {
+                Csv.serialize(definition?."$it")
+            }.join(",")
+            builder << ",${Csv.serialize(style.originLocations)}"
 
             writer.writeLine(builder.toString())
         }
-    }
-}
-
-static Size.Unit getUnit(String name) {
-    if (name == "size") {
-        return Size.Unit.Points
-    } else {
-        return Size.Unit.Millimeters
     }
 }

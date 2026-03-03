@@ -25,24 +25,17 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
 
     override fun fromDb(row: ResultRow): TextStyle {
         val definitionEntity = row[TextStyleTable.definition]
-        val definition = when (definitionEntity) {
-            is com.quadient.migration.persistence.migrationmodel.TextStyleDefinitionEntity -> {
-                TextStyleDefinition(
-                    fontFamily = definitionEntity.fontFamily,
-                    foregroundColor = definitionEntity.foregroundColor,
-                    size = definitionEntity.size,
-                    bold = definitionEntity.bold,
-                    italic = definitionEntity.italic,
-                    underline = definitionEntity.underline,
-                    strikethrough = definitionEntity.strikethrough,
-                    superOrSubscript = definitionEntity.superOrSubscript,
-                    interspacing = definitionEntity.interspacing,
-                )
-            }
-            is com.quadient.migration.persistence.migrationmodel.TextStyleEntityRef -> {
-                TextStyleRef.fromDb(definitionEntity)
-            }
-        }
+        val definition = TextStyleDefinition(
+            fontFamily = definitionEntity.fontFamily,
+            foregroundColor = definitionEntity.foregroundColor,
+            size = definitionEntity.size,
+            bold = definitionEntity.bold,
+            italic = definitionEntity.italic,
+            underline = definitionEntity.underline,
+            strikethrough = definitionEntity.strikethrough,
+            superOrSubscript = definitionEntity.superOrSubscript,
+            interspacing = definitionEntity.interspacing,
+        )
 
         return TextStyle(
             id = row[TextStyleTable.id].value,
@@ -52,6 +45,7 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
             lastUpdated = row[TextStyleTable.lastUpdated],
             created = row[TextStyleTable.created],
             definition = definition,
+            targetId = row[TextStyleTable.targetId]?.let { TextStyleRef(it) },
         )
     }
 
@@ -81,6 +75,7 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
                 it[TextStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
                 it[TextStyleTable.customFields] = dto.customFields.inner
                 it[TextStyleTable.definition] = dto.definition.toDb()
+                it[TextStyleTable.targetId] = dto.targetId?.id
                 it[TextStyleTable.created] = existingItem?.created ?: now
                 it[TextStyleTable.lastUpdated] = now
             }.first()
@@ -92,7 +87,7 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
 
         val columns = listOf(
             "id", "project_name", "name", "origin_locations", "custom_fields",
-            "created", "last_updated", "definition"
+            "created", "last_updated", "definition", "target_id"
         )
         val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
@@ -115,18 +110,10 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
                 stmt.setTimestamp(index++, java.sql.Timestamp.from((existingItem?.created ?: now).toJavaInstant()))
                 stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
                 stmt.setObject(index++, Json.encodeToString(dto.definition.toDb()), Types.OTHER)
+                stmt.setString(index++, dto.targetId?.id)
             }
 
             stmt.executeUpdate()
-        }
-    }
-
-    fun firstWithDefinition(id: String): TextStyle? {
-        val model = find(id)
-        return when (val def = model?.definition) {
-            is TextStyleDefinition -> model
-            is TextStyleRef -> firstWithDefinition(def.id)
-            null -> null
         }
     }
 }

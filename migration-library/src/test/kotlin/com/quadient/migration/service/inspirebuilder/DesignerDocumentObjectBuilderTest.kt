@@ -12,6 +12,7 @@ import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Table
+import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
@@ -872,9 +873,7 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `font data are gathered only once per multiple builds`() {
         // given
-        val textStyle = aTextStyle("TS_1", definition = aTextDef(fontFamily = "Calibri", bold = true))
-        every { textStyleRepository.listAll() } returns listOf(textStyle)
-        every { textStyleRepository.firstWithDefinition(textStyle.id) } returns textStyle
+        val textStyle = mockTextStyle(aTextStyle("TS_1", definition = aTextDef(fontFamily = "Calibri", bold = true)))
 
         val blockA =
             mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText(StringValue("Hello There!"), textStyle.id)))))
@@ -913,6 +912,13 @@ class DesignerDocumentObjectBuilderTest {
     private fun mockVarStructure(variableStructure: VariableStructure): VariableStructure {
         every { variableStructureRepository.findOrFail(variableStructure.id) } returns variableStructure
         return variableStructure
+    }
+
+    private fun mockTextStyle(textStyle: TextStyle): TextStyle {
+        every { textStyleRepository.findOrFail(textStyle.id) } returns textStyle
+        val currentAllStyles = textStyleRepository.listAll()
+        every { textStyleRepository.listAll() } returns currentAllStyles + textStyle
+        return textStyle
     }
 
     private fun aSubject(config: ProjectConfig) = DesignerDocumentObjectBuilder(

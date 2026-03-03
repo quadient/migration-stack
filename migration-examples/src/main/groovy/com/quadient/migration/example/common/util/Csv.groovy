@@ -7,7 +7,7 @@ import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Size
 
 static String serialize(Object obj) {
-    return serialize(obj, Size.Unit.Millimeters)
+    return serialize(obj, null)
 }
 
 static List<String> split(String line) {
@@ -94,7 +94,7 @@ static String serialize(Object obj, Size.Unit unitOverride) {
         }
         case Double: return obj.toString()
         case Color: return obj.toHex()
-        case Size: return obj.toString(unitOverride)
+        case Size: return unitOverride != null ? obj.toString(unitOverride) : obj.toString()
         case Tabs: return """{ "tabs": ${serialize(obj.tabs)}; "useOutsideTabs": "${serialize(obj.useOutsideTabs)}" }"""
         case Tab: return """{ "position": ${serialize(obj.position)}; "type": "${serialize(obj.type)}" }"""
         case List: return """[${obj.collect { serialize(it) }.join("; ")}]"""
@@ -127,7 +127,10 @@ static <T> T deserialize(String value, Class<T> cls) {
     }
 
     switch (cls) {
-        case String: return value as T
+        case String: {
+            def trimmed = value.trim()
+            return (trimmed.isEmpty() ? null : trimmed) as T
+        }
         case Color: return Color.fromHex(value) as T
         case Size: return Size.fromString(value) as T
         case Boolean:

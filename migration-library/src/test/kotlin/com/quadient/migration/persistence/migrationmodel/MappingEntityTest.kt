@@ -1,12 +1,10 @@
 package com.quadient.migration.persistence.migrationmodel
 
 import com.quadient.migration.api.dto.migrationmodel.Area
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.Color
@@ -22,11 +20,7 @@ import com.quadient.migration.shared.points
 import com.quadient.migration.tools.aBlockDto
 import com.quadient.migration.tools.aImageDto
 import com.quadient.migration.tools.aParagraph
-import com.quadient.migration.tools.aParagraphStyle
-import com.quadient.migration.tools.aParagraphStyleDefinition
 import com.quadient.migration.tools.aText
-import com.quadient.migration.tools.aTextStyle
-import com.quadient.migration.tools.aTextStyleDefinition
 import com.quadient.migration.tools.aVariable
 import com.quadient.migration.tools.shouldBeEqualTo
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -216,65 +210,28 @@ class MappingEntityTest {
     @Nested
     inner class ParagraphStyleTest {
         @Test
-        fun `nothing changes for paragraph style with null mapping`() {
+        fun `null mapping overwrites name and targetId, preserves definition`() {
             val mapping = MappingItemEntity.ParagraphStyle(
                 name = null,
+                targetId = null,
                 definition = null,
             )
-            val refDto = aParagraphStyle("para1", name = "para1", definition = ParagraphStyleRef("other"))
-            val defDto = aParagraphStyle(
-                "para2", name = "para2", definition = aParagraphStyleDefinition(
-                    defaultTabSize = 10.0.millimeters(),
-                    leftIndent = 5.0.millimeters(),
-                    rightIndent = 5.0.millimeters(),
-                    spaceAfter = 10.0.millimeters(),
-                    spaceBefore = 10.0.millimeters(),
-                    alignment = Alignment.JustifyLeft,
-                    firstLineIndent = 2.0.millimeters(),
-                    lineSpacing = LineSpacing.ExactFromPrevious(12.0.millimeters()),
-                    keepWithNextParagraph = true
-                )
-            )
-
-            val refResult = mapping.apply(refDto)
-            val defResult = mapping.apply(defDto)
-
-            assertEquals(refResult.name, "para1")
-            assertEquals(refResult.definition, ParagraphStyleRef("other"))
-
-            assertEquals(defResult.name, "para2")
-            assertEquals(defResult.definition, defDto.definition)
-        }
-
-        @Test
-        fun `overrides with ref mapping`() {
-            val mapping = MappingItemEntity.ParagraphStyle(
-                name = "new name", definition = MappingItemEntity.ParagraphStyle.Ref("new other")
-            )
-            val dto = aParagraphStyle(
-                "para1", name = "para1", definition = aParagraphStyleDefinition(
-                    defaultTabSize = 10.0.millimeters(),
-                    leftIndent = 5.0.millimeters(),
-                    rightIndent = 5.0.millimeters(),
-                    spaceAfter = 10.0.millimeters(),
-                    spaceBefore = 10.0.millimeters(),
-                    alignment = Alignment.JustifyLeft,
-                    firstLineIndent = 2.0.millimeters(),
-                    lineSpacing = LineSpacing.ExactFromPrevious(12.0.millimeters()),
-                    keepWithNextParagraph = true
-                )
-            )
+            val dto = ParagraphStyleBuilder("para1").name("para1").styleRef("other").definition {
+                alignment(Alignment.JustifyLeft)
+                defaultTabSize(10.0.millimeters())
+            }.build()
 
             val result = mapping.apply(dto)
 
-            assertEquals(result.name, "new name")
-            assertEquals(result.definition, ParagraphStyleRef("new other"))
+            assertEquals(null, result.name)
+            assertEquals(null, result.targetId)
+            assertEquals(dto.definition, result.definition)
         }
 
         @Test
-        fun `overrides with def mapping`() {
+        fun `full mapping applies name, targetId and definition`() {
             val mapping = MappingItemEntity.ParagraphStyle(
-                name = "new name", definition = MappingItemEntity.ParagraphStyle.Def(
+                name = "new name", targetId = "new other", definition = MappingItemEntity.ParagraphStyle.Def(
                     defaultTabSize = 15.0.millimeters(),
                     leftIndent = 6.0.millimeters(),
                     rightIndent = 6.0.millimeters(),
@@ -288,116 +245,67 @@ class MappingEntityTest {
                     pdfTaggingRule = ParagraphPdfTaggingRule.Heading1
                 )
             )
-            val dto = aParagraphStyle(
-                "para1", name = "para1", definition = aParagraphStyleDefinition(
-                    defaultTabSize = 10.0.millimeters(),
-                    leftIndent = 5.0.millimeters(),
-                    rightIndent = 5.0.millimeters(),
-                    spaceAfter = 10.0.millimeters(),
-                    spaceBefore = 10.0.millimeters(),
-                    alignment = Alignment.JustifyLeft,
-                    firstLineIndent = 2.0.millimeters(),
-                    lineSpacing = LineSpacing.ExactFromPrevious(12.0.millimeters()),
-                    keepWithNextParagraph = true,
-                    tabs = null,
-                    pdfTaggingRule = null,
-                )
-            )
+            val dto = ParagraphStyleBuilder("para1").name("para1").definition { }.build()
 
             val result = mapping.apply(dto)
             val resultDef = result.definition
-            if (resultDef !is ParagraphStyleDefinition) {
-                throw AssertionError("Expected ParagraphStyleDefinition, got ${resultDef::class.simpleName}")
-            }
 
-            assertEquals(result.name, "new name")
-            assertEquals(resultDef.defaultTabSize, 15.0.millimeters())
-            assertEquals(resultDef.leftIndent, 6.0.millimeters())
-            assertEquals(resultDef.rightIndent, 6.0.millimeters())
-            assertEquals(resultDef.spaceAfter, 12.0.millimeters())
-            assertEquals(resultDef.spaceBefore, 12.0.millimeters())
-            assertEquals(resultDef.alignment, Alignment.JustifyCenter)
-            assertEquals(resultDef.firstLineIndent, 3.0.millimeters())
-            assertEquals(resultDef.lineSpacing, LineSpacing.ExactFromPrevious(14.0.millimeters()))
-            assertEquals(resultDef.keepWithNextParagraph, false)
-            assertEquals(resultDef.tabs?.tabs?.size, 0)
-            assertEquals(resultDef.tabs?.useOutsideTabs, true)
+            assertEquals("new name", result.name)
+            assertEquals("new other", result.targetId?.id)
+            assertEquals(15.0.millimeters(), resultDef.defaultTabSize)
+            assertEquals(6.0.millimeters(), resultDef.leftIndent)
+            assertEquals(6.0.millimeters(), resultDef.rightIndent)
+            assertEquals(12.0.millimeters(), resultDef.spaceAfter)
+            assertEquals(12.0.millimeters(), resultDef.spaceBefore)
+            assertEquals(Alignment.JustifyCenter, resultDef.alignment)
+            assertEquals(3.0.millimeters(), resultDef.firstLineIndent)
+            assertEquals(LineSpacing.ExactFromPrevious(14.0.millimeters()), resultDef.lineSpacing)
+            assertEquals(false, resultDef.keepWithNextParagraph)
+            assertEquals(0, resultDef.tabs?.tabs?.size)
+            assertEquals(true, resultDef.tabs?.useOutsideTabs)
+            assertEquals(ParagraphPdfTaggingRule.Heading1, resultDef.pdfTaggingRule)
         }
 
         @Test
-        fun `overrides ref with def mapping`() {
+        fun `mapping without definition preserves existing definition`() {
             val mapping = MappingItemEntity.ParagraphStyle(
-                name = "new name", definition = MappingItemEntity.ParagraphStyle.Def(
-                    defaultTabSize = 15.0.millimeters(),
-                    leftIndent = 6.0.millimeters(),
-                    rightIndent = 6.0.millimeters(),
-                    spaceAfter = 12.0.millimeters(),
-                    spaceBefore = 12.0.millimeters(),
-                    alignment = Alignment.JustifyCenter,
-                    firstLineIndent = 3.0.millimeters(),
-                    lineSpacing = LineSpacing.ExactFromPrevious(14.0.millimeters()),
-                    keepWithNextParagraph = false,
-                    tabs = TabsEntity(tabs = emptyList(), useOutsideTabs = true),
-                    pdfTaggingRule = ParagraphPdfTaggingRule.Paragraph
-                )
+                name = "new name", targetId = "new other", definition = null
             )
-            val dto = aParagraphStyle("para1", name = "para1", definition = ParagraphStyleRef("other"))
+            val dto = ParagraphStyleBuilder("para1").name("para1").definition {
+                alignment(Alignment.JustifyLeft)
+                defaultTabSize(10.0.millimeters())
+            }.build()
 
             val result = mapping.apply(dto)
-            val resultDef = result.definition
-            if (resultDef !is ParagraphStyleDefinition) {
-                throw AssertionError("Expected ParagraphStyleDefinition, got ${resultDef::class.simpleName}")
-            }
 
-            assertEquals(result.name, "new name")
-            assertEquals(resultDef.defaultTabSize, 15.0.millimeters())
-            assertEquals(resultDef.leftIndent, 6.0.millimeters())
-            assertEquals(resultDef.rightIndent, 6.0.millimeters())
-            assertEquals(resultDef.spaceAfter, 12.0.millimeters())
-            assertEquals(resultDef.spaceBefore, 12.0.millimeters())
-            assertEquals(resultDef.alignment, Alignment.JustifyCenter)
-            assertEquals(resultDef.firstLineIndent, 3.0.millimeters())
-            assertEquals(resultDef.lineSpacing, LineSpacing.ExactFromPrevious(14.0.millimeters()))
-            assertEquals(resultDef.keepWithNextParagraph, false)
-            assertEquals(resultDef.tabs?.tabs?.size, 0)
-            assertEquals(resultDef.tabs?.useOutsideTabs, true)
-            assertEquals(resultDef.pdfTaggingRule, ParagraphPdfTaggingRule.Paragraph)
+            assertEquals("new name", result.name)
+            assertEquals("new other", result.targetId?.id)
+            assertEquals(dto.definition, result.definition)
         }
     }
 
     @Nested
     inner class TextStyleTest {
         @Test
-        fun `nothing changes for text style with null mapping`() {
+        fun `null mapping overwrites name and targetId, preserves definition`() {
             val mapping = MappingItemEntity.TextStyle(
                 name = null,
+                targetId = null,
                 definition = null,
             )
-            val dto = aTextStyle("text1", name = "Text Style 1", definition = aTextStyleDefinition())
+            val dto = TextStyleBuilder("text1").name("Text Style 1").styleRef("other").definition { }.build()
 
             val result = mapping.apply(dto)
 
-            assertEquals(result.name, "Text Style 1")
-            assertEquals(result.definition, dto.definition)
+            assertEquals(null, result.name)
+            assertEquals(null, result.targetId)
+            assertEquals(dto.definition, result.definition)
         }
 
         @Test
-        fun `overrides with ref mapping`() {
+        fun `full mapping applies name, targetId and definition`() {
             val mapping = MappingItemEntity.TextStyle(
-                name = "new name", definition = MappingItemEntity.TextStyle.Ref("new other")
-            )
-            val dto = aTextStyle("text1", name = "Text Style 1", definition = aTextStyleDefinition())
-
-            val result = mapping.apply(dto)
-
-            assertEquals(result.name, "new name")
-            assertEquals(result.definition, TextStyleRef("new other"))
-        }
-
-        @Test
-        fun `overrides with def mapping`() {
-            val mapping = MappingItemEntity.TextStyle(
-                name = "new name", definition = MappingItemEntity.TextStyle.Def(
+                name = "new name", targetId = "new other", definition = MappingItemEntity.TextStyle.Def(
                     fontFamily = "New Font",
                     size = 12.0.points(),
                     foregroundColor = Color.fromHex("#FF0000"),
@@ -409,59 +317,36 @@ class MappingEntityTest {
                     interspacing = 1.0.points(),
                 )
             )
-            val dto = aTextStyle("text1", name = "Text Style 1", definition = aTextStyleDefinition())
+            val dto = TextStyleBuilder("text1").name("Text Style 1").definition { }.build()
 
             val result = mapping.apply(dto)
             val resultDef = result.definition
-            if (resultDef !is TextStyleDefinition) {
-                throw AssertionError("Expected TextStyleDefinition, got ${resultDef::class.simpleName}")
-            }
 
-            assertEquals(result.name, "new name")
-            assertEquals(resultDef.fontFamily, "New Font")
-            assertEquals(resultDef.size, 12.0.points())
-            assertEquals(resultDef.foregroundColor, Color.fromHex("#FF0000"))
-            assertEquals(resultDef.bold, true)
-            assertEquals(resultDef.italic, false)
-            assertEquals(resultDef.underline, false)
-            assertEquals(resultDef.strikethrough, false)
-            assertEquals(resultDef.superOrSubscript, SuperOrSubscript.Subscript)
-            assertEquals(resultDef.interspacing, 1.0.points())
+            assertEquals("new name", result.name)
+            assertEquals("new other", result.targetId?.id)
+            assertEquals("New Font", resultDef.fontFamily)
+            assertEquals(12.0.points(), resultDef.size)
+            assertEquals(Color.fromHex("#FF0000"), resultDef.foregroundColor)
+            assertEquals(true, resultDef.bold)
+            assertEquals(false, resultDef.italic)
+            assertEquals(false, resultDef.underline)
+            assertEquals(false, resultDef.strikethrough)
+            assertEquals(SuperOrSubscript.Subscript, resultDef.superOrSubscript)
+            assertEquals(1.0.points(), resultDef.interspacing)
         }
 
         @Test
-        fun `overrides ref with def mapping`() {
+        fun `mapping without definition preserves existing definition`() {
             val mapping = MappingItemEntity.TextStyle(
-                name = "new name", definition = MappingItemEntity.TextStyle.Def(
-                    fontFamily = "New Font",
-                    size = 12.0.points(),
-                    foregroundColor = Color.fromHex("#FF0000"),
-                    bold = true,
-                    italic = false,
-                    underline = false,
-                    strikethrough = false,
-                    superOrSubscript = SuperOrSubscript.Subscript,
-                    interspacing = 1.0.points(),
-                )
+                name = "new name", targetId = "new other", definition = null
             )
-            val dto = aTextStyle("text1", name = "Text Style 1", definition = TextStyleRef("other"))
+            val dto = TextStyleBuilder("text1").name("Text Style 1").definition { }.build()
 
             val result = mapping.apply(dto)
-            val resultDef = result.definition
-            if (resultDef !is TextStyleDefinition) {
-                throw AssertionError("Expected TextStyleDefinition, got ${resultDef::class.simpleName}")
-            }
 
-            assertEquals(result.name, "new name")
-            assertEquals(resultDef.fontFamily, "New Font")
-            assertEquals(resultDef.size, 12.0.points())
-            assertEquals(resultDef.foregroundColor, Color.fromHex("#FF0000"))
-            assertEquals(resultDef.bold, true)
-            assertEquals(resultDef.italic, false)
-            assertEquals(resultDef.underline, false)
-            assertEquals(resultDef.strikethrough, false)
-            assertEquals(resultDef.superOrSubscript, SuperOrSubscript.Subscript)
-            assertEquals(resultDef.interspacing, 1.0.points())
+            assertEquals("new name", result.name)
+            assertEquals("new other", result.targetId?.id)
+            assertEquals(dto.definition, result.definition)
         }
     }
 

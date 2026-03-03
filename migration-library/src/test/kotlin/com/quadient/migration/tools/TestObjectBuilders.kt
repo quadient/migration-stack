@@ -17,7 +17,6 @@ import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefOrRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.StatusTracking
@@ -26,7 +25,6 @@ import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.api.dto.migrationmodel.TextContent
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefOrRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
@@ -291,7 +289,8 @@ fun aParagraphStyle(
     name: String? = "style$id",
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
-    definition: ParagraphStyleDefOrRef = aParagraphStyleDefinition()
+    definition: ParagraphStyleDefinition = aParagraphStyleDefinition(),
+    targetId: ParagraphStyleRef? = null,
 ): ParagraphStyle {
     return ParagraphStyle(
         id = id,
@@ -300,7 +299,8 @@ fun aParagraphStyle(
         customFields = CustomFieldMap(customFields),
         created = kotlinx.datetime.Clock.System.now(),
         lastUpdated = kotlinx.datetime.Clock.System.now(),
-        definition = definition
+        definition = definition,
+        targetId = targetId,
     )
 }
 
@@ -337,7 +337,8 @@ fun aTextStyle(
     name: String? = "style$id",
     originLocations: List<String> = emptyList(),
     customFields: MutableMap<String, String> = mutableMapOf(),
-    definition: TextStyleDefOrRef = aTextStyleDefinition()
+    definition: TextStyleDefinition = aTextStyleDefinition(),
+    targetId: TextStyleRef? = null,
 ): TextStyle {
     return TextStyle(
         id = id,
@@ -346,7 +347,8 @@ fun aTextStyle(
         customFields = CustomFieldMap(customFields),
         created = kotlinx.datetime.Clock.System.now(),
         lastUpdated = kotlinx.datetime.Clock.System.now(),
-        definition = definition
+        definition = definition,
+        targetId = targetId,
     )
 }
 

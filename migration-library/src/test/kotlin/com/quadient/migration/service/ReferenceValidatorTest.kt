@@ -156,11 +156,11 @@ class ReferenceValidatorTest {
 
     @Test
     fun `validates text and paragraph style refs`() {
-        textStyleRepo.upsert(aTextStyle("text1", definition = TextStyleRef("textref1")))
-        textStyleRepo.upsert(aTextStyle("textref1", definition = TextStyleRef("textref2")))
+        textStyleRepo.upsert(aTextStyle("text1", targetId = TextStyleRef("textref1")))
+        textStyleRepo.upsert(aTextStyle("textref1", targetId = TextStyleRef("textref2")))
         textStyleRepo.upsert(aTextStyle("textref2"))
-        paraStyleRepo.upsert(aParagraphStyle("para1", definition = ParagraphStyleRef("pararef1")))
-        paraStyleRepo.upsert(aParagraphStyle("pararef1", definition = ParagraphStyleRef("pararef2")))
+        paraStyleRepo.upsert(aParagraphStyle("para1", targetId = ParagraphStyleRef("pararef1")))
+        paraStyleRepo.upsert(aParagraphStyle("pararef1", targetId = ParagraphStyleRef("pararef2")))
         paraStyleRepo.upsert(aParagraphStyle("pararef2"))
 
         val result = subject.validateAll()
@@ -170,10 +170,10 @@ class ReferenceValidatorTest {
 
     @Test
     fun `validates text and paragraph style refs when refs are missing`() {
-        textStyleRepo.upsert(aTextStyle("text1", definition = TextStyleRef("textref1")))
-        textStyleRepo.upsert(aTextStyle("textref1", definition = TextStyleRef("textref2")))
-        paraStyleRepo.upsert(aParagraphStyle("para1", definition = ParagraphStyleRef("pararef1")))
-        paraStyleRepo.upsert(aParagraphStyle("pararef1", definition = ParagraphStyleRef("pararef2")))
+        textStyleRepo.upsert(aTextStyle("text1", targetId = TextStyleRef("textref1")))
+        textStyleRepo.upsert(aTextStyle("textref1", targetId = TextStyleRef("textref2")))
+        paraStyleRepo.upsert(aParagraphStyle("para1", targetId = ParagraphStyleRef("pararef1")))
+        paraStyleRepo.upsert(aParagraphStyle("pararef1", targetId = ParagraphStyleRef("pararef2")))
 
         val result = subject.validateAll()
 

@@ -12,12 +12,6 @@ sealed interface TextContentEntity
 sealed interface VariableStringContentEntity : TextContentEntity
 
 @Serializable
-sealed interface TextStyleDefOrRefEntity
-
-@Serializable
-sealed interface ParagraphStyleDefOrRefEntity
-
-@Serializable
 data class DocumentObjectEntityRef(val id: String, val displayRuleRef: DisplayRuleEntityRef? = null) : RefEntity,
     DocumentContentEntity, TextContentEntity
 
@@ -25,10 +19,10 @@ data class DocumentObjectEntityRef(val id: String, val displayRuleRef: DisplayRu
 data class VariableEntityRef(val id: String) : RefEntity, VariableStringContentEntity
 
 @Serializable
-data class TextStyleEntityRef(val id: String) : RefEntity, TextStyleDefOrRefEntity
+data class TextStyleEntityRef(val id: String) : RefEntity
 
 @Serializable
-data class ParagraphStyleEntityRef(val id: String) : RefEntity, ParagraphStyleDefOrRefEntity
+data class ParagraphStyleEntityRef(val id: String) : RefEntity
 
 @Serializable
 data class DisplayRuleEntityRef(val id: String)

@@ -14,7 +14,7 @@ data class TextStyleDefinitionEntity(
     val italic: Boolean = false,
     val underline: Boolean = false,
     val strikethrough: Boolean = false,
-    val superOrSubscript: SuperOrSubscript,
-    val interspacing: Size?,
-) : TextStyleDefOrRefEntity
+    val superOrSubscript: SuperOrSubscript = SuperOrSubscript.None,
+    val interspacing: Size? = null,
+)
 

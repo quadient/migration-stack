@@ -44,9 +44,11 @@ sealed class MappingItem {
         var targetImageId: String? = null,
     ) : MappingItem()
 
-    data class ParagraphStyle(override var name: String?, var definition: Definition?) : MappingItem() {
-        sealed interface Definition
-        data class Ref(val targetId: String) : Definition
+    data class ParagraphStyle(
+        override var name: String?,
+        var targetId: String? = null,
+        var definition: Def? = null
+    ) : MappingItem() {
         data class Def(
             var leftIndent: Size?,
             var rightIndent: Size?,
@@ -59,12 +61,14 @@ sealed class MappingItem {
             var keepWithNextParagraph: Boolean?,
             var tabs: Tabs?,
             var pdfTaggingRule: ParagraphPdfTaggingRule?,
-        ) : Definition
+        )
     }
 
-    data class TextStyle(override var name: String?, var definition: Definition?) : MappingItem() {
-        sealed interface Definition
-        data class Ref(val targetId: String) : Definition
+    data class TextStyle(
+        override var name: String?,
+        var targetId: String? = null,
+        var definition: Def? = null
+    ) : MappingItem() {
         data class Def(
             var fontFamily: String?,
             var foregroundColor: Color?,
@@ -75,7 +79,7 @@ sealed class MappingItem {
             var strikethrough: Boolean?,
             var superOrSubscript: SuperOrSubscript?,
             var interspacing: Size?,
-        ) : Definition
+        )
     }
 
     data class Variable(
@@ -131,14 +135,11 @@ sealed class MappingItem {
             }
 
             is MappingItem.ParagraphStyle -> {
-                val def = definition
                 MappingItemEntity.ParagraphStyle(
-                    name = this.name, definition = when (def) {
-                        is MappingItem.ParagraphStyle.Ref -> MappingItemEntity.ParagraphStyle.Ref(
-                            targetId = def.targetId
-                        )
-
-                        is MappingItem.ParagraphStyle.Def -> MappingItemEntity.ParagraphStyle.Def(
+                    name = this.name,
+                    targetId = this.targetId,
+                    definition = this.definition?.let { def ->
+                        MappingItemEntity.ParagraphStyle.Def(
                             leftIndent = def.leftIndent,
                             rightIndent = def.rightIndent,
                             defaultTabSize = def.defaultTabSize,
@@ -151,23 +152,16 @@ sealed class MappingItem {
                             tabs = def.tabs?.toDb(),
                             pdfTaggingRule = def.pdfTaggingRule
                         )
-
-                        null -> null
                     }
                 )
             }
 
             is MappingItem.TextStyle -> {
-                val def = definition
                 MappingItemEntity.TextStyle(
                     name = this.name,
-
-                    definition = when (def) {
-                        is MappingItem.TextStyle.Ref -> MappingItemEntity.TextStyle.Ref(
-                            targetId = def.targetId
-                        )
-
-                        is MappingItem.TextStyle.Def -> MappingItemEntity.TextStyle.Def(
+                    targetId = this.targetId,
+                    definition = this.definition?.let { def ->
+                        MappingItemEntity.TextStyle.Def(
                             fontFamily = def.fontFamily,
                             foregroundColor = def.foregroundColor,
                             size = def.size,
@@ -178,8 +172,6 @@ sealed class MappingItem {
                             superOrSubscript = def.superOrSubscript,
                             interspacing = def.interspacing
                         )
-
-                        null -> null
                     }
                 )
             }

@@ -5,8 +5,6 @@ package com.quadient.migration.service.deploy
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.Repository
@@ -159,9 +157,8 @@ class DesignerDeployClient(
         val deploymentId = Uuid.random()
         val deploymentTimestamp = Clock.System.now()
 
-        val textStyles = textStyleRepository.listAll().filter { it.definition is TextStyleDefinition }
-        val paragraphStyles =
-            paragraphStyleRepository.listAll().filter { it.definition is ParagraphStyleDefinition }
+        val textStyles = textStyleRepository.listAll().filter { it.targetId == null }
+        val paragraphStyles = paragraphStyleRepository.listAll().filter { it.targetId == null }
         val outputPath = documentObjectBuilder.getStyleDefinitionPath()
         val xml2wfdResult =
             ipsService.xml2wfd(documentObjectBuilder.buildStyles(textStyles, paragraphStyles), outputPath)
