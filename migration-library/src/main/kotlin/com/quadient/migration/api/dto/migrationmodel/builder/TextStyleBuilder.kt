@@ -30,7 +30,7 @@ class TextStyleBuilder(id: String) : DtoBuilderBase<TextStyle, TextStyleBuilder>
             name = name,
             originLocations = originLocations,
             customFields = customFields,
-            definition = definition ?: throw IllegalArgumentException("TextStyleDefinition must be provided"),
+            definition = definition ?: TextStyleDefinitionBuilder().build(),
             targetId = targetId,
         )
     }

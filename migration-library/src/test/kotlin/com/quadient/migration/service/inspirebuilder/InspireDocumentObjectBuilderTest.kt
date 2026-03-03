@@ -8,6 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
@@ -15,6 +16,8 @@ import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
@@ -26,6 +29,7 @@ import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
@@ -370,41 +374,62 @@ class InspireDocumentObjectBuilderTest {
         variableScript.shouldBeEqualTo("return 'Jon ' + DATA.Clients.Current.Middle_Name.toString() + ' Doe ' + '\$noStruct$';")
     }
 
-    private fun mockObj(documentObject: DocumentObject): DocumentObject {
-        every { documentObjectRepository.findOrFail(documentObject.id) } returns documentObject
-        return documentObject
+    @Test
+    fun `text style with targetId resolves to target style`() {
+        // given
+        val targetStyle = mockTextStyle(
+            TextStyleBuilder("TS_target").name("Target Style").definition { fontFamily("Arial").bold(true) }.build()
+        )
+        val refStyle = mockTextStyle(TextStyleBuilder("TS_ref").name("Ref Style").styleRef(targetStyle.id).build())
+
+        val block = mockObj(
+            DocumentObjectBuilder(
+                "B_1", DocumentObjectType.Block
+            ).paragraph { text { string("Hello").styleRef(refStyle.id) } }.build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val contentFlow = getFlowAreaContentFlow(result)
+        val textNodePath = contentFlow["FlowContent"]["P"]["T"]["Id"].textValue()
+        textNodePath.shouldBeEqualTo("TextStyles.${targetStyle.name}")
+
+        val textStyleId = result["TextStyle"].first { it["Name"]?.textValue() == targetStyle.name }["Id"].textValue()
+        val textStyleContent = result["TextStyle"].last { it["Id"].textValue() == textStyleId }
+        textStyleContent["FontId"].textValue().shouldBeEqualTo("Def.Font")
+        textStyleContent["Bold"].textValue().shouldBeEqualTo("True")
     }
 
-    private fun mockAttachment(attachment: Attachment): Attachment {
-        every { attachmentRepository.findOrFail(attachment.id) } returns attachment
-        every { attachmentRepository.find(attachment.id) } returns attachment
-        return attachment
-    }
+    @Test
+    fun `paragraph style with targetId resolves to target style`() {
+        // given
+        val targetStyle = mockParagraphStyle(
+            ParagraphStyleBuilder("PS_Target").name("Target Style").definition { alignment(Alignment.Center) }.build()
+        )
+        val refStyle = mockParagraphStyle(
+            ParagraphStyleBuilder("PS_Ref").name("Ref Para Style").styleRef(targetStyle.id).build()
+        )
 
-    private fun mockVar(variable: Variable): Variable {
-        every { variableRepository.findOrFail(variable.id) } returns variable
-        every { variableRepository.find(variable.id) } returns variable
-        return variable
-    }
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", DocumentObjectType.Block).paragraph {
+                text { string("Hello") }.styleRef(refStyle.id)
+            }.build()
+        )
 
-    private fun mockVarStructure(variableStructure: VariableStructure): VariableStructure {
-        every { variableStructureRepository.findOrFail(variableStructure.id) } returns variableStructure
-        val currentAllStructures = variableStructureRepository.listAll()
-        every { variableStructureRepository.listAll() } returns currentAllStructures + variableStructure
-        return variableStructure
-    }
+        // when
+        val result =
+            subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
-    private fun mockTextStyle(textStyle: TextStyle): TextStyle {
-        every { textStyleRepository.firstWithDefinition(textStyle.id) } returns textStyle
-        val currentAllStyles = textStyleRepository.listAll()
-        every { textStyleRepository.listAll() } returns currentAllStyles + textStyle
-        return textStyle
-    }
+        // then
+        val contentFlow = getFlowAreaContentFlow(result)
+        val paraNodePath = contentFlow["FlowContent"]["P"]["Id"].textValue()
+        paraNodePath.shouldBeEqualTo("ParagraphStyles.${targetStyle.name}")
 
-    private fun mockImage(image: com.quadient.migration.api.dto.migrationmodel.Image): com.quadient.migration.api.dto.migrationmodel.Image {
-        every { imageRepository.findOrFail(image.id) } returns image
-        every { imageRepository.find(image.id) } returns image
-        return image
+        val paraStyleId = result["ParaStyle"].first { it["Name"]?.textValue() == targetStyle.name }["Id"].textValue()
+        val paraStyleContent = result["ParaStyle"].last { it["Id"].textValue() == paraStyleId }
+        paraStyleContent["HAlign"].textValue().shouldBeEqualTo("Center")
     }
 
     @Test
@@ -475,5 +500,49 @@ class InspireDocumentObjectBuilderTest {
             variableStructure = aVariableStructure("some struct"),
             findVar = { aVariable(it) }
         ) ?: error("No definition")
+    }
+
+    private fun mockObj(documentObject: DocumentObject): DocumentObject {
+        every { documentObjectRepository.findOrFail(documentObject.id) } returns documentObject
+        return documentObject
+    }
+
+    private fun mockAttachment(attachment: Attachment): Attachment {
+        every { attachmentRepository.findOrFail(attachment.id) } returns attachment
+        every { attachmentRepository.find(attachment.id) } returns attachment
+        return attachment
+    }
+
+    private fun mockVar(variable: Variable): Variable {
+        every { variableRepository.findOrFail(variable.id) } returns variable
+        every { variableRepository.find(variable.id) } returns variable
+        return variable
+    }
+
+    private fun mockVarStructure(variableStructure: VariableStructure): VariableStructure {
+        every { variableStructureRepository.findOrFail(variableStructure.id) } returns variableStructure
+        val currentAllStructures = variableStructureRepository.listAll()
+        every { variableStructureRepository.listAll() } returns currentAllStructures + variableStructure
+        return variableStructure
+    }
+
+    private fun mockTextStyle(textStyle: TextStyle): TextStyle {
+        every { textStyleRepository.findOrFail(textStyle.id) } returns textStyle
+        val currentAllStyles = textStyleRepository.listAll()
+        every { textStyleRepository.listAll() } returns currentAllStyles + textStyle
+        return textStyle
+    }
+
+    private fun mockParagraphStyle(paragraphStyle: ParagraphStyle): ParagraphStyle {
+        every { paragraphStyleRepository.findOrFail(paragraphStyle.id) } returns paragraphStyle
+        val currentAllStyles = paragraphStyleRepository.listAll()
+        every { paragraphStyleRepository.listAll() } returns currentAllStyles + paragraphStyle
+        return paragraphStyle
+    }
+
+    private fun mockImage(image: com.quadient.migration.api.dto.migrationmodel.Image): com.quadient.migration.api.dto.migrationmodel.Image {
+        every { imageRepository.findOrFail(image.id) } returns image
+        every { imageRepository.find(image.id) } returns image
+        return image
     }
 }

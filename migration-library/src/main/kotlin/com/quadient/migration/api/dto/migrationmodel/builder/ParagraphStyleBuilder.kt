@@ -32,7 +32,7 @@ class ParagraphStyleBuilder(id: String) : DtoBuilderBase<ParagraphStyle, Paragra
             name = name,
             originLocations = originLocations,
             customFields = customFields,
-            definition = definition ?: throw IllegalArgumentException("ParagraphStyleDefinition must be provided"),
+            definition = definition ?: ParagraphStyleDefinitionBuilder().build(),
             targetId = targetId,
         )
     }

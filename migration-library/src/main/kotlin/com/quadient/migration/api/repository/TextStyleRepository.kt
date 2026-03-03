@@ -115,10 +115,4 @@ class TextStyleRepository(table: TextStyleTable, projectName: String) :
             stmt.executeUpdate()
         }
     }
-
-    fun firstWithDefinition(id: String): TextStyle? {
-        val model = find(id)
-        val targetId = model?.targetId
-        return if (targetId == null) model else firstWithDefinition(targetId)
-    }
 }
