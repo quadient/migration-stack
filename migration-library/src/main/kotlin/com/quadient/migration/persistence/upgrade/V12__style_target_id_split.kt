@@ -61,6 +61,39 @@ class V12__style_target_id_split : BaseJavaMigration() {
 
         migrateStyleMappings(connection, "TextStyle")
         migrateStyleMappings(connection, "ParagraphStyle")
+
+        connection.prepareStatement(
+            """
+            UPDATE text_style
+            SET definition = jsonb_set(
+                definition,
+                '{size}',
+                to_jsonb(ROUND(
+                    REPLACE(definition->>'size', 'mm', '')::numeric * (72::numeric / 25.4::numeric),
+                    2
+                )::text || 'pt'),
+                false
+            )
+            WHERE definition->>'size' LIKE '%mm'
+            """.trimIndent()
+        ).executeUpdate()
+
+        connection.prepareStatement(
+            """
+            UPDATE mapping
+            SET mappings = jsonb_set(
+                mappings,
+                '{definition,size}',
+                to_jsonb(ROUND(
+                    REPLACE(mappings->'definition'->>'size', 'mm', '')::numeric * (72::numeric / 25.4::numeric),
+                    2
+                )::text || 'pt'),
+                false
+            )
+            WHERE type = 'TextStyle'
+              AND mappings->'definition'->>'size' LIKE '%mm'
+            """.trimIndent()
+        ).executeUpdate()
     }
 
     private fun migrateStyleMappings(connection: java.sql.Connection, type: String) {

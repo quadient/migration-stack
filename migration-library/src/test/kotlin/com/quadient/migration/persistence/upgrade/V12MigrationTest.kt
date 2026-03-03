@@ -55,6 +55,9 @@ class V12MigrationTest {
                 verifyTextStyleDefMapping(conn)
                 verifyParagraphStyleRefMapping(conn)
                 verifyParagraphStyleDefMapping(conn)
+                verifyTextStyleSizeConversion(conn)
+                verifyTextStyleMappingSizeConversion(conn)
+                verifyParagraphStyleSizeNotConverted(conn)
             }
         }
     }
@@ -75,7 +78,7 @@ class V12MigrationTest {
             """
             INSERT INTO text_style (id, project_name, name, origin_locations, custom_fields, definition, last_updated, created)
             VALUES ('ts-def', 'test', 'Text Def', '{}', '{}',
-                '{"type":"com.quadient.migration.persistence.migrationmodel.TextStyleDefinitionEntity","fontFamily":"Arial","bold":true}'::jsonb,
+                '{"type":"com.quadient.migration.persistence.migrationmodel.TextStyleDefinitionEntity","fontFamily":"Arial","bold":true,"size":"3.5278mm"}'::jsonb,
                 $now, $now)
             """.trimIndent()
         ).executeUpdate()
@@ -93,7 +96,7 @@ class V12MigrationTest {
             """
             INSERT INTO paragraph_style (id, project_name, name, origin_locations, custom_fields, definition, last_updated, created)
             VALUES ('ps-def', 'test', 'Para Def', '{}', '{}',
-                '{"type":"com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefinitionEntity","alignment":"Left"}'::jsonb,
+                '{"type":"com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefinitionEntity","alignment":"Left","leftIndent":"3.5278mm"}'::jsonb,
                 $now, $now)
             """.trimIndent()
         ).executeUpdate()
@@ -110,7 +113,7 @@ class V12MigrationTest {
             """
             INSERT INTO mapping (id, type, project_name, mappings)
             VALUES ('ts-def', 'TextStyle', 'test',
-                '{"name":"mapped","definition":{"type":"TextStyleDef","fontFamily":"Verdana","bold":false}}'::jsonb)
+                '{"name":"mapped","definition":{"type":"TextStyleDef","fontFamily":"Verdana","bold":false,"size":"3.5278mm"}}'::jsonb)
             """.trimIndent()
         ).executeUpdate()
 
@@ -224,4 +227,33 @@ class V12MigrationTest {
 
     private fun connection(postgres: PostgreSQLContainer<*>) =
         DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password)
+
+    private fun verifyTextStyleSizeConversion(conn: Connection) {
+        val rs = conn.prepareStatement(
+            "SELECT definition::text FROM text_style WHERE id = 'ts-def'"
+        ).executeQuery()
+        rs.next()
+        val definition = rs.getString("definition")
+        assert(definition.contains("\"10.00pt\"")) { "text style size: expected '10.00pt', got: $definition" }
+        assert(!definition.contains("mm")) { "text style size: should not contain 'mm', got: $definition" }
+    }
+
+    private fun verifyTextStyleMappingSizeConversion(conn: Connection) {
+        val rs = conn.prepareStatement(
+            "SELECT mappings::text FROM mapping WHERE id = 'ts-def' AND type = 'TextStyle'"
+        ).executeQuery()
+        rs.next()
+        val mappings = rs.getString("mappings")
+        assert(mappings.contains("\"10.00pt\"")) { "text style mapping size: expected '10.00pt', got: $mappings" }
+        assert(!mappings.contains("mm")) { "text style mapping size: should not contain 'mm', got: $mappings" }
+    }
+
+    private fun verifyParagraphStyleSizeNotConverted(conn: Connection) {
+        val rs = conn.prepareStatement(
+            "SELECT definition::text FROM paragraph_style WHERE id = 'ps-def'"
+        ).executeQuery()
+        rs.next()
+        val definition = rs.getString("definition")
+        assert(definition.contains("\"3.5278mm\"")) { "paragraph style size: should remain in mm, got: $definition" }
+    }
 }
