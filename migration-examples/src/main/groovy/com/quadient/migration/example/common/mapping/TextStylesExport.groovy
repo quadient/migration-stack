@@ -9,7 +9,6 @@ package com.quadient.migration.example.common.mapping
 import com.quadient.migration.api.Migration
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
-import com.quadient.migration.shared.Size
 import groovy.transform.Field
 
 import java.nio.file.Path
@@ -49,19 +48,11 @@ static void run(Migration migration, Path dstPath) {
             builder << "${Csv.serialize(style.name)},"
             builder << "${Csv.serialize(style.targetId?.id)},"
             builder << definitionOrder.collect {
-                Csv.serialize(definition?."$it", getUnit(it))
+                Csv.serialize(definition?."$it")
             }.join(",")
             builder << ",${Csv.serialize(style.originLocations)}"
 
             writer.writeLine(builder.toString())
         }
-    }
-}
-
-static Size.Unit getUnit(String name) {
-    if (name == "size") {
-        return Size.Unit.Points
-    } else {
-        return Size.Unit.Millimeters
     }
 }

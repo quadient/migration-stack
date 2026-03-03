@@ -12,7 +12,18 @@ import java.math.RoundingMode
 
 @Serializable(with = SizeSerializer::class)
 class Size {
+    val value: BigDecimal
+    val unit: Unit
+
     val millimeters: BigDecimal
+        get() = when (unit) {
+            Unit.Points -> value.divide(MM_TO_PT.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN)
+            Unit.Millimeters -> value
+            Unit.Centimeters -> value * 10.0.toBigDecimal()
+            Unit.Decimeters -> value * 100.0.toBigDecimal()
+            Unit.Meters -> value * 1000.0.toBigDecimal()
+            Unit.Inches -> value * 25.4.toBigDecimal()
+        }
 
     enum class Unit {
         Points, Millimeters, Centimeters, Decimeters, Meters, Inches
@@ -76,30 +87,18 @@ class Size {
                 throw NumberFormatException("Invalid size format in $input")
             }
 
-            return Size(value.toDouble(), unit)
+            return Size(value.trim().toBigDecimal(), unit)
         }
     }
 
     constructor(value: Double, unit: Unit) {
-        millimeters = when (unit) {
-            Unit.Points -> value.toBigDecimal().divide(MM_TO_PT.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN)
-            Unit.Millimeters -> value.toBigDecimal()
-            Unit.Centimeters -> (value * 10.0).toBigDecimal()
-            Unit.Decimeters -> (value * 100.0).toBigDecimal()
-            Unit.Meters -> (value * 1000.0).toBigDecimal()
-            Unit.Inches -> (value * 25.4).toBigDecimal()
-        }
+        this.value = value.toBigDecimal()
+        this.unit = unit
     }
 
     constructor(value: BigDecimal, unit: Unit) {
-        millimeters = when (unit) {
-            Unit.Points -> value.divide(MM_TO_PT.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN)
-            Unit.Millimeters -> value
-            Unit.Centimeters -> value * 10.0.toBigDecimal()
-            Unit.Decimeters -> value * 100.0.toBigDecimal()
-            Unit.Meters -> value * 1000.0.toBigDecimal()
-            Unit.Inches -> value * 25.4.toBigDecimal()
-        }
+        this.value = value
+        this.unit = unit
     }
 
     fun to(unit: Unit): Double {
@@ -132,43 +131,72 @@ class Size {
     }
 
     override fun toString(): String {
-        return toString(Unit.Millimeters)
+        return "${value.toPlainString()}${unitSuffix(unit)}"
     }
 
-    fun toString(unit: Unit): String {
-        return when (unit) {
-            Unit.Points -> "${toPoints()}pt"
-            Unit.Millimeters -> "${toMillimeters()}mm"
-            Unit.Decimeters -> "${toDecimeters()}dm"
-            Unit.Centimeters -> "${toCentimeters()}cm"
-            Unit.Meters -> "${toMeters()}m"
-            Unit.Inches -> "${toInches()}in"
-        }
+    fun toString(targetUnit: Unit): String {
+        val convertedValue = toValue(targetUnit).setScale(scaleFor(targetUnit), RoundingMode.HALF_EVEN)
+        return "${convertedValue.toPlainString()}${unitSuffix(targetUnit)}"
+    }
+
+    private fun unitSuffix(u: Unit): String = when (u) {
+        Unit.Points -> "pt"
+        Unit.Millimeters -> "mm"
+        Unit.Centimeters -> "cm"
+        Unit.Decimeters -> "dm"
+        Unit.Meters -> "m"
+        Unit.Inches -> "in"
+    }
+
+    private fun scaleFor(u: Unit): Int = when (u) {
+        Unit.Points -> 4
+        Unit.Millimeters -> 4
+        Unit.Centimeters -> 5
+        Unit.Decimeters -> 6
+        Unit.Meters -> 7
+        Unit.Inches -> 5
     }
 
     override fun hashCode(): Int {
         return millimeters.hashCode()
     }
 
+    private fun toValue(targetUnit: Unit): BigDecimal = when (targetUnit) {
+        Unit.Points -> millimeters.multiply(MM_TO_PT.toBigDecimal())
+        Unit.Millimeters -> millimeters
+        Unit.Centimeters -> millimeters.divide(10.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN)
+        Unit.Decimeters -> millimeters.divide(100.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN)
+        Unit.Meters -> millimeters.divide(1000.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN)
+        Unit.Inches -> millimeters.divide(25.4.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN)
+    }
+
     operator fun plus(other: Size): Size {
-        return Size(millimeters + other.millimeters, Unit.Millimeters)
+        return if (unit == other.unit) {
+            Size(value + other.value, unit)
+        } else {
+            Size((value + other.toValue(unit)).setScale(scaleFor(unit), RoundingMode.HALF_EVEN), unit)
+        }
     }
 
     operator fun minus(other: Size): Size {
-        val res = millimeters - other.millimeters
+        val res = if (unit == other.unit) {
+            value - other.value
+        } else {
+            (value - other.toValue(unit)).setScale(scaleFor(unit), RoundingMode.HALF_EVEN)
+        }
         if (res < BigDecimal.ZERO) {
             throw IllegalArgumentException("Size cannot be negative")
         }
 
-        return Size(res, Unit.Millimeters)
+        return Size(res, unit)
     }
 
     operator fun times(other: Double): Size {
-        return Size(millimeters * other.toBigDecimal(), Unit.Millimeters)
+        return Size((value * other.toBigDecimal()).setScale(scaleFor(unit), RoundingMode.HALF_EVEN), unit)
     }
 
     operator fun div(other: Double): Size {
-        return Size(millimeters.divide(other.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN), Unit.Millimeters)
+        return Size(value.divide(other.toBigDecimal(), DIV_SCALE, RoundingMode.HALF_EVEN).setScale(scaleFor(unit), RoundingMode.HALF_EVEN), unit)
     }
 }
 
@@ -196,7 +224,7 @@ object SizeSerializer : KSerializer<Size> {
         PrimitiveSerialDescriptor("com.quadient.migration.shared.Size", PrimitiveKind.STRING)
 
     override fun serialize(encoder: Encoder, value: Size) {
-        encoder.encodeString(value.toString(Size.Unit.Millimeters))
+        encoder.encodeString(value.toString())
     }
 
     override fun deserialize(decoder: Decoder): Size {
