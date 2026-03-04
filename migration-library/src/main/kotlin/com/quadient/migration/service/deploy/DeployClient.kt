@@ -33,8 +33,8 @@ import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.toMetadata
 import com.quadient.migration.tools.caseInsensitiveSetOf
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import org.slf4j.LoggerFactory
 import java.io.FileNotFoundException
 import java.io.IOException

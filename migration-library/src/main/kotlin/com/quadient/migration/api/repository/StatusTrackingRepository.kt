@@ -10,35 +10,36 @@ import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.Error
 import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.service.deploy.ResourceType
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 class StatusTrackingRepository(val projectName: String) {
     val internalRepository = StatusTrackingInternalRepository(projectName)
 
     fun listAll(): List<StatusTracking> {
-        return internalRepository.listAll().map { it.toDto() }
+        return transaction { internalRepository.listAll().map { it.toDto() } }
     }
 
     fun find(id: String, resourceType: ResourceType): StatusTracking? {
-        return internalRepository.find(id, resourceType)?.toDto()
+        return transaction { internalRepository.find(id, resourceType)?.toDto() }
     }
 
     fun findLastEvent(id: String, resourceType: ResourceType): StatusEvent? {
-        return find(id, resourceType)?.statusEvents?.lastOrNull()
+        return transaction { find(id, resourceType)?.statusEvents?.lastOrNull() }
     }
 
     fun findEventsRelevantToOutput(id: String, resourceType: ResourceType, output: InspireOutput): List<StatusEvent> {
-        return internalRepository.findEventsRelevantToOutput(id, resourceType, output)
+        return transaction { internalRepository.findEventsRelevantToOutput(id, resourceType, output) }
     }
 
     fun findLastEventRelevantToOutput(id: String, resourceType: ResourceType, output: InspireOutput): StatusEvent? {
-        return internalRepository.findLastEventRelevantToOutput(id, resourceType, output)
+        return transaction { internalRepository.findLastEventRelevantToOutput(id, resourceType, output) }
     }
 
     fun active(id: String, resourceType: ResourceType, data: Map<String, String> = emptyMap()): StatusTracking {
-        return upsert(id, resourceType, Active(data = data))
+        return transaction { upsert(id, resourceType, Active(data = data)) }
     }
 
     fun error(
@@ -87,10 +88,10 @@ class StatusTrackingRepository(val projectName: String) {
     }
 
     fun upsert(id: String, resourceType: ResourceType, event: StatusEvent): StatusTracking {
-        return internalRepository.upsert(id, resourceType, event).toDto()
+        return transaction { internalRepository.upsert(id, resourceType, event).toDto() }
     }
 
     fun deleteAll() {
-        return internalRepository.deleteAll()
+        return transaction { internalRepository.deleteAll() }
     }
 }

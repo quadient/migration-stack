@@ -1,7 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.shared.DisplayRuleDefinition
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class DisplayRule @JvmOverloads constructor(
     override val id: String,

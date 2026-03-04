@@ -3,7 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 import com.quadient.migration.shared.IcmDateTime
 import com.quadient.migration.shared.MetadataPrimitive
 import java.time.Instant
-import kotlinx.datetime.Instant as KInstant
+import kotlin.time.Instant as KInstant
 
 class MetadataBuilder {
     private val list: MutableList<MetadataPrimitive> = mutableListOf()

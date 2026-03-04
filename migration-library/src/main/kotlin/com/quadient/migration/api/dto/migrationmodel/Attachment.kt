@@ -2,7 +2,7 @@ package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.SkipOptions
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class Attachment @JvmOverloads constructor(
     override val id: String,

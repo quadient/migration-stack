@@ -5,6 +5,7 @@ import com.quadient.migration.persistence.migrationmodel.MappingItemEntity
 import com.quadient.migration.persistence.table.MappingTable
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import kotlin.reflect.KClass
 
