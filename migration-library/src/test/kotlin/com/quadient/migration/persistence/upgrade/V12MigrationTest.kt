@@ -2,6 +2,7 @@ package com.quadient.migration.persistence.upgrade
 
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -28,22 +29,14 @@ class V12MigrationTest {
                 password = postgres.password
             )
 
-            Flyway.configure()
-                .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-                .locations("classpath:com/quadient/migration/persistence/upgrade")
-                .target("11")
-                .load()
-                .migrate()
+            Flyway.configure().dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+                .locations("classpath:com/quadient/migration/persistence/upgrade").target("11").load().migrate()
 
             connection(postgres).use { insertOldFormatData(it) }
 
             // when
-            Flyway.configure()
-                .dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
-                .locations("classpath:com/quadient/migration/persistence/upgrade")
-                .target("12")
-                .load()
-                .migrate()
+            Flyway.configure().dataSource(postgres.jdbcUrl, postgres.username, postgres.password)
+                .locations("classpath:com/quadient/migration/persistence/upgrade").target("12").load().migrate()
 
             // then
             connection(postgres).use { conn ->
@@ -55,9 +48,6 @@ class V12MigrationTest {
                 verifyTextStyleDefMapping(conn)
                 verifyParagraphStyleRefMapping(conn)
                 verifyParagraphStyleDefMapping(conn)
-                verifyTextStyleSizeConversion(conn)
-                verifyTextStyleMappingSizeConversion(conn)
-                verifyParagraphStyleSizeNotConverted(conn)
             }
         }
     }
@@ -139,8 +129,8 @@ class V12MigrationTest {
             "SELECT target_id, definition::text FROM text_style WHERE id = 'ts-ref'"
         ).executeQuery()
         rs.next()
-        assertEquals("target-text", rs.getString("target_id"), "text style ref: target_id")
-        assertEquals("{}", rs.getString("definition"), "text style ref: definition should be empty")
+        assertEquals("target-text", rs.getString("target_id"))
+        assertEquals("{}", rs.getString("definition"))
     }
 
     private fun verifyTextStyleDefinition(conn: Connection) {
@@ -149,10 +139,9 @@ class V12MigrationTest {
         ).executeQuery()
         rs.next()
         assertNull(rs.getString("target_id"), "text style def: target_id should be null")
-        val definition = rs.getString("definition")
-        assert(!definition.contains("type")) { "text style def: definition should not contain 'type' discriminator" }
-        assert(definition.contains("\"fontFamily\"")) { "text style def: should preserve fontFamily, got: $definition" }
-        assert(definition.contains("\"bold\"")) { "text style def: should preserve bold, got: $definition" }
+        assertJsonEquals(
+            """{"fontFamily":"Arial","bold":true,"size":"10.00pt"}""", rs.getString("definition")
+        )
     }
 
     private fun verifyParagraphStyleRef(conn: Connection) {
@@ -160,8 +149,8 @@ class V12MigrationTest {
             "SELECT target_id, definition::text FROM paragraph_style WHERE id = 'ps-ref'"
         ).executeQuery()
         rs.next()
-        assertEquals("target-para", rs.getString("target_id"), "paragraph style ref: target_id")
-        assertEquals("{}", rs.getString("definition"), "paragraph style ref: definition should be empty")
+        assertEquals("target-para", rs.getString("target_id"))
+        assertEquals("{}", rs.getString("definition"))
     }
 
     private fun verifyParagraphStyleDefinition(conn: Connection) {
@@ -170,24 +159,19 @@ class V12MigrationTest {
         ).executeQuery()
         rs.next()
         assertNull(rs.getString("target_id"), "paragraph style def: target_id should be null")
-        val definition = rs.getString("definition")
-        assert(!definition.contains("type")) { "paragraph style def: definition should not contain 'type' discriminator" }
-        assert(definition.contains("\"alignment\"")) { "paragraph style def: should preserve alignment, got: $definition" }
+        assertJsonEquals(
+            """{"alignment":"Left","leftIndent":"3.5278mm"}""", rs.getString("definition")
+        )
     }
-
-    // --- Mapping table verifications ---
 
     private fun verifyTextStyleRefMapping(conn: Connection) {
         val rs = conn.prepareStatement(
             "SELECT mappings::text FROM mapping WHERE id = 'ts-ref' AND type = 'TextStyle'"
         ).executeQuery()
         rs.next()
-        val mappings = rs.getString("mappings")
-        assert(mappings.contains("\"targetId\"")) { "text ref mapping: should contain targetId, got: $mappings" }
-        assert(mappings.contains("\"mapped-target\"")) { "text ref mapping: targetId value, got: $mappings" }
-        assert(mappings.contains("\"definition\": null") || mappings.contains("\"definition\":null")) {
-            "text ref mapping: definition should be null, got: $mappings"
-        }
+        assertJsonEquals(
+            """{"name":"mapped","targetId":"mapped-target","definition":null}""", rs.getString("mappings")
+        )
     }
 
     private fun verifyTextStyleDefMapping(conn: Connection) {
@@ -195,10 +179,10 @@ class V12MigrationTest {
             "SELECT mappings::text FROM mapping WHERE id = 'ts-def' AND type = 'TextStyle'"
         ).executeQuery()
         rs.next()
-        val mappings = rs.getString("mappings")
-        assert(!mappings.contains("TextStyleDef")) { "text def mapping: should not contain type, got: $mappings" }
-        assert(mappings.contains("\"targetId\"")) { "text def mapping: should have targetId field, got: $mappings" }
-        assert(mappings.contains("\"fontFamily\"")) { "text def mapping: should preserve fontFamily, got: $mappings" }
+        assertJsonEquals(
+            """{"name":"mapped","targetId":null,"definition":{"fontFamily":"Verdana","bold":false,"size":"10.00pt"}}""",
+            rs.getString("mappings")
+        )
     }
 
     private fun verifyParagraphStyleRefMapping(conn: Connection) {
@@ -206,12 +190,9 @@ class V12MigrationTest {
             "SELECT mappings::text FROM mapping WHERE id = 'ps-ref' AND type = 'ParagraphStyle'"
         ).executeQuery()
         rs.next()
-        val mappings = rs.getString("mappings")
-        assert(mappings.contains("\"targetId\"")) { "para ref mapping: should contain targetId, got: $mappings" }
-        assert(mappings.contains("\"mapped-para-target\"")) { "para ref mapping: targetId value, got: $mappings" }
-        assert(mappings.contains("\"definition\": null") || mappings.contains("\"definition\":null")) {
-            "para ref mapping: definition should be null, got: $mappings"
-        }
+        assertJsonEquals(
+            """{"name":"mapped","targetId":"mapped-para-target","definition":null}""", rs.getString("mappings")
+        )
     }
 
     private fun verifyParagraphStyleDefMapping(conn: Connection) {
@@ -219,41 +200,14 @@ class V12MigrationTest {
             "SELECT mappings::text FROM mapping WHERE id = 'ps-def' AND type = 'ParagraphStyle'"
         ).executeQuery()
         rs.next()
-        val mappings = rs.getString("mappings")
-        assert(!mappings.contains("ParagraphStyleDef")) { "para def mapping: should not contain type, got: $mappings" }
-        assert(mappings.contains("\"targetId\"")) { "para def mapping: should have targetId field, got: $mappings" }
-        assert(mappings.contains("\"alignment\"")) { "para def mapping: should preserve alignment, got: $mappings" }
+        assertJsonEquals(
+            """{"name":"mapped","targetId":null,"definition":{"alignment":"Center"}}""", rs.getString("mappings")
+        )
     }
 
     private fun connection(postgres: PostgreSQLContainer<*>) =
         DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password)
 
-    private fun verifyTextStyleSizeConversion(conn: Connection) {
-        val rs = conn.prepareStatement(
-            "SELECT definition::text FROM text_style WHERE id = 'ts-def'"
-        ).executeQuery()
-        rs.next()
-        val definition = rs.getString("definition")
-        assert(definition.contains("\"10.00pt\"")) { "text style size: expected '10.00pt', got: $definition" }
-        assert(!definition.contains("mm")) { "text style size: should not contain 'mm', got: $definition" }
-    }
-
-    private fun verifyTextStyleMappingSizeConversion(conn: Connection) {
-        val rs = conn.prepareStatement(
-            "SELECT mappings::text FROM mapping WHERE id = 'ts-def' AND type = 'TextStyle'"
-        ).executeQuery()
-        rs.next()
-        val mappings = rs.getString("mappings")
-        assert(mappings.contains("\"10.00pt\"")) { "text style mapping size: expected '10.00pt', got: $mappings" }
-        assert(!mappings.contains("mm")) { "text style mapping size: should not contain 'mm', got: $mappings" }
-    }
-
-    private fun verifyParagraphStyleSizeNotConverted(conn: Connection) {
-        val rs = conn.prepareStatement(
-            "SELECT definition::text FROM paragraph_style WHERE id = 'ps-def'"
-        ).executeQuery()
-        rs.next()
-        val definition = rs.getString("definition")
-        assert(definition.contains("\"3.5278mm\"")) { "paragraph style size: should remain in mm, got: $definition" }
-    }
+    private fun assertJsonEquals(expected: String, actual: String, message: String = "") =
+        assertEquals(Json.parseToJsonElement(expected), Json.parseToJsonElement(actual), message)
 }
