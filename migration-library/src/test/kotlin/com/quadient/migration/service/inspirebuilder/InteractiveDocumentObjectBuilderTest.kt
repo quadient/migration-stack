@@ -36,6 +36,7 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp.*
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType.*
@@ -108,6 +109,7 @@ class InteractiveDocumentObjectBuilderTest {
     fun setUp() {
         every { variableStructureRepository.listAll() } returns emptyList()
         every { ipsService.fileExists(any()) } returns true
+        every { ipsService.wfd2xml(any()) } returns "<Workflow><Layout><Layout></Layout></Layout></Workflow>"
     }
 
     @Test
@@ -152,6 +154,48 @@ class InteractiveDocumentObjectBuilderTest {
         paragraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
         val text = paragraph["T"]
         text["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
+    }
+
+    @Test
+    fun `build of block where style names match display names in base template resolves to internal style names`() {
+        // given
+        val paraStyle = mockParagraphStyle(
+            ParagraphStyleBuilder("PS1").name("Heading Display").definition { alignment(Alignment.Left) }.build()
+        )
+        val textStyle = mockTextStyle(
+            TextStyleBuilder("TS1").name("Body Display").definition { fontFamily("Arial") }.build()
+        )
+
+        val block = DocumentObjectBuilder("1", Block).paragraph {
+            text { string("some text").styleRef(textStyle.id) }.styleRef(paraStyle.id)
+        }.build()
+
+        every { ipsService.wfd2xml(any()) } returns """
+            <Workflow>
+                <Layout>
+                    <Layout>
+                        <ParagraphStyle>
+                            <Id>10</Id>
+                            <Name>heading_internal</Name>
+                            <CustomProperty>{&quot;DisplayName&quot;:&quot;Heading Display&quot;}</CustomProperty>
+                        </ParagraphStyle>
+                        <TextStyle>
+                            <Id>20</Id>
+                            <Name>body_internal</Name>
+                            <CustomProperty>{&quot;DisplayName&quot;:&quot;Body Display&quot;}</CustomProperty>
+                        </TextStyle>
+                    </Layout>
+                </Layout>
+            </Workflow>
+        """.trimIndent()
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val paragraph = result["Flow"].last()["FlowContent"]["P"]
+        paragraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.heading_internal")
+        paragraph["T"]["Id"].textValue().shouldBeEqualTo("TextStyles.body_internal")
     }
 
     @Test
@@ -1131,7 +1175,7 @@ class InteractiveDocumentObjectBuilderTest {
         // given
         val refBlock = mockObj(DocumentObjectBuilder("RefBlock", Block).string("ref content").build())
         val displayRule = mockRule(DisplayRuleBuilder("rule").comparison { value("C").equals().value("C") }.build())
-        
+
         val template = DocumentObjectBuilder("T1", Template).table {
             addRow().addCell().documentObjectRef(refBlock.id, displayRule.id)
         }.build()

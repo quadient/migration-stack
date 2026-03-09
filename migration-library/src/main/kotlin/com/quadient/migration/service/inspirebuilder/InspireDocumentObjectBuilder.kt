@@ -744,6 +744,9 @@ abstract class InspireDocumentObjectBuilder(
         return flowParts
     }
 
+    protected open fun resolveParagraphStyleName(name: String): String = name
+    protected open fun resolveTextStyleName(name: String): String = name
+
     private fun buildParagraph(
         layout: Layout,
         variableStructure: VariableStructure,
@@ -760,7 +763,7 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         val paragraphStyle = paragraphModel.styleRef?.let { paragraphStyleRepository.findOrFail(it.id).resolve() }
-        paragraphStyle?.also { paragraph.setExistingParagraphStyle("ParagraphStyles.${it.nameOrId()}") }
+        paragraphStyle?.also { paragraph.setExistingParagraphStyle("ParagraphStyles.${resolveParagraphStyleName(it.nameOrId())}") }
 
         paragraphModel.content.forEach { textModel ->
             val baseText = if (textModel.displayRuleRef == null) {
@@ -769,12 +772,12 @@ abstract class InspireDocumentObjectBuilder(
                 buildSuccessFlowWrappedInInlineConditionFlow(
                     layout, variableStructure, textModel.displayRuleRef.id, paragraph.addText()
                 ).addParagraph().also {
-                    if (paragraphStyle != null) it.setExistingParagraphStyle("ParagraphStyles.${paragraphStyle.nameOrId()}")
+                    if (paragraphStyle != null) it.setExistingParagraphStyle("ParagraphStyles.${resolveParagraphStyleName(paragraphStyle.nameOrId())}")
                 }.addText()
             }
 
             val baseTextStyleModel = textModel.styleRef?.let { textStyleRepository.findOrFail(it.id).resolve() }
-            baseTextStyleModel?.also { baseText.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
+            baseTextStyleModel?.also { baseText.setExistingTextStyle("TextStyles.${resolveTextStyleName(it.nameOrId())}") }
 
             var currentText = baseText
 
