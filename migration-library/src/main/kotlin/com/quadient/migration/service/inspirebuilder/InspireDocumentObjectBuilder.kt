@@ -876,7 +876,7 @@ abstract class InspireDocumentObjectBuilder(
         hyperlinkText.appendText(hyperlinkModel.displayText ?: hyperlinkModel.url)
 
         val newText = paragraph.addText()
-        baseTextStyleModel?.also { newText.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
+        baseTextStyleModel?.also { newText.setExistingTextStyle("TextStyles.${resolveTextStyleName(it.nameOrId())}") }
         return newText
     }
 

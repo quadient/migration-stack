@@ -62,7 +62,7 @@ class InteractiveDocumentObjectBuilder(
 
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
     private val baseTemplateCache = mutableMapOf<IcmPath, BaseTemplateData?>()
-    private var currentBaseTemplatePath: IcmPath? = null
+    private var currentBaseTemplateData: BaseTemplateData? = null
 
     override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
         val fileName = "$nameOrId.jld"
@@ -181,9 +181,7 @@ class InteractiveDocumentObjectBuilder(
         }
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
-        currentBaseTemplatePath = baseTemplatePath
-
-        val baseTemplateData = getOrLoadBaseTemplateData(baseTemplatePath)
+        currentBaseTemplateData = getOrLoadBaseTemplateData(baseTemplatePath)
             ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
 
         val languages = collectLanguages(documentObject)
@@ -199,7 +197,7 @@ class InteractiveDocumentObjectBuilder(
                     val interactiveFlowId = if (flowName.startsWith("Def.")) {
                         flowName
                     } else {
-                        baseTemplateData.interactiveFlowNamesToIds[flowName]
+                        currentBaseTemplateData!!.interactiveFlowNamesToIds[flowName]
                     }
 
                     if (interactiveFlowId.isNullOrBlank()) {
@@ -248,10 +246,10 @@ class InteractiveDocumentObjectBuilder(
     }
 
     override fun resolveParagraphStyleName(name: String): String =
-        currentBaseTemplatePath?.let { getOrLoadBaseTemplateData(it)?.paragraphStyleDisplayNamesToNames?.get(name) } ?: name
+        currentBaseTemplateData?.paragraphStyleDisplayNamesToNames?.get(name) ?: name
 
     override fun resolveTextStyleName(name: String): String =
-        currentBaseTemplatePath?.let { getOrLoadBaseTemplateData(it)?.textStyleDisplayNamesToNames?.get(name) } ?: name
+        currentBaseTemplateData?.textStyleDisplayNamesToNames?.get(name) ?: name
 
     private fun getOrLoadBaseTemplateData(path: IcmPath): BaseTemplateData? {
         if (baseTemplateCache.containsKey(path)) return baseTemplateCache[path]
