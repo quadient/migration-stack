@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Border configuration options to tables
 - Option to add list of rows to table and list of cells to table row in their respective builders
 - Support for document object pdf tagging/accessibility metadata
+- Added Hierarchy task and its accompanying html visualisation
 
 ### Changed
 
