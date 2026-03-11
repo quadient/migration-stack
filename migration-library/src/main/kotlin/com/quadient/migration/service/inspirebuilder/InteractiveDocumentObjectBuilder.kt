@@ -63,6 +63,7 @@ class InteractiveDocumentObjectBuilder(
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
     private val baseTemplateCache = mutableMapOf<IcmPath, BaseTemplateData?>()
     private var currentBaseTemplateData: BaseTemplateData? = null
+    private var styleDefinitionData: StyleDefinitionData? = null
 
     override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
         val fileName = "$nameOrId.jld"
@@ -181,6 +182,7 @@ class InteractiveDocumentObjectBuilder(
         }
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
+        getOrLoadStyleDefinitionData()
         currentBaseTemplateData = getOrLoadBaseTemplateData(baseTemplatePath)
             ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
 
@@ -246,10 +248,24 @@ class InteractiveDocumentObjectBuilder(
     }
 
     override fun resolveParagraphStyleName(name: String): String =
-        currentBaseTemplateData?.paragraphStyleDisplayNamesToNames?.get(name) ?: name
+        getOrLoadStyleDefinitionData().paragraphStyleDisplayNamesToNames[name] ?: name
 
     override fun resolveTextStyleName(name: String): String =
-        currentBaseTemplateData?.textStyleDisplayNamesToNames?.get(name) ?: name
+        getOrLoadStyleDefinitionData().textStyleDisplayNamesToNames[name] ?: name
+
+    private fun getOrLoadStyleDefinitionData(): StyleDefinitionData {
+        styleDefinitionData?.let { return it }
+        val path = getStyleDefinitionPath("jld")
+        if (!ipsService.fileExists(path)) {
+            error("Style definition '$path' does not exist.")
+        }
+        return try {
+            parseStyleDefinitionData(ipsService.wfd2xml(path)).also { styleDefinitionData = it }
+        } catch (e: Exception) {
+            logger.warn("Failed to load style definition data from '$path'.", e)
+            StyleDefinitionData(emptyMap(), emptyMap()).also { styleDefinitionData = it }
+        }
+    }
 
     private fun getOrLoadBaseTemplateData(path: IcmPath): BaseTemplateData? {
         if (baseTemplateCache.containsKey(path)) return baseTemplateCache[path]
@@ -271,10 +287,14 @@ class InteractiveDocumentObjectBuilder(
 
     private fun parseBaseTemplateData(xml: String): BaseTemplateData {
         val layoutXmlTree = xmlMapper.readTree(xml.trimIndent())["Layout"]["Layout"]
-        return BaseTemplateData(
-            interactiveFlowNamesToIds = parseInteractiveFlowNamesToIds(layoutXmlTree),
-            textStyleDisplayNamesToNames = parseStyleDisplayNamesToNames(layoutXmlTree, "TextStyle"),
-            paragraphStyleDisplayNamesToNames = parseStyleDisplayNamesToNames(layoutXmlTree, "ParagraphStyle"),
+        return BaseTemplateData(parseInteractiveFlowNamesToIds(layoutXmlTree))
+    }
+
+    private fun parseStyleDefinitionData(xml: String): StyleDefinitionData {
+        val layoutXmlTree = xmlMapper.readTree(xml.trimIndent())["Layout"]["Layout"]
+        return StyleDefinitionData(
+            parseStyleDisplayNamesToNames(layoutXmlTree, "TextStyle"),
+            parseStyleDisplayNamesToNames(layoutXmlTree, "ParagraphStyle"),
         )
     }
 
@@ -317,6 +337,9 @@ class InteractiveDocumentObjectBuilder(
 
     private data class BaseTemplateData(
         val interactiveFlowNamesToIds: Map<String, String>,
+    )
+
+    private data class StyleDefinitionData(
         val textStyleDisplayNamesToNames: Map<String, String>,
         val paragraphStyleDisplayNamesToNames: Map<String, String>,
     )

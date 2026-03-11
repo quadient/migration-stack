@@ -157,7 +157,7 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `build of block where style names match display names in base template resolves to internal style names`() {
+    fun `build of block where style names match display names in style definition resolves to internal style names`() {
         // given
         val paraStyle = mockParagraphStyle(
             ParagraphStyleBuilder("PS1").name("Heading Display").definition { alignment(Alignment.Left) }.build()
@@ -170,7 +170,7 @@ class InteractiveDocumentObjectBuilderTest {
             text { string("some text").styleRef(textStyle.id) }.styleRef(paraStyle.id)
         }.build()
 
-        every { ipsService.wfd2xml(any()) } returns """
+        every { ipsService.wfd2xml(eq(subject.getStyleDefinitionPath("jld"))) } returns """
             <Workflow>
                 <Layout>
                     <Layout>
