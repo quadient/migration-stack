@@ -1,6 +1,7 @@
 logs/
 **/mapping/
 **/report/
+**/hierarchy/
 !src/main/groovy/com/quadient/migration/example/common/mapping/
 !src/main/groovy/com/quadient/migration/example/common/mapping/*.groovy
 !src/main/groovy/com/quadient/migration/example/common/report/

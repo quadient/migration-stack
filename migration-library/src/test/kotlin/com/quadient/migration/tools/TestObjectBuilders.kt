@@ -66,11 +66,10 @@ import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.TableAlignment
-import com.quadient.migration.tools.model.aRow
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
+import kotlin.time.Clock
+import kotlin.time.Instant
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import kotlin.uuid.ExperimentalUuidApi
@@ -97,8 +96,8 @@ fun aBlockDto(
         targetFolder = targetFolder,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
-        created = kotlinx.datetime.Clock.System.now(),
-        lastUpdated = kotlinx.datetime.Clock.System.now(),
+        created = Clock.System.now(),
+        lastUpdated = Clock.System.now(),
         metadata = emptyMap(),
         skip = SkipOptions(false, null, null),
         subject = null,
@@ -124,8 +123,8 @@ fun aImageDto(
         targetFolder = targetFolder,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
-        created = kotlinx.datetime.Clock.System.now(),
-        lastUpdated = kotlinx.datetime.Clock.System.now(),
+        created = Clock.System.now(),
+        lastUpdated = Clock.System.now(),
         options = null,
         metadata = emptyMap(),
         skip = SkipOptions(false, null, null),
@@ -297,8 +296,8 @@ fun aParagraphStyle(
         name = name,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
-        created = kotlinx.datetime.Clock.System.now(),
-        lastUpdated = kotlinx.datetime.Clock.System.now(),
+        created = Clock.System.now(),
+        lastUpdated = Clock.System.now(),
         definition = definition,
         targetId = targetId,
     )
@@ -345,8 +344,8 @@ fun aTextStyle(
         name = name,
         originLocations = originLocations,
         customFields = CustomFieldMap(customFields),
-        created = kotlinx.datetime.Clock.System.now(),
-        lastUpdated = kotlinx.datetime.Clock.System.now(),
+        created = Clock.System.now(),
+        lastUpdated = Clock.System.now(),
         definition = definition,
         targetId = targetId,
     )

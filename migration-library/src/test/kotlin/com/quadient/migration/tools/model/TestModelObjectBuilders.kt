@@ -50,7 +50,7 @@ import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.VariablePathData
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.collections.emptyMap
 
 fun aDocObj(

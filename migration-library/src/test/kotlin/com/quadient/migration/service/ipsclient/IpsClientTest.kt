@@ -5,7 +5,7 @@ import com.quadient.migration.shared.IcmDateTime
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.MetadataValue
 import com.quadient.migration.tools.aMigConfig
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test

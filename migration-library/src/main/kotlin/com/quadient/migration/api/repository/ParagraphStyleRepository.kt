@@ -11,11 +11,12 @@ import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.tools.concat
-import kotlinx.datetime.Clock
-import kotlinx.datetime.toJavaInstant
+import kotlin.time.Clock
+import kotlin.time.toJavaInstant
 import kotlinx.serialization.json.Json
 import java.sql.Types
 import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning

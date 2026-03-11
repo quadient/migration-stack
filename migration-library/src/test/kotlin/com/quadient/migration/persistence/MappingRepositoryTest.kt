@@ -13,7 +13,7 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.verify
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.junit.jupiter.api.Test
 
 @Postgres

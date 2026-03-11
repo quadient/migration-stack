@@ -4,7 +4,7 @@ import com.quadient.migration.persistence.migrationmodel.TextStyleDefinitionEnti
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SuperOrSubscript
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class TextStyle @JvmOverloads constructor(
     override val id: String,

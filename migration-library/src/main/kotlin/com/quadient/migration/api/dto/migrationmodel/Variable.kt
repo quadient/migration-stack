@@ -1,7 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.shared.DataType
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class Variable @JvmOverloads constructor(
     override val id: String,

@@ -4,7 +4,7 @@ import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.SkipOptions
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class DocumentObject(
     override val id: String,

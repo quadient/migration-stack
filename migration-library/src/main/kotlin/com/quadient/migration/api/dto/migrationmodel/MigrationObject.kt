@@ -1,6 +1,6 @@
 package com.quadient.migration.api.dto.migrationmodel
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface MigrationObject {
     val id: String

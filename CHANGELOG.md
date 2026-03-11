@@ -8,9 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.17] - 2026-03-10
+
+### Added
+
 - Border configuration options to tables
 - Option to add list of rows to table and list of cells to table row in their respective builders
 - Support for document object pdf tagging/accessibility metadata
+- Added Hierarchy task and its accompanying html visualisation
 
 ### Changed
 
@@ -231,7 +240,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.16...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.17...HEAD
+[17.0.17]: https://github.com/quadient/migration-stack/compare/v17.0.16...v17.0.17
 [17.0.16]: https://github.com/quadient/migration-stack/compare/v17.0.15...v17.0.16
 [17.0.15]: https://github.com/quadient/migration-stack/compare/v17.0.14...v17.0.15
 [17.0.14]: https://github.com/quadient/migration-stack/compare/v17.0.13...v17.0.14

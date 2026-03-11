@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title></title>
+        <script src="index.mjs" type="module" defer></script>
+        <style>
+            :root {
+                --fg: #111;
+                --muted: #666;
+                --hl: #fff3a0;
+                --line: #e6e6e6;
+            }
+
+            body {
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    Segoe UI,
+                    Roboto,
+                    Arial,
+                    sans-serif;
+                margin: 24px;
+                color: var(--fg);
+                overflow: hidden;
+            }
+
+            .toolbar {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                margin-bottom: 12px;
+            }
+
+            input[type="search"] {
+                padding: 8px 10px;
+                width: min(520px, 100%);
+                border: 1px solid #ccc;
+                border-radius: 8px;
+            }
+
+            button,
+            #file {
+                padding: 8px 10px;
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                background: #f8f8f8;
+                cursor: pointer;
+            }
+
+            button:active {
+                transform: translateY(1px);
+            }
+
+            #root {
+                height: calc(100vh - 48px);
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+
+            #content {
+                display: flex;
+                gap: 10px;
+                flex: 1;
+                min-height: 0;
+            }
+
+            .status {
+                margin-top: 10px;
+                color: var(--muted);
+                font-size: 13px;
+            }
+
+            #tree-wrapper {
+                flex-basis: 60%;
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+                min-height: 0;
+            }
+
+            .tree {
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                padding: 10px;
+                flex: 1;
+                min-height: 0;
+                overflow: auto;
+            }
+
+            .details {
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                padding: 10px;
+                flex: 1;
+                min-width: 0;
+                min-height: 0;
+                overflow: auto;
+            }
+
+            .tree ul {
+                list-style: none;
+                margin: 0;
+                padding-left: 18px;
+            }
+
+            .tree > ul {
+                padding-left: 0;
+            }
+
+            .node {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 3px 2px;
+            }
+
+            .toggle {
+                width: 18px;
+                height: 18px;
+                display: inline-grid;
+                place-items: center;
+                border: 1px solid transparent;
+                border-radius: 4px;
+                cursor: pointer;
+                user-select: none;
+                font-size: 12px;
+                color: var(--muted);
+            }
+
+            .toggle:hover {
+                border-color: #ddd;
+                background: #fafafa;
+            }
+
+            .toggle.leaf {
+                visibility: hidden;
+            }
+
+            .label .id {
+                cursor: default;
+                padding: 2px 4px;
+                border-radius: 5px;
+                max-width: 30rem;
+                display: inline-block;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .label[title] {}
+            .label.document_object {
+                color: #2f2f2f;
+            }
+
+            .label.text_style {
+                color: #04a5e5;
+            }
+
+            .label.paragraph_style {
+                color: #04a5e5;
+            }
+
+            .label.image {
+                color: #e64553;
+            }
+
+            .label.atatachment {
+                color: #e64553;
+            }
+
+            .label.variable {
+                color: #40a02b;
+            }
+
+            .label.variable_structure {
+                color: #40a02b;
+            }
+
+            .label.display_rule {
+                color: #40a02b;
+            }
+
+            .label mark {
+                background: var(--hl);
+                padding: 0 2px;
+                border-radius: 3px;
+            }
+
+            li[hidden] {
+                display: none !important;
+            }
+
+            li[data-collapsed="true"] > ul {
+                display: none;
+            }
+
+            .tree li {
+                position: relative;
+                user-select: none;
+            }
+
+            .tree li::before {
+                content: "";
+                position: absolute;
+                left: -10px;
+                top: 0;
+                bottom: 0;
+                border-left: 1px solid transparent;
+            }
+
+            .tree li:hover::before {
+                border-left-color: #f0f0f0;
+            }
+
+            .tree li span.label:hover {
+                cursor: pointer;
+                background-color: #f8f8f8;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="root">
+            <div class="toolbar">
+                <input id="filter" type="search" autocomplete="off" />
+                <button id="clear" type="button">Clear</button>
+                <button id="expandAll" type="button">Expand all</button>
+                <button id="collapseAll" type="button">Collapse all</button>
+                <input type="file" id="file" />
+                <div class="status" id="status"></div>
+            </div>
+            <div class="toolbar">
+                <input id="textStyles" type="checkbox" checked />
+                <label for="textStyles">Text styles</label>
+                <input id="paraStyles" type="checkbox" checked />
+                <label for="paraStyles">Paragraph styles</label>
+                <input id="displayRules" type="checkbox" checked />
+                <label for="displayRules">Display rules</label>
+                <input id="variables" type="checkbox" checked />
+                <label for="variables">Variables</label>
+                <input id="variableStructures" type="checkbox" checked />
+                <label for="variableStructures">Variable structures</label>
+                <input id="images" type="checkbox" checked />
+                <label for="images">Images</label>
+                <input id="attachments" type="checkbox" checked />
+                <label for="attachments">Attachments</label>
+            </div>
+
+            <div id="content">
+                <div id="tree-wrapper">
+                    <div
+                        class="tree"
+                        id="tree"
+                        aria-label="Filterable TreeView"
+                    ></div>
+                </div>
+
+                <div class="details" id="details"></div>
+            </div>
+        </div>
+        <script type="module">
+            // @ts-check
+
+            /**
+             * @type {Root}
+             */
+            let data;
+            /**
+             * @type {Indexes}
+             */
+            let indexes;
+
+            const treeEl = /** @type {HTMLElement} */ (document.getElementById("tree"));
+            const statusEl = /** @type {HTMLElement} */ (document.getElementById("status"));
+            const detailsEl = /** @type {HTMLElement} */ (document.getElementById("details"));
+            const filterEl = /** @type {HTMLInputElement} */ (document.getElementById("filter"));
+            const clearBtn = /** @type {HTMLButtonElement} */ (document.getElementById("clear"));
+            const expandAllBtn = /** @type {HTMLButtonElement} */ (document.getElementById("expandAll"));
+            const collapseAllBtn = /** @type {HTMLButtonElement} */ (document.getElementById("collapseAll"));
+            const fileInputEl = /** @type {HTMLInputElement} */ (document.getElementById("file"));
+
+            const textStylesChkbox = /** @type {HTMLInputElement} */ (document.getElementById("textStyles"));
+            const paragraphStylesChkbox = /** @type {HTMLInputElement} */ (document.getElementById("paraStyles"));
+            const variablesChkbox = /** @type {HTMLInputElement} */ (document.getElementById("variables"));
+            const displayRulesChkbox = /** @type {HTMLInputElement} */ (document.getElementById("displayRules"));
+            const variableStructuresChkbox = /** @type {HTMLInputElement} */ (document.getElementById("variableStructures"));
+            const attachmentsChkbox = /** @type {HTMLInputElement} */ (document.getElementById("attachments"));
+            const imagesChkbox = /** @type {HTMLInputElement} */ (document.getElementById("images"));
+
+            function refresh() {
+                indexes = buildIndexes(data);
+                filterEl.value = "";
+                filterTree("")
+                detailsEl.replaceChildren("");
+
+                treeEl.replaceChildren(createTreeLevel(createRootDocObject(data)))
+                refreshToggleIcons();
+            }
+
+            textStylesChkbox.addEventListener("change", refresh);
+            paragraphStylesChkbox.addEventListener("change", refresh);
+            variablesChkbox.addEventListener("change", refresh);
+            displayRulesChkbox.addEventListener("change", refresh);
+            variableStructuresChkbox.addEventListener("change", refresh);
+            attachmentsChkbox.addEventListener("change", refresh);
+            imagesChkbox.addEventListener("change", refresh);
+
+            treeEl.addEventListener("click", onTreeClick);
+
+            fileInputEl.addEventListener("change", async () => {
+                const [file] = /** @type {FileList} */ (fileInputEl.files);
+
+                if (file) {
+                    data = JSON.parse(await file.text());
+                    refresh();
+                }
+            });
+
+            filterEl.addEventListener("input", debounce(() => filterTree(filterEl.value), 500));
+
+            clearBtn.addEventListener("click", () => {
+                filterEl.value = "";
+                filterTree("");
+                filterEl.focus();
+            });
+
+            expandAllBtn.addEventListener("click", () => {
+                /** @type {HTMLLIElement[]} */
+                const queue = Array.from(treeEl.querySelectorAll("li"));
+                /** @type {Set<Element>} */
+                const seen = new Set(queue);
+
+                while (queue.length) {
+                    const li = queue.shift();
+                    if (!li) continue;
+
+                    ensureChildrenRendered(li);
+                    setCollapsed(li, false);
+
+                    const childLis = Array.from(li.querySelectorAll(":scope > ul > li"));
+                    for (const child of childLis) {
+                        if (!seen.has(child)) {
+                            seen.add(child);
+                            queue.push(/** @type {HTMLLIElement} */(child));
+                        }
+                    }
+                }
+            });
+
+            collapseAllBtn.addEventListener("click", () => {
+                treeEl.querySelectorAll("li").forEach(li => {
+                    if (li.querySelector(":scope > ul")) setCollapsed(li, true);
+                });
+            });
+
+            /**
+             * @param {Root} root
+             * @returns {Child}
+             */
+            function createRootDocObject(root) {
+                return {
+                    id: "root",
+                    name: "",
+                    parents: [],
+                    type: "DOCUMENT_OBJECT",
+                    children: findDocObjectsWithoutParents(root).map(obj => ({
+                        id: obj.id,
+                        type: "DOCUMENT_OBJECT",
+                    })),
+                    data: {},
+                };
+            }
+
+            /**
+            * @param {Child} rootRef
+            * @returns {HTMLUListElement}
+            */
+            function createTreeLevel(rootRef) {
+                const ul = document.createElement("ul");
+
+                for (const ref of rootRef.children) {
+                    const li = document.createElement("li");
+                    const nodeObj = getElementByRef(data, ref);
+                    li.dataset.label = ref.id;
+                    li.dataset.collapsed = "true";
+                    li.dataset.type = ref.type;
+                    li.dataset.name = nodeObj.name;
+
+                    const row = document.createElement("div");
+                    row.className = "node";
+
+                    const toggle = document.createElement("span");
+                    toggle.className = "toggle";
+                    toggle.setAttribute("role", "button");
+                    toggle.setAttribute("tabindex", "0");
+                    toggle.setAttribute("aria-label", "Toggle");
+                    toggle.textContent = "▾";
+
+                    const label = document.createElement("span");
+                    label.classList.add("label");
+                    label.classList.add(ref.type.toLowerCase());
+                    label.textContent = idAndTypeToLabel(ref.id, ref.type, nodeObj.name, true);
+                    label.title = idAndTypeToLabel(ref.id, ref.type, nodeObj.name);
+
+                    row.appendChild(toggle);
+                    row.appendChild(label);
+                    li.appendChild(row);
+
+                    const k = keyOf(ref.type, ref.id);
+                    const hasChildren = indexes.childrenByKey.has(k);
+
+                    if (hasChildren) {
+                        li.dataset.hasChildren = "true";
+                        li.dataset.childrenRendered = "false";
+                        toggle.textContent = "▸";
+                    } else {
+                        li.dataset.hasChildren = "false";
+                        li.dataset.childrenRendered = "true";
+                        toggle.classList.add("leaf");
+                        toggle.textContent = "";
+                        toggle.setAttribute("tabindex", "-1");
+                        toggle.removeAttribute("role");
+                    }
+
+                    ul.appendChild(li);
+                }
+
+                return ul;
+            }
+
+            /**
+             * @param {HTMLLIElement} li
+             */
+            function ensureChildrenRendered(li) {
+                if (li.dataset.hasChildren !== "true") return;
+                if (li.dataset.childrenRendered === "true") return;
+
+                const id = li.dataset.label;
+                const type = /** @type {ChildType} */ (li.dataset.type);
+                if (!id || !type) return;
+
+                const k = keyOf(type, id);
+                const children = indexes.childrenByKey.get(k);
+                if (!children || children.length === 0) {
+                    li.dataset.childrenRendered = "true";
+                    return;
+                }
+
+                /** @type {Child} */
+                const pseudoChild = /** @type {any} */ ({ id, type, children: filterChilderBasedOnCheckboxes(children) });
+
+                const ul = createTreeLevel(pseudoChild);
+                li.appendChild(ul);
+
+                li.dataset.childrenRendered = "true";
+            }
+
+
+            /**
+             * @param {Reference} child
+             * @returns {boolean}
+             */
+            function shouldChildBeShown(child) {
+                switch (child.type) {
+                    case 'DOCUMENT_OBJECT': {
+                        return true;
+                    };
+                    case 'DISPLAY_RULE': {
+                        return displayRulesChkbox.checked;
+                    };
+                    case 'TEXT_STYLE': {
+                        return textStylesChkbox.checked;
+                    };
+                    case 'PARAGRAPH_STYLE': {
+                        return paragraphStylesChkbox.checked;
+                    };
+                    case 'ATTACHMENT': {
+                        return attachmentsChkbox.checked;
+                    };
+                    case 'IMAGE': {
+                        return imagesChkbox.checked;
+                    };
+                    case 'VARIABLE': {
+                        return variablesChkbox.checked;
+                    };
+                    case 'VARIABLE_STRUCTURE': {
+                        return variableStructuresChkbox.checked;
+                    };
+                }
+            }
+
+            /**
+             * @param {Reference[]} children
+             * @returns {Reference[]}
+             */
+            function filterChilderBasedOnCheckboxes(children) {
+                return children.filter(child => shouldChildBeShown(child));
+            }
+
+            /**
+                @param {MouseEvent} e
+            */
+            function onTreeClick(e) {
+
+                const target = /** @type {HTMLElement|null} */ (e.target instanceof HTMLElement ? e.target : null);
+                if (!target) return;
+
+                const toggleEl = target.closest?.(".toggle");
+                if (toggleEl) {
+                    const li = /** @type {HTMLLIElement|null} */ (toggleEl.closest("li"));
+                    if (!li) return;
+
+                    ensureChildrenRendered(li);
+
+                    if (!li.querySelector(":scope > ul")) return;
+
+                    const collapsed = li.dataset.collapsed === "true";
+                    li.dataset.collapsed = collapsed ? "false" : "true";
+                    toggleEl.textContent = (li.dataset.collapsed === "true") ? "▸" : "▾";
+                    return;
+                }
+
+                const labelEl = target.closest(".label");
+                if (!labelEl) return;
+
+                const li = /** @type {HTMLLIElement|null} */ (labelEl.closest("li"));
+                if (!li) return;
+
+                const id = li.dataset.label;
+                const type = /** @type {ChildType} */ (li.dataset.type);
+                if (!id || !type) return;
+
+                const nodeObj = getElementByRef(data, { id, type });
+
+                let directParents = nodeObj.parents;
+                let allParents = collectParentsRecursively(data, nodeObj);
+                let directChildren = [];
+                let allChildren = [];
+                const parentTemplates = [...allParents].filter(
+                    node => node.type === "DOCUMENT_OBJECT" && node.data["type"] == "Template"
+                );
+
+                const pathsFromTop = [
+                    ...new Set(findPathsFromTopRecursively(data, nodeObj, []).map(p => p.join(" > ")))
+                ];
+
+                // @ts-expect-error
+                if (nodeObj.hasOwnProperty("children") && nodeObj.children && nodeObj.children.length) {
+                    // @ts-expect-error
+                    directChildren.push(...nodeObj.children);
+
+                    const c = collectChildrenRecursively(data, nodeObj);
+                    allChildren.push(...c);
+                }
+
+                directParents = directParents.filter(p => shouldChildBeShown(p));
+                directChildren = directChildren.filter(c => shouldChildBeShown(c));
+                allChildren = allChildren.filter(c => shouldChildBeShown(c));
+
+                detailsEl.innerText = `Details for ${idAndTypeToLabel(id, type, nodeObj.name)}
+                    Name: ${nodeObj.name ?? "n/a"}
+
+                    Used in templates (${parentTemplates.length}):
+                        - ${parentTemplates.map(t => idAndTypeToLabel(t.id, t.type, t.name)).join("\n- ")}
+
+                    Direct parents (${directParents.length}):
+                        - ${directParents.map(p => idAndTypeToLabel(p.id, p.type, getElementByRef(data, p).name)).join("\n- ")}
+
+                    Direct children (${directChildren.length}):
+                        - ${directChildren.map(node => idAndTypeToLabel(node.id, node.type, getElementByRef(data, { id: node.id, type: node.type }).name)).join("\n- ")}
+
+                    All children (${allChildren.length}):
+                        - ${allChildren.map(node => idAndTypeToLabel(node.id, node.type, getElementByRef(data, { id: node.id, type: node.type }).name)).join("\n- ")}
+
+                    Paths from top (${pathsFromTop.length}):
+                        - ${pathsFromTop.join("\n- ")}
+                `;
+            }
+
+            /**
+             * @param {Root} root
+             * @param {Node} node
+             * @param {string[]} path
+             * @returns {string[][]} paths
+             */
+            function findPathsFromTopRecursively(root, node, path) {
+                if (!node.parents || node.parents.length === 0) {
+                    return [path];
+                }
+
+                const paths = [];
+
+                for (const parentRef of node.parents) {
+                    const parentNode = getElementByRef(root, parentRef);
+                    if (parentNode != null) {
+                        const parentPaths = findPathsFromTopRecursively(
+                            root,
+                            parentNode,
+                            [parentNode.id, ...path]
+                        );
+
+                        paths.push(...parentPaths);
+                    }
+                }
+
+                return paths;
+            }
+
+            /**
+                @param {Root} root
+                @returns {Child[]}
+            */
+            function findDocObjectsWithoutParents(root) {
+                return Object.values(root.documentObjects).filter(obj => !obj.parents?.length);
+            }
+
+            /**
+                @param {Root} root
+                @param {Node} node
+                @returns {Set<Node>}
+            */
+            function collectParentsRecursively(root, node) {
+                const parents = new Set();
+
+                if (!node.parents || node.parents.length === 0) {
+                    return parents;
+                }
+
+                for (const parentRef of node.parents) {
+                    if (!shouldChildBeShown(parentRef)) {
+                        continue;
+                    }
+                    const parentNode = getElementByRef(root, parentRef);
+
+                    if (parentNode != null) {
+                        parents.add(parentNode);
+                        const ancestorParents = collectParentsRecursively(root, parentNode);
+                        ancestorParents.forEach(p => parents.add(p));
+                    }
+                }
+
+                return parents;
+            }
+
+            /**
+                @param {Root} root
+                @param {Node} node
+                @returns {Set<Node>}
+            */
+            function collectChildrenRecursively(root, node) {
+                const children = new Set();
+
+
+                // @ts-expect-error
+                if (!node.children || node.children.length === 0) {
+                    return children;
+                }
+
+                let n = /** @type {Child} */ (node);
+                for (const childRef of n.children) {
+                    if (!shouldChildBeShown(childRef)) {
+                        continue;
+                    }
+
+                    const childNode = getElementByRef(root, childRef);
+
+                    if (childNode) {
+                        children.add(childNode);
+                        const c = collectChildrenRecursively(root, childNode);
+                        c.forEach(p => children.add(p));
+                    }
+                }
+
+                return children;
+            }
+
+            /**
+             * Ensure toggle icons reflect each <li>'s collapsed state.
+             * (Useful after bulk changes to `data - collapsed`.)
+             *
+             * @returns {void}
+             */
+            function refreshToggleIcons() {
+                treeEl.querySelectorAll("li").forEach(li => {
+                    const toggle = li.querySelector(":scope > .node > .toggle");
+                    const hasChildren = !!li.querySelector(":scope > ul");
+                    if (!toggle || !hasChildren) return;
+                    toggle.textContent = (li.dataset.collapsed === "true") ? "▸" : "▾";
+                });
+            }
+
+
+            /**
+             * @param {string} s
+             * @returns {string}
+             */
+            function escapeHtml(s) {
+                return s.replace(/[&<>"']/g, c => (
+                    { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]
+                ));
+            }
+
+            /**
+             * @param {HTMLElement} labelEl
+             * @param {string} text
+             * @param {string} query
+             * @returns {void}
+             */
+            function highlight(labelEl, text, query) {
+                if (!query) {
+                    labelEl.textContent = text;
+                    return;
+                }
+
+                const lowerText = text.toLowerCase();
+                const lowerQuery = query.toLowerCase();
+                const idx = lowerText.indexOf(lowerQuery);
+
+                if (idx === -1) {
+                    labelEl.textContent = text;
+                    return;
+                }
+
+                const before = escapeHtml(text.slice(0, idx));
+                const match = escapeHtml(text.slice(idx, idx + query.length));
+                const after = escapeHtml(text.slice(idx + query.length));
+                labelEl.innerHTML = `${before} <mark>${match}</mark>${after} `;
+            }
+
+            /**
+             * @param {HTMLLIElement} li
+             * @param {boolean} collapsed
+             * @returns {void}
+             */
+            function setCollapsed(li, collapsed) {
+                li.dataset.collapsed = collapsed ? "true" : "false";
+                const toggle = li.querySelector(":scope > .node > .toggle");
+                if (toggle && !toggle.classList.contains("leaf")) {
+                    toggle.textContent = collapsed ? "▸" : "▾";
+                }
+            }
+
+            /**
+             * @param {string} query
+             */
+            function filterTree(query) {
+                const q = query.trim().toLowerCase();
+
+                if (!q) {
+                    const items = Array.from(treeEl.querySelectorAll("li"));
+                    for (const li of items) {
+                        li.hidden = false;
+                        li.dataset.visible = "true";
+                        const labelEl = /** @type {HTMLElement} */ (li.querySelector(":scope > .node > .label"));
+                        if (labelEl) labelEl.textContent = idAndTypeToLabel(li.dataset.label || "", /** @type {any} */(li.dataset.type), li.dataset.name);
+                    }
+                    statusEl.textContent = "";
+
+                    return;
+                }
+
+                const matched = /** @type {Set<string>} */ (new Set());
+                for (const k of indexes.nodeByKey.keys()) {
+                    const node = indexes.nodeByKey.get(k);
+                    if (!node) continue;
+                    if (!shouldChildBeShown(node)) continue;
+
+                    const label = node.id;
+                    const name = node.name || "";
+                    if (label.toLowerCase().includes(q) || name.toLowerCase().includes(q)) matched.add(k);
+                }
+
+                const visible = /** @type {Set<string>} */(new Set(matched));
+                const ancestorSet = /** @type {Set<string>} */ (new Set());
+                const stack = /** @type {string[]} */ (Array.from(matched));
+
+                while (stack.length) {
+                    const cur = stack.pop();
+                    if (!cur) continue;
+
+                    const parentRefs = indexes.parentsByKey.get(cur) || [];
+                    for (const pref of parentRefs) {
+                        const pk = refKey(pref);
+
+                        ancestorSet.add(pk);
+
+                        if (!visible.has(pk)) {
+                            visible.add(pk);
+                            stack.push(pk);
+                        }
+                    }
+                }
+
+                const downStack = /** @type {string[]} */ (Array.from(matched));
+                const seenDown = /** @type {Set<string>} */ (new Set(downStack));
+
+                while (downStack.length) {
+                    const cur = downStack.pop();
+                    if (!cur) continue;
+
+                    const childRefs = indexes.childrenByKey.get(cur) || [];
+                    for (const cref of childRefs) {
+                        const ck = refKey(cref);
+                        if (!visible.has(ck)) visible.add(ck);
+
+                        if (!seenDown.has(ck)) {
+                            seenDown.add(ck);
+                            downStack.push(ck);
+                        }
+                    }
+                }
+
+                /**
+                 * @param {HTMLLIElement} li
+                 */
+                function renderVisibleSubtreeFromRenderedLi(li) {
+                    const id = li.dataset.label;
+                    const type = /** @type {ChildType} */ (li.dataset.type);
+                    if (!id || !type) return;
+                    const k = keyOf(type, id);
+
+                    if (visible.has(k) && li.dataset.hasChildren === "true") {
+                        if (ancestorSet.has(k)) {
+                            ensureChildrenRendered(li);
+                            setCollapsed(li, false);
+
+                            const childLis = Array.from(li.querySelectorAll(":scope > ul > li"));
+                            for (const ch of childLis) renderVisibleSubtreeFromRenderedLi(/** @type {HTMLLIElement} */(ch));
+                        }
+                    }
+                }
+
+                const topLis = Array.from(treeEl.querySelectorAll(":scope > ul > li"));
+                for (const li of topLis) renderVisibleSubtreeFromRenderedLi(/** @type {HTMLLIElement} */(li));
+
+                let visibleCount = 0;
+                const items = Array.from(treeEl.querySelectorAll("li"));
+                for (const li of items) {
+                    const id = li.dataset.label || "";
+                    const type = /** @type {ChildType} */ (li.dataset.type);
+                    const name = /** @type {string| undefined} */ (li.dataset.name);
+                    const k = keyOf(type, id);
+
+                    const isVisible = visible.has(k);
+                    li.hidden = !isVisible;
+                    li.dataset.visible = isVisible ? "true" : "false";
+                    if (isVisible) visibleCount++;
+
+                    const labelEl = /** @type {HTMLElement} */ (li.querySelector(":scope > .node > .label"));
+                    if (labelEl) highlight(labelEl, idAndTypeToLabel(id, type, name), q);
+                }
+
+                statusEl.textContent = `Showing ${visibleCount} rendered node(s) matching "${q}".`;
+            }
+
+            /**
+             * @template {any[]} TArgs
+             * @param {( ...args: TArgs ) => void} fn
+             * @param {number} [ms=500]
+             * @returns {( ...args: TArgs ) => void}
+             */
+            function debounce(fn, ms = 500) {
+                /** @type {number|undefined} */
+                let t;
+                return (...args) => {
+                    if (t !== undefined) window.clearTimeout(t);
+                    t = window.setTimeout(() => {
+                        fn(...args)
+                    }, ms);
+                };
+            }
+
+            /**
+             * @param {Root} root
+             * @returns {Indexes}
+             */
+            function buildIndexes(root) {
+                /** @type {Map<string, Node>} */
+                const nodeByKey = new Map();
+                /** @type {Map<string, Reference[]>} */
+                const childrenByKey = new Map();
+                /** @type {Map<string, Reference[]>} */
+                const parentsByKey = new Map();
+
+                /**
+                 * @param {Record<string, Child | Node>} bucket
+                 * @param {ChildType} type
+                 */
+                function addBucket(bucket, type) {
+                    for (const node of Object.values(bucket)) {
+                        const k = keyOf(type, node.id);
+                        nodeByKey.set(k, node);
+
+                        if (node.parents) parentsByKey.set(k, node.parents);
+
+                        // @ts-expect-error
+                        if (node.children && node.children.length) {
+                            // if (Array.isArray(children) && children.length) {
+                            const n = /** @type {Child} */ (node);
+                            const filteredChildren = filterChilderBasedOnCheckboxes(n.children);
+                            if (filteredChildren.length) {
+                                childrenByKey.set(k, n.children);
+                            }
+                        }
+                    }
+                }
+
+                addBucket(root.documentObjects, "DOCUMENT_OBJECT");
+                addBucket(root.displayRules, "DISPLAY_RULE");
+                addBucket(root.textStyles, "TEXT_STYLE");
+                addBucket(root.paragraphStyles, "PARAGRAPH_STYLE");
+                addBucket(root.attachments, "ATTACHMENT");
+                addBucket(root.images, "IMAGE");
+                addBucket(root.variables, "VARIABLE");
+                addBucket(root.variableStructures, "VARIABLE_STRUCTURE");
+
+                return { nodeByKey, childrenByKey, parentsByKey };
+            }
+
+
+            /**
+             * @param {Reference} r
+             */
+            function refKey(r) {
+                return `${r.type}:${r.id}`;
+            }
+
+            /**
+             * @param {string} type
+             * @param {string} id
+             */
+            function keyOf(type, id) {
+                return `${type}:${id}`;
+            }
+
+            /**
+             * @param {Root} root
+             * @param {Reference} ref
+             * @returns {Node}
+             */
+            function getElementByRef(root, ref) {
+                switch (ref.type) {
+                    case 'DOCUMENT_OBJECT': {
+                        return root.documentObjects[ref.id];
+                    };
+                    case 'DISPLAY_RULE': {
+                        return root.displayRules[ref.id];
+                    };
+                    case 'TEXT_STYLE': {
+                        return root.textStyles[ref.id];
+                    };
+                    case 'PARAGRAPH_STYLE': {
+                        return root.paragraphStyles[ref.id];
+                    };
+                    case 'ATTACHMENT': {
+                        return root.attachments[ref.id];
+                    };
+                    case 'IMAGE': {
+                        return root.images[ref.id];
+                    };
+                    case 'VARIABLE': {
+                        return root.variables[ref.id];
+                    };
+                    case 'VARIABLE_STRUCTURE': {
+                        return root.variableStructures[ref.id];
+                    };
+                }
+            }
+
+            /**
+             * @param {string} id
+             * @param {ChildType} type
+             * @param {string | undefined} name
+             * @param {boolean} ellipsize
+             * @returns {string}
+             */
+            function idAndTypeToLabel(id, type, name, ellipsize = false) {
+                let label = ""
+                switch (type) {
+                    case 'DOCUMENT_OBJECT': {
+                        label = "DO"
+                        break;
+                    };
+                    case 'DISPLAY_RULE': {
+                        label = "DR"
+                        break;
+                    };
+                    case 'TEXT_STYLE': {
+                        label = "TS"
+                        break;
+                    };
+                    case 'PARAGRAPH_STYLE': {
+                        label = "PS"
+                        break;
+                    };
+                    case 'ATTACHMENT': {
+                        label = "ATT"
+                        break;
+                    };
+                    case 'IMAGE': {
+                        label = "IMG"
+                        break;
+                    };
+                    case 'VARIABLE': {
+                        label = "VAR"
+                        break;
+                    };
+                    case 'VARIABLE_STRUCTURE': {
+                        label = "VS"
+                        break;
+                    };
+                }
+
+                let eid = id;
+                if (ellipsize && id.length > 20) {
+                    eid = id.slice(0, 20) + "...";
+                }
+                let ename = name ?? "n/a";
+                if (ellipsize && ename.length > 30) {
+                    ename = ename.slice(0, 30) + "...";
+                }
+                return `[${label}] ${eid} (${ename})`;
+            }
+
+            /**
+             * @typedef {{ nodeByKey: Map<string, Node>, childrenByKey: Map<string, Reference[]>, parentsByKey: Map<string, Reference[]> }} Indexes
+             */
+
+            /**
+            * @typedef {Object} Root
+            * @property {Object.<string, Child>} documentObjects
+            * @property {Object.<string, Child>} displayRules
+            * @property {Object.<string, Leaf>} textStyles
+            * @property {Object.<string, Leaf>} paragraphStyles
+            * @property {Object.<string, Leaf>} attachments
+            * @property {Object.<string, Leaf>} images
+            * @property {Object.<string, Leaf>} variables
+            * @property {Object.<string, Child>} variableStructures
+            */
+
+            /**
+             * @typedef {Object} Node
+             * @property {string} id
+             * @property {string} name
+             * @property {ChildType} type
+             * @property {Reference[]} parents
+             * @property {Record<String, String>} data
+             */
+
+            /**
+             * @typedef {Node} Leaf
+             */
+
+            /**
+             * @typedef {Node & { children: Reference[] }} Child
+             */
+
+            /**
+             * @typedef {Object} Reference
+             * @property {string} id
+             * @property {ChildType} type
+             */
+
+            /**
+             * @typedef {'DOCUMENT_OBJECT'
+             *  | 'DISPLAY_RULE'
+             *  | 'TEXT_STYLE'
+             *  | 'PARAGRAPH_STYLE'
+             *  | 'ATTACHMENT'
+             *  | 'IMAGE'
+             *  | 'VARIABLE'
+             *  | 'VARIABLE_STRUCTURE'} ChildType
+             */
+        </script>
+    </body>
+</html>

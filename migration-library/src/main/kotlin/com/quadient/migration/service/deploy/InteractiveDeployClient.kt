@@ -18,10 +18,10 @@ import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
-import kotlinx.datetime.Clock
-import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.v1.core.SqlExpressionBuilder.inList
+import kotlin.time.Clock
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.json.extract
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid

@@ -8,7 +8,7 @@ import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.TabType
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class ParagraphStyle @JvmOverloads constructor(
     override val id: String,

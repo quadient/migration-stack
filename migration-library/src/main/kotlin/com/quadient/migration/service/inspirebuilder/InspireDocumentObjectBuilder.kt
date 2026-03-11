@@ -92,7 +92,7 @@ import com.quadient.wfdxml.internal.layoutnodes.TextStyleImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeOptionality
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.SUB_TREE
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ifEmpty

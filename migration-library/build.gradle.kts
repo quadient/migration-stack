@@ -5,8 +5,8 @@ val exposedVersion: String by project
 val mockkVersion = "1.13.13"
 
 plugins {
-    kotlin("jvm") version "2.1.0"
-    kotlin("plugin.serialization") version "2.1.0"
+    kotlin("jvm") version "2.3.10"
+    kotlin("plugin.serialization") version "2.3.10"
     id("maven-publish")
     id("org.owasp.dependencycheck") version "12.1.9"
 }

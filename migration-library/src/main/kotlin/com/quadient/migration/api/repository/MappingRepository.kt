@@ -6,6 +6,7 @@ import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.persistence.migrationmodel.MappingItemEntity
 import com.quadient.migration.persistence.repository.MappingInternalRepository
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 class MappingRepository(
     private val projectName: String,
@@ -20,7 +21,7 @@ class MappingRepository(
     private val internalRepository = MappingInternalRepository(projectName)
 
     fun listAll(): List<Mapping> {
-        return internalRepository.listAll().map { it.toDto() }
+        return transaction { internalRepository.listAll().map { it.toDto() } }
     }
 
     fun applyAll() {
@@ -39,19 +40,21 @@ class MappingRepository(
     }
 
     fun upsert(id: String, mapping: MappingItem): Mapping {
-        return internalRepository.upsert(id, mapping.toDb()).toDto()
+        return transaction { internalRepository.upsert(id, mapping.toDb()).toDto() }
     }
 
     fun getDocumentObjectMapping(id: String): MappingItem.DocumentObject {
-        return (internalRepository.find<MappingItemEntity.DocumentObject>(id) ?: MappingItemEntity.DocumentObject(
-            name = null,
-            internal = null,
-            baseTemplate = null,
-            targetFolder = null,
-            type = null,
-            variableStructureRef = null,
-            skip = null,
-        )).toDto() as MappingItem.DocumentObject
+        return transaction {
+            (internalRepository.find<MappingItemEntity.DocumentObject>(id) ?: MappingItemEntity.DocumentObject(
+                name = null,
+                internal = null,
+                baseTemplate = null,
+                targetFolder = null,
+                type = null,
+                variableStructureRef = null,
+                skip = null,
+            )).toDto() as MappingItem.DocumentObject
+        }
     }
 
     fun applyDocumentObjectMapping(id: String) {
@@ -192,8 +195,8 @@ class MappingRepository(
             name = null,
             originLocations = emptyList(),
             customFields = CustomFieldMap(),
-            created = kotlinx.datetime.Clock.System.now(),
-            lastUpdated = kotlinx.datetime.Clock.System.now(),
+            created = kotlin.time.Clock.System.now(),
+            lastUpdated = kotlin.time.Clock.System.now(),
             structure = mutableMapOf(),
             languageVariable = null,
         )
