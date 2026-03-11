@@ -1,7 +1,6 @@
 package com.quadient.migration.api.repository
 
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
@@ -28,31 +27,24 @@ class ParagraphStyleRepository(table: ParagraphStyleTable, projectName: String) 
     val statusTrackingRepository = StatusTrackingRepository(projectName)
     override fun fromDb(row: ResultRow): ParagraphStyle {
         val definitionEntity = row[ParagraphStyleTable.definition]
-        val definition = when (definitionEntity) {
-            is com.quadient.migration.persistence.migrationmodel.ParagraphStyleDefinitionEntity -> {
-                ParagraphStyleDefinition(
-                    leftIndent = definitionEntity.leftIndent,
-                    rightIndent = definitionEntity.rightIndent,
-                    defaultTabSize = definitionEntity.defaultTabSize,
-                    spaceBefore = definitionEntity.spaceBefore,
-                    spaceAfter = definitionEntity.spaceAfter,
-                    alignment = definitionEntity.alignment,
-                    firstLineIndent = definitionEntity.firstLineIndent,
-                    lineSpacing = definitionEntity.lineSpacing,
-                    keepWithNextParagraph = definitionEntity.keepWithNextParagraph,
-                    tabs = definitionEntity.tabs?.let { tabsEntity ->
-                        Tabs(
-                            tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
-                            useOutsideTabs = tabsEntity.useOutsideTabs
-                        )
-                    },
-                    pdfTaggingRule = definitionEntity.pdfTaggingRule,
+        val definition = ParagraphStyleDefinition(
+            leftIndent = definitionEntity.leftIndent,
+            rightIndent = definitionEntity.rightIndent,
+            defaultTabSize = definitionEntity.defaultTabSize,
+            spaceBefore = definitionEntity.spaceBefore,
+            spaceAfter = definitionEntity.spaceAfter,
+            alignment = definitionEntity.alignment,
+            firstLineIndent = definitionEntity.firstLineIndent,
+            lineSpacing = definitionEntity.lineSpacing,
+            keepWithNextParagraph = definitionEntity.keepWithNextParagraph,
+            tabs = definitionEntity.tabs?.let { tabsEntity ->
+                Tabs(
+                    tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
+                    useOutsideTabs = tabsEntity.useOutsideTabs
                 )
-            }
-            is com.quadient.migration.persistence.migrationmodel.ParagraphStyleEntityRef -> {
-                ParagraphStyleRef.fromDb(definitionEntity)
-            }
-        }
+            },
+            pdfTaggingRule = definitionEntity.pdfTaggingRule,
+        )
 
         return ParagraphStyle(
             id = row[ParagraphStyleTable.id].value,
@@ -62,6 +54,7 @@ class ParagraphStyleRepository(table: ParagraphStyleTable, projectName: String) 
             lastUpdated = row[ParagraphStyleTable.lastUpdated],
             created = row[ParagraphStyleTable.created],
             definition = definition,
+            targetId = row[ParagraphStyleTable.targetId]?.let { ParagraphStyleRef(it) },
         )
     }
 
@@ -90,6 +83,7 @@ class ParagraphStyleRepository(table: ParagraphStyleTable, projectName: String) 
                 it[ParagraphStyleTable.originLocations] = existingItem?.originLocations.concat(dto.originLocations).distinct()
                 it[ParagraphStyleTable.customFields] = dto.customFields.inner
                 it[ParagraphStyleTable.definition] = dto.definition.toDb()
+                it[ParagraphStyleTable.targetId] = dto.targetId?.id
                 it[ParagraphStyleTable.created] = existingItem?.created ?: now
                 it[ParagraphStyleTable.lastUpdated] = now
             }.first()
@@ -101,7 +95,7 @@ class ParagraphStyleRepository(table: ParagraphStyleTable, projectName: String) 
 
         val columns = listOf(
             "id", "project_name", "name", "origin_locations", "custom_fields",
-            "created", "last_updated", "definition"
+            "created", "last_updated", "definition", "target_id"
         )
         val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
@@ -124,18 +118,10 @@ class ParagraphStyleRepository(table: ParagraphStyleTable, projectName: String) 
                 stmt.setTimestamp(index++, java.sql.Timestamp.from((existingItem?.created ?: now).toJavaInstant()))
                 stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
                 stmt.setObject(index++, Json.encodeToString(dto.definition.toDb()), Types.OTHER)
+                stmt.setString(index++, dto.targetId?.id)
             }
 
             stmt.executeUpdate()
-        }
-    }
-
-    fun firstWithDefinition(id: String): ParagraphStyle? {
-        val model = find(id)
-        return when (val def = model?.definition) {
-            is ParagraphStyleDefinition -> model
-            is ParagraphStyleRef -> firstWithDefinition(def.id)
-            null -> null
         }
     }
 }

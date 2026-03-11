@@ -10,17 +10,22 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Tab
 import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.api.dto.migrationmodel.Tabs
-import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -31,6 +36,7 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp.*
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType.*
@@ -46,14 +52,11 @@ import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.TabType
 import com.quadient.migration.shared.TableAlignment
 import com.quadient.migration.shared.VariablePathData
-import com.quadient.migration.shared.millimeters
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aCell
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDisplayRule
 import com.quadient.migration.tools.model.aParagraph
-import com.quadient.migration.tools.model.aParaDef
-import com.quadient.migration.tools.model.aParaStyle
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aCell
 import com.quadient.migration.tools.model.aDocObj
@@ -106,6 +109,7 @@ class InteractiveDocumentObjectBuilderTest {
     fun setUp() {
         every { variableStructureRepository.listAll() } returns emptyList()
         every { ipsService.fileExists(any()) } returns true
+        every { ipsService.wfd2xml(any()) } returns "<Workflow><Layout><Layout></Layout></Layout></Workflow>"
     }
 
     @Test
@@ -131,14 +135,14 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build of block with styled paragraph and text fetches both styles from db and uses them`() {
         // given
-        val paraStyle = aParaStyle("paraStyle1", definition = aParaDef(Size.ofMillimeters(100)))
-        val textStyle = aTextStyle("textStyle1", definition = aTextDef(fontFamily = "Arial"))
+        val paraStyle =
+            mockParagraphStyle(ParagraphStyleBuilder("paraStyle1").definition { leftIndent(Size.ofMillimeters(100)) }
+                .build())
+        val textStyle = mockTextStyle(TextStyleBuilder("textStyle1").definition { fontFamily("Arial") }.build())
 
         val block = aBlock(
             "1", listOf(aParagraph(aText(StringValue("some text"), textStyle.id), paraStyle.id))
         )
-        every { textStyleRepository.firstWithDefinition(textStyle.id) } returns textStyle
-        every { paragraphStyleRepository.firstWithDefinition(paraStyle.id) } returns paraStyle
 
         // when
         val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
@@ -147,9 +151,51 @@ class InteractiveDocumentObjectBuilderTest {
         val flowDefinitions = result["Flow"]
         flowDefinitions.size().shouldBeEqualTo(3)
         val paragraph = flowDefinitions[2]["FlowContent"]["P"]
-        paragraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.name}")
+        paragraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
         val text = paragraph["T"]
-        text["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.name}")
+        text["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
+    }
+
+    @Test
+    fun `build of block where style names match display names in style definition resolves to internal style names`() {
+        // given
+        val paraStyle = mockParagraphStyle(
+            ParagraphStyleBuilder("PS1").name("Heading Display").definition { alignment(Alignment.Left) }.build()
+        )
+        val textStyle = mockTextStyle(
+            TextStyleBuilder("TS1").name("Body Display").definition { fontFamily("Arial") }.build()
+        )
+
+        val block = DocumentObjectBuilder("1", Block).paragraph {
+            text { string("some text").styleRef(textStyle.id) }.styleRef(paraStyle.id)
+        }.build()
+
+        every { ipsService.wfd2xml(eq(subject.getStyleDefinitionPath("jld"))) } returns """
+            <Workflow>
+                <Layout>
+                    <Layout>
+                        <ParagraphStyle>
+                            <Id>10</Id>
+                            <Name>heading_internal</Name>
+                            <CustomProperty>{&quot;DisplayName&quot;:&quot;Heading Display&quot;}</CustomProperty>
+                        </ParagraphStyle>
+                        <TextStyle>
+                            <Id>20</Id>
+                            <Name>body_internal</Name>
+                            <CustomProperty>{&quot;DisplayName&quot;:&quot;Body Display&quot;}</CustomProperty>
+                        </TextStyle>
+                    </Layout>
+                </Layout>
+            </Workflow>
+        """.trimIndent()
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val paragraph = result["Flow"].last()["FlowContent"]["P"]
+        paragraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.heading_internal")
+        paragraph["T"]["Id"].textValue().shouldBeEqualTo("TextStyles.body_internal")
     }
 
     @Test
@@ -399,35 +445,22 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with styled paragraph and styled text under display rule wraps the text in inline condition flow`() {
         // given
-        val variable = mockVar(aVariable("V1", "ClientName"))
+        val variable = mockVar(VariableBuilder("V1").name("ClientName").dataType(DataType.String).build())
         val variableStructure = mockVarStructure(
-            aVariableStructure(
-                structure = mapOf(
-                    variable.id to VariablePathData("Data.Clients", "Client Name"),
-                )
-            )
+            VariableStructureBuilder("VS1").addVariable(variable.id, "Data.Clients", "Client Name").build()
         )
 
-        val paraStyle = aParaStyle("P1", definition = aParaDef(10.millimeters()))
-        val textStyle = aTextStyle("T1", definition = aTextDef(bold = true))
-        val displayRule = aDisplayRule(
-            Literal(variable.id, LiteralDataType.Variable), Equals, Literal("Jon", LiteralDataType.String)
-        )
+        val paraStyle = mockParagraphStyle(
+            ParagraphStyleBuilder("P1").definition { leftIndent(Size.ofMillimeters(10)) }.build())
+        val textStyle = mockTextStyle (TextStyleBuilder("T1").definition { bold(true) }.build())
+        val displayRule = DisplayRuleBuilder("R1").comparison { variable(variable.id).equals().value("Jon") }.build()
 
-        val block = aBlock(
-            "1", listOf(
-                aParagraph(
-                    aText(
-                        StringValue("Hello There"), textStyle.id, DisplayRuleRef(displayRule.id)
-                    ), paraStyle.id
-                )
-            )
-        )
+        val block = DocumentObjectBuilder("1", Block).paragraph {
+            text { string("Hello There").styleRef(textStyle.id).displayRuleRef(displayRule.id) }.styleRef(paraStyle.id)
+        }.build()
         val config = aProjectConfig(defaultVariableStructure = variableStructure.id)
 
         every { displayRuleRepository.findOrFail(displayRule.id) } returns displayRule
-        every { textStyleRepository.firstWithDefinition(textStyle.id) } returns textStyle
-        every { paragraphStyleRepository.firstWithDefinition(paraStyle.id) } returns paraStyle
 
         // when
         val subject = aSubject(config)
@@ -443,7 +476,7 @@ class InteractiveDocumentObjectBuilderTest {
         val topSimpleFlow = result["Flow"].last { it["Id"].textValue() == topSimpleFlowRef }
         topSimpleFlow["Type"].textValue().shouldBeEqualTo("Simple")
         val topFlowParagraph = topSimpleFlow["FlowContent"]["P"]
-        topFlowParagraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.name}")
+        topFlowParagraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
         val topFlowText = topFlowParagraph["T"]
         Assertions.assertNull(topFlowText["Id"])
         val conditionFlowRef = topFlowText["O"]["Id"].textValue()
@@ -457,9 +490,9 @@ class InteractiveDocumentObjectBuilderTest {
         val finalFlow = result["Flow"].last { it["Id"].textValue() == finalFlowRef }
         finalFlow["Type"].textValue().shouldBeEqualTo("Simple")
         val finalFlowPara = finalFlow["FlowContent"]["P"]
-        finalFlowPara["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.name}")
+        finalFlowPara["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
         val finalFlowText = finalFlowPara["T"]
-        finalFlowText["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.name}")
+        finalFlowText["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
         finalFlowText[""].textValue().shouldBeEqualTo("Hello There")
 
         result["Data"]["RepeatedBy"].shouldBeNull()
@@ -476,8 +509,9 @@ class InteractiveDocumentObjectBuilderTest {
         )
         val config = aProjectConfig(defaultVariableStructure = variableStructure.id)
 
-        val textStyle = aTextStyle("T1", definition = aTextDef(bold = true))
-        val paraStyle = aParaStyle("P1", definition = aParaDef(10.millimeters()))
+        val textStyle = mockTextStyle(TextStyleBuilder("T1").definition { bold(true) }.build())
+        val paraStyle =
+            mockParagraphStyle(ParagraphStyleBuilder("P1").definition { leftIndent(Size.ofMillimeters(10)) }.build())
 
         val paraDisplayRule = aDisplayRule(
             Literal(variable.id, LiteralDataType.Variable),
@@ -507,8 +541,6 @@ class InteractiveDocumentObjectBuilderTest {
 
         every { displayRuleRepository.findOrFail(paraDisplayRule.id) } returns paraDisplayRule
         every { displayRuleRepository.findOrFail(textDisplayRule.id) } returns textDisplayRule
-        every { textStyleRepository.firstWithDefinition(textStyle.id) } returns textStyle
-        every { paragraphStyleRepository.firstWithDefinition(paraStyle.id) } returns paraStyle
 
         // when
         val subject = aSubject(config)
@@ -532,7 +564,7 @@ class InteractiveDocumentObjectBuilderTest {
 
         val paraFlow = result["Flow"].last { it["Id"].textValue() == paraFlowRef }
         val paraFlowPara = paraFlow["FlowContent"]["P"]
-        paraFlowPara["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.name}")
+        paraFlowPara["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
         paraFlowPara["T"][0][""].textValue().shouldBeEqualTo("This is")
         val secondText = paraFlowPara["T"][1]
         Assertions.assertNull(secondText["Id"])
@@ -546,9 +578,9 @@ class InteractiveDocumentObjectBuilderTest {
 
         val textFlow = result["Flow"].last { it["Id"].textValue() == textFlowRef }
         val textFlowPara = textFlow["FlowContent"]["P"]
-        textFlowPara["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.name}")
+        textFlowPara["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
         val textFlowText = textFlowPara["T"]
-        textFlowText["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.name}")
+        textFlowText["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
         textFlowText[""].textValue().shouldBeEqualTo("Preposterous!")
     }
 
@@ -607,32 +639,6 @@ class InteractiveDocumentObjectBuilderTest {
 
         val subRow = result["RowSet"].last { it["Id"].textValue() == subRowRef }
         subRow["RowSetType"].textValue().shouldBeEqualTo("Row")
-    }
-
-    @Test
-    fun `build block with unavailable text style throws exception`() {
-        // given
-        val block = aBlock("1", listOf(aParagraph(aText(listOf(), TextStyleRef("textStyle1")))))
-        every { textStyleRepository.firstWithDefinition("textStyle1") } returns null
-
-        // when
-        val result = assertThrows<IllegalStateException> { subject.buildDocumentObject(block, null) }
-
-        // then
-        result.message.shouldBeEqualTo("Text style definition for textStyle1 not found.")
-    }
-
-    @Test
-    fun `build block with unavailable paragraph style throws exception`() {
-        // given
-        val block = aBlock("1", listOf(aParagraph(aText(listOf()), "paraStyle1")))
-        every { paragraphStyleRepository.firstWithDefinition("paraStyle1") } returns null
-
-        // when
-        val result = assertThrows<IllegalStateException> { subject.buildDocumentObject(block, null) }
-
-        // then
-        result.message.shouldBeEqualTo("Paragraph style definition for paraStyle1 not found.")
     }
 
     @Test
@@ -1169,7 +1175,7 @@ class InteractiveDocumentObjectBuilderTest {
         // given
         val refBlock = mockObj(DocumentObjectBuilder("RefBlock", Block).string("ref content").build())
         val displayRule = mockRule(DisplayRuleBuilder("rule").comparison { value("C").equals().value("C") }.build())
-        
+
         val template = DocumentObjectBuilder("T1", Template).table {
             addRow().addCell().documentObjectRef(refBlock.id, displayRule.id)
         }.build()
@@ -1213,10 +1219,10 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build of simple style delta works correctly`() {
         every { paragraphStyleRepository.listAll() } returns listOf(
-            aParaStyle("paraStyle1", definition = aParaDef(leftIndent = Size.ofCentimeters(1)))
+            ParagraphStyleBuilder("paraStyle1").definition { leftIndent(Size.ofCentimeters(1)) }.build()
         )
         every { textStyleRepository.listAll() } returns listOf(
-            aTextStyle("textStyle1", definition = aTextDef(bold = true, underline = true)),
+            TextStyleBuilder("textStyle1").definition { bold(true).underline(true) }.build()
         )
         every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;"
 
@@ -1289,18 +1295,16 @@ class InteractiveDocumentObjectBuilderTest {
     fun `paragraph number values are converted to meters`() {
         every { textStyleRepository.listAll() } returns listOf()
         every { paragraphStyleRepository.listAll() } returns listOf(
-            aParaStyle(
-                "paraStyle1", definition = aParaDef(
-                    leftIndent = Size.ofMillimeters(7.5),
-                    rightIndent = Size.ofCentimeters(0.5),
-                    defaultTabSize = Size.ofMeters(0.03),
-                    spaceBefore = Size.ofMillimeters(4),
-                    spaceAfter = Size.ofMillimeters(6),
-                    firstLineIndent = Size.ofCentimeters(0.8),
-                    lineSpacing = LineSpacing.Exact(Size.ofCentimeters(1.5)),
-                    tabs = Tabs(listOf(Tab(Size.ofMillimeters(25), TabType.Left)), false)
-                )
-            ),
+            ParagraphStyleBuilder("paraStyle1").definition {
+                leftIndent(Size.ofMillimeters(7.5))
+                rightIndent(Size.ofCentimeters(0.5))
+                defaultTabSize(Size.ofMeters(0.03))
+                spaceBefore(Size.ofMillimeters(4))
+                spaceAfter(Size.ofMillimeters(6))
+                firstLineIndent(Size.ofCentimeters(0.8))
+                lineSpacing(LineSpacing.Exact(Size.ofCentimeters(1.5)))
+                tabs(Tabs(listOf(Tab(Size.ofMillimeters(25), TabType.Left)), false))
+            }.build()
         )
         every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Interactive/${config.interactiveTenant}/Resources/Fonts/arial.ttf;"
 
@@ -1516,6 +1520,16 @@ class InteractiveDocumentObjectBuilderTest {
     private fun mockVarStructure(variableStructure: VariableStructure): VariableStructure {
         every { variableStructureRepository.findOrFail(variableStructure.id) } returns variableStructure
         return variableStructure
+    }
+
+    private fun mockTextStyle(textStyle: TextStyle): TextStyle {
+        every { textStyleRepository.findOrFail(textStyle.id) } returns textStyle
+        return textStyle
+    }
+
+    private fun mockParagraphStyle(paragraphStyle: ParagraphStyle): ParagraphStyle {
+        every { paragraphStyleRepository.findOrFail(paragraphStyle.id) } returns paragraphStyle
+        return paragraphStyle
     }
 
     private fun aSubject(config: ProjectConfig) = InteractiveDocumentObjectBuilder(

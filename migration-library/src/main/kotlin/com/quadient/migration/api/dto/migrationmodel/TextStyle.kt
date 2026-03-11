@@ -11,15 +11,13 @@ data class TextStyle @JvmOverloads constructor(
     override var name: String? = null,
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
-    var definition: TextStyleDefOrRef,
+    var definition: TextStyleDefinition,
+    var targetId: TextStyleRef? = null,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
-        return when (definition) {
-            is TextStyleDefinition -> emptyList()
-            is TextStyleRef -> listOf(definition as Ref)
-        }
+        return listOfNotNull(targetId)
     }
 }
 
@@ -33,8 +31,8 @@ data class TextStyleDefinition(
     var strikethrough: Boolean = false,
     var superOrSubscript: SuperOrSubscript = SuperOrSubscript.None,
     var interspacing: Size?,
-) : TextStyleDefOrRef {
-    override fun toDb() = TextStyleDefinitionEntity(
+) {
+    fun toDb() = TextStyleDefinitionEntity(
         fontFamily = fontFamily,
         foregroundColor = foregroundColor,
         size = size,

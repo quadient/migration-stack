@@ -134,13 +134,11 @@ sealed class MappingItemEntity {
     }
 
     @Serializable
-    data class ParagraphStyle(override val name: String?, val definition: Definition?) : MappingItemEntity() {
-        @Serializable
-        sealed interface Definition
-
-        @Serializable
-        data class Ref(val targetId: String) : Definition
-
+    data class ParagraphStyle(
+        override val name: String?,
+        val targetId: String? = null,
+        val definition: Def? = null
+    ) : MappingItemEntity() {
         @Serializable
         data class Def(
             var leftIndent: Size?,
@@ -154,69 +152,35 @@ sealed class MappingItemEntity {
             var keepWithNextParagraph: Boolean?,
             var tabs: TabsEntity?,
             var pdfTaggingRule: ParagraphPdfTaggingRule?
-        ) : Definition
+        )
 
         fun apply(item: ParagraphStyleModel): ParagraphStyleModel {
-            return when (definition) {
-                is Ref -> {
-                    item.copy(
-                        name = name, definition = ParagraphStyleRef(definition.targetId)
-                    )
-                }
+            val updatedDefinition = definition?.let { def ->
+                item.definition.copy(
+                    leftIndent = def.leftIndent,
+                    rightIndent = def.rightIndent,
+                    defaultTabSize = def.defaultTabSize,
+                    spaceBefore = def.spaceBefore,
+                    spaceAfter = def.spaceAfter,
+                    alignment = def.alignment ?: Alignment.Left,
+                    firstLineIndent = def.firstLineIndent,
+                    lineSpacing = def.lineSpacing ?: Additional(null),
+                    keepWithNextParagraph = def.keepWithNextParagraph,
+                    tabs = def.tabs?.let { tabsEntity ->
+                        Tabs(
+                            tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
+                            useOutsideTabs = tabsEntity.useOutsideTabs
+                        )
+                    },
+                    pdfTaggingRule = def.pdfTaggingRule
+                )
+            } ?: item.definition
 
-                is Def -> {
-                    val def = item.definition
-                    when (def) {
-                        is ParagraphStyleDefinition -> {
-                            item.copy(
-                                name = name, definition = def.copy(
-                                    leftIndent = definition.leftIndent,
-                                    rightIndent = definition.rightIndent,
-                                    defaultTabSize = definition.defaultTabSize,
-                                    spaceBefore = definition.spaceBefore,
-                                    spaceAfter = definition.spaceAfter,
-                                    alignment = definition.alignment ?: Alignment.Left,
-                                    firstLineIndent = definition.firstLineIndent,
-                                    lineSpacing = definition.lineSpacing ?: Additional(null),
-                                    keepWithNextParagraph = definition.keepWithNextParagraph,
-                                    tabs = definition.tabs?.let { tabsEntity ->
-                                        Tabs(
-                                            tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
-                                            useOutsideTabs = tabsEntity.useOutsideTabs
-                                        )
-                                    },
-                                    pdfTaggingRule = definition.pdfTaggingRule
-                                )
-                            )
-                        }
-
-                        is ParagraphStyleRef -> {
-                            item.copy(
-                                name = name, definition = ParagraphStyleDefinition(
-                                    leftIndent = definition.leftIndent,
-                                    rightIndent = definition.rightIndent,
-                                    defaultTabSize = definition.defaultTabSize,
-                                    spaceBefore = definition.spaceBefore,
-                                    spaceAfter = definition.spaceAfter,
-                                    alignment = definition.alignment ?: Alignment.Left,
-                                    firstLineIndent = definition.firstLineIndent,
-                                    lineSpacing = definition.lineSpacing ?: Additional(null),
-                                    keepWithNextParagraph = definition.keepWithNextParagraph ?: false,
-                                    tabs = definition.tabs?.let { tabsEntity ->
-                                        Tabs(
-                                            tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
-                                            useOutsideTabs = tabsEntity.useOutsideTabs
-                                        )
-                                    },
-                                    pdfTaggingRule = definition.pdfTaggingRule
-                                )
-                            )
-                        }
-                    }
-                }
-
-                null -> item
-            }
+            return item.copy(
+                name = name,
+                definition = updatedDefinition,
+                targetId = targetId?.let { ParagraphStyleRef(it) }
+            )
         }
     }
 
@@ -248,13 +212,11 @@ sealed class MappingItemEntity {
 
 
     @Serializable
-    data class TextStyle(override val name: String?, val definition: Definition?) : MappingItemEntity() {
-        @Serializable
-        sealed interface Definition
-
-        @Serializable
-        data class Ref(val targetId: String) : Definition
-
+    data class TextStyle(
+        override val name: String?,
+        val targetId: String? = null,
+        val definition: Def? = null
+    ) : MappingItemEntity() {
         @Serializable
         data class Def(
             var fontFamily: String?,
@@ -266,56 +228,28 @@ sealed class MappingItemEntity {
             var strikethrough: Boolean?,
             var superOrSubscript: SuperOrSubscript?,
             var interspacing: Size?
-        ) : Definition
+        )
 
         fun apply(item: TextStyleModel): TextStyleModel {
-            return when (definition) {
-                is Ref -> {
-                    item.copy(
-                        name = name, definition = TextStyleRef(definition.targetId)
-                    )
-                }
+            val updatedDefinition = definition?.let { def ->
+                item.definition.copy(
+                    fontFamily = def.fontFamily,
+                    foregroundColor = def.foregroundColor,
+                    size = def.size,
+                    bold = def.bold ?: false,
+                    italic = def.italic ?: false,
+                    underline = def.underline ?: false,
+                    strikethrough = def.strikethrough ?: false,
+                    superOrSubscript = def.superOrSubscript ?: SuperOrSubscript.None,
+                    interspacing = def.interspacing
+                )
+            } ?: item.definition
 
-                is Def -> {
-                    val def = item.definition
-                    when (def) {
-                        is TextStyleDefinition -> {
-                            item.copy(
-                                name = name,
-                                definition = def.copy(
-                                    fontFamily = definition.fontFamily,
-                                    foregroundColor = definition.foregroundColor,
-                                    size = definition.size,
-                                    bold = definition.bold ?: false,
-                                    italic = definition.italic ?: false,
-                                    underline = definition.underline ?: false,
-                                    strikethrough = definition.strikethrough ?: false,
-                                    superOrSubscript = definition.superOrSubscript ?: SuperOrSubscript.None,
-                                    interspacing = definition.interspacing
-                                ),
-                            )
-                        }
-
-                        is TextStyleRef -> {
-                            item.copy(
-                                name = name, definition = TextStyleDefinition(
-                                    fontFamily = definition.fontFamily,
-                                    foregroundColor = definition.foregroundColor,
-                                    size = definition.size,
-                                    bold = definition.bold ?: false,
-                                    italic = definition.italic ?: false,
-                                    underline = definition.underline ?: false,
-                                    strikethrough = definition.strikethrough ?: false,
-                                    superOrSubscript = definition.superOrSubscript ?: SuperOrSubscript.None,
-                                    interspacing = definition.interspacing
-                                )
-                            )
-                        }
-                    }
-                }
-
-                null -> item
-            }
+            return item.copy(
+                name = name,
+                definition = updatedDefinition,
+                targetId = targetId?.let { TextStyleRef(it) },
+            )
         }
     }
 
@@ -360,57 +294,47 @@ sealed class MappingItemEntity {
 
             is ParagraphStyle -> {
                 MappingItem.ParagraphStyle(
-                    name = this.name, definition = when (definition) {
-                        is MappingItemEntity.ParagraphStyle.Def -> {
-                            MappingItem.ParagraphStyle.Def(
-                                leftIndent = definition.leftIndent,
-                                rightIndent = definition.rightIndent,
-                                defaultTabSize = definition.defaultTabSize,
-                                spaceBefore = definition.spaceBefore,
-                                spaceAfter = definition.spaceAfter,
-                                alignment = definition.alignment,
-                                firstLineIndent = definition.firstLineIndent,
-                                lineSpacing = definition.lineSpacing,
-                                keepWithNextParagraph = definition.keepWithNextParagraph,
-                                tabs = definition.tabs?.let { tabsEntity ->
-                                    Tabs(
-                                        tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
-                                        useOutsideTabs = tabsEntity.useOutsideTabs
-                                    )
-                                },
-                                pdfTaggingRule = definition.pdfTaggingRule
-                            )
-                        }
-
-                        is MappingItemEntity.ParagraphStyle.Ref -> {
-                            MappingItem.ParagraphStyle.Ref(targetId = definition.targetId)
-                        }
-
-                        null -> null
+                    name = this.name,
+                    targetId = this.targetId,
+                    definition = this.definition?.let { def ->
+                        MappingItem.ParagraphStyle.Def(
+                            leftIndent = def.leftIndent,
+                            rightIndent = def.rightIndent,
+                            defaultTabSize = def.defaultTabSize,
+                            spaceBefore = def.spaceBefore,
+                            spaceAfter = def.spaceAfter,
+                            alignment = def.alignment,
+                            firstLineIndent = def.firstLineIndent,
+                            lineSpacing = def.lineSpacing,
+                            keepWithNextParagraph = def.keepWithNextParagraph,
+                            tabs = def.tabs?.let { tabsEntity ->
+                                Tabs(
+                                    tabs = tabsEntity.tabs.map { Tab(it.position, it.type) },
+                                    useOutsideTabs = tabsEntity.useOutsideTabs
+                                )
+                            },
+                            pdfTaggingRule = def.pdfTaggingRule
+                        )
                     }
                 )
             }
 
             is TextStyle -> {
                 MappingItem.TextStyle(
-                    name = this.name, definition = when (definition) {
-                        is MappingItemEntity.TextStyle.Def -> {
-                            MappingItem.TextStyle.Def(
-                                fontFamily = definition.fontFamily,
-                                foregroundColor = definition.foregroundColor,
-                                size = definition.size,
-                                bold = definition.bold ?: false,
-                                italic = definition.italic ?: false,
-                                underline = definition.underline ?: false,
-                                strikethrough = definition.strikethrough ?: false,
-                                superOrSubscript = definition.superOrSubscript ?: SuperOrSubscript.None,
-                                interspacing = definition.interspacing
-                            )
-                        }
-
-                        is MappingItemEntity.TextStyle.Ref -> MappingItem.TextStyle.Ref(definition.targetId)
-
-                        null -> null
+                    name = this.name,
+                    targetId = this.targetId,
+                    definition = this.definition?.let { def ->
+                        MappingItem.TextStyle.Def(
+                            fontFamily = def.fontFamily,
+                            foregroundColor = def.foregroundColor,
+                            size = def.size,
+                            bold = def.bold ?: false,
+                            italic = def.italic ?: false,
+                            underline = def.underline ?: false,
+                            strikethrough = def.strikethrough ?: false,
+                            superOrSubscript = def.superOrSubscript ?: SuperOrSubscript.None,
+                            interspacing = def.interspacing
+                        )
                     }
                 )
             }

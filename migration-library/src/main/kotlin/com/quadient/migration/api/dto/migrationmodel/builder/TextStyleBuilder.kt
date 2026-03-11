@@ -1,7 +1,6 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefOrRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.shared.Color
@@ -9,15 +8,19 @@ import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SuperOrSubscript
 
 class TextStyleBuilder(id: String) : DtoBuilderBase<TextStyle, TextStyleBuilder>(id) {
-    var definition: TextStyleDefOrRef? = null
+    private var definition: TextStyleDefinition? = null
+    private var targetId: TextStyleRef? = null
 
     fun definition(builder: TextStyleDefinitionBuilder.() -> Unit) = apply {
         this.definition = TextStyleDefinitionBuilder().apply(builder).build()
     }
 
-    fun definition(definition: TextStyleDefinition) = apply { this.definition = definition }
-    fun styleRef(id: String) = apply { this.definition = TextStyleRef(id) }
-    fun styleRef(ref: TextStyleRef) = apply { this.definition = ref }
+    fun definition(definition: TextStyleDefinition) = apply {
+        this.definition = definition
+    }
+
+    fun styleRef(id: String) = apply { this.targetId = TextStyleRef(id) }
+    fun styleRef(ref: TextStyleRef) = apply { this.targetId = ref }
 
     override fun build(): TextStyle {
         return TextStyle(
@@ -25,7 +28,8 @@ class TextStyleBuilder(id: String) : DtoBuilderBase<TextStyle, TextStyleBuilder>
             name = name,
             originLocations = originLocations,
             customFields = customFields,
-            definition = definition ?: throw IllegalArgumentException("TextStyleDefinition must be provided"),
+            definition = definition ?: TextStyleDefinitionBuilder().build(),
+            targetId = targetId,
         )
     }
 }

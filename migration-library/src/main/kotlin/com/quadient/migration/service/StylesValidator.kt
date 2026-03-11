@@ -1,5 +1,7 @@
 package com.quadient.migration.service
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
@@ -7,10 +9,8 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
@@ -30,6 +30,7 @@ class StylesValidator(
     private val deployClient: DeployClient,
     private val ipsService: IpsService,
 ) {
+    private val jsonMapper = ObjectMapper()
     fun validateAll(): ValidationResult {
         val documentObjects = deployClient.getAllDocumentObjectsToDeploy()
         return validateInternal(documentObjects)
@@ -107,30 +108,32 @@ class StylesValidator(
 
         val xml = XmlMapper().readTree(xmlString)
 
-        val xmlParaStyles = xml["Layout"]?.let { it["Layout"] }?.let {
-            if (it["ParaStyle"] is ArrayNode) {
-                it["ParaStyle"]?.mapNotNull { s -> s["Name"]?.asText() }?.toSet() ?: emptySet()
-            } else {
-                it["ParaStyle"]?.let { s -> s["Name"]?.asText() }?.let { s -> setOf(s) } ?: emptySet()
-            }
-        } ?: emptySet()
-        val xmlTextStyles = xml["Layout"]?.let { it["Layout"] }?.let {
-            if (it["TextStyle"] is ArrayNode) {
-                it["TextStyle"]?.mapNotNull { s -> s["Name"]?.asText() }?.toSet() ?: emptySet()
-            } else {
-                it["TextStyle"]?.let { s -> s["Name"]?.asText() }?.let { s -> setOf(s) } ?: emptySet()
-            }
-        } ?: emptySet()
+        val layoutNode = xml["Layout"]?.get("Layout")
+        val validParaStyles = extractValidStyleIdentifiers(layoutNode, "ParaStyle")
+        val validTextStyles = extractValidStyleIdentifiers(layoutNode, "TextStyle")
 
-        missingTextStyleIds.addAll(neededTextStyleIds subtract xmlTextStyles)
-        missingParagraphStyleIds.addAll(neededParagraphStyleIds subtract xmlParaStyles)
+        missingTextStyleIds.addAll(neededTextStyleIds subtract validTextStyles)
+        missingParagraphStyleIds.addAll(neededParagraphStyleIds subtract validParaStyles)
 
         return ValidationResult(
-            textStyles = (neededTextStyleIds intersect xmlTextStyles).toList(),
-            paragraphStyles = (neededParagraphStyleIds intersect xmlParaStyles).toList(),
+            textStyles = (neededTextStyleIds intersect validTextStyles).toList(),
+            paragraphStyles = (neededParagraphStyleIds intersect validParaStyles).toList(),
             missingTextStyles = missingTextStyleIds.toList(),
             missingParagraphStyles = missingParagraphStyleIds.toList(),
         )
+    }
+
+    private fun extractValidStyleIdentifiers(layoutNode: JsonNode?, nodeTag: String): Set<String> {
+        val styleNodes = layoutNode?.get(nodeTag) ?: return emptySet()
+        val nodes = if (styleNodes is ArrayNode) styleNodes.toList() else listOf(styleNodes)
+        val result = mutableSetOf<String>()
+        nodes.forEach { node ->
+            node["Name"]?.asText()?.let { result.add(it) }
+            node["CustomProperty"]?.asText()?.let { raw ->
+                jsonMapper.readTree(raw)["DisplayName"]?.asText()?.let { result.add(it) }
+            }
+        }
+        return result
     }
 
     private fun resolveDocumentObjects(objects: List<DocumentObject>): List<DocumentObject> {
@@ -161,21 +164,15 @@ class StylesValidator(
     private fun TextStyle.resolveTextStyle(
         textStyleIds: MutableSet<String>, missingTextStyles: MutableSet<String>
     ) {
-        when (this.definition) {
-            is TextStyleDefinition -> {
-                textStyleIds.add(this.nameOrId())
-            }
-
-            is TextStyleRef -> {
-                val def = this.definition
-                if (def is TextStyleRef) {
-                    val model = textStyleRepository.find(def.id)
-                    if (model != null) {
-                        model.resolveTextStyle(textStyleIds, missingTextStyles)
-                    } else {
-                        missingTextStyles.add(this.id)
-                    }
-                }
+        val targetId = this.targetId
+        if (targetId == null) {
+            textStyleIds.add(this.nameOrId())
+        } else {
+            val model = textStyleRepository.find(targetId.id)
+            if (model != null) {
+                model.resolveTextStyle(textStyleIds, missingTextStyles)
+            } else {
+                missingTextStyles.add(this.id)
             }
         }
     }
@@ -183,21 +180,15 @@ class StylesValidator(
     private fun ParagraphStyle.resolveParagraphStyle(
         paragraphStyleIds: MutableSet<String>, missingParagraphStyles: MutableSet<String>
     ) {
-        when (this.definition) {
-            is ParagraphStyleDefinition -> {
-                paragraphStyleIds.add(this.nameOrId())
-            }
-
-            is ParagraphStyleRef -> {
-                val def = this.definition
-                if (def is ParagraphStyleRef) {
-                    val model = paragraphStyleRepository.find(def.id)
-                    if (model != null) {
-                        model.resolveParagraphStyle(paragraphStyleIds, missingParagraphStyles)
-                    } else {
-                        missingParagraphStyles.add(this.id)
-                    }
-                }
+        val targetId = this.targetId
+        if (targetId == null) {
+            paragraphStyleIds.add(this.nameOrId())
+        } else {
+            val model = paragraphStyleRepository.find(targetId.id)
+            if (model != null) {
+                model.resolveParagraphStyle(paragraphStyleIds, missingParagraphStyles)
+            } else {
+                missingParagraphStyles.add(this.id)
             }
         }
     }

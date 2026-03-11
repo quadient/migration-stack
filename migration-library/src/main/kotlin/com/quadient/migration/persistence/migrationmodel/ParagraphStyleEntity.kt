@@ -9,18 +9,18 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ParagraphStyleDefinitionEntity(
-    val leftIndent: Size?,
-    val rightIndent: Size?,
-    val defaultTabSize: Size?,
-    val spaceBefore: Size?,
-    val spaceAfter: Size?,
-    val alignment: Alignment,
-    val firstLineIndent: Size?,
-    val lineSpacing: LineSpacing,
-    val keepWithNextParagraph: Boolean?,
-    val tabs: TabsEntity?,
+    val leftIndent: Size? = null,
+    val rightIndent: Size? = null,
+    val defaultTabSize: Size? = null,
+    val spaceBefore: Size? = null,
+    val spaceAfter: Size? = null,
+    val alignment: Alignment = Alignment.Left,
+    val firstLineIndent: Size? = null,
+    val lineSpacing: LineSpacing = LineSpacing.Additional(null),
+    val keepWithNextParagraph: Boolean? = null,
+    val tabs: TabsEntity? = null,
     val pdfTaggingRule: ParagraphPdfTaggingRule? = null,
-): ParagraphStyleDefOrRefEntity
+)
 
 @Serializable
 data class TabsEntity(val tabs: List<TabEntity>, val useOutsideTabs: Boolean)

@@ -8,7 +8,6 @@ package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 
@@ -36,16 +35,9 @@ static void run(Migration migration, Path exportFilePath) {
             def builder = new StringBuilder()
             builder << "${Csv.serialize(style.id)},"
             builder << "${Csv.serialize(style.name)},"
-
-            if (definition instanceof ParagraphStyleDefinition) {
-                builder << "," // targetId (empty)
-                builder << serializeDefinition(definition)
-                builder << ",${Csv.serialize(style.originLocations)}"
-            } else if (definition instanceof ParagraphStyleRef){
-                builder << "${Csv.serialize(definition.id)}," // targetId
-                builder << serializeDefinition(null)
-                builder << ",${Csv.serialize(style.originLocations)}"
-            }
+            builder << "${Csv.serialize(style.targetId?.id)},"
+            builder << serializeDefinition(definition)
+            builder << ",${Csv.serialize(style.originLocations)}"
 
             writer.writeLine(builder.toString())
         }

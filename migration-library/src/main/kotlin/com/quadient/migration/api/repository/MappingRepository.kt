@@ -132,6 +132,7 @@ class MappingRepository(
     fun getTextStyleMapping(id: String): MappingItem.TextStyle {
         return (internalRepository.find<MappingItemEntity.TextStyle>(id) ?: MappingItemEntity.TextStyle(
             name = null,
+            targetId = null,
             definition = null,
         )).toDto() as MappingItem.TextStyle
     }
@@ -149,7 +150,7 @@ class MappingRepository(
 
     fun getParagraphStyleMapping(id: String): MappingItem.ParagraphStyle {
         return (internalRepository.find<MappingItemEntity.ParagraphStyle>(id) ?: MappingItemEntity.ParagraphStyle(
-            name = null, definition = null
+            name = null, targetId = null, definition = null
         )).toDto() as MappingItem.ParagraphStyle
     }
 

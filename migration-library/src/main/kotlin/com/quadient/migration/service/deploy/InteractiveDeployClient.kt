@@ -8,8 +8,6 @@ import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.Image
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.Repository
@@ -186,9 +184,8 @@ class InteractiveDeployClient(
             }
         }
 
-        val textStyles = textStyleRepository.listAll().filter { it.definition is TextStyleDefinition }
-        val paragraphStyles =
-            paragraphStyleRepository.listAll().filter { it.definition is ParagraphStyleDefinition }
+        val textStyles = textStyleRepository.listAll().filter { it.targetId == null }
+        val paragraphStyles = paragraphStyleRepository.listAll().filter { it.targetId == null }
 
         val styleLayoutDeltaXml = documentObjectBuilder.buildStyleLayoutDelta(
             textStyles = textStyles,

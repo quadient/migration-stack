@@ -1,5 +1,6 @@
 package com.quadient.migration.service.inspirebuilder
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
@@ -29,6 +30,7 @@ import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.module.Layout
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -59,8 +61,9 @@ class InteractiveDocumentObjectBuilder(
     private val mainFlowId = "Def.MainFlow"
 
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
-    private val baseTemplatesInteractiveFlowNamesToIds = mutableMapOf<String, Map<String, String>>()
-    private val baseTemplateExistenceCache = mutableMapOf<IcmPath, Boolean>()
+    private val baseTemplateCache = mutableMapOf<IcmPath, BaseTemplateData?>()
+    private var currentBaseTemplateData: BaseTemplateData? = null
+    private var styleDefinitionData: StyleDefinitionData? = null
 
     override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
         val fileName = "$nameOrId.jld"
@@ -179,13 +182,9 @@ class InteractiveDocumentObjectBuilder(
         }
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
-
-        val baseTemplateExists = baseTemplateExistenceCache.getOrPut(baseTemplatePath) {
-            ipsService.fileExists(baseTemplatePath.toString())
-        }
-        if (!baseTemplateExists) {
-            error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
-        }
+        getOrLoadStyleDefinitionData()
+        currentBaseTemplateData = getOrLoadBaseTemplateData(baseTemplatePath)
+            ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
 
         val languages = collectLanguages(documentObject)
         val variableStructure = initVariableStructure(layout, documentObject)
@@ -200,7 +199,7 @@ class InteractiveDocumentObjectBuilder(
                     val interactiveFlowId = if (flowName.startsWith("Def.")) {
                         flowName
                     } else {
-                        getInteractiveFlowIdByName(flowName, baseTemplatePath.toString())
+                        currentBaseTemplateData!!.interactiveFlowNamesToIds[flowName]
                     }
 
                     if (interactiveFlowId.isNullOrBlank()) {
@@ -248,58 +247,110 @@ class InteractiveDocumentObjectBuilder(
         return documentObject.internal == true
     }
 
-    fun getInteractiveFlowIdByName(interactiveFlowName: String, baseTemplatePath: String): String? {
-        val baseTemplateInteractiveFlowNames = getBaseTemplateInteractiveFlowNamesToIds(baseTemplatePath)
+    override fun resolveParagraphStyleName(name: String): String =
+        getOrLoadStyleDefinitionData().paragraphStyleDisplayNamesToNames[name] ?: name
 
-        return baseTemplateInteractiveFlowNames[interactiveFlowName]
-    }
+    override fun resolveTextStyleName(name: String): String =
+        getOrLoadStyleDefinitionData().textStyleDisplayNamesToNames[name] ?: name
 
-    fun getBaseTemplateInteractiveFlowNamesToIds(baseTemplatePath: String): Map<String, String> {
-        val baseTemplateInteractiveFlowNamesToIds = baseTemplatesInteractiveFlowNamesToIds[baseTemplatePath]
-        if (baseTemplateInteractiveFlowNamesToIds != null) {
-            return baseTemplateInteractiveFlowNamesToIds
+    private fun getOrLoadStyleDefinitionData(): StyleDefinitionData {
+        styleDefinitionData?.let { return it }
+        val path = getStyleDefinitionPath("jld")
+        if (!ipsService.fileExists(path)) {
+            error("Style definition '$path' does not exist.")
         }
-
-        try {
-            val baseTemplateXml = ipsService.wfd2xml(baseTemplatePath)
-            val baseTemplateXmlTree = xmlMapper.readTree(baseTemplateXml.trimIndent())
-            val layoutXmlTree = baseTemplateXmlTree["Layout"]["Layout"]
-
-            val interactiveFlowNamesToIds = mutableMapOf<String, String>()
-
-            val pagesInteractiveFlowNode = layoutXmlTree["Pages"]["InteractiveFlow"]
-            val interactiveFlowIds = if (pagesInteractiveFlowNode is ArrayNode) {
-                pagesInteractiveFlowNode.map { it["FlowId"].textValue() }
-            } else {
-                listOf(pagesInteractiveFlowNode["FlowId"].textValue())
-            }
-
-            interactiveFlowIds.forEachIndexed { i, it ->
-                val flowData = layoutXmlTree["Flow"].first { flow -> flow["Id"].textValue() == it }
-                val flowName = flowData["Name"]
-                if (flowName != null) {
-                    interactiveFlowNamesToIds[flowName.textValue()] = "Def.InteractiveFlow$i"
-                }
-
-                val customProperty = flowData["CustomProperty"]
-                if (customProperty != null) {
-                    val customPropertyObject = lenientJson.decodeFromString<CustomProperty>(customProperty.textValue())
-                    if (customPropertyObject.customName != null) {
-                        interactiveFlowNamesToIds[customPropertyObject.customName] = "Def.InteractiveFlow$i"
-                    }
-                }
-            }
-
-            baseTemplatesInteractiveFlowNamesToIds[baseTemplatePath] = interactiveFlowNamesToIds
-            return interactiveFlowNamesToIds
+        return try {
+            parseStyleDefinitionData(ipsService.wfd2xml(path)).also { styleDefinitionData = it }
         } catch (e: Exception) {
-            logger.warn("Failed to load interactive flow names from base template '${baseTemplatePath}'.", e)
-            return emptyMap()
+            logger.warn("Failed to load style definition data from '$path'.", e)
+            StyleDefinitionData(emptyMap(), emptyMap()).also { styleDefinitionData = it }
         }
     }
+
+    private fun getOrLoadBaseTemplateData(path: IcmPath): BaseTemplateData? {
+        if (baseTemplateCache.containsKey(path)) return baseTemplateCache[path]
+
+        if (!ipsService.fileExists(path.toString())) {
+            baseTemplateCache[path] = null
+            return null
+        }
+
+        return try {
+            val xml = ipsService.wfd2xml(path.toString())
+            parseBaseTemplateData(xml).also { baseTemplateCache[path] = it }
+        } catch (e: Exception) {
+            logger.warn("Failed to load base template data from '$path'.", e)
+            baseTemplateCache[path] = null
+            null
+        }
+    }
+
+    private fun parseBaseTemplateData(xml: String): BaseTemplateData {
+        val layoutXmlTree = xmlMapper.readTree(xml.trimIndent())["Layout"]["Layout"]
+        return BaseTemplateData(parseInteractiveFlowNamesToIds(layoutXmlTree))
+    }
+
+    private fun parseStyleDefinitionData(xml: String): StyleDefinitionData {
+        val layoutXmlTree = xmlMapper.readTree(xml.trimIndent())["Layout"]["Layout"]
+        return StyleDefinitionData(
+            parseStyleDisplayNamesToNames(layoutXmlTree, "TextStyle"),
+            parseStyleDisplayNamesToNames(layoutXmlTree, "ParagraphStyle"),
+        )
+    }
+
+    private fun parseInteractiveFlowNamesToIds(layoutXmlTree: JsonNode): Map<String, String> {
+        val pagesInteractiveFlowNode = layoutXmlTree["Pages"]?.get("InteractiveFlow") ?: return emptyMap()
+        val flowNodes = layoutXmlTree["Flow"] ?: return emptyMap()
+
+        val interactiveFlowIds = if (pagesInteractiveFlowNode is ArrayNode) {
+            pagesInteractiveFlowNode.map { it["FlowId"].textValue() }
+        } else {
+            listOf(pagesInteractiveFlowNode["FlowId"].textValue())
+        }
+
+        val result = mutableMapOf<String, String>()
+        interactiveFlowIds.forEachIndexed { i, id ->
+            val flowData = flowNodes.first { flow -> flow["Id"].textValue() == id }
+            flowData["Name"]?.textValue()?.let { result[it] = "Def.InteractiveFlow$i" }
+
+            flowData["CustomProperty"]?.textValue()?.let { raw ->
+                lenientJson.decodeFromString<FlowCustomProperty>(raw).customName?.let {
+                    result[it] = "Def.InteractiveFlow$i"
+                }
+            }
+        }
+        return result
+    }
+
+    private fun parseStyleDisplayNamesToNames(layoutXmlTree: JsonNode, nodeTag: String): Map<String, String> {
+        val styleNode = layoutXmlTree[nodeTag] ?: return emptyMap()
+        val styleNodeList = if (styleNode is ArrayNode) styleNode.toList() else listOf(styleNode)
+        val result = mutableMapOf<String, String>()
+        styleNodeList.forEach { node ->
+            val name = node["Name"]?.textValue() ?: return@forEach
+            val raw = node["CustomProperty"]?.textValue() ?: return@forEach
+            val displayName = lenientJson.decodeFromString<StyleCustomProperty>(raw).displayName ?: return@forEach
+            result.putIfAbsent(displayName, name)
+        }
+        return result
+    }
+
+    private data class BaseTemplateData(
+        val interactiveFlowNamesToIds: Map<String, String>,
+    )
+
+    private data class StyleDefinitionData(
+        val textStyleDisplayNamesToNames: Map<String, String>,
+        val paragraphStyleDisplayNamesToNames: Map<String, String>,
+    )
 
     @Serializable
-    data class CustomProperty(
-        val customName: String? = null
+    private data class FlowCustomProperty(
+        val customName: String? = null,
+    )
+
+    @Serializable
+    private data class StyleCustomProperty(
+        @SerialName("DisplayName") val displayName: String? = null,
     )
 }

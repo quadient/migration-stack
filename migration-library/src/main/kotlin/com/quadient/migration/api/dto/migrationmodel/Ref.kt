@@ -37,20 +37,6 @@ sealed interface TextContent {
     }
 }
 
-sealed interface TextStyleDefOrRef {
-    fun toDb() = when (this) {
-        is TextStyleDefinition -> this.toDb()
-        is TextStyleRef -> this.toDb()
-    }
-}
-
-sealed interface ParagraphStyleDefOrRef {
-    fun toDb() = when (this) {
-        is ParagraphStyleDefinition -> this.toDb()
-        is ParagraphStyleRef -> this.toDb()
-    }
-}
-
 data class DocumentObjectRef(override val id: String, val displayRuleRef: DisplayRuleRef? = null) : Ref,
     DocumentContent, TextContent, RefValidatable {
 
@@ -78,20 +64,20 @@ data class VariableRef(override val id: String) : Ref, VariableStringContent, Re
     fun toDb() = VariableEntityRef(id)
 }
 
-data class TextStyleRef(override val id: String) : Ref, TextStyleDefOrRef, RefValidatable {
+data class TextStyleRef(override val id: String) : Ref, RefValidatable {
     companion object {
         fun fromDb(entity: TextStyleEntityRef) = TextStyleRef(entity.id)
     }
 
-    override fun toDb() = TextStyleEntityRef(id)
+    fun toDb() = TextStyleEntityRef(id)
 }
 
-data class ParagraphStyleRef(override val id: String) : Ref, ParagraphStyleDefOrRef {
+data class ParagraphStyleRef(override val id: String) : Ref {
     companion object {
         fun fromDb(entity: ParagraphStyleEntityRef) = ParagraphStyleRef(entity.id)
     }
 
-    override fun toDb() = ParagraphStyleEntityRef(id)
+    fun toDb() = ParagraphStyleEntityRef(id)
 }
 
 data class DisplayRuleRef(override val id: String) : Ref {

@@ -460,7 +460,7 @@ abstract class InspireDocumentObjectBuilder(
         upsertSubFont(arialFont, isBold = false, isItalic = false)
 
         textStyleModels.forEach { styleModel ->
-            val definition = styleModel.resolve()
+            val definition = styleModel.resolve().definition
             val textStyle = layout.addTextStyle().setName(styleModel.nameOrId())
             applyTextStyleProperties(layout, textStyle, definition)
         }
@@ -502,7 +502,7 @@ abstract class InspireDocumentObjectBuilder(
 
     fun buildParagraphStyles(layout: Layout, paragraphStyleModels: List<ParagraphStyle>) {
         paragraphStyleModels.forEach { styleModel ->
-            val definition = styleModel.resolve()
+            val definition = styleModel.resolve().definition
 
             val paragraphStyle = layout.addParagraphStyle().setName(styleModel.nameOrId())
 
@@ -744,6 +744,9 @@ abstract class InspireDocumentObjectBuilder(
         return flowParts
     }
 
+    protected open fun resolveParagraphStyleName(name: String): String = name
+    protected open fun resolveTextStyleName(name: String): String = name
+
     private fun buildParagraph(
         layout: Layout,
         variableStructure: VariableStructure,
@@ -759,9 +762,8 @@ abstract class InspireDocumentObjectBuilder(
             ).addParagraph()
         }
 
-        val paragraphStyle = findParagraphStyle(paragraphModel)?.also {
-            paragraph.setExistingParagraphStyle("ParagraphStyles.${it.nameOrId()}")
-        }
+        val paragraphStyle = paragraphModel.styleRef?.let { paragraphStyleRepository.findOrFail(it.id).resolve() }
+        paragraphStyle?.also { paragraph.setExistingParagraphStyle("ParagraphStyles.${resolveParagraphStyleName(it.nameOrId())}") }
 
         paragraphModel.content.forEach { textModel ->
             val baseText = if (textModel.displayRuleRef == null) {
@@ -770,12 +772,12 @@ abstract class InspireDocumentObjectBuilder(
                 buildSuccessFlowWrappedInInlineConditionFlow(
                     layout, variableStructure, textModel.displayRuleRef.id, paragraph.addText()
                 ).addParagraph().also {
-                    if (paragraphStyle != null) it.setExistingParagraphStyle("ParagraphStyles.${paragraphStyle.nameOrId()}")
+                    if (paragraphStyle != null) it.setExistingParagraphStyle("ParagraphStyles.${resolveParagraphStyleName(paragraphStyle.nameOrId())}")
                 }.addText()
             }
 
-            val baseTextStyleModel = findTextStyle(textModel)
-            baseTextStyleModel?.also { baseText.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
+            val baseTextStyleModel = textModel.styleRef?.let { textStyleRepository.findOrFail(it.id).resolve() }
+            baseTextStyleModel?.also { baseText.setExistingTextStyle("TextStyles.${resolveTextStyleName(it.nameOrId())}") }
 
             var currentText = baseText
 
@@ -828,7 +830,7 @@ abstract class InspireDocumentObjectBuilder(
         (hyperlinkStyle as TextStyleImpl).ancestorId = "Def.TextStyleHyperlink"
 
         if (baseTextStyleModel != null) {
-            val definition = baseTextStyleModel.resolve()
+            val definition = baseTextStyleModel.resolve().definition
             applyTextStyleProperties(layout, hyperlinkStyle, definition)
         }
 
@@ -874,7 +876,7 @@ abstract class InspireDocumentObjectBuilder(
         hyperlinkText.appendText(hyperlinkModel.displayText ?: hyperlinkModel.url)
 
         val newText = paragraph.addText()
-        baseTextStyleModel?.also { newText.setExistingTextStyle("TextStyles.${it.nameOrId()}") }
+        baseTextStyleModel?.also { newText.setExistingTextStyle("TextStyles.${resolveTextStyleName(it.nameOrId())}") }
         return newText
     }
 
@@ -892,24 +894,6 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         return this
-    }
-
-    private fun findParagraphStyle(paragraphModel: Paragraph): ParagraphStyle? {
-        if (paragraphModel.styleRef == null) return null
-
-        val paraStyleModel = paragraphStyleRepository.firstWithDefinition(paragraphModel.styleRef.id)
-            ?: error("Paragraph style definition for ${paragraphModel.styleRef.id} not found.")
-
-        return paraStyleModel
-    }
-
-    private fun findTextStyle(textModel: Text): TextStyle? {
-        if (textModel.styleRef == null) return null
-
-        val textStyleModel = textStyleRepository.firstWithDefinition(textModel.styleRef.id)
-            ?: error("Text style definition for ${textModel.styleRef.id} not found.")
-
-        return textStyleModel
     }
 
     private fun buildSuccessFlowWrappedInInlineConditionFlow(
@@ -1257,19 +1241,21 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun TextStyle.resolve(): TextStyleDefinition {
-        return when (val def = this.definition) {
-            is TextStyleDefinition -> def
-            is TextStyleRef -> {
-                textStyleRepository.find(def.id)?.resolve() ?: error("Invalid text style reference")
-            }
+    private fun TextStyle.resolve(): TextStyle {
+        val targetId = this.targetId
+        return if (targetId == null) {
+            this
+        } else {
+            textStyleRepository.findOrFail(targetId.id).resolve()
         }
     }
 
-    private fun ParagraphStyle.resolve(): ParagraphStyleDefinition {
-        return when (val def = this.definition) {
-            is ParagraphStyleDefinition -> def
-            is ParagraphStyleRef -> paragraphStyleRepository.findOrFail(def.id).resolve()
+    private fun ParagraphStyle.resolve(): ParagraphStyle {
+        val targetId = this.targetId
+        return if (targetId == null) {
+            this
+        } else {
+            paragraphStyleRepository.findOrFail(targetId.id).resolve()
         }
     }
 
