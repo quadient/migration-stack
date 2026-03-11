@@ -46,8 +46,8 @@ class TextStylesMappingExportTest {
             id,name,targetId,fontFamily,foregroundColor,size,bold,italic,underline,strikethrough,superOrSubscript,interspacing,originLocations (read-only)
             empty,,,,,,false,false,false,false,None,,[]
             empty with targetId,,other,,,,false,false,false,false,None,,[]
-            full,full,,Arial,#ff0000,72.0pt,true,true,true,true,Superscript,10.0mm,[foo; bar]
-            full with targetId,full,other,Arial,#ff0000,72.0pt,true,true,true,true,Superscript,10.0mm,[foo; bar]
+            full,full,,Arial,#ff0000,1in,true,true,true,true,Superscript,1cm,[foo; bar]
+            full with targetId,full,other,Arial,#ff0000,1in,true,true,true,true,Superscript,1cm,[foo; bar]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

@@ -49,10 +49,10 @@ class ParagraphStylesMappingExportTest {
 
         def expected = """\
             id,name,targetId,leftIndent,rightIndent,defaultTabSize,spaceBefore,spaceAfter,alignment,firstLineIndent,keepWithNextParagraph,lineSpacingType,lineSpacingValue,pdfTaggingRule,originLocations (read-only)
-            empty,,,,,,,,Left,,,Additional,0.0mm,,[]
-            empty with targetId,,other,,,,,,Left,,,Additional,0.0mm,,[]
-            full,full,,25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm,,[foo; bar]
-            full with targetId,full,other,25.4mm,25.4mm,25.4mm,25.4mm,25.4mm,Center,25.4mm,true,Additional,25.4mm,,[foo; bar]
+            empty,,,,,,,,Left,,,Additional,0in,,[]
+            empty with targetId,,other,,,,,,Left,,,Additional,0in,,[]
+            full,full,,1in,1in,1in,1in,1in,Center,1in,true,Additional,1in,,[foo; bar]
+            full with targetId,full,other,1in,1in,1in,1in,1in,Center,1in,true,Additional,1in,,[foo; bar]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
