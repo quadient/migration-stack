@@ -1,5 +1,7 @@
 package com.quadient.migration.service
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
@@ -28,6 +30,7 @@ class StylesValidator(
     private val deployClient: DeployClient,
     private val ipsService: IpsService,
 ) {
+    private val jsonMapper = ObjectMapper()
     fun validateAll(): ValidationResult {
         val documentObjects = deployClient.getAllDocumentObjectsToDeploy()
         return validateInternal(documentObjects)
@@ -105,30 +108,32 @@ class StylesValidator(
 
         val xml = XmlMapper().readTree(xmlString)
 
-        val xmlParaStyles = xml["Layout"]?.let { it["Layout"] }?.let {
-            if (it["ParaStyle"] is ArrayNode) {
-                it["ParaStyle"]?.mapNotNull { s -> s["Name"]?.asText() }?.toSet() ?: emptySet()
-            } else {
-                it["ParaStyle"]?.let { s -> s["Name"]?.asText() }?.let { s -> setOf(s) } ?: emptySet()
-            }
-        } ?: emptySet()
-        val xmlTextStyles = xml["Layout"]?.let { it["Layout"] }?.let {
-            if (it["TextStyle"] is ArrayNode) {
-                it["TextStyle"]?.mapNotNull { s -> s["Name"]?.asText() }?.toSet() ?: emptySet()
-            } else {
-                it["TextStyle"]?.let { s -> s["Name"]?.asText() }?.let { s -> setOf(s) } ?: emptySet()
-            }
-        } ?: emptySet()
+        val layoutNode = xml["Layout"]?.get("Layout")
+        val validParaStyles = extractValidStyleIdentifiers(layoutNode, "ParaStyle")
+        val validTextStyles = extractValidStyleIdentifiers(layoutNode, "TextStyle")
 
-        missingTextStyleIds.addAll(neededTextStyleIds subtract xmlTextStyles)
-        missingParagraphStyleIds.addAll(neededParagraphStyleIds subtract xmlParaStyles)
+        missingTextStyleIds.addAll(neededTextStyleIds subtract validTextStyles)
+        missingParagraphStyleIds.addAll(neededParagraphStyleIds subtract validParaStyles)
 
         return ValidationResult(
-            textStyles = (neededTextStyleIds intersect xmlTextStyles).toList(),
-            paragraphStyles = (neededParagraphStyleIds intersect xmlParaStyles).toList(),
+            textStyles = (neededTextStyleIds intersect validTextStyles).toList(),
+            paragraphStyles = (neededParagraphStyleIds intersect validParaStyles).toList(),
             missingTextStyles = missingTextStyleIds.toList(),
             missingParagraphStyles = missingParagraphStyleIds.toList(),
         )
+    }
+
+    private fun extractValidStyleIdentifiers(layoutNode: JsonNode?, nodeTag: String): Set<String> {
+        val styleNodes = layoutNode?.get(nodeTag) ?: return emptySet()
+        val nodes = if (styleNodes is ArrayNode) styleNodes.toList() else listOf(styleNodes)
+        val result = mutableSetOf<String>()
+        nodes.forEach { node ->
+            node["Name"]?.asText()?.let { result.add(it) }
+            node["CustomProperty"]?.asText()?.let { raw ->
+                jsonMapper.readTree(raw)["DisplayName"]?.asText()?.let { result.add(it) }
+            }
+        }
+        return result
     }
 
     private fun resolveDocumentObjects(objects: List<DocumentObject>): List<DocumentObject> {
