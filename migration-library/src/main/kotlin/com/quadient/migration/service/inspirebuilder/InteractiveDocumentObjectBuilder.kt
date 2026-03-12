@@ -63,7 +63,19 @@ class InteractiveDocumentObjectBuilder(
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
     private val baseTemplateCache = mutableMapOf<IcmPath, BaseTemplateData?>()
     private var currentBaseTemplateData: BaseTemplateData? = null
-    private var styleDefinitionData: StyleDefinitionData? = null
+    private val styleDefinitionData: StyleDefinitionData? by lazy {
+        val path = getStyleDefinitionPath("jld")
+        if (!ipsService.fileExists(path)) {
+            logger.warn("Style definition '$path' does not exist. Style display name resolution will be skipped.")
+            return@lazy null
+        }
+        try {
+            parseStyleDefinitionData(ipsService.wfd2xml(path))
+        } catch (e: Exception) {
+            logger.warn("Failed to load style definition data from '$path'.", e)
+            null
+        }
+    }
 
     override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
         val fileName = "$nameOrId.jld"
@@ -182,7 +194,6 @@ class InteractiveDocumentObjectBuilder(
         }
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
-        getOrLoadStyleDefinitionData()
         currentBaseTemplateData = getOrLoadBaseTemplateData(baseTemplatePath)
             ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
 
@@ -248,24 +259,10 @@ class InteractiveDocumentObjectBuilder(
     }
 
     override fun resolveParagraphStyleName(name: String): String =
-        getOrLoadStyleDefinitionData().paragraphStyleDisplayNamesToNames[name] ?: name
+        styleDefinitionData?.paragraphStyleDisplayNamesToNames?.get(name) ?: name
 
     override fun resolveTextStyleName(name: String): String =
-        getOrLoadStyleDefinitionData().textStyleDisplayNamesToNames[name] ?: name
-
-    private fun getOrLoadStyleDefinitionData(): StyleDefinitionData {
-        styleDefinitionData?.let { return it }
-        val path = getStyleDefinitionPath("jld")
-        if (!ipsService.fileExists(path)) {
-            error("Style definition '$path' does not exist.")
-        }
-        return try {
-            parseStyleDefinitionData(ipsService.wfd2xml(path)).also { styleDefinitionData = it }
-        } catch (e: Exception) {
-            logger.warn("Failed to load style definition data from '$path'.", e)
-            StyleDefinitionData(emptyMap(), emptyMap()).also { styleDefinitionData = it }
-        }
-    }
+        styleDefinitionData?.textStyleDisplayNamesToNames?.get(name) ?: name
 
     private fun getOrLoadBaseTemplateData(path: IcmPath): BaseTemplateData? {
         if (baseTemplateCache.containsKey(path)) return baseTemplateCache[path]
