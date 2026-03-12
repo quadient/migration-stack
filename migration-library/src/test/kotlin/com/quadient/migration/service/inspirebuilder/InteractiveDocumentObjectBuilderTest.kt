@@ -157,6 +157,31 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `build of block where style definition does not exist uses style names as-is without failing`() {
+        // given
+        val paraStyle = mockParagraphStyle(
+            ParagraphStyleBuilder("PS1").name("Heading Display").definition { alignment(Alignment.Left) }.build()
+        )
+        val textStyle = mockTextStyle(
+            TextStyleBuilder("TS1").name("Body Display").definition { fontFamily("Arial") }.build()
+        )
+
+        val block = DocumentObjectBuilder("1", Block).paragraph {
+            text { string("some text").styleRef(textStyle.id) }.styleRef(paraStyle.id)
+        }.build()
+
+        every { ipsService.fileExists(eq(subject.getStyleDefinitionPath("jld"))) } returns false
+
+        // when
+        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then - style names are used as-is since resolution is unavailable
+        val paragraph = result["Flow"].last()["FlowContent"]["P"]
+        paragraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
+        paragraph["T"]["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
+    }
+
+    @Test
     fun `build of block where style names match display names in style definition resolves to internal style names`() {
         // given
         val paraStyle = mockParagraphStyle(
