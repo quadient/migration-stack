@@ -123,7 +123,7 @@ class DesignerDocumentObjectBuilder(
     override fun getAttachmentPath(attachment: Attachment): String =
         getAttachmentPath(attachment.id, attachment.name, attachment.targetFolder?.let { IcmPath.from(it) }, attachment.sourcePath, attachment.attachmentType)
 
-    override fun getStyleDefinitionPath(extension: String): String {
+    override fun getStyleDefinitionPath(): String {
         val styleDefinitionPath = projectConfig.styleDefinitionPath
 
         if (styleDefinitionPath != null && !styleDefinitionPath.isAbsolute()) {
@@ -133,7 +133,7 @@ class DesignerDocumentObjectBuilder(
         }
 
         return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder))
-            .join("${projectConfig.name}Styles.$extension").toString()
+            .join("${projectConfig.name}Styles.wfd").toString()
     }
 
     override fun getFontRootFolder(): String {

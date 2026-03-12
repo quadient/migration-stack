@@ -132,7 +132,7 @@ abstract class InspireDocumentObjectBuilder(
 
     abstract fun getAttachmentPath(attachment: Attachment): String
 
-    abstract fun getStyleDefinitionPath(extension: String = "wfd"): String
+    abstract fun getStyleDefinitionPath(): String
 
     abstract fun getFontRootFolder(): String
 

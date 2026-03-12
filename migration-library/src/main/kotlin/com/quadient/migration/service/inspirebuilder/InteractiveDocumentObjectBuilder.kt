@@ -64,7 +64,7 @@ class InteractiveDocumentObjectBuilder(
     private val baseTemplateCache = mutableMapOf<IcmPath, BaseTemplateData?>()
     private var currentBaseTemplateData: BaseTemplateData? = null
     private val styleDefinitionData: StyleDefinitionData? by lazy {
-        val path = getStyleDefinitionPath("jld")
+        val path = getStyleDefinitionPath()
         if (!ipsService.fileExists(path)) {
             logger.warn("Style definition '$path' does not exist. Style display name resolution will be skipped.")
             return@lazy null
@@ -143,15 +143,15 @@ class InteractiveDocumentObjectBuilder(
     override fun getAttachmentPath(attachment: Attachment): String =
         getAttachmentPath(attachment.id, attachment.name, attachment.targetFolder?.let { IcmPath.from(it) }, attachment.sourcePath, attachment.attachmentType)
 
-    override fun getStyleDefinitionPath(extension: String): String {
+    override fun getStyleDefinitionPath(): String {
         val styleDefConfigPath = projectConfig.styleDefinitionPath
 
         if (styleDefConfigPath != null && !styleDefConfigPath.isAbsolute()) {
             throw IllegalArgumentException("The configured style definition path '${styleDefConfigPath}' is not absolute.")
-        } else if (styleDefConfigPath != null && !styleDefConfigPath.path.endsWith(".jld")) {
-            throw IllegalArgumentException("Style definition path '${styleDefConfigPath}' must end with '.jld'.")
         } else if (styleDefConfigPath != null) {
-            return styleDefConfigPath.toString().replace(".jld", ".$extension")
+            val pathString = styleDefConfigPath.toString()
+            val base = if (pathString.contains(".")) pathString.substringBeforeLast(".") else pathString
+            return "$base.jld"
         }
 
         return IcmPath.root()
@@ -159,7 +159,7 @@ class InteractiveDocumentObjectBuilder(
             .join(projectConfig.interactiveTenant)
             .join("CompanyStyles")
             .join(resolveTargetDir(projectConfig.defaultTargetFolder))
-            .join("${projectConfig.name}Styles.$extension")
+            .join("${projectConfig.name}Styles.jld")
             .toString()
     }
 

@@ -535,7 +535,7 @@ class DesignerDeployClientTest {
 
             val definitionPathWfd = "icm://defaultFolder/CompanyStyles.wfd"
 
-            every { documentObjectBuilder.getStyleDefinitionPath("wfd") } returns definitionPathWfd
+            every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPathWfd
 
             // when
             subject.deployStyles()
@@ -557,7 +557,7 @@ class DesignerDeployClientTest {
 
             val definitionPath = "icm://defaultFolder/CompanyStyles.wfd"
 
-            every { documentObjectBuilder.getStyleDefinitionPath(any()) } returns definitionPath
+            every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPath
 
             // when
             subject.deployStyles()

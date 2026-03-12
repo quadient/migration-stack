@@ -410,13 +410,11 @@ class InteractiveDeployClientTest {
         every { ipsService.deployStyleJld(any(), any(), any()) } returns OperationResult.Success
         every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
 
-        val definitionPathWfd =
-            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.wfd"
         val definitionPathJld =
             "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld"
+        val definitionPathWfd = definitionPathJld.replace(".jld", ".wfd")
 
-        every { documentObjectBuilder.getStyleDefinitionPath("wfd") } returns definitionPathWfd
-        every { documentObjectBuilder.getStyleDefinitionPath("jld") } returns definitionPathJld
+        every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPathJld
 
         // when
         subject.deployStyles()
@@ -442,16 +440,17 @@ class InteractiveDeployClientTest {
         every { paragraphStyleRepository.listAll() } returns emptyList()
         every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Failure("Problem")
 
-        val definitionPath =
-            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.wfd"
+        val definitionPathJld =
+            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld"
+        val definitionPathWfd = definitionPathJld.replace(".jld", ".wfd")
 
-        every { documentObjectBuilder.getStyleDefinitionPath(any()) } returns definitionPath
+        every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPathJld
 
         // when
         subject.deployStyles()
 
         // then
-        verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPath)) }
+        verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd)) }
         verify(exactly = 0) { ipsService.setProductionApprovalState(any()) }
     }
 

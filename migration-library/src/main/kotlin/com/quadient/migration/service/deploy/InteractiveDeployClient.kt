@@ -165,8 +165,8 @@ class InteractiveDeployClient(
         val deploymentId = Uuid.random()
         val deploymentTimestamp = Clock.System.now()
 
-        val outputPathWfd = documentObjectBuilder.getStyleDefinitionPath(extension = "wfd")
-        val outputPathJld = documentObjectBuilder.getStyleDefinitionPath(extension = "jld")
+        val outputPathJld = documentObjectBuilder.getStyleDefinitionPath()
+        val outputPathWfd = outputPathJld.replace(".jld", ".wfd")
 
         val xml2wfdResult = ipsService.xml2wfd(
             documentObjectBuilder.buildStyles(emptyList(), emptyList()),
