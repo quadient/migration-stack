@@ -115,7 +115,7 @@ class InspireDocumentObjectBuilderTest {
         val block = mockObj(aBlock("B_1", listOf(aParagraph(aText(textContent)))))
 
         // when
-        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val hyperlinkStyleId = result["TextStyle"].first { it["Name"]?.textValue() == "text_url_1" }["Id"].textValue()
@@ -160,7 +160,7 @@ class InspireDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val hyperlinkStyleId =
@@ -187,7 +187,7 @@ class InspireDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val contentFlow = getFlowAreaContentFlow(result)
@@ -208,7 +208,7 @@ class InspireDocumentObjectBuilderTest {
         )
 
         // when
-        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val contentFlow = getFlowAreaContentFlow(result)
@@ -236,7 +236,7 @@ class InspireDocumentObjectBuilderTest {
         )
 
         // when
-        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val flow = getFlowAreaContentFlow(result)
@@ -258,7 +258,7 @@ class InspireDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val flowId = result["FlowArea"].last()["FlowId"].textValue()
@@ -286,7 +286,7 @@ class InspireDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val imageId = result["ImageObject"].last()["ImageId"].textValue()
@@ -310,7 +310,7 @@ class InspireDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
         val allSheetNameVariableIds = result["Pages"]["SheetNameVariableId"].map { it.textValue() }
 
         // then
@@ -360,7 +360,7 @@ class InspireDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(template, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val allSheetNameVariableIds = result["Pages"]["SheetNameVariableId"].map { it.textValue() }
@@ -386,7 +386,7 @@ class InspireDocumentObjectBuilderTest {
         )
 
         // when
-        val result = subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val contentFlow = getFlowAreaContentFlow(result)
@@ -417,7 +417,7 @@ class InspireDocumentObjectBuilderTest {
 
         // when
         val result =
-            subject.buildDocumentObject(block, null).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+            subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
         val contentFlow = getFlowAreaContentFlow(result)

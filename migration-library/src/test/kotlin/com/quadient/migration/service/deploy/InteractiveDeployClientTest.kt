@@ -100,7 +100,7 @@ class InteractiveDeployClientTest {
         // given
         mockBasicDocumentObjects()
         mockBasicSuccessfulIpsOperations()
-        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { documentObjectRepository.find(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every {
@@ -120,7 +120,7 @@ class InteractiveDeployClientTest {
                 "icm://Interactive/$tenant/Templates/defaultFolder/0.jld"
             )
         )
-        verify(exactly = 3) { documentObjectBuilder.buildDocumentObject(any(), any()) }
+        verify(exactly = 3) { documentObjectBuilder.buildDocumentObject(any()) }
     }
 
     @Test
@@ -152,7 +152,7 @@ class InteractiveDeployClientTest {
             mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("block1"), aDocumentObjectRef("block2"))))
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(externalBlock, template)
-        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { documentObjectRepository.find(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every {
@@ -173,7 +173,7 @@ class InteractiveDeployClientTest {
                 "icm://Interactive/$tenant/Templates/defaultFolder/3.jld"
             )
         )
-        verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any()) }
+        verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any()) }
     }
 
     @Test
@@ -186,7 +186,7 @@ class InteractiveDeployClientTest {
                 any(), any(), any(), any(), "icm://Interactive/$tenant/Blocks/defaultFolder/0.jld"
             )
         } returns OperationResult.Failure("Problem")
-        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { documentObjectRepository.find(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every {
@@ -213,7 +213,7 @@ class InteractiveDeployClientTest {
                 )
             )
         }
-        verify(exactly = 3) { documentObjectBuilder.buildDocumentObject(any(), any()) }
+        verify(exactly = 3) { documentObjectBuilder.buildDocumentObject(any()) }
     }
 
     @Test
@@ -235,7 +235,7 @@ class InteractiveDeployClientTest {
             mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("block1"), aDocumentObjectRef("block2"))))
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block, template)
-        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { documentObjectRepository.find(any()) } returns aBlock("99", internal = false)
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every {
@@ -256,7 +256,7 @@ class InteractiveDeployClientTest {
                 "icm://Interactive/$tenant/Templates/defaultFolder/3.jld"
             )
         )
-        verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any()) }
+        verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any()) }
     }
 
     @Test
@@ -267,7 +267,7 @@ class InteractiveDeployClientTest {
         val block = mockDocumentObject(aBlock(id = "1", listOf(ImageRef(image.id), AttachmentRef(attachment.id))))
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
-        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every {
@@ -318,7 +318,7 @@ class InteractiveDeployClientTest {
         )
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
-        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { ipsService.upload(any(), any()) } just runs
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every {
@@ -364,7 +364,7 @@ class InteractiveDeployClientTest {
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
         every { documentObjectRepository.find(innerBlock.id) } returns innerBlock
-        every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every {
             statusTrackingRepository.deployed(
@@ -664,7 +664,7 @@ class InteractiveDeployClientTest {
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
         every {
             documentObjectBuilder.buildDocumentObject(
-                block, any()
+                block
             )
         } throws IllegalStateException("Inner block not found")
         every {
@@ -779,7 +779,7 @@ class InteractiveDeployClientTest {
             val xml = "<xml>${documentObject.nameOrId()}</xml>"
             val outputPath = "icm://${documentObject.nameOrId()}"
 
-            every { documentObjectBuilder.buildDocumentObject(documentObject, any()) } returns xml
+            every { documentObjectBuilder.buildDocumentObject(documentObject) } returns xml
             every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns outputPath
         }
         return documentObject
@@ -789,7 +789,7 @@ class InteractiveDeployClientTest {
     inner class StatusTrackingTests {
         @BeforeEach
         fun setup() {
-            every { documentObjectBuilder.buildDocumentObject(any(), any()) } returns ""
+            every { documentObjectBuilder.buildDocumentObject(any()) } returns ""
             every {
                 statusTrackingRepository.deployed(
                     any(), any<Uuid>(), any(), any(), any(), any(), any()
@@ -827,7 +827,7 @@ class InteractiveDeployClientTest {
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any(), any()) }
+            verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any()) }
             verify(exactly = 3) { imageRepository.find(any()) }
         }
 
@@ -854,7 +854,7 @@ class InteractiveDeployClientTest {
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any(), any()) }
+            verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any()) }
             verify(exactly = 1) {
                 statusTrackingRepository.deployed(
                     "D_2", any<Uuid>(), any(), any(), any(), any(), any()
@@ -890,7 +890,7 @@ class InteractiveDeployClientTest {
             subject.deployDocumentObjectsInternal(docObjects)
 
             // then
-            verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any(), any()) }
+            verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any()) }
             verify(exactly = 1) {
                 statusTrackingRepository.error(
                     "D_1", any(), any(), any(), any(), any(), "oops", any()

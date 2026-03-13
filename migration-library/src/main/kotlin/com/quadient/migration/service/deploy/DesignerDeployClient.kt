@@ -76,22 +76,9 @@ class DesignerDeployClient(
                 continue
             }
 
-            val styleDefPath = try {
-                val styleDefPath = documentObjectBuilder.getStyleDefinitionPath()
-                if (ipsService.fileExists(styleDefPath)) {
-                    styleDefPath
-                } else {
-                    null
-                }
-            } catch (e: Exception) {
-                throw RuntimeException("Failed to check for style definition existence", e)
-            }
-
             try {
-                val templateWfdXml = documentObjectBuilder.buildDocumentObject(it, styleDefPath)
-                val xml2wfdResult = ipsService.xml2wfd(templateWfdXml, targetPath)
-
-                when (xml2wfdResult) {
+                val templateWfdXml = documentObjectBuilder.buildDocumentObject(it)
+                when (val xml2wfdResult = ipsService.xml2wfd(templateWfdXml, targetPath)) {
                     OperationResult.Success -> {
                         logger.debug("Deployment of $targetPath is successful.")
                         tracker.deployedDocumentObject(it.id, targetPath, it.type)

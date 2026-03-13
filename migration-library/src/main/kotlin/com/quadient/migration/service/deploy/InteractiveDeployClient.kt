@@ -131,7 +131,7 @@ class InteractiveDeployClient(
             }
 
             try {
-                val documentObjectXml = documentObjectBuilder.buildDocumentObject(it, null)
+                val documentObjectXml = documentObjectBuilder.buildDocumentObject(it)
                 val runCommandType = it.type.toRunCommandType()
 
                 val editResult = ipsService.deployJld(

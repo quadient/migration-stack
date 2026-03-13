@@ -67,6 +67,15 @@ class DesignerDocumentObjectBuilder(
 ) {
     private val sourceBaseTemplateCache = ConcurrentHashMap<String, String>()
 
+    private val resolvedStyleDefinitionPath: String? by lazy {
+        val path = getStyleDefinitionPath()
+        try {
+            if (ipsService.fileExists(path)) path else null
+        } catch (e: Exception) {
+            throw RuntimeException("Failed to check for style definition existence", e)
+        }
+    }
+
     val defaultPosition = Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters())
 
     override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
@@ -146,7 +155,7 @@ class DesignerDocumentObjectBuilder(
         image.setAlternateText(alternateText)
     }
 
-    override fun buildDocumentObject(documentObject: DocumentObject, styleDefinitionPath: String?): String {
+    override fun buildDocumentObject(documentObject: DocumentObject): String {
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
         layout.name = "DocumentLayout"
@@ -215,8 +224,8 @@ class DesignerDocumentObjectBuilder(
         }
 
         val root = layout.addRoot().setAllowRuntimeModifications(true)
-        if (styleDefinitionPath != null) {
-            root.setExternalStylesLayout(styleDefinitionPath)
+        if (resolvedStyleDefinitionPath != null) {
+            root.setExternalStylesLayout(resolvedStyleDefinitionPath)
         }
 
         buildTextStyles(layout, textStyleRepository.listAll().filter { it.targetId == null })

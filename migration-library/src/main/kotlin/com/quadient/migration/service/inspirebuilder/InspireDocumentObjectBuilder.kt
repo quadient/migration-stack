@@ -136,7 +136,7 @@ abstract class InspireDocumentObjectBuilder(
 
     abstract fun getFontRootFolder(): String
 
-    abstract fun buildDocumentObject(documentObject: DocumentObject, styleDefinitionPath: String?): String
+    abstract fun buildDocumentObject(documentObject: DocumentObject): String
 
     abstract fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean
 

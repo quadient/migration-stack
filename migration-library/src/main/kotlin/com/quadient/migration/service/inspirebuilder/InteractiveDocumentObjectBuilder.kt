@@ -183,7 +183,7 @@ class InteractiveDocumentObjectBuilder(
         image.setAlternateTextVariable(variable)
     }
 
-    override fun buildDocumentObject(documentObject: DocumentObject, styleDefinitionPath: String?): String {
+    override fun buildDocumentObject(documentObject: DocumentObject): String {
         logger.debug("Starting to build document object '${documentObject.nameOrId()}'.")
 
         val builder = WfdXmlBuilder()
