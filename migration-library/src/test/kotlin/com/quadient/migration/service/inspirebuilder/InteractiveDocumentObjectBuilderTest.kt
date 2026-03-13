@@ -199,11 +199,11 @@ class InteractiveDocumentObjectBuilderTest {
             <Workflow>
                 <Layout>
                     <Layout>
-                        <ParagraphStyle>
+                        <ParaStyle>
                             <Id>10</Id>
                             <Name>heading_internal</Name>
                             <CustomProperty>{&quot;DisplayName&quot;:&quot;Heading Display&quot;}</CustomProperty>
-                        </ParagraphStyle>
+                        </ParaStyle>
                         <TextStyle>
                             <Id>20</Id>
                             <Name>body_internal</Name>

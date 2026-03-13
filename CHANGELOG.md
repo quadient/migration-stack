@@ -8,7 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+- Paragraph and Text style references can also work with Interactive display names
+
 ### Changed
+
+- Paragraph and Text styles now can contain both definition and reference. Ref takes precedence over definition.
+- Size retains unit with which it was created. This also solves some floating-point precision issues.
 
 ### Fixed
 

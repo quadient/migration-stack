@@ -291,7 +291,7 @@ class InteractiveDocumentObjectBuilder(
         val layoutXmlTree = xmlMapper.readTree(xml.trimIndent())["Layout"]["Layout"]
         return StyleDefinitionData(
             parseStyleDisplayNamesToNames(layoutXmlTree, "TextStyle"),
-            parseStyleDisplayNamesToNames(layoutXmlTree, "ParagraphStyle"),
+            parseStyleDisplayNamesToNames(layoutXmlTree, "ParaStyle"),
         )
     }
 
