@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
@@ -13,6 +15,7 @@ import com.quadient.migration.shared.TableAlignment
 
 object Dsl {
     @JvmStatic
+    @Deprecated("Use TableBuilder instead. TableDsl is a legacy API and will be removed in a future version.")
     fun table(init: TableDsl.() -> Unit) = TableDsl().apply(init).run {
         Table(
             rows = rows.map(TableDsl.Row::build),
@@ -32,6 +35,13 @@ object Dsl {
     }
 }
 
+/**
+ * Legacy DSL for building [Table] instances. Use [TableBuilder] instead.
+ *
+ * This DSL duplicates the functionality of [TableBuilder] and is kept only for backward compatibility.
+ * Migrate all usages to [TableBuilder], which supports the same operations and is the actively maintained API.
+ */
+@Deprecated("Use TableBuilder instead. TableDsl is a legacy API and will be removed in a future version.")
 @TableDocumentContentDsl
 class TableDsl {
     val rows = mutableListOf<Row>()

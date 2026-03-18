@@ -16,14 +16,12 @@ import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.ResourceRef
 import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Table
+import com.quadient.migration.api.dto.migrationmodel.TableRow
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
@@ -99,6 +97,9 @@ import kotlin.collections.ifEmpty
 import com.quadient.migration.shared.DataType as DataTypeModel
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
+import com.quadient.migration.shared.VariablePath
+import com.quadient.migration.shared.LiteralPath
+import com.quadient.migration.shared.VariableRefPath
 
 abstract class InspireDocumentObjectBuilder(
     protected val documentObjectRepository: DocumentObjectRepository,
@@ -143,6 +144,14 @@ abstract class InspireDocumentObjectBuilder(
     protected fun collectLanguages(documentObject: DocumentObject): List<String> {
         val languages = mutableSetOf<String>()
 
+        fun Table.allRows(): List<Table.Row> =
+            (rows + header + firstHeader + footer + lastFooter).flatMap { row ->
+                when (row) {
+                    is Table.Row -> listOf(row)
+                    is Table.RepeatedRow -> row.rows
+                }
+            }
+
         fun collectLanguagesFromContent(content: List<DocumentContent>) {
             for (item in content) {
                 when (item) {
@@ -153,9 +162,8 @@ abstract class InspireDocumentObjectBuilder(
                         collectLanguagesFromContent(item.default)
                     }
 
-                    is Table -> (item.rows + item.header + item.firstHeader + item.footer + item.lastFooter).forEach { row ->
-                        row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) }
-                    }
+                    is Table -> item.allRows()
+                        .forEach { row -> row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) } }
 
                     is DocumentObjectRef -> {
                         val documentObject = documentObjectRepository.findOrFail(item.id)
@@ -172,9 +180,8 @@ abstract class InspireDocumentObjectBuilder(
                                     collectLanguagesFromContent(textContent.default)
                                 }
 
-                                is Table -> (textContent.rows + textContent.header + textContent.firstHeader + textContent.footer + textContent.lastFooter).forEach { row ->
-                                    row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) }
-                                }
+                                is Table -> textContent.allRows()
+                                    .forEach { row -> row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) } }
 
                                 is DocumentObjectRef -> {
                                     val documentObject = documentObjectRepository.findOrFail(textContent.id)
@@ -405,8 +412,12 @@ abstract class InspireDocumentObjectBuilder(
                 languageVariable = null,
             )
 
-        val normalizedVariablePaths = variableStructureModel.structure.map { (_, variablePathData) ->
-            removeDataFromVariablePath(variablePathData.path)
+        // TODO d.svitak - analyze later, shouldn't we declare array and subtrees based on usage... at the end, from
+        //  some collected info or layout variables? initVariableStructure would return just the model variable structure...
+        val normalizedVariablePaths = variableStructureModel.structure.map { (variableId, variablePathData) ->
+            val literalPath = variablePathData.path.resolve(variableStructureModel)
+                ?: error("Variable '$variableId' referenced as array path has no resolvable literal path in structure")
+            removeDataFromVariablePath(literalPath)
         }.filter { it.isNotBlank() }
 
         val variableTree = buildVariableTree(normalizedVariablePaths)
@@ -886,11 +897,12 @@ abstract class InspireDocumentObjectBuilder(
         val variableModel = variableRepository.findOrFail(ref.id)
 
         val variablePathData = variableStructure.structure[ref.id]
-        if (variablePathData == null || variablePathData.path.isBlank()) {
+        val resolvedPath = variablePathData?.path?.resolve(variableStructure)?.takeIf { it.isNotBlank() }
+        if (resolvedPath.isNullOrBlank()) {
             this.appendText("""$${variablePathData?.name ?: variableModel.nameOrId()}$""")
         } else {
-            val variableName = variablePathData.name ?: variableModel.nameOrId()
-            this.appendVariable(getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path))
+            val variableName = variablePathData?.name ?: variableModel.nameOrId()
+            this.appendVariable(getOrCreateVariable(layout.data, variableName, variableModel, resolvedPath))
         }
 
         return this
@@ -1004,61 +1016,96 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun List<Table.Row>.buildRows(layout: Layout, rowset: GeneralRowSet, variableStructure: VariableStructure, languages: List<String>) {
-        this.forEach { rowModel ->
-            val row = if (rowModel.displayRuleRef == null) {
-                layout.addRowSet().setType(RowSet.Type.SINGLE_ROW).also { rowset.addRowSet(it) }
-            } else {
-                val displayRule = displayRuleRepository.findOrFail(rowModel.displayRuleRef.id)
-                val def = displayRule.definition
-                if (def == null) {
-                    error("Display rule '${rowModel.displayRuleRef.id}' definition is null.")
-                }
-
-                buildSuccessRowWrappedInConditionRow(
-                    layout, variableStructure, def, rowset
-                )
-            }
-
-            rowModel.cells.forEach { cellModel ->
-                val cellContentFlow = buildDocumentContentAsSingleFlow(
-                    layout, variableStructure, cellModel.content, null, null, languages
-                )
-                val cellFlow =
-                    if (cellContentFlow.type === Flow.Type.SELECT_BY_INLINE_CONDITION || cellContentFlow.type === Flow.Type.SELECT_BY_CONDITION) {
-                    layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
-                        .setWebEditingType(Flow.WebEditingType.SECTION)
-                        .also { it.addParagraph().addText().appendFlow(cellContentFlow) }
-                } else cellContentFlow
-
-                val cell = layout.addCell().setSpanLeft(cellModel.mergeLeft).setSpanUp(cellModel.mergeUp)
-                    .setFlowToNextPage(true).setFlow(cellFlow)
-
-                when (cellModel.height) {
-                    is CellHeight.Custom -> {
-                        cell.setType(Cell.CellType.CUSTOM)
-                            .setMinHeight(cellModel.height.minHeight.toMeters())
-                            .setMaxHeight(cellModel.height.maxHeight.toMeters())
-                    }
-                    is CellHeight.Fixed -> {
-                        cell.setType(Cell.CellType.FIXED_HEIGHT)
-                            .setFixedHeight(cellModel.height.size.toMeters())
-                    }
-                    null -> {}
-                }
-
-                when (cellModel.alignment) {
-                    CellAlignment.Top -> cell.setAlignment(Cell.CellVerticalAlignment.TOP)
-                    CellAlignment.Center -> cell.setAlignment(Cell.CellVerticalAlignment.CENTER)
-                    CellAlignment.Bottom -> cell.setAlignment(Cell.CellVerticalAlignment.BOTTOM)
-                    null -> {}
-                }
-
-                buildTableBorderStyle(cellModel.border, layout, cell::setBorderStyle)
-
-                row.addCell(cell)
+    private fun List<TableRow>.buildRows(layout: Layout, rowset: GeneralRowSet, variableStructure: VariableStructure, languages: List<String>) {
+        this.forEach { tableRow ->
+            when (tableRow) {
+                is Table.Row -> buildSingleRow(tableRow, layout, rowset, variableStructure, languages)
+                is Table.RepeatedRow -> buildRepeatedRow(tableRow, layout, rowset, variableStructure, languages)
             }
         }
+    }
+
+    private fun buildSingleRow(rowModel: Table.Row, layout: Layout, rowset: GeneralRowSet, variableStructure: VariableStructure, languages: List<String>) {
+        val row = if (rowModel.displayRuleRef == null) {
+            layout.addRowSet().setType(RowSet.Type.SINGLE_ROW).also { rowset.addRowSet(it) }
+        } else {
+            val displayRule = displayRuleRepository.findOrFail(rowModel.displayRuleRef.id)
+            val def = displayRule.definition
+            if (def == null) {
+                error("Display rule '${rowModel.displayRuleRef.id}' definition is null.")
+            }
+
+            buildSuccessRowWrappedInConditionRow(
+                layout, variableStructure, def, rowset
+            )
+        }
+
+        rowModel.cells.forEach { cellModel ->
+            val cellContentFlow = buildDocumentContentAsSingleFlow(
+                layout, variableStructure, cellModel.content, null, null, languages
+            )
+            val cellFlow =
+                if (cellContentFlow.type === Flow.Type.SELECT_BY_INLINE_CONDITION || cellContentFlow.type === Flow.Type.SELECT_BY_CONDITION) {
+                layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
+                    .setWebEditingType(Flow.WebEditingType.SECTION)
+                    .also { it.addParagraph().addText().appendFlow(cellContentFlow) }
+            } else cellContentFlow
+
+            val cell = layout.addCell().setSpanLeft(cellModel.mergeLeft).setSpanUp(cellModel.mergeUp)
+                .setFlowToNextPage(true).setFlow(cellFlow)
+
+            when (cellModel.height) {
+                is CellHeight.Custom -> {
+                    cell.setType(Cell.CellType.CUSTOM)
+                        .setMinHeight(cellModel.height.minHeight.toMeters())
+                        .setMaxHeight(cellModel.height.maxHeight.toMeters())
+                }
+                is CellHeight.Fixed -> {
+                    cell.setType(Cell.CellType.FIXED_HEIGHT)
+                        .setFixedHeight(cellModel.height.size.toMeters())
+                }
+                null -> {}
+            }
+
+            when (cellModel.alignment) {
+                CellAlignment.Top -> cell.setAlignment(Cell.CellVerticalAlignment.TOP)
+                CellAlignment.Center -> cell.setAlignment(Cell.CellVerticalAlignment.CENTER)
+                CellAlignment.Bottom -> cell.setAlignment(Cell.CellVerticalAlignment.BOTTOM)
+                null -> {}
+            }
+
+            buildTableBorderStyle(cellModel.border, layout, cell::setBorderStyle)
+
+            row.addCell(cell)
+        }
+    }
+
+    private fun buildRepeatedRow(repeatedRow: Table.RepeatedRow, layout: Layout, rowset: GeneralRowSet, variableStructure: VariableStructure, languages: List<String>) {
+        val repeatedRowSet = layout.addRowSet().setType(RowSet.Type.REPEATED)
+        rowset.addRowSet(repeatedRowSet)
+
+        repeatedRow.rows.forEach { rowModel ->
+            buildSingleRow(rowModel, layout, repeatedRowSet, variableStructure, languages)
+        }
+
+        repeatedRowSet.setVariable(resolveArrayVariable(layout, repeatedRow.variable, variableStructure))
+    }
+
+    // TODO d.svitak - this will be really tricky, analyze properly later
+    private fun resolveArrayVariable(layout: Layout, variable: VariablePath, variableStructure: VariableStructure): WfdXmlVariable {
+        val path = variable.resolve(variableStructure)
+            ?: error("Variable path '$variable' could not be resolved to a literal path in structure")
+        val normalizedPath = removeDataFromVariablePath(path)
+        val parts = normalizedPath.split(".")
+        val varName = parts.last()
+        val parentPath = if (parts.size > 1) "Data.${parts.dropLast(1).joinToString(".")}" else "Data"
+        val dataImpl = layout.data as com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
+        return getVariable(dataImpl, varName, parentPath)
+            ?: layout.data.addVariable()
+                .setName(varName)
+                .setKind(com.quadient.wfdxml.api.layoutnodes.data.VariableKind.DATA_VARIABLE)
+                .setDataType(com.quadient.wfdxml.api.layoutnodes.data.DataType.ARRAY)
+                .setExistingParentId(parentPath)
     }
 
     fun buildTable(
@@ -1069,7 +1116,11 @@ abstract class InspireDocumentObjectBuilder(
         if (model.columnWidths.isNotEmpty()) {
             model.columnWidths.forEach { table.addColumn(it.minWidth.toMeters(), it.percentWidth) }
         } else {
-            val numberOfColumns = model.rows.firstOrNull()?.cells?.size ?: 0
+            val numberOfColumns = when (val firstRow = model.rows.firstOrNull()) {
+                is Table.Row -> firstRow.cells.size
+                is Table.RepeatedRow -> firstRow.rows.firstOrNull()?.cells?.size ?: 0
+                null -> 0
+            }
             repeat(numberOfColumns) { table.addColumn() }
         }
 
@@ -1387,6 +1438,13 @@ fun Literal.toScript(
     }
 }
 
+internal fun VariablePath.resolve(variableStructure: VariableStructure): String? {
+    return when (this) {
+        is LiteralPath -> this.path
+        is VariableRefPath -> variableStructure.structure[this.variableId]?.path?.resolve(variableStructure)
+    }
+}
+
 private fun variableStringContentToScript(
     variableStringContent: List<VariableStringContent>,
     layout: Layout,
@@ -1413,14 +1471,15 @@ private fun variableToScript(
 ): ScriptResult {
     val variableModel = findVar(id)
     val variablePathData = variableStructure.structure[id]
-    return if (variablePathData == null || variablePathData.path.isBlank()) {
+    val resolvedPath = variablePathData?.path?.resolve(variableStructure)?.takeIf { it.isNotBlank() }
+    return if (resolvedPath.isNullOrBlank()) {
         Failure(variablePathData?.name ?: variableModel.nameOrId())
     } else {
         val variableName = variablePathData.name ?: variableModel.nameOrId()
 
-        getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path)
+        getOrCreateVariable(layout.data, variableName, variableModel, resolvedPath)
 
-        Success((variablePathData.path.split(".") + variableName).joinToString(".") { pathPart ->
+        Success((resolvedPath.split(".") + variableName).joinToString(".") { pathPart ->
             when (pathPart.lowercase()) {
                 "value" -> "Current"
                 "data" -> "DATA"
@@ -1447,9 +1506,8 @@ fun WfdXmlVariable.setValueIfAvailable(variableModel: Variable): WfdXmlVariable 
             DataTypeModel.Integer -> this.setValue(defaultVal.toInt())
             DataTypeModel.Integer64 -> this.setValue(defaultVal.toLong())
             DataTypeModel.Double, DataTypeModel.Currency -> this.setValue(defaultVal.toDouble())
-            DataTypeModel.Boolean -> this.setValue(
-                defaultVal.lowercase().toBooleanStrict()
-            )
+            DataTypeModel.Boolean -> this.setValue(defaultVal.lowercase().toBooleanStrict())
+            DataTypeModel.Array, DataTypeModel.SubTree -> {}
         }
     }
 

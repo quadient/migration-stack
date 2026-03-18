@@ -24,6 +24,8 @@ fun getDataType(dataType: DataTypeModel): DataType {
         DataTypeModel.String -> DataType.STRING
         DataTypeModel.Boolean -> DataType.BOOL
         DataTypeModel.Currency -> DataType.CURRENCY
+        DataTypeModel.Array -> DataType.ARRAY
+        DataTypeModel.SubTree -> DataType.SUB_TREE
     }
 }
 

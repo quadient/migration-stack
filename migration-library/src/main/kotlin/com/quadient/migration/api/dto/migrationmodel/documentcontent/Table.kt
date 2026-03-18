@@ -4,16 +4,21 @@ import com.quadient.migration.persistence.migrationmodel.TableEntity
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.CellHeight
+import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.TableAlignment
 import com.quadient.migration.shared.TablePdfTaggingRule
+import com.quadient.migration.shared.VariableRefPath
+
+/** Sealed type representing either a single table row or a group of rows repeated by an array variable. */
+sealed interface TableRow : RefValidatable
 
 data class Table(
-    val rows: List<Row>,
-    val header: List<Row> = emptyList(),
-    val firstHeader: List<Row> = emptyList(),
-    val footer: List<Row> = emptyList(),
-    val lastFooter: List<Row> = emptyList(),
+    val rows: List<TableRow>,
+    val header: List<TableRow> = emptyList(),
+    val firstHeader: List<TableRow> = emptyList(),
+    val footer: List<TableRow> = emptyList(),
+    val lastFooter: List<TableRow> = emptyList(),
     val columnWidths: List<ColumnWidth>,
     val pdfTaggingRule: TablePdfTaggingRule = TablePdfTaggingRule.Default,
     val pdfAlternateText: String? = null,
@@ -29,11 +34,11 @@ data class Table(
 
     companion object {
         fun fromDb(table: TableEntity): Table = Table(
-            rows = table.rows.map(Row::fromDb),
-            header = table.header.map(Row::fromDb),
-            firstHeader = table.firstHeader.map(Row::fromDb),
-            footer = table.footer.map(Row::fromDb),
-            lastFooter = table.lastFooter.map(Row::fromDb),
+            rows = table.rows.map(::tableRowFromDb),
+            header = table.header.map(::tableRowFromDb),
+            firstHeader = table.firstHeader.map(::tableRowFromDb),
+            footer = table.footer.map(::tableRowFromDb),
+            lastFooter = table.lastFooter.map(::tableRowFromDb),
             columnWidths = table.columnWidths.map { ColumnWidth(it.minWidth, it.percentWidth) },
             pdfTaggingRule = table.pdfTaggingRule,
             pdfAlternateText = table.pdfAlternateText,
@@ -47,11 +52,11 @@ data class Table(
 
     fun toDb(): TableEntity {
         return TableEntity(
-            rows = rows.map(Row::toDb),
-            header = header.map(Row::toDb),
-            firstHeader = firstHeader.map(Row::toDb),
-            footer = footer.map(Row::toDb),
-            lastFooter = lastFooter.map(Row::toDb),
+            rows = rows.map { it.toDb() },
+            header = header.map { it.toDb() },
+            firstHeader = firstHeader.map { it.toDb() },
+            footer = footer.map { it.toDb() },
+            lastFooter = lastFooter.map { it.toDb() },
             columnWidths = columnWidths.map { TableEntity.ColumnWidthEntity(it.minWidth, it.percentWidth) },
             pdfTaggingRule = pdfTaggingRule,
             pdfAlternateText = pdfAlternateText,
@@ -63,7 +68,7 @@ data class Table(
         )
     }
 
-    data class Row(val cells: List<Cell>, val displayRuleRef: DisplayRuleRef? = null) : RefValidatable {
+    data class Row(val cells: List<Cell>, val displayRuleRef: DisplayRuleRef? = null) : TableRow {
         override fun collectRefs(): List<Ref> {
             return cells.flatMap { it.collectRefs() } + listOfNotNull(displayRuleRef)
         }
@@ -77,6 +82,33 @@ data class Table(
                 return Row(
                     cells = row.cells.map(Cell::fromDb),
                     displayRuleRef = row.displayRuleRef?.let { DisplayRuleRef.fromDb(it) })
+            }
+        }
+    }
+
+    data class RepeatedRow(
+        val rows: List<Row>,
+        val variable: VariablePath,
+    ) : TableRow {
+        override fun collectRefs(): List<Ref> {
+            val rowRefs = rows.flatMap { it.collectRefs() }
+            val varRef = (variable as? VariableRefPath)?.let { VariableRef(it.variableId) }
+            return rowRefs + listOfNotNull(varRef)
+        }
+
+        fun toDb(): TableEntity.RepeatedRow {
+            return TableEntity.RepeatedRow(
+                rows = rows.map(Row::toDb),
+                variable = variable,
+            )
+        }
+
+        companion object {
+            fun fromDb(row: TableEntity.RepeatedRow): RepeatedRow {
+                return RepeatedRow(
+                    rows = row.rows.map(Row::fromDb),
+                    variable = row.variable,
+                )
             }
         }
     }
@@ -124,4 +156,14 @@ data class Table(
     }
 
     data class ColumnWidth(val minWidth: Size, val percentWidth: Double)
+}
+
+private fun tableRowFromDb(row: TableEntity.TableRow): TableRow = when (row) {
+    is TableEntity.Row -> Table.Row.fromDb(row)
+    is TableEntity.RepeatedRow -> Table.RepeatedRow.fromDb(row)
+}
+
+private fun TableRow.toDb(): TableEntity.TableRow = when (this) {
+    is Table.Row -> this.toDb()
+    is Table.RepeatedRow -> this.toDb()
 }
