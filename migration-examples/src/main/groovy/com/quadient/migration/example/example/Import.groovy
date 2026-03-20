@@ -16,6 +16,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuild
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
@@ -36,7 +37,6 @@ import com.quadient.migration.shared.Size
 import java.time.Instant
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
-import static com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 
 Migration migration = initMigration(this.binding)
 
@@ -70,15 +70,28 @@ def cityVariable = new VariableBuilder("city")
 def stateVariable = new VariableBuilder("state")
     .defaultValue("Canada")
     .dataType(DataType.String).build()
+def jobNameVariable = new VariableBuilder("jobName")
+    .dataType(DataType.String).build()
+
+def addressSubtreeVariable = new VariableBuilder("addressSubtree").name("Address")
+        .dataType(DataType.SubTree).build()
+def clientsArrayVariable = new VariableBuilder("clientsArray").name("Clients")
+        .dataType(DataType.Array).build()
+def jobsArrayVariable = new VariableBuilder("jobsArray").name("jobs")
+        .dataType(DataType.Array).build()
 
 def variableStructure = new VariableStructureBuilder("variableStructure")
-        .addVariable(displayHeaderVariable.id, "Data.Clients.Value")
-        .addVariable(displayParagraphVariable.id, "Data.Clients.Value")
-        .addVariable(displayLastSentenceVariable.id, "Data.Clients.Value")
-        .addVariable(nameVariable.id, "Data.Clients.Value")
-        .addVariable(addressVariable.id, "Data.Clients.Value")
-        .addVariable(cityVariable.id, "Data.Clients.Value")
-        .addVariable(stateVariable.id, "Data.Clients.Value")
+        .addVariable(displayHeaderVariable.id, new VariableRef(clientsArrayVariable.id))
+        .addVariable(displayParagraphVariable.id, new VariableRef(clientsArrayVariable.id))
+        .addVariable(displayLastSentenceVariable.id, new VariableRef(clientsArrayVariable.id))
+        .addVariable(nameVariable.id, "Data.Clients.Value") // Literal path that works the same way as reference to clientsArrayVariable
+        .addVariable(addressVariable.id, new VariableRef(addressSubtreeVariable.id))
+        .addVariable(cityVariable.id, new VariableRef(addressSubtreeVariable.id))
+        .addVariable(stateVariable.id, "Data.Clients.Value.Address") // Literal path with another subtree level that works the same way as reference to addressSubtreeVariable
+        .addVariable(jobNameVariable.id, new VariableRef(jobsArrayVariable.id))
+        .addVariable(addressSubtreeVariable.id, new VariableRef(clientsArrayVariable.id))
+        .addVariable(clientsArrayVariable.id, "Data")
+        .addVariable(jobsArrayVariable.id, new VariableRef(clientsArrayVariable.id), "Jobs")
         .build()
 
 // Display displayHeaderRule to conditionally display the address.
@@ -166,26 +179,26 @@ migration.attachmentRepository.upsert(exampleAttachment)
 // Table containing some data with the first address row being optionally hidden
 // by using displayRuleRef to the display displayHeaderRule defined above.
 // The table also contains some merged cells and custom column widths.
-def table = table {
-    it.pdfTaggingRule(TablePdfTaggingRule.Table)
-    it.pdfAlternateText("Example key value table")
-    it.addColumnWidth(Size.ofMillimeters(10), 10)
-    it.addColumnWidth(Size.ofMillimeters(20), 20)
-    it.addColumnWidth(Size.ofMillimeters(98), 70)
-    it.minWidth(Size.ofMillimeters(11))
-    it.maxWidth(Size.ofMillimeters(1111))
-    it.percentWidth(100)
-    it.alignment(TableAlignment.Right)
 
-    def borderColor = Color.fromHex("#000000")
-    def borderWidth = Size.ofMillimeters(0.3)
-    def headerPadding = Size.ofMillimeters(2)
+def borderColor = Color.fromHex("#000000")
+def borderWidth = Size.ofMillimeters(0.3)
+def headerPadding = Size.ofMillimeters(2)
 
-    it.border { it.allBorders(borderColor, borderWidth) }
+def table = new TableBuilder()
+    .pdfTaggingRule(TablePdfTaggingRule.Table)
+    .pdfAlternateText("Example key value table")
+    .addColumnWidth(Size.ofMillimeters(10), 10)
+    .addColumnWidth(Size.ofMillimeters(20), 20)
+    .addColumnWidth(Size.ofMillimeters(98), 70)
+    .minWidth(Size.ofMillimeters(11))
+    .maxWidth(Size.ofMillimeters(1111))
+    .percentWidth(100)
+    .alignment(TableAlignment.Right)
+    .border { it.allBorders(borderColor, borderWidth) }
 
-    it.firstHeaderRow {
-        it.displayRuleRef = new DisplayRuleRef(displayHeaderRule.id)
-        it.cell {
+    .addFirstHeaderRow {
+        it.displayRuleRef(displayHeaderRule.id)
+        it.addCell {
             it.border {
                 it.allBorders(borderColor, borderWidth)
                 it.padding(headerPadding)
@@ -195,7 +208,7 @@ def table = table {
             it.paragraph { it.string("ID") }
             it.alignment(CellAlignment.Bottom)
         }
-        it.cell {
+        it.addCell() {
             it.border {
                 it.allBorders(borderColor, borderWidth)
                 it.padding(headerPadding)
@@ -204,7 +217,7 @@ def table = table {
             }
             it.paragraph { it.string("key") }
         }
-        it.cell {
+        it.addCell {
             it.border {
                 it.allBorders(borderColor, borderWidth)
                 it.padding(headerPadding)
@@ -215,13 +228,13 @@ def table = table {
         }
     }
 
-    it.row {
-        it.cell {
+    .addRow {
+        it.addCell {
             it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.text { it.string("1") } }
             it.heightFixed(Size.ofMillimeters(10))
         }
-        it.cell {
+        it.addCell {
             // This cell is merged with the cell to the left on the same row
             // and contains the value of the left cell.
             it.mergeLeft = true
@@ -229,58 +242,59 @@ def table = table {
             it.paragraph { it.string("key1") }
             it.heightFixed(Size.ofMillimeters(20))
         }
-        it.cell {
+        it.addCell {
             it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("value1") }
             it.heightCustom(Size.ofMillimeters(10), Size.ofMillimeters(20))
         }
     }
 
-    it.row {
-        it.cell {
+    .addRow {
+        it.addCell {
             it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("2") }
         }
-        it.cell {
+        it.addCell {
             it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("key2") }
         }
-        it.cell {
+        it.addCell {
             it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("value2") }
         }
     }
 
-    it.row {
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("3") }
-        }
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("key3") }
-        }
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("value3") }
-        }
-    }
-
-    it.lastFooterRow {
-        it.cell {
+    .addLastFooterRow {
+        it.addCell {
             it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("Total") }
         }
-        it.cell {
+        it.addCell {
             it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("3 keys") }
+            it.paragraph { it.string("2 keys") }
         }
-        it.cell {
+        it.addCell {
             it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("") }
         }
     }
-}
+    .build()
+
+def tableWithRepeatedRow = new TableBuilder()
+    .addHeaderRow {
+        it.addCell {
+            it.border { it.allBorders(borderColor, borderWidth) }
+            it.paragraph { it.string("Job name") }
+        }
+    }
+    .addRepeatedRow(new VariableRef(jobsArrayVariable.id)) {
+        it.addRow {
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.paragraph { it.text { it.variableRef(jobNameVariable.id) } }
+            }
+        }
+    }.build()
 
 // Header of the document containing the recipient's information.
 // It uses the variables defined above to dynamically insert the
@@ -446,6 +460,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             .documentObjectRef(paragraph1.id)
             .documentObjectRef(paragraph2.id)
             .paragraph { it.styleRef(paragraphStyle.id).text { it.content(table) } }
+            .paragraph { it.styleRef(paragraphStyle.id).text { it.content(tableWithRepeatedRow) } }
             .documentObjectRef(conditionalParagraph.id)
             .documentObjectRef(firstMatchBlock.id)
             .documentObjectRef(selectByLanguageBlock.id)
@@ -491,7 +506,7 @@ for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, 
 for (item in [headingStyle, normalStyle]) {
     migration.textStyleRepository.upsert(item)
 }
-for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable]) {
+for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable, jobNameVariable, clientsArrayVariable, addressSubtreeVariable, jobsArrayVariable]) {
     migration.variableRepository.upsert(item)
 }
 for (item in [displayAddressRule, displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {

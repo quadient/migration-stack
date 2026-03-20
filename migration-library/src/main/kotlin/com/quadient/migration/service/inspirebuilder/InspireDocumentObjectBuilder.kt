@@ -215,23 +215,21 @@ abstract class InspireDocumentObjectBuilder(
         )
     }
 
-    protected open fun buildSuccessRowWrappedInConditionRow(
+    protected data class WrappedRow(val outer: GeneralRowSet, val inner: GeneralRowSet)
+
+    protected open fun buildConditionRow(
         layout: Layout,
         variableStructure: VariableStructure,
         ruleDef: DisplayRuleDefinition,
-        multipleRowSet: GeneralRowSet
-    ): GeneralRowSet {
+    ): WrappedRow {
         val successRow = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
-
-        multipleRowSet.addRowSet(
-            layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
+        val conditionRow = layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION)
+            .addLineForSelectByCondition(
                 layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
                     .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail)),
                 successRow
             )
-        )
-
-        return successRow
+        return WrappedRow(conditionRow, successRow)
     }
 
     fun buildStyleLayoutDelta(textStyles: List<TextStyle>, paragraphStyles: List<ParagraphStyle>): String {
@@ -412,10 +410,8 @@ abstract class InspireDocumentObjectBuilder(
                 languageVariable = null,
             )
 
-        // TODO d.svitak - analyze later, shouldn't we declare array and subtrees based on usage... at the end, from
-        //  some collected info or layout variables? initVariableStructure would return just the model variable structure...
         val normalizedVariablePaths = variableStructureModel.structure.map { (variableId, variablePathData) ->
-            val literalPath = variablePathData.path.resolve(variableStructureModel)
+            val literalPath = variablePathData.path.resolve(variableStructureModel, variableRepository::findOrFail)
                 ?: error("Variable '$variableId' referenced as array path has no resolvable literal path in structure")
             removeDataFromVariablePath(literalPath)
         }.filter { it.isNotBlank() }
@@ -897,11 +893,11 @@ abstract class InspireDocumentObjectBuilder(
         val variableModel = variableRepository.findOrFail(ref.id)
 
         val variablePathData = variableStructure.structure[ref.id]
-        val resolvedPath = variablePathData?.path?.resolve(variableStructure)?.takeIf { it.isNotBlank() }
+        val resolvedPath = variablePathData?.path?.resolve(variableStructure, variableRepository::findOrFail)?.takeIf { it.isNotBlank() }
         if (resolvedPath.isNullOrBlank()) {
             this.appendText("""$${variablePathData?.name ?: variableModel.nameOrId()}$""")
         } else {
-            val variableName = variablePathData?.name ?: variableModel.nameOrId()
+            val variableName = variablePathData.name ?: variableModel.nameOrId()
             this.appendVariable(getOrCreateVariable(layout.data, variableName, variableModel, resolvedPath))
         }
 
@@ -1016,28 +1012,32 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun List<TableRow>.buildRows(layout: Layout, rowset: GeneralRowSet, variableStructure: VariableStructure, languages: List<String>) {
-        this.forEach { tableRow ->
-            when (tableRow) {
-                is Table.Row -> buildSingleRow(tableRow, layout, rowset, variableStructure, languages)
-                is Table.RepeatedRow -> buildRepeatedRow(tableRow, layout, rowset, variableStructure, languages)
-            }
+    private fun List<TableRow>.buildRowSetGroup(
+        layout: Layout, variableStructure: VariableStructure, languages: List<String>
+    ): GeneralRowSet? {
+        fun TableRow.toRowSet(): GeneralRowSet? = when (this) {
+            is Table.Row -> buildSingleRowSet(this, layout, variableStructure, languages)
+            is Table.RepeatedRow -> buildRepeatedRowSet(this, layout, variableStructure, languages)
+        }
+
+        if (isEmpty()) return null
+        if (size == 1) return first().toRowSet()
+        return layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS).also { multipleRowSet ->
+            forEach { tableRow -> tableRow.toRowSet()?.let { multipleRowSet.addRowSet(it) } }
         }
     }
 
-    private fun buildSingleRow(rowModel: Table.Row, layout: Layout, rowset: GeneralRowSet, variableStructure: VariableStructure, languages: List<String>) {
-        val row = if (rowModel.displayRuleRef == null) {
-            layout.addRowSet().setType(RowSet.Type.SINGLE_ROW).also { rowset.addRowSet(it) }
+    private fun buildSingleRowSet(
+        rowModel: Table.Row, layout: Layout, variableStructure: VariableStructure, languages: List<String>
+    ): GeneralRowSet {
+        val (outer, inner) = if (rowModel.displayRuleRef == null) {
+            val rowSet = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
+            WrappedRow(rowSet, rowSet)
         } else {
             val displayRule = displayRuleRepository.findOrFail(rowModel.displayRuleRef.id)
-            val def = displayRule.definition
-            if (def == null) {
-                error("Display rule '${rowModel.displayRuleRef.id}' definition is null.")
-            }
-
-            buildSuccessRowWrappedInConditionRow(
-                layout, variableStructure, def, rowset
-            )
+            val def =
+                displayRule.definition ?: error("Display rule '${rowModel.displayRuleRef.id}' definition is null.")
+            buildConditionRow(layout, variableStructure, def)
         }
 
         rowModel.cells.forEach { cellModel ->
@@ -1076,36 +1076,58 @@ abstract class InspireDocumentObjectBuilder(
 
             buildTableBorderStyle(cellModel.border, layout, cell::setBorderStyle)
 
-            row.addCell(cell)
+            inner.addCell(cell)
         }
+
+        return outer
     }
 
-    private fun buildRepeatedRow(repeatedRow: Table.RepeatedRow, layout: Layout, rowset: GeneralRowSet, variableStructure: VariableStructure, languages: List<String>) {
+    private fun buildRepeatedRowSet(
+        repeatedRow: Table.RepeatedRow,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        languages: List<String>
+    ): GeneralRowSet? {
+        val varNameAndPath = resolveVariableNameAndPath(repeatedRow.variable, variableStructure) ?: return null
+
         val repeatedRowSet = layout.addRowSet().setType(RowSet.Type.REPEATED)
-        rowset.addRowSet(repeatedRowSet)
 
-        repeatedRow.rows.forEach { rowModel ->
-            buildSingleRow(rowModel, layout, repeatedRowSet, variableStructure, languages)
+        if (repeatedRow.rows.size > 1) {
+            val multipleRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
+            repeatedRowSet.addRowSet(multipleRowSet)
+            repeatedRow.rows.forEach { multipleRowSet.addRowSet(buildSingleRowSet(it, layout, variableStructure, languages)) }
+        } else {
+            repeatedRow.rows.forEach { repeatedRowSet.addRowSet(buildSingleRowSet(it, layout, variableStructure, languages)) }
         }
 
-        repeatedRowSet.setVariable(resolveArrayVariable(layout, repeatedRow.variable, variableStructure))
+        val (varName, varPath) = varNameAndPath
+        val arrayVariable = getVariable(layout.data as DataImpl, varName, varPath)
+            ?: error("Array variable '$varName' at '$varPath' used in repeated row is not found in layout")
+        require(arrayVariable.nodeOptionality == NodeOptionality.ARRAY) {
+            "Variable '$varName' at '$varPath' used in repeated row is not an Array variable"
+        }
+        repeatedRowSet.setVariable(arrayVariable)
+        return repeatedRowSet
     }
 
-    // TODO d.svitak - this will be really tricky, analyze properly later
-    private fun resolveArrayVariable(layout: Layout, variable: VariablePath, variableStructure: VariableStructure): WfdXmlVariable {
-        val path = variable.resolve(variableStructure)
-            ?: error("Variable path '$variable' could not be resolved to a literal path in structure")
-        val normalizedPath = removeDataFromVariablePath(path)
-        val parts = normalizedPath.split(".")
-        val varName = parts.last()
-        val parentPath = if (parts.size > 1) "Data.${parts.dropLast(1).joinToString(".")}" else "Data"
-        val dataImpl = layout.data as com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
-        return getVariable(dataImpl, varName, parentPath)
-            ?: layout.data.addVariable()
-                .setName(varName)
-                .setKind(com.quadient.wfdxml.api.layoutnodes.data.VariableKind.DATA_VARIABLE)
-                .setDataType(com.quadient.wfdxml.api.layoutnodes.data.DataType.ARRAY)
-                .setExistingParentId(parentPath)
+    private fun resolveVariableNameAndPath(
+        variablePath: VariablePath, variableStructure: VariableStructure
+    ): Pair<String, String>? {
+        val fullPath = when (variablePath) {
+            is LiteralPath -> variablePath.path
+            is VariableRefPath -> {
+                val parentVarPathData = variableStructure.structure[variablePath.variableId] ?: return null
+                val parentVarName =
+                    parentVarPathData.name ?: variableRepository.findOrFail(variablePath.variableId).nameOrId()
+                val parentVarPath =
+                    parentVarPathData.path.resolve(variableStructure, variableRepository::findOrFail) ?: return null
+                "$parentVarPath.$parentVarName"
+            }
+        }
+        val normalized = removeDataFromVariablePath(removeValueFromVariablePath(fullPath))
+        if (normalized.isBlank()) return null
+        val parts = normalized.split(".")
+        return parts.last() to (if (parts.size > 1) "Data.${parts.dropLast(1).joinToString(".")}" else "Data")
     }
 
     fun buildTable(
@@ -1149,39 +1171,14 @@ abstract class InspireDocumentObjectBuilder(
             val headerFooterRowSet = layout.addRowSetHeaderFooter()
             table.setRowSet(headerFooterRowSet)
 
-            if (model.header.isNotEmpty()) {
-                val headerRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-                headerFooterRowSet.setHeader(headerRowSet)
-                model.header.buildRows(layout, headerRowSet, variableStructure, languages)
-            }
+            model.header.buildRowSetGroup(layout, variableStructure, languages)?.let { headerFooterRowSet.setHeader(it) }
+            model.firstHeader.buildRowSetGroup(layout, variableStructure, languages)?.let { headerFooterRowSet.setFirstHeader(it) }
+            model.footer.buildRowSetGroup(layout, variableStructure, languages)?.let { headerFooterRowSet.setFooter(it) }
+            model.lastFooter.buildRowSetGroup(layout, variableStructure, languages)?.let { headerFooterRowSet.setLastFooter(it) }
 
-            if (model.firstHeader.isNotEmpty()) {
-                val firstHeaderRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-                headerFooterRowSet.setFirstHeader(firstHeaderRowSet)
-                model.firstHeader.buildRows(layout, firstHeaderRowSet, variableStructure, languages)
-            }
-
-            if (model.footer.isNotEmpty()) {
-                val footerRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-                headerFooterRowSet.setFooter(footerRowSet)
-                model.footer.buildRows(layout, footerRowSet, variableStructure, languages)
-            }
-
-            if (model.lastFooter.isNotEmpty()) {
-                val lastFooterRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-                headerFooterRowSet.setLastFooter(lastFooterRowSet)
-                model.lastFooter.buildRows(layout, lastFooterRowSet, variableStructure, languages)
-            }
-
-            val bodyRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-            headerFooterRowSet.setBody(bodyRowSet)
-
-            model.rows.buildRows(layout, bodyRowSet, variableStructure, languages)
+            model.rows.buildRowSetGroup(layout, variableStructure, languages)?.let { headerFooterRowSet.setBody(it) }
         } else {
-            val rowset = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-            table.setRowSet(rowset)
-
-            model.rows.buildRows(layout, rowset, variableStructure, languages)
+            model.rows.buildRowSetGroup(layout, variableStructure, languages)?.let { table.setRowSet(it) }
         }
 
         when (model.pdfTaggingRule) {
@@ -1438,10 +1435,24 @@ fun Literal.toScript(
     }
 }
 
-internal fun VariablePath.resolve(variableStructure: VariableStructure): String? {
+internal fun VariablePath.resolve(variableStructure: VariableStructure, findVariable: (String) -> Variable): String? {
     return when (this) {
         is LiteralPath -> this.path
-        is VariableRefPath -> variableStructure.structure[this.variableId]?.path?.resolve(variableStructure)
+        is VariableRefPath -> {
+            val parentVarPathData = variableStructure.structure[this.variableId] ?: return null
+            val parentVarPath =
+                parentVarPathData.path.resolve(variableStructure, findVariable)?.takeIf { it.isNotBlank() }
+                    ?: return null
+
+            val parentVar = findVariable(this.variableId)
+            val parentVarName = parentVarPathData.name ?: parentVar.nameOrId()
+
+            when (parentVar.dataType) {
+                DataTypeModel.Array -> "$parentVarPath.$parentVarName.Value"
+                DataTypeModel.SubTree -> "$parentVarPath.$parentVarName"
+                else -> error("Variable '${this.variableId}' of type ${parentVar.dataType} is used in path. Only Array and Subtree can be referenced.")
+            }
+        }
     }
 }
 
@@ -1471,7 +1482,7 @@ private fun variableToScript(
 ): ScriptResult {
     val variableModel = findVar(id)
     val variablePathData = variableStructure.structure[id]
-    val resolvedPath = variablePathData?.path?.resolve(variableStructure)?.takeIf { it.isNotBlank() }
+    val resolvedPath = variablePathData?.path?.resolve(variableStructure, findVar)?.takeIf { it.isNotBlank() }
     return if (resolvedPath.isNullOrBlank()) {
         Failure(variablePathData?.name ?: variableModel.nameOrId())
     } else {

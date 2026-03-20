@@ -12,6 +12,7 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
@@ -33,6 +34,7 @@ import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.DocumentObjectType.Block
 import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.ImageType.*
 import com.quadient.migration.shared.Literal
@@ -44,6 +46,7 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.getFlowAreaContentFlow
 import com.quadient.migration.tools.model.*
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldNotBeNull
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.internal.module.layout.LayoutImpl
 import io.mockk.every
@@ -369,6 +372,140 @@ class InspireDocumentObjectBuilderTest {
 
         val variableScript = result["Variable"].last { it["Id"].textValue() == pdfAuthorSheetName }["Script"].textValue()
         variableScript.shouldBeEqualTo("return 'Jon ' + DATA.Clients.Current.Middle_Name.toString() + ' Doe ' + '\$noStruct$';")
+    }
+
+    // TODO d.svitak - review the following 4 unit tests
+    @Test
+    fun `variableRefPath entry in variable structure resolves to correct context path in script`() {
+        // given — clientsArray at "Data", so child variables should resolve to "Data.Clients.Value"
+        val clientsArray = mockVar(
+            VariableBuilder("clientsArray").name("Clients").dataType(DataType.Array).build()
+        )
+        val nameVar = mockVar(
+            VariableBuilder("nameVar").name("Name").dataType(DataType.String).build()
+        )
+        val variableStructure = mockVarStructure(
+            VariableStructureBuilder("vs1")
+                .addVariable(clientsArray.id, "Data")              // root array at Data level
+                .addVariable(nameVar.id, VariableRef(clientsArray.id)) // nameVar inside Clients iteration
+                .build()
+        )
+
+        val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template)
+            .variableStructureRef(variableStructure.id)
+            .pdfMetadata { author { variableRef(nameVar.id) } }
+            .build()
+
+        // when
+        val result =
+            subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then — script should reference DATA.Clients.Current.Name, not DATA.Name
+        val authorVariableId = result["Pages"]["SheetNameVariableId"].last().textValue()
+        val variableScript = result["Variable"].last { it["Id"].textValue() == authorVariableId }["Script"].textValue()
+        variableScript.shouldBeEqualTo("return DATA.Clients.Current.Name.toString();")
+    }
+
+    @Test
+    fun `variableRefPath through subtree resolves to correct context path in script`() {
+        // given — address subtree inside clients array
+        val clientsArray = mockVar(
+            VariableBuilder("clientsArray").name("Clients").dataType(DataType.Array).build()
+        )
+        val addressSubtree = mockVar(
+            VariableBuilder("addressSubtree").name("Address").dataType(DataType.SubTree).build()
+        )
+        val cityVar = mockVar(
+            VariableBuilder("cityVar").name("City").dataType(DataType.String).build()
+        )
+        val variableStructure = mockVarStructure(
+            VariableStructureBuilder("vs2")
+                .addVariable(clientsArray.id, "Data")
+                .addVariable(addressSubtree.id, VariableRef(clientsArray.id))    // Address subtree inside Clients
+                .addVariable(cityVar.id, VariableRef(addressSubtree.id))          // City inside Address subtree
+                .build()
+        )
+
+        val template = DocumentObjectBuilder("T_2", DocumentObjectType.Template)
+            .variableStructureRef(variableStructure.id)
+            .pdfMetadata { author { variableRef(cityVar.id) } }
+            .build()
+
+        // when
+        val result =
+            subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then — script should reference DATA.Clients.Current.Address.City
+        val authorVariableId = result["Pages"]["SheetNameVariableId"].last().textValue()
+        val variableScript = result["Variable"].last { it["Id"].textValue() == authorVariableId }["Script"].textValue()
+        variableScript.shouldBeEqualTo("return DATA.Clients.Current.Address.City.toString();")
+    }
+
+    @Test
+    fun `buildDocumentObject creates repeated rowset with literal array path`() {
+        // given
+        val variableStructure =
+            mockVarStructure(VariableStructureBuilder("VS_1").addVariable("clientsVar", "Data.Clients.Value").build())
+
+        val block = mockObj(DocumentObjectBuilder("B_1", Block).table {
+            addRepeatedRow("Data.Clients") {
+                addRow().addCell().string("Name")
+                addRow().addCell().string("Value")
+            }
+        }.variableStructureRef(variableStructure.id).build())
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val repeatedRowSetId = result["Table"].last()["RowSetId"].textValue()
+        val repeatedRowSet = result["RowSet"].last { it["Id"].textValue() == repeatedRowSetId }
+
+        repeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
+        val arrayVarId = repeatedRowSet["VariableId"].textValue()
+        val arrayVar = result["Variable"].last { it["Id"].textValue() == arrayVarId }
+        arrayVar["Type"].textValue().shouldBeEqualTo("DataVariable")
+        arrayVar["VarType"].textValue().shouldBeEqualTo("Array")
+
+        // 2 inner rows → wrapped in a MULTIPLE_ROWS inside the REPEATED
+        val innerContainerId = repeatedRowSet["SubRowId"].textValue()
+        val innerContainer = result["RowSet"].last { it["Id"].textValue() == innerContainerId }
+        innerContainer["SubRowId"].size().shouldBeEqualTo(2)
+    }
+
+    @Test
+    fun `buildDocumentObject creates repeated rowset with variable ref array path`() {
+        // given
+        val arrayVar = mockVar(VariableBuilder("arrayVar").name("Clients").dataType(DataType.Array).build())
+        val stringVar = mockVar(VariableBuilder("stringVar").dataType(DataType.String).build())
+
+        val variableStructure = mockVarStructure(
+            VariableStructureBuilder("VS_1").addVariable(arrayVar.id, "Data")
+                .addVariable(stringVar.id, VariableRef(arrayVar.id)).build()
+        )
+
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block).table {
+                addRepeatedRow(VariableRef(arrayVar.id)) {
+                    addRow {
+                        addCell { string("Name") }
+                        addCell { paragraph { text { variableRef(stringVar.id) } } }
+                    }
+                }
+            }.variableStructureRef(variableStructure.id).build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val repeatedRowSetId = result["Table"].last()["RowSetId"].textValue()
+        val repeatedRowSet = result["RowSet"].last { it["Id"].textValue() == repeatedRowSetId }
+
+        repeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
+        repeatedRowSet["VariableId"].shouldNotBeNull()
+
+        // TODO d.svitak - assert the similar things as in previous test
     }
 
     @Test

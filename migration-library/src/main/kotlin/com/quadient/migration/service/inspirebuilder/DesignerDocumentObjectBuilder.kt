@@ -23,7 +23,6 @@ import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.FlowArea
 import com.quadient.wfdxml.api.layoutnodes.Page
 import com.quadient.wfdxml.api.layoutnodes.Pages
-import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.module.Layout
@@ -174,7 +173,7 @@ class DesignerDocumentObjectBuilder(
         if (languageVariable != null) {
             val languageVariableModel = variableRepository.findOrFail(languageVariable.id)
             val languageVariablePath = variableStructure.structure[languageVariable.id]?.path
-                ?.resolve(variableStructure)?.takeIf { it.isNotBlank() }
+                ?.resolve(variableStructure, variableRepository::findOrFail)?.takeIf { it.isNotBlank() }
             if (languageVariablePath.isNullOrBlank()) {
                 error("Language variable '${languageVariable.id}' or its path not found in variable structure '${variableStructure.id}'.")
             }
@@ -259,21 +258,17 @@ class DesignerDocumentObjectBuilder(
         )
     }
 
-    override fun buildSuccessRowWrappedInConditionRow(
+    override fun buildConditionRow(
         layout: Layout,
         variableStructure: VariableStructure,
         ruleDef: DisplayRuleDefinition,
-        multipleRowSet: GeneralRowSet,
-    ): GeneralRowSet {
+    ): WrappedRow {
         val successRow = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
-
-        multipleRowSet.addRowSet(
-            layout.addRowSet().setType(RowSet.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
+        val conditionRow = layout.addRowSet().setType(RowSet.Type.SELECT_BY_INLINE_CONDITION)
+            .addLineForSelectByInlineCondition(
                 ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail), successRow
             )
-        )
-
-        return successRow
+        return WrappedRow(conditionRow, successRow)
     }
 
     private fun buildPage(

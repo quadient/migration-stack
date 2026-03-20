@@ -16,9 +16,6 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
-import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
-import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
-import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -523,77 +520,9 @@ class DesignerDocumentObjectBuilderTest {
         result.assertRowContent(subRowIds[4].textValue(), "LastFooter")
     }
 
-    @Test
-    fun `buildDocumentObject creates repeated rowset with literal array path`() {
-        // given
-        val variableStructure =
-            mockVarStructure(VariableStructureBuilder("VS_1").addVariable("clientsVar", "Data.Clients.Value").build())
-
-        val block = mockObj(DocumentObjectBuilder("B_1", Block).table {
-            addRepeatedRow("Data.Clients") {
-                addRow().addCell().string("Name")
-                addRow().addCell().string("Value")
-            }
-        }.variableStructureRef(variableStructure.id).build())
-
-        // when
-        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
-
-        // then
-        val multipleRowSetId = result["Table"].last()["RowSetId"].textValue()
-        val multipleRowSet = result["RowSet"].last { it["Id"].textValue() == multipleRowSetId }
-        val repeatedRowSetId = multipleRowSet["SubRowId"].textValue()
-        val repeatedRowSet = result["RowSet"].last { it["Id"].textValue() == repeatedRowSetId }
-
-        repeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
-        val arrayVarId = repeatedRowSet["VariableId"].textValue()
-        val arrayVar = result["Variable"].last { it["Id"].textValue() == arrayVarId }
-        arrayVar["Type"].textValue().shouldBeEqualTo("DataVariable")
-        arrayVar["VarType"].textValue().shouldBeEqualTo("Array")
-
-        repeatedRowSet["SubRowId"].size().shouldBeEqualTo(2)
-    }
-
-    // TODO d.svitak - the interpretation of array/subtree variables need to be reworked, and promoted to this test
-    @Test
-    fun `buildDocumentObject creates repeated rowset with variable ref array path`() {
-        // given
-        val arrayVar = mockVar(VariableBuilder("arrayVar").name("Clients").dataType(DataType.Array).build())
-        val stringVar = mockVar(VariableBuilder("stringVar").dataType(DataType.String).build())
-
-        val variableStructure = mockVarStructure(
-            VariableStructureBuilder("VS_1").addVariable(arrayVar.id, "Data.Clients.Value")
-                .addVariable(stringVar.id, VariableRef(arrayVar.id)).build()
-        )
-
-        val block = mockObj(
-            DocumentObjectBuilder("B_1", Block).table {
-                addRepeatedRow(VariableRef(arrayVar.id)) {
-                    addRow {
-                        addCell { string("Name") }
-                        addCell { paragraph { text { variableRef(stringVar.id) } } }
-                    }
-                }
-            }.variableStructureRef(variableStructure.id).build()
-        )
-
-        // when
-        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
-
-        // then
-        val tableRowSetId = result["Table"].last()["RowSetId"].textValue()
-        val tableRowSet = result["RowSet"].last { it["Id"].textValue() == tableRowSetId }
-        val repeatedRowSetId = tableRowSet["SubRowId"].textValue()
-        val repeatedRowSet = result["RowSet"].last { it["Id"].textValue() == repeatedRowSetId }
-
-        repeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
-        repeatedRowSet["VariableId"].shouldNotBeNull()
-    }
-
     private fun com.fasterxml.jackson.databind.JsonNode.assertRowContent(rowSetId: String, expectedText: String) {
         val rowSet = this["RowSet"].last { it["Id"].textValue() == rowSetId }
-        val contentRowSet = this["RowSet"].last { it["Id"].textValue() == rowSet["SubRowId"].textValue() }
-        val cell = this["Cell"].last { it["Id"].textValue() == contentRowSet["SubRowId"].textValue() }
+        val cell = this["Cell"].last { it["Id"].textValue() == rowSet["SubRowId"].textValue() }
         val flowId = cell["FlowId"].textValue()
         val flow = this["Flow"].last { it["Id"].textValue() == flowId }
         flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo(expectedText)

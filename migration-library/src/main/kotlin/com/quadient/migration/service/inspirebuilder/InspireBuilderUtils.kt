@@ -117,11 +117,24 @@ fun getFillStyleByColor(layout: Layout, color: com.quadient.wfdxml.api.layoutnod
     } as? com.quadient.wfdxml.api.layoutnodes.FillStyle
 }
 
-fun getVariable(data: DataImpl, name: String, parentPath: String): Variable? {
-    return (data.children).find {
+fun getVariable(data: DataImpl, name: String, parentPath: String): VariableImpl? {
+    val byExistingParentId = data.children.find {
         val variable = it as VariableImpl
         variable.name == name && variable.existingParentId == parentPath
-    } as? Variable
+    } as? VariableImpl
+    if (byExistingParentId != null) return byExistingParentId
+
+    val normalizedParent = removeValueFromVariablePath(removeDataFromVariablePath(parentPath))
+    val pathParts = if (normalizedParent.isBlank()) {
+        arrayOf(name)
+    } else {
+        (normalizedParent.split(".") + name).toTypedArray()
+    }
+    return try {
+        data.findVariable(*pathParts)
+    } catch (_: Exception) {
+        null
+    }
 }
 
 fun buildFontName(bold: Boolean, italic: Boolean): String {
