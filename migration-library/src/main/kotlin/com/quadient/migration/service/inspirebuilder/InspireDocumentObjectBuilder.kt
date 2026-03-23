@@ -1088,7 +1088,8 @@ abstract class InspireDocumentObjectBuilder(
         variableStructure: VariableStructure,
         languages: List<String>
     ): GeneralRowSet? {
-        val varNameAndPath = resolveVariableNameAndPath(repeatedRow.variable, variableStructure) ?: return null
+        val varNameAndPath = resolveVariableNameAndPath(repeatedRow.variable, variableStructure)
+            ?: return buildUnmappedRepeatedRowFallback(repeatedRow, layout, variableStructure, languages)
 
         val repeatedRowSet = layout.addRowSet().setType(RowSet.Type.REPEATED)
 
@@ -1108,6 +1109,32 @@ abstract class InspireDocumentObjectBuilder(
         }
         repeatedRowSet.setVariable(arrayVariable)
         return repeatedRowSet
+    }
+
+    private fun buildUnmappedRepeatedRowFallback(
+        repeatedRow: Table.RepeatedRow, layout: Layout, variableStructure: VariableStructure, languages: List<String>
+    ): GeneralRowSet? {
+        val varName = getVariableNameFromPath(repeatedRow.variable, variableStructure)
+        val warning = Paragraph("<unmapped $$varName$ for repeated row> ")
+
+        val rows = repeatedRow.rows
+        val rowsWithWarning = rows.firstOrNull()?.let { firstRow ->
+            firstRow.cells.firstOrNull()?.let { firstCell ->
+                val cellWithWarning = firstCell.copy(content = listOf(warning) + firstCell.content)
+                listOf(firstRow.copy(cells = listOf(cellWithWarning) + firstRow.cells.drop(1))) + rows.drop(1)
+            }
+        } ?: rows
+
+        return rowsWithWarning.buildRowSetGroup(layout, variableStructure, languages)
+    }
+
+    private fun getVariableNameFromPath(
+        variablePath: VariablePath, variableStructure: VariableStructure
+    ): String = when (variablePath) {
+        is LiteralPath -> variablePath.path
+        is VariableRefPath -> variableStructure.structure[variablePath.variableId]?.name
+            ?: variableRepository.find(variablePath.variableId)?.nameOrId()
+            ?: variablePath.variableId
     }
 
     private fun resolveVariableNameAndPath(

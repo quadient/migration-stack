@@ -374,36 +374,27 @@ class InspireDocumentObjectBuilderTest {
         variableScript.shouldBeEqualTo("return 'Jon ' + DATA.Clients.Current.Middle_Name.toString() + ' Doe ' + '\$noStruct$';")
     }
 
-    // TODO d.svitak - review the following 4 unit tests
     @Test
     fun `variableRefPath entry in variable structure resolves to correct context path in script`() {
-        // given — clientsArray at "Data", so child variables should resolve to "Data.Clients.Value"
-        val clientsArray = mockVar(
-            VariableBuilder("clientsArray").name("Clients").dataType(DataType.Array).build()
-        )
-        val nameVar = mockVar(
-            VariableBuilder("nameVar").name("Name").dataType(DataType.String).build()
-        )
+        // given
+        val clientsArray = mockVar(VariableBuilder("clientsArray").name("Clients").dataType(DataType.Array).build())
+        val nameVar = mockVar(VariableBuilder("nameVar").name("name").dataType(DataType.String).build())
         val variableStructure = mockVarStructure(
-            VariableStructureBuilder("vs1")
-                .addVariable(clientsArray.id, "Data")              // root array at Data level
-                .addVariable(nameVar.id, VariableRef(clientsArray.id)) // nameVar inside Clients iteration
-                .build()
+            VariableStructureBuilder("vs1").addVariable(clientsArray.id, "Data")
+                .addVariable(nameVar.id, VariableRef(clientsArray.id), "Name").build()
         )
 
-        val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template)
-            .variableStructureRef(variableStructure.id)
-            .pdfMetadata { author { variableRef(nameVar.id) } }
-            .build()
+        val template =
+            DocumentObjectBuilder("T_1", DocumentObjectType.Template).variableStructureRef(variableStructure.id)
+                .paragraph { text { variableRef(nameVar.id) } }.build()
 
         // when
         val result =
             subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
-        // then — script should reference DATA.Clients.Current.Name, not DATA.Name
-        val authorVariableId = result["Pages"]["SheetNameVariableId"].last().textValue()
-        val variableScript = result["Variable"].last { it["Id"].textValue() == authorVariableId }["Script"].textValue()
-        variableScript.shouldBeEqualTo("return DATA.Clients.Current.Name.toString();")
+        // then
+        val variableData = result["Variable"].first { it["Name"].textValue() == "Name" }
+        variableData["ParentId"].textValue().shouldBeEqualTo("Data.Clients.Value")
     }
 
     @Test
@@ -421,8 +412,8 @@ class InspireDocumentObjectBuilderTest {
         val variableStructure = mockVarStructure(
             VariableStructureBuilder("vs2")
                 .addVariable(clientsArray.id, "Data")
-                .addVariable(addressSubtree.id, VariableRef(clientsArray.id))    // Address subtree inside Clients
-                .addVariable(cityVar.id, VariableRef(addressSubtree.id))          // City inside Address subtree
+                .addVariable(addressSubtree.id, VariableRef(clientsArray.id))
+                .addVariable(cityVar.id, VariableRef(addressSubtree.id))
                 .build()
         )
 
@@ -442,15 +433,22 @@ class InspireDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `buildDocumentObject creates repeated rowset with literal array path`() {
+    fun `buildDocumentObject creates repeated rowset with literal array path and two inner rows`() {
         // given
+        val jobNameVar = mockVar(VariableBuilder("jobNameVar").name("Job Name").dataType(DataType.String).build())
         val variableStructure =
-            mockVarStructure(VariableStructureBuilder("VS_1").addVariable("clientsVar", "Data.Clients.Value").build())
+            mockVarStructure(VariableStructureBuilder("VS_1").addVariable(jobNameVar.id, "Data.Clients.Value").build())
 
         val block = mockObj(DocumentObjectBuilder("B_1", Block).table {
-            addRepeatedRow("Data.Clients") {
-                addRow().addCell().string("Name")
-                addRow().addCell().string("Value")
+            addRepeatedRow("Data.Clients.Value") {
+                addRow {
+                    addCell { string("Name: ") }
+                    addCell { string("Jon") }
+                }
+                addRow {
+                    addCell { string("Job: ") }
+                    addCell { paragraph { text { variableRef(jobNameVar.id) } } }
+                }
             }
         }.variableStructureRef(variableStructure.id).build())
 
@@ -467,28 +465,41 @@ class InspireDocumentObjectBuilderTest {
         arrayVar["Type"].textValue().shouldBeEqualTo("DataVariable")
         arrayVar["VarType"].textValue().shouldBeEqualTo("Array")
 
-        // 2 inner rows → wrapped in a MULTIPLE_ROWS inside the REPEATED
-        val innerContainerId = repeatedRowSet["SubRowId"].textValue()
-        val innerContainer = result["RowSet"].last { it["Id"].textValue() == innerContainerId }
-        innerContainer["SubRowId"].size().shouldBeEqualTo(2)
+        val multipleRowId = repeatedRowSet["SubRowId"].textValue()
+        val multipleRow = result["RowSet"].last { it["Id"].textValue() == multipleRowId }
+        multipleRow["RowSetType"].textValue().shouldBeEqualTo("RowSet")
+        val secondRowId = multipleRow["SubRowId"][1].textValue()
+
+        val secondRow = result["RowSet"].last { it["Id"].textValue() == secondRowId }
+        secondRow["RowSetType"].textValue().shouldBeEqualTo("Row")
+
+        val secondCellId = secondRow["SubRowId"][1].textValue()
+        val secondCell = result["Cell"].last { it["Id"].textValue() == secondCellId }
+
+        val secondCellFlow = result["Flow"].last { it["Id"].textValue() == secondCell["FlowId"].textValue() }
+        val variableId = secondCellFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+
+        val variable = result["Variable"].first { it["Id"].textValue() == variableId }
+        variable["Name"].textValue().shouldBeEqualTo("Job Name")
+        variable["ParentId"].textValue().shouldBeEqualTo("Data.Clients.Value")
     }
 
     @Test
     fun `buildDocumentObject creates repeated rowset with variable ref array path`() {
         // given
-        val arrayVar = mockVar(VariableBuilder("arrayVar").name("Clients").dataType(DataType.Array).build())
+        val clientsVar = mockVar(VariableBuilder("clientsVar").name("Clients").dataType(DataType.Array).build())
         val stringVar = mockVar(VariableBuilder("stringVar").dataType(DataType.String).build())
 
         val variableStructure = mockVarStructure(
-            VariableStructureBuilder("VS_1").addVariable(arrayVar.id, "Data")
-                .addVariable(stringVar.id, VariableRef(arrayVar.id)).build()
+            VariableStructureBuilder("VS_1").addVariable(clientsVar.id, "Data")
+                .addVariable(stringVar.id, VariableRef(clientsVar.id), "Client Name").build()
         )
 
         val block = mockObj(
             DocumentObjectBuilder("B_1", Block).table {
-                addRepeatedRow(VariableRef(arrayVar.id)) {
+                addRepeatedRow(VariableRef(clientsVar.id)) {
                     addRow {
-                        addCell { string("Name") }
+                        addCell { string("Client Name") }
                         addCell { paragraph { text { variableRef(stringVar.id) } } }
                     }
                 }
@@ -503,9 +514,84 @@ class InspireDocumentObjectBuilderTest {
         val repeatedRowSet = result["RowSet"].last { it["Id"].textValue() == repeatedRowSetId }
 
         repeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
-        repeatedRowSet["VariableId"].shouldNotBeNull()
+        val arrayVarId = repeatedRowSet["VariableId"].textValue()
+        val arrayVar = result["Variable"].last { it["Id"].textValue() == arrayVarId }
+        arrayVar["Type"].textValue().shouldBeEqualTo("DataVariable")
+        arrayVar["VarType"].textValue().shouldBeEqualTo("Array")
 
-        // TODO d.svitak - assert the similar things as in previous test
+        val innerRow = result["RowSet"].last { it["Id"].textValue() == repeatedRowSet["SubRowId"].textValue() }
+        innerRow["RowSetType"].textValue().shouldBeEqualTo("Row")
+
+        val secondCell = result["Cell"].last { it["Id"].textValue() == innerRow["SubRowId"][1].textValue() }
+        val secondCellFlow = result["Flow"].last { it["Id"].textValue() == secondCell["FlowId"].textValue() }
+        val variableId = secondCellFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val variable = result["Variable"].first { it["Id"].textValue() == variableId }
+        variable["Name"].textValue().shouldBeEqualTo("Client Name")
+        variable["ParentId"].textValue().shouldBeEqualTo("Data.Clients.Value")
+    }
+
+    @Test
+    fun `buildDocumentObject creates fallback single row when array variable not mapped in structure`() {
+        // given
+        val arrayVar = mockVar(VariableBuilder("arrayVar").name("Clients").dataType(DataType.Array).build())
+        val variableStructure = mockVarStructure(VariableStructureBuilder("VS_1").build())
+
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block).table {
+                addRepeatedRow(VariableRef(arrayVar.id)) { addRow().addCell().string("Name") }
+            }.variableStructureRef(variableStructure.id).build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val tableRowSetId = result["Table"].last()["RowSetId"].textValue()
+        val tableRowSet = result["RowSet"].last { it["Id"].textValue() == tableRowSetId }
+        tableRowSet["RowSetType"].textValue().shouldBeEqualTo("Row")
+
+        val cell = result["Cell"].last { it["Id"].textValue() == tableRowSet["SubRowId"].textValue() }
+        val flow = result["Flow"].last { it["Id"].textValue() == cell["FlowId"].textValue() }
+        // first paragraph = warning, second paragraph = original "Name"
+        flow["FlowContent"]["P"][0]["T"][""].textValue().shouldBeEqualTo($$"<unmapped $Clients$ for repeated row> ")
+        flow["FlowContent"]["P"][1]["T"][""].textValue().shouldBeEqualTo("Name")
+    }
+
+    @Test
+    fun `buildDocumentObject creates fallback multiple rows when variable literal path is not registered in the variable structure`() {
+        // given
+        val surNameVar = mockVar(VariableBuilder("surname").dataType(DataType.String).build())
+        val variableStructure = mockVarStructure(VariableStructureBuilder("VS_1").build())
+
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block).table {
+                addRepeatedRow("Data.Clients.Value") {
+                    addRow().addCell().paragraph { text { variableRef(surNameVar.id) } }
+                    addRow().addCell().string("Second")
+                }
+            }.variableStructureRef(variableStructure.id).build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val tableRowSetId = result["Table"].last()["RowSetId"].textValue()
+        val multipleRowSet = result["RowSet"].last { it["Id"].textValue() == tableRowSetId }
+        multipleRowSet["RowSetType"].textValue().shouldBeEqualTo("RowSet")
+
+        val firstSingleRow = result["RowSet"].last { it["Id"].textValue() == multipleRowSet["SubRowId"][0].textValue() }
+        val firstCell = result["Cell"].last { it["Id"].textValue() == firstSingleRow["SubRowId"].textValue() }
+        val firstFlow = result["Flow"].last { it["Id"].textValue() == firstCell["FlowId"].textValue() }
+        firstFlow["FlowContent"]["P"][0]["T"][""].textValue()
+            .shouldBeEqualTo($$"<unmapped $Clients$ for repeated row> ")
+        firstFlow["FlowContent"]["P"][1]["T"][""].textValue().shouldBeEqualTo($$"$surname$")
+
+        val secondSingleRow =
+            result["RowSet"].last { it["Id"].textValue() == multipleRowSet["SubRowId"][1].textValue() }
+        val secondCell = result["Cell"].last { it["Id"].textValue() == secondSingleRow["SubRowId"].textValue() }
+        val secondFlow = result["Flow"].last { it["Id"].textValue() == secondCell["FlowId"].textValue() }
+        secondFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Second")
     }
 
     @Test
