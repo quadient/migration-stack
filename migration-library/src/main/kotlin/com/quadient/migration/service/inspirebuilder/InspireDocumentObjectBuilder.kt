@@ -1088,24 +1088,21 @@ abstract class InspireDocumentObjectBuilder(
         variableStructure: VariableStructure,
         languages: List<String>
     ): GeneralRowSet? {
-        val varNameAndPath = resolveVariableNameAndPath(repeatedRow.variable, variableStructure)
+        val (varName, varPath) = resolveVariableNameAndPath(repeatedRow.variable, variableStructure)
             ?: return buildUnmappedRepeatedRowFallback(repeatedRow, layout, variableStructure, languages)
+        val arrayVariable = getVariable(layout.data as DataImpl, varName, varPath)
+            ?: return buildUnmappedRepeatedRowFallback(repeatedRow, layout, variableStructure, languages)
+        require(arrayVariable.nodeOptionality == NodeOptionality.ARRAY) {
+            "Variable '$varName' at '$varPath' used in repeated row is not an Array variable"
+        }
 
         val repeatedRowSet = layout.addRowSet().setType(RowSet.Type.REPEATED)
-
         if (repeatedRow.rows.size > 1) {
             val multipleRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
             repeatedRowSet.addRowSet(multipleRowSet)
             repeatedRow.rows.forEach { multipleRowSet.addRowSet(buildSingleRowSet(it, layout, variableStructure, languages)) }
         } else {
             repeatedRow.rows.forEach { repeatedRowSet.addRowSet(buildSingleRowSet(it, layout, variableStructure, languages)) }
-        }
-
-        val (varName, varPath) = varNameAndPath
-        val arrayVariable = getVariable(layout.data as DataImpl, varName, varPath)
-            ?: error("Array variable '$varName' at '$varPath' used in repeated row is not found in layout")
-        require(arrayVariable.nodeOptionality == NodeOptionality.ARRAY) {
-            "Variable '$varName' at '$varPath' used in repeated row is not an Array variable"
         }
         repeatedRowSet.setVariable(arrayVariable)
         return repeatedRowSet
@@ -1115,7 +1112,7 @@ abstract class InspireDocumentObjectBuilder(
         repeatedRow: Table.RepeatedRow, layout: Layout, variableStructure: VariableStructure, languages: List<String>
     ): GeneralRowSet? {
         val varName = getVariableNameFromPath(repeatedRow.variable, variableStructure)
-        val warning = Paragraph("<unmapped $$varName$ for repeated row> ")
+        val warning = Paragraph("<repeated by unmapped \$$varName\$>")
 
         val rows = repeatedRow.rows
         val rowsWithWarning = rows.firstOrNull()?.let { firstRow ->

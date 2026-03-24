@@ -286,12 +286,32 @@ def tableWithRepeatedRow = new TableBuilder()
             it.border { it.allBorders(borderColor, borderWidth) }
             it.paragraph { it.string("Job name") }
         }
+        it.addCell {
+            it.border { it.allBorders(borderColor, borderWidth) }
+            it.paragraph { it.string("Second column") }
+        }
     }
-    .addRepeatedRow(new VariableRef(jobsArrayVariable.id)) {
+//    .addRepeatedRow(new VariableRef(jobsArrayVariable.id)) {
+    .addRepeatedRow("Data.Records.Value") {
         it.addRow {
             it.addCell {
                 it.border { it.allBorders(borderColor, borderWidth) }
-                it.paragraph { it.text { it.variableRef(jobNameVariable.id) } }
+//                it.paragraph { it.text { it.variableRef(jobNameVariable.id) } }
+                it.paragraph { it.text { it.string("bla") } }
+            }
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.string("first row second cell")
+            }
+        }
+        it.addRow {
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.string("second row first cell")
+            }
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.string("second row second cell")
             }
         }
     }.build()

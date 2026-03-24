@@ -553,7 +553,7 @@ class InspireDocumentObjectBuilderTest {
         val cell = result["Cell"].last { it["Id"].textValue() == tableRowSet["SubRowId"].textValue() }
         val flow = result["Flow"].last { it["Id"].textValue() == cell["FlowId"].textValue() }
         // first paragraph = warning, second paragraph = original "Name"
-        flow["FlowContent"]["P"][0]["T"][""].textValue().shouldBeEqualTo($$"<unmapped $Clients$ for repeated row> ")
+        flow["FlowContent"]["P"][0]["T"][""].textValue().shouldBeEqualTo($$"<repeated by unmapped $Clients$>")
         flow["FlowContent"]["P"][1]["T"][""].textValue().shouldBeEqualTo("Name")
     }
 
@@ -584,7 +584,7 @@ class InspireDocumentObjectBuilderTest {
         val firstCell = result["Cell"].last { it["Id"].textValue() == firstSingleRow["SubRowId"].textValue() }
         val firstFlow = result["Flow"].last { it["Id"].textValue() == firstCell["FlowId"].textValue() }
         firstFlow["FlowContent"]["P"][0]["T"][""].textValue()
-            .shouldBeEqualTo($$"<unmapped $Clients$ for repeated row> ")
+            .shouldBeEqualTo($$"<repeated by unmapped $Data.Clients.Value$>")
         firstFlow["FlowContent"]["P"][1]["T"][""].textValue().shouldBeEqualTo($$"$surname$")
 
         val secondSingleRow =
