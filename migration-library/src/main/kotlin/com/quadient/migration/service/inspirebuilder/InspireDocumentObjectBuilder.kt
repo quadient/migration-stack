@@ -1,5 +1,6 @@
 package com.quadient.migration.service.inspirebuilder
 
+import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
@@ -99,6 +100,7 @@ import kotlin.collections.ifEmpty
 import com.quadient.migration.shared.DataType as DataTypeModel
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
+import com.quadient.migration.service.resolveTarget
 
 abstract class InspireDocumentObjectBuilder(
     protected val documentObjectRepository: DocumentObjectRepository,
@@ -111,6 +113,7 @@ abstract class InspireDocumentObjectBuilder(
     protected val attachmentRepository: Repository<Attachment>,
     protected val projectConfig: ProjectConfig,
     protected val ipsService: IpsService,
+    protected val output: InspireOutput,
 ) {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
 
@@ -129,6 +132,8 @@ abstract class InspireDocumentObjectBuilder(
     abstract fun getAttachmentPath(
         id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType
     ): String
+
+    abstract fun getDisplayRulePath(rule: DisplayRule): IcmPath
 
     abstract fun getAttachmentPath(attachment: Attachment): String
 
@@ -199,11 +204,11 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     protected open fun wrapSuccessFlowInConditionFlow(
-        layout: Layout, variableStructure: VariableStructure, ruleDef: DisplayRuleDefinition, successFlow: Flow
+        layout: Layout, variableStructure: VariableStructure, rule: DisplayRule, successFlow: Flow
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
             layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
-                .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail)),
+                .setScript(rule.toScript(layout, variableStructure, variableRepository::findOrFail)),
             successFlow
         )
     }
@@ -211,7 +216,7 @@ abstract class InspireDocumentObjectBuilder(
     protected open fun buildSuccessRowWrappedInConditionRow(
         layout: Layout,
         variableStructure: VariableStructure,
-        ruleDef: DisplayRuleDefinition,
+        rule: DisplayRule,
         multipleRowSet: GeneralRowSet
     ): GeneralRowSet {
         val successRow = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
@@ -219,7 +224,7 @@ abstract class InspireDocumentObjectBuilder(
         multipleRowSet.addRowSet(
             layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
                 layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
-                    .setScript(ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail)),
+                    .setScript(rule.toScript(layout, variableStructure, variableRepository::findOrFail)),
                 successRow
             )
         )
@@ -370,12 +375,8 @@ abstract class InspireDocumentObjectBuilder(
             singleFlow
         } else {
             val displayRule = displayRuleRepository.findOrFail(displayRuleRef.id)
-            val def = displayRule.definition
-            if (def == null) {
-                error("Display rule '${displayRuleRef.id}' definition is null.")
-            }
 
-            wrapSuccessFlowInConditionFlow(layout, variableStructure, def, singleFlow)
+            wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule, singleFlow)
         }
     }
 
@@ -392,8 +393,8 @@ abstract class InspireDocumentObjectBuilder(
         )
     }
 
-    protected fun initVariableStructure(layout: Layout, documentObject: DocumentObject): VariableStructure {
-        val variableStructureId = documentObject.variableStructureRef?.id ?: projectConfig.defaultVariableStructure
+    protected fun initVariableStructure(layout: Layout, variableStructureId: String?): VariableStructure {
+        val variableStructureId = variableStructureId ?: projectConfig.defaultVariableStructure
 
         val variableStructureModel =
             variableStructureId?.let { variableStructureRepository.findOrFail(it) } ?: VariableStructure(
@@ -715,12 +716,8 @@ abstract class InspireDocumentObjectBuilder(
 
         if (documentObjectRef.displayRuleRef != null) {
             val displayRule = displayRuleRepository.findOrFail(documentObjectRef.displayRuleRef.id)
-            val def = displayRule.definition
-            if (def == null) {
-                error("Display rule '${documentObjectRef.displayRuleRef.id}' definition is null.")
-            }
 
-            return wrapSuccessFlowInConditionFlow(layout, variableStructure, def, flow)
+            return wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule, flow)
         }
 
         return flow
@@ -900,16 +897,12 @@ abstract class InspireDocumentObjectBuilder(
         layout: Layout, variableStructure: VariableStructure, displayRuleId: String, text: WfdXmlText
     ): Flow {
         val displayRule = displayRuleRepository.findOrFail(displayRuleId)
-        if (displayRule.definition == null) {
-            error("Display rule '$displayRuleId' definition is null.")
-        }
 
         val successFlow = layout.addFlow().setType(Flow.Type.SIMPLE)
-        val def = displayRule.definition!!
 
         text.appendFlow(
             layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
-                def.toScript(layout, variableStructure, variableRepository::findOrFail),
+                displayRule.toScript(layout, variableStructure, variableRepository::findOrFail),
                 successFlow
             )
         )
@@ -1010,13 +1003,9 @@ abstract class InspireDocumentObjectBuilder(
                 layout.addRowSet().setType(RowSet.Type.SINGLE_ROW).also { rowset.addRowSet(it) }
             } else {
                 val displayRule = displayRuleRepository.findOrFail(rowModel.displayRuleRef.id)
-                val def = displayRule.definition
-                if (def == null) {
-                    error("Display rule '${rowModel.displayRuleRef.id}' definition is null.")
-                }
 
                 buildSuccessRowWrappedInConditionRow(
-                    layout, variableStructure, def, rowset
+                    layout, variableStructure, displayRule, rowset
                 )
             }
 
@@ -1171,9 +1160,8 @@ abstract class InspireDocumentObjectBuilder(
                     .setWebEditingType(Flow.WebEditingType.SECTION).setDisplayName(caseName)
                     .also { it.addParagraph().addText().appendFlow(contentFlow) }
 
-            val def = displayRule.definition!!
             firstMatchFlow.addLineForSelectByInlineCondition(
-                def.toScript(layout, variableStructure, variableRepository::findOrFail),
+                displayRule.toScript(layout, variableStructure, variableRepository::findOrFail),
                 caseFlow
             )
         }
@@ -1295,7 +1283,40 @@ abstract class InspireDocumentObjectBuilder(
             override fun toString() = variableName
         }
     }
+
+    fun DisplayRule.toScript(
+        layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
+    ): String {
+        val rule = this.resolveTarget(displayRuleRepository)
+        val def = rule.definition ?: error("Display rule '${rule.id}' definition is null.")
+
+        return if (rule.internal && rule.definition?.containsFunction() != true || output == InspireOutput.Designer) {
+            def.toScript(layout, variableStructure, findVar)
+        } else {
+            for (ref in rule.collectRefs()) {
+                when (ref) {
+                    is VariableRef -> {
+                        val variableModel = findVar(ref.id)
+                        val variablePathData = variableStructure.structure[ref.id]
+                        if (variablePathData != null && variablePathData.path.isNotBlank()) {
+                            val variableName = variablePathData.name ?: variableModel.nameOrId()
+
+                            getOrCreateVariable(
+                                layout.data, variableName, variableModel, variablePathData.path
+                            )
+                        }
+                    }
+
+                    else -> {}
+                }
+            }
+
+            val path = getDisplayRulePath(this).toMapInteractive(projectConfig.interactiveTenant)
+            "return (do.evalFile(Bool, String(${toScriptStringLiteral(path)}))==true);"
+        }
+    }
 }
+
 
 fun DisplayRuleDefinition.toScript(
     layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
@@ -1408,8 +1429,8 @@ private fun variableStringContentToScript(
     return "return ${scriptParts.joinToString(" + ")};"
 }
 
-private fun variableToScript(
-    id: String, layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
+fun variableToScript(
+    id: String, layout: Layout?, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): ScriptResult {
     val variableModel = findVar(id)
     val variablePathData = variableStructure.structure[id]
@@ -1418,7 +1439,9 @@ private fun variableToScript(
     } else {
         val variableName = variablePathData.name ?: variableModel.nameOrId()
 
-        getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path)
+        if (layout != null) {
+            getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path)
+        }
 
         Success((variablePathData.path.split(".") + variableName).joinToString(".") { pathPart ->
             when (pathPart.lowercase()) {

@@ -3,6 +3,7 @@ package com.quadient.migration.service
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
@@ -67,6 +68,13 @@ fun getBaseTemplateFullPath(config: ProjectConfig, documentObjectBaseTemplatePat
         .join(config.interactiveTenant)
         .join("BaseTemplates")
         .join(path)
+}
+
+fun DisplayRule.resolveTarget(displayRuleRepository: Repository<DisplayRule>): DisplayRule {
+    val targetId = this.targetId ?: return this
+
+    val targetRule = displayRuleRepository.findOrFail(targetId)
+    return targetRule.resolveTarget(displayRuleRepository)
 }
 
 fun imageExtension(image: Image) = imageExtension(image.imageType!!, image.name, image.sourcePath)

@@ -1,6 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
 import com.quadient.migration.shared.BinaryOrGroup
@@ -10,9 +11,17 @@ import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.LiteralOrFunctionCall
+import com.quadient.migration.shared.MetadataPrimitive
 
 class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBuilder>(id) {
     var definition: DisplayRuleDefinition? = null
+    var subject: String? = null
+    var internal = true
+    var targetId: String? = null
+    var metadata: MutableMap<String, List<MetadataPrimitive>> = mutableMapOf()
+    var variableStructureRef: VariableStructureRef? = null
+    var baseTemplate: String? = null
+    var targetFolder: String? = null
 
     /**
      * Sets the definition for this display rule.
@@ -50,6 +59,72 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
         this.definition = DisplayRuleDefinition(group = group)
     }
 
+
+    /**
+     * Sets the subject of the display rule. This is visible as description in Interactive
+     * @param subject the subject of the display rule
+     * @return the builder instance for chaining
+     */
+    fun subject(value: String?) = apply { subject = value }
+
+    /**
+     * Set whether the display rule is internal. Internal objects do not create a separate
+     * file in the target system.
+     * @param internal Boolean indicating if the display rule is internal.
+     * @return This builder instance for method chaining.
+    */
+    fun internal(value: Boolean) = apply { internal = value }
+
+    /**
+     * Sets the target display rule ID for alias resolution.
+     * When set, this display rule reference will resolve to the specified display rule.
+     * @param id the ID of the display rule to resolve to
+     * @return the builder instance for chaining
+     */
+    fun targetId(id: String?) = apply { targetId = id }
+
+    /**
+     * Add a reference to a variable structure to this variable structure.
+     * @param id ID of the variable structure to reference.
+     * @return This builder instance for method chaining.
+     */
+
+    fun variableStructureRef(value: VariableStructureRef?) = apply { variableStructureRef = value }
+    /**
+     * Add a reference to a variable structure to this variable structure.
+     * @param id ID of the variable structure to reference.
+     * @return This builder instance for method chaining.
+     */
+    fun variableStructureRef(value: String) = apply { variableStructureRef = VariableStructureRef(value) }
+
+    /**
+     * Override the default base template for this display rule.
+     * @param baseTemplate Path to the base template to use for this display rule.
+     * @return This builder instance for method chaining.
+     */
+    fun baseTemplate(value: String?) = apply { baseTemplate = value }
+
+    /**
+     * Set the target folder for the display rule.
+     * @param targetFolder String representing the target folder path.
+     * @return This builder instance for method chaining.
+     */
+    fun targetFolder(value: String?) = apply { targetFolder = value }
+
+    /**
+     * Add metadata to the document object.
+     * Metadata are not stored if empty.
+     * @param key Key of the metadata entry.
+     * @param block Builder function where receiver is a [MetadataBuilder].
+     * @return This builder instance for method chaining.
+     */
+    fun metadata(key: String, block: MetadataBuilder.() -> Unit) = apply {
+        val result = MetadataBuilder().apply(block).build()
+        if (result.isNotEmpty()) {
+            metadata[key] = result
+        }
+    }
+
     /**
      * Builds the DisplayRule instance with the provided properties.
      * @return A DisplayRule instance with the specified id, name, origin locations, custom fields, and definition.
@@ -58,9 +133,16 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
         return DisplayRule(
             id = id,
             name = name,
+            internal = internal,
+            subject = subject,
             originLocations = originLocations,
             customFields = customFields,
             definition = definition,
+            targetId = targetId,
+            variableStructureRef = variableStructureRef,
+            baseTemplate = baseTemplate,
+            targetFolder = targetFolder,
+            metadata = metadata,
         )
     }
 }
@@ -156,6 +238,10 @@ class BinaryExpressionBuilder() {
      */
     fun value(value: Boolean) = apply { setValue(value.toString(), LiteralDataType.Boolean) }
 
+    fun value(value: LiteralOrFunctionCall) = apply {
+        setValue(value)
+    }
+
     /**
      * Sets the left operand of the binary expression to a variable.
      * @param variableName The name of the variable to set as the left operand.
@@ -163,13 +249,17 @@ class BinaryExpressionBuilder() {
      */
     fun variable(variableName: String) = apply { setValue(variableName, LiteralDataType.Variable) }
 
-    private fun setValue(value: String, dataType: LiteralDataType) {
+    private fun setValue(value: LiteralOrFunctionCall) {
         if (leftSet) {
-            right = Literal(value, dataType)
+            right = value
         } else {
-            left = Literal(value, dataType)
+            left = value
             leftSet = true
         }
+    }
+
+    private fun setValue(value: String, dataType: LiteralDataType) {
+        setValue(Literal(value, dataType))
     }
 
     /**
@@ -179,10 +269,26 @@ class BinaryExpressionBuilder() {
     fun equals() = apply { this.operator = BinOp.Equals }
 
     /**
+     * Sets the operator for this expression to [BinOp.EqualsCaseInsensitive]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun equalsCaseInsensitive() = apply {
+        this.operator = BinOp.EqualsCaseInsensitive
+    }
+
+    /**
      * Sets the operator for this expression to [BinOp.NotEquals]
      * @return The current instance of BinaryExpressionBuilder for method chaining.
      */
     fun notEquals() = apply { this.operator = BinOp.NotEquals }
+
+    /**
+     * Sets the operator for this expression to [BinOp.NotEqualsCaseInsensitive]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun notEqualsCaseInsensitive() = apply {
+        this.operator = BinOp.NotEqualsCaseInsensitive
+    }
 
     /**
      * Sets the operator for this expression to [BinOp.GreaterThan]

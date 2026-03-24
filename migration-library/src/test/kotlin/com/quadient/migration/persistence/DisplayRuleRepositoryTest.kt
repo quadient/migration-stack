@@ -20,6 +20,13 @@ class DisplayRuleRepositoryTest {
             .customFields(mutableMapOf("f1" to "val1"))
             .originLocations(listOf("test1", "test2"))
             .definition(DisplayRuleDefinition(group = Group(items = emptyList(), operator = GroupOp.Or, false)))
+            .metadata("meta1") { string("val") }
+            .baseTemplate("icm://Interactive/StandardPackage/BaseTemplates/templ.wfd")
+            .internal(false)
+            .targetFolder("targetFolder")
+            .subject("Test Subject")
+            .targetId("targetId")
+            .variableStructureRef("variableStructure")
             .build()
 
         repo.upsert(dto)
@@ -38,6 +45,13 @@ class DisplayRuleRepositoryTest {
             .customFields(mutableMapOf("field1" to "value1"))
             .originLocations(listOf("origin1"))
             .definition(DisplayRuleDefinition(group = Group(items = emptyList(), operator = GroupOp.And, false)))
+            .metadata("meta1") { string("val") }
+            .baseTemplate("icm://Interactive/StandardPackage/BaseTemplates/templ.wfd")
+            .internal(false)
+            .targetFolder("targetFolder")
+            .subject("Test Subject")
+            .targetId("targetId")
+            .variableStructureRef("variableStructure")
             .build()
 
         val rule2 = DisplayRuleBuilder("rule2")
@@ -45,6 +59,13 @@ class DisplayRuleRepositoryTest {
             .customFields(mutableMapOf("field2" to "value2"))
             .originLocations(listOf("origin2"))
             .definition(DisplayRuleDefinition(group = Group(items = emptyList(), operator = GroupOp.Or, true)))
+            .metadata("meta1") { string("val") }
+            .baseTemplate("icm://Interactive/StandardPackage/BaseTemplates/templ.wfd")
+            .internal(false)
+            .targetFolder("targetFolder")
+            .subject("Test Subject")
+            .targetId("targetId")
+            .variableStructureRef("variableStructure")
             .build()
 
         // when

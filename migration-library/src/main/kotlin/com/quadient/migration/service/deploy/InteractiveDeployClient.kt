@@ -7,22 +7,41 @@ import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
+import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
+import com.quadient.migration.service.resolveTarget
+import com.quadient.migration.shared.Jrd
 import kotlin.time.Clock
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.json.extract
+import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -33,6 +52,9 @@ class InteractiveDeployClient(
     statusTrackingRepository: StatusTrackingRepository,
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
+    displayRuleRepository: DisplayRuleRepository,
+    variableRepository: VariableRepository,
+    variableStructureRepository: VariableStructureRepository,
     documentObjectBuilder: InteractiveDocumentObjectBuilder,
     ipsService: IpsService,
     storage: Storage,
@@ -44,6 +66,9 @@ class InteractiveDeployClient(
     statusTrackingRepository,
     textStyleRepository,
     paragraphStyleRepository,
+    displayRuleRepository,
+    variableRepository,
+    variableStructureRepository,
     documentObjectBuilder,
     ipsService,
     storage,
@@ -103,6 +128,75 @@ class InteractiveDeployClient(
         return documentObjects
     }
 
+    private fun deployDisplayRules(documentObjects: List<DocumentObject>, deploymentId: Uuid, deploymentTimestamp: Instant): DeploymentResult {
+        val deploymentResult = DeploymentResult(deploymentId)
+        val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
+
+        val rules = documentObjects
+            .flatMap {
+                try {
+                    it.getAllExternalDisplayRules()
+                } catch (e: IllegalStateException) {
+                    deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
+                    emptyList()
+                }
+            }
+            .distinctBy { it.id }
+
+        for (rule in rules) {
+            val targetPath = documentObjectBuilder.getDisplayRulePath(rule).toString()
+
+            if (!shouldDeployObject(rule.id, ResourceType.DisplayRule, targetPath, deploymentResult)) {
+                logger.info("Skipping deployment of '${rule.id}' as it is not marked for deployment.")
+                continue
+            }
+
+            val invalidMetadata = rule.getInvalidMetadataKeys()
+            if (invalidMetadata.isNotEmpty()) {
+                logger.error("Failed to deploy '$targetPath' due to invalid metadata.")
+                val keys = invalidMetadata.joinToString(", ", prefix = "[", postfix = "]")
+                val message = "Metadata of display rule '${rule.id}' contains invalid keys: $keys"
+                tracker.errorDisplayRule(rule.id, targetPath, message)
+                continue
+            }
+
+            val variableStructureId = rule.variableStructureRef?.id ?: projectConfig.defaultVariableStructure
+            val variableStructure=
+                variableStructureId?.let { variableStructureRepository.findOrFail(it) } ?: VariableStructure(
+                    id = "defaultVariableStructure",
+                    lastUpdated = Clock.System.now(),
+                    created = Clock.System.now(),
+                    structure = mutableMapOf(),
+                    customFields = CustomFieldMap(),
+                    languageVariable = null,
+                )
+
+            val findVar = { id: String ->
+                variableRepository.find(id) ?: error("Unable to find variable '$id' referenced from display rule '${rule.id}'")
+            }
+
+            if (rule.definition?.containsFunction() == true) {
+                val message = "External display rule '${rule.id}' contains functions. Will fallback to internal display rule"
+                logger.warn(message)
+                tracker.warningDisplayRule(rule.id, targetPath, message)
+                continue
+            }
+
+            val jrd = Jrd.fromDisplayRule(rule, projectConfig, variableStructure, findVar)
+
+            val uploadResult = ipsService.tryUpload(targetPath, jrd.toByteArray())
+            if (uploadResult is OperationResult.Failure) {
+                tracker.errorDisplayRule(rule.id, targetPath, uploadResult.message)
+                continue
+            }
+
+            logger.debug("Deployment of display rule '${rule.nameOrId()}' to '${targetPath}' is successful.")
+            tracker.deployedDisplayRule(rule.id, targetPath)
+        }
+
+        return deploymentResult
+    }
+
     override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObject>): DeploymentResult {
         val deploymentId = Uuid.random()
         val deploymentTimestamp = Clock.System.now()
@@ -111,6 +205,7 @@ class InteractiveDeployClient(
         val orderedDocumentObject = deployOrder(documentObjects)
 
         deploymentResult += deployImagesAndAttachments(orderedDocumentObject, deploymentId, deploymentTimestamp)
+        deploymentResult += deployDisplayRules(orderedDocumentObject, deploymentId, deploymentTimestamp)
         val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
 
         for (it in orderedDocumentObject) {
@@ -256,5 +351,32 @@ class InteractiveDeployClient(
             is OperationResult.Failure -> logger.error("Failed to set production approval state to $outputPathWfd and $outputPathJld.")
             OperationResult.Success -> logger.debug("Setting of production approval state to $outputPathWfd and $outputPathJld is successful.")
         }
+    }
+
+    private fun DocumentObject.getAllExternalDisplayRules(): List<DisplayRule> {
+        val resources = mutableListOf<DisplayRule>()
+
+        this.collectRefs().forEach {
+            when (it) {
+                is DisplayRuleRef -> {
+                    val model = displayRuleRepository.find(it.id)
+                        ?: error("Unable to collect resource references because display rule '${it.id}' was not found.")
+
+                    val resolvedModel = model.resolveTarget(displayRuleRepository)
+                    if (!resolvedModel.internal) {
+                        resources.add(model)
+                    }
+                }
+                is DocumentObjectRef -> {
+                    val model = documentObjectRepository.find(it.id)
+                        ?: error("Unable to collect resource references because inner document object '${it.id}' was not found.")
+
+                    resources.addAll(model.getAllExternalDisplayRules())
+                }
+                is ParagraphStyleRef, is AttachmentRef, is ImageRef, is TextStyleRef, is VariableRef, is VariableStructureRef -> {}
+            }
+        }
+
+        return resources
     }
 }

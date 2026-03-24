@@ -5,10 +5,15 @@ package com.quadient.migration.service.deploy
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
+import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
+import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
@@ -30,6 +35,9 @@ class DesignerDeployClient(
     statusTrackingRepository: StatusTrackingRepository,
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
+    displayRuleRepository: DisplayRuleRepository,
+    variableRepository: VariableRepository,
+    variableStructureRepository: VariableStructureRepository,
     documentObjectBuilder: DesignerDocumentObjectBuilder,
     ipsService: IpsService,
     storage: Storage,
@@ -40,6 +48,9 @@ class DesignerDeployClient(
     statusTrackingRepository,
     textStyleRepository,
     paragraphStyleRepository,
+    displayRuleRepository,
+    variableRepository,
+    variableStructureRepository,
     documentObjectBuilder,
     ipsService,
     storage,

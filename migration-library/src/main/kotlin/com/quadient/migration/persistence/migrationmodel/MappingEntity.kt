@@ -18,6 +18,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyle as TextStyleModel
 import com.quadient.migration.api.dto.migrationmodel.Variable as VariableModel
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure as VariableStructureModel
 import com.quadient.migration.api.dto.migrationmodel.Area as AreaModel
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule as DisplayRuleModel
 
 class MappingEntity(id: EntityID<CompositeID>) : CompositeEntity(id) {
     companion object : CompositeEntityClass<MappingEntity>(MappingTable)
@@ -210,6 +211,26 @@ sealed class MappingItemEntity {
         }
     }
 
+    @Serializable
+    data class DisplayRule(
+        override var name: String?,
+        val targetFolder: String?,
+        var targetId: String?,
+        val baseTemplate: String?,
+        val variableStructureRef: String?,
+        var internal: Boolean?,
+    ) : MappingItemEntity() {
+        fun apply(item: DisplayRuleModel): DisplayRuleModel {
+            return item.copy(
+                name = name,
+                targetFolder = targetFolder,
+                baseTemplate = baseTemplate,
+                variableStructureRef = variableStructureRef?.let { VariableStructureRef(it) },
+                targetId = targetId,
+                internal = internal ?: true
+            )
+        }
+    }
 
     @Serializable
     data class TextStyle(
@@ -349,6 +370,15 @@ sealed class MappingItemEntity {
                     mappings = this.mappings ?: mutableMapOf(),
                     languageVariable = this.languageVariable?.let { VariableRef(it.id) })
             }
+
+            is DisplayRule -> MappingItem.DisplayRule(
+                name = this.name,
+                targetId = this.targetId,
+                internal = this.internal,
+                variableStructureRef = this.variableStructureRef,
+                targetFolder = this.targetFolder,
+                baseTemplate = this.baseTemplate,
+            )
         }
     }
 }

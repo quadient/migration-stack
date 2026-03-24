@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
@@ -40,7 +42,7 @@ class InteractiveDocumentObjectBuilder(
     paragraphStyleRepository: ParagraphStyleRepository,
     variableRepository: Repository<com.quadient.migration.api.dto.migrationmodel.Variable>,
     variableStructureRepository: Repository<com.quadient.migration.api.dto.migrationmodel.VariableStructure>,
-    displayRuleRepository: Repository<com.quadient.migration.api.dto.migrationmodel.DisplayRule>,
+    displayRuleRepository: Repository<DisplayRule>,
     imageRepository: Repository<Image>,
     attachmentRepository: Repository<Attachment>,
     projectConfig: ProjectConfig,
@@ -56,6 +58,7 @@ class InteractiveDocumentObjectBuilder(
     attachmentRepository,
     projectConfig,
     ipsService,
+    InspireOutput.Interactive,
 ) {
     private val lenientJson = Json { ignoreUnknownKeys = true }
     private val mainFlowId = "Def.MainFlow"
@@ -116,6 +119,22 @@ class InteractiveDocumentObjectBuilder(
             .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
             .join(fileName)
             .toString()
+    }
+
+    override fun getDisplayRulePath(rule: DisplayRule): IcmPath {
+        val fileName = "${rule.name ?: rule.id}.jrd"
+
+        val targetFolder = rule.targetFolder?.let { IcmPath.from(it) }
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName)
+        }
+
+        return IcmPath.root()
+            .join("Interactive")
+            .join(projectConfig.interactiveTenant)
+            .join("Rules")
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, rule.targetFolder?.let { IcmPath.from(it) }))
+            .join(fileName)
     }
 
     override fun getImagePath(image: Image) =
@@ -193,12 +212,13 @@ class InteractiveDocumentObjectBuilder(
             root.setSubject(documentObject.subject)
         }
 
+
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
         currentBaseTemplateData = getOrLoadBaseTemplateData(baseTemplatePath)
             ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
 
         val languages = collectLanguages(documentObject)
-        val variableStructure = initVariableStructure(layout, documentObject)
+        val variableStructure = initVariableStructure(layout, documentObject.variableStructureRef?.id)
 
         addPdfMetadataToPages(layout, documentObject, variableStructure)
 

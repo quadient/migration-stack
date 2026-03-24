@@ -31,7 +31,7 @@ data class DeploymentInfo(
 )
 
 enum class ResourceType {
-    DocumentObject, Image, Attachment, TextStyle, ParagraphStyle
+    DocumentObject, Image, Attachment, TextStyle, ParagraphStyle, DisplayRule
 }
 
 data class DeploymentError(val id: String, val message: String)
@@ -145,5 +145,43 @@ class ResultTracker(
             message = message,
         )
         deploymentResult.warnings.add(DeploymentWarning(id, message))
+    }
+
+    fun deployedDisplayRule(id: String, targetPath: String) {
+        statusTrackingRepository.deployed(
+            id = id,
+            deploymentId = deploymentId,
+            timestamp = timestamp,
+            resourceType = ResourceType.DisplayRule,
+            output = inspireOutput,
+            icmPath = targetPath,
+        )
+        deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.DisplayRule, targetPath))
+    }
+
+    fun warningDisplayRule(id: String, path: String, message: String) {
+        statusTrackingRepository.error(
+            id = id,
+            deploymentId = deploymentId,
+            timestamp = timestamp,
+            resourceType = ResourceType.DisplayRule,
+            output = inspireOutput,
+            icmPath = path,
+            message = message,
+        )
+        deploymentResult.warnings.add(DeploymentWarning(id, message))
+    }
+
+    fun errorDisplayRule(id: String, path: String, message: String) {
+        statusTrackingRepository.error(
+            id = id,
+            deploymentId = deploymentId,
+            timestamp = timestamp,
+            resourceType = ResourceType.DisplayRule,
+            output = inspireOutput,
+            icmPath = path,
+            message = message,
+        )
+        deploymentResult.errors.add(DeploymentError(id, message))
     }
 }

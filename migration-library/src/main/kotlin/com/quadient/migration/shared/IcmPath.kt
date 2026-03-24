@@ -51,6 +51,18 @@ data class IcmPath private constructor(val path: String) {
         return this.join(other?.let(::from))
     }
 
+    fun toMapInteractive(tenant: String): String {
+        if (!this.isAbsolute()) {
+            throw IllegalStateException("Cannot convert relative path '$path' to map://interactive format")
+        }
+
+        if (!path.startsWith("icm://Interactive/$tenant/")) {
+            throw IllegalStateException("Cannot convert path '$path' to map://interactive format because it does not start with 'icm://Interactive/$tenant/'")
+        }
+
+        return "map://interactive/" + this.toString().removePrefix("icm://Interactive/$tenant/")
+    }
+
     operator fun plus(other: IcmPath?): IcmPath {
         return this.join(other)
     }

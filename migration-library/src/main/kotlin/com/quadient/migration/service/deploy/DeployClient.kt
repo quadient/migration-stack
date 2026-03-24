@@ -11,6 +11,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
@@ -19,10 +20,13 @@ import com.quadient.migration.api.dto.migrationmodel.ResourceRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
+import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
@@ -53,6 +57,9 @@ sealed class DeployClient(
     protected val statusTrackingRepository: StatusTrackingRepository,
     protected val textStyleRepository: TextStyleRepository,
     protected val paragraphStyleRepository: ParagraphStyleRepository,
+    protected val displayRuleRepository: DisplayRuleRepository,
+    protected val variableRepository: VariableRepository,
+    protected val variableStructureRepository: VariableStructureRepository,
     val documentObjectBuilder: InspireDocumentObjectBuilder,
     protected val ipsService: IpsService,
     protected val storage: Storage,
@@ -495,9 +502,33 @@ sealed class DeployClient(
                     attachment
                 }
 
+                is DisplayRuleRef -> {
+                    when (output) {
+                        InspireOutput.Interactive, InspireOutput.Evolve -> {
+                            val rule = displayRuleRepository.findOrFail(ref.id)
+                            val nextIcmPath = documentObjectBuilder.getDisplayRulePath(rule).toString()
+                            val deployKind = rule.getDeployKind(nextIcmPath)
+                            val lastStatus = rule.getLastStatus(lastDeployment)
+
+                            report.addDisplayRule(
+                                id = rule.id,
+                                displayRule = rule,
+                                deploymentId = lastStatus.deployId,
+                                deployTimestamp = lastStatus.deployTimestamp,
+                                previousIcmPath = lastStatus.icmPath,
+                                nextIcmPath = nextIcmPath,
+                                lastStatus = lastStatus,
+                                deployKind = deployKind,
+                                errorMessage = lastStatus.errorMessage,
+                            )
+                            rule
+                        }
+                        InspireOutput.Designer -> null
+                    }
+                }
+
                 is TextStyleRef -> null
                 is ParagraphStyleRef -> null
-                is DisplayRuleRef -> null
                 is VariableRef -> null
                 is VariableStructureRef -> null
             }
@@ -519,6 +550,10 @@ sealed class DeployClient(
         return this.metadata.keys.asSequence().filter { key -> IMAGE_DISALLOWED_METADATA.contains(key) }.toSet()
     }
 
+    protected fun DisplayRule.getInvalidMetadataKeys(): Set<String> {
+        return this.metadata.keys.asSequence().filter { key -> DISALLOWED_METADATA.contains(key) }.toSet()
+    }
+
     protected fun shouldDeployObject(
         id: String, resourceType: ResourceType, targetPath: String?, deploymentResult: DeploymentResult
     ): Boolean {
@@ -527,7 +562,7 @@ sealed class DeployClient(
         return when (currentStatus) {
             null -> {
                 logger.error("Not deploying '$targetPath' due to a missing status.")
-                deploymentResult.errors.add(DeploymentError(id, "Missing tracked status for document object"))
+                deploymentResult.errors.add(DeploymentError(id, "Missing tracked status for $resourceType"))
                 false
             }
 
@@ -723,6 +758,21 @@ sealed class DeployClient(
         } else {
             DeployKind.Keep
         }
+    }
+
+    private fun DisplayRule.getDeployKind(nextIcmPath: String?): DeployKind {
+        return getDeployKind(this.id, ResourceType.DisplayRule, output, this.internal, nextIcmPath)
+    }
+
+    private fun DisplayRule.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
+        return getLastStatus(
+            id = this.id,
+            lastDeployment = lastDeployment,
+            resourceType = ResourceType.DisplayRule,
+            output = output,
+            internal = this.internal,
+            isPage = false
+        )
     }
 
     private sealed interface ReadResult {

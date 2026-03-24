@@ -5,18 +5,24 @@ package com.quadient.migration.service.deploy
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.repository.TextStyleRepository
+import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.Error
@@ -26,8 +32,11 @@ import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
+import com.quadient.migration.shared.Literal
+import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.tools.aActiveStatus
@@ -66,11 +75,17 @@ class InteractiveDeployClientTest {
     val attachmentRepository = mockk<AttachmentRepository>()
     val textStyleRepository = mockk<TextStyleRepository>()
     val paragraphStyleRepository = mockk<ParagraphStyleRepository>()
+    val displayRuleRepository = mockk<DisplayRuleRepository>()
+    val variableRepository = mockk<VariableRepository>()
+    val variableStructureRepository = mockk<VariableStructureRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
     val documentObjectBuilder = mockk<InteractiveDocumentObjectBuilder>()
     val ipsService = mockk<IpsService>()
     val storage = mockk<Storage>()
-    val config = aProjectConfig(targetDefaultFolder = "defaultFolder")
+    val config = aProjectConfig(
+        targetDefaultFolder = "defaultFolder",
+        baseTemplatePath = "icm://Interactive/tenant/BaseTemplates/templ.wfd"
+    )
     val tenant = config.interactiveTenant
 
     private val subject = InteractiveDeployClient(
@@ -80,6 +95,9 @@ class InteractiveDeployClientTest {
         statusTrackingRepository,
         textStyleRepository,
         paragraphStyleRepository,
+        displayRuleRepository,
+        variableRepository,
+        variableStructureRepository,
         documentObjectBuilder,
         ipsService,
         storage,
@@ -260,11 +278,21 @@ class InteractiveDeployClientTest {
     }
 
     @Test
-    fun `deployDocumentObjects deploys images and attachments when used in document objects`() {
+    fun `deployDocumentObjects deploys images, attachments and external display rules when used in document objects`() {
         // given
         val image = mockImage(aImage("Bunny"))
         val attachment = mockAttachment(aAttachment("Report"))
-        val block = mockDocumentObject(aBlock(id = "1", listOf(ImageRef(image.id), AttachmentRef(attachment.id))))
+        val rule = DisplayRuleBuilder("R_1")
+            .comparison { value("a").equals().value("b") }
+            .internal(false)
+            .metadata("other") { string("value") }
+            .build()
+        mockDisplayRule(rule)
+        val block = mockDocumentObject(aBlock(id = "1", listOf(
+            ImageRef(image.id),
+            AttachmentRef(attachment.id),
+            aParagraph(displayRuleRef = DisplayRuleRef(rule.id))
+        )))
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
@@ -284,7 +312,7 @@ class InteractiveDeployClientTest {
         val deploymentResult = subject.deployDocumentObjects()
 
         // then
-        deploymentResult.deployed.size.shouldBeEqualTo(3)
+        deploymentResult.deployed.size.shouldBeEqualTo(4)
         deploymentResult.errors.shouldBeEqualTo(emptyList())
 
         verify { ipsService.tryUpload(expectedImageIcmPath, any()) }
@@ -293,7 +321,8 @@ class InteractiveDeployClientTest {
             listOf(
                 expectedImageIcmPath,
                 expectedAttachmentIcmPath,
-                "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"
+                "icm://Interactive/$tenant/Rules/defaultFolder/${rule.id}.jrd",
+                "icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld",
             ), 1
         )
     }
@@ -660,6 +689,7 @@ class InteractiveDeployClientTest {
                 any(), any<Uuid>(), any(), any(), any(), any(), any()
             )
         } returns aDeployedStatus("id")
+        every { documentObjectRepository.find(template.id) } returns template
         every { documentObjectRepository.find(innerBlock.id) } throws IllegalStateException("Not found")
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
         every {
@@ -686,11 +716,74 @@ class InteractiveDeployClientTest {
         )
         result.errors.shouldBeEqualTo(
             listOf(
-                DeploymentError("B_1", "Not found"), DeploymentError("B_1", "Inner block not found")
+                DeploymentError("B_1", "Not found"), DeploymentError("B_1", "Not found"),
+                DeploymentError("T_1", "Not found"), DeploymentError("B_1", "Inner block not found")
             )
         )
 
         verify(exactly = 1) { ipsService.deployJld(any(), any(), any(), any(), "icm://${template.nameOrId()}") }
+    }
+
+    @Test
+    fun `display rules are deployed correctly`() {
+        val skippedRule = DisplayRuleBuilder("skipped")
+            .comparison { value("a").equals().value(Function.UpperCase(Literal("", LiteralDataType.String))) }
+            .internal(false)
+            .build()
+        mockDisplayRule(skippedRule)
+        val ruleWithFunction = DisplayRuleBuilder("withFunction")
+            .comparison { value("a").equals().value(Function.UpperCase(Literal("", LiteralDataType.String))) }
+            .internal(false)
+            .build()
+        mockDisplayRule(ruleWithFunction)
+        val ruleWithInvalidMetadata = DisplayRuleBuilder("invalidMetadata")
+            .comparison { value("a").equals().value("b") }
+            .metadata("Brand") { string("value") }
+            .internal(false)
+            .build()
+        mockDisplayRule(ruleWithInvalidMetadata)
+        val validRule = DisplayRuleBuilder("valid")
+            .comparison { value("a").equals().value("b") }
+            .internal(false)
+            .build()
+        mockDisplayRule(validRule)
+        val failedUpload = DisplayRuleBuilder("failed")
+            .comparison { value("a").equals().value("b") }
+            .internal(false)
+            .build()
+        mockDisplayRule(failedUpload)
+        val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, listOf(
+            aParagraph(displayRuleRef = DisplayRuleRef(ruleWithFunction.id)),
+            aParagraph(displayRuleRef = DisplayRuleRef(ruleWithInvalidMetadata.id)),
+            aParagraph(displayRuleRef = DisplayRuleRef(validRule.id)),
+            aParagraph(displayRuleRef = DisplayRuleRef(failedUpload.id)),
+        )))
+        val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
+        mockBasicSuccessfulIpsOperations()
+        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
+        every { statusTrackingRepository.findLastEventRelevantToOutput("skipped", any(), any()) } returns Deployed(Uuid.random(), Clock.System.now(), InspireOutput.Interactive, "")
+        every { statusTrackingRepository.deployed( any(), any<Uuid>(), any(), any(), any(), any(), any() ) } returns aDeployedStatus("id")
+        every { statusTrackingRepository.error( any(), any<Uuid>(), any(), any(), any(), any(), any(), any() ) } returns aDeployedStatus("id")
+        every { documentObjectRepository.find(template.id) } returns template
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
+        every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/valid.jrd", any()) } returns OperationResult.Success
+        every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/failed.jrd", any()) } returns OperationResult.Failure("oops")
+
+        val result = subject.deployDocumentObjects()
+
+        println()
+        result.warnings.shouldBeEqualTo(listOf(
+            DeploymentWarning("withFunction", "External display rule 'withFunction' contains functions. Will fallback to internal display rule")
+        ))
+        result.errors.shouldBeEqualTo(listOf(
+            DeploymentError("invalidMetadata", "Metadata of display rule 'invalidMetadata' contains invalid keys: [Brand]"),
+            DeploymentError("failed", "oops")
+        ))
+        result.deployed.shouldBeEqualTo(listOf(
+            DeploymentInfo("valid", ResourceType.DisplayRule, "icm://Interactive/tenant/Rules/defaultFolder/valid.jrd"),
+            DeploymentInfo("B_1", ResourceType.DocumentObject, "icm://B_1name"),
+            DeploymentInfo("T_1", ResourceType.DocumentObject, "icm://T_1name")
+        ))
     }
 
     private fun mockBasicDocumentObjects() {
@@ -740,6 +833,19 @@ class InteractiveDeployClientTest {
         }
 
         return image
+    }
+
+    private fun mockDisplayRule(displayRule: DisplayRule, success: Boolean = true): DisplayRule {
+        val dir = resolveTargetDir(config.defaultTargetFolder)
+        every { documentObjectBuilder.getDisplayRulePath(displayRule) } returns IcmPath.from("icm://Interactive/$tenant/Rules/$dir/${displayRule.nameOrId()}.jrd")
+
+        every { displayRuleRepository.find(displayRule.id) } returns if (success) {
+            displayRule
+        } else {
+            null
+        }
+
+        return displayRule
     }
 
     private fun mockAttachment(attachment: Attachment, success: Boolean = true): Attachment {
@@ -986,6 +1092,66 @@ class InteractiveDeployClientTest {
                     DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path"),
                 ), result.deployed
             )
+        }
+
+        @Test
+        fun `deployDisplayRules disallows system metadata`() {
+            var count = 0
+            for (key in DeployClient.DISALLOWED_METADATA) {
+                // given
+                val docObjects = listOf(aDocObj("D_1", content = listOf(aParagraph(displayRuleRef = DisplayRuleRef("R_1")))))
+                val rule = DisplayRuleBuilder("R_1")
+                    .comparison { value("a").equals().value("b") }
+                    .internal(false)
+                    .metadata(key) { string("value") }
+                    .build()
+                givenObjectIsActive("D_1")
+                givenObjectIsActive("R_1")
+                mockDisplayRule(rule)
+
+                // when
+                val result = subject.deployDocumentObjectsInternal(docObjects)
+
+                // then
+                assertEquals(
+                    listOf(DeploymentError("R_1", "Metadata of display rule 'R_1' contains invalid keys: [${key}]")),
+                    result.errors
+                )
+
+                count++
+            }
+
+            assertEquals(DeployClient.DISALLOWED_METADATA.size, count)
+        }
+
+        @Test
+        fun `deployDisplayRules allows other metadata`() {
+            // given
+            val docObjects = listOf(aDocObj("D_1", content = listOf(aParagraph(displayRuleRef = DisplayRuleRef("R_1")))))
+            val rule = DisplayRuleBuilder("R_1")
+                .comparison { value("a").equals().value("b") }
+                .internal(false)
+                .metadata("other") { string("value") }
+                .build()
+            givenObjectIsActive("D_1")
+            givenObjectIsActive("R_1")
+            mockDisplayRule(rule)
+
+            // when
+            val result = subject.deployDocumentObjectsInternal(docObjects)
+
+            // then
+            assertEquals(
+                listOf(
+                    DeploymentInfo(
+                        "R_1",
+                        ResourceType.DisplayRule,
+                        "icm://Interactive/tenant/Rules/defaultFolder/R_1.jrd"
+                    ),
+                    DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path"),
+                ), result.deployed
+            )
+
         }
 
         private fun givenObjectIsActive(id: String) {

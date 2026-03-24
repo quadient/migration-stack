@@ -10,6 +10,10 @@ data class DisplayRuleDefinition(val group: Group) : RefValidatable {
     override fun collectRefs(): List<Ref> {
         return group.collectRefs()
     }
+
+    fun containsFunction(): Boolean {
+        return group.containsFunction()
+    }
 }
 
 enum class GroupOp {
@@ -97,6 +101,15 @@ data class Group(val items: List<BinaryOrGroup>, val operator: GroupOp, val nega
             when (it) {
                 is Group -> it.collectRefs()
                 is Binary -> it.collectRefs()
+            }
+        }
+    }
+
+    fun containsFunction(): Boolean {
+        return items.any {
+            when (it) {
+                is Group -> it.containsFunction()
+                is Binary -> it.left is Function || it.right is Function
             }
         }
     }

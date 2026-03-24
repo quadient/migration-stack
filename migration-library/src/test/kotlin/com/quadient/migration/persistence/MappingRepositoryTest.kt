@@ -26,6 +26,7 @@ class MappingRepositoryTest {
     val paraStyleRepository = mockk<ParagraphStyleRepository>()
     val variableRepository = mockk<VariableRepository>()
     val variableStructureRepository = mockk<VariableStructureRepository>()
+    val displayRuleRepository = mockk<DisplayRuleRepository>()
 
     private val repo = MappingRepository(
         projectConfig.name,
@@ -35,7 +36,8 @@ class MappingRepositoryTest {
         textStyleRepository,
         paraStyleRepository,
         variableRepository,
-        variableStructureRepository
+        variableStructureRepository,
+        displayRuleRepository,
     )
 
     @Test
