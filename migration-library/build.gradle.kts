@@ -1,4 +1,5 @@
 val kotlinVersion: String by project
+val kotlinXSerialization: String by project
 val logbackVersion: String by project
 val postgresVersion: String by project
 val exposedVersion: String by project
@@ -6,8 +7,8 @@ val jacksonVersion: String by project
 val mockkVersion: String by project
 
 plugins {
-    kotlin("jvm") version "2.3.10"
-    kotlin("plugin.serialization") version "2.3.10"
+    kotlin("jvm") version "2.3.20"
+    kotlin("plugin.serialization") version "2.3.20"
     id("maven-publish")
     id("org.owasp.dependencycheck") version "12.2.0"
 }
@@ -38,13 +39,6 @@ buildscript {
     repositories {
         mavenCentral()
     }
-    dependencies {
-        classpath("org.owasp:dependency-check-gradle:12.2.0")
-    }
-}
-
-apply {
-    plugin("org.owasp.dependencycheck")
 }
 
 publishing {
@@ -84,7 +78,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.7")
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinXSerialization")
     implementation("com.akuleshov7:ktoml-core:0.6.0")
     implementation("com.akuleshov7:ktoml-file:0.6.0")
 
