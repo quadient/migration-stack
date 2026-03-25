@@ -33,6 +33,11 @@ dependencyCheck {
             enabled = false
         }
     }
+    skipConfigurations = listOf(
+        "kotlinKlibCommonizerClasspath",
+        "kotlinCompilerClasspath",
+        "kotlinBuildToolsApiClasspath",
+    )
 }
 
 buildscript {
