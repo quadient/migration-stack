@@ -223,7 +223,7 @@ class DesignerDocumentObjectBuilder(
             )
         }
 
-        val root = layout.addRoot().setAllowRuntimeModifications(true)
+        val root = (layout.root ?: layout.addRoot()).setAllowRuntimeModifications(true)
         if (resolvedStyleDefinitionPath != null) {
             root.setExternalStylesLayout(resolvedStyleDefinitionPath)
         }

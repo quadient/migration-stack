@@ -482,6 +482,8 @@ class InspireDocumentObjectBuilderTest {
         val variable = result["Variable"].first { it["Id"].textValue() == variableId }
         variable["Name"].textValue().shouldBeEqualTo("Job Name")
         variable["ParentId"].textValue().shouldBeEqualTo("Data.Clients.Value")
+
+        result["Root"]["LockedWebNodes"]["LockedWebNode"].textValue().shouldBeEqualTo(repeatedRowSetId)
     }
 
     @Test
