@@ -2,13 +2,14 @@ val kotlinVersion: String by project
 val logbackVersion: String by project
 val postgresVersion: String by project
 val exposedVersion: String by project
-val mockkVersion = "1.13.13"
+val jacksonVersion: String by project
+val mockkVersion: String by project
 
 plugins {
     kotlin("jvm") version "2.3.10"
     kotlin("plugin.serialization") version "2.3.10"
     id("maven-publish")
-    id("org.owasp.dependencycheck") version "12.1.9"
+    id("org.owasp.dependencycheck") version "12.2.0"
 }
 
 group = "com.quadient"
@@ -38,7 +39,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("org.owasp:dependency-check-gradle:12.1.3")
+        classpath("org.owasp:dependency-check-gradle:12.2.0")
     }
 }
 
@@ -87,10 +88,10 @@ dependencies {
     implementation("com.akuleshov7:ktoml-core:0.6.0")
     implementation("com.akuleshov7:ktoml-file:0.6.0")
 
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.2")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.18.2")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-toml:2.18.2")
+    implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:$jacksonVersion")
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-toml:$jacksonVersion")
 
     testImplementation("io.mockk:mockk:${mockkVersion}")
 
