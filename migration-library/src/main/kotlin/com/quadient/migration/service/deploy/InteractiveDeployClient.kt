@@ -143,7 +143,8 @@ class InteractiveDeployClient(
             }
             .distinctBy { it.id }
 
-        for (rule in rules) {
+        for (r in rules) {
+            val rule = r.resolveTarget(displayRuleRepository)
             val targetPath = documentObjectBuilder.getDisplayRulePath(rule).toString()
 
             if (!shouldDeployObject(rule.id, ResourceType.DisplayRule, targetPath, deploymentResult)) {

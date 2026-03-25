@@ -752,11 +752,22 @@ class InteractiveDeployClientTest {
             .internal(false)
             .build()
         mockDisplayRule(failedUpload)
+        val withTargetId = DisplayRuleBuilder("withTargetId")
+            .targetId("targetRule")
+            .internal(false)
+            .build()
+        mockDisplayRule(withTargetId)
+        val targetRule = DisplayRuleBuilder("targetRule")
+            .comparison { value("a").equals().value("b") }
+            .internal(false)
+            .build()
+        mockDisplayRule(targetRule)
         val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, listOf(
             aParagraph(displayRuleRef = DisplayRuleRef(ruleWithFunction.id)),
             aParagraph(displayRuleRef = DisplayRuleRef(ruleWithInvalidMetadata.id)),
             aParagraph(displayRuleRef = DisplayRuleRef(validRule.id)),
             aParagraph(displayRuleRef = DisplayRuleRef(failedUpload.id)),
+            aParagraph(displayRuleRef = DisplayRuleRef(withTargetId.id)),
         )))
         val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
         mockBasicSuccessfulIpsOperations()
@@ -768,6 +779,7 @@ class InteractiveDeployClientTest {
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
         every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/valid.jrd", any()) } returns OperationResult.Success
         every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/failed.jrd", any()) } returns OperationResult.Failure("oops")
+        every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/targetRule.jrd", any()) } returns OperationResult.Success
 
         val result = subject.deployDocumentObjects()
 
@@ -781,6 +793,7 @@ class InteractiveDeployClientTest {
         ))
         result.deployed.shouldBeEqualTo(listOf(
             DeploymentInfo("valid", ResourceType.DisplayRule, "icm://Interactive/tenant/Rules/defaultFolder/valid.jrd"),
+            DeploymentInfo("targetRule", ResourceType.DisplayRule, "icm://Interactive/tenant/Rules/defaultFolder/targetRule.jrd"),
             DeploymentInfo("B_1", ResourceType.DocumentObject, "icm://B_1name"),
             DeploymentInfo("T_1", ResourceType.DocumentObject, "icm://T_1name")
         ))
@@ -843,6 +856,10 @@ class InteractiveDeployClientTest {
             displayRule
         } else {
             null
+        }
+
+        if (success) {
+            every { displayRuleRepository.findOrFail(displayRule.id) } returns displayRule
         }
 
         return displayRule
