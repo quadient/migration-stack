@@ -1105,6 +1105,11 @@ abstract class InspireDocumentObjectBuilder(
             repeatedRow.rows.forEach { repeatedRowSet.addRowSet(buildSingleRowSet(it, layout, variableStructure, languages)) }
         }
         repeatedRowSet.setVariable(arrayVariable)
+
+        // TODO d.svitak - test manually on example and include to unit test
+        val layoutRoot = layout.root ?: layout.addRoot()
+        layoutRoot.addLockedWebNode(repeatedRowSet)
+
         return repeatedRowSet
     }
 

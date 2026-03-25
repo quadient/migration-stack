@@ -12,7 +12,9 @@ import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.shared.DataType
+import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariablePathData
+import com.quadient.migration.shared.VariableRefPath
 
 import java.nio.file.Path
 
@@ -39,8 +41,8 @@ static void run(Migration migration, Path path) {
         def newName = Csv.deserialize(values.get("inspire_name"), String.class)
         variablePathData.name = newName
 
-        def inspirePath = Csv.deserialize(values.get("inspire_path"), String.class)
-        variablePathData.path = inspirePath ?: ""
+        def inspirePathRaw = Csv.deserialize(values.get("inspire_path"), String.class)
+        variablePathData.path = parseVariablePath(inspirePathRaw)
 
         structureMapping.mappings[id] = variablePathData
 
@@ -67,4 +69,10 @@ static void run(Migration migration, Path path) {
 
     migration.mappingRepository.upsert(structureId, structureMapping)
     migration.mappingRepository.applyVariableStructureMapping(structureId)
+}
+
+static parseVariablePath(String raw) {
+    if (!raw) return new LiteralPath("")
+    if (raw.startsWith("@")) return new VariableRefPath(raw.substring(1))
+    return new LiteralPath(raw)
 }

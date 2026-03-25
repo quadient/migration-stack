@@ -281,40 +281,20 @@ def table = new TableBuilder()
     .build()
 
 def tableWithRepeatedRow = new TableBuilder()
-    .addHeaderRow {
-        it.addCell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("Job name") }
-        }
-        it.addCell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("Second column") }
-        }
-    }
-//    .addRepeatedRow(new VariableRef(jobsArrayVariable.id)) {
-    .addRepeatedRow("Data.Records.Value") {
-        it.addRow {
+        .addHeaderRow {
             it.addCell {
                 it.border { it.allBorders(borderColor, borderWidth) }
-//                it.paragraph { it.text { it.variableRef(jobNameVariable.id) } }
-                it.paragraph { it.text { it.string("bla") } }
-            }
-            it.addCell {
-                it.border { it.allBorders(borderColor, borderWidth) }
-                it.string("first row second cell")
+                it.paragraph { it.string("Job name") }
             }
         }
-        it.addRow {
-            it.addCell {
-                it.border { it.allBorders(borderColor, borderWidth) }
-                it.string("second row first cell")
+        .addRepeatedRow(new VariableRef(jobsArrayVariable.id)) {
+            it.addRow {
+                it.addCell {
+                    it.border { it.allBorders(borderColor, borderWidth) }
+                    it.paragraph { it.text { it.variableRef(jobNameVariable.id) } }
+                }
             }
-            it.addCell {
-                it.border { it.allBorders(borderColor, borderWidth) }
-                it.string("second row second cell")
-            }
-        }
-    }.build()
+        }.build()
 
 // Header of the document containing the recipient's information.
 // It uses the variables defined above to dynamically insert the
