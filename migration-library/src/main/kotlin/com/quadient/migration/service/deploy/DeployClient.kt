@@ -113,11 +113,13 @@ sealed class DeployClient(
     init {
         addPostProcessor { deploymentResult ->
             val meta =
-                deploymentResult.deployed.filter { it.type == ResourceType.DocumentObject || it.type == ResourceType.Image }
+                deploymentResult.deployed
+                    .filter { it.type == ResourceType.DocumentObject || it.type == ResourceType.Image || it.type == ResourceType.DisplayRule }
                     .mapNotNull { info ->
                         val obj = when (info.type) {
                             ResourceType.DocumentObject -> documentObjectRepository.find(info.id)
                             ResourceType.Image -> imageRepository.find(info.id)
+                            ResourceType.DisplayRule -> displayRuleRepository.find(info.id)
                             else -> null
                         }
                         if (obj == null) {
@@ -132,6 +134,7 @@ sealed class DeployClient(
                             val metadata = when (obj) {
                                 is DocumentObject -> obj.metadata
                                 is Image -> obj.metadata
+                                is DisplayRule -> obj.metadata
                                 else -> emptyMap()
                             }
                             info to metadata
