@@ -16,6 +16,7 @@ import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
+import com.quadient.migration.api.dto.migrationmodel.RepeatedContent
 import com.quadient.migration.api.dto.migrationmodel.ResourceRef
 import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
 import com.quadient.migration.api.dto.migrationmodel.StringValue
@@ -157,6 +158,7 @@ abstract class InspireDocumentObjectBuilder(
                 when (item) {
                     is SelectByLanguage -> item.cases.forEach { languages.add(it.language) }
                     is Area -> collectLanguagesFromContent(item.content)
+                    is RepeatedContent -> collectLanguagesFromContent(item.content)
                     is FirstMatch -> {
                         item.cases.forEach { case -> collectLanguagesFromContent(case.content) }
                         collectLanguagesFromContent(item.default)
@@ -299,6 +301,7 @@ abstract class InspireDocumentObjectBuilder(
                 is DocumentObjectRef -> flowModels.add(DocumentObject(contentPart))
                 is AttachmentRef -> flowModels.add(Attachment(contentPart))
                 is Area -> mutableContent.addAll(idx + 1, contentPart.content.resolveAliases(imageRepository, attachmentRepository))
+                is RepeatedContent -> flowModels.add(RepeatedContent(contentPart))
                 is FirstMatch -> flowModels.add(FirstMatch(contentPart))
                 is SelectByLanguage -> flowModels.add(SelectByLanguage(contentPart))
             }
@@ -340,6 +343,16 @@ abstract class InspireDocumentObjectBuilder(
                         buildSelectByLanguage(layout, variableStructure, it.model, name, languages)
                     }
                 }
+
+                is FlowModel.RepeatedContent -> {
+                    if (flowName == null) {
+                        buildRepeatedContent(it.model, layout, variableStructure, null, languages)
+                    } else {
+                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
+                        flowSuffix++
+                        buildRepeatedContent(it.model, layout, variableStructure, name, languages)
+                    }
+                }
             }
         }
     }
@@ -350,6 +363,7 @@ abstract class InspireDocumentObjectBuilder(
         data class Attachment(val ref: AttachmentRef) : FlowModel
         data class FirstMatch(val model: com.quadient.migration.api.dto.migrationmodel.FirstMatch) : FlowModel
         data class SelectByLanguage(val model: com.quadient.migration.api.dto.migrationmodel.SelectByLanguage) : FlowModel
+        data class RepeatedContent(val model: com.quadient.migration.api.dto.migrationmodel.RepeatedContent) : FlowModel
     }
 
     protected fun List<Flow>.toSingleFlow(
@@ -1136,6 +1150,50 @@ abstract class InspireDocumentObjectBuilder(
         is VariableRefPath -> variableStructure.structure[variablePath.variableId]?.name
             ?: variableRepository.find(variablePath.variableId)?.nameOrId()
             ?: variablePath.variableId
+    }
+
+    private fun buildRepeatedContent(
+        model: RepeatedContent,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        flowName: String?,
+        languages: List<String>,
+    ): Flow {
+        val (varName, varPath) = resolveVariableNameAndPath(model.variablePath, variableStructure)
+            ?: return buildUnmappedRepeatedContentFallback(model, layout, variableStructure, languages)
+        val arrayVariable = getVariable(layout.data as DataImpl, varName, varPath)
+            ?: return buildUnmappedRepeatedContentFallback(model, layout, variableStructure, languages)
+        require(arrayVariable.nodeOptionality == NodeOptionality.ARRAY) {
+            "Variable '$varName' at '$varPath' used in repeated content is not an Array variable"
+        }
+
+        val innerFlows = buildDocumentContentAsFlows(layout, variableStructure, model.content, languages = languages)
+        return if (innerFlows.size == 1 && innerFlows[0].type == Flow.Type.SIMPLE) {
+            val repeatedFlow = innerFlows[0].setType(Flow.Type.REPEATED).setVariable(arrayVariable)
+            flowName?.let { repeatedFlow.setName(it) }
+            repeatedFlow
+        } else {
+            val repeatedFlow =
+                layout.addFlow().setType(Flow.Type.REPEATED).setVariable(arrayVariable).setSectionFlow(true)
+                    .setWebEditingType(Flow.WebEditingType.SECTION)
+            flowName?.let { repeatedFlow.setName(it) }
+            val repeatedFlowText = repeatedFlow.addParagraph().addText()
+            innerFlows.forEach { repeatedFlowText.appendFlow(it) }
+            repeatedFlow
+        }
+    }
+
+    private fun buildUnmappedRepeatedContentFallback(
+        model: RepeatedContent,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        languages: List<String>,
+    ): Flow {
+        val varName = getVariableNameFromPath(model.variablePath, variableStructure)
+        val warning = Paragraph("<repeated by unmapped $$varName$>")
+        return buildDocumentContentAsSingleFlow(
+            layout, variableStructure, listOf(warning) + model.content, languages = languages
+        )
     }
 
     private fun resolveVariableNameAndPath(

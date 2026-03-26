@@ -46,7 +46,6 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.getFlowAreaContentFlow
 import com.quadient.migration.tools.model.*
 import com.quadient.migration.tools.shouldBeEqualTo
-import com.quadient.migration.tools.shouldNotBeNull
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.internal.module.layout.LayoutImpl
 import io.mockk.every
@@ -594,6 +593,95 @@ class InspireDocumentObjectBuilderTest {
         val secondCell = result["Cell"].last { it["Id"].textValue() == secondSingleRow["SubRowId"].textValue() }
         val secondFlow = result["Flow"].last { it["Id"].textValue() == secondCell["FlowId"].textValue() }
         secondFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Second")
+    }
+
+    @Test
+    fun `buildDocumentObject creates repeated flow with literal array path`() {
+        // given
+        val nameVar = mockVar(VariableBuilder("nameVar").name("Name").dataType(DataType.String).build())
+        val variableStructure = mockVarStructure(
+            VariableStructureBuilder("VS_1").addVariable(nameVar.id, "Data.Clients.Value", "Real Name").build()
+        )
+
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .repeatedContent("Data.Clients") {
+                    paragraph { text { variableRef(nameVar.id) } }
+                }
+                .variableStructureRef(variableStructure.id)
+                .build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val repeatedFlow = getFlowAreaContentFlow(result)
+        val arrayVarId = repeatedFlow["Variable"].textValue()
+        val arrayVar = result["Variable"].last { it["Id"].textValue() == arrayVarId }
+        arrayVar["Type"].textValue().shouldBeEqualTo("DataVariable")
+        arrayVar["VarType"].textValue().shouldBeEqualTo("Array")
+        repeatedFlow["SectionFlow"].textValue().shouldBeEqualTo("False")
+
+        val nameVarId = repeatedFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val nameVarNode = result["Variable"].first { it["Id"].textValue() == nameVarId }
+        nameVarNode["Name"].textValue().shouldBeEqualTo("Real Name")
+    }
+
+    @Test
+    fun `buildDocumentObject creates repeated flow with variable ref array path`() {
+        // given
+        val clientsVar = mockVar(VariableBuilder("clientsVar").name("Clients").dataType(DataType.Array).build())
+        val nameVar = mockVar(VariableBuilder("nameVar").name("name").dataType(DataType.String).build())
+
+        val variableStructure = mockVarStructure(
+            VariableStructureBuilder("VS_1")
+                .addVariable(clientsVar.id, "Data")
+                .addVariable(nameVar.id, VariableRef(clientsVar.id))
+                .build()
+        )
+        val innerBlock = mockObj(DocumentObjectBuilder("B_inner", Block).internal(true).string("The name is: ").build())
+        val block = mockObj(DocumentObjectBuilder("B_1", Block).repeatedContent(VariableRef(clientsVar.id)) {
+                documentObjectRef(innerBlock.id)
+                paragraph { text { variableRef(nameVar.id) } }
+            }.variableStructureRef(variableStructure.id).build())
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val repeatedFlow = result["Flow"].last { it["Type"]?.textValue() == "Repeated" }
+        val arrayVar = result["Variable"].first { it["Id"].textValue() == repeatedFlow["Variable"].textValue() }
+        arrayVar["Name"].textValue().shouldBeEqualTo("Clients")
+        repeatedFlow["SectionFlow"].textValue().shouldBeEqualTo("True")
+
+        val repeatedFlowRefs = repeatedFlow["FlowContent"]["P"]["T"]["O"]
+        repeatedFlowRefs.size().shouldBeEqualTo(2)
+    }
+
+    @Test
+    fun `buildDocumentObject creates fallback flow when repeated block variable is not mapped`() {
+        // given
+        val arrayVar = mockVar(VariableBuilder("arrayVar").name("Clients").dataType(DataType.Array).build())
+
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .repeatedContent(VariableRef(arrayVar.id)) {
+                    string("Some content")
+                }
+                .build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val repeatedFallbackFlow = getFlowAreaContentFlow(result)
+        repeatedFallbackFlow["Type"].textValue().shouldBeEqualTo("Simple")
+        repeatedFallbackFlow["SectionFlow"].textValue().shouldBeEqualTo("False")
+        repeatedFallbackFlow["FlowContent"]["P"][0]["T"][""].textValue()
+            .shouldBeEqualTo($$"<repeated by unmapped $Clients$>")
+        repeatedFallbackFlow["FlowContent"]["P"][1]["T"][""].textValue().shouldBeEqualTo("Some content")
     }
 
     @Test

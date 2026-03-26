@@ -108,3 +108,9 @@ data class ParagraphEntity(
 data class AreaEntity(
     val content: List<DocumentContentEntity>, val position: Position?, val interactiveFlowName: String?, val flowToNextPage: Boolean = false
 ) : DocumentContentEntity
+
+@Serializable
+data class RepeatedContentEntity(
+    val variablePath: VariablePath,
+    val content: List<DocumentContentEntity>,
+) : DocumentContentEntity

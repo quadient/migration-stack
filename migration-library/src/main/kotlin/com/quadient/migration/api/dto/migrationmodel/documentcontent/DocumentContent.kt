@@ -9,6 +9,7 @@ import com.quadient.migration.persistence.migrationmodel.TableEntity
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
 import com.quadient.migration.persistence.migrationmodel.AttachmentEntityRef
+import com.quadient.migration.persistence.migrationmodel.RepeatedContentEntity
 
 sealed interface DocumentContent {
     companion object {
@@ -21,6 +22,7 @@ sealed interface DocumentContent {
             is AreaEntity -> Area.fromDb(entity)
             is FirstMatchEntity -> FirstMatch.fromDb(entity)
             is SelectByLanguageEntity -> SelectByLanguage.fromDb(entity)
+            is RepeatedContentEntity -> RepeatedContent.fromDb(entity)
         }
     }
 }
@@ -36,6 +38,7 @@ fun List<DocumentContent>.toDb(): List<DocumentContentEntity> {
             is Area -> it.toDb()
             is FirstMatch -> it.toDb()
             is SelectByLanguage -> it.toDb()
+            is RepeatedContent -> it.toDb()
         }
     }
 }
