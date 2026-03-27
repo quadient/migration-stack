@@ -6,11 +6,18 @@
 package com.quadient.migration.example.common.report
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Ref
+import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.example.common.util.Csv
-import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.example.common.util.PathUtil
 import com.quadient.migration.service.deploy.ResourceType
 import groovy.transform.Field
@@ -26,7 +33,58 @@ def dstFile  = PathUtil.dataDirPath(binding, "report", "${migration.projectConfi
 @Field static HashMap<String, DocObjAndRefs> docObjWithRefsCache = new HashMap()
 def allObjects = migration.documentObjectRepository.listAll()
 for (obj in allObjects) {
-    docObjWithRefsCache.put(obj.id, new DocObjAndRefs(obj, migration.documentObjectRepository.findRefs(obj.id)))
+    docObjWithRefsCache.put(obj.id, new DocObjAndRefs(obj, collectRefsRecursively(migration, new DocumentObjectRef(obj.id))))
+}
+
+static List<Ref> collectRefsRecursively(Migration migration, Ref ref, Set<Ref> visited = new HashSet<>()) {
+    if (visited.contains(ref)) {
+        return []
+    }
+    visited.add(ref)
+
+    def result = []
+    def refs = switch (ref) {
+        case DocumentObjectRef -> {
+            def docObj = migration.documentObjectRepository.findOrFail(ref.id)
+            docObj.collectRefs()
+        }
+        case DisplayRuleRef -> {
+            def displayRule = migration.displayRuleRepository.findOrFail(ref.id)
+            displayRule.collectRefs()
+        }
+        case AttachmentRef -> {
+            def attachment = migration.attachmentRepository.findOrFail(ref.id)
+            attachment.collectRefs()
+        }
+        case ImageRef -> {
+            def image = migration.imageRepository.findOrFail(ref.id)
+            image.collectRefs()
+        }
+        case ParagraphStyleRef -> {
+            def paragraphStyle = migration.paragraphStyleRepository.findOrFail(ref.id)
+            paragraphStyle.collectRefs()
+        }
+        case TextStyleRef -> {
+            def textStyle = migration.textStyleRepository.findOrFail(ref.id)
+            textStyle.collectRefs()
+        }
+        case VariableRef -> {
+            def variable = migration.variableRepository.findOrFail(ref.id)
+            variable.collectRefs()
+        }
+        case VariableStructureRef -> {
+            def variableStructure = migration.variableStructureRepository.findOrFail(ref.id)
+            variableStructure.collectRefs()
+        }
+        default -> throw new IllegalArgumentException("Unknown ref type: ${ref.class}")
+    }
+
+    for (r in refs) {
+        result.add(r)
+        result.addAll(collectRefsRecursively(migration, r, visited))
+    }
+
+    return result
 }
 
 def displayRules = migration.displayRuleRepository.listAll()
