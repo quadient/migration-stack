@@ -1,6 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
@@ -138,7 +139,7 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
             originLocations = originLocations,
             customFields = customFields,
             definition = definition,
-            targetId = targetId,
+            targetId = targetId?.let { DisplayRuleRef(it) },
             variableStructureRef = variableStructureRef,
             baseTemplate = baseTemplate,
             targetFolder = targetFolder,

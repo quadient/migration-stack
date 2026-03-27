@@ -131,7 +131,7 @@ class MappingRepositoryTest {
                     it.id == "ruleId" &&
                         it.name == "new name" &&
                         it.targetFolder == "/some/folder" &&
-                        it.targetId == "target-123" &&
+                        it.targetId?.id == "target-123" &&
                         it.baseTemplate == "template-base" &&
                         it.internal &&
                         it.variableStructureRef == VariableStructureRef("ref")
