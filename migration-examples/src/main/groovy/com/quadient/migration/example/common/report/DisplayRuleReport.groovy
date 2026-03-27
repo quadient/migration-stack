@@ -95,7 +95,7 @@ static void exportReport(Migration migration, List<DisplayRule> rules, Path expo
     def file =  exportFilePath.toFile()
     file.createParentDirectories()
     file.withWriter { writer ->
-        writer.writeLine("id,name,internal,baseTemplate,targetFolder,targetIt,variableStructureRef,status,usedBy,usedByOrigin,usedByTypeOrigin,translated,translationError,source_files,originContent")
+        writer.writeLine("id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,usedBy,usedByOrigin,usedByTypeOrigin,translated,translationError,source_files,originContent")
 
         rules.each { rule ->
             def translationError = rule.customFields.get("error")
