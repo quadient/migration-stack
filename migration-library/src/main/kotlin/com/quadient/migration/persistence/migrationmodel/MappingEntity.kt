@@ -226,7 +226,7 @@ sealed class MappingItemEntity {
                 targetFolder = targetFolder,
                 baseTemplate = baseTemplate,
                 variableStructureRef = variableStructureRef?.let { VariableStructureRef(it) },
-                targetId = targetId,
+                targetId = targetId?.let { DisplayRuleRef(it) },
                 internal = internal ?: true
             )
         }

@@ -2,6 +2,7 @@ package com.quadient.migration.api.repository
 
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.persistence.table.DisplayRuleTable
@@ -36,7 +37,7 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
             metadata = row[DisplayRuleTable.metadata],
             subject = row[DisplayRuleTable.subject],
             internal = row[DisplayRuleTable.internal],
-            targetId = row[DisplayRuleTable.targetId],
+            targetId = row[DisplayRuleTable.targetId]?.let { DisplayRuleRef(it) },
             targetFolder = row[DisplayRuleTable.targetFolder],
             variableStructureRef = row[DisplayRuleTable.variableStructureRef]?.let { VariableStructureRef(it) },
         )
@@ -81,7 +82,7 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
                 stmt.setTimestamp(index++, java.sql.Timestamp.from((existingItem?.created ?: now).toJavaInstant()))
                 stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
                 stmt.setObject(index++, dto.definition?.let { Json.encodeToString(it) }, Types.OTHER)
-                stmt.setString(index++, dto.targetId)
+                stmt.setString(index++, dto.targetId?.id)
                 stmt.setBoolean(index++, dto.internal)
                 stmt.setString(index++, dto.subject)
                 stmt.setString(index++, dto.targetFolder)
@@ -113,7 +114,7 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
                 it[DisplayRuleTable.created] = existingItem?.created ?: now
                 it[DisplayRuleTable.lastUpdated] = now
                 it[DisplayRuleTable.definition] = dto.definition
-                it[DisplayRuleTable.targetId] = dto.targetId
+                it[DisplayRuleTable.targetId] = dto.targetId?.id
                 it[DisplayRuleTable.internal] = dto.internal
                 it[DisplayRuleTable.subject] = dto.subject
                 it[DisplayRuleTable.targetFolder] = dto.targetFolder

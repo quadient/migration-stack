@@ -54,7 +54,7 @@ static void exportReport(Migration migration, List<DisplayRule> rules, Path expo
             builder.append("," + Csv.serialize(rule.internal))
             builder.append("," + Csv.serialize(rule.baseTemplate))
             builder.append("," + Csv.serialize(rule.targetFolder))
-            builder.append("," + Csv.serialize(rule.targetId))
+            builder.append("," + Csv.serialize(rule.targetId?.id))
             builder.append("," + Csv.serialize(rule.variableStructureRef?.id))
             builder.append("," + Csv.serialize(status?.class?.simpleName))
             builder.append("," + usedByValue)

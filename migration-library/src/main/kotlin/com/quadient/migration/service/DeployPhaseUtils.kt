@@ -73,7 +73,7 @@ fun getBaseTemplateFullPath(config: ProjectConfig, documentObjectBaseTemplatePat
 fun DisplayRule.resolveTarget(displayRuleRepository: Repository<DisplayRule>): DisplayRule {
     val targetId = this.targetId ?: return this
 
-    val targetRule = displayRuleRepository.findOrFail(targetId)
+    val targetRule = displayRuleRepository.findOrFail(targetId.id)
     return targetRule.resolveTarget(displayRuleRepository)
 }
 

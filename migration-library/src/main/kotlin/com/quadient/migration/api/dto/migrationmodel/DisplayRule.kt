@@ -12,7 +12,7 @@ data class DisplayRule @JvmOverloads constructor(
     var definition: DisplayRuleDefinition?,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
-    var targetId: String? = null,
+    var targetId: DisplayRuleRef? = null,
     var internal: Boolean = true,
     val metadata: Map<String, List<MetadataPrimitive>> = emptyMap(),
     val subject: String? = null,
@@ -21,6 +21,6 @@ data class DisplayRule @JvmOverloads constructor(
     val variableStructureRef: VariableStructureRef? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
-        return (definition?.collectRefs() ?: emptyList()) + listOfNotNull(variableStructureRef)
+        return (definition?.collectRefs() ?: emptyList()) + listOfNotNull(variableStructureRef, targetId)
     }
 }

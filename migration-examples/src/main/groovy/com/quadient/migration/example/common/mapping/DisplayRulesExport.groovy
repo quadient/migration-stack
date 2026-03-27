@@ -40,7 +40,7 @@ static void run(Migration migration, File displayRuleDstPath) {
             sb << ",${Csv.serialize(rule.internal)}"
             sb << ",${Csv.serialize(rule.baseTemplate)}"
             sb << ",${Csv.serialize(rule.targetFolder)}"
-            sb << ",${Csv.serialize(rule.targetId)}"
+            sb << ",${Csv.serialize(rule.targetId?.id)}"
             sb << ",${Csv.serialize(rule.variableStructureRef?.id)}"
             sb << ",${Csv.serialize(status?.class?.simpleName)}"
             sb << ",${Csv.serialize(rule.customFields["originalName"])}"
