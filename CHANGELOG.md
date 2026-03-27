@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - External display rule support along with metadata, subject, target aliasing,
   base template override, variable structure override and target folder
   override support
+- Array and subtree types for variables
+- Support for content (and table rows) repeated by referred array variables
+- In both repeated content and variable structure paths it is possible to use literal path (e.g. Data.Clients.Value)
+  or reference to a variable
 
 ### Changed
 
