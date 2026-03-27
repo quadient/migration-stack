@@ -36,12 +36,12 @@ class DisplayRulesMappingExportTest {
         DisplayRulesExport.run(migration, mappingFile.toFile())
 
         def expected = """\
-            id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,originalName (read-only),originLocations (read-only)
-            empty,,true,,,,,Active,,[]
-            full,full,false,baseTemplate1,targetFolder1,targetId1,varStruct1,Active,,[foo; bar]
-            with-variable-structure,with-var-struct,true,,,,varStruct2,Active,,[]
-            overridden empty,,true,,,,,Active,,[]
-            overridden full,full,false,baseTemplate2,targetFolder2,targetId2,,Active,originalFull,[foo; bar]
+            id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,originalName (read-only),originLocations (read-only),definition (read-only)
+            empty,,true,,,,,Active,,[],
+            full,full,false,baseTemplate1,targetFolder1,targetId1,varStruct1,Active,,[foo; bar],
+            with-variable-structure,with-var-struct,true,,,,varStruct2,Active,,[],
+            overridden empty,,true,,,,,Active,,[],
+            overridden full,full,false,baseTemplate2,targetFolder2,targetId2,,Active,originalFull,[foo; bar],
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

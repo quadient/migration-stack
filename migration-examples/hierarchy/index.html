@@ -387,7 +387,7 @@
                     li.dataset.label = ref.id;
                     li.dataset.collapsed = "true";
                     li.dataset.type = ref.type;
-                    li.dataset.name = nodeObj.name;
+                    li.dataset.name = nodeObj.name ?? "";
 
                     const row = document.createElement("div");
                     row.className = "node";
@@ -755,6 +755,7 @@
                         li.hidden = false;
                         li.dataset.visible = "true";
                         const labelEl = /** @type {HTMLElement} */ (li.querySelector(":scope > .node > .label"));
+                        console.log(li.dataset.name, typeof(li.dataset.name));
                         if (labelEl) labelEl.textContent = idAndTypeToLabel(li.dataset.label || "", /** @type {any} */(li.dataset.type), li.dataset.name);
                     }
                     statusEl.textContent = "";
@@ -1018,7 +1019,8 @@
                 if (ellipsize && id.length > 20) {
                     eid = id.slice(0, 20) + "...";
                 }
-                let ename = name ?? "n/a";
+
+                let ename = name || "n/a";
                 if (ellipsize && ename.length > 30) {
                     ename = ename.slice(0, 30) + "...";
                 }
