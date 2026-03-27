@@ -9,12 +9,19 @@ data class RepeatedContent(
 ) : DocumentContent, RefValidatable {
 
     override fun collectRefs(): List<Ref> {
-        return content.flatMap {
+        val contentRefs = content.flatMap {
             when (it) {
                 is RefValidatable -> it.collectRefs()
                 else -> emptyList()
             }
         }
+
+        val variableRefs = when (val path = variablePath) {
+            is VariablePath.VariableRefPath -> listOf(VariableRef(path.variableId))
+            else -> emptyList()
+        }
+
+        return contentRefs + variableRefs
     }
 
     companion object {
