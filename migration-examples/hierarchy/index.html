@@ -755,7 +755,6 @@
                         li.hidden = false;
                         li.dataset.visible = "true";
                         const labelEl = /** @type {HTMLElement} */ (li.querySelector(":scope > .node > .label"));
-                        console.log(li.dataset.name, typeof(li.dataset.name));
                         if (labelEl) labelEl.textContent = idAndTypeToLabel(li.dataset.label || "", /** @type {any} */(li.dataset.type), li.dataset.name);
                     }
                     statusEl.textContent = "";
