@@ -5,7 +5,12 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.RepeatedContentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
+import com.quadient.migration.shared.LiteralPath
+import com.quadient.migration.shared.VariablePath
+import com.quadient.migration.shared.VariableRefPath
 
 /**
  * Base interface for builders that contain a list of DocumentContent.
@@ -130,4 +135,33 @@ interface DocumentContentBuilderBase<T> {
     fun string(text: String): T = apply {
         this.content.add(ParagraphBuilder().string(text).build())
     } as T
+
+    /**
+     * Adds repeated content to the content using a builder function.
+     * The content repeats once per element of the given array variable.
+     * @param variablePath The [VariablePath] referencing the array variable to repeat over.
+     * @param builder A builder function to build the repeated content.
+     * @return This builder instance for method chaining.
+     */
+    fun repeatedContent(variablePath: VariablePath, builder: RepeatedContentBuilder.() -> Unit): T = apply {
+        this.content.add(RepeatedContentBuilder(variablePath).apply(builder).build())
+    } as T
+
+    /**
+     * Adds repeated content to the content using a literal path string.
+     * @param literalPath The literal data path of the array variable to repeat over.
+     * @param builder A builder function to build the repeated content.
+     * @return This builder instance for method chaining.
+     */
+    fun repeatedContent(literalPath: String, builder: RepeatedContentBuilder.() -> Unit): T =
+        repeatedContent(LiteralPath(literalPath), builder)
+
+    /**
+     * Adds repeated content to the content using a variable reference.
+     * @param variableRef The [VariableRef] referencing the array variable to repeat over.
+     * @param builder A builder function to build the repeated content.
+     * @return This builder instance for method chaining.
+     */
+    fun repeatedContent(variableRef: VariableRef, builder: RepeatedContentBuilder.() -> Unit): T =
+        repeatedContent(VariableRefPath(variableRef.id), builder)
 }

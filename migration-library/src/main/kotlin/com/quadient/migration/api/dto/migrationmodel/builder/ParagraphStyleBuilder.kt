@@ -23,6 +23,7 @@ class ParagraphStyleBuilder(id: String) : DtoBuilderBase<ParagraphStyle, Paragra
 
     fun styleRef(id: String) = apply { this.targetId = ParagraphStyleRef(id) }
     fun styleRef(ref: ParagraphStyleRef) = apply { this.targetId = ref }
+    fun styleRef(style: ParagraphStyle) = apply { this.targetId = ParagraphStyleRef(style.id) }
 
     override fun build(): ParagraphStyle {
         return ParagraphStyle(

@@ -2,34 +2,66 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariablePathData
+import com.quadient.migration.shared.VariableRefPath
 
 class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, VariableStructureBuilder>(id) {
     var structure = mutableMapOf<String, VariablePathData>()
     var languageVariable: VariableRef? = null
 
     /**
-     * Adds a variable to the structure.
+     * Adds a variable to the structure with a literal path.
      *
      * @param id The unique identifier for the variable (used as the map key).
-     * @param path The path of the variable.
+     * @param path The literal path of the variable (e.g. "Data.Clients.Value").
      * @return This builder instance for method chaining.
      */
     fun addVariable(id: String, path: String) = apply {
-        structure[id] = VariablePathData(path, null)
+        structure[id] = VariablePathData(LiteralPath(path), null)
         return this
     }
 
     /**
-     * Adds a variable to the structure.
+     * Adds a variable to the structure with a literal path and a display name override.
      *
      * @param id The unique identifier for the variable (used as the map key).
-     * @param path The path of the variable.
+     * @param path The literal path of the variable (e.g. "Data.Clients.Value").
      * @param name A name to override the variable's default name.
      * @return This builder instance for method chaining.
      */
     fun addVariable(id: String, path: String, name: String) = apply {
-        structure[id] = VariablePathData(path, name)
+        structure[id] = VariablePathData(LiteralPath(path), name)
+        return this
+    }
+
+    /**
+     * Adds a variable to the structure referencing an Array or SubTree variable by its ID.
+     * The referenced variable must be registered with [DataType.Array] or [DataType.SubTree]
+     * and must carry a [Variable.path].
+     *
+     * @param id The unique identifier for the variable (used as the map key).
+     * @param variableRef A [VariableRef] pointing to an Array or SubTree variable.
+     * @return This builder instance for method chaining.
+     */
+    fun addVariable(id: String, variableRef: VariableRef) = apply {
+        structure[id] = VariablePathData(VariableRefPath(variableRef.id), null)
+        return this
+    }
+
+    /**
+     * Adds a variable to the structure referencing an Array or SubTree variable by its ID,
+     * with a display name override.
+     * The referenced variable must be registered with [DataType.Array] or [DataType.SubTree]
+     * and must carry a [Variable.path].
+     *
+     * @param id The unique identifier for the variable (used as the map key).
+     * @param variableRef A [VariableRef] pointing to an Array or SubTree variable.
+     * @param name A name to override the variable's default name.
+     * @return This builder instance for method chaining.
+     */
+    fun addVariable(id: String, variableRef: VariableRef, name: String) = apply {
+        structure[id] = VariablePathData(VariableRefPath(variableRef.id), name)
         return this
     }
 

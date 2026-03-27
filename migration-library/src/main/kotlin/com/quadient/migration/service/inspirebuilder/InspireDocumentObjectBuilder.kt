@@ -17,14 +17,13 @@ import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
+import com.quadient.migration.api.dto.migrationmodel.RepeatedContent
 import com.quadient.migration.api.dto.migrationmodel.ResourceRef
 import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Table
+import com.quadient.migration.api.dto.migrationmodel.TableRow
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
@@ -100,6 +99,9 @@ import kotlin.collections.ifEmpty
 import com.quadient.migration.shared.DataType as DataTypeModel
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
+import com.quadient.migration.shared.VariablePath
+import com.quadient.migration.shared.LiteralPath
+import com.quadient.migration.shared.VariableRefPath
 import com.quadient.migration.service.resolveTarget
 
 abstract class InspireDocumentObjectBuilder(
@@ -148,19 +150,27 @@ abstract class InspireDocumentObjectBuilder(
     protected fun collectLanguages(documentObject: DocumentObject): List<String> {
         val languages = mutableSetOf<String>()
 
+        fun Table.allRows(): List<Table.Row> =
+            (rows + header + firstHeader + footer + lastFooter).flatMap { row ->
+                when (row) {
+                    is Table.Row -> listOf(row)
+                    is Table.RepeatedRow -> row.rows
+                }
+            }
+
         fun collectLanguagesFromContent(content: List<DocumentContent>) {
             for (item in content) {
                 when (item) {
                     is SelectByLanguage -> item.cases.forEach { languages.add(it.language) }
                     is Area -> collectLanguagesFromContent(item.content)
+                    is RepeatedContent -> collectLanguagesFromContent(item.content)
                     is FirstMatch -> {
                         item.cases.forEach { case -> collectLanguagesFromContent(case.content) }
                         collectLanguagesFromContent(item.default)
                     }
 
-                    is Table -> (item.rows + item.header + item.firstHeader + item.footer + item.lastFooter).forEach { row ->
-                        row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) }
-                    }
+                    is Table -> item.allRows()
+                        .forEach { row -> row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) } }
 
                     is DocumentObjectRef -> {
                         val documentObject = documentObjectRepository.findOrFail(item.id)
@@ -177,9 +187,8 @@ abstract class InspireDocumentObjectBuilder(
                                     collectLanguagesFromContent(textContent.default)
                                 }
 
-                                is Table -> (textContent.rows + textContent.header + textContent.firstHeader + textContent.footer + textContent.lastFooter).forEach { row ->
-                                    row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) }
-                                }
+                                is Table -> textContent.allRows()
+                                    .forEach { row -> row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) } }
 
                                 is DocumentObjectRef -> {
                                     val documentObject = documentObjectRepository.findOrFail(textContent.id)
@@ -213,23 +222,21 @@ abstract class InspireDocumentObjectBuilder(
         )
     }
 
-    protected open fun buildSuccessRowWrappedInConditionRow(
+    protected data class WrappedRow(val outer: GeneralRowSet, val inner: GeneralRowSet)
+
+    protected open fun buildConditionRow(
         layout: Layout,
         variableStructure: VariableStructure,
         rule: DisplayRule,
-        multipleRowSet: GeneralRowSet
-    ): GeneralRowSet {
+    ): WrappedRow {
         val successRow = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
-
-        multipleRowSet.addRowSet(
-            layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
+        val conditionRow = layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION)
+            .addLineForSelectByCondition(
                 layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
                     .setScript(rule.toScript(layout, variableStructure, variableRepository::findOrFail)),
                 successRow
             )
-        )
-
-        return successRow
+        return WrappedRow(conditionRow, successRow)
     }
 
     fun buildStyleLayoutDelta(textStyles: List<TextStyle>, paragraphStyles: List<ParagraphStyle>): String {
@@ -299,6 +306,7 @@ abstract class InspireDocumentObjectBuilder(
                 is DocumentObjectRef -> flowModels.add(DocumentObject(contentPart))
                 is AttachmentRef -> flowModels.add(Attachment(contentPart))
                 is Area -> mutableContent.addAll(idx + 1, contentPart.content.resolveAliases(imageRepository, attachmentRepository))
+                is RepeatedContent -> flowModels.add(RepeatedContent(contentPart))
                 is FirstMatch -> flowModels.add(FirstMatch(contentPart))
                 is SelectByLanguage -> flowModels.add(SelectByLanguage(contentPart))
             }
@@ -340,6 +348,16 @@ abstract class InspireDocumentObjectBuilder(
                         buildSelectByLanguage(layout, variableStructure, it.model, name, languages)
                     }
                 }
+
+                is FlowModel.RepeatedContent -> {
+                    if (flowName == null) {
+                        buildRepeatedContent(it.model, layout, variableStructure, null, languages)
+                    } else {
+                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
+                        flowSuffix++
+                        buildRepeatedContent(it.model, layout, variableStructure, name, languages)
+                    }
+                }
             }
         }
     }
@@ -350,6 +368,7 @@ abstract class InspireDocumentObjectBuilder(
         data class Attachment(val ref: AttachmentRef) : FlowModel
         data class FirstMatch(val model: com.quadient.migration.api.dto.migrationmodel.FirstMatch) : FlowModel
         data class SelectByLanguage(val model: com.quadient.migration.api.dto.migrationmodel.SelectByLanguage) : FlowModel
+        data class RepeatedContent(val model: com.quadient.migration.api.dto.migrationmodel.RepeatedContent) : FlowModel
     }
 
     protected fun List<Flow>.toSingleFlow(
@@ -406,8 +425,10 @@ abstract class InspireDocumentObjectBuilder(
                 languageVariable = null,
             )
 
-        val normalizedVariablePaths = variableStructureModel.structure.map { (_, variablePathData) ->
-            removeDataFromVariablePath(variablePathData.path)
+        val normalizedVariablePaths = variableStructureModel.structure.map { (variableId, variablePathData) ->
+            val literalPath = variablePathData.path.resolve(variableStructureModel, variableRepository::findOrFail)
+                ?: error("Variable '$variableId' referenced as array path has no resolvable literal path in structure")
+            removeDataFromVariablePath(literalPath)
         }.filter { it.isNotBlank() }
 
         val variableTree = buildVariableTree(normalizedVariablePaths)
@@ -883,11 +904,12 @@ abstract class InspireDocumentObjectBuilder(
         val variableModel = variableRepository.findOrFail(ref.id)
 
         val variablePathData = variableStructure.structure[ref.id]
-        if (variablePathData == null || variablePathData.path.isBlank()) {
+        val resolvedPath = variablePathData?.path?.resolve(variableStructure, variableRepository::findOrFail)?.takeIf { it.isNotBlank() }
+        if (resolvedPath.isNullOrBlank()) {
             this.appendText("""$${variablePathData?.name ?: variableModel.nameOrId()}$""")
         } else {
             val variableName = variablePathData.name ?: variableModel.nameOrId()
-            this.appendVariable(getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path))
+            this.appendVariable(getOrCreateVariable(layout.data, variableName, variableModel, resolvedPath))
         }
 
         return this
@@ -997,57 +1019,192 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun List<Table.Row>.buildRows(layout: Layout, rowset: GeneralRowSet, variableStructure: VariableStructure, languages: List<String>) {
-        this.forEach { rowModel ->
-            val row = if (rowModel.displayRuleRef == null) {
-                layout.addRowSet().setType(RowSet.Type.SINGLE_ROW).also { rowset.addRowSet(it) }
-            } else {
-                val displayRule = displayRuleRepository.findOrFail(rowModel.displayRuleRef.id)
+    private fun List<TableRow>.buildRowSetGroup(
+        layout: Layout, variableStructure: VariableStructure, languages: List<String>
+    ): GeneralRowSet? {
+        fun TableRow.toRowSet(): GeneralRowSet? = when (this) {
+            is Table.Row -> buildSingleRowSet(this, layout, variableStructure, languages)
+            is Table.RepeatedRow -> buildRepeatedRowSet(this, layout, variableStructure, languages)
+        }
 
-                buildSuccessRowWrappedInConditionRow(
-                    layout, variableStructure, displayRule, rowset
-                )
+        if (isEmpty()) return null
+        if (size == 1) return first().toRowSet()
+        return layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS).also { multipleRowSet ->
+            forEach { tableRow -> tableRow.toRowSet()?.let { multipleRowSet.addRowSet(it) } }
+        }
+    }
+
+    private fun buildSingleRowSet(
+        rowModel: Table.Row, layout: Layout, variableStructure: VariableStructure, languages: List<String>
+    ): GeneralRowSet {
+        val (outer, inner) = if (rowModel.displayRuleRef == null) {
+            val rowSet = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
+            WrappedRow(rowSet, rowSet)
+        } else {
+            val displayRule = displayRuleRepository.findOrFail(rowModel.displayRuleRef.id)
+            buildConditionRow(layout, variableStructure, displayRule)
+        }
+
+        rowModel.cells.forEach { cellModel ->
+            val cellContentFlow = buildDocumentContentAsSingleFlow(
+                layout, variableStructure, cellModel.content, null, null, languages
+            )
+            val cellFlow =
+                if (cellContentFlow.type === Flow.Type.SELECT_BY_INLINE_CONDITION || cellContentFlow.type === Flow.Type.SELECT_BY_CONDITION) {
+                layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
+                    .setWebEditingType(Flow.WebEditingType.SECTION)
+                    .also { it.addParagraph().addText().appendFlow(cellContentFlow) }
+            } else cellContentFlow
+
+            val cell = layout.addCell().setSpanLeft(cellModel.mergeLeft).setSpanUp(cellModel.mergeUp)
+                .setFlowToNextPage(true).setFlow(cellFlow)
+
+            when (cellModel.height) {
+                is CellHeight.Custom -> {
+                    cell.setType(Cell.CellType.CUSTOM)
+                        .setMinHeight(cellModel.height.minHeight.toMeters())
+                        .setMaxHeight(cellModel.height.maxHeight.toMeters())
+                }
+                is CellHeight.Fixed -> {
+                    cell.setType(Cell.CellType.FIXED_HEIGHT)
+                        .setFixedHeight(cellModel.height.size.toMeters())
+                }
+                null -> {}
             }
 
-            rowModel.cells.forEach { cellModel ->
-                val cellContentFlow = buildDocumentContentAsSingleFlow(
-                    layout, variableStructure, cellModel.content, null, null, languages
-                )
-                val cellFlow =
-                    if (cellContentFlow.type === Flow.Type.SELECT_BY_INLINE_CONDITION || cellContentFlow.type === Flow.Type.SELECT_BY_CONDITION) {
-                    layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
-                        .setWebEditingType(Flow.WebEditingType.SECTION)
-                        .also { it.addParagraph().addText().appendFlow(cellContentFlow) }
-                } else cellContentFlow
+            when (cellModel.alignment) {
+                CellAlignment.Top -> cell.setAlignment(Cell.CellVerticalAlignment.TOP)
+                CellAlignment.Center -> cell.setAlignment(Cell.CellVerticalAlignment.CENTER)
+                CellAlignment.Bottom -> cell.setAlignment(Cell.CellVerticalAlignment.BOTTOM)
+                null -> {}
+            }
 
-                val cell = layout.addCell().setSpanLeft(cellModel.mergeLeft).setSpanUp(cellModel.mergeUp)
-                    .setFlowToNextPage(true).setFlow(cellFlow)
+            buildTableBorderStyle(cellModel.border, layout, cell::setBorderStyle)
 
-                when (cellModel.height) {
-                    is CellHeight.Custom -> {
-                        cell.setType(Cell.CellType.CUSTOM)
-                            .setMinHeight(cellModel.height.minHeight.toMeters())
-                            .setMaxHeight(cellModel.height.maxHeight.toMeters())
-                    }
-                    is CellHeight.Fixed -> {
-                        cell.setType(Cell.CellType.FIXED_HEIGHT)
-                            .setFixedHeight(cellModel.height.size.toMeters())
-                    }
-                    null -> {}
-                }
+            inner.addCell(cell)
+        }
 
-                when (cellModel.alignment) {
-                    CellAlignment.Top -> cell.setAlignment(Cell.CellVerticalAlignment.TOP)
-                    CellAlignment.Center -> cell.setAlignment(Cell.CellVerticalAlignment.CENTER)
-                    CellAlignment.Bottom -> cell.setAlignment(Cell.CellVerticalAlignment.BOTTOM)
-                    null -> {}
-                }
+        return outer
+    }
 
-                buildTableBorderStyle(cellModel.border, layout, cell::setBorderStyle)
+    private fun buildRepeatedRowSet(
+        repeatedRow: Table.RepeatedRow,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        languages: List<String>
+    ): GeneralRowSet? {
+        val (varName, varPath) = resolveVariableNameAndPath(repeatedRow.variable, variableStructure)
+            ?: return buildUnmappedRepeatedRowFallback(repeatedRow, layout, variableStructure, languages)
+        val arrayVariable = getVariable(layout.data as DataImpl, varName, varPath)
+            ?: return buildUnmappedRepeatedRowFallback(repeatedRow, layout, variableStructure, languages)
+        require(arrayVariable.nodeOptionality == NodeOptionality.ARRAY) {
+            "Variable '$varName' at '$varPath' used in repeated row is not an Array variable"
+        }
 
-                row.addCell(cell)
+        val repeatedRowSet = layout.addRowSet().setType(RowSet.Type.REPEATED)
+        if (repeatedRow.rows.size > 1) {
+            val multipleRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
+            repeatedRowSet.addRowSet(multipleRowSet)
+            repeatedRow.rows.forEach { multipleRowSet.addRowSet(buildSingleRowSet(it, layout, variableStructure, languages)) }
+        } else {
+            repeatedRow.rows.forEach { repeatedRowSet.addRowSet(buildSingleRowSet(it, layout, variableStructure, languages)) }
+        }
+        repeatedRowSet.setVariable(arrayVariable)
+
+        val layoutRoot = layout.root ?: layout.addRoot()
+        layoutRoot.addLockedWebNode(repeatedRowSet)
+
+        return repeatedRowSet
+    }
+
+    private fun buildUnmappedRepeatedRowFallback(
+        repeatedRow: Table.RepeatedRow, layout: Layout, variableStructure: VariableStructure, languages: List<String>
+    ): GeneralRowSet? {
+        val varName = getVariableNameFromPath(repeatedRow.variable, variableStructure)
+        val warning = Paragraph("<repeated by unmapped \$$varName\$>")
+
+        val rows = repeatedRow.rows
+        val rowsWithWarning = rows.firstOrNull()?.let { firstRow ->
+            firstRow.cells.firstOrNull()?.let { firstCell ->
+                val cellWithWarning = firstCell.copy(content = listOf(warning) + firstCell.content)
+                listOf(firstRow.copy(cells = listOf(cellWithWarning) + firstRow.cells.drop(1))) + rows.drop(1)
+            }
+        } ?: rows
+
+        return rowsWithWarning.buildRowSetGroup(layout, variableStructure, languages)
+    }
+
+    private fun getVariableNameFromPath(
+        variablePath: VariablePath, variableStructure: VariableStructure
+    ): String = when (variablePath) {
+        is LiteralPath -> variablePath.path
+        is VariableRefPath -> variableStructure.structure[variablePath.variableId]?.name
+            ?: variableRepository.find(variablePath.variableId)?.nameOrId()
+            ?: variablePath.variableId
+    }
+
+    private fun buildRepeatedContent(
+        model: RepeatedContent,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        flowName: String?,
+        languages: List<String>,
+    ): Flow {
+        val (varName, varPath) = resolveVariableNameAndPath(model.variablePath, variableStructure)
+            ?: return buildUnmappedRepeatedContentFallback(model, layout, variableStructure, languages)
+        val arrayVariable = getVariable(layout.data as DataImpl, varName, varPath)
+            ?: return buildUnmappedRepeatedContentFallback(model, layout, variableStructure, languages)
+        require(arrayVariable.nodeOptionality == NodeOptionality.ARRAY) {
+            "Variable '$varName' at '$varPath' used in repeated content is not an Array variable"
+        }
+
+        val innerFlows = buildDocumentContentAsFlows(layout, variableStructure, model.content, languages = languages)
+        return if (innerFlows.size == 1 && innerFlows[0].type == Flow.Type.SIMPLE) {
+            val repeatedFlow = innerFlows[0].setType(Flow.Type.REPEATED).setVariable(arrayVariable)
+            flowName?.let { repeatedFlow.setName(it) }
+            repeatedFlow
+        } else {
+            val repeatedFlow =
+                layout.addFlow().setType(Flow.Type.REPEATED).setVariable(arrayVariable).setSectionFlow(true)
+                    .setWebEditingType(Flow.WebEditingType.SECTION)
+            flowName?.let { repeatedFlow.setName(it) }
+            val repeatedFlowText = repeatedFlow.addParagraph().addText()
+            innerFlows.forEach { repeatedFlowText.appendFlow(it) }
+            repeatedFlow
+        }
+    }
+
+    private fun buildUnmappedRepeatedContentFallback(
+        model: RepeatedContent,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        languages: List<String>,
+    ): Flow {
+        val varName = getVariableNameFromPath(model.variablePath, variableStructure)
+        val warning = Paragraph("<repeated by unmapped $$varName$>")
+        return buildDocumentContentAsSingleFlow(
+            layout, variableStructure, listOf(warning) + model.content, languages = languages
+        )
+    }
+
+    private fun resolveVariableNameAndPath(
+        variablePath: VariablePath, variableStructure: VariableStructure
+    ): Pair<String, String>? {
+        val fullPath = when (variablePath) {
+            is LiteralPath -> variablePath.path
+            is VariableRefPath -> {
+                val parentVarPathData = variableStructure.structure[variablePath.variableId] ?: return null
+                val parentVarName =
+                    parentVarPathData.name ?: variableRepository.findOrFail(variablePath.variableId).nameOrId()
+                val parentVarPath =
+                    parentVarPathData.path.resolve(variableStructure, variableRepository::findOrFail) ?: return null
+                "$parentVarPath.$parentVarName"
             }
         }
+        val normalized = removeDataFromVariablePath(removeValueFromVariablePath(fullPath))
+        if (normalized.isBlank()) return null
+        val parts = normalized.split(".")
+        return parts.last() to (if (parts.size > 1) "Data.${parts.dropLast(1).joinToString(".")}" else "Data")
     }
 
     fun buildTable(
@@ -1058,7 +1215,11 @@ abstract class InspireDocumentObjectBuilder(
         if (model.columnWidths.isNotEmpty()) {
             model.columnWidths.forEach { table.addColumn(it.minWidth.toMeters(), it.percentWidth) }
         } else {
-            val numberOfColumns = model.rows.firstOrNull()?.cells?.size ?: 0
+            val numberOfColumns = when (val firstRow = model.rows.firstOrNull()) {
+                is Table.Row -> firstRow.cells.size
+                is Table.RepeatedRow -> firstRow.rows.firstOrNull()?.cells?.size ?: 0
+                null -> 0
+            }
             repeat(numberOfColumns) { table.addColumn() }
         }
 
@@ -1087,39 +1248,14 @@ abstract class InspireDocumentObjectBuilder(
             val headerFooterRowSet = layout.addRowSetHeaderFooter()
             table.setRowSet(headerFooterRowSet)
 
-            if (model.header.isNotEmpty()) {
-                val headerRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-                headerFooterRowSet.setHeader(headerRowSet)
-                model.header.buildRows(layout, headerRowSet, variableStructure, languages)
-            }
+            model.header.buildRowSetGroup(layout, variableStructure, languages)?.let { headerFooterRowSet.setHeader(it) }
+            model.firstHeader.buildRowSetGroup(layout, variableStructure, languages)?.let { headerFooterRowSet.setFirstHeader(it) }
+            model.footer.buildRowSetGroup(layout, variableStructure, languages)?.let { headerFooterRowSet.setFooter(it) }
+            model.lastFooter.buildRowSetGroup(layout, variableStructure, languages)?.let { headerFooterRowSet.setLastFooter(it) }
 
-            if (model.firstHeader.isNotEmpty()) {
-                val firstHeaderRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-                headerFooterRowSet.setFirstHeader(firstHeaderRowSet)
-                model.firstHeader.buildRows(layout, firstHeaderRowSet, variableStructure, languages)
-            }
-
-            if (model.footer.isNotEmpty()) {
-                val footerRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-                headerFooterRowSet.setFooter(footerRowSet)
-                model.footer.buildRows(layout, footerRowSet, variableStructure, languages)
-            }
-
-            if (model.lastFooter.isNotEmpty()) {
-                val lastFooterRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-                headerFooterRowSet.setLastFooter(lastFooterRowSet)
-                model.lastFooter.buildRows(layout, lastFooterRowSet, variableStructure, languages)
-            }
-
-            val bodyRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-            headerFooterRowSet.setBody(bodyRowSet)
-
-            model.rows.buildRows(layout, bodyRowSet, variableStructure, languages)
+            model.rows.buildRowSetGroup(layout, variableStructure, languages)?.let { headerFooterRowSet.setBody(it) }
         } else {
-            val rowset = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
-            table.setRowSet(rowset)
-
-            model.rows.buildRows(layout, rowset, variableStructure, languages)
+            model.rows.buildRowSetGroup(layout, variableStructure, languages)?.let { table.setRowSet(it) }
         }
 
         when (model.pdfTaggingRule) {
@@ -1298,11 +1434,12 @@ abstract class InspireDocumentObjectBuilder(
                     is VariableRef -> {
                         val variableModel = findVar(ref.id)
                         val variablePathData = variableStructure.structure[ref.id]
-                        if (variablePathData != null && variablePathData.path.isNotBlank()) {
+                        val resolvedPath = variablePathData?.path?.resolve(variableStructure, findVar)
+                        if (!resolvedPath.isNullOrBlank()) {
                             val variableName = variablePathData.name ?: variableModel.nameOrId()
 
                             getOrCreateVariable(
-                                layout.data, variableName, variableModel, variablePathData.path
+                                layout.data, variableName, variableModel, resolvedPath
                             )
                         }
                     }
@@ -1408,6 +1545,27 @@ fun Literal.toScript(
     }
 }
 
+internal fun VariablePath.resolve(variableStructure: VariableStructure, findVariable: (String) -> Variable): String? {
+    return when (this) {
+        is LiteralPath -> this.path
+        is VariableRefPath -> {
+            val parentVarPathData = variableStructure.structure[this.variableId] ?: return null
+            val parentVarPath =
+                parentVarPathData.path.resolve(variableStructure, findVariable)?.takeIf { it.isNotBlank() }
+                    ?: return null
+
+            val parentVar = findVariable(this.variableId)
+            val parentVarName = parentVarPathData.name ?: parentVar.nameOrId()
+
+            when (parentVar.dataType) {
+                DataTypeModel.Array -> "$parentVarPath.$parentVarName.Value"
+                DataTypeModel.SubTree -> "$parentVarPath.$parentVarName"
+                else -> error("Variable '${this.variableId}' of type ${parentVar.dataType} is used in path. Only Array and Subtree can be referenced.")
+            }
+        }
+    }
+}
+
 private fun variableStringContentToScript(
     variableStringContent: List<VariableStringContent>,
     layout: Layout,
@@ -1434,16 +1592,17 @@ fun variableToScript(
 ): ScriptResult {
     val variableModel = findVar(id)
     val variablePathData = variableStructure.structure[id]
-    return if (variablePathData == null || variablePathData.path.isBlank()) {
+    val resolvedPath = variablePathData?.path?.resolve(variableStructure, findVar)?.takeIf { it.isNotBlank() }
+    return if (resolvedPath.isNullOrBlank()) {
         Failure(variablePathData?.name ?: variableModel.nameOrId())
     } else {
         val variableName = variablePathData.name ?: variableModel.nameOrId()
 
         if (layout != null) {
-            getOrCreateVariable(layout.data, variableName, variableModel, variablePathData.path)
+            getOrCreateVariable(layout.data, variableName, variableModel, resolvedPath)
         }
 
-        Success((variablePathData.path.split(".") + variableName).joinToString(".") { pathPart ->
+        Success((resolvedPath.split(".") + variableName).joinToString(".") { pathPart ->
             when (pathPart.lowercase()) {
                 "value" -> "Current"
                 "data" -> "DATA"
@@ -1470,9 +1629,8 @@ fun WfdXmlVariable.setValueIfAvailable(variableModel: Variable): WfdXmlVariable 
             DataTypeModel.Integer -> this.setValue(defaultVal.toInt())
             DataTypeModel.Integer64 -> this.setValue(defaultVal.toLong())
             DataTypeModel.Double, DataTypeModel.Currency -> this.setValue(defaultVal.toDouble())
-            DataTypeModel.Boolean -> this.setValue(
-                defaultVal.lowercase().toBooleanStrict()
-            )
+            DataTypeModel.Boolean -> this.setValue(defaultVal.lowercase().toBooleanStrict())
+            DataTypeModel.Array, DataTypeModel.SubTree -> {}
         }
     }
 

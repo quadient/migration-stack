@@ -6,6 +6,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.example.common.mapping.VariablesExport
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.VariablePathData
+import com.quadient.migration.shared.VariableRefPath
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
@@ -27,11 +28,18 @@ class VariablesMappingExportTest {
                 new Variable("empty", null, [], new CustomFieldMap([:]), DataType.String, null),
                 new Variable("full", "full name", ["foo", "bar"], new CustomFieldMap([foo: "bar", bar: "baz"]), DataType.Boolean, "default"),
                 new Variable("overridden", "full name", ["foo", "bar"], new CustomFieldMap([foo: "bar", bar: "baz"]), DataType.Boolean, "default"),
+                new Variable("refVar", null, [], new CustomFieldMap([:]), DataType.String, null),
         ])
         when(migration.mappingRepository.getVariableMapping(any())).thenReturn(new MappingItem.Variable(null, null))
         when(migration.mappingRepository.getVariableMapping("overridden")).thenReturn(new MappingItem.Variable(null, DataType.Double))
-        when(migration.variableStructureRepository.find("test")).thenReturn(new VariableStructure("struct", "", [], new CustomFieldMap([:]), ["overridden": new VariablePathData("override/path", "overridden name")], new VariableRef("full")))
-        when(migration.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure("", ["overridden": new VariablePathData("override/path", "overridden name")], new VariableRef("full")))
+        when(migration.variableStructureRepository.find("test")).thenReturn(new VariableStructure("struct", "", [], new CustomFieldMap([:]),
+                ["overridden": new VariablePathData("override/path", "overridden name"),
+                 "refVar"    : new VariablePathData(new VariableRefPath("full"), "ref name")],
+                new VariableRef("full")))
+        when(migration.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure("",
+                ["overridden": new VariablePathData("override/path", "overridden name"),
+                 "refVar"    : new VariablePathData(new VariableRefPath("full"), "ref name")],
+                new VariableRef("full")))
 
         VariablesExport.run(migration, mappingFile)
 
@@ -42,7 +50,7 @@ class VariablesMappingExportTest {
 empty,,String,,,,[]
 full,full name,Boolean,,,true,[foo; bar]
 overridden,full name,Boolean,override/path,overridden name,,[foo; bar]
-"""
+refVar,,String,@full,ref name,,[]\n"""
 
          Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
     }

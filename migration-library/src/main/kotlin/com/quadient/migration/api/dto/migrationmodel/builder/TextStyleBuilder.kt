@@ -21,6 +21,7 @@ class TextStyleBuilder(id: String) : DtoBuilderBase<TextStyle, TextStyleBuilder>
 
     fun styleRef(id: String) = apply { this.targetId = TextStyleRef(id) }
     fun styleRef(ref: TextStyleRef) = apply { this.targetId = ref }
+    fun styleRef(style: TextStyle) = apply { this.targetId = TextStyleRef(style.id) }
 
     override fun build(): TextStyle {
         return TextStyle(

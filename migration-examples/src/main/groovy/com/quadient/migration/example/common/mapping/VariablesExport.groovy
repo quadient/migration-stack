@@ -11,6 +11,8 @@ import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
+import com.quadient.migration.shared.LiteralPath
+import com.quadient.migration.shared.VariableRefPath
 
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -90,7 +92,7 @@ static void run(Migration migration, Path filePath) {
         for (variable in variables) {
             def variablePathData = existingStructure?.structure?.get(variable.id)
             def variableName = variablePathData?.name
-            def inspirePath = variablePathData?.path
+            def inspirePath = serializeVariablePath(variablePathData?.path)
 
             writer.write("${Csv.serialize(variable.id)},")
             writer.write("${Csv.serialize(variable.name)},")
@@ -106,6 +108,13 @@ static void run(Migration migration, Path filePath) {
             writer.writeLine("")
         }
     }
+}
+
+static String serializeVariablePath(path) {
+    if (path == null) return null
+    if (path instanceof VariableRefPath) return "@${path.variableId}"
+    if (path instanceof LiteralPath) return path.path
+    return path.toString()
 }
 
 static String constructDefaultId(List<VariableStructure> variableStructures) {

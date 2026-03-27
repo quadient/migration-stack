@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class DataType {
-    DateTime, Integer, Integer64, Double, String, Boolean, Currency;
+    DateTime, Integer, Integer64, Double, String, Boolean, Currency, Array, SubTree;
 
     fun toInteractiveDataType(): String {
         return when (this) {
@@ -15,6 +15,8 @@ enum class DataType {
             String -> "String"
             Boolean -> "Bool"
             Currency -> "Currency"
+            SubTree -> "SubTree"
+            Array -> "Array"
         }
     }
 }

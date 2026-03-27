@@ -8,7 +8,6 @@ package com.quadient.migration.example.example
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
@@ -16,6 +15,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuild
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
@@ -36,7 +36,6 @@ import com.quadient.migration.shared.Size
 import java.time.Instant
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
-import static com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 
 Migration migration = initMigration(this.binding)
 
@@ -50,89 +49,102 @@ def logoHeight = Size.ofMillimeters(13)
 
 // Define variables to be used in the address and table
 def displayHeaderVariable = new VariableBuilder("displayHeader")
-    .defaultValue("true")
-    .dataType(DataType.Boolean).build()
+        .defaultValue("true")
+        .dataType(DataType.Boolean).build()
 def displayParagraphVariable = new VariableBuilder("displayParagraph")
-    .defaultValue("true")
-    .dataType(DataType.Boolean).build()
+        .defaultValue("true")
+        .dataType(DataType.Boolean).build()
 def displayLastSentenceVariable = new VariableBuilder("displayLastSentence")
-    .defaultValue("true")
-    .dataType(DataType.Boolean).build()
+        .defaultValue("true")
+        .dataType(DataType.Boolean).build()
 def nameVariable = new VariableBuilder("name")
-    .defaultValue("John Doe")
-    .dataType(DataType.String).build()
+        .defaultValue("John Doe")
+        .dataType(DataType.String).build()
 def addressVariable = new VariableBuilder("address")
-    .defaultValue("123 Main St")
-    .dataType(DataType.String).build()
+        .defaultValue("123 Main St")
+        .dataType(DataType.String).build()
 def cityVariable = new VariableBuilder("city")
-    .defaultValue("Anytown")
-    .dataType(DataType.String).build()
+        .defaultValue("Anytown")
+        .dataType(DataType.String).build()
 def stateVariable = new VariableBuilder("state")
-    .defaultValue("Canada")
-    .dataType(DataType.String).build()
+        .defaultValue("Canada")
+        .dataType(DataType.String).build()
+def jobNameVariable = new VariableBuilder("jobName")
+        .dataType(DataType.String).build()
+
+def addressSubtreeVariable = new VariableBuilder("addressSubtree").name("Address")
+        .dataType(DataType.SubTree).build()
+def clientsArrayVariable = new VariableBuilder("clientsArray").name("Clients")
+        .dataType(DataType.Array).build()
+def jobsArrayVariable = new VariableBuilder("jobsArray").name("jobs")
+        .dataType(DataType.Array).build()
 
 def variableStructure = new VariableStructureBuilder("variableStructure")
-        .addVariable(displayHeaderVariable.id, "Data.Clients.Value")
-        .addVariable(displayParagraphVariable.id, "Data.Clients.Value")
-        .addVariable(displayLastSentenceVariable.id, "Data.Clients.Value")
-        .addVariable(nameVariable.id, "Data.Clients.Value")
-        .addVariable(addressVariable.id, "Data.Clients.Value")
-        .addVariable(cityVariable.id, "Data.Clients.Value")
-        .addVariable(stateVariable.id, "Data.Clients.Value")
+        .addVariable(displayHeaderVariable.id, new VariableRef(clientsArrayVariable.id))
+        .addVariable(displayParagraphVariable.id, new VariableRef(clientsArrayVariable.id))
+        .addVariable(displayLastSentenceVariable.id, new VariableRef(clientsArrayVariable.id))
+        .addVariable(nameVariable.id, "Data.Clients.Value") // Literal path that works the same way as reference to clientsArrayVariable
+        .addVariable(addressVariable.id, new VariableRef(addressSubtreeVariable.id))
+        .addVariable(cityVariable.id, new VariableRef(addressSubtreeVariable.id))
+        .addVariable(stateVariable.id, "Data.Clients.Value.Address") // Literal path with another subtree level that works the same way as reference to addressSubtreeVariable
+        .addVariable(jobNameVariable.id, new VariableRef(jobsArrayVariable.id))
+        .addVariable(addressSubtreeVariable.id, new VariableRef(clientsArrayVariable.id))
+        .addVariable(clientsArrayVariable.id, "Data")
+        .addVariable(jobsArrayVariable.id, new VariableRef(clientsArrayVariable.id), "Jobs")
         .build()
 
 // Display displayHeaderRule to conditionally display the address.
 // Header is hidden if displayHeaderVariable is set to false
 def displayAddressRule = new DisplayRuleBuilder("displayAddressRule")
-    .internal(false)
-    .subject("External display rule")
-    .metadata("key") { it.string("value") }
-    .group {
-        it.operator(GroupOp.Or)
-        it.comparison { it.variable(nameVariable.id).notEquals().value("") }
-        it.comparison { it.variable(addressVariable.id).notEquals().value("") }
-        it.comparison { it.variable(cityVariable.id).notEquals().value("") }
-        it.comparison { it.variable(stateVariable.id).notEquals().value("") }
-    }.build()
+        .internal(false)
+        .subject("External display rule")
+        .metadata("key") { it.string("value") }
+        .group {
+            it.operator(GroupOp.Or)
+            it.comparison { it.variable(nameVariable.id).notEquals().value("") }
+            it.comparison { it.variable(addressVariable.id).notEquals().value("") }
+            it.comparison { it.variable(cityVariable.id).notEquals().value("") }
+            it.comparison { it.variable(stateVariable.id).notEquals().value("") }
+        }.build()
 
 def dummyDisplayHeaderRule = new DisplayRuleBuilder("dummyDisplayHeaderRule")
-    .comparison { it.value(true).equals().variable(displayHeaderVariable.id) }
-    .build()
+        .comparison { it.value(true).equals().variable(displayHeaderVariable.id) }
+        .build()
 
 def displayHeaderRule = new DisplayRuleBuilder("displayHeaderRule")
-    .targetId(dummyDisplayHeaderRule.id)
-    .build()
+        .targetId(dummyDisplayHeaderRule.id)
+        .build()
 
 def displayParagraphRule = new DisplayRuleBuilder("displayParagraphRule")
-    .comparison { it.value(true).equals().variable(displayParagraphVariable.id) }
-    .build()
+        .comparison { it.value(true).equals().variable(displayParagraphVariable.id) }
+        .build()
 
 def displayLastSentenceRule = new DisplayRuleBuilder("displayLastSentenceRule")
-    .comparison { it.value(true).equals().variable(displayLastSentenceVariable.id) }
-    .build()
+        .comparison { it.value(true).equals().variable(displayLastSentenceVariable.id) }
+        .build()
 
 def displayRuleStateCzechia = new DisplayRuleBuilder("displayRuleStateCzechia")
-    .comparison { it.value("Czechia").equals().variable(stateVariable.id) }
-    .build()
+        .comparison { it.value("Czechia").equals().variable(stateVariable.id) }
+        .build()
 
 def displayRuleStateFrance = new DisplayRuleBuilder("displayRuleStateFrance")
-    .comparison { it.value("France").equals().variable(stateVariable.id) }
-    .build()
+        .comparison { it.value("France").equals().variable(stateVariable.id) }
+        .build()
 
 // Define text and paragraph styles to be used in the document
 def normalStyle = new TextStyleBuilder("normalStyle")
-    .definition {
-        it.size(Size.ofPoints(10))
-        it.foregroundColor("#000000")
-    }
-    .build()
+        .definition {
+            it.size(Size.ofPoints(10))
+            it.foregroundColor("#000000")
+        }
+        .build()
 
 def headingStyle = new TextStyleBuilder("headingStyle")
-    .definition {
-        it.size(Size.ofPoints(12))
-        it.bold(true)
-    }
-    .build()
+        .definition {
+            it.size(Size.ofPoints(12))
+            it.bold(true)
+        }
+        .build()
 
 def headingParaStyle = new ParagraphStyleBuilder("headingParagraphStyle")
         .definition {
@@ -142,11 +154,22 @@ def headingParaStyle = new ParagraphStyleBuilder("headingParagraphStyle")
         .build()
 
 def paragraphStyle = new ParagraphStyleBuilder("paragraphStyle")
-    .definition {
-        it.firstLineIndent(Size.ofMillimeters(10))
-        it.spaceAfter(Size.ofMillimeters(5))
-    }
-    .build()
+        .definition {
+            it.firstLineIndent(Size.ofMillimeters(10))
+            it.spaceAfter(Size.ofMillimeters(5))
+        }
+        .build()
+
+def spaceParagraphStyle = new ParagraphStyleBuilder("spaceParagraphStyle")
+        .definition {
+            it.spaceAfter(Size.ofPoints(10))
+        }.build()
+
+def compactParagraphStyle = new ParagraphStyleBuilder("compactParagraphStyle")
+        .definition {
+            it.additionalLineSpacing(Size.ofMillimeters(1))
+        }
+        .build()
 
 // Define image to be used as a logo, base64 encoded image is hardcoded
 // here for simplicity but any valid image that is saved to the storage
@@ -155,12 +178,12 @@ def logoBase64 = "iVBORw0KGgoAAAANSUhEUgAAAV4AAACWCAIAAAAZhXcgAAAACXBIWXMAAC4jAA
 def logoImageName = "logo.png"
 migration.storage.write(logoImageName, logoBase64.decodeBase64())
 def logo = new ImageBuilder("logo")
-    .options(new ImageOptions(logoWidth, logoHeight))
-    .sourcePath(logoImageName)
-    .imageType(ImageType.Png)
-    .subject("Example logo")
-    .alternateText("Example logo image")
-    .build()
+        .options(new ImageOptions(logoWidth, logoHeight))
+        .sourcePath(logoImageName)
+        .imageType(ImageType.Png)
+        .subject("Example logo")
+        .alternateText("Example logo image")
+        .build()
 
 def ExampleAttachmentFile = this.class.getClassLoader().getResource('exampleResources/migrationModelExample/ExampleAttachment.pdf')
 migration.storage.write("exampleAttachment.pdf", ExampleAttachmentFile.bytes)
@@ -170,341 +193,356 @@ def exampleAttachment = new AttachmentBuilder("exampleAttachment").attachmentTyp
 
 migration.attachmentRepository.upsert(exampleAttachment)
 
-// Table containing some data with the first address row being optionally hidden
-// by using displayRuleRef to the display displayHeaderRule defined above.
-// The table also contains some merged cells and custom column widths.
-def table = table {
-    it.pdfTaggingRule(TablePdfTaggingRule.Table)
-    it.pdfAlternateText("Example key value table")
-    it.addColumnWidth(Size.ofMillimeters(10), 10)
-    it.addColumnWidth(Size.ofMillimeters(20), 20)
-    it.addColumnWidth(Size.ofMillimeters(98), 70)
-    it.minWidth(Size.ofMillimeters(11))
-    it.maxWidth(Size.ofMillimeters(1111))
-    it.percentWidth(100)
-    it.alignment(TableAlignment.Right)
+// Table that contains:
+// - column widths, min/max/percent width, alignment, PDF tagging
+// - a conditionally hidden first header row (displayRuleRef)
+// - merged cells and custom row heights on static data rows
+// - dynamically repeated rows (one per job) driven by jobsArrayVariable
+// - last footer row
 
-    def borderColor = Color.fromHex("#000000")
-    def borderWidth = Size.ofMillimeters(0.3)
-    def headerPadding = Size.ofMillimeters(2)
+def borderColor = Color.fromHex("#000000")
+def borderWidth = Size.ofMillimeters(0.3)
+def headerPadding = Size.ofMillimeters(2)
 
-    it.border { it.allBorders(borderColor, borderWidth) }
+def table = new TableBuilder()
+        .pdfTaggingRule(TablePdfTaggingRule.Table)
+        .pdfAlternateText("Example key value table")
+        .addColumnWidth(Size.ofMillimeters(10), 10)
+        .addColumnWidth(Size.ofMillimeters(20), 20)
+        .addColumnWidth(Size.ofMillimeters(98), 70)
+        .minWidth(Size.ofMillimeters(11))
+        .maxWidth(Size.ofMillimeters(1111))
+        .percentWidth(100)
+        .alignment(TableAlignment.Right)
+        .border { it.allBorders(borderColor, borderWidth) }
 
-    it.firstHeaderRow {
-        it.displayRuleRef = new DisplayRuleRef(displayHeaderRule.id)
-        it.cell {
-            it.border {
-                it.allBorders(borderColor, borderWidth)
-                it.padding(headerPadding)
-                it.paddingLeft(Size.ofMillimeters(0))
-                it.paddingRight(Size.ofMillimeters(0))
+        .addFirstHeaderRow {
+            it.displayRuleRef(displayHeaderRule.id)
+            it.addCell {
+                it.border {
+                    it.allBorders(borderColor, borderWidth)
+                    it.padding(headerPadding)
+                    it.paddingLeft(Size.ofMillimeters(0))
+                    it.paddingRight(Size.ofMillimeters(0))
+                }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("ID") } }
+                it.alignment(CellAlignment.Bottom)
             }
-            it.paragraph { it.string("ID") }
-            it.alignment(CellAlignment.Bottom)
-        }
-        it.cell {
-            it.border {
-                it.allBorders(borderColor, borderWidth)
-                it.padding(headerPadding)
-                it.paddingLeft(Size.ofMillimeters(0))
-                it.paddingRight(Size.ofMillimeters(0))
+            it.addCell() {
+                it.border {
+                    it.allBorders(borderColor, borderWidth)
+                    it.padding(headerPadding)
+                    it.paddingLeft(Size.ofMillimeters(0))
+                    it.paddingRight(Size.ofMillimeters(0))
+                }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("key") } }
             }
-            it.paragraph { it.string("key") }
-        }
-        it.cell {
-            it.border {
-                it.allBorders(borderColor, borderWidth)
-                it.padding(headerPadding)
-                it.paddingLeft(Size.ofMillimeters(0))
-                it.paddingRight(Size.ofMillimeters(0))
+            it.addCell {
+                it.border {
+                    it.allBorders(borderColor, borderWidth)
+                    it.padding(headerPadding)
+                    it.paddingLeft(Size.ofMillimeters(0))
+                    it.paddingRight(Size.ofMillimeters(0))
+                }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("value") } }
             }
-            it.paragraph { it.string("value") }
         }
-    }
 
-    it.row {
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.text { it.string("1") } }
-            it.heightFixed(Size.ofMillimeters(10))
+        .addRow {
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("1") } }
+                it.heightFixed(Size.ofMillimeters(10))
+            }
+            it.addCell {
+                // This cell is merged with the cell to the left on the same row
+                // and contains the value of the left cell.
+                it.mergeLeft = true
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("key1") } }
+                it.heightFixed(Size.ofMillimeters(20))
+            }
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("value1") } }
+                it.heightCustom(Size.ofMillimeters(10), Size.ofMillimeters(20))
+            }
         }
-        it.cell {
-            // This cell is merged with the cell to the left on the same row
-            // and contains the value of the left cell.
-            it.mergeLeft = true
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("key1") }
-            it.heightFixed(Size.ofMillimeters(20))
-        }
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("value1") }
-            it.heightCustom(Size.ofMillimeters(10), Size.ofMillimeters(20))
-        }
-    }
 
-    it.row {
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("2") }
+        .addRow {
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("2") } }
+            }
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("key2") } }
+            }
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("value2") } }
+            }
         }
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("key2") }
-        }
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("value2") }
-        }
-    }
 
-    it.row {
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("3") }
+        .addRepeatedRow(new VariableRef(jobsArrayVariable.id)) {
+            it.addRow {
+                it.addCell {
+                    it.border { it.allBorders(borderColor, borderWidth) }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("job") } }
+                }
+                it.addCell {
+                    it.border { it.allBorders(borderColor, borderWidth) }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Job name") } }
+                }
+                it.addCell {
+                    it.border { it.allBorders(borderColor, borderWidth) }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(jobNameVariable.id) } }
+                }
+            }
         }
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("key3") }
-        }
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("value3") }
-        }
-    }
 
-    it.lastFooterRow {
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("Total") }
+        .addLastFooterRow {
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Total") } }
+            }
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("2 keys") } }
+            }
+            it.addCell {
+                it.border { it.allBorders(borderColor, borderWidth) }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("") } }
+            }
         }
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("3 keys") }
+        .build()
+
+// A simple block demonstrating repeatedContent: iterates over jobsArrayVariable
+// and renders one paragraph per job, combining static text with the dynamic jobNameVariable.
+def jobListBlock = new DocumentObjectBuilder("jobList", DocumentObjectType.Block)
+        .internal(true)
+        .repeatedContent("Data.Clients.Value.Jobs") {
+            it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Job: ").variableRef(jobNameVariable.id) } }
         }
-        it.cell {
-            it.border { it.allBorders(borderColor, borderWidth) }
-            it.paragraph { it.string("") }
-        }
-    }
-}
+        .build()
 
 // Header of the document containing the recipient's information.
 // It uses the variables defined above to dynamically insert the
 // recipient's name, address, city, and state.
 // Simple paragraph is used because no styling is needed.
 def address = new DocumentObjectBuilder("address", DocumentObjectType.Block)
-    .paragraph { it.variableRef(nameVariable.id) }
-    .paragraph { it.variableRef(addressVariable.id) }
-    .paragraph { it.variableRef(cityVariable.id) }
-    .paragraph { it.variableRef(stateVariable.id) }
-    .variableStructureRef(variableStructure.id)
-    .build()
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(nameVariable.id) } }
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(addressVariable.id) } }
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(cityVariable.id) } }
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(stateVariable.id) } }
+        .variableStructureRef(variableStructure.id)
+        .build()
 
 // Footer of the document containing a signature.
 def signature = new DocumentObjectBuilder("signature", DocumentObjectType.Block)
-    .paragraph { it.string("Sincerely,") }
-    .paragraph { it.string("John Smith") }
-    .paragraph { it.string("CEO of Lorem ipsum") }
-    .variableStructureRef(variableStructure.id)
-    .build()
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Sincerely,") } }
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("John Smith") } }
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("CEO of Lorem ipsum") } }
+        .variableStructureRef(variableStructure.id)
+        .build()
 
 // Sample paragraph containing a heading using headingStyle style,
 // and body text with normalStyle, both defined above.
 def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Block)
 // No separate file will be created and the content will be inlined instead when block is internal.
-    .internal(true)
-    .paragraph {
-        it.text {
-            it.styleRef(headingStyle.id)
-            it.string("Lorem ipsum dolor sit amet\n")
+        .internal(true)
+        .paragraph {
+            it.text {
+                it.styleRef(headingStyle)
+                it.string("Lorem ipsum dolor sit amet\n")
+            }
+            it.styleRef(headingParaStyle)
         }
-        it.styleRef(headingParaStyle.id)
-    }
-    .paragraph {
-        it.styleRef(paragraphStyle.id)
-                .text {
-                    it.styleRef(normalStyle.id)
-                    it.firstMatch {
-                        it.case {
-                            it.paragraph {
-                                it.styleRef(paragraphStyle.id).text { it.string("Dobrý den") }
-                            }.displayRule(displayRuleStateCzechia.id)
-                        }.case {
-                            it.paragraph {
-                                it.styleRef(paragraphStyle.id).text { it.string("Bonjour") }
-                            }.displayRule(displayRuleStateFrance.id)
-                        }.defaultParagraph { it.styleRef(paragraphStyle.id).string("Good morning") }
+        .paragraph {
+            it.styleRef(paragraphStyle)
+                    .text {
+                        it.styleRef(normalStyle)
+                        it.firstMatch {
+                            it.case {
+                                it.paragraph {
+                                    it.styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Dobrý den") }
+                                }.displayRule(displayRuleStateCzechia.id)
+                            }.case {
+                                it.paragraph {
+                                    it.styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Bonjour") }
+                                }.displayRule(displayRuleStateFrance.id)
+                            }.defaultParagraph { it.styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Good morning") } }
+                        }
+                        it.string(", Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
                     }
-                    it.string(", Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
-                }
-    }
-    .build()
+        }
+        .build()
 
 // Second sample paragraph
 def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Block)
-    .internal(true)
-    .paragraph {
-        it.styleRef(new ParagraphStyleRef(paragraphStyle.id))
-            .text {
-                it.string("Donec non porttitor ipsum. Praesent et blandit nulla, quis ullamcorper enim. Curabitur nec rutrum justo. Nunc ac quam a ante consequat ullamcorper eget sit amet tortor. Donec convallis sagittis purus, a feugiat lacus tristique vitae. In a orci risus. Sed elit magna, vestibulum vitae orci sodales, consequat pharetra nisi. Vestibulum non scelerisque elit. Duis feugiat porttitor ante sit amet porta. Fusce at leo posuere, venenatis libero ut, varius dolor. Duis bibendum porta tincidunt.")
-            }
-            .text {
-                it.displayRuleRef(new DisplayRuleRef(displayLastSentenceRule.id)).string("Nulla id nulla odio.")
-            }
-    }
-    .build()
+        .internal(true)
+        .paragraph {
+            it.styleRef(paragraphStyle)
+                    .text {
+                        it.styleRef(normalStyle).string("Donec non porttitor ipsum. Praesent et blandit nulla, quis ullamcorper enim. Curabitur nec rutrum justo. Nunc ac quam a ante consequat ullamcorper eget sit amet tortor. Donec convallis sagittis purus, a feugiat lacus tristique vitae. In a orci risus. Sed elit magna, vestibulum vitae orci sodales, consequat pharetra nisi. Vestibulum non scelerisque elit. Duis feugiat porttitor ante sit amet porta. Fusce at leo posuere, venenatis libero ut, varius dolor. Duis bibendum porta tincidunt.")
+                    }
+                    .text {
+                        it.styleRef(normalStyle).displayRuleRef(new DisplayRuleRef(displayLastSentenceRule.id)).string("Nulla id nulla odio.")
+                    }
+        }
+        .build()
 
 // Paragraph that is displayed conditionally based on the value of the displayParagraphVariable.
 // This also demonstrates metadata usage - various metadata types can be attached
 // to document objects to provide additional information without affecting visible content.
 def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", DocumentObjectType.Block)
-    .internal(false)
-    .displayRuleRef(displayParagraphRule.id)
-    .subject("Conditional Paragraph")
-    .metadata("DocumentInfo") { mb ->
-        mb.string("Document type: Technical Example")
-        mb.string("Version: 1.0")
-    }
-    .metadata("Timestamps") { mb ->
-        mb.dateTime(Instant.parse("2024-01-15T10:30:00Z"))
-    }
-    .metadata("Statistics") { mb ->
-        mb.integer(42L)
-        mb.float(98.5)
-        mb.boolean(true)
-    }
-    .paragraph {
-        it.styleRef(new ParagraphStyleRef(paragraphStyle.id))
-                .text {
-                    it.string("Integer quis quam semper, accumsan neque at, pellentesque diam. Etiam in blandit dolor. Maecenas sit amet interdum augue, vel pellentesque erat. Suspendisse ut sem in justo rhoncus placerat vitae ut lacus. Etiam consequat bibendum justo ut posuere. Donec aliquam posuere nibh, vehicula pulvinar lectus dictum et. Nullam rhoncus ultrices ipsum et consectetur. Nam tincidunt id purus ac viverra. ")
-                }
-    }
-    .variableStructureRef(variableStructure.id)
-    .build()
+        .internal(false)
+        .displayRuleRef(displayParagraphRule.id)
+        .subject("Conditional Paragraph")
+        .metadata("DocumentInfo") { mb ->
+            mb.string("Document type: Technical Example")
+            mb.string("Version: 1.0")
+        }
+        .metadata("Timestamps") { mb -> mb.dateTime(Instant.parse("2024-01-15T10:30:00Z"))
+        }
+        .metadata("Statistics") { mb ->
+            mb.integer(42L)
+            mb.float(98.5)
+            mb.boolean(true)
+        }
+        .paragraph {
+            it.styleRef(paragraphStyle)
+                    .text {
+                        it.styleRef(normalStyle).string("Integer quis quam semper, accumsan neque at, pellentesque diam. Etiam in blandit dolor. Maecenas sit amet interdum augue, vel pellentesque erat. Suspendisse ut sem in justo rhoncus placerat vitae ut lacus. Etiam consequat bibendum justo ut posuere. Donec aliquam posuere nibh, vehicula pulvinar lectus dictum et. Nullam rhoncus ultrices ipsum et consectetur. Nam tincidunt id purus ac viverra. ")
+                    }
+        }
+        .variableStructureRef(variableStructure.id)
+        .build()
 
 def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
-    .internal(true)
-    .firstMatch { fb ->
-        fb.case { cb ->
-            cb.name("Czech Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                it.string("Nashledanou.")
-            }.build()).displayRule(displayRuleStateCzechia.id)
-        }.case { cb ->
-            cb.name("French Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                it.string("Au revoir.")
-            }.build()).displayRule(displayRuleStateFrance.id)
-        }.default(new ParagraphBuilder().styleRef(paragraphStyle.id).text { it.string("Goodbye.") }.build())
-    }.build()
+        .internal(true)
+        .firstMatch { fb ->
+            fb.case { cb ->
+                cb.name("Czech Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle).text {
+                    it.styleRef(normalStyle).string("Nashledanou.")
+                }.build()).displayRule(displayRuleStateCzechia.id)
+            }.case { cb ->
+                cb.name("French Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle).text {
+                    it.styleRef(normalStyle).string("Au revoir.")
+                }.build()).displayRule(displayRuleStateFrance.id)
+            }.default(new ParagraphBuilder().styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Goodbye.") }.build())
+        }.build()
 
 // SelectByLanguage demonstrates language-based content selection.
 def selectByLanguageBlock = new DocumentObjectBuilder("selectByLanguage", DocumentObjectType.Block)
-    .internal(true)
-    .selectByLanguage { sb ->
-        sb.case { cb ->
-            cb.language("en_us")
-            cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                it.string("This document was created in English.")
-            }.build())
-        }.case { cb ->
-            cb.language("de")
-            cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                it.string("Dieses Dokument wurde auf Deutsch erstellt.")
-            }.build())
-        }.case { cb ->
-            cb.language("es")
-            cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle.id).text {
-                it.string("Este documento fue creado en español.")
-            }.build())
-        }
-    }.build()
+        .internal(true)
+        .selectByLanguage { sb ->
+            sb.case { cb ->
+                cb.language("en_us")
+                cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle).text {
+                    it.styleRef(normalStyle).string("This document was created in English.")
+                }.build())
+            }.case { cb ->
+                cb.language("de")
+                cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle).text {
+                    it.styleRef(normalStyle).string("Dieses Dokument wurde auf Deutsch erstellt.")
+                }.build())
+            }.case { cb ->
+                cb.language("es")
+                cb.appendContent(new ParagraphBuilder().styleRef(paragraphStyle).text {
+                    it.styleRef(normalStyle).string("Este documento fue creado en español.")
+                }.build())
+            }
+        }.build()
 
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas
 def paragraph1TopMargin = topMargin + Size.ofCentimeters(2)
 def signatureTopMargin = pageHeight - Size.ofCentimeters(3)
 def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
-    .options(new PageOptions(pageWidth, pageHeight))
-    .area {
-        it.position {
-            it.left(leftMargin)
-            it.top(topMargin)
-            it.width(contentWidth)
-            it.height(Size.ofCentimeters(2))
-        }
-            .documentObjectRef(address.id, displayAddressRule.id)
-            .interactiveFlowName("Def.InteractiveFlow0")
-    }
-    .area {
-        it.position {
-            it.left(leftMargin + contentWidth - logoWidth)
-            it.top(topMargin)
-            it.width(logoWidth)
-            it.height(logoHeight)
-        }.imageRef(logo.id)
-    }
-    .area {
-        it.position {
-            it.left(leftMargin)
-            it.top(paragraph1TopMargin)
-            it.width(contentWidth)
-            it.height(pageHeight - Size.ofCentimeters(6))
-        }
-            .documentObjectRef(paragraph1.id)
-            .documentObjectRef(paragraph2.id)
-            .paragraph { it.styleRef(paragraphStyle.id).text { it.content(table) } }
-            .documentObjectRef(conditionalParagraph.id)
-            .documentObjectRef(firstMatchBlock.id)
-            .documentObjectRef(selectByLanguageBlock.id)
-            .paragraph {
-                it.styleRef(paragraphStyle.id).text {
-                    it.styleRef(normalStyle.id)
-                            .string("For more information visit ")
-                            .hyperlink("https://github.com/quadient/migration-stack", "Migration Stack GitHub", "Migration Stack GitHub URL link")
-                }
+        .options(new PageOptions(pageWidth, pageHeight))
+        .area {
+            it.position {
+                it.left(leftMargin)
+                it.top(topMargin)
+                it.width(contentWidth)
+                it.height(Size.ofCentimeters(2))
             }
-    }
-    .area {
-        it.position {
-            it.left(leftMargin)
-            it.top(signatureTopMargin)
-            it.width(contentWidth)
-            it.height(Size.ofCentimeters(2))
+                    .documentObjectRef(address.id, displayAddressRule.id)
+                    .interactiveFlowName("Def.InteractiveFlow1")
         }
-        .documentObjectRef(signature.id)
-        .attachmentRef(exampleAttachment.id)
-        .flowToNextPage(true)
-    }
-    .variableStructureRef(variableStructure.id)
-    .build()
+        .area {
+            it.position {
+                it.left(leftMargin + contentWidth - logoWidth)
+                it.top(topMargin)
+                it.width(logoWidth)
+                it.height(logoHeight)
+            }.imageRef(logo.id)
+        }
+        .area {
+            it.position {
+                it.left(leftMargin)
+                it.top(paragraph1TopMargin)
+                it.width(contentWidth)
+                it.height(pageHeight - Size.ofCentimeters(6))
+            }
+                    .documentObjectRef(paragraph1.id)
+                    .documentObjectRef(paragraph2.id)
+                    .appendContent(table)
+                    .paragraph { it.styleRef(spaceParagraphStyle) }
+                    .documentObjectRef(jobListBlock.id)
+                    .documentObjectRef(conditionalParagraph.id)
+                    .documentObjectRef(firstMatchBlock.id)
+                    .documentObjectRef(selectByLanguageBlock.id)
+                    .paragraph {
+                        it.styleRef(spaceParagraphStyle).text {
+                            it.styleRef(normalStyle)
+                                    .string("For more information visit ")
+                                    .hyperlink("https://github.com/quadient/migration-stack", "Migration Stack GitHub", "Migration Stack GitHub URL link")
+                        }
+                    }
+        }
+        .area {
+            it.position {
+                it.left(leftMargin)
+                it.top(signatureTopMargin)
+                it.width(contentWidth)
+                it.height(Size.ofCentimeters(2))
+            }
+                    .documentObjectRef(signature.id)
+                    .attachmentRef(exampleAttachment.id)
+                    .flowToNextPage(true)
+        }
+        .variableStructureRef(variableStructure.id)
+        .build()
 
 def template = new DocumentObjectBuilder("template", DocumentObjectType.Template)
-    .documentObjectRef(page.id)
-    .subject("Document example template")
-    .pdfMetadata {
-        it.author(new VariableRef(nameVariable.id))
-        it.title("Migration Model Example Template")
-        it.producer("Quadient")
-        it.keywords("Migration, Model, Example, Test, Import")
-        it.subject { it.string("Lorem ipsum dolor sit amet from: ").variableRef(cityVariable.id) }
-    }
-    .variableStructureRef(variableStructure.id)
-    .build()
+        .documentObjectRef(page.id)
+        .subject("Document example template")
+        .pdfMetadata {
+            it.author(new VariableRef(nameVariable.id))
+            it.title("Migration Model Example Template")
+            it.producer("Quadient")
+            it.keywords("Migration, Model, Example, Test, Import")
+            it.subject { it.string("Lorem ipsum dolor sit amet from: ").variableRef(cityVariable.id) }
+        }
+        .variableStructureRef(variableStructure.id)
+        .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {
     migration.textStyleRepository.upsert(item)
 }
-for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable]) {
+for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable, jobNameVariable, clientsArrayVariable, addressSubtreeVariable, jobsArrayVariable]) {
     migration.variableRepository.upsert(item)
 }
 for (item in [displayAddressRule, dummyDisplayHeaderRule, displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {
     migration.displayRuleRepository.upsert(item)
 }
-for (item in [paragraphStyle, headingParaStyle]) {
+for (item in [paragraphStyle, headingParaStyle, compactParagraphStyle, spaceParagraphStyle]) {
     migration.paragraphStyleRepository.upsert(item)
 }
 

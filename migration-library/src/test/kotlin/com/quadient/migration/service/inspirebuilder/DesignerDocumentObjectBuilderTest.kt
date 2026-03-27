@@ -68,7 +68,6 @@ import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldNotBeEmpty
 import com.quadient.migration.tools.shouldNotBeNull
-import io.mockk.InternalPlatformDsl.toArray
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -523,8 +522,7 @@ class DesignerDocumentObjectBuilderTest {
 
     private fun com.fasterxml.jackson.databind.JsonNode.assertRowContent(rowSetId: String, expectedText: String) {
         val rowSet = this["RowSet"].last { it["Id"].textValue() == rowSetId }
-        val contentRowSet = this["RowSet"].last { it["Id"].textValue() == rowSet["SubRowId"].textValue() }
-        val cell = this["Cell"].last { it["Id"].textValue() == contentRowSet["SubRowId"].textValue() }
+        val cell = this["Cell"].last { it["Id"].textValue() == rowSet["SubRowId"].textValue() }
         val flowId = cell["FlowId"].textValue()
         val flow = this["Flow"].last { it["Id"].textValue() == flowId }
         flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo(expectedText)

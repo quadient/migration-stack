@@ -6,6 +6,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.example.common.mapping.VariablesImport
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.VariablePathData
+import com.quadient.migration.shared.VariableRefPath
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -27,6 +28,7 @@ class VariablesMappingImportTest {
             unchangedPath,,String,oldPath,,[]
             withPath,,String,newPath,,[]
             withPathEmpty,,String,newPath,,[]
+            withVariableRef,,String,@referencedVar,,[]
             """.stripIndent()
         mappingFile.toFile().write(input)
 
@@ -39,6 +41,8 @@ class VariablesMappingImportTest {
         givenExistingMapping(migration, "withPath", null, null, "existingPath", null, mappings)
         givenExistingVariable(migration, "withPathEmpty", null, DataType.String, null)
         givenExistingMapping(migration, "withPathEmpty", null, null, "existingPath", null, mappings)
+        givenExistingVariable(migration, "withVariableRef", null, DataType.String, null)
+        givenExistingMapping(migration, "withVariableRef", null, null, null, null, mappings)
 
         VariablesImport.run(migration, mappingFile)
 
@@ -50,12 +54,15 @@ class VariablesMappingImportTest {
         verify(migration.mappingRepository, times(1)).applyVariableMapping("withPath")
         verify(migration.mappingRepository, times(1)).upsert("withPathEmpty", new MappingItem.Variable(null, DataType.String))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("withPathEmpty")
+        verify(migration.mappingRepository, times(1)).upsert("withVariableRef", new MappingItem.Variable(null, DataType.String))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("withVariableRef")
         verify(migration.mappingRepository, times(1)).upsert("test",
                 new MappingItem.VariableStructure(null,
-                        ["unchangedEmpty": new VariablePathData("", null),
-                         "unchangedPath" : new VariablePathData("oldPath", null),
-                         "withPath"      : new VariablePathData("newPath", null),
-                         "withPathEmpty" : new VariablePathData("newPath", null),]
+                        ["unchangedEmpty"  : new VariablePathData("", null),
+                         "unchangedPath"   : new VariablePathData("oldPath", null),
+                         "withPath"        : new VariablePathData("newPath", null),
+                         "withPathEmpty"   : new VariablePathData("newPath", null),
+                         "withVariableRef" : new VariablePathData(new VariableRefPath("referencedVar"), null),]
                         , null))
         verify(migration.mappingRepository, times(1)).applyVariableStructureMapping("test")
     }
