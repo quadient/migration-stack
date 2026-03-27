@@ -186,9 +186,12 @@ def exampleAttachment = new AttachmentBuilder("exampleAttachment").attachmentTyp
 
 migration.attachmentRepository.upsert(exampleAttachment)
 
-// Table containing some data with the first address row being optionally hidden
-// by using displayRuleRef to the display displayHeaderRule defined above.
-// The table also contains some merged cells and custom column widths.
+// Table that contains:
+// - column widths, min/max/percent width, alignment, PDF tagging
+// - a conditionally hidden first header row (displayRuleRef)
+// - merged cells and custom row heights on static data rows
+// - dynamically repeated rows (one per job) driven by jobsArrayVariable
+// - last footer row
 
 def borderColor = Color.fromHex("#000000")
 def borderWidth = Size.ofMillimeters(0.3)
@@ -274,6 +277,23 @@ def table = new TableBuilder()
             }
         }
 
+        .addRepeatedRow(new VariableRef(jobsArrayVariable.id)) {
+            it.addRow {
+                it.addCell {
+                    it.border { it.allBorders(borderColor, borderWidth) }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("job") } }
+                }
+                it.addCell {
+                    it.border { it.allBorders(borderColor, borderWidth) }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Job name") } }
+                }
+                it.addCell {
+                    it.border { it.allBorders(borderColor, borderWidth) }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(jobNameVariable.id) } }
+                }
+            }
+        }
+
         .addLastFooterRow {
             it.addCell {
                 it.border { it.allBorders(borderColor, borderWidth) }
@@ -290,21 +310,14 @@ def table = new TableBuilder()
         }
         .build()
 
-def tableWithRepeatedRow = new TableBuilder()
-        .addHeaderRow {
-            it.addCell {
-                it.border { it.allBorders(borderColor, borderWidth) }
-                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Job name") } }
-            }
+// A simple block demonstrating repeatedContent: iterates over jobsArrayVariable
+// and renders one paragraph per job, combining static text with the dynamic jobNameVariable.
+def jobListBlock = new DocumentObjectBuilder("jobList", DocumentObjectType.Block)
+        .internal(true)
+        .repeatedContent(new VariableRef(jobsArrayVariable.id)) {
+            it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Job: ").variableRef(jobNameVariable.id) } }
         }
-        .addRepeatedRow(new VariableRef(jobsArrayVariable.id)) {
-            it.addRow {
-                it.addCell {
-                    it.border { it.allBorders(borderColor, borderWidth) }
-                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(jobNameVariable.id) } }
-                }
-            }
-        }.build()
+        .build()
 
 // Header of the document containing the recipient's information.
 // It uses the variables defined above to dynamically insert the
@@ -470,7 +483,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                     .documentObjectRef(paragraph2.id)
                     .appendContent(table)
                     .paragraph { it.styleRef(spaceParagraphStyle) }
-                    .appendContent(tableWithRepeatedRow)
+                    .documentObjectRef(jobListBlock.id)
                     .documentObjectRef(conditionalParagraph.id)
                     .documentObjectRef(firstMatchBlock.id)
                     .documentObjectRef(selectByLanguageBlock.id)
@@ -510,7 +523,7 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
         .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {
