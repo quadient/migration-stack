@@ -2,6 +2,7 @@ package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.persistence.migrationmodel.RepeatedContentEntity
 import com.quadient.migration.shared.VariablePath
+import com.quadient.migration.shared.VariableRefPath
 
 data class RepeatedContent(
     val variablePath: VariablePath,
@@ -12,12 +13,11 @@ data class RepeatedContent(
         val contentRefs = content.flatMap {
             when (it) {
                 is RefValidatable -> it.collectRefs()
-                else -> emptyList()
             }
         }
 
         val variableRefs = when (val path = variablePath) {
-            is VariablePath.VariableRefPath -> listOf(VariableRef(path.variableId))
+            is VariableRefPath -> listOf(VariableRef(path.variableId))
             else -> emptyList()
         }
 
