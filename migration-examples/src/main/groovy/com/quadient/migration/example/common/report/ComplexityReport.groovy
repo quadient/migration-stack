@@ -10,6 +10,7 @@ import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.PathUtil
 import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.shared.VariableRefPath
 import groovy.transform.Field
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
@@ -28,6 +29,7 @@ def header = ["Id",
               "External objects",
               "External objects count",
               "Tables",
+              "Repeated content",
               "Variables",
               "Characters",
               "Words",
@@ -81,6 +83,7 @@ file.withWriter { writer ->
         writer.write("[${stats.usedExternalObjects.join(";")}],") // External objects count
         writer.write("$stats.externalObjectsCount,") // External objects count
         writer.write("$stats.tablesCount,") // Tables count
+        writer.write("$stats.repeatedContentCount,") // Repeated content count
         writer.write("$stats.variablesCount,") // Variables count
         writer.write("$stats.characterCount,") // Characters count
         writer.write("$stats.wordCount,") // Words count
@@ -115,6 +118,7 @@ class Stats {
     Set<String> usedTextStyles = new HashSet()
 
     Number tablesCount = 0
+    Number repeatedContentCount = 0
 
     Number wordCount = 0
     Number lineCount = 0
@@ -144,6 +148,7 @@ class Stats {
                 case ImageRef -> this.usedImages.add(content.id)
                 case AttachmentRef -> this.usedAttachments.add(content.id)
                 case Table -> this.collectTable(content)
+                case RepeatedContent -> this.collectRepeatedContent(content)
                 case Paragraph -> this.collectParagraph(content)
                 case Area -> this.collectContent(content.content)
                 case FirstMatch -> this.collectFirstMatch(content)
@@ -157,6 +162,14 @@ class Stats {
         for (langCase in selectByLanguage.cases) {
             this.collectContent(langCase.content)
         }
+    }
+
+    void collectRepeatedContent(RepeatedContent repeatedContent) {
+        this.repeatedContentCount++
+        if (repeatedContent.variablePath instanceof VariableRefPath) {
+            this.usedVariables.add((repeatedContent.variablePath as VariableRefPath).variableId)
+        }
+        this.collectContent(repeatedContent.content)
     }
 
     void collectFirstMatch(FirstMatch firstMatch) {
@@ -204,34 +217,29 @@ class Stats {
 
     void collectTable(Table table) {
         this.tablesCount++
-        for (row in table.rows) {
+        for (row in table.rows) { this.collectTableRow(row) }
+        for (row in table.header) { this.collectTableRow(row) }
+        for (row in table.footer) { this.collectTableRow(row) }
+        for (row in table.firstHeader) { this.collectTableRow(row) }
+        for (row in table.lastFooter) { this.collectTableRow(row) }
+    }
+
+    void collectTableRow(TableRow row) {
+        if (row instanceof Table.Row) {
             this.collectDisplayRule(row.displayRuleRef)
             for (cell in row.cells) {
                 this.collectContent(cell.content)
             }
-        }
-        for (row in table.header) {
-            this.collectDisplayRule(row.displayRuleRef)
-            for (cell in row.cells) {
-                this.collectContent(cell.content)
+        } else if (row instanceof Table.RepeatedRow) {
+            if (row.variable instanceof VariableRefPath) {
+                this.usedVariables.add((row.variable as VariableRefPath).variableId)
             }
-        }
-        for (row in table.footer) {
-            this.collectDisplayRule(row.displayRuleRef)
-            for (cell in row.cells) {
-                this.collectContent(cell.content)
-            }
-        }
-        for (row in table.firstHeader) {
-            this.collectDisplayRule(row.displayRuleRef)
-            for (cell in row.cells) {
-                this.collectContent(cell.content)
-            }
-        }
-        for (row in table.lastFooter) {
-            this.collectDisplayRule(row.displayRuleRef)
-            for (cell in row.cells) {
-                this.collectContent(cell.content)
+            this.repeatedContentCount++
+            for (innerRow in row.rows) {
+                this.collectDisplayRule(innerRow.displayRuleRef)
+                for (cell in innerRow.cells) {
+                    this.collectContent(cell.content)
+                }
             }
         }
     }
