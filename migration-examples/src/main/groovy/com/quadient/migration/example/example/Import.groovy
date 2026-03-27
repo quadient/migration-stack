@@ -314,7 +314,7 @@ def table = new TableBuilder()
 // and renders one paragraph per job, combining static text with the dynamic jobNameVariable.
 def jobListBlock = new DocumentObjectBuilder("jobList", DocumentObjectType.Block)
         .internal(true)
-        .repeatedContent(new VariableRef(jobsArrayVariable.id)) {
+        .repeatedContent("Data.Clients.Value.Jobs") {
             it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Job: ").variableRef(jobNameVariable.id) } }
         }
         .build()
