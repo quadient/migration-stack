@@ -6,9 +6,11 @@ import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.TextContent
+import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 
@@ -30,6 +32,13 @@ class ParagraphBuilder {
      * @return The current instance of [ParagraphBuilder] for method chaining.
      */
     fun styleRef(styleRefId: String) = apply { this.styleRef = ParagraphStyleRef(styleRefId) }
+
+    /**
+     * Sets the style reference for the paragraph using a [ParagraphStyle] model object.
+     * @param style The paragraph style whose ID will be used as the reference.
+     * @return The current instance of [ParagraphBuilder] for method chaining.
+     */
+    fun styleRef(style: ParagraphStyle) = apply { this.styleRef = ParagraphStyleRef(style.id) }
 
     /**
      * Sets the display rule reference for the paragraph.
@@ -147,6 +156,13 @@ class ParagraphBuilder {
          * @return The current instance of [TextBuilder] for method chaining.
          */
         fun styleRef(styleRefId: String) = apply { this.styleRef = TextStyleRef(styleRefId) }
+
+        /**
+         * Sets the style reference for the text using a [TextStyle] model object.
+         * @param style The text style whose ID will be used as the reference.
+         * @return The current instance of [TextBuilder] for method chaining.
+         */
+        fun styleRef(style: TextStyle) = apply { this.styleRef = TextStyleRef(style.id) }
 
         /**
          * Sets the display rule reference for the text.
