@@ -1448,21 +1448,20 @@ abstract class InspireDocumentObjectBuilder(
                 }
             }
 
-            val path = getDisplayRulePath(this).toMapInteractive(projectConfig.interactiveTenant)
+            val path = getDisplayRulePath(rule).toMapInteractive(projectConfig.interactiveTenant)
             "return (do.evalFile(Bool, String(${toScriptStringLiteral(path)}))==true);"
         }
     }
 }
 
-
 fun DisplayRuleDefinition.toScript(
-    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
+    layout: Layout?, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): String {
     return "return ${this.group.toScript(layout, variableStructure, findVar)};"
 }
 
 fun Group.toScript(
-    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
+    layout: Layout?, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): String {
     val expressions = """(${
         items.joinToString(
@@ -1481,7 +1480,7 @@ fun Group.toScript(
 }
 
 fun Binary.toScript(
-    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
+    layout: Layout?, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): String {
     val leftScriptResult = left.toScript(layout, variableStructure, findVar)
     val rightScriptResult = right.toScript(layout, variableStructure, findVar)
@@ -1510,7 +1509,7 @@ fun BinOp.toScript(left: ScriptResult, right: ScriptResult): String {
 }
 
 fun LiteralOrFunctionCall.toScript(
-    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
+    layout: Layout?, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): ScriptResult {
     return when (this) {
         is Literal -> this.toScript(layout, variableStructure, findVar)
@@ -1519,7 +1518,7 @@ fun LiteralOrFunctionCall.toScript(
 }
 
 fun Function.toScript(
-    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
+    layout: Layout?, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): ScriptResult {
     when (this) {
         is Function.UpperCase -> {
@@ -1535,7 +1534,7 @@ fun Function.toScript(
 }
 
 fun Literal.toScript(
-    layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
+    layout: Layout?, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): ScriptResult {
     return when (dataType) {
         LiteralDataType.Variable -> variableToScript(value, layout, variableStructure, findVar)

@@ -2,7 +2,10 @@ package com.quadient.migration.shared
 
 import com.quadient.migration.api.dto.migrationmodel.Ref
 import com.quadient.migration.api.dto.migrationmodel.RefValidatable
+import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.service.inspirebuilder.toScript
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -14,6 +17,11 @@ data class DisplayRuleDefinition(val group: Group) : RefValidatable {
     fun containsFunction(): Boolean {
         return group.containsFunction()
     }
+
+    fun toCode(variableStructure: VariableStructure, findVariable: (String) -> Variable): String {
+        return this.toScript(null, variableStructure, findVariable)
+    }
+
 }
 
 enum class GroupOp {

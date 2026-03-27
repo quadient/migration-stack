@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.ResourceType
@@ -21,11 +22,19 @@ run(migration, displayRulePath.toFile())
 
 static void run(Migration migration, File displayRuleDstPath) {
     def displayRules = migration.displayRuleRepository.listAll()
+    def variableStructure
+    if (migration.projectConfig.defaultVariableStructure != null) {
+        variableStructure = migration
+            .variableStructureRepository
+            .findOrFail(migration.projectConfig.defaultVariableStructure)
+    } else {
+        variableStructure = new VariableStructureBuilder("dummy").structure([:]).build()
+    }
 
     displayRuleDstPath.createParentDirectories()
 
     displayRuleDstPath.withWriter { wr ->
-        def headers = ["id", "name", "internal", "baseTemplate", "targetFolder", "targetId", "variableStructureRef", "status", Mapping.displayHeader("originalName", true), Mapping.displayHeader("originLocations", true)]
+        def headers = ["id", "name", "internal", "baseTemplate", "targetFolder", "targetId", "variableStructureRef", "status", Mapping.displayHeader("originalName", true), Mapping.displayHeader("originLocations", true), Mapping.displayHeader("definition", true)]
 
         wr << headers.join(",") << "\n"
 
@@ -33,6 +42,10 @@ static void run(Migration migration, File displayRuleDstPath) {
             def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(rule.id,
                 ResourceType.DisplayRule,
                 migration.projectConfig.inspireOutput)
+
+            def ruleVarStructure = rule.variableStructureRef
+                ? migration.variableStructureRepository.findOrFail(rule.variableStructureRef.id)
+                : variableStructure
 
             def sb = new StringBuilder()
             sb << "${Csv.serialize(rule.id)}"
@@ -45,6 +58,7 @@ static void run(Migration migration, File displayRuleDstPath) {
             sb << ",${Csv.serialize(status?.class?.simpleName)}"
             sb << ",${Csv.serialize(rule.customFields["originalName"])}"
             sb << ",${Csv.serialize(rule.originLocations)}"
+            sb << ",${Csv.serialize(rule.definition?.toCode(ruleVarStructure, migration.variableRepository::findOrFail))}"
 
             wr << sb.toString() << "\n"
         }
