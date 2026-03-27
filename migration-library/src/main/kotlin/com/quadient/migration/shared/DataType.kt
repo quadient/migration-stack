@@ -15,7 +15,8 @@ enum class DataType {
             String -> "String"
             Boolean -> "Bool"
             Currency -> "Currency"
-            // TODO d.svitak
+            SubTree -> "SubTree"
+            Array -> "Array"
         }
     }
 }

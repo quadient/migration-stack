@@ -17,6 +17,7 @@ import com.quadient.migration.service.inspirebuilder.VariablePathPart
 import com.quadient.migration.service.inspirebuilder.buildVariableTree
 import com.quadient.migration.service.inspirebuilder.removeDataFromVariablePath
 import com.quadient.migration.service.inspirebuilder.toScript
+import com.quadient.migration.service.inspirebuilder.resolve
 import com.quadient.migration.service.inspirebuilder.variableToScript
 import com.quadient.migration.shared.BinOp.Equals
 import com.quadient.migration.shared.BinOp.EqualsCaseInsensitive
@@ -62,7 +63,8 @@ data class JrdDefinition(
             val nodes = mutableListOf<Node?>(null)
 
             val normalizedVariablePaths = variableStructure.structure.map { (_, variablePathData) ->
-                removeDataFromVariablePath(variablePathData.path)
+                variablePathData.path.resolve(variableStructure, findVar)
+                    ?.let { removeDataFromVariablePath(it) } ?: ""
             }.filter { it.isNotBlank() }
 
             val variableTree = buildVariableTree(normalizedVariablePaths)
@@ -72,8 +74,9 @@ data class JrdDefinition(
             val findVarWithNodes = { id: String ->
                 val variable = findVar(id)
                 val variablePathData = variableStructure.structure[id]
-                if (variablePathData != null && variablePathData.path.isNotBlank()) {
-                    val nodePath = variablePathData.path.split('.') + variable.nameOrId()
+                val resolvedPath = variablePathData?.path?.resolve(variableStructure, findVar)
+                if (!resolvedPath.isNullOrBlank()) {
+                    val nodePath = resolvedPath.split('.') + variable.nameOrId()
 
                     if (!nodes.any { it?.nodePath == nodePath }) {
                         val node = Node(
@@ -82,7 +85,6 @@ data class JrdDefinition(
                         nodes.add(node)
                     }
                 }
-
 
                 variable
             }

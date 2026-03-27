@@ -1434,11 +1434,12 @@ abstract class InspireDocumentObjectBuilder(
                     is VariableRef -> {
                         val variableModel = findVar(ref.id)
                         val variablePathData = variableStructure.structure[ref.id]
-                        if (variablePathData != null && variablePathData.path.isNotBlank()) {
+                        val resolvedPath = variablePathData?.path?.resolve(variableStructure, findVar)
+                        if (!resolvedPath.isNullOrBlank()) {
                             val variableName = variablePathData.name ?: variableModel.nameOrId()
 
                             getOrCreateVariable(
-                                layout.data, variableName, variableModel, variablePathData.path
+                                layout.data, variableName, variableModel, resolvedPath
                             )
                         }
                     }

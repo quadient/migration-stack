@@ -63,7 +63,7 @@ class JrdDefinitionTest {
             ),
             negation = false
         ))
-        json.shouldBeEqualTo("""
+        json.replace("\r\n", "\n").shouldBeEqualTo("""
         {
           "InteractivePlusJsonDefinition" : {
             "Type" : "Rule",
@@ -133,7 +133,7 @@ class JrdDefinitionTest {
             interactiveTenant = "StandardPackage",
         ), variableStructure, { name -> aVariable(name) })
 
-         result.shouldBeEqualTo($$"""
+         result.replace("\r\n", "\n").shouldBeEqualTo($$"""
             {
               "InteractivePlusJsonDefinition" : {
                 "Type" : "Rule",
