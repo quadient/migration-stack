@@ -1,9 +1,10 @@
 package com.quadient.migration.example.common.util
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.quadient.migration.service.deploy.ReportedDisplayRule
 import com.quadient.migration.service.deploy.ReportedDocObject
+import com.quadient.migration.service.deploy.ReportedFile
 import com.quadient.migration.service.deploy.ReportedImage
-import java.nio.file.Paths
 import com.quadient.migration.service.deploy.ProgressReport as Report
 
 import java.time.LocalDateTime
@@ -58,6 +59,41 @@ static void writeDeploymentReport(Binding binding, Report report, String project
                     writer.write("${item.deploymentId ?: ""},") // Deploy ID
                     writer.write("${item.deployTimestamp ?: ""},") // Deploy Timestamp
                     writer.write("") // Content
+                    writer.writeLine("")
+                }
+                case ReportedFile -> {
+                    def fileItem = item.attachment
+                    writer.write("$fileItem.id,") // Id
+                    writer.write("${fileItem.name ?: ""},") // Name
+                    writer.write("File,") // Type
+                    writer.write(",") // Document Object Type
+                    writer.write(",") // Internal
+                    writer.write("${item.lastStatus.class.simpleName},") // Last Status
+                    writer.write("${item.deployKind},") // Next Action
+                    writer.write("${item.previousIcmPath ?: ""},") // Last ICM Path
+                    writer.write("${item.nextIcmPath ?: ""},") // Next ICM Path
+                    writer.write("${item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";") ?: ""},") // Error Message
+                    writer.write("${item.deploymentId ?: ""},") // Deploy ID
+                    writer.write("${item.deployTimestamp ?: ""},") // Deploy Timestamp
+                    writer.write("") // Content
+                    writer.writeLine("")
+                }
+                case ReportedDisplayRule -> {
+                    def rule = item.displayRule
+                    def content = Csv.escapeJson(mapper.writeValueAsString(rule.definition))
+                    writer.write("$rule.id,") // Id
+                    writer.write("${rule.name ?: ""},") // Name
+                    writer.write("DisplayRule,") // Type
+                    writer.write(",") // Document Object Type
+                    writer.write("${rule.internal},") // Internal
+                    writer.write("${item.lastStatus.class.simpleName},") // Last Status
+                    writer.write("${item.deployKind},") // Next Action
+                    writer.write("${item.previousIcmPath ?: ""},") // Last ICM Path
+                    writer.write("${item.nextIcmPath ?: ""},") // Next ICM Path
+                    writer.write("${item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";") ?: ""},") // Error Message
+                    writer.write("${item.deploymentId ?: ""},") // Deploy ID
+                    writer.write("${item.deployTimestamp ?: ""},") // Deploy Timestamp
+                    writer.write("${content}") // Content
                     writer.writeLine("")
                 }
                 default -> ""

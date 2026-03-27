@@ -15,10 +15,13 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
+import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
@@ -60,6 +63,9 @@ class DeployClientTest {
     val paragraphStyleRepository = mockk<ParagraphStyleRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
     val documentObjectBuilder = mockk<DesignerDocumentObjectBuilder>()
+    val displayRuleRepository = mockk<DisplayRuleRepository>()
+    val variableRepository = mockk<VariableRepository>()
+    val variableStructureRepository = mockk<VariableStructureRepository>()
     val ipsService = mockk<IpsService>()
     val storage = mockk<Storage>()
 
@@ -70,6 +76,9 @@ class DeployClientTest {
         statusTrackingRepository,
         textStyleRepository,
         paragraphStyleRepository,
+        displayRuleRepository,
+        variableRepository,
+        variableStructureRepository,
         documentObjectBuilder,
         ipsService,
         storage

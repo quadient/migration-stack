@@ -10,7 +10,9 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Ref
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.example.common.util.PathUtil
+import com.quadient.migration.service.deploy.ResourceType
 import groovy.transform.Field
 
 import java.nio.file.Path
@@ -29,22 +31,32 @@ for (obj in allObjects) {
 
 def displayRules = migration.displayRuleRepository.listAll()
 
-exportReport(displayRules, dstFile)
+exportReport(migration, displayRules, dstFile)
 
-static void exportReport(List<DisplayRule> rules, Path exportFilePath) {
+static void exportReport(Migration migration, List<DisplayRule> rules, Path exportFilePath) {
     def file =  exportFilePath.toFile()
     file.createParentDirectories()
     file.withWriter { writer ->
-        writer.writeLine("id,name,usedBy,usedByOrigin,usedByTypeOrigin,translated,translationError,source_files,originContent")
+        writer.writeLine("id,name,internal,baseTemplate,targetFolder,targetIt,variableStructureRef,status,usedBy,usedByOrigin,usedByTypeOrigin,translated,translationError,source_files,originContent")
 
         rules.each { rule ->
             def translationError = rule.customFields.get("error")
             def usedBy = findUsages(rule.id)
             def usedByValue = usedBy.collect { it.id }.join(";")
 
+            def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(rule.id,
+                ResourceType.DisplayRule,
+                migration.projectConfig.inspireOutput)
+
             def builder = new StringBuilder()
             builder.append(rule.id)
             builder.append("," + rule.name)
+            builder.append("," + Csv.serialize(rule.internal))
+            builder.append("," + Csv.serialize(rule.baseTemplate))
+            builder.append("," + Csv.serialize(rule.targetFolder))
+            builder.append("," + Csv.serialize(rule.targetId))
+            builder.append("," + Csv.serialize(rule.variableStructureRef?.id))
+            builder.append("," + Csv.serialize(status?.class?.simpleName))
             builder.append("," + usedByValue)
             builder.append("," + rule.customFields.get("usedBy")?.replace(",", ";"))
             builder.append("," + rule.customFields.get("usedByType")?.replace(",", ";"))

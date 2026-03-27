@@ -5,7 +5,7 @@ testcontainersSpock = "2.0.3"
 xmlunit = "2.10.0"
 cglib = "3.3.0"
 mockito = "5.13.0"
-logback = "1.5.18"
+logback = "1.5.32"
 jackson = "2.20.1"
 
 [libraries]

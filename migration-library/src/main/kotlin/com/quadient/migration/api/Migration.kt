@@ -92,7 +92,8 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
             textStyleRepository,
             paragraphStyleRepository,
             variableRepository,
-            variableStructureRepository
+            variableStructureRepository,
+            displayRuleRepository,
         )
 
         repositories.add(variableRepository)
@@ -138,6 +139,9 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                     statusTrackingRepository,
                     textStyleRepository,
                     paragraphStyleRepository,
+                    displayRuleRepository,
+                    variableRepository,
+                    variableStructureRepository,
                     inspireDocumentObjectBuilder,
                     ipsService,
                     storage,
@@ -164,6 +168,9 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
                     statusTrackingRepository,
                     textStyleRepository,
                     paragraphStyleRepository,
+                    displayRuleRepository,
+                    variableRepository,
+                    variableStructureRepository,
                     inspireDocumentObjectBuilder,
                     ipsService,
                     storage,

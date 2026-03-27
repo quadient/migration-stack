@@ -1,5 +1,6 @@
 package com.quadient.migration.service.inspirebuilder
 
+import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -10,7 +11,6 @@ import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveAliases
 import com.quadient.migration.service.resolveTargetDir
-import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.IcmPath
@@ -63,6 +63,7 @@ class DesignerDocumentObjectBuilder(
     attachmentRepository,
     projectConfig,
     ipsService,
+    InspireOutput.Designer,
 ) {
     private val sourceBaseTemplateCache = ConcurrentHashMap<String, String>()
 
@@ -144,6 +145,10 @@ class DesignerDocumentObjectBuilder(
             .join("${projectConfig.name}Styles.wfd").toString()
     }
 
+    override fun getDisplayRulePath(rule: DisplayRule): IcmPath {
+        error("External display rules are not supported and should not be used for Designer output. Report this as a bug.")
+    }
+
     override fun getFontRootFolder(): String {
         val fontConfigPath = projectConfig.paths.fonts
 
@@ -166,7 +171,7 @@ class DesignerDocumentObjectBuilder(
             val fontDataString = ipsService.gatherFontData(getFontRootFolder())
             fontDataCache.putAll(fontDataStringToMap(fontDataString))
         }
-        val variableStructure = initVariableStructure(layout, documentObject)
+        val variableStructure = initVariableStructure(layout, documentObject.variableStructureRef?.id)
         val languages = collectLanguages(documentObject)
 
         val languageVariable = variableStructure.languageVariable
@@ -251,22 +256,22 @@ class DesignerDocumentObjectBuilder(
     }
 
     override fun wrapSuccessFlowInConditionFlow(
-        layout: Layout, variableStructure: VariableStructure, ruleDef: DisplayRuleDefinition, successFlow: Flow,
+        layout: Layout, variableStructure: VariableStructure, rule: DisplayRule, successFlow: Flow,
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
-            ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail), successFlow
+            rule.toScript(layout, variableStructure, variableRepository::findOrFail), successFlow
         )
     }
 
     override fun buildConditionRow(
         layout: Layout,
         variableStructure: VariableStructure,
-        ruleDef: DisplayRuleDefinition,
+        rule: DisplayRule,
     ): WrappedRow {
         val successRow = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
         val conditionRow = layout.addRowSet().setType(RowSet.Type.SELECT_BY_INLINE_CONDITION)
             .addLineForSelectByInlineCondition(
-                ruleDef.toScript(layout, variableStructure, variableRepository::findOrFail), successRow
+                rule.toScript(layout, variableStructure, variableRepository::findOrFail), successRow
             )
         return WrappedRow(conditionRow, successRow)
     }

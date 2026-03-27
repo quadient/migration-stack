@@ -2,9 +2,13 @@ package com.quadient.migration.api.repository
 
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.persistence.table.DisplayRuleTable
 import com.quadient.migration.persistence.table.DocumentObjectTable
+import com.quadient.migration.persistence.table.DocumentObjectTable.variableStructureRef
+import com.quadient.migration.service.deploy.ResourceType
 import com.quadient.migration.tools.concat
 import kotlin.time.Clock
 import kotlin.time.toJavaInstant
@@ -18,6 +22,7 @@ import org.jetbrains.exposed.v1.jdbc.upsertReturning
 
 class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
     Repository<DisplayRule>(table, projectName) {
+    val statusTrackingRepository = StatusTrackingRepository(projectName)
 
     override fun fromDb(row: ResultRow): DisplayRule {
         return DisplayRule(
@@ -27,7 +32,14 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
             customFields = CustomFieldMap(row[DisplayRuleTable.customFields].toMutableMap()),
             lastUpdated = row[DisplayRuleTable.lastUpdated],
             created = row[DisplayRuleTable.created],
-            definition = row[DisplayRuleTable.definition]
+            definition = row[DisplayRuleTable.definition],
+            baseTemplate = row[DisplayRuleTable.baseTemplate],
+            metadata = row[DisplayRuleTable.metadata],
+            subject = row[DisplayRuleTable.subject],
+            internal = row[DisplayRuleTable.internal],
+            targetId = row[DisplayRuleTable.targetId]?.let { DisplayRuleRef(it) },
+            targetFolder = row[DisplayRuleTable.targetFolder],
+            variableStructureRef = row[DisplayRuleTable.variableStructureRef]?.let { VariableStructureRef(it) },
         )
     }
 
@@ -45,7 +57,9 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
 
         val columns = listOf(
             "id", "project_name", "name", "origin_locations", "custom_fields",
-            "created", "last_updated", "definition"
+            "created", "last_updated", "definition",
+            "target_id", "internal", "subject", "target_folder",
+            "base_template", "variable_structure_ref", "metadata"
         )
         val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
@@ -56,6 +70,10 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
             dtos.forEach { dto ->
                 val existingItem = find(dto.id)
 
+                if ((existingItem == null && dto.internal != true) || (dto.internal == false && existingItem?.internal == true)) {
+                    statusTrackingRepository.active(dto.id, ResourceType.DisplayRule)
+                }
+
                 stmt.setString(index++, dto.id)
                 stmt.setString(index++, this@DisplayRuleRepository.projectName)
                 stmt.setString(index++, dto.name)
@@ -64,6 +82,13 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
                 stmt.setTimestamp(index++, java.sql.Timestamp.from((existingItem?.created ?: now).toJavaInstant()))
                 stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
                 stmt.setObject(index++, dto.definition?.let { Json.encodeToString(it) }, Types.OTHER)
+                stmt.setString(index++, dto.targetId?.id)
+                stmt.setBoolean(index++, dto.internal)
+                stmt.setString(index++, dto.subject)
+                stmt.setString(index++, dto.targetFolder)
+                stmt.setString(index++, dto.baseTemplate)
+                stmt.setString(index++, dto.variableStructureRef?.id)
+                stmt.setObject(index++, Json.encodeToString(dto.metadata), Types.OTHER)
             }
 
             stmt.executeUpdate()
@@ -76,6 +101,10 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
 
             val now = Clock.System.now()
 
+            if ((existingItem == null && dto.internal != true) || (dto.internal == false && existingItem?.internal == true)) {
+                statusTrackingRepository.active(dto.id, ResourceType.DisplayRule)
+            }
+
             table.upsertReturning(table.id, table.projectName) {
                 it[DisplayRuleTable.id] = dto.id
                 it[DisplayRuleTable.projectName] = this@DisplayRuleRepository.projectName
@@ -85,6 +114,13 @@ class DisplayRuleRepository(table: DisplayRuleTable, projectName: String) :
                 it[DisplayRuleTable.created] = existingItem?.created ?: now
                 it[DisplayRuleTable.lastUpdated] = now
                 it[DisplayRuleTable.definition] = dto.definition
+                it[DisplayRuleTable.targetId] = dto.targetId?.id
+                it[DisplayRuleTable.internal] = dto.internal
+                it[DisplayRuleTable.subject] = dto.subject
+                it[DisplayRuleTable.targetFolder] = dto.targetFolder
+                it[DisplayRuleTable.baseTemplate] = dto.baseTemplate
+                it[DisplayRuleTable.variableStructureRef] = dto.variableStructureRef?.id
+                it[DisplayRuleTable.metadata] = dto.metadata
             }.first()
         }
     }

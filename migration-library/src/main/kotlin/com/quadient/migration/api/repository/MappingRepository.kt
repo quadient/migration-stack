@@ -16,7 +16,8 @@ class MappingRepository(
     private val textStyleRepository: TextStyleRepository,
     private val paragraphStyleRepository: ParagraphStyleRepository,
     private val variableRepository: VariableRepository,
-    private val variableStructureRepository: VariableStructureRepository
+    private val variableStructureRepository: VariableStructureRepository,
+    private val displayRuleRepository: DisplayRuleRepository,
 ) {
     private val internalRepository = MappingInternalRepository(projectName)
 
@@ -35,6 +36,7 @@ class MappingRepository(
                 is MappingItem.Variable -> applyVariableMapping(mapping.id)
                 is MappingItem.Area -> applyAreaMapping(mapping.id)
                 is MappingItem.VariableStructure -> applyVariableStructureMapping(mapping.id)
+                is MappingItem.DisplayRule -> applyVariableStructureMapping(mapping.id)
             }
         }
     }
@@ -64,7 +66,6 @@ class MappingRepository(
         if (mapping == null || obj == null) {
             return
         }
-
 
         documentObjectRepository.upsert(mapping.apply(obj))
     }
@@ -206,6 +207,28 @@ class MappingRepository(
         }
 
         variableStructureRepository.upsert(mapping.apply(structure))
+    }
+
+    fun getDisplayRuleMapping(id: String): MappingItem.DisplayRule {
+        return (internalRepository.find<MappingItemEntity.DisplayRule>(id) ?: MappingItemEntity.DisplayRule(
+            name = null,
+            targetId = null,
+            internal = null,
+            variableStructureRef = null,
+            targetFolder = null,
+            baseTemplate = null
+        )).toDto() as MappingItem.DisplayRule
+    }
+
+    fun applyDisplayRuleMapping(id: String) {
+        val mapping = internalRepository.find<MappingItemEntity.DisplayRule>(id)
+        val displayRule = displayRuleRepository.find(id)
+
+        if (mapping == null || displayRule == null) {
+            return
+        }
+
+        displayRuleRepository.upsert(mapping.apply(displayRule))
     }
 
     fun deleteAll() {

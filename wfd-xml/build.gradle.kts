@@ -2,7 +2,7 @@ plugins {
     java
     `maven-publish`
     id("net.researchgate.release") version "3.0.2"
-    id("org.owasp.dependencycheck") version "12.1.9"
+    id("org.owasp.dependencycheck") version "12.2.0"
 }
 
 release {
@@ -34,11 +34,4 @@ buildscript {
         mavenCentral()
         maven("https://jitpack.io")
     }
-    dependencies {
-        classpath("org.owasp:dependency-check-gradle:12.1.3")
-    }
-}
-
-apply {
-    plugin("org.owasp.dependencycheck")
 }

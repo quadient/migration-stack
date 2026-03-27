@@ -96,6 +96,9 @@ def variableStructure = new VariableStructureBuilder("variableStructure")
 // Display displayHeaderRule to conditionally display the address.
 // Header is hidden if displayHeaderVariable is set to false
 def displayAddressRule = new DisplayRuleBuilder("displayAddressRule")
+        .internal(false)
+        .subject("External display rule")
+        .metadata("key") { it.string("value") }
         .group {
             it.operator(GroupOp.Or)
             it.comparison { it.variable(nameVariable.id).notEquals().value("") }
@@ -104,8 +107,12 @@ def displayAddressRule = new DisplayRuleBuilder("displayAddressRule")
             it.comparison { it.variable(stateVariable.id).notEquals().value("") }
         }.build()
 
-def displayHeaderRule = new DisplayRuleBuilder("displayHeaderRule")
+def dummyDisplayHeaderRule = new DisplayRuleBuilder("dummyDisplayHeaderRule")
         .comparison { it.value(true).equals().variable(displayHeaderVariable.id) }
+        .build()
+
+def displayHeaderRule = new DisplayRuleBuilder("displayHeaderRule")
+        .targetId(dummyDisplayHeaderRule.id)
         .build()
 
 def displayParagraphRule = new DisplayRuleBuilder("displayParagraphRule")
@@ -532,7 +539,7 @@ for (item in [headingStyle, normalStyle]) {
 for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable, jobNameVariable, clientsArrayVariable, addressSubtreeVariable, jobsArrayVariable]) {
     migration.variableRepository.upsert(item)
 }
-for (item in [displayAddressRule, displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {
+for (item in [displayAddressRule, dummyDisplayHeaderRule, displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {
     migration.displayRuleRepository.upsert(item)
 }
 for (item in [paragraphStyle, headingParaStyle, compactParagraphStyle, spaceParagraphStyle]) {

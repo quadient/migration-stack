@@ -1,6 +1,6 @@
 plugins {
     id("groovy")
-    id("org.owasp.dependencycheck") version "12.1.9"
+    id("org.owasp.dependencycheck") version "12.2.0"
 }
 
 group = "com.quadient"
@@ -36,7 +36,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("org.owasp:dependency-check-gradle:12.1.3")
+        classpath("org.owasp:dependency-check-gradle:12.2.0")
     }
 }
 

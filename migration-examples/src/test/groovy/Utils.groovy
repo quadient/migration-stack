@@ -1,6 +1,7 @@
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -31,6 +32,7 @@ static Migration mockMigration() {
     def statusTrackingRepo = mock(StatusTrackingRepository.class)
     def textStyleRepo = mock(TextStyleRepository.class)
     def paraStyleRepo = mock(ParagraphStyleRepository.class)
+    def displayRuleRepo = mock(DisplayRuleRepository.class)
 
     when(migration.getParagraphStyleRepository()).thenReturn(paraStyleRepo)
     when(migration.getTextStyleRepository()).thenReturn(textStyleRepo)
@@ -41,6 +43,7 @@ static Migration mockMigration() {
     when(migration.getVariableRepository()).thenReturn(varRepo)
     when(migration.getVariableStructureRepository()).thenReturn(structureRepo)
     when(migration.getMappingRepository()).thenReturn(mappingRepo)
+    when(migration.getDisplayRuleRepository()).thenReturn(displayRuleRepo)
 
     return migration
 }

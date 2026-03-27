@@ -93,6 +93,15 @@ sealed class MappingItem {
         var languageVariable: VariableRef?,
     ) : MappingItem()
 
+    data class DisplayRule(
+        override var name: String?,
+        var targetFolder: String?,
+        var targetId: String?,
+        var baseTemplate: String?,
+        var variableStructureRef: String?,
+        var internal: Boolean?,
+    ) : MappingItem()
+
     fun toDb(): MappingItemEntity {
         return when (this) {
             is MappingItem.DocumentObject -> {
@@ -190,6 +199,15 @@ sealed class MappingItem {
                     languageVariable = this.languageVariable?.let { VariableEntityRef(it.id) }
                 )
             }
+
+            is MappingItem.DisplayRule -> MappingItemEntity.DisplayRule(
+                name = this.name,
+                targetId = this.targetId,
+                internal = this.internal,
+                variableStructureRef = this.variableStructureRef,
+                targetFolder = this.targetFolder,
+                baseTemplate = this.baseTemplate,
+            )
         }
     }
 }

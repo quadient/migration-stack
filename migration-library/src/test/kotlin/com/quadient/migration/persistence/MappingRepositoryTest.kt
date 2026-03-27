@@ -4,17 +4,27 @@ import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
-import com.quadient.migration.api.repository.*
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.DisplayRuleRepository
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ImageRepository
+import com.quadient.migration.api.repository.MappingRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.TextStyleRepository
+import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.aVariable
+import com.quadient.migration.tools.model.aDisplayRule
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.verify
-import kotlin.time.Clock
 import org.junit.jupiter.api.Test
+import kotlin.time.Clock
 
 @Postgres
 class MappingRepositoryTest {
@@ -26,6 +36,7 @@ class MappingRepositoryTest {
     val paraStyleRepository = mockk<ParagraphStyleRepository>()
     val variableRepository = mockk<VariableRepository>()
     val variableStructureRepository = mockk<VariableStructureRepository>()
+    val displayRuleRepository = mockk<DisplayRuleRepository>()
 
     private val repo = MappingRepository(
         projectConfig.name,
@@ -35,14 +46,15 @@ class MappingRepositoryTest {
         textStyleRepository,
         paraStyleRepository,
         variableRepository,
-        variableStructureRepository
+        variableStructureRepository,
+        displayRuleRepository,
     )
 
     @Test
     fun `apply variable mapping`() {
         every { variableRepository.find("varId") } returns aVariable(id = "varId", name = "Variable Name")
         every { variableStructureRepository.find("varStructId") } returns VariableStructure(
-            id = "varStructId", 
+            id = "varStructId",
             name = "Variable Structure Name",
             originLocations = emptyList(),
             customFields = CustomFieldMap(mutableMapOf()),
@@ -85,12 +97,44 @@ class MappingRepositoryTest {
         verify {
             variableStructureRepository.upsert(
                 match {
-                    it.id == "varStructId" && 
-                    it.name == "new name" && 
+                    it.id == "varStructId" &&
+                    it.name == "new name" &&
                     it.structure == mapOf(
                         "varId" to VariablePathData("somePath"),
                         "anotherVarId" to VariablePathData("anotherPath")
                     )
+                }
+            )
+        }
+    }
+
+    @Test
+    fun `apply display rule mapping`() {
+        every { displayRuleRepository.find("ruleId") } returns aDisplayRule(id = "ruleId", name = "Old Rule")
+        every { displayRuleRepository.upsert(any()) } just runs
+        repo.upsert(
+            "ruleId", MappingItem.DisplayRule(
+                name = "new name",
+                targetFolder = "/some/folder",
+                targetId = "target-123",
+                baseTemplate = "template-base",
+                variableStructureRef = "ref",
+                internal = true,
+            )
+        )
+
+        repo.applyDisplayRuleMapping("ruleId")
+
+        verify {
+            displayRuleRepository.upsert(
+                match {
+                    it.id == "ruleId" &&
+                        it.name == "new name" &&
+                        it.targetFolder == "/some/folder" &&
+                        it.targetId?.id == "target-123" &&
+                        it.baseTemplate == "template-base" &&
+                        it.internal &&
+                        it.variableStructureRef == VariableStructureRef("ref")
                 }
             )
         }
