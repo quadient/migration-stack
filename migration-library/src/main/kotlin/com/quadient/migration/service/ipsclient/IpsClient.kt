@@ -1,10 +1,12 @@
 package com.quadient.migration.service.ipsclient
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
@@ -249,6 +251,41 @@ class IpsClient(private val host: String, private val port: Int, private val tim
             this._version = version()
         }
 
+        init {
+            val result = serverProperties()
+            if (result  != null) {
+                if (result.runForWeb) {
+                    throw RuntimeException("IPS server has -runforweb enabled, this is currently not supported.")
+                }
+                if (result.encryptionRequired) {
+                    throw RuntimeException("IPS server has -forceencryption enabled, this is currently not supported.")
+                }
+            }
+
+        }
+
+        private fun serverProperties(): ServerProperties? {
+            val command = "diag"
+
+            this.writeLine(command).getOrElse {
+                logger.error("Failed to write diag command to ips", it)
+                return null
+            }
+
+            val response = this.readLine().split(";")
+            if (response.getOrNull(0) != "ok" || response.getOrNull(1)?.toLongOrNull() == null) {
+                logger.error("Failed to get diagnostics from ips. Expected byte size, got $response")
+                return null
+            }
+            val bytesToRead = response[1].toInt()
+            val bytes = ByteArray(bytesToRead)
+            this.reader.readNBytes(bytes, 0, bytesToRead)
+
+            val stat: ServerProperties =  xmlMapper.readValue(bytes)
+
+            return stat
+        }
+
         private fun version(): Version? {
             val command = "version"
 
@@ -381,14 +418,22 @@ class Output {
     }
 }
 
+@JsonIgnoreProperties(ignoreUnknown = true)
+@Serializable
+data class ServerProperties(
+    @param:JacksonXmlProperty(localName = "RunForWeb") val runForWeb: Boolean,
+    @param:JacksonXmlProperty(localName = "Encrypted") val encrypted: Boolean,
+    @param:JacksonXmlProperty(localName = "EncryptionRequired") val encryptionRequired: Boolean,
+    )
+
 @Serializable
 data class Coms(
-    @JacksonXmlProperty(localName = "ImportLayoutXml") val values: ImportLayoutXml
+    @param:JacksonXmlProperty(localName = "ImportLayoutXml") val values: ImportLayoutXml
 ) {
     @Serializable
     data class ImportLayoutXml(
-        @JacksonXmlProperty(localName = "ModuleName") val moduleName: String,
+        @param:JacksonXmlProperty(localName = "ModuleName") val moduleName: String,
 
-        @JacksonXmlProperty(localName = "FileName") val fileName: String
+        @param:JacksonXmlProperty(localName = "FileName") val fileName: String
     )
 }
