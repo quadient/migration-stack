@@ -79,18 +79,31 @@ def clientsArrayVariable = new VariableBuilder("clientsArray").name("Clients")
 def jobsArrayVariable = new VariableBuilder("jobsArray").name("jobs")
         .dataType(DataType.Array).build()
 
+def transactionsArrayVariable = new VariableBuilder("transactionsArray").name("Transactions")
+        .dataType(DataType.Array).build()
+def transactionAccountVariable = new VariableBuilder("transactionAccount").name("account")
+        .dataType(DataType.String).build()
+def transactionTypeVariable = new VariableBuilder("transactionType").name("type")
+        .dataType(DataType.String).build()
+def transactionAmountVariable = new VariableBuilder("transactionAmount").name("amount")
+        .dataType(DataType.Currency).build()
+
 def variableStructure = new VariableStructureBuilder("variableStructure")
-        .addVariable(displayHeaderVariable.id, new VariableRef(clientsArrayVariable.id))
-        .addVariable(displayParagraphVariable.id, new VariableRef(clientsArrayVariable.id))
-        .addVariable(displayLastSentenceVariable.id, new VariableRef(clientsArrayVariable.id))
+        .addVariable(displayHeaderVariable.id, clientsArrayVariable)
+        .addVariable(displayParagraphVariable.id, clientsArrayVariable)
+        .addVariable(displayLastSentenceVariable.id, clientsArrayVariable)
         .addVariable(nameVariable.id, "Data.Clients.Value") // Literal path that works the same way as reference to clientsArrayVariable
-        .addVariable(addressVariable.id, new VariableRef(addressSubtreeVariable.id))
-        .addVariable(cityVariable.id, new VariableRef(addressSubtreeVariable.id))
+        .addVariable(addressVariable.id, addressSubtreeVariable)
+        .addVariable(cityVariable.id, addressSubtreeVariable)
         .addVariable(stateVariable.id, "Data.Clients.Value.Address") // Literal path with another subtree level that works the same way as reference to addressSubtreeVariable
-        .addVariable(jobNameVariable.id, new VariableRef(jobsArrayVariable.id))
-        .addVariable(addressSubtreeVariable.id, new VariableRef(clientsArrayVariable.id))
+        .addVariable(jobNameVariable.id, jobsArrayVariable)
+        .addVariable(addressSubtreeVariable.id, clientsArrayVariable)
         .addVariable(clientsArrayVariable.id, "Data")
-        .addVariable(jobsArrayVariable.id, new VariableRef(clientsArrayVariable.id), "Jobs")
+        .addVariable(jobsArrayVariable.id, clientsArrayVariable, "Jobs")
+        .addVariable(transactionsArrayVariable.id, clientsArrayVariable)
+        .addVariable(transactionAccountVariable.id, transactionsArrayVariable)
+        .addVariable(transactionTypeVariable.id, transactionsArrayVariable)
+        .addVariable(transactionAmountVariable.id, "Data.Clients.Value.Transactions.Value") // Literal path that works the same way as reference to transactionsArrayVariable
         .build()
 
 // Display displayHeaderRule to conditionally display the address.
@@ -284,23 +297,6 @@ def table = new TableBuilder()
             }
         }
 
-        .addRepeatedRow(new VariableRef(jobsArrayVariable.id)) {
-            it.addRow {
-                it.addCell {
-                    it.border { it.allBorders(borderColor, borderWidth) }
-                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("job") } }
-                }
-                it.addCell {
-                    it.border { it.allBorders(borderColor, borderWidth) }
-                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Job name") } }
-                }
-                it.addCell {
-                    it.border { it.allBorders(borderColor, borderWidth) }
-                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(jobNameVariable.id) } }
-                }
-            }
-        }
-
         .addLastFooterRow {
             it.addCell {
                 it.border { it.allBorders(borderColor, borderWidth) }
@@ -323,6 +319,59 @@ def jobListBlock = new DocumentObjectBuilder("jobList", DocumentObjectType.Block
         .internal(true)
         .repeatedContent("Data.Clients.Value.Jobs") {
             it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Job: ").variableRef(jobNameVariable.id) } }
+        }
+        .build()
+
+// Table with a header row and a repeated row driven by transactionsArrayVariable.
+// Each row displays account (string), type (string), and amount (currency) fields.
+def transactionsTable = new TableBuilder()
+        .pdfTaggingRule(TablePdfTaggingRule.Table)
+        .pdfAlternateText("Transactions table")
+        .addColumnWidth(Size.ofMillimeters(60), 33)
+        .addColumnWidth(Size.ofMillimeters(60), 33)
+        .addColumnWidth(Size.ofMillimeters(60), 34)
+        .percentWidth(100)
+        .border { it.allBorders(borderColor, borderWidth) }
+
+        .addFirstHeaderRow {
+            it.addCell {
+                it.border {
+                    it.allBorders(borderColor, borderWidth)
+                    it.padding(headerPadding)
+                }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("account") } }
+            }
+            it.addCell {
+                it.border {
+                    it.allBorders(borderColor, borderWidth)
+                    it.padding(headerPadding)
+                }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("type") } }
+            }
+            it.addCell {
+                it.border {
+                    it.allBorders(borderColor, borderWidth)
+                    it.padding(headerPadding)
+                }
+                it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("amount") } }
+            }
+        }
+
+        .addRepeatedRow(transactionsArrayVariable) {
+            it.addRow {
+                it.addCell {
+                    it.border { it.allBorders(borderColor, borderWidth) }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(transactionAccountVariable.id) } }
+                }
+                it.addCell {
+                    it.border { it.allBorders(borderColor, borderWidth) }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(transactionTypeVariable.id) } }
+                }
+                it.addCell {
+                    it.border { it.allBorders(borderColor, borderWidth) }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(transactionAmountVariable.id) } }
+                }
+            }
         }
         .build()
 
@@ -490,6 +539,9 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                     .documentObjectRef(paragraph2.id)
                     .appendContent(table)
                     .paragraph { it.styleRef(spaceParagraphStyle) }
+                    .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Transactions:") } }
+                    .appendContent(transactionsTable)
+                    .paragraph { it.styleRef(spaceParagraphStyle) }
                     .documentObjectRef(jobListBlock.id)
                     .documentObjectRef(conditionalParagraph.id)
                     .documentObjectRef(firstMatchBlock.id)
@@ -536,7 +588,7 @@ for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, 
 for (item in [headingStyle, normalStyle]) {
     migration.textStyleRepository.upsert(item)
 }
-for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable, jobNameVariable, clientsArrayVariable, addressSubtreeVariable, jobsArrayVariable]) {
+for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable, jobNameVariable, clientsArrayVariable, addressSubtreeVariable, jobsArrayVariable, transactionsArrayVariable, transactionAccountVariable, transactionTypeVariable, transactionAmountVariable]) {
     migration.variableRepository.upsert(item)
 }
 for (item in [displayAddressRule, dummyDisplayHeaderRule, displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {

@@ -5,6 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.RepeatedContentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
@@ -164,4 +165,13 @@ interface DocumentContentBuilderBase<T> {
      */
     fun repeatedContent(variableRef: VariableRef, builder: RepeatedContentBuilder.() -> Unit): T =
         repeatedContent(VariableRefPath(variableRef.id), builder)
+
+    /**
+     * Adds repeated content to the content using a [Variable] object.
+     * @param variable The [Variable] referencing the array variable to repeat over.
+     * @param builder A builder function to build the repeated content.
+     * @return This builder instance for method chaining.
+     */
+    fun repeatedContent(variable: Variable, builder: RepeatedContentBuilder.() -> Unit): T =
+        repeatedContent(VariableRefPath(variable.id), builder)
 }

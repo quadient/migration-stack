@@ -1,5 +1,6 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
+import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.shared.LiteralPath
@@ -17,7 +18,7 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      * @param path The literal path of the variable (e.g. "Data.Clients.Value").
      * @return This builder instance for method chaining.
      */
-    fun addVariable(id: String, path: String) = apply {
+    fun addVariable(id: String, path: String): VariableStructureBuilder = apply {
         structure[id] = VariablePathData(LiteralPath(path), null)
         return this
     }
@@ -30,7 +31,7 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      * @param name A name to override the variable's default name.
      * @return This builder instance for method chaining.
      */
-    fun addVariable(id: String, path: String, name: String) = apply {
+    fun addVariable(id: String, path: String, name: String): VariableStructureBuilder = apply {
         structure[id] = VariablePathData(LiteralPath(path), name)
         return this
     }
@@ -44,7 +45,7 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      * @param variableRef A [VariableRef] pointing to an Array or SubTree variable.
      * @return This builder instance for method chaining.
      */
-    fun addVariable(id: String, variableRef: VariableRef) = apply {
+    fun addVariable(id: String, variableRef: VariableRef): VariableStructureBuilder = apply {
         structure[id] = VariablePathData(VariableRefPath(variableRef.id), null)
         return this
     }
@@ -66,13 +67,43 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
     }
 
     /**
+     * Adds a variable to the structure referencing an Array or SubTree variable directly.
+     * The referenced variable must be registered with [DataType.Array] or [DataType.SubTree]
+     * and must carry a [Variable.path].
+     *
+     * @param id The unique identifier for the variable (used as the map key).
+     * @param variable A [Variable] whose ID is used as the variable reference path.
+     * @return This builder instance for method chaining.
+     */
+    fun addVariable(id: String, variable: Variable): VariableStructureBuilder = apply {
+        structure[id] = VariablePathData(VariableRefPath(variable.id), null)
+        return this
+    }
+
+    /**
+     * Adds a variable to the structure referencing an Array or SubTree variable directly,
+     * with a display name override.
+     * The referenced variable must be registered with [DataType.Array] or [DataType.SubTree]
+     * and must carry a [Variable.path].
+     *
+     * @param id The unique identifier for the variable (used as the map key).
+     * @param variable A [Variable] whose ID is used as the variable reference path.
+     * @param name A name to override the variable's default name.
+     * @return This builder instance for method chaining.
+     */
+    fun addVariable(id: String, variable: Variable, name: String): VariableStructureBuilder = apply {
+        structure[id] = VariablePathData(VariableRefPath(variable.id), name)
+        return this
+    }
+
+    /**
      * Adds a variable to the structure using a [VariablePathData] instance.
      *
      * @param id The unique identifier for the variable (used as the map key).
      * @param variablePathData The [VariablePathData] instance representing the variable path data.
      * @return This builder instance for method chaining.
      */
-    fun addVariable(id: String, variablePathData: VariablePathData) = apply {
+    fun addVariable(id: String, variablePathData: VariablePathData): VariableStructureBuilder = apply {
         structure[id] = variablePathData
         return this
     }
@@ -83,7 +114,7 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      * @param structure A map where keys are variable IDs and values are [VariablePathData] instances.
      * @return This builder instance for method chaining.
      */
-    fun structure(structure: Map<String, VariablePathData>) = apply {
+    fun structure(structure: Map<String, VariablePathData>): VariableStructureBuilder = apply {
         this.structure = structure.toMutableMap()
         return this
     }
@@ -94,7 +125,7 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      * @param languageVariable A [VariableRef] representing the language variable.
      * @return This builder instance for method chaining.
      */
-    fun languageVariable(languageVariable: VariableRef?) = apply {
+    fun languageVariable(languageVariable: VariableRef?): VariableStructureBuilder = apply {
         this.languageVariable = languageVariable
         return this
     }
@@ -105,7 +136,7 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      * @param languageVariableId The unique identifier for the language variable.
      * @return This builder instance for method chaining.
      */
-    fun languageVariable(languageVariableId: String?) = apply {
+    fun languageVariable(languageVariableId: String?): VariableStructureBuilder = apply {
         this.languageVariable = languageVariableId?.let { VariableRef(it) }
         return this
     }

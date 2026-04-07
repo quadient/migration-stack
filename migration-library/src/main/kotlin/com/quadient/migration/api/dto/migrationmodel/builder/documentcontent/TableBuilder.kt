@@ -3,6 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Table
+import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.BorderOptionsBuilder
 import com.quadient.migration.api.dto.migrationmodel.TableRow as TableRowModel
@@ -82,6 +83,18 @@ class TableBuilder : RowBuilderBase<TableBuilder> {
      */
     fun addRepeatedRow(variableRef: VariableRef, init: RepeatedRowBuilder.() -> Unit) =
         addRepeatedRow(VariableRefPath(variableRef.id), init)
+
+    /**
+     * Add a repeated row group driven by a [Variable] object.
+     */
+    fun addRepeatedRow(variable: Variable) = addRepeatedRow(VariableRefPath(variable.id))
+
+    /**
+     * Add a repeated row group driven by a [Variable] object and configure it via [init].
+     * @return This builder instance for method chaining.
+     */
+    fun addRepeatedRow(variable: Variable, init: RepeatedRowBuilder.() -> Unit) =
+        addRepeatedRow(VariableRefPath(variable.id), init)
 
     /**
      * Add a column width to the table. Column widths are added in the order they are defined.
