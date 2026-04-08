@@ -1,8 +1,10 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.dto.migrationmodel.PdfMetadata
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
@@ -57,11 +59,25 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     fun displayRuleRef(ref: DisplayRuleRef) = apply { this.displayRuleRef = ref }
 
     /**
+     * Add display rule to this document object.
+     * @param rule The [DisplayRule] object to reference.
+     * @return This builder instance for method chaining.
+     */
+    fun displayRuleRef(rule: DisplayRule) = apply { this.displayRuleRef = DisplayRuleRef(rule.id) }
+
+    /**
      * Add a reference to a variable structure to this document object.
      * @param id ID of the variable structure to reference.
      * @return This builder instance for method chaining.
      */
     fun variableStructureRef(id: String) = apply { this.variableStructureRef = VariableStructureRef(id) }
+
+    /**
+     * Add a reference to a variable structure to this document object.
+     * @param variableStructure The [VariableStructure] object to reference.
+     * @return This builder instance for method chaining.
+     */
+    fun variableStructureRef(variableStructure: VariableStructure) = apply { this.variableStructureRef = VariableStructureRef(variableStructure.id) }
 
     /**
      * Override the default base template for this document object.

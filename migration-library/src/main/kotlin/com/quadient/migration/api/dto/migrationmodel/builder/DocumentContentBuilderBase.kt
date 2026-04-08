@@ -1,8 +1,12 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
+import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
@@ -82,12 +86,30 @@ interface DocumentContentBuilderBase<T> {
     } as T
 
     /**
+     * Adds an image reference to the content.
+     * @param image The [Image] object to reference.
+     * @return This builder instance for method chaining.
+     */
+    fun imageRef(image: Image): T = apply {
+        this.content.add(ImageRef(image.id))
+    } as T
+
+    /**
      * Adds an attachment reference to the content.
      * @param attachmentId The ID of the attachment to reference.
      * @return This builder instance for method chaining.
      */
     fun attachmentRef(attachmentId: String): T = apply {
         this.content.add(AttachmentRef(attachmentId))
+    } as T
+
+    /**
+     * Adds an attachment reference to the content.
+     * @param attachment The [Attachment] object to reference.
+     * @return This builder instance for method chaining.
+     */
+    fun attachmentRef(attachment: Attachment): T = apply {
+        this.content.add(AttachmentRef(attachment.id))
     } as T
 
     /**
@@ -100,6 +122,15 @@ interface DocumentContentBuilderBase<T> {
     } as T
 
     /**
+     * Adds a document object reference to the content.
+     * @param documentObject The [DocumentObject] to reference.
+     * @return This builder instance for method chaining.
+     */
+    fun documentObjectRef(documentObject: DocumentObject): T = apply {
+        this.content.add(DocumentObjectRef(documentObject.id, null))
+    } as T
+
+    /**
      * Adds a conditional document object reference to the content.
      * @param documentObjectId The ID of the document object to reference.
      * @param displayRuleId The ID of the display rule.
@@ -107,6 +138,16 @@ interface DocumentContentBuilderBase<T> {
      */
     fun documentObjectRef(documentObjectId: String, displayRuleId: String): T = apply {
         this.content.add(DocumentObjectRef(documentObjectId, DisplayRuleRef(displayRuleId)))
+    } as T
+
+    /**
+     * Adds a conditional document object reference to the content.
+     * @param documentObject The [DocumentObject] to reference.
+     * @param displayRule The [DisplayRule] to apply.
+     * @return This builder instance for method chaining.
+     */
+    fun documentObjectRef(documentObject: DocumentObject, displayRule: DisplayRule): T = apply {
+        this.content.add(DocumentObjectRef(documentObject.id, DisplayRuleRef(displayRule.id)))
     } as T
 
     /**

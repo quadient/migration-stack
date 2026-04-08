@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - In both repeated content and variable structure paths it is possible to use literal path (e.g. Data.Clients.Value)
   or reference to a variable
 - Validate that IPS does not use unsupported parameters on first access
+- Support for referencing objects in builders by the object itself (besides id or ref object)
 
 ### Changed
 

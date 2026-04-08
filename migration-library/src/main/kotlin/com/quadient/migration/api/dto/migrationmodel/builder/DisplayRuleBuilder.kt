@@ -2,6 +2,7 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
@@ -83,6 +84,14 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
      * @return the builder instance for chaining
      */
     fun targetId(id: String?) = apply { targetId = id }
+
+    /**
+     * Sets the target display rule for alias resolution.
+     * When set, this display rule reference will resolve to the specified display rule.
+     * @param rule The [DisplayRule] object to resolve to.
+     * @return the builder instance for chaining
+     */
+    fun targetId(rule: DisplayRule) = apply { targetId = rule.id }
 
     /**
      * Add a reference to a variable structure to this variable structure.
@@ -219,36 +228,54 @@ class BinaryExpressionBuilder() {
     private var leftSet = false
 
     /**
-     * Sets the left operand of the binary expression to a literal [Double] value.
-     * @param value The value to set as the left operand.
+     * Sets the next operand of the binary expression to a literal [Double] value.
+     * The first call sets the left operand; the second call sets the right operand.
+     * @param value The value to set as the next operand.
      * @return The current instance of BinaryExpressionBuilder for method chaining.
      */
     fun value(value: Double) = apply { setValue(value.toString(), LiteralDataType.Number) }
 
     /**
-     * Sets the left operand of the binary expression to a literal [String] value.
-     * @param value The value to set as the left operand.
+     * Sets the next operand of the binary expression to a literal [String] value.
+     * The first call sets the left operand; the second call sets the right operand.
+     * @param value The value to set as the next operand.
      * @return The current instance of BinaryExpressionBuilder for method chaining.
      */
     fun value(value: String) = apply { setValue(value, LiteralDataType.String) }
 
     /**
-     * Sets the left operand of the binary expression to a literal [Boolean] value.
-     * @param value The value to set as the left operand.
+     * Sets the next operand of the binary expression to a literal [Boolean] value.
+     * The first call sets the left operand; the second call sets the right operand.
+     * @param value The value to set as the next operand.
      * @return The current instance of BinaryExpressionBuilder for method chaining.
      */
     fun value(value: Boolean) = apply { setValue(value.toString(), LiteralDataType.Boolean) }
 
+    /**
+     * Sets the next operand of the binary expression to a [LiteralOrFunctionCall] value.
+     * The first call sets the left operand; the second call sets the right operand.
+     * @param value The value to set as the next operand.
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
     fun value(value: LiteralOrFunctionCall) = apply {
         setValue(value)
     }
 
     /**
-     * Sets the left operand of the binary expression to a variable.
-     * @param variableName The name of the variable to set as the left operand.
+     * Sets the next operand of the binary expression to a variable.
+     * The first call sets the left operand; the second call sets the right operand.
+     * @param variableName The name of the variable to set as the next operand.
      * @return The current instance of BinaryExpressionBuilder for method chaining.
      */
     fun variable(variableName: String) = apply { setValue(variableName, LiteralDataType.Variable) }
+
+    /**
+     * Sets the next operand of the binary expression to a variable.
+     * The first call sets the left operand; the second call sets the right operand.
+     * @param variable The [Variable] object to use as the next operand.
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun variable(variable: Variable) = apply { setValue(variable.id, LiteralDataType.Variable) }
 
     private fun setValue(value: LiteralOrFunctionCall) {
         if (leftSet) {

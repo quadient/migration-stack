@@ -1,6 +1,8 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
@@ -55,6 +57,14 @@ class ParagraphBuilder {
      * @return The current instance of [ParagraphBuilder] for method chaining.
      */
     fun displayRuleRef(displayRuleRefId: String) = apply { this.displayRuleRef = DisplayRuleRef(displayRuleRefId) }
+
+    /**
+     * Sets the display rule reference for the paragraph using a [DisplayRule] model object.
+     * This makes the paragraph display conditionally based on the rule.
+     * @param rule The display rule whose ID will be used as the reference.
+     * @return The current instance of [ParagraphBuilder] for method chaining.
+     */
+    fun displayRuleRef(rule: DisplayRule) = apply { this.displayRuleRef = DisplayRuleRef(rule.id) }
 
     /**
      * Adds a new text builder to the paragraph content.
@@ -181,6 +191,14 @@ class ParagraphBuilder {
         fun displayRuleRef(displayRuleRefId: String) = apply { this.displayRuleRef = DisplayRuleRef(displayRuleRefId) }
 
         /**
+         * Sets the display rule reference for the text using a [DisplayRule] model object.
+         * This makes the text display conditionally based on the rule.
+         * @param rule The display rule whose ID will be used as the reference.
+         * @return The current instance of [TextBuilder] for method chaining.
+         */
+        fun displayRuleRef(rule: DisplayRule) = apply { this.displayRuleRef = DisplayRuleRef(rule.id) }
+
+        /**
          * Replaces all content with a single [TextContent] item.
          * @param content A [TextContent] instance to set as the content.
          * @return The current instance of [TextBuilder] for method chaining.
@@ -271,6 +289,15 @@ class ParagraphBuilder {
          */
         fun variableRef(ref: VariableRef) = apply {
             content.add(ref)
+        }
+
+        /**
+         * Adds a variable reference to the text content.
+         * @param variable The [Variable] object to reference.
+         * @return The current instance of [TextBuilder] for method chaining.
+         */
+        fun variableRef(variable: Variable) = apply {
+            content.add(VariableRef(variable.id))
         }
 
         /**

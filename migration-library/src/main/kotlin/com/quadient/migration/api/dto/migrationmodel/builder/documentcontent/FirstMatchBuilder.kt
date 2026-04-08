@@ -1,5 +1,6 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
@@ -100,6 +101,13 @@ class FirstMatchBuilder {
          * @return A CaseBuilder instance for method chaining.
          */
         fun displayRule(id: String) = apply { this.displayRuleRef = DisplayRuleRef(id) }
+
+        /**
+         * Sets the display rule reference for the case using a [DisplayRule] model object.
+         * @param rule The [DisplayRule] to be used in the case.
+         * @return A CaseBuilder instance for method chaining.
+         */
+        fun displayRule(rule: DisplayRule) = apply { this.displayRuleRef = DisplayRuleRef(rule.id) }
 
         /**
          * Sets the name for the case.

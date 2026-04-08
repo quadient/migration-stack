@@ -1,5 +1,6 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Table
@@ -196,6 +197,7 @@ class TableBuilder : RowBuilderBase<TableBuilder> {
 
         fun displayRuleRef(id: String) = this.apply { this.displayRuleRef = DisplayRuleRef(id) }
         fun displayRuleRef(ref: DisplayRuleRef) = this.apply { this.displayRuleRef = ref }
+        fun displayRuleRef(rule: DisplayRule) = this.apply { this.displayRuleRef = DisplayRuleRef(rule.id) }
 
         override fun build(): Table.Row {
             return Table.Row(cells = cells.map { it.build() }, displayRuleRef = displayRuleRef)

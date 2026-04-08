@@ -7,7 +7,6 @@
 package com.quadient.migration.example.example
 
 import com.quadient.migration.api.Migration
-import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
@@ -114,34 +113,34 @@ def displayAddressRule = new DisplayRuleBuilder("displayAddressRule")
         .metadata("key") { it.string("value") }
         .group {
             it.operator(GroupOp.Or)
-            it.comparison { it.variable(nameVariable.id).notEquals().value("") }
-            it.comparison { it.variable(addressVariable.id).notEquals().value("") }
-            it.comparison { it.variable(cityVariable.id).notEquals().value("") }
-            it.comparison { it.variable(stateVariable.id).notEquals().value("") }
+            it.comparison { it.variable(nameVariable).notEquals().value("") }
+            it.comparison { it.variable(addressVariable).notEquals().value("") }
+            it.comparison { it.variable(cityVariable).notEquals().value("") }
+            it.comparison { it.variable(stateVariable).notEquals().value("") }
         }.build()
 
 def dummyDisplayHeaderRule = new DisplayRuleBuilder("dummyDisplayHeaderRule")
-        .comparison { it.value(true).equals().variable(displayHeaderVariable.id) }
+        .comparison { it.value(true).equals().variable(displayHeaderVariable) }
         .build()
 
 def displayHeaderRule = new DisplayRuleBuilder("displayHeaderRule")
-        .targetId(dummyDisplayHeaderRule.id)
+        .targetId(dummyDisplayHeaderRule)
         .build()
 
 def displayParagraphRule = new DisplayRuleBuilder("displayParagraphRule")
-        .comparison { it.value(true).equals().variable(displayParagraphVariable.id) }
+        .comparison { it.value(true).equals().variable(displayParagraphVariable) }
         .build()
 
 def displayLastSentenceRule = new DisplayRuleBuilder("displayLastSentenceRule")
-        .comparison { it.value(true).equals().variable(displayLastSentenceVariable.id) }
+        .comparison { it.value(true).equals().variable(displayLastSentenceVariable) }
         .build()
 
 def displayRuleStateCzechia = new DisplayRuleBuilder("displayRuleStateCzechia")
-        .comparison { it.value("Czechia").equals().variable(stateVariable.id) }
+        .comparison { it.value("Czechia").equals().variable(stateVariable) }
         .build()
 
 def displayRuleStateFrance = new DisplayRuleBuilder("displayRuleStateFrance")
-        .comparison { it.value("France").equals().variable(stateVariable.id) }
+        .comparison { it.value("France").equals().variable(stateVariable) }
         .build()
 
 // Define text and paragraph styles to be used in the document
@@ -230,7 +229,7 @@ def table = new TableBuilder()
         .border { it.allBorders(borderColor, borderWidth) }
 
         .addFirstHeaderRow {
-            it.displayRuleRef(displayHeaderRule.id)
+            it.displayRuleRef(displayHeaderRule)
             it.addCell {
                 it.border {
                     it.allBorders(borderColor, borderWidth)
@@ -318,7 +317,7 @@ def table = new TableBuilder()
 def jobListBlock = new DocumentObjectBuilder("jobList", DocumentObjectType.Block)
         .internal(true)
         .repeatedContent("Data.Clients.Value.Jobs") {
-            it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Job: ").variableRef(jobNameVariable.id) } }
+            it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Job: ").variableRef(jobNameVariable) } }
         }
         .build()
 
@@ -361,15 +360,15 @@ def transactionsTable = new TableBuilder()
             it.addRow {
                 it.addCell {
                     it.border { it.allBorders(borderColor, borderWidth) }
-                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(transactionAccountVariable.id) } }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(transactionAccountVariable) } }
                 }
                 it.addCell {
                     it.border { it.allBorders(borderColor, borderWidth) }
-                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(transactionTypeVariable.id) } }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(transactionTypeVariable) } }
                 }
                 it.addCell {
                     it.border { it.allBorders(borderColor, borderWidth) }
-                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(transactionAmountVariable.id) } }
+                    it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(transactionAmountVariable) } }
                 }
             }
         }
@@ -380,11 +379,11 @@ def transactionsTable = new TableBuilder()
 // recipient's name, address, city, and state.
 // Simple paragraph is used because no styling is needed.
 def address = new DocumentObjectBuilder("address", DocumentObjectType.Block)
-        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(nameVariable.id) } }
-        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(addressVariable.id) } }
-        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(cityVariable.id) } }
-        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(stateVariable.id) } }
-        .variableStructureRef(variableStructure.id)
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(nameVariable) } }
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(addressVariable) } }
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(cityVariable) } }
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(stateVariable) } }
+        .variableStructureRef(variableStructure)
         .build()
 
 // Footer of the document containing a signature.
@@ -392,10 +391,10 @@ def signature = new DocumentObjectBuilder("signature", DocumentObjectType.Block)
         .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Sincerely,") } }
         .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("John Smith") } }
         .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("CEO of Lorem ipsum") } }
-        .variableStructureRef(variableStructure.id)
+        .variableStructureRef(variableStructure)
         .build()
 
-// Sample paragraph containing a heading using headingStyle style,
+// Sample paragraph containing a headingusing headingStyle style,
 // and body text with normalStyle, both defined above.
 def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Block)
 // No separate file will be created and the content will be inlined instead when block is internal.
@@ -415,11 +414,11 @@ def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Bloc
                             it.case {
                                 it.paragraph {
                                     it.styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Dobrý den") }
-                                }.displayRule(displayRuleStateCzechia.id)
+                                }.displayRule(displayRuleStateCzechia)
                             }.case {
                                 it.paragraph {
                                     it.styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Bonjour") }
-                                }.displayRule(displayRuleStateFrance.id)
+                                }.displayRule(displayRuleStateFrance)
                             }.defaultParagraph { it.styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Good morning") } }
                         }
                         it.string(", Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
@@ -436,7 +435,7 @@ def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Bloc
                         it.styleRef(normalStyle).string("Donec non porttitor ipsum. Praesent et blandit nulla, quis ullamcorper enim. Curabitur nec rutrum justo. Nunc ac quam a ante consequat ullamcorper eget sit amet tortor. Donec convallis sagittis purus, a feugiat lacus tristique vitae. In a orci risus. Sed elit magna, vestibulum vitae orci sodales, consequat pharetra nisi. Vestibulum non scelerisque elit. Duis feugiat porttitor ante sit amet porta. Fusce at leo posuere, venenatis libero ut, varius dolor. Duis bibendum porta tincidunt.")
                     }
                     .text {
-                        it.styleRef(normalStyle).displayRuleRef(new DisplayRuleRef(displayLastSentenceRule.id)).string("Nulla id nulla odio.")
+                        it.styleRef(normalStyle).displayRuleRef(displayLastSentenceRule).string("Nulla id nulla odio.")
                     }
         }
         .build()
@@ -446,7 +445,7 @@ def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Bloc
 // to document objects to provide additional information without affecting visible content.
 def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", DocumentObjectType.Block)
         .internal(false)
-        .displayRuleRef(displayParagraphRule.id)
+        .displayRuleRef(displayParagraphRule)
         .subject("Conditional Paragraph")
         .metadata("DocumentInfo") { mb ->
             mb.string("Document type: Technical Example")
@@ -465,20 +464,20 @@ def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", Doc
                         it.styleRef(normalStyle).string("Integer quis quam semper, accumsan neque at, pellentesque diam. Etiam in blandit dolor. Maecenas sit amet interdum augue, vel pellentesque erat. Suspendisse ut sem in justo rhoncus placerat vitae ut lacus. Etiam consequat bibendum justo ut posuere. Donec aliquam posuere nibh, vehicula pulvinar lectus dictum et. Nullam rhoncus ultrices ipsum et consectetur. Nam tincidunt id purus ac viverra. ")
                     }
         }
-        .variableStructureRef(variableStructure.id)
+        .variableStructureRef(variableStructure)
         .build()
 
-def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
+def firstMatchBlock= new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
         .internal(true)
         .firstMatch { fb ->
             fb.case { cb ->
                 cb.name("Czech Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle).text {
                     it.styleRef(normalStyle).string("Nashledanou.")
-                }.build()).displayRule(displayRuleStateCzechia.id)
+                }.build()).displayRule(displayRuleStateCzechia)
             }.case { cb ->
                 cb.name("French Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle).text {
                     it.styleRef(normalStyle).string("Au revoir.")
-                }.build()).displayRule(displayRuleStateFrance.id)
+                }.build()).displayRule(displayRuleStateFrance)
             }.default(new ParagraphBuilder().styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Goodbye.") }.build())
         }.build()
 
@@ -517,7 +516,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                 it.width(contentWidth)
                 it.height(Size.ofCentimeters(2))
             }
-                    .documentObjectRef(address.id, displayAddressRule.id)
+                    .documentObjectRef(address, displayAddressRule)
                     .interactiveFlowName("Def.InteractiveFlow1")
         }
         .area {
@@ -526,7 +525,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                 it.top(topMargin)
                 it.width(logoWidth)
                 it.height(logoHeight)
-            }.imageRef(logo.id)
+            }.imageRef(logo)
         }
         .area {
             it.position {
@@ -535,17 +534,17 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                 it.width(contentWidth)
                 it.height(pageHeight - Size.ofCentimeters(6))
             }
-                    .documentObjectRef(paragraph1.id)
-                    .documentObjectRef(paragraph2.id)
+                    .documentObjectRef(paragraph1)
+                    .documentObjectRef(paragraph2)
                     .appendContent(table)
                     .paragraph { it.styleRef(spaceParagraphStyle) }
                     .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Transactions:") } }
                     .appendContent(transactionsTable)
                     .paragraph { it.styleRef(spaceParagraphStyle) }
-                    .documentObjectRef(jobListBlock.id)
-                    .documentObjectRef(conditionalParagraph.id)
-                    .documentObjectRef(firstMatchBlock.id)
-                    .documentObjectRef(selectByLanguageBlock.id)
+                    .documentObjectRef(jobListBlock)
+                    .documentObjectRef(conditionalParagraph)
+                    .documentObjectRef(firstMatchBlock)
+                    .documentObjectRef(selectByLanguageBlock)
                     .paragraph {
                         it.styleRef(spaceParagraphStyle).text {
                             it.styleRef(normalStyle)
@@ -561,15 +560,15 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                 it.width(contentWidth)
                 it.height(Size.ofCentimeters(2))
             }
-                    .documentObjectRef(signature.id)
-                    .attachmentRef(exampleAttachment.id)
+                    .documentObjectRef(signature)
+                    .attachmentRef(exampleAttachment)
                     .flowToNextPage(true)
         }
-        .variableStructureRef(variableStructure.id)
+        .variableStructureRef(variableStructure)
         .build()
 
 def template = new DocumentObjectBuilder("template", DocumentObjectType.Template)
-        .documentObjectRef(page.id)
+        .documentObjectRef(page)
         .subject("Document example template")
         .pdfMetadata {
             it.author(new VariableRef(nameVariable.id))
@@ -578,10 +577,10 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
             it.keywords("Migration, Model, Example, Test, Import")
             it.subject { it.string("Lorem ipsum dolor sit amet from: ").variableRef(cityVariable.id) }
         }
-        .variableStructureRef(variableStructure.id)
+        .variableStructureRef(variableStructure)
         .build()
 
-// Insert all content into the database to be used in the deploy task
+// Insert allcontent into the database to be used in the deploy task
 for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock]) {
     migration.documentObjectRepository.upsert(item)
 }
