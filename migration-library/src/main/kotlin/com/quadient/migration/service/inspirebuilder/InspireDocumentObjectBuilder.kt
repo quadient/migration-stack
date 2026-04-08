@@ -103,6 +103,8 @@ import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariableRefPath
 import com.quadient.migration.service.resolveTarget
+import com.quadient.migration.shared.Size
+import com.quadient.wfdxml.api.layoutnodes.Flow.WebEditingType.SECTION
 
 abstract class InspireDocumentObjectBuilder(
     protected val documentObjectRepository: DocumentObjectRepository,
@@ -267,9 +269,13 @@ abstract class InspireDocumentObjectBuilder(
         val layout = builder.addLayout()
 
         layout.setName("DocumentLayout")
-        val flow = layout.addFlow().setSectionFlow(true).setWebEditingType(Flow.WebEditingType.SECTION)
+        val flow = layout.addFlow().setName("StyleDefinitionMainFlow").setSectionFlow(true).setWebEditingType(SECTION)
+        layout.addPage().setName("Page 1").setType(Pages.PageConditionType.SIMPLE).addFlowArea()
+            .setName("StyleDefinitionFlowArea").setPosX(Size.ofMillimeters(3.62).toMeters())
+            .setPosY(Size.ofMillimeters(3.62).toMeters()).setWidth(Size.ofMillimeters(203.55).toMeters())
+            .setHeight(Size.ofMillimeters(287.23).toMeters()).setFlow(flow).setFlowToNextPage(true)
+
         layout.pages.setMainFlow(flow)
-        layout.addPage().setName("Page 1").setType(Pages.PageConditionType.SIMPLE)
         layout.addRoot().setAllowRuntimeModifications(true)
 
         if (fontDataCache.isEmpty()) {
@@ -1052,7 +1058,7 @@ abstract class InspireDocumentObjectBuilder(
             val cellFlow =
                 if (cellContentFlow.type === Flow.Type.SELECT_BY_INLINE_CONDITION || cellContentFlow.type === Flow.Type.SELECT_BY_CONDITION) {
                 layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
-                    .setWebEditingType(Flow.WebEditingType.SECTION)
+                    .setWebEditingType(SECTION)
                     .also { it.addParagraph().addText().appendFlow(cellContentFlow) }
             } else cellContentFlow
 
@@ -1166,7 +1172,7 @@ abstract class InspireDocumentObjectBuilder(
         } else {
             val repeatedFlow =
                 layout.addFlow().setType(Flow.Type.REPEATED).setVariable(arrayVariable).setSectionFlow(true)
-                    .setWebEditingType(Flow.WebEditingType.SECTION)
+                    .setWebEditingType(SECTION)
             flowName?.let { repeatedFlow.setName(it) }
             val repeatedFlowText = repeatedFlow.addParagraph().addText()
             innerFlows.forEach { repeatedFlowText.appendFlow(it) }
@@ -1293,7 +1299,7 @@ abstract class InspireDocumentObjectBuilder(
 
             val caseFlow =
                 if (isInline) contentFlow else layout.addFlow().setSectionFlow(true).setType(Flow.Type.SIMPLE)
-                    .setWebEditingType(Flow.WebEditingType.SECTION).setDisplayName(caseName)
+                    .setWebEditingType(SECTION).setDisplayName(caseName)
                     .also { it.addParagraph().addText().appendFlow(contentFlow) }
 
             firstMatchFlow.addLineForSelectByInlineCondition(
@@ -1308,7 +1314,7 @@ abstract class InspireDocumentObjectBuilder(
 
             val caseFlow =
                 if (isInline) contentFlow else layout.addFlow().setSectionFlow(true).setType(Flow.Type.SIMPLE)
-                    .setWebEditingType(Flow.WebEditingType.SECTION).setDisplayName("Else Case")
+                    .setWebEditingType(SECTION).setDisplayName("Else Case")
                     .also { it.addParagraph().addText().appendFlow(contentFlow) }
 
             firstMatchFlow.setDefaultFlow(caseFlow)
