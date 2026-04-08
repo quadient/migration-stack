@@ -26,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Fixed
 
 - Display rule report not showing all parents in usedBy
+- Change default flowArea and flow in style definition template to avoid potential clash with default naming of flows
+  in generated document templates.
 
 ## [17.0.17] - 2026-03-10
 
