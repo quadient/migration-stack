@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.18] - 2026-04-08
+
+### Added
+
 - Paragraph and Text style references can also work with Interactive display names
 - External display rule support along with metadata, subject, target aliasing,
   base template override, variable structure override and target folder
@@ -17,7 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - In both repeated content and variable structure paths it is possible to use literal path (e.g. Data.Clients.Value)
   or reference to a variable
 - Validate that IPS does not use unsupported parameters on first access
-- Support for referencing objects in builders by the object itself (besides id or ref object)
+- Support for referencing of some objects in builders by the object itself (besides id or ref object)
 
 ### Changed
 
@@ -258,7 +266,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.17...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.18...HEAD
+[17.0.18]: https://github.com/quadient/migration-stack/compare/v17.0.17...v17.0.18
 [17.0.17]: https://github.com/quadient/migration-stack/compare/v17.0.16...v17.0.17
 [17.0.16]: https://github.com/quadient/migration-stack/compare/v17.0.15...v17.0.16
 [17.0.15]: https://github.com/quadient/migration-stack/compare/v17.0.14...v17.0.15
