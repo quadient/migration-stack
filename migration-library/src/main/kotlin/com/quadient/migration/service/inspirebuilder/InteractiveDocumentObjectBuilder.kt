@@ -12,11 +12,15 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
+import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
@@ -40,9 +44,9 @@ class InteractiveDocumentObjectBuilder(
     documentObjectRepository: DocumentObjectRepository,
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
-    variableRepository: Repository<com.quadient.migration.api.dto.migrationmodel.Variable>,
-    variableStructureRepository: Repository<com.quadient.migration.api.dto.migrationmodel.VariableStructure>,
-    displayRuleRepository: Repository<DisplayRule>,
+    variableRepository: VariableRepository,
+    variableStructureRepository: Repository<VariableStructure>,
+    displayRuleRepository: DisplayRuleRepository,
     imageRepository: Repository<Image>,
     attachmentRepository: Repository<Attachment>,
     projectConfig: ProjectConfig,
@@ -62,10 +66,16 @@ class InteractiveDocumentObjectBuilder(
 ) {
     private val lenientJson = Json { ignoreUnknownKeys = true }
     private val mainFlowId = "Def.MainFlow"
+    private val snippetBuilder = InteractiveSnippetBuilder(
+        mainFlowId,
+        variableRepository,
+        displayRuleRepository,
+        projectConfig.interactiveTenant,
+        ::getDisplayRulePath
+    )
 
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
     private val baseTemplateCache = mutableMapOf<IcmPath, BaseTemplateData?>()
-    private var currentBaseTemplateData: BaseTemplateData? = null
     private val styleDefinitionData: StyleDefinitionData? by lazy {
         val path = getStyleDefinitionPath()
         if (!ipsService.fileExists(path)) {
@@ -81,7 +91,12 @@ class InteractiveDocumentObjectBuilder(
     }
 
     override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
-        val fileName = "$nameOrId.jld"
+        val ext = when (type) {
+            DocumentObjectType.Snippet -> "jsd"
+            else -> "jld"
+        }
+
+        val fileName = "$nameOrId.$ext"
 
         if (targetFolder?.isAbsolute() == true) {
             return targetFolder.join(fileName).toString()
@@ -214,7 +229,7 @@ class InteractiveDocumentObjectBuilder(
 
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
-        currentBaseTemplateData = getOrLoadBaseTemplateData(baseTemplatePath)
+        val currentBaseTemplateData = getOrLoadBaseTemplateData(baseTemplatePath)
             ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
 
         val languages = collectLanguages(documentObject)
@@ -223,33 +238,43 @@ class InteractiveDocumentObjectBuilder(
         addPdfMetadataToPages(layout, documentObject, variableStructure)
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContent>>()
-        if (documentObject.type == DocumentObjectType.Page) {
-            documentObject.content.paragraphIfEmpty().forEach {
+        when (documentObject.type) {
+            DocumentObjectType.Snippet -> return snippetBuilder.buildSnippet(
+                documentObject,
+                builder,
+                layout,
+                variableStructure
+            )
+
+            DocumentObjectType.Page -> {
+                documentObject.content.paragraphIfEmpty().forEach {
                 if (it is Area && !it.interactiveFlowName.isNullOrBlank()) {
-                    val flowName = it.interactiveFlowName!!
-                    val interactiveFlowId = if (flowName.startsWith("Def.")) {
-                        flowName
+                        val flowName = it.interactiveFlowName!!
+                        val interactiveFlowId = if (flowName.startsWith("Def.")) {
+                            flowName
+                        } else {
+                            currentBaseTemplateData.interactiveFlowNamesToIds[flowName]
+                        }
+
+                        if (interactiveFlowId.isNullOrBlank()) {
+                            val errorMessage =
+                                "Failed to find interactive flow '$flowName' in base template '$baseTemplatePath'."
+                            logger.error(errorMessage)
+                            error(errorMessage)
+                        }
+
+                        val interactiveFlowContent =
+                            interactiveFlowsWithContent.getOrPut(interactiveFlowId) { mutableListOf() }
+                        interactiveFlowContent.addAll(it.content)
                     } else {
-                        currentBaseTemplateData!!.interactiveFlowNamesToIds[flowName]
+                        val interactiveFlowContent = interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }
+                        interactiveFlowContent.add(it)
                     }
-
-                    if (interactiveFlowId.isNullOrBlank()) {
-                        val errorMessage =
-                            "Failed to find interactive flow '$flowName' in base template '$baseTemplatePath'."
-                        logger.error(errorMessage)
-                        error(errorMessage)
-                    }
-
-                    val interactiveFlowContent =
-                        interactiveFlowsWithContent.getOrPut(interactiveFlowId) { mutableListOf() }
-                    interactiveFlowContent.addAll(it.content)
-                } else {
-                    val interactiveFlowContent = interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }
-                    interactiveFlowContent.add(it)
                 }
             }
-        } else {
-            interactiveFlowsWithContent[mainFlowId] = documentObject.content.toMutableList()
+            else -> {
+                interactiveFlowsWithContent[mainFlowId] = documentObject.content.toMutableList()
+            }
         }
 
         interactiveFlowsWithContent.forEach {
@@ -259,19 +284,46 @@ class InteractiveDocumentObjectBuilder(
             val contentFlows =
                 buildDocumentContentAsFlows(layout, variableStructure, it.value, documentObject.nameOrId(), languages)
 
-            if (documentObject.displayRuleRef == null) {
-                contentFlows.forEach { contentFlow -> interactiveFlowText.appendFlow(contentFlow) }
-            } else {
-                interactiveFlowText.appendFlow(
-                    contentFlows.toSingleFlow(
-                        layout, variableStructure, documentObject.nameOrId(), documentObject.displayRuleRef?.let { DisplayRuleRef(it.id) }
-                    )
+            when (val ref = documentObject.displayRuleRef) {
+                null -> contentFlows.forEach { contentFlow -> interactiveFlowText.appendFlow(contentFlow) }
+                else -> interactiveFlowText.appendFlow(
+                    contentFlows.toSingleFlow(layout, variableStructure, documentObject.nameOrId(), DisplayRuleRef(ref.id))
                 )
             }
         }
 
         logger.debug("Successfully built document object '${documentObject.nameOrId()}'")
         return builder.buildLayoutDelta()
+    }
+
+    override fun buildDocumentObjectRef(
+        documentModel: DocumentObject,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        documentObjectRef: DocumentObjectRef,
+        languages: List<String>
+    ): Flow? {
+        val flow = getFlowByName(layout, documentModel.nameOrId()) ?: if (documentModel.internal == true) {
+            buildDocumentContentAsSingleFlow(
+                layout,
+                variableStructure,
+                documentModel.content,
+                documentModel.nameOrId(),
+                documentModel.displayRuleRef?.let { DisplayRuleRef(it.id) },
+                languages
+            )
+        } else {
+            layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)
+                .setLocation(getDocumentObjectPath(documentModel))
+        }
+
+        if (documentObjectRef.displayRuleRef != null) {
+            val displayRule = displayRuleRepository.findOrFail(documentObjectRef.displayRuleRef.id)
+
+            return wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule, flow)
+        }
+
+        return flow
     }
 
     override fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean {

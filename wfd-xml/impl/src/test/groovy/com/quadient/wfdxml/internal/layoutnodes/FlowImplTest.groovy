@@ -12,7 +12,7 @@ import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.SELECT_BY_CONDITION
 import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.SELECT_BY_INLINE_CONDITION
 import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.SIMPLE
 import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.VARIABLE_FORMATTED
-import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.OVERFLOWABLE_VARIABLE_FORMATTED
+import static com.quadient.wfdxml.api.layoutnodes.Flow.Type.DYNAMIC_EXTERNAL
 import static com.quadient.wfdxml.utils.AssertXml.assertXmlEqualsWrapRoot
 
 class FlowImplTest extends Specification {
@@ -83,7 +83,7 @@ class FlowImplTest extends Specification {
     def "export Flow with unsupported type"() {
         given:
         FlowImpl flow = new FlowImpl()
-                .setType(OVERFLOWABLE_VARIABLE_FORMATTED)
+                .setType(DYNAMIC_EXTERNAL)
 
         when:
         flow.export(exporter)

@@ -135,10 +135,14 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build of block with styled paragraph and text fetches both styles from db and uses them`() {
         // given
-        val paraStyle =
-            mockParagraphStyle(ParagraphStyleBuilder("paraStyle1").definition { leftIndent(Size.ofMillimeters(100)) }
-                .build())
-        val textStyle = mockTextStyle(TextStyleBuilder("textStyle1").definition { fontFamily("Arial") }.build())
+        val paraStyle = ParagraphStyleBuilder("paraStyle1")
+            .definition { leftIndent(Size.ofMillimeters(100)) }
+            .build()
+            .mock()
+        val textStyle = TextStyleBuilder("textStyle1")
+            .definition { fontFamily("Arial") }
+            .build()
+            .mock()
 
         val block = aBlock(
             "1", listOf(aParagraph(aText(StringValue("some text"), textStyle.id), paraStyle.id))
@@ -159,12 +163,10 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build of block where style definition does not exist uses style names as-is without failing`() {
         // given
-        val paraStyle = mockParagraphStyle(
-            ParagraphStyleBuilder("PS1").name("Heading Display").definition { alignment(Alignment.Left) }.build()
-        )
-        val textStyle = mockTextStyle(
-            TextStyleBuilder("TS1").name("Body Display").definition { fontFamily("Arial") }.build()
-        )
+        val paraStyle =
+            ParagraphStyleBuilder("PS1").name("Heading Display").definition { alignment(Alignment.Left) }.build().mock()
+        val textStyle =
+            TextStyleBuilder("TS1").name("Body Display").definition { fontFamily("Arial") }.build().mock()
 
         val block = DocumentObjectBuilder("1", Block).paragraph {
             text { string("some text").styleRef(textStyle.id) }.styleRef(paraStyle.id)
@@ -184,12 +186,10 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build of block where style names match display names in style definition resolves to internal style names`() {
         // given
-        val paraStyle = mockParagraphStyle(
-            ParagraphStyleBuilder("PS1").name("Heading Display").definition { alignment(Alignment.Left) }.build()
-        )
-        val textStyle = mockTextStyle(
-            TextStyleBuilder("TS1").name("Body Display").definition { fontFamily("Arial") }.build()
-        )
+        val paraStyle =
+            ParagraphStyleBuilder("PS1").name("Heading Display").definition { alignment(Alignment.Left) }.build().mock()
+        val textStyle =
+            TextStyleBuilder("TS1").name("Body Display").definition { fontFamily("Arial") }.build().mock()
 
         val block = DocumentObjectBuilder("1", Block).paragraph {
             text { string("some text").styleRef(textStyle.id) }.styleRef(paraStyle.id)
@@ -372,18 +372,16 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with variable refs in variable structure with converted value based on type`() {
         // given
-        val longVar = mockVar(aVariable("var1", "varName1", dataType = DataType.Integer64, defaultValue = "2025"))
-        val currencyVar = mockVar(aVariable("var2", "varName2", dataType = DataType.Currency, defaultValue = "249.99"))
-        val boolVar = mockVar(aVariable("var3", "varName3", dataType = DataType.Boolean, defaultValue = "TRUE"))
-        val variableStructure = mockVarStructure(
-            aVariableStructure(
-                structure = mapOf(
-                    longVar.id to VariablePathData("Data.Clients.Value"),
-                    currencyVar.id to VariablePathData("Data.Clients.Value", "Money"),
-                    boolVar.id to VariablePathData("Data.Clients.Value")
-                )
+        val longVar = aVariable("var1", "varName1", dataType = DataType.Integer64, defaultValue = "2025").mock()
+        val currencyVar = aVariable("var2", "varName2", dataType = DataType.Currency, defaultValue = "249.99").mock()
+        val boolVar = aVariable("var3", "varName3", dataType = DataType.Boolean, defaultValue = "TRUE").mock()
+        val variableStructure = aVariableStructure(
+            structure = mapOf(
+                longVar.id to VariablePathData("Data.Clients.Value"),
+                currencyVar.id to VariablePathData("Data.Clients.Value", "Money"),
+                boolVar.id to VariablePathData("Data.Clients.Value")
             )
-        )
+        ).mock()
         val config = aProjectConfig(defaultVariableStructure = variableStructure.id)
 
         val block = aBlock(
@@ -470,14 +468,17 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with styled paragraph and styled text under display rule wraps the text in inline condition flow`() {
         // given
-        val variable = mockVar(VariableBuilder("V1").name("ClientName").dataType(DataType.String).build())
-        val variableStructure = mockVarStructure(
-            VariableStructureBuilder("VS1").addVariable(variable.id, "Data.Clients", "Client Name").build()
-        )
+        val variable = VariableBuilder("V1").name("ClientName").dataType(DataType.String).build().mock()
+        val variableStructure = VariableStructureBuilder("VS1")
+            .addVariable(variable.id, "Data.Clients", "Client Name")
+            .build()
+            .mock()
 
-        val paraStyle = mockParagraphStyle(
-            ParagraphStyleBuilder("P1").definition { leftIndent(Size.ofMillimeters(10)) }.build())
-        val textStyle = mockTextStyle (TextStyleBuilder("T1").definition { bold(true) }.build())
+        val paraStyle = ParagraphStyleBuilder("P1")
+            .definition { leftIndent(Size.ofMillimeters(10)) }
+            .build()
+            .mock()
+        val textStyle = TextStyleBuilder("T1").definition { bold(true) }.build().mock()
         val displayRule = DisplayRuleBuilder("R1").comparison { variable(variable.id).equals().value("Jon") }.build()
 
         val block = DocumentObjectBuilder("1", Block).paragraph {
@@ -526,17 +527,17 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with styled paragraph under display rule and one of its texts under display rule wraps it in multiple condition flows`() {
         // given
-        val variable = mockVar(aVariable("V1", "900_MailCount"))
-        val variableStructure = mockVarStructure(
-            aVariableStructure(
-                structure = mapOf(variable.id to VariablePathData("Data.1.Value"))
-            )
-        )
+        val variable = aVariable("V1", "900_MailCount").mock()
+        val variableStructure = aVariableStructure(
+            structure = mapOf(variable.id to VariablePathData("Data.1.Value"))
+        ).mock()
         val config = aProjectConfig(defaultVariableStructure = variableStructure.id)
 
-        val textStyle = mockTextStyle(TextStyleBuilder("T1").definition { bold(true) }.build())
-        val paraStyle =
-            mockParagraphStyle(ParagraphStyleBuilder("P1").definition { leftIndent(Size.ofMillimeters(10)) }.build())
+        val textStyle = TextStyleBuilder("T1").definition { bold(true) }.build().mock()
+        val paraStyle = ParagraphStyleBuilder("P1")
+            .definition { leftIndent(Size.ofMillimeters(10)) }
+            .build()
+            .mock()
 
         val paraDisplayRule = aDisplayRule(
             Literal(variable.id, LiteralDataType.Variable),
@@ -548,21 +549,19 @@ class InteractiveDocumentObjectBuilderTest {
             Literal("A", LiteralDataType.String), NotEquals, Literal("B", LiteralDataType.String), id = "R_text"
         )
 
-        val block = mockObj(
-            aBlock(
-                "1", listOf(
-                    aParagraph(
-                        listOf(
-                            aText(
-                                StringValue("This is")
-                            ), aText(
-                                StringValue("Preposterous!"), textStyle.id, DisplayRuleRef(textDisplayRule.id)
-                            )
-                        ), ParagraphStyleRef(paraStyle.id), DisplayRuleRef(paraDisplayRule.id)
-                    )
+        val block = aBlock(
+            "1", listOf(
+                aParagraph(
+                    listOf(
+                        aText(
+                            StringValue("This is")
+                        ), aText(
+                            StringValue("Preposterous!"), textStyle.id, DisplayRuleRef(textDisplayRule.id)
+                        )
+                    ), ParagraphStyleRef(paraStyle.id), DisplayRuleRef(paraDisplayRule.id)
                 )
             )
-        )
+        ).mock()
 
         every { displayRuleRepository.findOrFail(paraDisplayRule.id) } returns paraDisplayRule
         every { displayRuleRepository.findOrFail(textDisplayRule.id) } returns textDisplayRule
@@ -699,18 +698,16 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build template with block using display rule with unmapped variable creates dummy display rule`() {
         // given
-        val variable = mockVar(aVariable("V_999", "DollarsInBank", dataType = DataType.Currency))
+        val variable = aVariable("V_999", "DollarsInBank", dataType = DataType.Currency).mock()
 
-        val displayRule = mockRule(
-            aDisplayRule(
-                Literal(variable.id, LiteralDataType.Variable),
-                GreaterOrEqualThan,
-                Literal("25000", LiteralDataType.Number),
-                negation = true
-            )
-        )
+        val displayRule = aDisplayRule(
+            Literal(variable.id, LiteralDataType.Variable),
+            GreaterOrEqualThan,
+            Literal("25000", LiteralDataType.Number),
+            negation = true
+        ).mock()
 
-        val block = mockObj(aBlock("1", listOf(aParagraph(aText(StringValue("Hello"))))))
+        val block = aBlock("1", listOf(aParagraph(aText(StringValue("Hello"))))).mock()
         val template = aTemplate("2", listOf(aDocumentObjectRef(block.id, displayRule.id)))
 
         every { variableRepository.find(variable.id) } returns variable
@@ -776,7 +773,7 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with image`() {
         // given
-        val image = mockImage(aImage("Dog", options = ImageOptions(Size.ofPoints(120), Size.ofPoints(90))))
+        val image = aImage("Dog", options = ImageOptions(Size.ofPoints(120), Size.ofPoints(90))).mock()
         val block = aBlock("1", listOf(ImageRef(image.id)))
 
         // when
@@ -797,7 +794,7 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build block with image uses alternateText from Image`() {
         // given
-        val image = mockImage(aImage("Dog", alternateText = "A cute dog picture"))
+        val image = aImage("Dog", alternateText = "A cute dog picture").mock()
         val block = aBlock("1", listOf(ImageRef(image.id)))
 
         // when
@@ -829,9 +826,9 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build template with two blocks referencing same image results in single image definition`() {
         // given
-        val image = mockImage(aImage("Dog"))
-        val block1 = mockObj(aBlock("1", listOf(ImageRef(image.id)), internal = true))
-        val block2 = mockObj(aBlock("2", listOf(ImageRef(image.id)), internal = true))
+        val image = aImage("Dog").mock()
+        val block1 = aBlock("1", listOf(ImageRef(image.id)), internal = true).mock()
+        val block2 = aBlock("2", listOf(ImageRef(image.id)), internal = true).mock()
 
         val template = aTemplate("3", listOf(aDocumentObjectRef(block1.id), aDocumentObjectRef(block2.id)))
 
@@ -846,8 +843,8 @@ class InteractiveDocumentObjectBuilderTest {
     fun `build block with unknown image and image with missing source path renders placeholder texts instead`() {
         // given
         val catImage =
-            mockImage(aImage("Cat", imageType = ImageType.Unknown, skip = SkipOptions(true, "Cat placeholder", null)))
-        val dogImage = mockImage(aImage("Dog", sourcePath = "", skip = SkipOptions(true, "Dog placeholder", null)))
+            aImage("Cat", imageType = ImageType.Unknown, skip = SkipOptions(true, "Cat placeholder", null)).mock()
+        val dogImage = aImage("Dog", sourcePath = "", skip = SkipOptions(true, "Dog placeholder", null)).mock()
 
         val block = aBlock(
             "1", listOf(ImageRef(catImage.id), aParagraph(aText(ImageRef(dogImage.id))))
@@ -868,43 +865,33 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `paragraph with first match is built to inline condition flow with multiple options`() {
         // given
-        val rule1 = mockRule(
-            aDisplayRule(
-                Literal("A", LiteralDataType.String), Equals, Literal("B", LiteralDataType.String), id = "R_1"
-            )
-        )
+        val rule1 = aDisplayRule(
+            Literal("A", LiteralDataType.String), Equals, Literal("B", LiteralDataType.String), id = "R_1"
+        ).mock()
 
-        val rule2 = mockRule(
-            aDisplayRule(
-                Literal("C", LiteralDataType.String), Equals, Literal("C", LiteralDataType.String), id = "R_2"
-            )
-        )
+        val rule2 = aDisplayRule(
+            Literal("C", LiteralDataType.String), Equals, Literal("C", LiteralDataType.String), id = "R_2"
+        ).mock()
 
-        val block = mockObj(
-            aDocObj(
-                "B_1", Block, listOf(
-                    aParagraph(
-                        aText(
-                            listOf(
-                                StringValue("Hello, "), FirstMatch(
-                                    cases = listOf(
-                                        FirstMatch.Case(
-                                            DisplayRuleRef(rule1.id),
-                                            listOf(aParagraph(aText(StringValue("Mike")))),
-                                            null
-                                        ), FirstMatch.Case(
-                                            DisplayRuleRef(rule2.id),
-                                            listOf(aParagraph(aText(StringValue("Jon")))),
-                                            null
-                                        )
-                                    ), emptyList()
-                                ), StringValue(", how are you?")
-                            )
+        val block = aDocObj(
+            "B_1", Block, listOf(
+                aParagraph(
+                    aText(
+                        listOf(
+                            StringValue("Hello, "), FirstMatch(
+                                cases = listOf(
+                                    FirstMatch.Case(
+                                        DisplayRuleRef(rule1.id), listOf(aParagraph(aText(StringValue("Mike")))), null
+                                    ), FirstMatch.Case(
+                                        DisplayRuleRef(rule2.id), listOf(aParagraph(aText(StringValue("Jon")))), null
+                                    )
+                                ), emptyList()
+                            ), StringValue(", how are you?")
                         )
                     )
                 )
             )
-        )
+        ).mock()
 
         // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
@@ -940,14 +927,11 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `build of flow under display rule wraps in in condition flow`() {
         // given
-        val rule = mockRule(
-            aDisplayRule(Literal("C", LiteralDataType.String), Equals, Literal("C", LiteralDataType.String))
-        )
-        val innerBlock = mockObj(
-            aDocObj(
-                "B_1", Block, listOf(aParagraph(aText(StringValue("Text")))), true, displayRuleRef = rule.id
-            )
-        )
+        val rule =
+            aDisplayRule(Literal("C", LiteralDataType.String), Equals, Literal("C", LiteralDataType.String)).mock()
+        val innerBlock = aDocObj(
+            "B_1", Block, listOf(aParagraph(aText(StringValue("Text")))), true, displayRuleRef = rule.id
+        ).mock()
         val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(innerBlock.id)))
 
         // when
@@ -965,12 +949,55 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `variable string content is wrapped in paragraph`() {
+        val subject = aSubject(aProjectConfig(defaultVariableStructure = "VS_1"))
+
+        val variable1 = VariableBuilder("V_1").dataType(DataType.String).build().mock()
+        val variable2 = VariableBuilder("V_2").dataType(DataType.String).build().mock()
+        val variable3 = VariableBuilder("V_3").dataType(DataType.String).build().mock()
+        VariableStructureBuilder("VS_1")
+            .addVariable(variable1.id, "Data", "V_1")
+            .addVariable(variable2.id, "Data", "V_2")
+            .addVariable(variable3.id, "Data", "V_3")
+            .build()
+            .mock()
+        val docObj = DocumentObjectBuilder("B_1", Block)
+            .paragraph { string("Paragraph") }
+            .string("Hello World")
+            .variable(variable1)
+            .variable(variable2)
+            .string("Screw this World")
+            .variable(variable3)
+            .paragraph { string("Paragraph 2") }
+            .string("Goodbye World")
+            .build()
+            .mock()
+
+        val result = subject.buildDocumentObject(docObj).let { xmlMapper.readTree(it.trimIndent()) }
+
+        val flowId = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val flow = result["Flow"].last { it["Id"].textValue() == flowId }
+
+        val contents = flow["FlowContent"]["P"].toList()
+        contents[0]["T"][""].textValue().shouldBeEqualTo("Paragraph")
+        contents[1]["T"].toList()[0][""].textValue().shouldBeEqualTo("Hello World")
+        val v1 = contents[1]["T"].toList()[1]["O"]["Id"].textValue()
+        val v2 = contents[1]["T"].toList()[2]["O"]["Id"].textValue()
+        contents[1]["T"].toList()[3][""].textValue().shouldBeEqualTo("Screw this World")
+        val v3 = contents[1]["T"].toList()[4]["O"]["Id"].textValue()
+        contents[2]["T"][""].textValue().shouldBeEqualTo("Goodbye World")
+
+        result["Variable"].first { it["Id"].textValue() == v1 }["Name"].textValue().shouldBeEqualTo("V_1")
+        result["Variable"].first { it["Id"].textValue() == v2 }["Name"].textValue().shouldBeEqualTo("V_2")
+        result["Variable"].first { it["Id"].textValue() == v3 }["Name"].textValue().shouldBeEqualTo("V_3")
+    }
+
+    @Test
     fun `external block with multiple flows under display rule is built to section flow wrapped in condition flow`() {
         // given
-        val rule = mockRule(
-            aDisplayRule(Literal("C", LiteralDataType.String), Equals, Literal("C", LiteralDataType.String))
-        )
-        val innerBlock = mockObj(aDocObj("B_2", Block, listOf(aParagraph(aText(StringValue("Inner Text"))))))
+        val rule =
+            aDisplayRule(Literal("C", LiteralDataType.String), Equals, Literal("C", LiteralDataType.String)).mock()
+        val innerBlock = aDocObj("B_2", Block, listOf(aParagraph(aText(StringValue("Inner Text"))))).mock()
         val block = aDocObj(
             "B_1", Block, listOf(
                 aDocumentObjectRef(innerBlock.id),
@@ -1119,16 +1146,12 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `first match in cell is wrapped in simple section flow`() {
         // given
-        val rule1 = mockRule(
-            aDisplayRule(
-                Literal("A", LiteralDataType.String), Equals, Literal("A", LiteralDataType.String), id = "rule1"
-            )
-        )
-        val rule2 = mockRule(
-            aDisplayRule(
-                Literal("B", LiteralDataType.String), Equals, Literal("B", LiteralDataType.String), id = "rule2"
-            )
-        )
+        val rule1 = aDisplayRule(
+            Literal("A", LiteralDataType.String), Equals, Literal("A", LiteralDataType.String), id = "rule1"
+        ).mock()
+        val rule2 = aDisplayRule(
+            Literal("B", LiteralDataType.String), Equals, Literal("B", LiteralDataType.String), id = "rule2"
+        ).mock()
         val firstMatch = FirstMatch(
             cases = listOf(
                 FirstMatch.Case(
@@ -1198,8 +1221,8 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `Condition flow in cell is wrapped in simple section flow`() {
         // given
-        val refBlock = mockObj(DocumentObjectBuilder("RefBlock", Block).string("ref content").build())
-        val displayRule = mockRule(DisplayRuleBuilder("rule").comparison { value("C").equals().value("C") }.build())
+        val refBlock = DocumentObjectBuilder("RefBlock", Block).string("ref content").build().mock()
+        val displayRule = DisplayRuleBuilder("rule").comparison { value("C").equals().value("C") }.build().mock()
 
         val template = DocumentObjectBuilder("T1", Template).table {
             addRow().addCell().documentObjectRef(refBlock.id, displayRule.id)
@@ -1400,26 +1423,20 @@ class InteractiveDocumentObjectBuilderTest {
 
     @Test
     fun `block with unassigned variable structure uses the one specified in project config`() {
-        val variable = mockVar(aVariable("V_1"))
-        val variableStructureA = mockVarStructure(
-            aVariableStructure(
-                "VS_1", structure = mapOf(variable.id to VariablePathData("Data.Records.Value"))
-            )
-        )
-        val variableStructureB = mockVarStructure(
-            aVariableStructure(
-                "VS_2", structure = mapOf(variable.id to VariablePathData("Data.Clients.Value"))
-            )
-        )
+        val variable = aVariable("V_1").mock()
+        val variableStructureA = aVariableStructure(
+            "VS_1", structure = mapOf(variable.id to VariablePathData("Data.Records.Value"))
+        ).mock()
+        val variableStructureB = aVariableStructure(
+            "VS_2", structure = mapOf(variable.id to VariablePathData("Data.Clients.Value"))
+        ).mock()
         val config = aProjectConfig(defaultVariableStructure = variableStructureB.id)
 
-        val block = mockObj(
-            aDocObj(
-                "B_1", Block, listOf(
-                    aParagraph(aText(listOf(StringValue("Text"), VariableRef(variable.id))))
-                )
+        val block = aDocObj(
+            "B_1", Block, listOf(
+                aParagraph(aText(listOf(StringValue("Text"), VariableRef(variable.id))))
             )
-        )
+        ).mock()
 
         // when
         val subject = aSubject(config)
@@ -1521,40 +1538,97 @@ class InteractiveDocumentObjectBuilderTest {
         deContent.shouldBeEqualTo("de")
     }
 
-    private fun mockObj(documentObject: DocumentObject): DocumentObject {
-        every { documentObjectRepository.findOrFail(documentObject.id) } returns documentObject
-        return documentObject
+    @Test
+    fun `does not allow snippets with content other than variable string content`() {
+        val variable = VariableBuilder("V_1").dataType(DataType.String).build().mock()
+        val docObj = DocumentObjectBuilder("B_1", Snippet)
+            .paragraph { string("Paragraph") }
+            .string("Hello World")
+            .variable(variable)
+            .paragraph { string("Paragraph 2") }
+            .string("Goodbye World")
+            .build()
+            .mock()
+
+        assertThrows<IllegalStateException>("Snippet 'B_1' has invalid content. Snippets must contain either only variable string content or a first match with only variable string content") {
+            subject.buildDocumentObject(docObj).let { xmlMapper.readTree(it.trimIndent()) }
+        }
     }
 
-    private fun mockImage(image: Image): Image {
-        every { imageRepository.findOrFail(image.id) } returns image
-        every { imageRepository.find(image.id) } returns image
-        return image
+    @Test
+    fun `builds a simple snippet`() {
+        val subject = aSubject(aProjectConfig(defaultVariableStructure = "VS_1"))
+        val variable1 = VariableBuilder("V_1").dataType(DataType.String).build().mock()
+        val variable2 = VariableBuilder("V_2").dataType(DataType.String).build().mock()
+        val variable3 = VariableBuilder("V_3").dataType(DataType.String).build().mock()
+        VariableStructureBuilder("VS_1")
+            .addVariable(variable1.id, "Data", "V_1")
+            .addVariable(variable2.id, "Data", "V_2")
+            .build()
+            .mock()
+        val docObj = DocumentObjectBuilder("B_1", Snippet)
+            .string("Hello World")
+            .variable(variable1)
+            .variable(variable2)
+            .variable(variable3)
+            .string("Goodbye World")
+            .build()
+            .mock()
+
+        val result = subject.buildDocumentObject(docObj).let { xmlMapper.readTree(it.trimIndent()) }
+
+        val mainFlow = result["Flow"]
+        mainFlow["Id"].textValue().shouldBeEqualTo("Def.MainFlow")
+        mainFlow["Type"].textValue().shouldBeEqualTo("OverflowableVariableFormatted")
+
+        val varId = mainFlow["Variable"].textValue()
+        val varObj = result["Variable"].last { it["Id"].textValue() == varId }
+        varObj["Type"].textValue().shouldBeEqualTo("Calculated")
+        varObj["VarType"].textValue().shouldBeEqualTo("String")
+        varObj["Script"].textValue().shouldBeEqualTo($$"""return 'Hello World' + '<var name="V_1">' + '' + '<var name="V_2">' + '$V_3$' + 'Goodbye World';""")
     }
 
-    private fun mockRule(rule: DisplayRule): DisplayRule {
-        every { displayRuleRepository.findOrFail(rule.id) } returns rule
-        return rule
+    private fun DocumentObject.mock(): DocumentObject {
+        val id = this.id
+        every { documentObjectRepository.findOrFail(id) } returns this
+        return this
     }
 
-    private fun mockVar(variable: Variable): Variable {
-        every { variableRepository.findOrFail(variable.id) } returns variable
-        return variable
+    private fun Image.mock(): Image {
+        val id = this.id
+        every { imageRepository.findOrFail(id) } returns this
+        every { imageRepository.find(id) } returns this
+        return this
     }
 
-    private fun mockVarStructure(variableStructure: VariableStructure): VariableStructure {
-        every { variableStructureRepository.findOrFail(variableStructure.id) } returns variableStructure
-        return variableStructure
+    private fun DisplayRule.mock(): DisplayRule {
+        val id = this.id
+        every { displayRuleRepository.findOrFail(id) } returns this
+        return this
     }
 
-    private fun mockTextStyle(textStyle: TextStyle): TextStyle {
-        every { textStyleRepository.findOrFail(textStyle.id) } returns textStyle
-        return textStyle
+    private fun Variable.mock(): Variable {
+        val id = this.id
+        every { variableRepository.findOrFail(id) } returns this
+        return this
     }
 
-    private fun mockParagraphStyle(paragraphStyle: ParagraphStyle): ParagraphStyle {
-        every { paragraphStyleRepository.findOrFail(paragraphStyle.id) } returns paragraphStyle
-        return paragraphStyle
+    private fun VariableStructure.mock(): VariableStructure {
+        val id = this.id
+        every { variableStructureRepository.findOrFail(id) } returns this
+        return this
+    }
+
+    private fun TextStyle.mock(): TextStyle {
+        val id = this.id
+        every { textStyleRepository.findOrFail(id) } returns this
+        return this
+    }
+
+    private fun ParagraphStyle.mock(): ParagraphStyle {
+        val id = this.id
+        every { paragraphStyleRepository.findOrFail(id) } returns this
+        return this
     }
 
     private fun aSubject(config: ProjectConfig) = InteractiveDocumentObjectBuilder(

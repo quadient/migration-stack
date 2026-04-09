@@ -4,13 +4,14 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class DocumentObjectType {
-    Template, Page, Block, Section;
+    Template, Page, Block, Section, Snippet;
 
     fun toInteractiveFolder(): String = when (this) {
         Template -> "Templates"
         Page -> "Templates"
         Block -> "Blocks"
         Section -> "Blocks"
+        Snippet -> "Snippets"
     }
 
     fun toRunCommandType(): String = when (this) {
@@ -18,5 +19,6 @@ enum class DocumentObjectType {
         Page -> "template"
         Block -> "block"
         Section -> "block"
+        Snippet -> "snippet"
     }
 }

@@ -259,7 +259,16 @@ class DesignerDocumentObjectBuilder(
         layout: Layout, variableStructure: VariableStructure, rule: DisplayRule, successFlow: Flow,
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
-            rule.toScript(layout, variableStructure, variableRepository::findOrFail), successFlow
+            rule.toScript(
+                layout,
+                variableStructure,
+                variableRepository::findOrFail,
+                displayRuleRepository::findOrFail,
+                ::getDisplayRulePath,
+                InspireOutput.Designer,
+                projectConfig.interactiveTenant,
+            ),
+            successFlow
         )
     }
 
@@ -271,9 +280,49 @@ class DesignerDocumentObjectBuilder(
         val successRow = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
         val conditionRow = layout.addRowSet().setType(RowSet.Type.SELECT_BY_INLINE_CONDITION)
             .addLineForSelectByInlineCondition(
-                rule.toScript(layout, variableStructure, variableRepository::findOrFail), successRow
+                rule.toScript(
+                    layout,
+                    variableStructure,
+                    variableRepository::findOrFail,
+                    displayRuleRepository::findOrFail,
+                    ::getDisplayRulePath,
+                    InspireOutput.Designer,
+                    projectConfig.interactiveTenant,
+                ),
+                successRow
             )
         return WrappedRow(conditionRow, successRow)
+    }
+
+    override fun buildDocumentObjectRef(
+        documentModel: DocumentObject,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        documentObjectRef: DocumentObjectRef,
+        languages: List<String>
+    ): Flow? {
+        val flow = getFlowByName(layout, documentModel.nameOrId())
+            ?: if (documentModel.internal == true || documentModel.type == DocumentObjectType.Snippet) {
+                buildDocumentContentAsSingleFlow(
+                    layout,
+                    variableStructure,
+                    documentModel.content,
+                    documentModel.nameOrId(),
+                    documentModel.displayRuleRef?.let { DisplayRuleRef(it.id) },
+                    languages
+                )
+            } else {
+                layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)
+                    .setLocation(getDocumentObjectPath(documentModel))
+            }
+
+        if (documentObjectRef.displayRuleRef != null) {
+            val displayRule = displayRuleRepository.findOrFail(documentObjectRef.displayRuleRef.id)
+
+            return wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule, flow)
+        }
+
+        return flow
     }
 
     private fun buildPage(
@@ -363,7 +412,7 @@ class DesignerDocumentObjectBuilder(
         }
     }
 
-    fun enrichLayoutWithSourceBaseTemplate(documentObjectXml: String, sourceBaseTemplatePath: String): String {
+    private fun enrichLayoutWithSourceBaseTemplate(documentObjectXml: String, sourceBaseTemplatePath: String): String {
         val sourceBaseTemplateXml = sourceBaseTemplateCache.computeIfAbsent(sourceBaseTemplatePath) {
             ipsService.wfd2xml(it)
         }

@@ -9,6 +9,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.RepeatedContentBuilder
@@ -169,13 +170,39 @@ interface DocumentContentBuilderBase<T> {
     } as T
 
     /**
-     * Adds a paragraph with the given string to the content (convenience method).
-     * Creates: Paragraph → Text → StringValue
+     * Adds a paragraph with the given string to the content.
      * @param text The string to add in a paragraph.
      * @return This builder instance for method chaining.
      */
     fun string(text: String): T = apply {
-        this.content.add(ParagraphBuilder().string(text).build())
+        this.content.add(StringValue(text))
+    } as T
+
+    /**
+     * Adds a variable to the content.
+     * @param ref The [VariableRef] referencing the variable to add.
+     * @return This builder instance for method chaining.
+     */
+    fun variableRef(ref: VariableRef): T = apply {
+        this.content.add(ref)
+    } as T
+
+    /**
+     * Adds a variable reference to the content by ID.
+     * @param id The ID of the variable to reference.
+     * @return This builder instance for method chaining.
+     */
+    fun variableRef(id: String): T = apply {
+        this.content.add(VariableRef(id))
+    } as T
+
+    /**
+     * Adds a variable reference to the content.
+     * @param variable The [Variable] to reference.
+     * @return This builder instance for method chaining.
+     */
+    fun variable(variable: Variable): T = apply {
+        this.content.add(VariableRef(variable.id))
     } as T
 
     /**

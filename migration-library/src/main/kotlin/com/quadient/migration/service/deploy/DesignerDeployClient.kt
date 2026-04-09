@@ -136,7 +136,8 @@ class DesignerDeployClient(
 
         require(error.isEmpty()) { error }
 
-        val documentObjectsWithoutPages = documentObjects.filter { it.type != DocumentObjectType.Page }
+        val documentObjectsWithoutPages = documentObjects
+            .filter { it.type != DocumentObjectType.Page && it.type != DocumentObjectType.Snippet }
 
         return documentObjectsWithoutPages
     }
