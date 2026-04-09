@@ -3,6 +3,7 @@ package com.quadient.wfdxml.internal.layoutnodes.flow;
 import com.quadient.wfdxml.api.layoutnodes.Element;
 import com.quadient.wfdxml.api.layoutnodes.Flow;
 import com.quadient.wfdxml.api.layoutnodes.Image;
+import com.quadient.wfdxml.api.layoutnodes.Section;
 import com.quadient.wfdxml.api.layoutnodes.TextStyle;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.api.layoutnodes.flow.Text;
@@ -82,6 +83,10 @@ public class TextImpl implements Text, XmlExportable {
         return append(table);
     }
 
+    @Override
+    public Text appendSection(Section section) {
+        return append(section);
+    }
 
     private Text append(Object obj) {
         content.add(new ObjectExportable(obj));

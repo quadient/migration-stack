@@ -11,6 +11,7 @@ import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ColumnLayoutBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.RepeatedContentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
 import com.quadient.migration.shared.LiteralPath
@@ -215,4 +216,14 @@ interface DocumentContentBuilderBase<T> {
      */
     fun repeatedContent(variable: Variable, builder: RepeatedContentBuilder.() -> Unit): T =
         repeatedContent(VariableRefPath(variable.id), builder)
+
+    /**
+     * Wraps content in a column layout block.
+     * @param numberOfColumns The number of columns (must be >= 1).
+     * @param builder A builder function to configure the column layout and add inner content.
+     * @return This builder instance for method chaining.
+     */
+    fun columnLayout(numberOfColumns: Int, builder: ColumnLayoutBuilder.() -> Unit): T = apply {
+        this.content.add(ColumnLayoutBuilder(numberOfColumns).apply(builder).build())
+    } as T
 }

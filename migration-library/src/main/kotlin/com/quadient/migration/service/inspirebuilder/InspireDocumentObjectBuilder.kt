@@ -3,6 +3,7 @@ package com.quadient.migration.service.inspirebuilder
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Area
+import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
@@ -41,6 +42,8 @@ import com.quadient.migration.service.resolveAliases
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
+import com.quadient.migration.shared.ColumnApplyTo
+import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.AttachmentType
@@ -67,6 +70,7 @@ import com.quadient.wfdxml.api.layoutnodes.LocationType
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle as WfdXmlParagraphStyle
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType.*
+import com.quadient.wfdxml.api.layoutnodes.Section
 import com.quadient.wfdxml.api.layoutnodes.SheetNameType
 import com.quadient.wfdxml.api.layoutnodes.TabulatorType
 import com.quadient.wfdxml.api.layoutnodes.data.Data
@@ -166,6 +170,7 @@ abstract class InspireDocumentObjectBuilder(
                     is SelectByLanguage -> item.cases.forEach { languages.add(it.language) }
                     is Area -> collectLanguagesFromContent(item.content)
                     is RepeatedContent -> collectLanguagesFromContent(item.content)
+                    is ColumnLayout -> collectLanguagesFromContent(item.content)
                     is FirstMatch -> {
                         item.cases.forEach { case -> collectLanguagesFromContent(case.content) }
                         collectLanguagesFromContent(item.default)
@@ -313,6 +318,7 @@ abstract class InspireDocumentObjectBuilder(
                 is AttachmentRef -> flowModels.add(Attachment(contentPart))
                 is Area -> mutableContent.addAll(idx + 1, contentPart.content.resolveAliases(imageRepository, attachmentRepository))
                 is RepeatedContent -> flowModels.add(RepeatedContent(contentPart))
+                is ColumnLayout -> flowModels.add(ColumnLayoutModel(contentPart))
                 is FirstMatch -> flowModels.add(FirstMatch(contentPart))
                 is SelectByLanguage -> flowModels.add(SelectByLanguage(contentPart))
             }
@@ -364,6 +370,16 @@ abstract class InspireDocumentObjectBuilder(
                         buildRepeatedContent(it.model, layout, variableStructure, name, languages)
                     }
                 }
+
+                is FlowModel.ColumnLayoutModel -> {
+                    if (flowName == null) {
+                        buildColumnLayout(it.model, layout, variableStructure, null, languages)
+                    } else {
+                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
+                        flowSuffix++
+                        buildColumnLayout(it.model, layout, variableStructure, name, languages)
+                    }
+                }
             }
         }
     }
@@ -375,6 +391,7 @@ abstract class InspireDocumentObjectBuilder(
         data class FirstMatch(val model: com.quadient.migration.api.dto.migrationmodel.FirstMatch) : FlowModel
         data class SelectByLanguage(val model: com.quadient.migration.api.dto.migrationmodel.SelectByLanguage) : FlowModel
         data class RepeatedContent(val model: com.quadient.migration.api.dto.migrationmodel.RepeatedContent) : FlowModel
+        data class ColumnLayoutModel(val model: com.quadient.migration.api.dto.migrationmodel.ColumnLayout) : FlowModel
     }
 
     protected fun List<Flow>.toSingleFlow(
@@ -1191,6 +1208,52 @@ abstract class InspireDocumentObjectBuilder(
         return buildDocumentContentAsSingleFlow(
             layout, variableStructure, listOf(warning) + model.content, languages = languages
         )
+    }
+
+    private fun buildColumnLayout(
+        model: com.quadient.migration.api.dto.migrationmodel.ColumnLayout,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        flowName: String?,
+        languages: List<String>,
+    ): Flow {
+        val section = layout.addSection()
+            .setNumberOfColumns(model.numberOfColumns)
+
+        model.gutterWidth?.let { section.setGutterWidth(it.toMeters()) }
+
+        model.balancingType?.let {
+            section.setBalancingType(
+                when (it) {
+                    ColumnBalancingType.FirstColumn -> Section.BalancingType.FIRST_COLUMN
+                    ColumnBalancingType.Balanced -> Section.BalancingType.BALANCED
+                    ColumnBalancingType.Unbalanced -> Section.BalancingType.UNBALANCED
+                }
+            )
+        }
+
+        model.applyTo?.let {
+            section.setApplyTo(
+                when (it) {
+                    ColumnApplyTo.WholeTemplate -> Section.ApplyTo.WHOLE_TEMPLATE
+                    ColumnApplyTo.ThisBlockOnly -> Section.ApplyTo.THIS_BLOCK_ONLY
+                }
+            )
+        }
+
+        val resetSection = layout.addSection().setNumberOfColumns(1)
+
+        val innerFlows = buildDocumentContentAsFlows(layout, variableStructure, model.content, languages = languages)
+
+        val columnFlow = layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
+        flowName?.let { columnFlow.setName(it) }
+
+        val flowText = columnFlow.addParagraph().addText()
+        flowText.appendSection(section)
+        innerFlows.forEach { flowText.appendFlow(it) }
+        flowText.appendSection(resetSection)
+
+        return columnFlow
     }
 
     private fun resolveVariableNameAndPath(

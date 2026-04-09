@@ -21,6 +21,8 @@ import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBu
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.Color
+import com.quadient.migration.shared.ColumnApplyTo
+import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.GroupOp
@@ -318,6 +320,20 @@ def jobListBlock = new DocumentObjectBuilder("jobList", DocumentObjectType.Block
         .internal(true)
         .repeatedContent("Data.Clients.Value.Jobs") {
             it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Job: ").variableRef(jobNameVariable) } }
+        }
+        .build()
+
+// A block demonstrating columnLayout: renders content in 2 columns with a 5mm gutter,
+// balanced column heights, applied to the whole template flow.
+def twoColumnBlock = new DocumentObjectBuilder("twoColumnContent", DocumentObjectType.Block)
+        .internal(true)
+        .columnLayout(2) {
+            it.gutterWidth(Size.ofMillimeters(5))
+            it.balancingType(ColumnBalancingType.Balanced)
+            it.applyTo(ColumnApplyTo.WholeTemplate)
+            it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Column content line 1") } }
+            it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Column content line 2") } }
+            it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Column content line 3") } }
         }
         .build()
 
