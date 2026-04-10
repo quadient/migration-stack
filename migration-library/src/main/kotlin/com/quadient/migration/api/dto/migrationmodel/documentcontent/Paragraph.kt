@@ -53,8 +53,7 @@ data class Paragraph(
                 when (textContent) {
                     is Table -> textContent.toDb()
                     is DocumentObjectRef -> textContent.toDb()
-                    is ImageRef -> textContent.toDb()
-                    is AttachmentRef -> textContent.toDb()
+                    is ResourceRef -> textContent.toDb()
                     is StringValue -> textContent.toDb()
                     is VariableRef -> textContent.toDb()
                     is FirstMatch -> textContent.toDb()

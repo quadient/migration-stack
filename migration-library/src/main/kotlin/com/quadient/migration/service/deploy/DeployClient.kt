@@ -440,82 +440,72 @@ sealed class DeployClient(
 
             val resource = when (ref) {
                 is DocumentObjectRef -> {
-                    val obj = documentObjectRepository.findOrFail(ref.id)
-                    val nextIcmPath =
-                        if (obj.internal == true || (obj.type == DocumentObjectType.Page && output == InspireOutput.Designer)) {
+                    when (val obj = documentObjectRepository.find(ref.id)) {
+                        null -> {
+                            report.addDocumentObject(
+                                id = ref.id,
+                                documentObject = obj,
+                                deploymentId = null,
+                                deployTimestamp = null,
+                                previousIcmPath = null,
+                                nextIcmPath = null,
+                                deployKind = DeployKind.NotFound,
+                                lastStatus = LastStatus.None,
+                                errorMessage = null,
+                            )
                             null
-                        } else {
-                            documentObjectBuilder.getDocumentObjectPath(obj)
                         }
-                    val deployKind = obj.getDeployKind(nextIcmPath)
-                    val lastStatus = obj.getLastStatus(lastDeployment)
+                        else -> {
+                            val nextIcmPath =
+                                if (obj.internal == true || (obj.type == DocumentObjectType.Page && output == InspireOutput.Designer)) {
+                                    null
+                                } else {
+                                    documentObjectBuilder.getDocumentObjectPath(obj)
+                                }
+                            val deployKind = obj.getDeployKind(nextIcmPath)
+                            val lastStatus = obj.getLastStatus(lastDeployment)
 
 
-                    report.addDocumentObject(
-                        id = obj.id,
-                        deploymentId = lastStatus.deployId,
-                        deployTimestamp = lastStatus.deployTimestamp,
-                        documentObject = obj,
-                        previousIcmPath = lastStatus.icmPath,
-                        nextIcmPath = nextIcmPath,
-                        deployKind = deployKind,
-                        lastStatus = lastStatus,
-                        errorMessage = lastStatus.errorMessage,
-                    )
-                    obj
+                            report.addDocumentObject(
+                                id = obj.id,
+                                deploymentId = lastStatus.deployId,
+                                deployTimestamp = lastStatus.deployTimestamp,
+                                documentObject = obj,
+                                previousIcmPath = lastStatus.icmPath,
+                                nextIcmPath = nextIcmPath,
+                                deployKind = deployKind,
+                                lastStatus = lastStatus,
+                                errorMessage = lastStatus.errorMessage,
+                            )
+                            obj
+                        }
+                    }
                 }
 
                 is ImageRef -> {
-                    val img = imageRepository.findOrFail(ref.id)
-                    val nextIcmPath = documentObjectBuilder.getImagePath(img)
-                    val deployKind = img.getDeployKind(nextIcmPath)
-                    val lastStatus = img.getLastStatus(lastDeployment)
+                    when (val img = imageRepository.find(ref.id)) {
+                        null -> {
+                            report.addImage(
+                                id = ref.id,
+                                image = img,
+                                deploymentId = null,
+                                deployTimestamp = null,
+                                previousIcmPath = null,
+                                nextIcmPath = null,
+                                lastStatus = LastStatus.None,
+                                deployKind = DeployKind.NotFound,
+                                errorMessage = null,
+                            )
+                            null
+                        }
+                        else -> {
+                            val nextIcmPath = documentObjectBuilder.getImagePath(img)
+                            val deployKind = img.getDeployKind(nextIcmPath)
+                            val lastStatus = img.getLastStatus(lastDeployment)
 
-                    report.addImage(
-                        id = img.id,
-                        image = img,
-                        deploymentId = lastStatus.deployId,
-                        deployTimestamp = lastStatus.deployTimestamp,
-                        previousIcmPath = lastStatus.icmPath,
-                        nextIcmPath = nextIcmPath,
-                        lastStatus = lastStatus,
-                        deployKind = deployKind,
-                        errorMessage = lastStatus.errorMessage,
-                    )
-                    img
-                }
-
-                is AttachmentRef -> {
-                    val attachment = attachmentRepository.findOrFail(ref.id)
-                    val nextIcmPath = documentObjectBuilder.getAttachmentPath(attachment)
-                    val deployKind = attachment.getDeployKind(nextIcmPath)
-                    val lastStatus = attachment.getLastStatus(lastDeployment)
-
-                    report.addAttachment(
-                        id = attachment.id,
-                        attachment = attachment,
-                        deploymentId = lastStatus.deployId,
-                        deployTimestamp = lastStatus.deployTimestamp,
-                        previousIcmPath = lastStatus.icmPath,
-                        nextIcmPath = nextIcmPath,
-                        lastStatus = lastStatus,
-                        deployKind = deployKind,
-                        errorMessage = lastStatus.errorMessage,
-                    )
-                    attachment
-                }
-
-                is DisplayRuleRef -> {
-                    when (output) {
-                        InspireOutput.Interactive, InspireOutput.Evolve -> {
-                            val rule = displayRuleRepository.findOrFail(ref.id)
-                            val nextIcmPath = documentObjectBuilder.getDisplayRulePath(rule).toString()
-                            val deployKind = rule.getDeployKind(nextIcmPath)
-                            val lastStatus = rule.getLastStatus(lastDeployment)
-
-                            report.addDisplayRule(
-                                id = rule.id,
-                                displayRule = rule,
+                            report.addImage(
+                                id = img.id,
+                                image = img,
                                 deploymentId = lastStatus.deployId,
                                 deployTimestamp = lastStatus.deployTimestamp,
                                 previousIcmPath = lastStatus.icmPath,
@@ -524,7 +514,85 @@ sealed class DeployClient(
                                 deployKind = deployKind,
                                 errorMessage = lastStatus.errorMessage,
                             )
-                            rule
+                            img
+                        }
+                    }
+                }
+
+                is AttachmentRef -> {
+                    when (val attachment = attachmentRepository.find(ref.id)) {
+                        null -> {
+                            report.addAttachment(
+                                id = ref.id,
+                                attachment = attachment,
+                                deploymentId = null,
+                                deployTimestamp = null,
+                                previousIcmPath = null,
+                                nextIcmPath = null,
+                                lastStatus = LastStatus.None,
+                                deployKind = DeployKind.NotFound,
+                                errorMessage = null,
+                            )
+                            null
+                        }
+                        else -> {
+                            val nextIcmPath = documentObjectBuilder.getAttachmentPath(attachment)
+                            val deployKind = attachment.getDeployKind(nextIcmPath)
+                            val lastStatus = attachment.getLastStatus(lastDeployment)
+
+                            report.addAttachment(
+                                id = attachment.id,
+                                attachment = attachment,
+                                deploymentId = lastStatus.deployId,
+                                deployTimestamp = lastStatus.deployTimestamp,
+                                previousIcmPath = lastStatus.icmPath,
+                                nextIcmPath = nextIcmPath,
+                                lastStatus = lastStatus,
+                                deployKind = deployKind,
+                                errorMessage = lastStatus.errorMessage,
+                            )
+                            attachment
+                        }
+                    }
+                }
+
+                is DisplayRuleRef -> {
+                    when (output) {
+                        InspireOutput.Interactive, InspireOutput.Evolve -> {
+                            when (val rule = displayRuleRepository.find(ref.id)) {
+                                null -> {
+                                    report.addDisplayRule(
+                                        id = ref.id,
+                                        displayRule = rule,
+                                        deploymentId = null,
+                                        deployTimestamp = null,
+                                        previousIcmPath = null,
+                                        nextIcmPath = null,
+                                        lastStatus = LastStatus.None,
+                                        deployKind = DeployKind.NotFound,
+                                        errorMessage = null,
+                                    )
+                                    null
+                                }
+                                else -> {
+                                    val nextIcmPath = documentObjectBuilder.getDisplayRulePath(rule).toString()
+                                    val deployKind = rule.getDeployKind(nextIcmPath)
+                                    val lastStatus = rule.getLastStatus(lastDeployment)
+
+                                    report.addDisplayRule(
+                                        id = rule.id,
+                                        displayRule = rule,
+                                        deploymentId = lastStatus.deployId,
+                                        deployTimestamp = lastStatus.deployTimestamp,
+                                        previousIcmPath = lastStatus.icmPath,
+                                        nextIcmPath = nextIcmPath,
+                                        lastStatus = lastStatus,
+                                        deployKind = deployKind,
+                                        errorMessage = lastStatus.errorMessage,
+                                    )
+                                    rule
+                                }
+                            }
                         }
                         InspireOutput.Designer -> null
                     }

@@ -34,14 +34,13 @@ fun List<DocumentContent>.toDb(): List<DocumentContentEntity> {
         when (it) {
             is Table -> it.toDb()
             is Paragraph -> it.toDb()
-            is DocumentObjectRef -> it.toDb()
-            is ImageRef -> it.toDb()
-            is AttachmentRef -> it.toDb()
             is Area -> it.toDb()
             is FirstMatch -> it.toDb()
             is SelectByLanguage -> it.toDb()
             is RepeatedContent -> it.toDb()
             is VariableStringContent -> it.toDb()
+            is DocumentObjectRef -> it.toDb()
+            is ResourceRef -> it.toDb()
         }
     }
 }

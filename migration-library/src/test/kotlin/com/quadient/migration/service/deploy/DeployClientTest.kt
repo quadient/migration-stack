@@ -420,7 +420,7 @@ class DeployClientTest {
     }
 
     private fun givenImage(id: String, events: List<StatusEvent> = listOf()) {
-        every { imageRepository.findOrFail(id) } returns aImage(id = id)
+        every { imageRepository.find(id) } returns aImage(id = id)
         every {
             statusTrackingRepository.findEventsRelevantToOutput(
                 id, ResourceType.Image, any()
@@ -443,7 +443,7 @@ class DeployClientTest {
     }
 
     private fun givenAttachment(id: String, events: List<StatusEvent> = listOf()) {
-        every { attachmentRepository.findOrFail(id) } returns aAttachment(id = id)
+        every { attachmentRepository.find(id) } returns aAttachment(id = id)
         every {
             statusTrackingRepository.findEventsRelevantToOutput(
                 id, ResourceType.Attachment, any()
@@ -547,15 +547,15 @@ class DeployClientTest {
             )
         } returns events
         for (id in textStyles) {
-            every { textStyleRepository.findOrFail(id) } returns TextStyleBuilder(id).build()
+            every { textStyleRepository.find(id) } returns TextStyleBuilder(id).build()
         }
         for (id in paragraphStyles) {
-            every { paragraphStyleRepository.findOrFail(id) } returns ParagraphStyleBuilder(id).build()
+            every { paragraphStyleRepository.find(id) } returns ParagraphStyleBuilder(id).build()
         }
     }
 
     private fun givenDocumentObject(id: String, deps: List<String> = listOf()) {
-        every { documentObjectRepository.findOrFail(id) } returns aBlock(
+        every { documentObjectRepository.find(id) } returns aBlock(
             id = id, internal = true, content = deps.map { DocumentObjectRef(it, null) })
     }
 }

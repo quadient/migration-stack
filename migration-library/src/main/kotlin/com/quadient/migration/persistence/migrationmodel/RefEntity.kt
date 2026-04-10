@@ -25,13 +25,16 @@ data class TextStyleEntityRef(val id: String) : RefEntity
 data class ParagraphStyleEntityRef(val id: String) : RefEntity
 
 @Serializable
-data class DisplayRuleEntityRef(val id: String)
+data class DisplayRuleEntityRef(val id: String) : RefEntity
 
 @Serializable
-data class ImageEntityRef(val id: String) : RefEntity, DocumentContentEntity, TextContentEntity
+sealed interface ResourceEntityRef : RefEntity, DocumentContentEntity, TextContentEntity
 
 @Serializable
-data class AttachmentEntityRef(val id: String) : RefEntity, DocumentContentEntity, TextContentEntity
+data class ImageEntityRef(val id: String) : ResourceEntityRef
+
+@Serializable
+data class AttachmentEntityRef(val id: String) : ResourceEntityRef
 
 @Serializable
 data class VariableStructureEntityRef(val id: String) : RefEntity

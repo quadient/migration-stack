@@ -178,6 +178,6 @@ class VariablesMappingImportTest {
         }
 
         when(mig.mappingRepository.getVariableMapping(variableId)).thenReturn(new MappingItem.Variable(name, dataType))
-        when(mig.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure(null, mappings, new VariableRef("")))
+        when(mig.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure(null, mappings, new VariableRef("empty")))
     }
 }
