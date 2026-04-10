@@ -144,7 +144,7 @@ class InteractiveDeployClient(
             .distinctBy { it.id }
 
         for (r in rules) {
-            val rule = r.resolveTarget(displayRuleRepository)
+            val rule = r.resolveTarget(displayRuleRepository::findOrFail)
             val targetPath = documentObjectBuilder.getDisplayRulePath(rule).toString()
 
             if (!shouldDeployObject(rule.id, ResourceType.DisplayRule, targetPath, deploymentResult)) {
@@ -363,7 +363,7 @@ class InteractiveDeployClient(
                     val model = displayRuleRepository.find(it.id)
                         ?: error("Unable to collect resource references because display rule '${it.id}' was not found.")
 
-                    val resolvedModel = model.resolveTarget(displayRuleRepository)
+                    val resolvedModel = model.resolveTarget(displayRuleRepository::findOrFail)
                     if (!resolvedModel.internal) {
                         resources.add(model)
                     }

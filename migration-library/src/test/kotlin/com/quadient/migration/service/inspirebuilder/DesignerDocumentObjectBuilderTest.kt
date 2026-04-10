@@ -16,6 +16,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -106,34 +107,26 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject correctly constructs complex template structure with pages and standalone block`() {
         // given
-        val block = mockObj(
-            aDocObj(
-                "B_1", Block, listOf(
-                    aParagraph(aText(StringValue("Hello there!")))
-                ), true
-            )
-        )
+        val block = aDocObj(
+            "B_1", Block, listOf(
+                aParagraph(aText(StringValue("Hello there!")))
+            ), true
+        ).mock()
 
-        val standaloneBlock = mockObj(
-            aDocObj("B_2", Block, listOf(aParagraph(aText(StringValue("I am alone")))))
-        )
-        val page = mockObj(
-            aDocObj(
-                "P_1", Page, listOf(
-                    anArea(
-                        listOf(aDocumentObjectRef(block.id)),
-                        Position(20.millimeters(), 25.millimeters(), 160.millimeters(), 10.centimeters())
-                    )
-                ), options = PageOptions(20.centimeters(), 25.centimeters())
-            )
-        )
-        val template = mockObj(
-            aDocObj(
-                "T_1", Template, listOf(
-                    aDocumentObjectRef(page.id), aDocumentObjectRef(standaloneBlock.id)
+        val standaloneBlock = aDocObj("B_2", Block, listOf(aParagraph(aText(StringValue("I am alone"))))).mock()
+        val page = aDocObj(
+            "P_1", Page, listOf(
+                anArea(
+                    listOf(aDocumentObjectRef(block.id)),
+                    Position(20.millimeters(), 25.millimeters(), 160.millimeters(), 10.centimeters())
                 )
+            ), options = PageOptions(20.centimeters(), 25.centimeters())
+        ).mock()
+        val template = aDocObj(
+            "T_1", Template, listOf(
+                aDocumentObjectRef(page.id), aDocumentObjectRef(standaloneBlock.id)
             )
-        )
+        ).mock()
 
         // when
         val result =
@@ -181,19 +174,17 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject creates flow area with placeholder text in case of invalid image`() {
         // given
-        val image = mockImg(aImage("Img_1", sourcePath = null, skip = SkipOptions(true, "img placeholder", null)))
-        val page = mockObj(
-            aDocObj(
-                "P_1", Page,
-                listOf(
-                    anArea(
-                        listOf(ImageRef(image.id)),
-                        Position(60.millimeters(), 60.millimeters(), 10.centimeters(), 10.centimeters()),
-                    )
-                ),
-            )
-        )
-        val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))))
+        val image = aImage("Img_1", sourcePath = null, skip = SkipOptions(true, "img placeholder", null)).mock()
+        val page = aDocObj(
+            "P_1", Page,
+            listOf(
+                anArea(
+                    listOf(ImageRef(image.id)),
+                    Position(60.millimeters(), 60.millimeters(), 10.centimeters(), 10.centimeters()),
+                )
+            ),
+        ).mock()
+        val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))).mock()
 
         // when
         val result =
@@ -214,19 +205,17 @@ class DesignerDocumentObjectBuilderTest {
 
     @Test
     fun `buildDocumentObject creates image area with image in case of flow area only with valid image ref`() {
-        val Image = mockImg(aImage("Img_1"))
-        val page = mockObj(
-            aDocObj(
-                "P_1", Page, listOf(
-                    anArea(
-                        listOf(
-                            ImageRef(Image.id)
-                        ), Position(60.millimeters(), 120.millimeters(), 20.centimeters(), 10.centimeters())
-                    ),
-                )
+        val Image = aImage("Img_1").mock()
+        val page = aDocObj(
+            "P_1", Page, listOf(
+                anArea(
+                    listOf(
+                        ImageRef(Image.id)
+                    ), Position(60.millimeters(), 120.millimeters(), 20.centimeters(), 10.centimeters())
+                ),
             )
-        )
-        val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))))
+        ).mock()
+        val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))).mock()
 
         // when
         val result =
@@ -248,19 +237,17 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject creates image with alternate text from Image`() {
         // given
-        val Image = mockImg(aImage("Img_1", alternateText = "Description of the image"))
-        val page = mockObj(
-            aDocObj(
-                "P_1", Page, listOf(
-                    anArea(
-                        listOf(
-                            ImageRef(Image.id)
-                        ), Position(60.millimeters(), 120.millimeters(), 20.centimeters(), 10.centimeters())
-                    ),
-                )
+        val Image = aImage("Img_1", alternateText = "Description of the image").mock()
+        val page = aDocObj(
+            "P_1", Page, listOf(
+                anArea(
+                    listOf(
+                        ImageRef(Image.id)
+                    ), Position(60.millimeters(), 120.millimeters(), 20.centimeters(), 10.centimeters())
+                ),
             )
-        )
-        val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))))
+        ).mock()
+        val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))).mock()
 
         // when
         val result =
@@ -277,17 +264,13 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject uses inline condition flow when block is used with display rule`() {
         // given
-        val rule = mockRule(
-            aDisplayRule(
-                Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String)
-            )
-        )
-        val block = mockObj(
-            aDocObj(
-                "B_1", Block, listOf(aParagraph(aText(StringValue("Hi"))))
-            )
-        )
-        val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(block.id, rule.id))))
+        val rule = aDisplayRule(
+            Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String)
+        ).mock()
+        val block = aDocObj(
+            "B_1", Block, listOf(aParagraph(aText(StringValue("Hi"))))
+        ).mock()
+        val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(block.id, rule.id))).mock()
 
         // when
         val result =
@@ -306,44 +289,40 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject uses inline condition row when table row is under display rule`() {
         // given
-        val rule = mockRule(
-            aDisplayRule(
-                Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String)
-            )
-        )
-        val block = mockObj(
-            aDocObj(
-                "B_1", Block, listOf(
-                    Table(
-                        listOf(
-                            aRow(
-                                listOf(
-                                    aCell(aParagraph(aText(StringValue("A")))),
-                                    aCell(aParagraph(aText(StringValue("B"))))
-                                )
-                            ), aRow(
-                                listOf(
-                                    aCell(aParagraph(aText(StringValue("C")))),
-                                    aCell(aParagraph(aText(StringValue("D"))))
-                                ), rule.id
+        val rule = aDisplayRule(
+            Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String)
+        ).mock()
+        val block = aDocObj(
+            "B_1", Block, listOf(
+                Table(
+                    listOf(
+                        aRow(
+                            listOf(
+                                aCell(aParagraph(aText(StringValue("A")))),
+                                aCell(aParagraph(aText(StringValue("B"))))
                             )
-                        ),
-                        listOf(),
-                        pdfTaggingRule = TablePdfTaggingRule.Table,
-                        pdfAlternateText = "Table alt text",
-                        firstHeader = emptyList(),
-                        footer = emptyList(),
-                        lastFooter = emptyList(),
-                        columnWidths = emptyList(),
-                        minWidth = null,
-                        maxWidth = null,
-                        percentWidth = null,
-                        border = null,
-                        alignment = TableAlignment.Left,
-                    )
+                        ), aRow(
+                            listOf(
+                                aCell(aParagraph(aText(StringValue("C")))),
+                                aCell(aParagraph(aText(StringValue("D"))))
+                            ), rule.id
+                        )
+                    ),
+                    listOf(),
+                    pdfTaggingRule = TablePdfTaggingRule.Table,
+                    pdfAlternateText = "Table alt text",
+                    firstHeader = emptyList(),
+                    footer = emptyList(),
+                    lastFooter = emptyList(),
+                    columnWidths = emptyList(),
+                    minWidth = null,
+                    maxWidth = null,
+                    percentWidth = null,
+                    border = null,
+                    alignment = TableAlignment.Left,
                 )
             )
-        )
+        ).mock()
 
         // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
@@ -365,14 +344,12 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject creates twice used block only once`() {
         // given
-        val block = mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText(StringValue("Hi"))))))
-        val template = mockObj(
-            aDocObj(
-                "T_1", Template, listOf(
-                    aDocumentObjectRef(block.id), aDocumentObjectRef(block.id)
-                )
+        val block = aDocObj("B_1", Block, listOf(aParagraph(aText(StringValue("Hi"))))).mock()
+        val template = aDocObj(
+            "T_1", Template, listOf(
+                aDocumentObjectRef(block.id), aDocumentObjectRef(block.id)
             )
-        )
+        ).mock()
 
         // when
         val result =
@@ -389,7 +366,7 @@ class DesignerDocumentObjectBuilderTest {
             maxWidth = Size.ofMillimeters(222),
             percentWidth = 66.6
         )
-        val block = mockObj(aDocObj("T1", Block, listOf(table)))
+        val block = aDocObj("T1", Block, listOf(table)).mock()
 
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
@@ -401,7 +378,7 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject correctly sets table alignment`() {
         val table = aTable(alignment = TableAlignment.Center)
-        val block = mockObj(aDocObj("T1", Block, listOf(table)))
+        val block = aDocObj("T1", Block, listOf(table)).mock()
 
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
@@ -421,7 +398,7 @@ class DesignerDocumentObjectBuilderTest {
             paddingRight = Size.ofMillimeters(4),
             fill = Color(128, 128, 128),
         ))
-        val block = mockObj(aDocObj("T1", Block, listOf(table)))
+        val block = aDocObj("T1", Block, listOf(table)).mock()
 
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
@@ -460,7 +437,7 @@ class DesignerDocumentObjectBuilderTest {
             fill = Color(128, 128, 128),
         ))))
         val table = aTable(rows = listOf(bodyRow))
-        val block = mockObj(aDocObj("T1", Block, listOf(table)))
+        val block = aDocObj("T1", Block, listOf(table)).mock()
 
         // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
@@ -501,7 +478,7 @@ class DesignerDocumentObjectBuilderTest {
             footer = listOf(footerRow),
             lastFooter = listOf(lastFooterRow),
         )
-        val block = mockObj(aDocObj("T1", Block, listOf(table)))
+        val block = aDocObj("T1", Block, listOf(table)).mock()
 
         // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
@@ -543,19 +520,15 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject names multiple composite flows with numbers`() {
         // given
-        val innerBlock = mockObj(
-            aDocObj("B_2", Block, listOf(aParagraph(aText(StringValue("In between")))), internal = true)
-        )
-        val block = mockObj(
-            aDocObj(
-                "B_1", Block, listOf(
-                    aParagraph(aText(StringValue("Hi"))),
-                    aDocumentObjectRef(innerBlock.id),
-                    aParagraph(aText(StringValue("Bye")))
-                ), internal = true
-            )
-        )
-        val template = mockObj(aDocObj("T_1", Template, listOf(aDocumentObjectRef(block.id))))
+        val innerBlock = aDocObj("B_2", Block, listOf(aParagraph(aText(StringValue("In between")))), internal = true).mock()
+        val block = aDocObj(
+            "B_1", Block, listOf(
+                aParagraph(aText(StringValue("Hi"))),
+                aDocumentObjectRef(innerBlock.id),
+                aParagraph(aText(StringValue("Bye")))
+            ), internal = true
+        ).mock()
+        val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(block.id))).mock()
 
         // when
         val result =
@@ -576,46 +549,68 @@ class DesignerDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `snippet is inlined for designer output`() {
+        val snippet = DocumentObjectBuilder("S_1", Snippet)
+            .internal(false)
+            .string("snippet text")
+            .build()
+            .mock()
+        val block = DocumentObjectBuilder("B_1", Block)
+            .paragraph { string("Bye") }
+            .documentObjectRef(snippet)
+            .internal(true)
+            .build()
+            .mock()
+
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(block).build().mock()
+
+        val result =
+            subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        val mainFlowId = result["Pages"]["MainFlow"].textValue()
+        val mainFlow = result["Flow"].last { it["Id"].textValue() == mainFlowId }
+        val subFlow1Id = mainFlow["FlowContent"]["P"]["T"]["O"][0]["Id"].textValue()
+        val subFlow1 = result["Flow"].last { it["Id"].textValue() == subFlow1Id }
+        val subFlow2Id = mainFlow["FlowContent"]["P"]["T"]["O"][1]["Id"].textValue()
+        val subFlow2 = result["Flow"].last { it["Id"].textValue() == subFlow2Id }
+
+        subFlow2["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("snippet text")
+        subFlow1["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Bye")
+    }
+
+    @Test
     fun `buildDocumentObject creates multiple times used variable only once`() {
         // given
-        val variable = mockVar(aVariable("V_1"))
+        val variable = aVariable("V_1").mock()
 
-        val block1 = mockObj(
-            aDocObj(
-                "B_1", Block, listOf(
-                    aParagraph(
-                        aText(
-                            listOf(StringValue("First usage: "), VariableRef(variable.id))
-                        )
+        val block1 = aDocObj(
+            "B_1", Block, listOf(
+                aParagraph(
+                    aText(
+                        listOf(StringValue("First usage: "), VariableRef(variable.id))
                     )
-                ), true
-            )
-        )
-        val block2 = mockObj(
-            aDocObj(
-                "B_2", Block, listOf(
-                    aParagraph(
-                        aText(
-                            listOf(StringValue("Second usage: "), VariableRef(variable.id))
-                        )
+                )
+            ), true
+        ).mock()
+        val block2 = aDocObj(
+            "B_2", Block, listOf(
+                aParagraph(
+                    aText(
+                        listOf(StringValue("Second usage: "), VariableRef(variable.id))
                     )
-                ), true
-            )
-        )
-        val template = mockObj(
-            aDocObj(
-                "T_1", Template, listOf(
-                    aDocumentObjectRef(block1.id), aDocumentObjectRef(block2.id)
                 )
+            ), true
+        ).mock()
+        val template = aDocObj(
+            "T_1", Template, listOf(
+                aDocumentObjectRef(block1.id), aDocumentObjectRef(block2.id)
             )
-        )
-        val varStructure = mockVarStructure(
-            aVariableStructure(
-                structure = mapOf(
-                    variable.id to VariablePathData("Data.Records.Value")
-                )
+        ).mock()
+        val varStructure = aVariableStructure(
+            structure = mapOf(
+                variable.id to VariablePathData("Data.Records.Value")
             )
-        )
+        ).mock()
         val config = aProjectConfig(defaultVariableStructure = varStructure.id)
 
         // when
@@ -642,38 +637,31 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `block with first match is built to inline condition flow with multiple options`() {
         // given
-        val defaultFlowModel = mockObj(aDocObj("B_10", Block, listOf(aParagraph(aText(StringValue("I am default"))))))
-        val rule1 = mockRule(
-            aDisplayRule(
-                Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String), id = "R_1"
-            )
-        )
-        val flow1 =
-            mockObj(aDocObj("B_11", Block, listOf(aParagraph(aText(StringValue("flow 1 content")))), internal = false))
+        val defaultFlowModel = aDocObj("B_10", Block, listOf(aParagraph(aText(StringValue("I am default"))))).mock()
+        val rule1 = aDisplayRule(
+            Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String), id = "R_1"
+        ).mock()
+        val flow1 = aDocObj("B_11", Block, listOf(aParagraph(aText(StringValue("flow 1 content")))), internal = false).mock()
 
-        val rule2 = mockRule(
-            aDisplayRule(
-                Literal("C", LiteralDataType.String), BinOp.Equals, Literal("C", LiteralDataType.String), id = "R_2"
-            )
-        )
+        val rule2 = aDisplayRule(
+            Literal("C", LiteralDataType.String), BinOp.Equals, Literal("C", LiteralDataType.String), id = "R_2"
+        ).mock()
 
-        val block = mockObj(
-            aDocObj(
-                "B_1", Block, listOf(
-                    FirstMatch(
-                        cases = listOf(
-                            FirstMatch.Case(
-                                DisplayRuleRef(rule1.id), listOf(aDocumentObjectRef(flow1.id)), null
-                            ), FirstMatch.Case(
-                                DisplayRuleRef(rule2.id),
-                                listOf(aParagraph(aText(StringValue("flow 2 content")))),
-                                null
-                            )
-                        ), default = defaultFlowModel.content
-                    )
+        val block = aDocObj(
+            "B_1", Block, listOf(
+                FirstMatch(
+                    cases = listOf(
+                        FirstMatch.Case(
+                            DisplayRuleRef(rule1.id), listOf(aDocumentObjectRef(flow1.id)), null
+                        ), FirstMatch.Case(
+                            DisplayRuleRef(rule2.id),
+                            listOf(aParagraph(aText(StringValue("flow 2 content")))),
+                            null
+                        )
+                    ), default = defaultFlowModel.content
                 )
             )
-        )
+        ).mock()
 
         // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
@@ -716,12 +704,9 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `build block under display rule has its content wrapped in inline condition`() {
         // given
-        val rule = mockRule(
-            aDisplayRule(Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String))
-        )
+        val rule = aDisplayRule(Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String)).mock()
 
-        val block =
-            mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText(StringValue("Text")))), displayRuleRef = rule.id))
+        val block = aDocObj("B_1", Block, listOf(aParagraph(aText(StringValue("Text")))), displayRuleRef = rule.id).mock()
 
         // when
         val result =
@@ -737,7 +722,7 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `build block using source base template enriches layout with other modules`() {
         // given
-        val block = mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText("Text")))))
+        val block = aDocObj("B_1", Block, listOf(aParagraph(aText("Text")))).mock()
         val config = aProjectConfig(sourceBaseTemplatePath = "icm://sourceBaseTemplate.wfd")
 
         every { ipsService.wfd2xml("icm://sourceBaseTemplate.wfd") } returns """
@@ -786,8 +771,8 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `loading of source base template is cached during single run`() {
         // given
-        val block1 = mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText("Text")))))
-        val block2 = mockObj(aDocObj("B_2", Block, listOf(aParagraph(aText("Text")))))
+        val block1 = aDocObj("B_1", Block, listOf(aParagraph(aText("Text")))).mock()
+        val block2 = aDocObj("B_2", Block, listOf(aParagraph(aText("Text")))).mock()
         val config = aProjectConfig(sourceBaseTemplatePath = "icm://sourceBaseTemplate.wfd")
 
         every { ipsService.wfd2xml("icm://sourceBaseTemplate.wfd") } returns """
@@ -821,37 +806,31 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `block uses the assigned variable structure`() {
         // given
-        val variable = mockVar(aVariable("V_1"))
-        val varNoPath = mockVar(aVariable("V_2"))
-        val variableStructureA = mockVarStructure(
-            aVariableStructure(
-                "VS_1", structure = mapOf(
-                    variable.id to VariablePathData("Data.Records.Value"),
-                    varNoPath.id to VariablePathData("", "No Path Variable")
-                )
+        val variable = aVariable("V_1").mock()
+        val varNoPath = aVariable("V_2").mock()
+        val variableStructureA = aVariableStructure(
+            "VS_1", structure = mapOf(
+                variable.id to VariablePathData("Data.Records.Value"),
+                varNoPath.id to VariablePathData("", "No Path Variable")
             )
-        )
-        val variableStructureB = mockVarStructure(
-            aVariableStructure(
-                "VS_2", structure = mapOf(variable.id to VariablePathData("Data.Clients.Value"))
-            )
-        )
+        ).mock()
+        val variableStructureB = aVariableStructure(
+            "VS_2", structure = mapOf(variable.id to VariablePathData("Data.Clients.Value"))
+        ).mock()
         every { variableStructureRepository.listAll() } returns listOf(variableStructureA, variableStructureB)
         val config = aProjectConfig(defaultVariableStructure = variableStructureB.id)
 
-        val block = mockObj(
-            aDocObj(
-                "B_1", Block, listOf(
-                    aParagraph(
-                        aText(
-                            listOf(
-                                StringValue("Text"), VariableRef(variable.id), VariableRef(varNoPath.id)
-                            )
+        val block = aDocObj(
+            "B_1", Block, listOf(
+                aParagraph(
+                    aText(
+                        listOf(
+                            StringValue("Text"), VariableRef(variable.id), VariableRef(varNoPath.id)
                         )
                     )
-                ), VariableStructureRef = variableStructureA.id
-            )
-        )
+                )
+            ), VariableStructureRef = variableStructureA.id
+        ).mock()
 
         // when
         val subject = aSubject(config)
@@ -872,11 +851,10 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `font data are gathered only once per multiple builds`() {
         // given
-        val textStyle = mockTextStyle(aTextStyle("TS_1", definition = aTextDef(fontFamily = "Calibri", bold = true)))
+        val textStyle = aTextStyle("TS_1", definition = aTextDef(fontFamily = "Calibri", bold = true)).mock()
 
-        val blockA =
-            mockObj(aDocObj("B_1", Block, listOf(aParagraph(aText(StringValue("Hello There!"), textStyle.id)))))
-        val blockB = mockObj(aDocObj("B_2", Block, listOf(aParagraph(aText(StringValue("Bye!"), textStyle.id)))))
+        val blockA = aDocObj("B_1", Block, listOf(aParagraph(aText(StringValue("Hello There!"), textStyle.id)))).mock()
+        val blockB = aDocObj("B_2", Block, listOf(aParagraph(aText(StringValue("Bye!"), textStyle.id)))).mock()
         every { ipsService.gatherFontData(any()) } returns "Calibri,Bold,icm://calibrib.ttf;"
 
         // when
@@ -887,37 +865,43 @@ class DesignerDocumentObjectBuilderTest {
         verify(exactly = 1) { ipsService.gatherFontData("icm://") }
     }
 
-    private fun mockObj(documentObject: DocumentObject): DocumentObject {
-        every { documentObjectRepository.findOrFail(documentObject.id) } returns documentObject
-        return documentObject
+    private fun DocumentObject.mock(): DocumentObject {
+        val id = this.id
+        every { documentObjectRepository.findOrFail(id) } returns this
+        return this
     }
 
-    private fun mockImg(image: Image): Image {
-        every { imageRepository.findOrFail(image.id) } returns image
-        every { imageRepository.find(image.id) } returns image
-        return image
+    private fun Image.mock(): Image {
+        val id = this.id
+        every { imageRepository.findOrFail(id) } returns this
+        every { imageRepository.find(id) } returns this
+        return this
     }
 
-    private fun mockRule(rule: DisplayRule): DisplayRule {
-        every { displayRuleRepository.findOrFail(rule.id) } returns rule
-        return rule
+    private fun DisplayRule.mock(): DisplayRule {
+        val id = this.id
+        every { displayRuleRepository.findOrFail(id) } returns this
+        return this
     }
 
-    private fun mockVar(variable: Variable): Variable {
-        every { variableRepository.findOrFail(variable.id) } returns variable
-        return variable
+    private fun Variable.mock(): Variable {
+        val id = this.id
+        every { variableRepository.findOrFail(id) } returns this
+        return this
     }
 
-    private fun mockVarStructure(variableStructure: VariableStructure): VariableStructure {
-        every { variableStructureRepository.findOrFail(variableStructure.id) } returns variableStructure
-        return variableStructure
+    private fun VariableStructure.mock(): VariableStructure {
+        val id = this.id
+        every { variableStructureRepository.findOrFail(id) } returns this
+        return this
     }
 
-    private fun mockTextStyle(textStyle: TextStyle): TextStyle {
-        every { textStyleRepository.findOrFail(textStyle.id) } returns textStyle
+    private fun TextStyle.mock(): TextStyle {
+        val id = this.id
+        every { textStyleRepository.findOrFail(id) } returns this
         val currentAllStyles = textStyleRepository.listAll()
-        every { textStyleRepository.listAll() } returns currentAllStyles + textStyle
-        return textStyle
+        every { textStyleRepository.listAll() } returns currentAllStyles + this
+        return this
     }
 
     private fun aSubject(config: ProjectConfig) = DesignerDocumentObjectBuilder(
@@ -936,7 +920,7 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `builds language variable if defined`() {
         // given
-        val languageVariable = mockVar(aVariable("LangVar", dataType = DataType.String))
+        val languageVariable = aVariable("LangVar", dataType = DataType.String).mock()
         val structure = aVariableStructure(
             languageVariable = "LangVar",
             structure = mapOf("LangVar" to VariablePathData("Data.Language"))

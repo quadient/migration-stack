@@ -103,6 +103,7 @@ import kotlin.collections.ifEmpty
 import com.quadient.migration.shared.DataType as DataTypeModel
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariableRefPath
@@ -224,7 +225,15 @@ abstract class InspireDocumentObjectBuilder(
     ): Flow {
         return layout.addFlow().setType(Flow.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
             layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
-                .setScript(rule.toScript(layout, variableStructure, variableRepository::findOrFail)),
+                .setScript(rule.toScript(
+                    layout,
+                    variableStructure,
+                    variableRepository::findOrFail,
+                    displayRuleRepository::findOrFail,
+                    ::getDisplayRulePath,
+                    output,
+                    projectConfig.interactiveTenant
+                )),
             successFlow
         )
     }
@@ -240,7 +249,15 @@ abstract class InspireDocumentObjectBuilder(
         val conditionRow = layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION)
             .addLineForSelectByCondition(
                 layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
-                    .setScript(rule.toScript(layout, variableStructure, variableRepository::findOrFail)),
+                    .setScript(rule.toScript(
+                        layout,
+                        variableStructure,
+                        variableRepository::findOrFail,
+                        displayRuleRepository::findOrFail,
+                        ::getDisplayRulePath,
+                        output,
+                        projectConfig.interactiveTenant
+                    )),
                 successRow
             )
         return WrappedRow(conditionRow, successRow)
@@ -308,7 +325,7 @@ abstract class InspireDocumentObjectBuilder(
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
             when (val contentPart = mutableContent[idx]) {
-                is Table, is Paragraph, is ImageRef -> {
+                is Table, is Paragraph, is ImageRef, is VariableStringContent -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
                     flowModels.add(Composite(flowParts))
@@ -329,7 +346,7 @@ abstract class InspireDocumentObjectBuilder(
         var flowSuffix = 1
         return flowModels.mapNotNull {
             when (it) {
-                is FlowModel.DocumentObject -> buildDocumentObjectRef(layout, variableStructure, it.ref, languages)
+                is FlowModel.DocumentObject -> buildDocumentObjectRefOrPlaceholder(layout, variableStructure, it.ref, languages)
                 is FlowModel.Attachment -> buildAttachmentRef(layout, it.ref)
                 is Composite -> {
                     if (flowName == null) {
@@ -710,21 +727,51 @@ abstract class InspireDocumentObjectBuilder(
         val flow = layout.addFlow().setType(Flow.Type.SIMPLE)
         flowName?.let { flow.setName(it) }
 
-        documentContentModelParts.forEach {
-            when (it) {
-                is Paragraph -> buildParagraph(layout, variableStructure, flow, it, languages)
-                is Table -> flow.addParagraph().addText()
-                    .appendTable(buildTable(layout, variableStructure, it, languages))
+        var i = 0
+        while(i < documentContentModelParts.size) {
+            when (val model = documentContentModelParts[i]) {
+                is VariableStringContent -> {
+                    val paragraph = ParagraphBuilder()
+                    var y = i
+                    while(y < documentContentModelParts.size) {
+                        val part = documentContentModelParts[y]
+                        if (part !is VariableStringContent) {
+                            break
+                        } else {
+                            y++
+                            when(part) {
+                                is StringValue -> paragraph.string(part.value)
+                                is VariableRef -> paragraph.variableRef(part.id)
+                            }
+                        }
+                    }
 
-                is ImageRef -> buildAndAppendImage(layout, flow.addParagraph().addText(), it)
-                else -> error("Content part type ${it::class.simpleName} is not allowed in composite flow.")
+                    i += (y - i)
+                    buildParagraph(layout, variableStructure, flow, paragraph.build(), languages)
+                }
+                is Paragraph -> buildParagraph(layout, variableStructure, flow, model, languages)
+                is Table -> flow.addParagraph().addText()
+                    .appendTable(buildTable(layout, variableStructure, model, languages))
+
+                is ImageRef -> buildAndAppendImage(layout, flow.addParagraph().addText(), model)
+                else -> error("Content part type ${model::class.simpleName} is not allowed in composite flow.")
             }
+
+            i++
         }
 
         return flow
     }
 
-    private fun buildDocumentObjectRef(
+    abstract fun buildDocumentObjectRef(
+        documentModel: DocumentObject,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        documentObjectRef: DocumentObjectRef,
+        languages: List<String>,
+    ): Flow?
+
+    private fun buildDocumentObjectRefOrPlaceholder(
         layout: Layout,
         variableStructure: VariableStructure,
         documentObjectRef: DocumentObjectRef,
@@ -744,27 +791,7 @@ abstract class InspireDocumentObjectBuilder(
             return flow
         }
 
-        val flow = getFlowByName(layout, documentModel.nameOrId()) ?: if (documentModel.internal == true) {
-            buildDocumentContentAsSingleFlow(
-                layout,
-                variableStructure,
-                documentModel.content,
-                documentModel.nameOrId(),
-                documentModel.displayRuleRef?.let { DisplayRuleRef(it.id) },
-                languages
-            )
-        } else {
-            layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)
-                .setLocation(getDocumentObjectPath(documentModel))
-        }
-
-        if (documentObjectRef.displayRuleRef != null) {
-            val displayRule = displayRuleRepository.findOrFail(documentObjectRef.displayRuleRef.id)
-
-            return wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule, flow)
-        }
-
-        return flow
+        return buildDocumentObjectRef(documentModel, layout, variableStructure, documentObjectRef, languages)
     }
 
     private fun gatherFlowParts(content: List<DocumentContent>, startIndex: Int): List<DocumentContent> {
@@ -774,7 +801,7 @@ abstract class InspireDocumentObjectBuilder(
 
         do {
             val contentPart = content[index]
-            if (contentPart is Table || contentPart is Paragraph || contentPart is ImageRef) {
+            if (contentPart is Table || contentPart is Paragraph || contentPart is ImageRef || contentPart is VariableStringContent) {
                 flowParts.add(contentPart)
                 index++
             } else {
@@ -836,7 +863,7 @@ abstract class InspireDocumentObjectBuilder(
                     is StringValue -> currentText.appendText(textContent.value)
                     is VariableRef -> currentText.appendVariable(textContent, layout, variableStructure)
                     is Table -> currentText.appendTable(buildTable(layout, variableStructure, textContent, languages))
-                    is DocumentObjectRef -> buildDocumentObjectRef(
+                    is DocumentObjectRef -> buildDocumentObjectRefOrPlaceholder(
                         layout, variableStructure, textContent, languages
                     )?.also { flow ->
                         currentText.appendFlow(flow)
@@ -944,10 +971,17 @@ abstract class InspireDocumentObjectBuilder(
         val displayRule = displayRuleRepository.findOrFail(displayRuleId)
 
         val successFlow = layout.addFlow().setType(Flow.Type.SIMPLE)
-
         text.appendFlow(
             layout.addFlow().setType(Flow.Type.SELECT_BY_INLINE_CONDITION).addLineForSelectByInlineCondition(
-                displayRule.toScript(layout, variableStructure, variableRepository::findOrFail),
+                displayRule.toScript(
+                    layout,
+                    variableStructure,
+                    variableRepository::findOrFail,
+                    displayRuleRepository::findOrFail,
+                    ::getDisplayRulePath,
+                    output,
+                    projectConfig.interactiveTenant
+                ),
                 successFlow
             )
         )
@@ -1366,7 +1400,15 @@ abstract class InspireDocumentObjectBuilder(
                     .also { it.addParagraph().addText().appendFlow(contentFlow) }
 
             firstMatchFlow.addLineForSelectByInlineCondition(
-                displayRule.toScript(layout, variableStructure, variableRepository::findOrFail),
+                displayRule.toScript(
+                    layout,
+                    variableStructure,
+                    variableRepository::findOrFail,
+                    displayRuleRepository::findOrFail,
+                    ::getDisplayRulePath,
+                    output,
+                    projectConfig.interactiveTenant
+                ),
                 caseFlow
             )
         }
@@ -1488,38 +1530,44 @@ abstract class InspireDocumentObjectBuilder(
             override fun toString() = variableName
         }
     }
+}
 
-    fun DisplayRule.toScript(
-        layout: Layout, variableStructure: VariableStructure, findVar: (String) -> Variable
-    ): String {
-        val rule = this.resolveTarget(displayRuleRepository)
-        val def = rule.definition ?: error("Display rule '${rule.id}' definition is null.")
+fun DisplayRule.toScript(
+    layout: Layout,
+    variableStructure: VariableStructure,
+    findVar: (String) -> Variable,
+    findRule: (String) -> DisplayRule,
+    getDisplayRulePath: (DisplayRule) -> IcmPath,
+    output: InspireOutput,
+    interactiveTenant: String,
+): String {
+    val rule = this.resolveTarget(findRule)
+    val def = rule.definition ?: error("Display rule '${rule.id}' definition is null.")
 
-        return if (rule.internal && rule.definition?.containsFunction() != true || output == InspireOutput.Designer) {
-            def.toScript(layout, variableStructure, findVar)
-        } else {
-            for (ref in rule.collectRefs()) {
-                when (ref) {
-                    is VariableRef -> {
-                        val variableModel = findVar(ref.id)
-                        val variablePathData = variableStructure.structure[ref.id]
-                        val resolvedPath = variablePathData?.path?.resolve(variableStructure, findVar)
-                        if (!resolvedPath.isNullOrBlank()) {
-                            val variableName = variablePathData.name ?: variableModel.nameOrId()
+    return if (rule.internal && rule.definition?.containsFunction() != true || output == InspireOutput.Designer) {
+        def.toScript(layout, variableStructure, findVar)
+    } else {
+        for (ref in rule.collectRefs()) {
+            when (ref) {
+                is VariableRef -> {
+                    val variableModel = findVar(ref.id)
+                    val variablePathData = variableStructure.structure[ref.id]
+                    val resolvedPath = variablePathData?.path?.resolve(variableStructure, findVar)
+                    if (!resolvedPath.isNullOrBlank()) {
+                        val variableName = variablePathData.name ?: variableModel.nameOrId()
 
-                            getOrCreateVariable(
-                                layout.data, variableName, variableModel, resolvedPath
-                            )
-                        }
+                        getOrCreateVariable(
+                            layout.data, variableName, variableModel, resolvedPath
+                        )
                     }
-
-                    else -> {}
                 }
-            }
 
-            val path = getDisplayRulePath(rule).toMapInteractive(projectConfig.interactiveTenant)
-            "return (do.evalFile(Bool, String(${toScriptStringLiteral(path)}))==true);"
+                else -> {}
+            }
         }
+
+        val path = getDisplayRulePath(rule).toMapInteractive(interactiveTenant)
+        "return (do.evalFile(Bool, String(${toScriptStringLiteral(path)}))==true);"
     }
 }
 

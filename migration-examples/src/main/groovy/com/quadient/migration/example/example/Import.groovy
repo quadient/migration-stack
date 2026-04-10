@@ -519,6 +519,12 @@ def selectByLanguageBlock = new DocumentObjectBuilder("selectByLanguage", Docume
             }
         }.build()
 
+// A simple snippet that combines static text with a variable.
+def snippet = new DocumentObjectBuilder("snippet", DocumentObjectType.Snippet)
+    .string("Lorem ipsum: ")
+    .variable(nameVariable)
+    .build()
+
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas
 def paragraph1TopMargin = topMargin + Size.ofCentimeters(2)
@@ -552,6 +558,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             }
                     .documentObjectRef(paragraph1)
                     .documentObjectRef(paragraph2)
+                    .documentObjectRef(snippet)
                     .appendContent(table)
                     .paragraph { it.styleRef(spaceParagraphStyle) }
                     .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Transactions:") } }
@@ -596,8 +603,8 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
         .variableStructureRef(variableStructure)
         .build()
 
-// Insert allcontent into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock]) {
+// Insert all content into the database to be used in the deploy task
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, snippet]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {

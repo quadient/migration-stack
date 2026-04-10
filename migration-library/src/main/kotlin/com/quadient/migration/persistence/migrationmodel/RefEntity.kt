@@ -9,7 +9,7 @@ sealed interface RefEntity
 sealed interface TextContentEntity
 
 @Serializable
-sealed interface VariableStringContentEntity : TextContentEntity
+sealed interface VariableStringContentEntity : DocumentContentEntity, TextContentEntity
 
 @Serializable
 data class DocumentObjectEntityRef(val id: String, val displayRuleRef: DisplayRuleEntityRef? = null) : RefEntity,

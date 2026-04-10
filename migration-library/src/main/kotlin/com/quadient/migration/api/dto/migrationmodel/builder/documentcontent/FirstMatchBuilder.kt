@@ -4,6 +4,7 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
+import com.quadient.migration.api.dto.migrationmodel.StringValue
 
 class FirstMatchBuilder {
     private var default: MutableList<DocumentContent> = mutableListOf()
@@ -75,12 +76,12 @@ class FirstMatchBuilder {
     }
 
     /**
-     * Adds default content as a paragraph with the given string.
-     * @param text The string to be wrapped in a paragraph.
+     * Adds default content as a string value.
+     * @param text The string to be used as default.
      * @return The FirstMatchBuilder instance for method chaining.
      */
     fun defaultString(text: String) = apply {
-        default.add(ParagraphBuilder().string(text).build())
+        default.add(StringValue(text))
     }
 
     class CaseBuilder : DocumentContentBuilderBase<CaseBuilder> {

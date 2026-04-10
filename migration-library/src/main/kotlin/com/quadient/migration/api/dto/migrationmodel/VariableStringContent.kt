@@ -4,7 +4,7 @@ import com.quadient.migration.persistence.migrationmodel.StringEntity
 import com.quadient.migration.persistence.migrationmodel.VariableEntityRef
 import com.quadient.migration.persistence.migrationmodel.VariableStringContentEntity
 
-sealed interface VariableStringContent : TextContent, RefValidatable {
+sealed interface VariableStringContent : DocumentContent, TextContent, RefValidatable {
     companion object {
         fun fromDb(entity: VariableStringContentEntity): VariableStringContent = when (entity) {
             is StringEntity -> StringValue.fromDb(entity)

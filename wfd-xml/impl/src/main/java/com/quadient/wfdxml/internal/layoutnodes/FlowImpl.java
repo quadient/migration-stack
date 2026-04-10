@@ -216,7 +216,7 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
         flowContent.export(exporter);
 
         switch (type) {
-            case SIMPLE, REPEATED, CONDITION, INL_COND, VARIABLE_FORMATTED, LANGUAGE:
+            case SIMPLE, REPEATED, CONDITION, INL_COND, VARIABLE_FORMATTED, OVERFLOWABLE_VARIABLE_FORMATTED, LANGUAGE:
                 break;
             case DIRECT_EXTERNAL: {
                 if (location == null || location.isBlank()) {
@@ -228,7 +228,7 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
                 throw new UnsupportedOperationException("Unsupported Flow type '" + type + "'");
         }
 
-        if (type == INL_COND || type == REPEATED || type == VARIABLE_FORMATTED) {
+        if (type == INL_COND || type == REPEATED || type == VARIABLE_FORMATTED || type == OVERFLOWABLE_VARIABLE_FORMATTED) {
             exporter.addElementWithIface("Variable", variable);
         }
 

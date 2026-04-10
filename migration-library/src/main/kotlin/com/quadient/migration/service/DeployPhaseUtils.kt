@@ -70,11 +70,11 @@ fun getBaseTemplateFullPath(config: ProjectConfig, documentObjectBaseTemplatePat
         .join(path)
 }
 
-fun DisplayRule.resolveTarget(displayRuleRepository: Repository<DisplayRule>): DisplayRule {
+fun DisplayRule.resolveTarget(findRule: (String) -> DisplayRule): DisplayRule {
     val targetId = this.targetId ?: return this
 
-    val targetRule = displayRuleRepository.findOrFail(targetId.id)
-    return targetRule.resolveTarget(displayRuleRepository)
+    val targetRule = findRule(targetId.id)
+    return targetRule.resolveTarget(findRule)
 }
 
 fun imageExtension(image: Image) = imageExtension(image.imageType!!, image.name, image.sourcePath)
