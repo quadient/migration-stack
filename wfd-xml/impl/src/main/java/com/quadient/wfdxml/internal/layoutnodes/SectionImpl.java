@@ -4,9 +4,6 @@ import com.quadient.wfdxml.api.layoutnodes.Section;
 import com.quadient.wfdxml.internal.NodeImpl;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class SectionImpl extends NodeImpl<Section> implements Section {
 
     private static final double DEFAULT_GUTTER_WIDTH = 0.0;
@@ -51,9 +48,7 @@ public class SectionImpl extends NodeImpl<Section> implements Section {
 
     @Override
     public void export(XmlExporter exporter) {
-        String columnTypeValue = convertApplyToXml(applyTo);
-
-        exporter.addElementWithStringData("ColumnType", columnTypeValue)
+        exporter.addElementWithStringData("ColumnType", "AutomaticColumns")
                 .addElement("BorderStyleId")
                 .addElementWithBoolData("EqualColumns", true);
 
@@ -72,9 +67,9 @@ public class SectionImpl extends NodeImpl<Section> implements Section {
                 .addElement("Header")
                 .addElement("Footer")
                 .addElement("FirstFooter")
-                .addElementWithStringData("ColumnType", columnTypeValue)
+                .addElementWithStringData("ColumnType", "AutomaticColumns")
                 .addElementWithStringData("SectionPageBreak", "None")
-                .addElementWithBoolData("AutoFinish", true);
+                .addElementWithBoolData("AutoFinish", applyTo == ApplyTo.THIS_BLOCK_ONLY);
     }
 
     private static String convertBalancingTypeToXml(BalancingType balancingType) {
@@ -82,12 +77,6 @@ public class SectionImpl extends NodeImpl<Section> implements Section {
             case FIRST_COLUMN -> "FirstColumnBiggest";
             case BALANCED -> "Balanced";
             case UNBALANCED -> "Unbalanced";
-        };
-    }
-
-    private static String convertApplyToXml(ApplyTo applyTo) {
-        return switch (applyTo) {
-            case WHOLE_TEMPLATE, THIS_BLOCK_ONLY -> "AutomaticColumns";
         };
     }
 }

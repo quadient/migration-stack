@@ -327,7 +327,8 @@ def jobListBlock = new DocumentObjectBuilder("jobList", DocumentObjectType.Block
 // balanced column heights, applied to the whole template flow.
 def twoColumnBlock = new DocumentObjectBuilder("twoColumnContent", DocumentObjectType.Block)
         .internal(true)
-        .columnLayout(2) {
+        .columnLayout {
+            it.numberOfColumns(2)
             it.gutterWidth(Size.ofMillimeters(5))
             it.balancingType(ColumnBalancingType.Balanced)
             it.applyTo(ColumnApplyTo.WholeTemplate)
@@ -565,6 +566,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                     .appendContent(transactionsTable)
                     .paragraph { it.styleRef(spaceParagraphStyle) }
                     .documentObjectRef(jobListBlock)
+                    .documentObjectRef(twoColumnBlock)
                     .documentObjectRef(conditionalParagraph)
                     .documentObjectRef(firstMatchBlock)
                     .documentObjectRef(selectByLanguageBlock)
@@ -604,7 +606,7 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
         .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, snippet]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, twoColumnBlock, snippet]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {

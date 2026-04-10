@@ -7,11 +7,19 @@ import com.quadient.migration.shared.ColumnApplyTo
 import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.Size
 
-class ColumnLayoutBuilder(private val numberOfColumns: Int) : DocumentContentBuilderBase<ColumnLayoutBuilder> {
+class ColumnLayoutBuilder : DocumentContentBuilderBase<ColumnLayoutBuilder> {
     override val content = mutableListOf<DocumentContent>()
+    private var numberOfColumns: Int = 2
     private var gutterWidth: Size? = null
     private var balancingType: ColumnBalancingType? = null
     private var applyTo: ColumnApplyTo? = null
+
+    /**
+     * Sets the number of columns. Defaults to 2 if not set.
+     * @param numberOfColumns Number of columns (must be >= 1).
+     * @return The [ColumnLayoutBuilder] instance for method chaining.
+     */
+    fun numberOfColumns(numberOfColumns: Int) = apply { this.numberOfColumns = numberOfColumns }
 
     /**
      * Sets the spacing between columns.

@@ -331,84 +331,59 @@ abstract class InspireDocumentObjectBuilder(
                     flowModels.add(Composite(flowParts))
                 }
 
-                is DocumentObjectRef -> flowModels.add(DocumentObject(contentPart))
-                is AttachmentRef -> flowModels.add(Attachment(contentPart))
-                is Area -> mutableContent.addAll(idx + 1, contentPart.content.resolveAliases(imageRepository, attachmentRepository))
-                is RepeatedContent -> flowModels.add(RepeatedContent(contentPart))
-                is ColumnLayout -> flowModels.add(ColumnLayoutModel(contentPart))
-                is FirstMatch -> flowModels.add(FirstMatch(contentPart))
-                is SelectByLanguage -> flowModels.add(SelectByLanguage(contentPart))
+                is DocumentObjectRef -> flowModels.add(DocumentObjectRefFlow(contentPart))
+                is AttachmentRef -> flowModels.add(AttachmentFlow(contentPart))
+                is Area -> mutableContent.addAll(
+                    idx + 1, contentPart.content.resolveAliases(imageRepository, attachmentRepository)
+                )
+
+                is RepeatedContent -> flowModels.add(RepeatedContentFlow(contentPart))
+                is ColumnLayout -> flowModels.add(ColumnLayoutFlow(contentPart))
+                is FirstMatch -> flowModels.add(FirstMatchFlow(contentPart))
+                is SelectByLanguage -> flowModels.add(SelectByLanguageFlow(contentPart))
             }
             idx++
         }
 
         val flowCount = flowModels.size
         var flowSuffix = 1
+
+        fun nextName(): String? {
+            if (flowName == null) return null
+            return if (flowCount == 1) flowName else "$flowName ${flowSuffix++}"
+        }
+
         return flowModels.mapNotNull {
             when (it) {
-                is FlowModel.DocumentObject -> buildDocumentObjectRefOrPlaceholder(layout, variableStructure, it.ref, languages)
-                is FlowModel.Attachment -> buildAttachmentRef(layout, it.ref)
-                is Composite -> {
-                    if (flowName == null) {
-                        buildCompositeFlow(layout, variableStructure, it.parts, null, languages)
-                    } else {
-                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
-                        flowSuffix++
-                        buildCompositeFlow(layout, variableStructure, it.parts, name, languages)
-                    }
-                }
+                is DocumentObjectRefFlow -> buildDocumentObjectRefOrPlaceholder(
+                    layout, variableStructure, it.ref, languages
+                )
 
-                is FlowModel.FirstMatch -> {
-                    if (flowName == null) {
-                        buildFirstMatch(layout, variableStructure, it.model, false, null, languages)
-                    } else {
-                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
-                        flowSuffix++
-                        buildFirstMatch(layout, variableStructure, it.model, false, name, languages)
-                    }
-                }
+                is AttachmentFlow -> buildAttachmentRef(layout, it.ref)
+                is Composite -> buildCompositeFlow(layout, variableStructure, it.parts, nextName(), languages)
+                is FirstMatchFlow -> buildFirstMatch(layout, variableStructure, it.model, false, nextName(), languages)
 
-                is FlowModel.SelectByLanguage -> {
-                    if (flowName == null) {
-                        buildSelectByLanguage(layout, variableStructure, it.model, null, languages)
-                    } else {
-                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
-                        flowSuffix++
-                        buildSelectByLanguage(layout, variableStructure, it.model, name, languages)
-                    }
-                }
+                is SelectByLanguageFlow -> buildSelectByLanguage(
+                    layout, variableStructure, it.model, nextName(), languages
+                )
 
-                is FlowModel.RepeatedContent -> {
-                    if (flowName == null) {
-                        buildRepeatedContent(it.model, layout, variableStructure, null, languages)
-                    } else {
-                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
-                        flowSuffix++
-                        buildRepeatedContent(it.model, layout, variableStructure, name, languages)
-                    }
-                }
+                is RepeatedContentFlow -> buildRepeatedContent(
+                    it.model, layout, variableStructure, nextName(), languages
+                )
 
-                is FlowModel.ColumnLayoutModel -> {
-                    if (flowName == null) {
-                        buildColumnLayout(it.model, layout, variableStructure, null, languages)
-                    } else {
-                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
-                        flowSuffix++
-                        buildColumnLayout(it.model, layout, variableStructure, name, languages)
-                    }
-                }
+                is ColumnLayoutFlow -> buildColumnLayout(it.model, layout, variableStructure, nextName(), languages)
             }
         }
     }
 
     sealed interface FlowModel {
         data class Composite(val parts: List<DocumentContent>) : FlowModel
-        data class DocumentObject(val ref: DocumentObjectRef) : FlowModel
-        data class Attachment(val ref: AttachmentRef) : FlowModel
-        data class FirstMatch(val model: com.quadient.migration.api.dto.migrationmodel.FirstMatch) : FlowModel
-        data class SelectByLanguage(val model: com.quadient.migration.api.dto.migrationmodel.SelectByLanguage) : FlowModel
-        data class RepeatedContent(val model: com.quadient.migration.api.dto.migrationmodel.RepeatedContent) : FlowModel
-        data class ColumnLayoutModel(val model: com.quadient.migration.api.dto.migrationmodel.ColumnLayout) : FlowModel
+        data class DocumentObjectRefFlow(val ref: DocumentObjectRef) : FlowModel
+        data class AttachmentFlow(val ref: AttachmentRef) : FlowModel
+        data class FirstMatchFlow(val model: FirstMatch) : FlowModel
+        data class SelectByLanguageFlow(val model: SelectByLanguage) : FlowModel
+        data class RepeatedContentFlow(val model: RepeatedContent) : FlowModel
+        data class ColumnLayoutFlow(val model: ColumnLayout) : FlowModel
     }
 
     protected fun List<Flow>.toSingleFlow(
@@ -1245,7 +1220,7 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun buildColumnLayout(
-        model: com.quadient.migration.api.dto.migrationmodel.ColumnLayout,
+        model: ColumnLayout,
         layout: Layout,
         variableStructure: VariableStructure,
         flowName: String?,
@@ -1275,8 +1250,6 @@ abstract class InspireDocumentObjectBuilder(
             )
         }
 
-        val resetSection = layout.addSection().setNumberOfColumns(1)
-
         val innerFlows = buildDocumentContentAsFlows(layout, variableStructure, model.content, languages = languages)
 
         val columnFlow = layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
@@ -1285,7 +1258,6 @@ abstract class InspireDocumentObjectBuilder(
         val flowText = columnFlow.addParagraph().addText()
         flowText.appendSection(section)
         innerFlows.forEach { flowText.appendFlow(it) }
-        flowText.appendSection(resetSection)
 
         return columnFlow
     }
