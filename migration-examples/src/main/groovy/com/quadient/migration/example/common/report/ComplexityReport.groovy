@@ -153,6 +153,8 @@ class Stats {
                 case Area -> this.collectContent(content.content)
                 case FirstMatch -> this.collectFirstMatch(content)
                 case SelectByLanguage -> this.collectSelectByLanguage(content)
+                case StringValue -> this.collectTextContent([content])
+                case VariableRef -> this.collectTextContent([content])
                 default -> throw new IllegalStateException("Unknown content type: ${content.class.name}")
             }
         }
