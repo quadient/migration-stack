@@ -28,73 +28,73 @@ static void writeDeploymentReport(Binding binding, Report report, String project
             switch (item) {
                 case ReportedDocObject -> {
                     def obj = item.documentObject
-                    def content = Csv.escapeJson(mapper.writeValueAsString(obj.content))
-                    writer.write("$obj.id,") // Id
-                    writer.write("${obj.name ?: ""},") // Name
-                    writer.write("DocumentObject,") // Type
-                    writer.write("${obj.type},") // Document Object Type
-                    writer.write("${obj.internal},") // Internal
-                    writer.write("${item.lastStatus.class.simpleName},") // Last Status
-                    writer.write("${item.deployKind},") // Next Action
-                    writer.write("${item.previousIcmPath ?: ""},") // Last ICM Path
-                    writer.write("${item.nextIcmPath ?: ""},") // Next ICM Path
-                    writer.write("${item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";") ?: ""},") // Error Message
-                    writer.write("${item.deploymentId ?: ""},") // Deploy ID
-                    writer.write("${item.deployTimestamp ?: ""},") // Deploy Timestamp
-                    writer.write("${content}") // Content
-                    writer.writeLine("")
+                    def content = obj ? Csv.escapeJson(mapper.writeValueAsString(obj.content)) : ""
+                    writer << Csv.serialize(item.id) + "," // Id
+                    writer << Csv.serialize(obj?.name) + "," // Name
+                    writer << Csv.serialize("DocumentObject") + "," // Type
+                    writer << Csv.serialize(obj?.type) + "," // Document Object Type
+                    writer << Csv.serialize(obj?.internal) + "," // Internal
+                    writer << Csv.serialize(item.lastStatus.class.simpleName) + "," // Last Status
+                    writer << Csv.serialize(item.deployKind) + "," // Next Action
+                    writer << Csv.serialize(item.previousIcmPath) + "," // Last ICM Path
+                    writer << Csv.serialize(item.nextIcmPath) + "," // Next ICM Path
+                    writer << Csv.serialize(item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";")) + "," // Error Message
+                    writer << Csv.serialize(item.deploymentId) + "," // Deploy ID
+                    writer << Csv.serialize(item.deployTimestamp) + "," // Deploy Timestamp
+                    writer << "${content}" // Content
+                    writer << ("\n")
                 }
                 case ReportedImage -> {
                     def img = item.image
-                    writer.write("$img.id,") // Id
-                    writer.write("${img.name ?: ""},") // Name
-                    writer.write("Image,") // Type
-                    writer.write(",") // Document Object Type
-                    writer.write(",") // Internal
-                    writer.write("${item.lastStatus.class.simpleName},") // Last Status
-                    writer.write("${item.deployKind},") // Next Action
-                    writer.write("${item.previousIcmPath ?: ""},") // Last ICM Path
-                    writer.write("${item.nextIcmPath ?: ""},") // Next ICM Path
-                    writer.write("${item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";") ?: ""},") // Error Message
-                    writer.write("${item.deploymentId ?: ""},") // Deploy ID
-                    writer.write("${item.deployTimestamp ?: ""},") // Deploy Timestamp
-                    writer.write("") // Content
-                    writer.writeLine("")
+                    writer << Csv.serialize(item.id) + "," // Id
+                    writer << Csv.serialize(img?.name) + "," // Name
+                    writer << Csv.serialize("Image") + "," // Type
+                    writer << Csv.serialize("") + "," // Document Object Type
+                    writer << Csv.serialize("") + "," // Internal
+                    writer << Csv.serialize(item.lastStatus.class.simpleName) + "," // Last Status
+                    writer << Csv.serialize(item.deployKind) + "," // Next Action
+                    writer << Csv.serialize(item.previousIcmPath) + "," // Last ICM Path
+                    writer << Csv.serialize(item.nextIcmPath) + "," // Next ICM Path
+                    writer << Csv.serialize(item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";")) + "," // Error Message
+                    writer << Csv.serialize(item.deploymentId) + "," // Deploy ID
+                    writer << Csv.serialize(item.deployTimestamp) + "," // Deploy Timestamp
+                    writer << Csv.serialize("") // Content
+                    writer << ("\n")
                 }
                 case ReportedFile -> {
                     def fileItem = item.attachment
-                    writer.write("$fileItem.id,") // Id
-                    writer.write("${fileItem.name ?: ""},") // Name
-                    writer.write("File,") // Type
-                    writer.write(",") // Document Object Type
-                    writer.write(",") // Internal
-                    writer.write("${item.lastStatus.class.simpleName},") // Last Status
-                    writer.write("${item.deployKind},") // Next Action
-                    writer.write("${item.previousIcmPath ?: ""},") // Last ICM Path
-                    writer.write("${item.nextIcmPath ?: ""},") // Next ICM Path
-                    writer.write("${item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";") ?: ""},") // Error Message
-                    writer.write("${item.deploymentId ?: ""},") // Deploy ID
-                    writer.write("${item.deployTimestamp ?: ""},") // Deploy Timestamp
-                    writer.write("") // Content
-                    writer.writeLine("")
+                    writer << Csv.serialize(item.id) + "," // Id
+                    writer << Csv.serialize(fileItem?.name) + "," // Name
+                    writer << Csv.serialize("File") + "," // Type
+                    writer << Csv.serialize("") + "," // Document Object Type
+                    writer << Csv.serialize("") + "," // Internal
+                    writer << Csv.serialize(item.lastStatus.class.simpleName) + "," // Last Status
+                    writer << Csv.serialize(item.deployKind) + "," // Next Action
+                    writer << Csv.serialize(item.previousIcmPath) + "," // Last ICM Path
+                    writer << Csv.serialize(item.nextIcmPath) + "," // Next ICM Path
+                    writer << Csv.serialize(item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";")) + "," // Error Message
+                    writer << Csv.serialize(item.deploymentId) + "," // Deploy ID
+                    writer << Csv.serialize(item.deployTimestamp) + "," // Deploy Timestamp
+                    writer << Csv.serialize("") +"," // Content
+                    writer << ("\n")
                 }
                 case ReportedDisplayRule -> {
                     def rule = item.displayRule
-                    def content = Csv.escapeJson(mapper.writeValueAsString(rule.definition))
-                    writer.write("$rule.id,") // Id
-                    writer.write("${rule.name ?: ""},") // Name
-                    writer.write("DisplayRule,") // Type
-                    writer.write(",") // Document Object Type
-                    writer.write("${rule.internal},") // Internal
-                    writer.write("${item.lastStatus.class.simpleName},") // Last Status
-                    writer.write("${item.deployKind},") // Next Action
-                    writer.write("${item.previousIcmPath ?: ""},") // Last ICM Path
-                    writer.write("${item.nextIcmPath ?: ""},") // Next ICM Path
-                    writer.write("${item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";") ?: ""},") // Error Message
-                    writer.write("${item.deploymentId ?: ""},") // Deploy ID
-                    writer.write("${item.deployTimestamp ?: ""},") // Deploy Timestamp
-                    writer.write("${content}") // Content
-                    writer.writeLine("")
+                    def content = rule ? Csv.escapeJson(mapper.writeValueAsString(rule.definition)) : ""
+                    writer << Csv.serialize(item.id) + "," // Id
+                    writer << Csv.serialize(rule?.name) + "," // Name
+                    writer << Csv.serialize("DisplayRule") + "," // Type
+                    writer << Csv.serialize("") + "," // Document Object Type
+                    writer << Csv.serialize(rule?.internal) + "," // Internal
+                    writer << Csv.serialize(item.lastStatus.class.simpleName) + "," // Last Status
+                    writer << Csv.serialize(item.deployKind) + "," // Next Action
+                    writer << Csv.serialize(item.previousIcmPath) + "," // Last ICM Path
+                    writer << Csv.serialize(item.nextIcmPath) + "," // Next ICM Path
+                    writer << Csv.serialize(item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";")) + "," // Error Message
+                    writer << Csv.serialize(item.deploymentId) + "," // Deploy ID
+                    writer << Csv.serialize(item.deployTimestamp) + "," // Deploy Timestamp
+                    writer << Csv.serialize(content) + "," // Content
+                    writer << ("\n")
                 }
                 default -> ""
             }

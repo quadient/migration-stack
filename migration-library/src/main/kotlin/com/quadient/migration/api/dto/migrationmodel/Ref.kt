@@ -7,6 +7,7 @@ import com.quadient.migration.persistence.migrationmodel.HyperlinkEntity
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
 import com.quadient.migration.persistence.migrationmodel.AttachmentEntityRef
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleEntityRef
+import com.quadient.migration.persistence.migrationmodel.ResourceEntityRef
 import com.quadient.migration.persistence.migrationmodel.StringEntity
 import com.quadient.migration.persistence.migrationmodel.TableEntity
 import com.quadient.migration.persistence.migrationmodel.TextContentEntity
@@ -14,8 +15,13 @@ import com.quadient.migration.persistence.migrationmodel.TextStyleEntityRef
 import com.quadient.migration.persistence.migrationmodel.VariableEntityRef
 import com.quadient.migration.persistence.migrationmodel.VariableStructureEntityRef
 
-sealed interface Ref : RefValidatable {
-    val id: String
+sealed class Ref(private val _id: String) : RefValidatable {
+    open val id: String = _id
+
+    init {
+        require(!_id.isEmpty()) { "Ref id can not be empty" }
+        require(!_id.isBlank()) { "Id cannot be blank" }
+    }
 
     override fun collectRefs(): List<Ref> {
         return listOf(this)
@@ -37,7 +43,7 @@ sealed interface TextContent {
     }
 }
 
-data class DocumentObjectRef(override val id: String, val displayRuleRef: DisplayRuleRef? = null) : Ref,
+data class DocumentObjectRef(override val id: String, val displayRuleRef: DisplayRuleRef? = null) : Ref(id),
     DocumentContent, TextContent, RefValidatable {
 
     constructor(id: String) : this(id, null)
@@ -54,7 +60,7 @@ data class DocumentObjectRef(override val id: String, val displayRuleRef: Displa
     fun toDb() = DocumentObjectEntityRef(id, displayRuleRef?.toDb())
 }
 
-data class VariableRef(override val id: String) : Ref, VariableStringContent, RefValidatable {
+data class VariableRef(override val id: String) : Ref(id), VariableStringContent, RefValidatable {
     override fun collectRefs(): List<Ref> = listOf(this)
 
     companion object {
@@ -64,7 +70,7 @@ data class VariableRef(override val id: String) : Ref, VariableStringContent, Re
     fun toDb() = VariableEntityRef(id)
 }
 
-data class TextStyleRef(override val id: String) : Ref, RefValidatable {
+data class TextStyleRef(override val id: String) : Ref(id), RefValidatable {
     companion object {
         fun fromDb(entity: TextStyleEntityRef) = TextStyleRef(entity.id)
     }
@@ -72,7 +78,7 @@ data class TextStyleRef(override val id: String) : Ref, RefValidatable {
     fun toDb() = TextStyleEntityRef(id)
 }
 
-data class ParagraphStyleRef(override val id: String) : Ref {
+data class ParagraphStyleRef(override val id: String) : Ref(id) {
     companion object {
         fun fromDb(entity: ParagraphStyleEntityRef) = ParagraphStyleRef(entity.id)
     }
@@ -80,7 +86,7 @@ data class ParagraphStyleRef(override val id: String) : Ref {
     fun toDb() = ParagraphStyleEntityRef(id)
 }
 
-data class DisplayRuleRef(override val id: String) : Ref {
+data class DisplayRuleRef(override val id: String) : Ref(id) {
     companion object {
         fun fromDb(entity: DisplayRuleEntityRef) = DisplayRuleRef(entity.id)
     }
@@ -88,25 +94,28 @@ data class DisplayRuleRef(override val id: String) : Ref {
     fun toDb() = DisplayRuleEntityRef(id)
 }
 
-sealed interface ResourceRef : Ref, DocumentContent, TextContent, RefValidatable
+sealed class ResourceRef(override val id: String) : Ref(id), DocumentContent, TextContent, RefValidatable {
 
-data class ImageRef(override val id: String) : ResourceRef {
+    abstract fun toDb(): ResourceEntityRef
+}
+
+data class ImageRef(override val id: String) : ResourceRef(id) {
     companion object {
         fun fromDb(entity: ImageEntityRef) = ImageRef(entity.id)
     }
 
-    fun toDb() = ImageEntityRef(id)
+    override fun toDb() = ImageEntityRef(id)
 }
 
-data class AttachmentRef(override val id: String) : ResourceRef {
+data class AttachmentRef(override val id: String) : ResourceRef(id) {
     companion object {
         fun fromDb(entity: AttachmentEntityRef) = AttachmentRef(entity.id)
     }
 
-    fun toDb() = AttachmentEntityRef(id)
+    override fun toDb() = AttachmentEntityRef(id)
 }
 
-data class VariableStructureRef(override val id: String) : Ref {
+data class VariableStructureRef(override val id: String) : Ref(id) {
     fun toDb() = VariableStructureEntityRef(id)
 }
 

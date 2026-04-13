@@ -5,6 +5,8 @@ import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Size
+import kotlin.time.Instant
+import kotlin.uuid.Uuid
 
 static String serialize(Object obj) {
     return serialize(obj, null)
@@ -92,6 +94,8 @@ static String serialize(Object obj, Size.Unit unitOverride) {
             }
             return result
         }
+        case Uuid: return obj.toString()
+        case Instant: return obj.toString()
         case Double: return obj.toString()
         case Color: return obj.toHex()
         case Size: return unitOverride != null ? obj.toString(unitOverride) : obj.toString()

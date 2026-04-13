@@ -11,7 +11,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 enum class DeployKind {
-    Create, Overwrite, Inline, Keep
+    Create, Overwrite, Inline, Keep, NotFound
 }
 
 sealed class LastStatus {
@@ -100,7 +100,7 @@ data class ReportedDocObject(
     override val deploymentId: Uuid?,
     override val deployTimestamp: Instant?,
     override val errorMessage: String?,
-    val documentObject: DocumentObject,
+    val documentObject: DocumentObject?,
 ) : ProgressReportItem(
     id,
     previousIcmPath,
@@ -121,7 +121,7 @@ data class ReportedImage(
     override val deploymentId: Uuid?,
     override val deployTimestamp: Instant?,
     override val errorMessage: String?,
-    val image: Image,
+    val image: Image?,
 ) : ProgressReportItem(
     id,
     previousIcmPath,
@@ -142,7 +142,7 @@ data class ReportedFile(
     override val deploymentId: Uuid?,
     override val deployTimestamp: Instant?,
     override val errorMessage: String?,
-    val attachment: Attachment,
+    val attachment: Attachment?,
 ) : ProgressReportItem(
     id,
     previousIcmPath,
@@ -163,7 +163,7 @@ data class ReportedDisplayRule(
     override val deploymentId: Uuid?,
     override val deployTimestamp: Instant?,
     override val errorMessage: String?,
-    val displayRule: DisplayRule
+    val displayRule: DisplayRule?,
 ) : ProgressReportItem(
     id,
     previousIcmPath,
@@ -178,7 +178,7 @@ data class ReportedDisplayRule(
 data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, ResourceType>, ProgressReportItem>) {
     fun addDocumentObject(
         id: String,
-        documentObject: DocumentObject,
+        documentObject: DocumentObject?,
         previousIcmPath: String? = null,
         nextIcmPath: String? = null,
         deployKind: DeployKind,
@@ -187,7 +187,7 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
         deployTimestamp: Instant?,
         errorMessage: String?,
     ): ProgressReportItem {
-        return items.getOrPut(Pair(documentObject.id, ResourceType.DocumentObject)) {
+        return items.getOrPut(Pair(id, ResourceType.DocumentObject)) {
             ReportedDocObject(
                 id = id,
                 previousIcmPath = previousIcmPath,
@@ -204,7 +204,7 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
 
     fun addImage(
         id: String,
-        image: Image,
+        image: Image?,
         previousIcmPath: String? = null,
         nextIcmPath: String? = null,
         deployKind: DeployKind,
@@ -230,7 +230,7 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
 
     fun addAttachment(
         id: String,
-        attachment: Attachment,
+        attachment: Attachment?,
         previousIcmPath: String? = null,
         nextIcmPath: String? = null,
         deployKind: DeployKind,
@@ -256,7 +256,7 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
 
     fun addDisplayRule(
         id: String,
-        displayRule: DisplayRule,
+        displayRule: DisplayRule?,
         previousIcmPath: String? = null,
         nextIcmPath: String? = null,
         deployKind: DeployKind,
