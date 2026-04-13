@@ -21,8 +21,6 @@ import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBu
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.Color
-import com.quadient.migration.shared.ColumnApplyTo
-import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.GroupOp
@@ -323,21 +321,6 @@ def jobListBlock = new DocumentObjectBuilder("jobList", DocumentObjectType.Block
         }
         .build()
 
-// A block demonstrating columnLayout: renders content in 2 columns with a 5mm gutter,
-// balanced column heights, applied to the whole template flow.
-def twoColumnBlock = new DocumentObjectBuilder("twoColumnContent", DocumentObjectType.Block)
-        .internal(true)
-        .columnLayout {
-            it.numberOfColumns(2)
-            it.gutterWidth(Size.ofMillimeters(5))
-            it.balancingType(ColumnBalancingType.Balanced)
-            it.applyTo(ColumnApplyTo.WholeTemplate)
-            it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Column content line 1") } }
-            it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Column content line 2") } }
-            it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Column content line 3") } }
-        }
-        .build()
-
 // Table with a header row and a repeated row driven by transactionsArrayVariable.
 // Each row displays account (string), type (string), and amount (currency) fields.
 def transactionsTable = new TableBuilder()
@@ -411,7 +394,7 @@ def signature = new DocumentObjectBuilder("signature", DocumentObjectType.Block)
         .variableStructureRef(variableStructure)
         .build()
 
-// Sample paragraph containing a headingusing headingStyle style,
+// Sample paragraph containing a heading using headingStyle style,
 // and body text with normalStyle, both defined above.
 def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Block)
 // No separate file will be created and the content will be inlined instead when block is internal.
@@ -446,13 +429,19 @@ def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Bloc
 // Second sample paragraph
 def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Block)
         .internal(true)
-        .paragraph {
-            it.styleRef(paragraphStyle)
-                    .text {
-                        it.styleRef(normalStyle).string("Donec non porttitor ipsum. Praesent et blandit nulla, quis ullamcorper enim. Curabitur nec rutrum justo. Nunc ac quam a ante consequat ullamcorper eget sit amet tortor. Donec convallis sagittis purus, a feugiat lacus tristique vitae. In a orci risus. Sed elit magna, vestibulum vitae orci sodales, consequat pharetra nisi. Vestibulum non scelerisque elit. Duis feugiat porttitor ante sit amet porta. Fusce at leo posuere, venenatis libero ut, varius dolor. Duis bibendum porta tincidunt.")
-                    }
-                    .text {
-                        it.styleRef(normalStyle).displayRuleRef(displayLastSentenceRule).string("Nulla id nulla odio.")
+// Demonstrates columnLayout: paragraphs rendered in 2 equal columns with a 5mm gutter.
+        .columnLayout {
+            it.numberOfColumns(2)
+            it.gutterWidth(Size.ofMillimeters(5))
+            it
+                    .paragraph {
+                        it.styleRef(paragraphStyle)
+                                .text {
+                                    it.styleRef(normalStyle).string("Donec non porttitor ipsum. Praesent et blandit nulla, quis ullamcorper enim. Curabitur nec rutrum justo. Nunc ac quam a ante consequat ullamcorper eget sit amet tortor. Donec convallis sagittis purus, a feugiat lacus tristique vitae. In a orci risus. Sed elit magna, vestibulum vitae orci sodales, consequat pharetra nisi. Vestibulum non scelerisque elit. Duis feugiat porttitor ante sit amet porta. Fusce at leo posuere, venenatis libero ut, varius dolor. Duis bibendum porta tincidunt.")
+                                }
+                                .text {
+                                    it.styleRef(normalStyle).displayRuleRef(displayLastSentenceRule).string("Nulla id nulla odio.")
+                                }
                     }
         }
         .build()
@@ -484,7 +473,7 @@ def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", Doc
         .variableStructureRef(variableStructure)
         .build()
 
-def firstMatchBlock= new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
+def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
         .internal(true)
         .firstMatch { fb ->
             fb.case { cb ->
@@ -522,9 +511,9 @@ def selectByLanguageBlock = new DocumentObjectBuilder("selectByLanguage", Docume
 
 // A simple snippet that combines static text with a variable.
 def snippet = new DocumentObjectBuilder("snippet", DocumentObjectType.Snippet)
-    .string("Lorem ipsum: ")
-    .variable(nameVariable)
-    .build()
+        .string("Lorem ipsum: ")
+        .variable(nameVariable)
+        .build()
 
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas
@@ -566,7 +555,6 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                     .appendContent(transactionsTable)
                     .paragraph { it.styleRef(spaceParagraphStyle) }
                     .documentObjectRef(jobListBlock)
-                    .documentObjectRef(twoColumnBlock)
                     .documentObjectRef(conditionalParagraph)
                     .documentObjectRef(firstMatchBlock)
                     .documentObjectRef(selectByLanguageBlock)
@@ -606,7 +594,7 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
         .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, twoColumnBlock, snippet]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, snippet]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {

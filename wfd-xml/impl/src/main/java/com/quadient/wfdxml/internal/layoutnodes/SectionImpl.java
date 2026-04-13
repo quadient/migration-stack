@@ -12,7 +12,7 @@ public class SectionImpl extends NodeImpl<Section> implements Section {
     private int numberOfColumns = 2;
     private double gutterWidth = DEFAULT_GUTTER_WIDTH;
     private BalancingType balancingType = BalancingType.FIRST_COLUMN;
-    private ApplyTo applyTo = ApplyTo.WHOLE_TEMPLATE;
+    private ApplyTo applyTo = ApplyTo.THIS_BLOCK_ONLY;
 
     @Override
     public SectionImpl setNumberOfColumns(int numberOfColumns) {
