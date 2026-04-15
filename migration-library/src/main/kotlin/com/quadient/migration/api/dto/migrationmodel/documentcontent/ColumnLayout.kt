@@ -10,17 +10,7 @@ data class ColumnLayout(
     val gutterWidth: Size? = null,
     val balancingType: ColumnBalancingType? = null,
     val applyTo: ColumnApplyTo? = null,
-    val content: List<DocumentContent>,
-) : DocumentContent, RefValidatable {
-
-    override fun collectRefs(): List<Ref> {
-        return content.flatMap {
-            when (it) {
-                is RefValidatable -> it.collectRefs()
-                else -> emptyList()
-            }
-        }
-    }
+) : DocumentContent, TextContent {
 
     companion object {
         fun fromDb(entity: ColumnLayoutEntity): ColumnLayout = ColumnLayout(
@@ -28,7 +18,6 @@ data class ColumnLayout(
             gutterWidth = entity.gutterWidth,
             balancingType = entity.balancingType,
             applyTo = entity.applyTo,
-            content = entity.content.map { DocumentContent.fromDbContent(it) },
         )
     }
 
@@ -37,6 +26,5 @@ data class ColumnLayout(
         gutterWidth = gutterWidth,
         balancingType = balancingType,
         applyTo = applyTo,
-        content = content.toDb(),
     )
 }

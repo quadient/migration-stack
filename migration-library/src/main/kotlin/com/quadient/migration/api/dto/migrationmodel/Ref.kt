@@ -1,5 +1,6 @@
 package com.quadient.migration.api.dto.migrationmodel
 
+import com.quadient.migration.persistence.migrationmodel.ColumnLayoutEntity
 import com.quadient.migration.persistence.migrationmodel.DisplayRuleEntityRef
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
 import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
@@ -39,6 +40,7 @@ sealed interface TextContent {
             is AttachmentEntityRef -> AttachmentRef.fromDb(entity)
             is FirstMatchEntity -> FirstMatch.fromDb(entity)
             is HyperlinkEntity -> Hyperlink.fromDb(entity)
+            is ColumnLayoutEntity -> ColumnLayout.fromDb(entity)
         }
     }
 }

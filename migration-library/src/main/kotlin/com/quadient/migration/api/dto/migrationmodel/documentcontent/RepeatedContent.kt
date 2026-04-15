@@ -13,6 +13,7 @@ data class RepeatedContent(
         val contentRefs = content.flatMap {
             when (it) {
                 is RefValidatable -> it.collectRefs()
+                else -> emptyList()
             }
         }
 

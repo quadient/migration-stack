@@ -34,6 +34,8 @@ import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.ColumnApplyTo
+import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.DocumentObjectType.Block
 import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.ImageType.*
@@ -46,6 +48,7 @@ import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.getFlowAreaContentFlow
 import com.quadient.migration.tools.model.*
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldNotBeNull
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.internal.module.layout.LayoutImpl
 import io.mockk.every
@@ -802,6 +805,103 @@ class InspireDocumentObjectBuilderTest {
         val result = rule.toScript()
 
         result.shouldBeEqualTo("""return ((not String('A').equalCaseInsensitive(String('B'))));""")
+    }
+
+    @Test // TODO d.svitak - analyze and rewrite
+    fun `buildDocumentObject with column layout creates section flow`() {
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .columnLayout {}
+                .paragraph { text { string("column content") } }
+                .build()
+        )
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        result["Section"].shouldNotBeNull()
+    }
+
+    @Test
+    fun `buildDocumentObject with column layout default numberOfColumns creates two columns`() {
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .columnLayout {}
+                .paragraph { text { string("column content") } }
+                .build()
+        )
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        result["Section"].last()["Column"].size().shouldBeEqualTo(2)
+    }
+
+    @Test
+    fun `buildDocumentObject with column layout custom numberOfColumns creates three columns`() {
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .columnLayout { numberOfColumns(3) }
+                .paragraph { text { string("column content") } }
+                .build()
+        )
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        result["Section"].last()["Column"].size().shouldBeEqualTo(3)
+    }
+
+    @Test
+    fun `buildDocumentObject with column layout gutterWidth maps to column gutter width`() {
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .columnLayout { gutterWidth(Size.ofMillimeters(5)) }
+                .paragraph { text { string("column content") } }
+                .build()
+        )
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        val columns = result["Section"].last()["Column"]
+        columns.forEach { column ->
+            column["GutterWidth"].textValue().shouldBeEqualTo("0.005")
+        }
+    }
+
+    @Test
+    fun `buildDocumentObject with column layout Balanced balancingType maps to BalancingType`() {
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .columnLayout { balancingType(ColumnBalancingType.Balanced) }
+                .paragraph { text { string("column content") } }
+                .build()
+        )
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        result["Section"].last()["BalancingType"].textValue().shouldBeEqualTo("Balanced")
+    }
+
+    @Test
+    fun `buildDocumentObject with column layout WholeTemplate applyTo sets AutoFinish to False`() {
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .columnLayout { applyTo(ColumnApplyTo.WholeTemplate) }
+                .paragraph { text { string("column content") } }
+                .build()
+        )
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+        result["Section"].last()["AutoFinish"].textValue().shouldBeEqualTo("False")
+    }
+
+    @Test
+    fun `buildDocumentObject with column layout section ref is at start of composite flow before paragraph ref`() {
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .columnLayout {}
+                .paragraph { text { string("column content") } }
+                .build()
+        )
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        val sectionId = result["Section"].last()["Id"].textValue()
+        val sectionAreaFlowId = result["FlowArea"].last()["FlowId"].textValue()
+        val sectionAreaFlow = result["Flow"].last { it["Id"].textValue() == sectionAreaFlowId }
+        val compositeFlowId = sectionAreaFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val compositeFlow = result["Flow"].last { it["Id"].textValue() == compositeFlowId }
+
+        // Column layout section ref is incorporated into the first real paragraph (no standalone empty paragraph)
+        val paragraph = compositeFlow["FlowContent"]["P"]
+        paragraph.isArray.shouldBeEqualTo(false) // only one paragraph - no empty section-ref paragraph
+        paragraph["T"]["O"]["Id"].textValue().shouldBeEqualTo(sectionId)
     }
 
     private fun DisplayRule.toScript(): String {

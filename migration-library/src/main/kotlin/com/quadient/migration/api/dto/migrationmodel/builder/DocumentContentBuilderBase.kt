@@ -249,7 +249,7 @@ interface DocumentContentBuilderBase<T> {
      * @param builder A builder function to configure the column layout and add inner content.
      * @return This builder instance for method chaining.
      */
-    fun columnLayout(builder: ColumnLayoutBuilder.() -> Unit): T = apply {
+    fun columnLayout(builder: ColumnLayoutBuilder.() -> Unit = {}): T = apply {
         this.content.add(ColumnLayoutBuilder().apply(builder).build())
     } as T
 }

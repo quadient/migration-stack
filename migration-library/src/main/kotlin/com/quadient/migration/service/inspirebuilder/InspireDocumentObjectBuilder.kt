@@ -70,7 +70,7 @@ import com.quadient.wfdxml.api.layoutnodes.LocationType
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle as WfdXmlParagraphStyle
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType.*
-import com.quadient.wfdxml.api.layoutnodes.Section
+import com.quadient.wfdxml.api.layoutnodes.Section as WfdXmlSection
 import com.quadient.wfdxml.api.layoutnodes.SheetNameType
 import com.quadient.wfdxml.api.layoutnodes.TabulatorType
 import com.quadient.wfdxml.api.layoutnodes.data.Data
@@ -171,7 +171,7 @@ abstract class InspireDocumentObjectBuilder(
                     is SelectByLanguage -> item.cases.forEach { languages.add(it.language) }
                     is Area -> collectLanguagesFromContent(item.content)
                     is RepeatedContent -> collectLanguagesFromContent(item.content)
-                    is ColumnLayout -> collectLanguagesFromContent(item.content)
+                    is ColumnLayout -> {}
                     is FirstMatch -> {
                         item.cases.forEach { case -> collectLanguagesFromContent(case.content) }
                         collectLanguagesFromContent(item.default)
@@ -325,7 +325,7 @@ abstract class InspireDocumentObjectBuilder(
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
             when (val contentPart = mutableContent[idx]) {
-                is Table, is Paragraph, is ImageRef, is VariableStringContent -> {
+                is Table, is Paragraph, is ImageRef, is VariableStringContent, is ColumnLayout -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
                     flowModels.add(Composite(flowParts))
@@ -338,7 +338,6 @@ abstract class InspireDocumentObjectBuilder(
                 )
 
                 is RepeatedContent -> flowModels.add(RepeatedContentFlow(contentPart))
-                is ColumnLayout -> flowModels.add(ColumnLayoutFlow(contentPart))
                 is FirstMatch -> flowModels.add(FirstMatchFlow(contentPart))
                 is SelectByLanguage -> flowModels.add(SelectByLanguageFlow(contentPart))
             }
@@ -370,8 +369,6 @@ abstract class InspireDocumentObjectBuilder(
                 is RepeatedContentFlow -> buildRepeatedContent(
                     it.model, layout, variableStructure, nextName(), languages
                 )
-
-                is ColumnLayoutFlow -> buildColumnLayout(it.model, layout, variableStructure, nextName(), languages)
             }
         }
     }
@@ -383,7 +380,6 @@ abstract class InspireDocumentObjectBuilder(
         data class FirstMatchFlow(val model: FirstMatch) : FlowModel
         data class SelectByLanguageFlow(val model: SelectByLanguage) : FlowModel
         data class RepeatedContentFlow(val model: RepeatedContent) : FlowModel
-        data class ColumnLayoutFlow(val model: ColumnLayout) : FlowModel
     }
 
     protected fun List<Flow>.toSingleFlow(
@@ -702,19 +698,22 @@ abstract class InspireDocumentObjectBuilder(
         val flow = layout.addFlow().setType(Flow.Type.SIMPLE)
         flowName?.let { flow.setName(it) }
 
+        var columnLayout: ColumnLayout? = null
+
         var i = 0
-        while(i < documentContentModelParts.size) {
+        while (i < documentContentModelParts.size) {
             when (val model = documentContentModelParts[i]) {
+                is ColumnLayout -> columnLayout = model
                 is VariableStringContent -> {
                     val paragraph = ParagraphBuilder()
                     var y = i
-                    while(y < documentContentModelParts.size) {
+                    while (y < documentContentModelParts.size) {
                         val part = documentContentModelParts[y]
                         if (part !is VariableStringContent) {
                             break
                         } else {
                             y++
-                            when(part) {
+                            when (part) {
                                 is StringValue -> paragraph.string(part.value)
                                 is VariableRef -> paragraph.variableRef(part.id)
                             }
@@ -722,13 +721,25 @@ abstract class InspireDocumentObjectBuilder(
                     }
 
                     i += (y - i)
-                    buildParagraph(layout, variableStructure, flow, paragraph.build(), languages)
+                    buildParagraph(layout, variableStructure, flow, paragraph.build(), languages, columnLayout)
+                    columnLayout = null
                 }
-                is Paragraph -> buildParagraph(layout, variableStructure, flow, model, languages)
-                is Table -> flow.addParagraph().addText()
-                    .appendTable(buildTable(layout, variableStructure, model, languages))
-
-                is ImageRef -> buildAndAppendImage(layout, flow.addParagraph().addText(), model)
+                is Paragraph -> {
+                    buildParagraph(layout, variableStructure, flow, model, languages, columnLayout)
+                    columnLayout = null
+                }
+                is Table -> {
+                    val text = flow.addParagraph().addText()
+                    columnLayout?.let { text.appendSection(buildWfdXmlSection(it, layout)) }
+                    columnLayout = null
+                    text.appendTable(buildTable(layout, variableStructure, model, languages))
+                }
+                is ImageRef -> {
+                    val text = flow.addParagraph().addText()
+                    columnLayout?.let { text.appendSection(buildWfdXmlSection(it, layout)) }
+                    columnLayout = null
+                    buildAndAppendImage(layout, text, model)
+                }
                 else -> error("Content part type ${model::class.simpleName} is not allowed in composite flow.")
             }
 
@@ -776,7 +787,7 @@ abstract class InspireDocumentObjectBuilder(
 
         do {
             val contentPart = content[index]
-            if (contentPart is Table || contentPart is Paragraph || contentPart is ImageRef || contentPart is VariableStringContent) {
+            if (contentPart is Table || contentPart is Paragraph || contentPart is ImageRef || contentPart is VariableStringContent || contentPart is ColumnLayout) {
                 flowParts.add(contentPart)
                 index++
             } else {
@@ -795,7 +806,8 @@ abstract class InspireDocumentObjectBuilder(
         variableStructure: VariableStructure,
         flow: Flow,
         paragraphModel: Paragraph,
-        languages: List<String>
+        languages: List<String>,
+        parentColumnLayout: ColumnLayout? = null
     ) {
         val paragraph = if (paragraphModel.displayRuleRef == null) {
             flow.addParagraph()
@@ -808,7 +820,7 @@ abstract class InspireDocumentObjectBuilder(
         val paragraphStyle = paragraphModel.styleRef?.let { paragraphStyleRepository.findOrFail(it.id).resolve() }
         paragraphStyle?.also { paragraph.setExistingParagraphStyle("ParagraphStyles.${resolveParagraphStyleName(it.nameOrId())}") }
 
-        paragraphModel.content.forEach { textModel ->
+        paragraphModel.content.forEachIndexed { index, textModel ->
             val baseText = if (textModel.displayRuleRef == null) {
                 paragraph.addText()
             } else {
@@ -824,8 +836,15 @@ abstract class InspireDocumentObjectBuilder(
 
             var currentText = baseText
 
+            val columnLayout = textModel.content.filterIsInstance<ColumnLayout>().firstOrNull()
+                ?: if (index == 0) parentColumnLayout else null
+            if (columnLayout != null) {
+                currentText.appendSection(buildWfdXmlSection(columnLayout, layout))
+            }
+
             textModel.content.forEach { textContent ->
                 when (textContent) {
+                    is ColumnLayout -> {}
                     is ResourceRef -> {
                         when (val resolved = resolveAlias(textContent, imageRepository, attachmentRepository)) {
                             is ImageRef -> buildAndAppendImage(layout, currentText, resolved)
@@ -1219,24 +1238,17 @@ abstract class InspireDocumentObjectBuilder(
         )
     }
 
-    private fun buildColumnLayout(
-        model: ColumnLayout,
-        layout: Layout,
-        variableStructure: VariableStructure,
-        flowName: String?,
-        languages: List<String>,
-    ): Flow {
-        val section = layout.addSection()
-            .setNumberOfColumns(model.numberOfColumns)
+    private fun buildWfdXmlSection(model: ColumnLayout, layout: Layout): WfdXmlSection {
+        val section = layout.addSection().setNumberOfColumns(model.numberOfColumns)
 
         model.gutterWidth?.let { section.setGutterWidth(it.toMeters()) }
 
         model.balancingType?.let {
             section.setBalancingType(
                 when (it) {
-                    ColumnBalancingType.FirstColumn -> Section.BalancingType.FIRST_COLUMN
-                    ColumnBalancingType.Balanced -> Section.BalancingType.BALANCED
-                    ColumnBalancingType.Unbalanced -> Section.BalancingType.UNBALANCED
+                    ColumnBalancingType.FirstColumn -> WfdXmlSection.BalancingType.FIRST_COLUMN
+                    ColumnBalancingType.Balanced -> WfdXmlSection.BalancingType.BALANCED
+                    ColumnBalancingType.Unbalanced -> WfdXmlSection.BalancingType.UNBALANCED
                 }
             )
         }
@@ -1244,22 +1256,13 @@ abstract class InspireDocumentObjectBuilder(
         model.applyTo?.let {
             section.setApplyTo(
                 when (it) {
-                    ColumnApplyTo.WholeTemplate -> Section.ApplyTo.WHOLE_TEMPLATE
-                    ColumnApplyTo.ThisBlockOnly -> Section.ApplyTo.THIS_BLOCK_ONLY
+                    ColumnApplyTo.WholeTemplate -> WfdXmlSection.ApplyTo.WHOLE_TEMPLATE
+                    ColumnApplyTo.ThisBlockOnly -> WfdXmlSection.ApplyTo.THIS_BLOCK_ONLY
                 }
             )
         }
 
-        val innerFlows = buildDocumentContentAsFlows(layout, variableStructure, model.content, languages = languages)
-
-        val columnFlow = layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
-        flowName?.let { columnFlow.setName(it) }
-
-        val flowText = columnFlow.addParagraph().addText()
-        flowText.appendSection(section)
-        innerFlows.forEach { flowText.appendFlow(it) }
-
-        return columnFlow
+        return section
     }
 
     private fun resolveVariableNameAndPath(

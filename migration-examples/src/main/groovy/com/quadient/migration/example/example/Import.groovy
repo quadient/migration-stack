@@ -111,6 +111,7 @@ def displayAddressRule = new DisplayRuleBuilder("displayAddressRule")
         .internal(false)
         .subject("External display rule")
         .metadata("key") { it.string("value") }
+        .variableStructureRef(variableStructure)
         .group {
             it.operator(GroupOp.Or)
             it.comparison { it.variable(nameVariable).notEquals().value("") }
@@ -433,15 +434,14 @@ def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Bloc
         .columnLayout {
             it.numberOfColumns(2)
             it.gutterWidth(Size.ofMillimeters(5))
-            it
-                    .paragraph {
-                        it.styleRef(paragraphStyle)
-                                .text {
-                                    it.styleRef(normalStyle).string("Donec non porttitor ipsum. Praesent et blandit nulla, quis ullamcorper enim. Curabitur nec rutrum justo. Nunc ac quam a ante consequat ullamcorper eget sit amet tortor. Donec convallis sagittis purus, a feugiat lacus tristique vitae. In a orci risus. Sed elit magna, vestibulum vitae orci sodales, consequat pharetra nisi. Vestibulum non scelerisque elit. Duis feugiat porttitor ante sit amet porta. Fusce at leo posuere, venenatis libero ut, varius dolor. Duis bibendum porta tincidunt.")
-                                }
-                                .text {
-                                    it.styleRef(normalStyle).displayRuleRef(displayLastSentenceRule).string("Nulla id nulla odio.")
-                                }
+        }
+        .paragraph {
+            it.styleRef(paragraphStyle)
+                    .text {
+                        it.styleRef(normalStyle).string("Donec non porttitor ipsum. Praesent et blandit nulla, quis ullamcorper enim. Curabitur nec rutrum justo. Nunc ac quam a ante consequat ullamcorper eget sit amet tortor. Donec convallis sagittis purus, a feugiat lacus tristique vitae. In a orci risus. Sed elit magna, vestibulum vitae orci sodales, consequat pharetra nisi. Vestibulum non scelerisque elit. Duis feugiat porttitor ante sit amet porta. Fusce at leo posuere, venenatis libero ut, varius dolor. Duis bibendum porta tincidunt.")
+                    }
+                    .text {
+                        it.styleRef(normalStyle).displayRuleRef(displayLastSentenceRule).string("Nulla id nulla odio.")
                     }
         }
         .build()
@@ -513,6 +513,7 @@ def selectByLanguageBlock = new DocumentObjectBuilder("selectByLanguage", Docume
 def snippet = new DocumentObjectBuilder("snippet", DocumentObjectType.Snippet)
         .string("Lorem ipsum: ")
         .variable(nameVariable)
+        .variableStructureRef(variableStructure)
         .build()
 
 // A page object which contains the address, paragraphs, table, and signature.

@@ -11,5 +11,4 @@ data class ColumnLayoutEntity(
     val gutterWidth: Size? = null,
     val balancingType: ColumnBalancingType? = null,
     val applyTo: ColumnApplyTo? = null,
-    val content: List<DocumentContentEntity>,
-) : DocumentContentEntity
+) : DocumentContentEntity, TextContentEntity

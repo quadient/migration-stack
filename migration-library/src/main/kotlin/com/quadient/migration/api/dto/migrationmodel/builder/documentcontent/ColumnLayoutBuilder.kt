@@ -1,14 +1,11 @@
 package com.quadient.migration.api.dto.migrationmodel.builder.documentcontent
 
 import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
-import com.quadient.migration.api.dto.migrationmodel.DocumentContent
-import com.quadient.migration.api.dto.migrationmodel.builder.DocumentContentBuilderBase
 import com.quadient.migration.shared.ColumnApplyTo
 import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.Size
 
-class ColumnLayoutBuilder : DocumentContentBuilderBase<ColumnLayoutBuilder> {
-    override val content = mutableListOf<DocumentContent>()
+class ColumnLayoutBuilder {
     private var numberOfColumns: Int = 2
     private var gutterWidth: Size = Size.ofMillimeters(0)
     private var balancingType: ColumnBalancingType = ColumnBalancingType.FirstColumn
@@ -51,6 +48,5 @@ class ColumnLayoutBuilder : DocumentContentBuilderBase<ColumnLayoutBuilder> {
         gutterWidth = gutterWidth,
         balancingType = balancingType,
         applyTo = applyTo,
-        content = content,
     )
 }
