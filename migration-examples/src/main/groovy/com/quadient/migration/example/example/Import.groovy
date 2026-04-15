@@ -21,6 +21,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBu
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.Color
+import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.GroupOp
@@ -434,6 +435,7 @@ def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Bloc
         .columnLayout {
             it.numberOfColumns(2)
             it.gutterWidth(Size.ofMillimeters(5))
+            it.balancingType(ColumnBalancingType.Balanced)
         }
         .paragraph {
             it.styleRef(paragraphStyle)
