@@ -245,8 +245,8 @@ interface DocumentContentBuilderBase<T> {
         repeatedContent(VariableRefPath(variable.id), builder)
 
     /**
-     * Wraps content in a column layout block.
-     * @param builder A builder function to configure the column layout and add inner content.
+     * Defines a column layout modifier that affects sibling content within the current block.
+     * @param builder A builder function to configure the [ColumnLayoutBuilder].
      * @return This builder instance for method chaining.
      */
     fun columnLayout(builder: ColumnLayoutBuilder.() -> Unit = {}): T = apply {

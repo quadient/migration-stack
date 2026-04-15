@@ -368,7 +368,7 @@ class ParagraphBuilder {
         }
 
         /**
-         * Adds a column layout section to the text content.
+         * Defines a column layout modifier that affects sibling content within the current paragraph.
          * @param builder A builder function to configure the [ColumnLayoutBuilder].
          * @return The current instance of [TextBuilder] for method chaining.
          */
