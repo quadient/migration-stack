@@ -12,6 +12,7 @@ import com.quadient.wfdxml.api.layoutnodes.Page;
 import com.quadient.wfdxml.api.layoutnodes.Pages;
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle;
 import com.quadient.wfdxml.api.layoutnodes.Root;
+import com.quadient.wfdxml.api.layoutnodes.Section;
 import com.quadient.wfdxml.api.layoutnodes.TextStyle;
 import com.quadient.wfdxml.api.layoutnodes.data.Data;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
@@ -66,4 +67,6 @@ public interface Layout extends WorkFlowModule<Layout> {
     Root addRoot();
 
     Root getRoot();
+
+    Section addSection();
 }

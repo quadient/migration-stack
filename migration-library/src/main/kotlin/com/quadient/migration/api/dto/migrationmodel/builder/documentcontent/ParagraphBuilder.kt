@@ -1,5 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
+import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ColumnLayoutBuilder
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
@@ -363,6 +365,15 @@ class ParagraphBuilder {
          */
         fun table(builder: TableBuilder.() -> Unit) = apply {
             content.add(TableBuilder().apply(builder).build())
+        }
+
+        /**
+         * Defines a column layout modifier that affects sibling content within the current paragraph.
+         * @param builder A builder function to configure the [ColumnLayoutBuilder].
+         * @return The current instance of [TextBuilder] for method chaining.
+         */
+        fun columnLayout(builder: ColumnLayoutBuilder.() -> Unit = {}) = apply {
+            content.add(ColumnLayoutBuilder().apply(builder).build())
         }
     }
 }

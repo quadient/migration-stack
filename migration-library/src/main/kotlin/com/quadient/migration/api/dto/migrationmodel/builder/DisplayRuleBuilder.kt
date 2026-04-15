@@ -3,6 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
@@ -94,18 +95,25 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
     fun targetId(rule: DisplayRule) = apply { targetId = rule.id }
 
     /**
-     * Add a reference to a variable structure to this variable structure.
-     * @param id ID of the variable structure to reference.
+     * Sets the variable structure reference for this display rule.
+     * @param value The [VariableStructureRef] to set.
      * @return This builder instance for method chaining.
      */
+    fun variableStructureRef(value: VariableStructureRef) = apply { variableStructureRef = value }
 
-    fun variableStructureRef(value: VariableStructureRef?) = apply { variableStructureRef = value }
     /**
-     * Add a reference to a variable structure to this variable structure.
-     * @param id ID of the variable structure to reference.
+     * Sets the variable structure reference for this display rule by ID.
+     * @param value ID of the variable structure to reference.
      * @return This builder instance for method chaining.
      */
     fun variableStructureRef(value: String) = apply { variableStructureRef = VariableStructureRef(value) }
+
+    /**
+     * Sets the variable structure reference for this display rule from a [VariableStructure] object.
+     * @param value The [VariableStructure] whose ID will be used as the reference.
+     * @return This builder instance for method chaining.
+     */
+    fun variableStructureRef(value: VariableStructure) = apply { variableStructureRef = VariableStructureRef(value.id) }
 
     /**
      * Override the default base template for this display rule.

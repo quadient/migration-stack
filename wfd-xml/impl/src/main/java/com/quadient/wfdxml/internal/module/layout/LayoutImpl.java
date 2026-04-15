@@ -24,6 +24,7 @@ import com.quadient.wfdxml.internal.layoutnodes.PageImpl;
 import com.quadient.wfdxml.internal.layoutnodes.PagesImpl;
 import com.quadient.wfdxml.internal.layoutnodes.ParagraphStyleImpl;
 import com.quadient.wfdxml.internal.layoutnodes.RootImpl;
+import com.quadient.wfdxml.internal.layoutnodes.SectionImpl;
 import com.quadient.wfdxml.internal.layoutnodes.TextStyleImpl;
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl;
 import com.quadient.wfdxml.internal.layoutnodes.tables.CellImpl;
@@ -71,7 +72,7 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
     private DataImpl data;
     private PagesImpl pages;
 
-    private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images", "TextStyles", "Colors", "FillStyles", "BorderStyles", "Pages");
+    private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images", "TextStyles", "Colors", "FillStyles", "BorderStyles", "Pages", "Others");
     private final List<String> styleLayoutDeltaAllowedGroups = List.of("TextStyles", "FillStyles", "ParagraphStyles", "Colors", "Fonts");
 
     public LayoutImpl() {
@@ -293,6 +294,13 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
         LineStyleImpl lineStyle = new LineStyleImpl();
         addNodeToDefGroup(DN_LINESTYLE_GROUP, lineStyle);
         return lineStyle;
+    }
+
+    @Override
+    public SectionImpl addSection() {
+        SectionImpl section = new SectionImpl();
+        addNodeToDefGroup(DN_OTHERS_GROUP, section);
+        return section;
     }
 
     private void addNodeToDefGroup(DefaultNodeType nodeType, NodeImpl c) {

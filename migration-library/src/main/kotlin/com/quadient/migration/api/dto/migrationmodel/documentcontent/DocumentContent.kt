@@ -2,6 +2,7 @@ package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.persistence.migrationmodel.DocumentContentEntity
 import com.quadient.migration.persistence.migrationmodel.AreaEntity
+import com.quadient.migration.persistence.migrationmodel.ColumnLayoutEntity
 import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
 import com.quadient.migration.persistence.migrationmodel.ParagraphEntity
 import com.quadient.migration.persistence.migrationmodel.SelectByLanguageEntity
@@ -25,6 +26,7 @@ sealed interface DocumentContent {
             is SelectByLanguageEntity -> SelectByLanguage.fromDb(entity)
             is RepeatedContentEntity -> RepeatedContent.fromDb(entity)
             is VariableStringContentEntity -> VariableStringContent.fromDb(entity)
+            is ColumnLayoutEntity -> ColumnLayout.fromDb(entity)
         }
     }
 }
@@ -41,6 +43,7 @@ fun List<DocumentContent>.toDb(): List<DocumentContentEntity> {
             is VariableStringContent -> it.toDb()
             is DocumentObjectRef -> it.toDb()
             is ResourceRef -> it.toDb()
+            is ColumnLayout -> it.toDb()
         }
     }
 }

@@ -109,6 +109,17 @@ class LayoutImplTest extends Specification {
         result.contains("<FirstLineLeftIndent>0.005</FirstLineLeftIndent>")
     }
 
+    def "addSection"() {
+        given:
+        def layout = new LayoutImpl()
+
+        when:
+        def section = layout.addSection()
+
+        then:
+        assertAdd(layout, section, "Others")
+    }
+
     def "addFillStyle without color set def.Color Black"() {
         when:
         Layout layout = new LayoutImpl()

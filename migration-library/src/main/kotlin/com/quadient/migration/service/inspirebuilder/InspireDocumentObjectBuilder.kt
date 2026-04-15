@@ -3,6 +3,7 @@ package com.quadient.migration.service.inspirebuilder
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Area
+import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
@@ -41,6 +42,8 @@ import com.quadient.migration.service.resolveAliases
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
+import com.quadient.migration.shared.ColumnApplyTo
+import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.AttachmentType
@@ -67,6 +70,7 @@ import com.quadient.wfdxml.api.layoutnodes.LocationType
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle as WfdXmlParagraphStyle
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType.*
+import com.quadient.wfdxml.api.layoutnodes.Section as WfdXmlSection
 import com.quadient.wfdxml.api.layoutnodes.SheetNameType
 import com.quadient.wfdxml.api.layoutnodes.TabulatorType
 import com.quadient.wfdxml.api.layoutnodes.data.Data
@@ -167,6 +171,7 @@ abstract class InspireDocumentObjectBuilder(
                     is SelectByLanguage -> item.cases.forEach { languages.add(it.language) }
                     is Area -> collectLanguagesFromContent(item.content)
                     is RepeatedContent -> collectLanguagesFromContent(item.content)
+                    is ColumnLayout -> {}
                     is FirstMatch -> {
                         item.cases.forEach { case -> collectLanguagesFromContent(case.content) }
                         collectLanguagesFromContent(item.default)
@@ -320,78 +325,61 @@ abstract class InspireDocumentObjectBuilder(
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
             when (val contentPart = mutableContent[idx]) {
-                is Table, is Paragraph, is ImageRef, is VariableStringContent -> {
+                is Table, is Paragraph, is ImageRef, is VariableStringContent, is ColumnLayout -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
                     flowModels.add(Composite(flowParts))
                 }
 
-                is DocumentObjectRef -> flowModels.add(DocumentObject(contentPart))
-                is AttachmentRef -> flowModels.add(Attachment(contentPart))
-                is Area -> mutableContent.addAll(idx + 1, contentPart.content.resolveAliases(imageRepository, attachmentRepository))
-                is RepeatedContent -> flowModels.add(RepeatedContent(contentPart))
-                is FirstMatch -> flowModels.add(FirstMatch(contentPart))
-                is SelectByLanguage -> flowModels.add(SelectByLanguage(contentPart))
+                is DocumentObjectRef -> flowModels.add(DocumentObjectRefFlow(contentPart))
+                is AttachmentRef -> flowModels.add(AttachmentFlow(contentPart))
+                is Area -> mutableContent.addAll(
+                    idx + 1, contentPart.content.resolveAliases(imageRepository, attachmentRepository)
+                )
+
+                is RepeatedContent -> flowModels.add(RepeatedContentFlow(contentPart))
+                is FirstMatch -> flowModels.add(FirstMatchFlow(contentPart))
+                is SelectByLanguage -> flowModels.add(SelectByLanguageFlow(contentPart))
             }
             idx++
         }
 
         val flowCount = flowModels.size
         var flowSuffix = 1
+
+        fun nextName(): String? {
+            if (flowName == null) return null
+            return if (flowCount == 1) flowName else "$flowName ${flowSuffix++}"
+        }
+
         return flowModels.mapNotNull {
             when (it) {
-                is FlowModel.DocumentObject -> buildDocumentObjectRefOrPlaceholder(layout, variableStructure, it.ref, languages)
-                is FlowModel.Attachment -> buildAttachmentRef(layout, it.ref)
-                is Composite -> {
-                    if (flowName == null) {
-                        buildCompositeFlow(layout, variableStructure, it.parts, null, languages)
-                    } else {
-                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
-                        flowSuffix++
-                        buildCompositeFlow(layout, variableStructure, it.parts, name, languages)
-                    }
-                }
+                is DocumentObjectRefFlow -> buildDocumentObjectRefOrPlaceholder(
+                    layout, variableStructure, it.ref, languages
+                )
 
-                is FlowModel.FirstMatch -> {
-                    if (flowName == null) {
-                        buildFirstMatch(layout, variableStructure, it.model, false, null, languages)
-                    } else {
-                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
-                        flowSuffix++
-                        buildFirstMatch(layout, variableStructure, it.model, false, name, languages)
-                    }
-                }
+                is AttachmentFlow -> buildAttachmentRef(layout, it.ref)
+                is Composite -> buildCompositeFlow(layout, variableStructure, it.parts, nextName(), languages)
+                is FirstMatchFlow -> buildFirstMatch(layout, variableStructure, it.model, false, nextName(), languages)
 
-                is FlowModel.SelectByLanguage -> {
-                    if (flowName == null) {
-                        buildSelectByLanguage(layout, variableStructure, it.model, null, languages)
-                    } else {
-                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
-                        flowSuffix++
-                        buildSelectByLanguage(layout, variableStructure, it.model, name, languages)
-                    }
-                }
+                is SelectByLanguageFlow -> buildSelectByLanguage(
+                    layout, variableStructure, it.model, nextName(), languages
+                )
 
-                is FlowModel.RepeatedContent -> {
-                    if (flowName == null) {
-                        buildRepeatedContent(it.model, layout, variableStructure, null, languages)
-                    } else {
-                        val name = if (flowCount == 1) flowName else "$flowName $flowSuffix"
-                        flowSuffix++
-                        buildRepeatedContent(it.model, layout, variableStructure, name, languages)
-                    }
-                }
+                is RepeatedContentFlow -> buildRepeatedContent(
+                    it.model, layout, variableStructure, nextName(), languages
+                )
             }
         }
     }
 
     sealed interface FlowModel {
         data class Composite(val parts: List<DocumentContent>) : FlowModel
-        data class DocumentObject(val ref: DocumentObjectRef) : FlowModel
-        data class Attachment(val ref: AttachmentRef) : FlowModel
-        data class FirstMatch(val model: com.quadient.migration.api.dto.migrationmodel.FirstMatch) : FlowModel
-        data class SelectByLanguage(val model: com.quadient.migration.api.dto.migrationmodel.SelectByLanguage) : FlowModel
-        data class RepeatedContent(val model: com.quadient.migration.api.dto.migrationmodel.RepeatedContent) : FlowModel
+        data class DocumentObjectRefFlow(val ref: DocumentObjectRef) : FlowModel
+        data class AttachmentFlow(val ref: AttachmentRef) : FlowModel
+        data class FirstMatchFlow(val model: FirstMatch) : FlowModel
+        data class SelectByLanguageFlow(val model: SelectByLanguage) : FlowModel
+        data class RepeatedContentFlow(val model: RepeatedContent) : FlowModel
     }
 
     protected fun List<Flow>.toSingleFlow(
@@ -710,19 +698,22 @@ abstract class InspireDocumentObjectBuilder(
         val flow = layout.addFlow().setType(Flow.Type.SIMPLE)
         flowName?.let { flow.setName(it) }
 
+        var columnLayout: ColumnLayout? = null
+
         var i = 0
-        while(i < documentContentModelParts.size) {
+        while (i < documentContentModelParts.size) {
             when (val model = documentContentModelParts[i]) {
+                is ColumnLayout -> columnLayout = model
                 is VariableStringContent -> {
                     val paragraph = ParagraphBuilder()
                     var y = i
-                    while(y < documentContentModelParts.size) {
+                    while (y < documentContentModelParts.size) {
                         val part = documentContentModelParts[y]
                         if (part !is VariableStringContent) {
                             break
                         } else {
                             y++
-                            when(part) {
+                            when (part) {
                                 is StringValue -> paragraph.string(part.value)
                                 is VariableRef -> paragraph.variableRef(part.id)
                             }
@@ -730,13 +721,25 @@ abstract class InspireDocumentObjectBuilder(
                     }
 
                     i += (y - i)
-                    buildParagraph(layout, variableStructure, flow, paragraph.build(), languages)
+                    buildParagraph(layout, variableStructure, flow, paragraph.build(), languages, columnLayout)
+                    columnLayout = null
                 }
-                is Paragraph -> buildParagraph(layout, variableStructure, flow, model, languages)
-                is Table -> flow.addParagraph().addText()
-                    .appendTable(buildTable(layout, variableStructure, model, languages))
-
-                is ImageRef -> buildAndAppendImage(layout, flow.addParagraph().addText(), model)
+                is Paragraph -> {
+                    buildParagraph(layout, variableStructure, flow, model, languages, columnLayout)
+                    columnLayout = null
+                }
+                is Table -> {
+                    val text = flow.addParagraph().addText()
+                    columnLayout?.let { text.appendSection(buildWfdXmlSection(it, layout)) }
+                    columnLayout = null
+                    text.appendTable(buildTable(layout, variableStructure, model, languages))
+                }
+                is ImageRef -> {
+                    val text = flow.addParagraph().addText()
+                    columnLayout?.let { text.appendSection(buildWfdXmlSection(it, layout)) }
+                    columnLayout = null
+                    buildAndAppendImage(layout, text, model)
+                }
                 else -> error("Content part type ${model::class.simpleName} is not allowed in composite flow.")
             }
 
@@ -784,7 +787,7 @@ abstract class InspireDocumentObjectBuilder(
 
         do {
             val contentPart = content[index]
-            if (contentPart is Table || contentPart is Paragraph || contentPart is ImageRef || contentPart is VariableStringContent) {
+            if (contentPart is Table || contentPart is Paragraph || contentPart is ImageRef || contentPart is VariableStringContent || contentPart is ColumnLayout) {
                 flowParts.add(contentPart)
                 index++
             } else {
@@ -803,7 +806,8 @@ abstract class InspireDocumentObjectBuilder(
         variableStructure: VariableStructure,
         flow: Flow,
         paragraphModel: Paragraph,
-        languages: List<String>
+        languages: List<String>,
+        parentColumnLayout: ColumnLayout? = null
     ) {
         val paragraph = if (paragraphModel.displayRuleRef == null) {
             flow.addParagraph()
@@ -816,7 +820,11 @@ abstract class InspireDocumentObjectBuilder(
         val paragraphStyle = paragraphModel.styleRef?.let { paragraphStyleRepository.findOrFail(it.id).resolve() }
         paragraphStyle?.also { paragraph.setExistingParagraphStyle("ParagraphStyles.${resolveParagraphStyleName(it.nameOrId())}") }
 
-        paragraphModel.content.forEach { textModel ->
+        val columnLayout = paragraphModel.content.firstNotNullOfOrNull { textModel ->
+            textModel.content.filterIsInstance<ColumnLayout>().firstOrNull()
+        } ?: parentColumnLayout
+
+        paragraphModel.content.forEachIndexed { index, textModel ->
             val baseText = if (textModel.displayRuleRef == null) {
                 paragraph.addText()
             } else {
@@ -832,8 +840,13 @@ abstract class InspireDocumentObjectBuilder(
 
             var currentText = baseText
 
+            if (index == 0 && columnLayout != null) {
+                currentText.appendSection(buildWfdXmlSection(columnLayout, layout))
+            }
+
             textModel.content.forEach { textContent ->
                 when (textContent) {
+                    is ColumnLayout -> {}
                     is ResourceRef -> {
                         when (val resolved = resolveAlias(textContent, imageRepository, attachmentRepository)) {
                             is ImageRef -> buildAndAppendImage(layout, currentText, resolved)
@@ -1225,6 +1238,33 @@ abstract class InspireDocumentObjectBuilder(
         return buildDocumentContentAsSingleFlow(
             layout, variableStructure, listOf(warning) + model.content, languages = languages
         )
+    }
+
+    private fun buildWfdXmlSection(model: ColumnLayout, layout: Layout): WfdXmlSection {
+        val section = layout.addSection().setNumberOfColumns(model.numberOfColumns)
+
+        model.gutterWidth?.let { section.setGutterWidth(it.toMeters()) }
+
+        model.balancingType?.let {
+            section.setBalancingType(
+                when (it) {
+                    ColumnBalancingType.FirstColumn -> WfdXmlSection.BalancingType.FIRST_COLUMN
+                    ColumnBalancingType.Balanced -> WfdXmlSection.BalancingType.BALANCED
+                    ColumnBalancingType.Unbalanced -> WfdXmlSection.BalancingType.UNBALANCED
+                }
+            )
+        }
+
+        model.applyTo?.let {
+            section.setApplyTo(
+                when (it) {
+                    ColumnApplyTo.WholeTemplate -> WfdXmlSection.ApplyTo.WHOLE_TEMPLATE
+                    ColumnApplyTo.ThisBlockOnly -> WfdXmlSection.ApplyTo.THIS_BLOCK_ONLY
+                }
+            )
+        }
+
+        return section
     }
 
     private fun resolveVariableNameAndPath(

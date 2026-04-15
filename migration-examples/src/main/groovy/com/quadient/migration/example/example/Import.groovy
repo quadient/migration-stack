@@ -21,6 +21,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBu
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.Color
+import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.GroupOp
@@ -111,6 +112,7 @@ def displayAddressRule = new DisplayRuleBuilder("displayAddressRule")
         .internal(false)
         .subject("External display rule")
         .metadata("key") { it.string("value") }
+        .variableStructureRef(variableStructure)
         .group {
             it.operator(GroupOp.Or)
             it.comparison { it.variable(nameVariable).notEquals().value("") }
@@ -394,7 +396,7 @@ def signature = new DocumentObjectBuilder("signature", DocumentObjectType.Block)
         .variableStructureRef(variableStructure)
         .build()
 
-// Sample paragraph containing a headingusing headingStyle style,
+// Sample paragraph containing a heading using headingStyle style,
 // and body text with normalStyle, both defined above.
 def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Block)
 // No separate file will be created and the content will be inlined instead when block is internal.
@@ -429,6 +431,12 @@ def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Bloc
 // Second sample paragraph
 def paragraph2 = new DocumentObjectBuilder("paragraph2", DocumentObjectType.Block)
         .internal(true)
+// Demonstrates columnLayout: paragraphs rendered in 2 equal columns with a 5mm gutter.
+        .columnLayout {
+            it.numberOfColumns(2)
+            it.gutterWidth(Size.ofMillimeters(5))
+            it.balancingType(ColumnBalancingType.Balanced)
+        }
         .paragraph {
             it.styleRef(paragraphStyle)
                     .text {
@@ -467,7 +475,7 @@ def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", Doc
         .variableStructureRef(variableStructure)
         .build()
 
-def firstMatchBlock= new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
+def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
         .internal(true)
         .firstMatch { fb ->
             fb.case { cb ->
@@ -505,9 +513,10 @@ def selectByLanguageBlock = new DocumentObjectBuilder("selectByLanguage", Docume
 
 // A simple snippet that combines static text with a variable.
 def snippet = new DocumentObjectBuilder("snippet", DocumentObjectType.Snippet)
-    .string("Lorem ipsum: ")
-    .variable(nameVariable)
-    .build()
+        .string("Lorem ipsum: ")
+        .variable(nameVariable)
+        .variableStructureRef(variableStructure)
+        .build()
 
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas

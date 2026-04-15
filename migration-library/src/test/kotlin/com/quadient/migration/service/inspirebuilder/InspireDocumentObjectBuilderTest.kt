@@ -34,6 +34,8 @@ import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.ColumnApplyTo
+import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.DocumentObjectType.Block
 import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.ImageType.*
@@ -42,10 +44,12 @@ import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
+import com.quadient.migration.shared.millimeters
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.getFlowAreaContentFlow
 import com.quadient.migration.tools.model.*
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldBeNull
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.internal.module.layout.LayoutImpl
 import io.mockk.every
@@ -802,6 +806,89 @@ class InspireDocumentObjectBuilderTest {
         val result = rule.toScript()
 
         result.shouldBeEqualTo("""return ((not String('A').equalCaseInsensitive(String('B'))));""")
+    }
+
+    @Test
+    fun `buildDocumentObject with empty column layout creates section with default values`() {
+        // given
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .columnLayout()
+                .string("Column content")
+                .build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val section = result["Section"].last()
+        section["Column"].size().shouldBeEqualTo(2)
+        section["Column"][0]["GutterWidth"].textValue().shouldBeEqualTo("0.0")
+        section["BalancingType"].textValue().shouldBeEqualTo("FirstColumnBiggest")
+        section["AutoFinish"].textValue().shouldBeEqualTo("True")
+
+        val flow = getFlowAreaContentFlow(result)
+        val flowText = flow["FlowContent"]["P"]["T"]
+        flowText["O"]["Id"].textValue().shouldBeEqualTo(section["Id"].textValue())
+        flowText[""].textValue().shouldBeEqualTo("Column content")
+    }
+
+    @Test
+    fun `buildDocumentObject with column layout is properly assigned to first following paragraph`() {
+        // given
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .paragraph { text { string("before column") } }
+                .columnLayout { numberOfColumns(3).applyTo(ColumnApplyTo.WholeTemplate).balancingType(
+                    ColumnBalancingType.Balanced).gutterWidth(15.millimeters())                }
+                .paragraph { text { string("column content") } }
+                .build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val section = result["Section"].last()
+        section["Column"].size().shouldBeEqualTo(3)
+        section["Column"][0]["GutterWidth"].textValue().shouldBeEqualTo("0.015")
+        section["BalancingType"].textValue().shouldBeEqualTo("Balanced")
+        section["AutoFinish"].textValue().shouldBeEqualTo("False")
+
+        val flow = getFlowAreaContentFlow(result)
+        val flowParagraphs = flow["FlowContent"]["P"]
+        flowParagraphs[0]["T"]["O"].shouldBeNull()
+        flowParagraphs[0]["T"][""].textValue().shouldBeEqualTo("before column")
+        flowParagraphs[1]["T"]["O"]["Id"].textValue().shouldBeEqualTo(section["Id"].textValue())
+        flowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("column content")
+    }
+
+    @Test
+    fun `buildDocumentObject with column layout in text is applied to whole paragraph with priority over parent column layout`() {
+        // given
+        val variable = mockVar(VariableBuilder("var1").name("Var 1").dataType(DataType.String).build())
+        val block = mockObj(DocumentObjectBuilder("B_1", Block).columnLayout { numberOfColumns(4) }.paragraph {
+            text { string("First value") }
+            text { variableRef(variable).columnLayout { numberOfColumns(3) } }
+        }.build())
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val flow = getFlowAreaContentFlow(result)
+        val flowTexts = flow["FlowContent"]["P"]["T"]
+        val firstFlowText = flowTexts[0]
+        val sectionId = firstFlowText["O"]["Id"].textValue()
+        firstFlowText[""].textValue().shouldBeEqualTo("First value")
+
+        val secondFlowText = flowTexts[1]
+        secondFlowText["O"].shouldBeNull()
+        secondFlowText[""].textValue().shouldBeEqualTo($$"$Var 1$")
+
+        val section = result["Section"].last { it["Id"].textValue() == sectionId }
+        section["Column"].size().shouldBeEqualTo(3)
     }
 
     private fun DisplayRule.toScript(): String {

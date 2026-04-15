@@ -39,6 +39,7 @@ def header = ["Id",
               "Images",
               "Attachments",
               "Hyperlinks",
+              "Column layouts",
               "Paragraph styles",
               "Text styles",
               "Last status",
@@ -93,6 +94,7 @@ file.withWriter { writer ->
         writer.write("$stats.imagesCount,") // Images count
         writer.write("$stats.attachmentsCount,") // Attachments count
         writer.write("$stats.usedHyperlinksCount,") // Used Hyperlinks Count
+        writer.write("$stats.columnLayoutsCount,") // Column layouts count
         writer.write("$stats.usedParagraphStylesCount,") // Used Paragraph Styles Count
         writer.write("$stats.usedTextStylesCount,") // Used Text Styles Count
         writer.write("$lastStatus.class.simpleName,") // Last status
@@ -119,6 +121,7 @@ class Stats {
 
     Number tablesCount = 0
     Number repeatedContentCount = 0
+    Number columnLayoutsCount = 0
 
     Number wordCount = 0
     Number lineCount = 0
@@ -153,6 +156,7 @@ class Stats {
                 case Area -> this.collectContent(content.content)
                 case FirstMatch -> this.collectFirstMatch(content)
                 case SelectByLanguage -> this.collectSelectByLanguage(content)
+                case ColumnLayout -> this.columnLayoutsCount++
                 case StringValue -> this.collectTextContent([content])
                 case VariableRef -> this.collectTextContent([content])
                 default -> throw new IllegalStateException("Unknown content type: ${content.class.name}")
@@ -196,6 +200,7 @@ class Stats {
                 case Hyperlink -> this.usedHyperlinks.add(content.url)
                 case Table -> this.collectTable(content)
                 case VariableRef -> this.usedVariables.add(content.id)
+                case ColumnLayout -> this.columnLayoutsCount++
                 case FirstMatch -> this.collectFirstMatch(content)
                 default -> throw new IllegalStateException("Unknown text content type: ${content.class.name}")
             }
