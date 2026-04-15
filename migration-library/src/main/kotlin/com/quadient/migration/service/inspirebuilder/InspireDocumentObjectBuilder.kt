@@ -820,6 +820,10 @@ abstract class InspireDocumentObjectBuilder(
         val paragraphStyle = paragraphModel.styleRef?.let { paragraphStyleRepository.findOrFail(it.id).resolve() }
         paragraphStyle?.also { paragraph.setExistingParagraphStyle("ParagraphStyles.${resolveParagraphStyleName(it.nameOrId())}") }
 
+        val columnLayout = paragraphModel.content.firstNotNullOfOrNull { textModel ->
+            textModel.content.filterIsInstance<ColumnLayout>().firstOrNull()
+        } ?: parentColumnLayout
+
         paragraphModel.content.forEachIndexed { index, textModel ->
             val baseText = if (textModel.displayRuleRef == null) {
                 paragraph.addText()
@@ -836,9 +840,7 @@ abstract class InspireDocumentObjectBuilder(
 
             var currentText = baseText
 
-            val columnLayout = textModel.content.filterIsInstance<ColumnLayout>().firstOrNull()
-                ?: if (index == 0) parentColumnLayout else null
-            if (columnLayout != null) {
+            if (index == 0 && columnLayout != null) {
                 currentText.appendSection(buildWfdXmlSection(columnLayout, layout))
             }
 

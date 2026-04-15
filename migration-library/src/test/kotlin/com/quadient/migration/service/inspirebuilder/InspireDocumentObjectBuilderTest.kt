@@ -44,11 +44,12 @@ import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
+import com.quadient.migration.shared.millimeters
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.getFlowAreaContentFlow
 import com.quadient.migration.tools.model.*
 import com.quadient.migration.tools.shouldBeEqualTo
-import com.quadient.migration.tools.shouldNotBeNull
+import com.quadient.migration.tools.shouldBeNull
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.internal.module.layout.LayoutImpl
 import io.mockk.every
@@ -807,101 +808,87 @@ class InspireDocumentObjectBuilderTest {
         result.shouldBeEqualTo("""return ((not String('A').equalCaseInsensitive(String('B'))));""")
     }
 
-    @Test // TODO d.svitak - analyze and rewrite
-    fun `buildDocumentObject with column layout creates section flow`() {
+    @Test
+    fun `buildDocumentObject with empty column layout creates section with default values`() {
+        // given
         val block = mockObj(
             DocumentObjectBuilder("B_1", Block)
-                .columnLayout {}
-                .paragraph { text { string("column content") } }
+                .columnLayout()
+                .string("Column content")
                 .build()
         )
+
+        // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
-        result["Section"].shouldNotBeNull()
+
+        // then
+        val section = result["Section"].last()
+        section["Column"].size().shouldBeEqualTo(2)
+        section["Column"][0]["GutterWidth"].textValue().shouldBeEqualTo("0.0")
+        section["BalancingType"].textValue().shouldBeEqualTo("FirstColumnBiggest")
+        section["AutoFinish"].textValue().shouldBeEqualTo("True")
+
+        val flow = getFlowAreaContentFlow(result)
+        val flowText = flow["FlowContent"]["P"]["T"]
+        flowText["O"]["Id"].textValue().shouldBeEqualTo(section["Id"].textValue())
+        flowText[""].textValue().shouldBeEqualTo("Column content")
     }
 
     @Test
-    fun `buildDocumentObject with column layout default numberOfColumns creates two columns`() {
+    fun `buildDocumentObject with column layout is properly assigned to first following paragraph`() {
+        // given
         val block = mockObj(
             DocumentObjectBuilder("B_1", Block)
-                .columnLayout {}
+                .paragraph { text { string("before column") } }
+                .columnLayout { numberOfColumns(3).applyTo(ColumnApplyTo.WholeTemplate).balancingType(
+                    ColumnBalancingType.Balanced).gutterWidth(15.millimeters())                }
                 .paragraph { text { string("column content") } }
                 .build()
         )
+
+        // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
-        result["Section"].last()["Column"].size().shouldBeEqualTo(2)
+
+        // then
+        val section = result["Section"].last()
+        section["Column"].size().shouldBeEqualTo(3)
+        section["Column"][0]["GutterWidth"].textValue().shouldBeEqualTo("0.015")
+        section["BalancingType"].textValue().shouldBeEqualTo("Balanced")
+        section["AutoFinish"].textValue().shouldBeEqualTo("False")
+
+        val flow = getFlowAreaContentFlow(result)
+        val flowParagraphs = flow["FlowContent"]["P"]
+        flowParagraphs[0]["T"]["O"].shouldBeNull()
+        flowParagraphs[0]["T"][""].textValue().shouldBeEqualTo("before column")
+        flowParagraphs[1]["T"]["O"]["Id"].textValue().shouldBeEqualTo(section["Id"].textValue())
+        flowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("column content")
     }
 
     @Test
-    fun `buildDocumentObject with column layout custom numberOfColumns creates three columns`() {
-        val block = mockObj(
-            DocumentObjectBuilder("B_1", Block)
-                .columnLayout { numberOfColumns(3) }
-                .paragraph { text { string("column content") } }
-                .build()
-        )
-        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
-        result["Section"].last()["Column"].size().shouldBeEqualTo(3)
-    }
+    fun `buildDocumentObject with column layout in text is applied to whole paragraph with priority over parent column layout`() {
+        // given
+        val variable = mockVar(VariableBuilder("var1").name("Var 1").dataType(DataType.String).build())
+        val block = mockObj(DocumentObjectBuilder("B_1", Block).columnLayout { numberOfColumns(4) }.paragraph {
+            text { string("First value") }
+            text { variableRef(variable).columnLayout { numberOfColumns(3) } }
+        }.build())
 
-    @Test
-    fun `buildDocumentObject with column layout gutterWidth maps to column gutter width`() {
-        val block = mockObj(
-            DocumentObjectBuilder("B_1", Block)
-                .columnLayout { gutterWidth(Size.ofMillimeters(5)) }
-                .paragraph { text { string("column content") } }
-                .build()
-        )
-        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
-        val columns = result["Section"].last()["Column"]
-        columns.forEach { column ->
-            column["GutterWidth"].textValue().shouldBeEqualTo("0.005")
-        }
-    }
-
-    @Test
-    fun `buildDocumentObject with column layout Balanced balancingType maps to BalancingType`() {
-        val block = mockObj(
-            DocumentObjectBuilder("B_1", Block)
-                .columnLayout { balancingType(ColumnBalancingType.Balanced) }
-                .paragraph { text { string("column content") } }
-                .build()
-        )
-        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
-        result["Section"].last()["BalancingType"].textValue().shouldBeEqualTo("Balanced")
-    }
-
-    @Test
-    fun `buildDocumentObject with column layout WholeTemplate applyTo sets AutoFinish to False`() {
-        val block = mockObj(
-            DocumentObjectBuilder("B_1", Block)
-                .columnLayout { applyTo(ColumnApplyTo.WholeTemplate) }
-                .paragraph { text { string("column content") } }
-                .build()
-        )
-        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
-        result["Section"].last()["AutoFinish"].textValue().shouldBeEqualTo("False")
-    }
-
-    @Test
-    fun `buildDocumentObject with column layout section ref is at start of composite flow before paragraph ref`() {
-        val block = mockObj(
-            DocumentObjectBuilder("B_1", Block)
-                .columnLayout {}
-                .paragraph { text { string("column content") } }
-                .build()
-        )
+        // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
-        val sectionId = result["Section"].last()["Id"].textValue()
-        val sectionAreaFlowId = result["FlowArea"].last()["FlowId"].textValue()
-        val sectionAreaFlow = result["Flow"].last { it["Id"].textValue() == sectionAreaFlowId }
-        val compositeFlowId = sectionAreaFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
-        val compositeFlow = result["Flow"].last { it["Id"].textValue() == compositeFlowId }
+        // then
+        val flow = getFlowAreaContentFlow(result)
+        val flowTexts = flow["FlowContent"]["P"]["T"]
+        val firstFlowText = flowTexts[0]
+        val sectionId = firstFlowText["O"]["Id"].textValue()
+        firstFlowText[""].textValue().shouldBeEqualTo("First value")
 
-        // Column layout section ref is incorporated into the first real paragraph (no standalone empty paragraph)
-        val paragraph = compositeFlow["FlowContent"]["P"]
-        paragraph.isArray.shouldBeEqualTo(false) // only one paragraph - no empty section-ref paragraph
-        paragraph["T"]["O"]["Id"].textValue().shouldBeEqualTo(sectionId)
+        val secondFlowText = flowTexts[1]
+        secondFlowText["O"].shouldBeNull()
+        secondFlowText[""].textValue().shouldBeEqualTo($$"$Var 1$")
+
+        val section = result["Section"].last { it["Id"].textValue() == sectionId }
+        section["Column"].size().shouldBeEqualTo(3)
     }
 
     private fun DisplayRule.toScript(): String {
