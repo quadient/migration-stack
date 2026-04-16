@@ -67,6 +67,7 @@ import com.quadient.migration.tools.model.aTextStyle
 import com.quadient.migration.tools.model.aVariableStructure
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldBeOfSize
 import com.quadient.migration.tools.shouldNotBeEmpty
 import com.quadient.migration.tools.shouldNotBeNull
 import io.mockk.every
@@ -357,6 +358,23 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         result["Flow"].filter { it["Name"]?.textValue() == block.nameOrId() }.size.shouldBeEqualTo(1)
+    }
+
+    @Test
+    fun `buildDocumentObject correctly sets table style name`() {
+        val block = DocumentObjectBuilder("T1", Block)
+            .table { tableStyleName("testTableStyle1") }
+            .table { tableStyleName("testTableStyle1") }
+            .table { tableStyleName("testTableStyle2") }
+            .build()
+
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        val tableStyles = result["TableStyle"].filter { it["Name"]?.textValue() != null }.map { it["Name"].textValue() }.toSet()
+        tableStyles.shouldBeEqualTo(setOf("testTableStyle1", "testTableStyle2"))
+        val tables = result["Table"].filter { it["TableStyleId"]?.textValue() != null }.map { it["TableStyleId"].textValue() }
+        tables.shouldBeOfSize(3)
+        tables.toSet().shouldBeEqualTo(setOf("Others.testTableStyle1", "Others.testTableStyle2"))
     }
 
     @Test

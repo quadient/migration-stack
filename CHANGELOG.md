@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Support for interactive simple snippets
 - Added ActivateIds task
 - New column layout content that works as modifier for current block or whole template depending on its settings
+- Support for existing table styles
 
 ### Changed
 

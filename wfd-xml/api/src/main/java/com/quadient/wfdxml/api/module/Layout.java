@@ -1,19 +1,6 @@
 package com.quadient.wfdxml.api.module;
 
-import com.quadient.wfdxml.api.layoutnodes.Color;
-import com.quadient.wfdxml.api.layoutnodes.Element;
-import com.quadient.wfdxml.api.layoutnodes.FillStyle;
-import com.quadient.wfdxml.api.layoutnodes.Flow;
-import com.quadient.wfdxml.api.layoutnodes.Font;
-import com.quadient.wfdxml.api.layoutnodes.Image;
-import com.quadient.wfdxml.api.layoutnodes.LineStyle;
-import com.quadient.wfdxml.api.layoutnodes.NumberedList;
-import com.quadient.wfdxml.api.layoutnodes.Page;
-import com.quadient.wfdxml.api.layoutnodes.Pages;
-import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle;
-import com.quadient.wfdxml.api.layoutnodes.Root;
-import com.quadient.wfdxml.api.layoutnodes.Section;
-import com.quadient.wfdxml.api.layoutnodes.TextStyle;
+import com.quadient.wfdxml.api.layoutnodes.*;
 import com.quadient.wfdxml.api.layoutnodes.data.Data;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.api.layoutnodes.tables.BorderStyle;
@@ -39,6 +26,8 @@ public interface Layout extends WorkFlowModule<Layout> {
     ParagraphStyle addBulletParagraph(TextStyle textStyle, String bullet);
 
     ParagraphStyle addNumberingParagraph(TextStyle textStyle, String bullet_suffix, Variable variable);
+
+    TableStyle addTableStyle();
 
     Flow addFlow();
 

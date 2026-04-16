@@ -57,6 +57,8 @@ public interface Table extends Node<Table> {
 
     Table setTablePdfAlternateText(String alternateText);
 
+    Table setExistingTableStyle(String id);
+
     enum TablePdfTaggingRule {
         NONE,
         DEFAULT,

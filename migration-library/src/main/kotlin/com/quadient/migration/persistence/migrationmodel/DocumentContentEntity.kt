@@ -37,7 +37,8 @@ data class TableEntity(
     val maxWidth: Size? = null,
     val percentWidth: Double? = null,
     val border: BorderOptions? = null,
-    val alignment: TableAlignment = TableAlignment.Left
+    val alignment: TableAlignment = TableAlignment.Left,
+    val tableStyleName: String? = null,
 ) : DocumentContentEntity, TextContentEntity {
     @Serializable(with = TableRowEntitySerializer::class)
     sealed interface TableRow

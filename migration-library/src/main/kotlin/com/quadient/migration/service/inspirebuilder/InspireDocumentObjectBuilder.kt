@@ -800,6 +800,7 @@ abstract class InspireDocumentObjectBuilder(
 
     protected open fun resolveParagraphStyleName(name: String): String = name
     protected open fun resolveTextStyleName(name: String): String = name
+    protected open fun resolveTableStyleName(name: String): String = name
 
     private fun buildParagraph(
         layout: Layout,
@@ -1291,6 +1292,13 @@ abstract class InspireDocumentObjectBuilder(
         layout: Layout, variableStructure: VariableStructure, model: Table, languages: List<String>
     ): WfdXmlTable {
         val table = layout.addTable().setDisplayAsImage(false)
+
+        if (model.tableStyleName != null) {
+            if (output == InspireOutput.Designer && getTableStyleByName(layout, model.tableStyleName) == null) {
+                layout.addTableStyle().setName(model.tableStyleName)
+            }
+            table.setExistingTableStyle("Others.${resolveTableStyleName(model.tableStyleName)}")
+        }
 
         if (model.columnWidths.isNotEmpty()) {
             model.columnWidths.forEach { table.addColumn(it.minWidth.toMeters(), it.percentWidth) }

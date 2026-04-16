@@ -74,6 +74,7 @@ import com.quadient.migration.tools.model.aVariableStructure
 import com.quadient.migration.tools.model.anArea
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
+import com.quadient.migration.tools.shouldBeOfSize
 import com.quadient.migration.tools.shouldNotBeEmpty
 import com.quadient.migration.tools.shouldNotBeEqualTo
 import com.quadient.migration.tools.shouldNotBeNull
@@ -1586,6 +1587,58 @@ class InteractiveDocumentObjectBuilderTest {
         varObj["Type"].textValue().shouldBeEqualTo("Calculated")
         varObj["VarType"].textValue().shouldBeEqualTo("String")
         varObj["Script"].textValue().shouldBeEqualTo($$"""return 'Hello World' + '<var name="V_1">' + '' + '<var name="V_2">' + '$V_3$' + 'Goodbye World';""")
+    }
+
+    @Test
+    fun `buildDocumentObject correctly sets table style name`() {
+        val block = DocumentObjectBuilder("T1", Block)
+            .table { tableStyleName("testTableStyle1") }
+            .table { tableStyleName("testTableStyle1") }
+            .table { tableStyleName("testTableStyle2") }
+            .build()
+
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        val tables = result["Table"].filter { it["TableStyleId"]?.textValue() != null }.map { it["TableStyleId"].textValue() }
+        tables.shouldBeOfSize(3)
+        tables.toSet().shouldBeEqualTo(setOf("Others.testTableStyle1", "Others.testTableStyle2"))
+    }
+
+    @Test
+    fun `table style name correctly resolves to internal names`() {
+        // given
+        val block = DocumentObjectBuilder("T1", Block)
+            .table { tableStyleName("testTableStyle1") }
+            .table { tableStyleName("testTableStyle1") }
+            .table { tableStyleName("testTableStyle2") }
+            .build()
+
+        every { ipsService.wfd2xml(eq(subject.getStyleDefinitionPath())) } returns """
+            <Workflow>
+                <Layout>
+                    <Layout>
+                        <TableStyle>
+                            <Id>10</Id>
+                            <Name>first_internal</Name>
+                            <CustomProperty>{&quot;DisplayName&quot;:&quot;testTableStyle1&quot;}</CustomProperty>
+                        </TableStyle>
+                        <TableStyle>
+                            <Id>11</Id>
+                            <Name>second_internal</Name>
+                            <CustomProperty>{&quot;DisplayName&quot;:&quot;testTableStyle2&quot;}</CustomProperty>
+                        </TableStyle>
+                    </Layout>
+                </Layout>
+            </Workflow>
+        """.trimIndent()
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val tables = result["Table"].filter { it["TableStyleId"]?.textValue() != null }.map { it["TableStyleId"].textValue() }
+        tables.shouldBeOfSize(3)
+        tables.toSet().shouldBeEqualTo(setOf("Others.first_internal", "Others.second_internal"))
     }
 
     private fun DocumentObject.mock(): DocumentObject {

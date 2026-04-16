@@ -256,4 +256,16 @@ class TableImplTest extends Specification {
         xml.contains("<Rule>Artifact</Rule>")
         xml.contains("<AlternateText></AlternateText>")
     }
+
+    def "export table with existing table style id"() {
+        given:
+        Table table = new TableImpl().setExistingTableStyle("ExistingTableStyle")
+
+        when:
+        table.export(exporter)
+
+        then:
+        String xml = exporter.buildString()
+        xml.contains("<TableStyleId>ExistingTableStyle</TableStyleId>")
+    }
 }

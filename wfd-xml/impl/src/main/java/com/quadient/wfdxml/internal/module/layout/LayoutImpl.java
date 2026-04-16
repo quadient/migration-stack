@@ -11,21 +11,7 @@ import com.quadient.wfdxml.internal.DefaultNodeType;
 import com.quadient.wfdxml.internal.Group;
 import com.quadient.wfdxml.internal.NodeImpl;
 import com.quadient.wfdxml.internal.Tree;
-import com.quadient.wfdxml.internal.layoutnodes.BorderStyleImpl;
-import com.quadient.wfdxml.internal.layoutnodes.ColorImpl;
-import com.quadient.wfdxml.internal.layoutnodes.FillStyleImpl;
-import com.quadient.wfdxml.internal.layoutnodes.FlowImpl;
-import com.quadient.wfdxml.internal.layoutnodes.FlowObjectImpl;
-import com.quadient.wfdxml.internal.layoutnodes.FontImpl;
-import com.quadient.wfdxml.internal.layoutnodes.ImageImpl;
-import com.quadient.wfdxml.internal.layoutnodes.LineStyleImpl;
-import com.quadient.wfdxml.internal.layoutnodes.NumberedListImpl;
-import com.quadient.wfdxml.internal.layoutnodes.PageImpl;
-import com.quadient.wfdxml.internal.layoutnodes.PagesImpl;
-import com.quadient.wfdxml.internal.layoutnodes.ParagraphStyleImpl;
-import com.quadient.wfdxml.internal.layoutnodes.RootImpl;
-import com.quadient.wfdxml.internal.layoutnodes.SectionImpl;
-import com.quadient.wfdxml.internal.layoutnodes.TextStyleImpl;
+import com.quadient.wfdxml.internal.layoutnodes.*;
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl;
 import com.quadient.wfdxml.internal.layoutnodes.tables.CellImpl;
 import com.quadient.wfdxml.internal.layoutnodes.tables.RowSetImpl;
@@ -38,32 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_ANCHORS_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_BLACK_FIll;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_BORDERSTYLE;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_BORDERSTYLE_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_CELL_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_COLOR;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_COLOR_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_DATA;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_FILLSTYLE_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_FLOW_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_FLOW_OBJECT_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_FONT;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_FONT_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_FORMCONTROL_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_FRAMESTYLES_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_IMAGES_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_LINESTYLE_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_OTHERS_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_PAGES;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_PARASTYLE;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_PARASTYLE_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_ROWSET_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_SYSTEM_VARIABLE;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_TABLE_GROUP;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_TEXTSTYLE;
-import static com.quadient.wfdxml.internal.DefaultNodeType.DN_TEXTSTYLE_GROUP;
+import static com.quadient.wfdxml.internal.DefaultNodeType.*;
 
 public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
     private final Map<DefaultNodeType, DefNode> defNodes = new HashMap<>();
@@ -200,6 +161,13 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
         ParagraphStyleImpl paragraphStyle = new ParagraphStyleImpl();
         addNodeToDefGroup(DN_PARASTYLE_GROUP, paragraphStyle);
         return paragraphStyle;
+    }
+
+    @Override
+    public TableStyleImpl addTableStyle() {
+        TableStyleImpl tableStyle = new TableStyleImpl();
+        addNodeToDefGroup(DN_OTHERS_GROUP, tableStyle);
+        return tableStyle;
     }
 
     @Override

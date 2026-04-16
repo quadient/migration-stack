@@ -36,6 +36,7 @@ class TableBuilder : RowBuilderBase<TableBuilder> {
     private var percentWidth: Double? = null
     private var border: BorderOptions? = null
     private var alignment: TableAlignment = TableAlignment.Left
+    private var tableStyleName: String? = null
 
     fun pdfTaggingRule(rule: TablePdfTaggingRule) = apply { this.pdfTaggingRule = rule }
     fun pdfAlternateText(text: String?) = apply { this.pdfAlternateText = text }
@@ -140,6 +141,16 @@ class TableBuilder : RowBuilderBase<TableBuilder> {
     fun addRepeatedLastFooterRow(variable: VariablePath, init: RepeatedRowBuilder.() -> Unit): TableBuilder =
         apply { lastFooter.add(RepeatedRowBuilder(variable).apply(init)) }
 
+    /**
+     * Adds a table style to this table. The table style must exist in
+     * the style definition for this to work.
+     * @param name The name of the style definition.
+     * @return The builder instance for method chaining.
+     */
+    fun tableStyleName(name: String?) = apply {
+        this.tableStyleName = name
+    }
+
     fun build(): Table {
         return Table(
             rows = rows.map(TableRow::build),
@@ -155,6 +166,7 @@ class TableBuilder : RowBuilderBase<TableBuilder> {
             percentWidth = percentWidth,
             border = border,
             alignment = alignment,
+            tableStyleName = tableStyleName,
         )
     }
 

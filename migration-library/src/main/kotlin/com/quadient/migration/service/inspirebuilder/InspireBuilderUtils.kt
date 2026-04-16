@@ -97,6 +97,11 @@ fun getTextStyleByName(layout: Layout, styleName: String): com.quadient.wfdxml.a
     return textStyleGroup.children.find { (it as com.quadient.wfdxml.internal.layoutnodes.TextStyleImpl).name == styleName } as? com.quadient.wfdxml.api.layoutnodes.TextStyle
 }
 
+fun getTableStyleByName(layout: Layout, styleName: String): com.quadient.wfdxml.api.layoutnodes.TableStyle? {
+    val otherGroup = (layout as LayoutImpl).children.find { it.name == "Others" } as Group
+    return otherGroup.children.find { (it as? com.quadient.wfdxml.internal.layoutnodes.TableStyleImpl)?.name == styleName } as? com.quadient.wfdxml.api.layoutnodes.TableStyle
+}
+
 fun getColorByRGB(layout: Layout, r: Int, g: Int, b: Int): com.quadient.wfdxml.api.layoutnodes.Color? {
     val colorGroup = (layout as LayoutImpl).children.find { it.name == "Colors" } as Group
     val targetRed = r / 255.0

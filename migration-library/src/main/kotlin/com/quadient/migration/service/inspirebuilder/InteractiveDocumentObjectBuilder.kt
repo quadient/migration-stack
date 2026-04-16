@@ -336,6 +336,9 @@ class InteractiveDocumentObjectBuilder(
     override fun resolveTextStyleName(name: String): String =
         styleDefinitionData?.textStyleDisplayNamesToNames?.get(name) ?: name
 
+    override fun resolveTableStyleName(name: String): String =
+        styleDefinitionData?.tableStyleDisplayNamesToName?.get(name) ?: name
+
     private fun getOrLoadBaseTemplateData(path: IcmPath): BaseTemplateData? {
         if (baseTemplateCache.containsKey(path)) return baseTemplateCache[path]
 
@@ -364,6 +367,7 @@ class InteractiveDocumentObjectBuilder(
         return StyleDefinitionData(
             parseStyleDisplayNamesToNames(layoutXmlTree, "TextStyle"),
             parseStyleDisplayNamesToNames(layoutXmlTree, "ParaStyle"),
+            parseStyleDisplayNamesToNames(layoutXmlTree, "TableStyle"),
         )
     }
 
@@ -411,6 +415,7 @@ class InteractiveDocumentObjectBuilder(
     private data class StyleDefinitionData(
         val textStyleDisplayNamesToNames: Map<String, String>,
         val paragraphStyleDisplayNamesToNames: Map<String, String>,
+        val tableStyleDisplayNamesToName: Map<String, String>,
     )
 
     @Serializable

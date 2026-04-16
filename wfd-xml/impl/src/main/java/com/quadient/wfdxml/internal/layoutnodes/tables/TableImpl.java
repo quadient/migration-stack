@@ -19,6 +19,7 @@ public class TableImpl extends NodeImpl<Table> implements Table {
     private final List<Column> columns = new ArrayList<>();
     private RowSet rowSet = null;
     private BorderStyle border = null;
+    private String existingTableStyleId = null;
     private EditabilityType editabilityType = LABEL_AND_LOCK;
     private double horizontalCellSpacing = 0;
     private double verticalCellSpacing = 0;
@@ -311,6 +312,11 @@ public class TableImpl extends NodeImpl<Table> implements Table {
         return this;
     }
 
+    @Override
+    public Table setExistingTableStyle(String id) {
+        this.existingTableStyleId = id;
+        return this;
+    }
 
     @Override
     public String getXmlElementName() {
@@ -357,6 +363,11 @@ public class TableImpl extends NodeImpl<Table> implements Table {
             default:
                 throw new IllegalStateException(bordersType.toString());
         }
+
+        if (this.existingTableStyleId != null) {
+            exporter.addElementWithStringData("TableStyleId", this.existingTableStyleId);
+        }
+
         exporter.addElementWithBoolData("IncludeLineGap", includeLineGap);
         exporter.addElementWithBoolData("UseColumnWidths", useColumnWidths);
         for (Column column : columns) {

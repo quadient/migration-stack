@@ -26,7 +26,8 @@ data class Table(
     val maxWidth: Size? = null,
     val percentWidth: Double? = null,
     val border: BorderOptions? = null,
-    val alignment: TableAlignment = TableAlignment.Left
+    val alignment: TableAlignment = TableAlignment.Left,
+    val tableStyleName: String? = null,
 ) : DocumentContent, TextContent, RefValidatable {
     override fun collectRefs(): List<Ref> {
         return (rows + header + firstHeader + footer + lastFooter).flatMap { it.collectRefs() }
@@ -47,6 +48,7 @@ data class Table(
             percentWidth = table.percentWidth,
             border = table.border,
             alignment = table.alignment,
+            tableStyleName = table.tableStyleName,
         )
     }
 
@@ -65,6 +67,7 @@ data class Table(
             percentWidth = percentWidth,
             border = border,
             alignment = alignment,
+            tableStyleName = tableStyleName,
         )
     }
 
