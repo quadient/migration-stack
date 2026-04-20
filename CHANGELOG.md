@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Added ActivateIds task
 - New column layout content that works as modifier for current block or whole template depending on its settings
 - Support for existing table styles
+- $ sign can also be used in addition to @ sign to reference variables in variable path mapping
 
 ### Changed
 

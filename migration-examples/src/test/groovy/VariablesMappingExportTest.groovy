@@ -50,7 +50,7 @@ class VariablesMappingExportTest {
 empty,,String,,,,[]
 full,full name,Boolean,,,true,[foo; bar]
 overridden,full name,Boolean,override/path,overridden name,,[foo; bar]
-refVar,,String,@full,ref name,,[]\n"""
+refVar,,String,\$full,ref name,,[]\n"""
 
          Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
     }

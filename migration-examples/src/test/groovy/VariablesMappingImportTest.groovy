@@ -28,7 +28,8 @@ class VariablesMappingImportTest {
             unchangedPath,,String,oldPath,,[]
             withPath,,String,newPath,,[]
             withPathEmpty,,String,newPath,,[]
-            withVariableRef,,String,@referencedVar,,[]
+            withVariableRef,,String,\$referencedVar,,[]
+            withVariableRefLegacy,,String,@legacyRef,,[]
             """.stripIndent()
         mappingFile.toFile().write(input)
 
@@ -43,6 +44,8 @@ class VariablesMappingImportTest {
         givenExistingMapping(migration, "withPathEmpty", null, null, "existingPath", null, mappings)
         givenExistingVariable(migration, "withVariableRef", null, DataType.String, null)
         givenExistingMapping(migration, "withVariableRef", null, null, null, null, mappings)
+        givenExistingVariable(migration, "withVariableRefLegacy", null, DataType.String, null)
+        givenExistingMapping(migration, "withVariableRefLegacy", null, null, null, null, mappings)
 
         VariablesImport.run(migration, mappingFile)
 
@@ -56,13 +59,16 @@ class VariablesMappingImportTest {
         verify(migration.mappingRepository, times(1)).applyVariableMapping("withPathEmpty")
         verify(migration.mappingRepository, times(1)).upsert("withVariableRef", new MappingItem.Variable(null, DataType.String))
         verify(migration.mappingRepository, times(1)).applyVariableMapping("withVariableRef")
+        verify(migration.mappingRepository, times(1)).upsert("withVariableRefLegacy", new MappingItem.Variable(null, DataType.String))
+        verify(migration.mappingRepository, times(1)).applyVariableMapping("withVariableRefLegacy")
         verify(migration.mappingRepository, times(1)).upsert("test",
                 new MappingItem.VariableStructure(null,
-                        ["unchangedEmpty"  : new VariablePathData("", null),
-                         "unchangedPath"   : new VariablePathData("oldPath", null),
-                         "withPath"        : new VariablePathData("newPath", null),
-                         "withPathEmpty"   : new VariablePathData("newPath", null),
-                         "withVariableRef" : new VariablePathData(new VariableRefPath("referencedVar"), null),]
+                        ["unchangedEmpty"       : new VariablePathData("", null),
+                         "unchangedPath"        : new VariablePathData("oldPath", null),
+                         "withPath"             : new VariablePathData("newPath", null),
+                         "withPathEmpty"        : new VariablePathData("newPath", null),
+                         "withVariableRef"      : new VariablePathData(new VariableRefPath("referencedVar"), null),
+                         "withVariableRefLegacy": new VariablePathData(new VariableRefPath("legacyRef"), null),]
                         , null))
         verify(migration.mappingRepository, times(1)).applyVariableStructureMapping("test")
     }

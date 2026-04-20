@@ -112,7 +112,7 @@ static void run(Migration migration, Path filePath) {
 
 static String serializeVariablePath(path) {
     if (path == null) return null
-    if (path instanceof VariableRefPath) return "@${path.variableId}"
+    if (path instanceof VariableRefPath) return "\$${path.variableId}"
     if (path instanceof LiteralPath) return path.path
     return path.toString()
 }

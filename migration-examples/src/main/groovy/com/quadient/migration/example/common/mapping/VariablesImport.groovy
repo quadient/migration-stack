@@ -73,6 +73,6 @@ static void run(Migration migration, Path path) {
 
 static parseVariablePath(String raw) {
     if (!raw) return new LiteralPath("")
-    if (raw.startsWith("@")) return new VariableRefPath(raw.substring(1))
+    if (raw.startsWith("@") || raw.startsWith("\$")) return new VariableRefPath(raw.substring(1))
     return new LiteralPath(raw)
 }
