@@ -1001,6 +1001,16 @@ abstract class InspireDocumentObjectBuilder(
             border.paddingLeft.toMeters()
         )
 
+        if (border.fill != null) {
+            borderStyle.setFill(
+                layout.addFillStyle().setColor(
+                    layout.addColor().setRGB(
+                        border.fill.red(), border.fill.green(), border.fill.blue()
+                    )
+                )
+            )
+        }
+
         val toSelect = listOfNotNull(
             border.leftLine?.let { BorderStyle.LinesAndCorners.LEFT_LINE },
             border.rightLine?.let { BorderStyle.LinesAndCorners.RIGHT_LINE },
@@ -1013,16 +1023,6 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         val borderLines = borderStyle.select(*toSelect)
-
-        if (border.fill != null) {
-            borderStyle.setFill(
-                layout.addFillStyle().setColor(
-                    layout.addColor().setRGB(
-                        border.fill.red(), border.fill.green(), border.fill.blue()
-                    )
-                )
-            )
-        }
 
         if (border.leftLine != null) {
             val fillStyle = layout.addFillStyle().setColor(

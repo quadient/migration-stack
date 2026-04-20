@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - Ref instances now cannot be created with an empty ID
 - Deployment report correctly handles missing objects
+- Apply border style fill even if there are no borderline styles to apply
 
 ## [17.0.18] - 2026-04-08
 
