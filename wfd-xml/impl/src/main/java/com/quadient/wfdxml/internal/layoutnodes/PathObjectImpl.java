@@ -13,8 +13,7 @@ import java.util.List;
 import static com.quadient.wfdxml.api.layoutnodes.PathObject.CapType.BUTT;
 import static com.quadient.wfdxml.api.layoutnodes.PathObject.JoinType.MITER;
 import static com.quadient.wfdxml.internal.layoutnodes.support.Path.PathType;
-import static com.quadient.wfdxml.internal.layoutnodes.support.Path.PathType.LINE_TO;
-import static com.quadient.wfdxml.internal.layoutnodes.support.Path.PathType.MOVE_TO;
+import static com.quadient.wfdxml.internal.layoutnodes.support.Path.PathType.*;
 
 public class PathObjectImpl extends LayoutObjectImpl<PathObject> implements PathObject {
     private final List<Path> paths = new ArrayList<>();
@@ -61,6 +60,10 @@ public class PathObjectImpl extends LayoutObjectImpl<PathObject> implements Path
                 return "LineTo";
             case MOVE_TO:
                 return "MoveTo";
+            case CONIC_TO:
+                return "ConicTo";
+            case BEZIER_TO:
+                return "BezierTo";
             default:
                 throw new IllegalStateException(type.toString());
         }
@@ -223,6 +226,24 @@ public class PathObjectImpl extends LayoutObjectImpl<PathObject> implements Path
     }
 
     @Override
+    public PathObject addBezierTo(double x, double y, double x1, double y1, double x2, double y2) {
+        if (paths.isEmpty()) {
+            paths.add(new Path(MOVE_TO, 0.0, 0.0));
+        }
+        paths.add(new Path(x, y, x1, y1, x2, y2));
+        return this;
+    }
+
+    @Override
+    public PathObject addConicTo(double x, double y, double x1, double y1) {
+        if (paths.isEmpty()) {
+            paths.add(new Path(MOVE_TO, 0.0, 0.0));
+        }
+        paths.add(new Path(x, y, x1, y1));
+        return this;
+    }
+
+    @Override
     public String getXmlElementName() {
         return "PathObject";
     }
@@ -235,10 +256,32 @@ public class PathObjectImpl extends LayoutObjectImpl<PathObject> implements Path
                 .addElementWithBoolData("RuleOddEven", ruleOddEven);
 
         for (Path path : paths) {
-            exporter.beginElement(convertPathTypeToXmlName(path.getType()))
-                    .addDoubleAttribute("X", path.getX())
-                    .addDoubleAttribute("Y", path.getY())
-                    .endElement();
+            switch (path.getType()) {
+                case MOVE_TO, LINE_TO -> {
+                    exporter.beginElement(convertPathTypeToXmlName(path.getType()))
+                        .addDoubleAttribute("X", path.getX())
+                        .addDoubleAttribute("Y", path.getY())
+                        .endElement();
+                }
+                case CONIC_TO -> {
+                    exporter.beginElement(convertPathTypeToXmlName(path.getType()))
+                        .addDoubleAttribute("X", path.getX())
+                        .addDoubleAttribute("Y", path.getY())
+                        .addDoubleAttribute("X1", path.getX1())
+                        .addDoubleAttribute("Y1", path.getY1())
+                        .endElement();
+                }
+                case BEZIER_TO -> {
+                    exporter.beginElement(convertPathTypeToXmlName(path.getType()))
+                        .addDoubleAttribute("X", path.getX())
+                        .addDoubleAttribute("Y", path.getY())
+                        .addDoubleAttribute("X1", path.getX1())
+                        .addDoubleAttribute("Y1", path.getY1())
+                        .addDoubleAttribute("X2", path.getX2())
+                        .addDoubleAttribute("Y2", path.getY2())
+                        .endElement();
+                }
+            }
         }
 
         exporter.endElement()

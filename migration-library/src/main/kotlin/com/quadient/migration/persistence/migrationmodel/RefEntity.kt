@@ -1,5 +1,9 @@
 package com.quadient.migration.persistence.migrationmodel
 
+import com.quadient.migration.shared.Color
+import com.quadient.migration.shared.ShapePath
+import com.quadient.migration.shared.Position
+import com.quadient.migration.shared.Size
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -56,3 +60,13 @@ data class SelectByLanguageEntity(val cases: List<CaseEntity>) : DocumentContent
     @Serializable
     data class CaseEntity(val language: String, val content: List<DocumentContentEntity>)
 }
+
+@Serializable
+data class ShapeEntity(
+    val name: String?,
+    val paths: List<ShapePath>,
+    val position: Position,
+    val fill: Color?,
+    val lineFill: Color?,
+    val lineWidth: Size,
+): DocumentContentEntity

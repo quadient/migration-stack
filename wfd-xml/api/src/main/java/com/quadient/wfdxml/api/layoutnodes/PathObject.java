@@ -28,6 +28,10 @@ public interface PathObject extends LayoutObject<PathObject> {
 
     PathObject addLineTo(double x, double y);
 
+    PathObject addBezierTo(double x, double y, double x1, double y1, double x2, double y2);
+
+    PathObject addConicTo(double x, double y, double x1, double y1);
+
     enum CapType {
         BUTT,
         ROUND,

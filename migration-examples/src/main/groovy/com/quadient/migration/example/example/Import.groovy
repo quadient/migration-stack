@@ -18,6 +18,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ShapeBuilder
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.Color
@@ -518,12 +519,27 @@ def snippet = new DocumentObjectBuilder("snippet", DocumentObjectType.Snippet)
         .variableStructureRef(variableStructure)
         .build()
 
+// A simple shape used as a separator after the table
+def separator = new ShapeBuilder()
+    .name("separator")
+    .position {
+        it.left(leftMargin)
+        it.top(Size.ofMillimeters(148))
+        it.width(contentWidth)
+        it.height(Size.ofMillimeters(0.2))
+    }
+    .lineFill(Color.fromHex("#000000"))
+    .moveTo(Size.ofMillimeters(0), Size.ofMillimeters(0))
+    .lineTo(contentWidth, Size.ofMillimeters(0))
+    .build()
+
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas
 def paragraph1TopMargin = topMargin + Size.ofCentimeters(2)
 def signatureTopMargin = pageHeight - Size.ofCentimeters(3)
 def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         .options(new PageOptions(pageWidth, pageHeight))
+        .shape(separator)
         .area {
             it.position {
                 it.left(leftMargin)

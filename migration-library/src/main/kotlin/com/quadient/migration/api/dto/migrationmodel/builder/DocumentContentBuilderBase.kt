@@ -9,10 +9,12 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.Shape
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ColumnLayoutBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ShapeBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.RepeatedContentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
 import com.quadient.migration.shared.LiteralPath
@@ -251,5 +253,23 @@ interface DocumentContentBuilderBase<T> {
      */
     fun columnLayout(builder: ColumnLayoutBuilder.() -> Unit = {}): T = apply {
         this.content.add(ColumnLayoutBuilder().apply(builder).build())
+    } as T
+
+    /**
+     * Adds an existing [Shape] to the content.
+     * @param shape The [Shape] instance to append.
+     * @return This builder instance for method chaining.
+     */
+    fun shape(shape: Shape): T = apply {
+        this.content.add(shape)
+    } as T
+
+    /**
+     * Adds a path object to the content using a builder function.
+     * @param builder A builder function to construct the [Shape].
+     * @return This builder instance for method chaining.
+     */
+    fun shape(builder: ShapeBuilder.() -> Unit): T = apply {
+        this.content.add(ShapeBuilder().apply(builder).build())
     } as T
 }

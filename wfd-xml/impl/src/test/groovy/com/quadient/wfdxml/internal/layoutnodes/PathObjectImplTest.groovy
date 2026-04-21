@@ -148,9 +148,11 @@ class PathObjectImplTest extends Specification {
         convertPathTypeToXmlName(types) == result
 
         where:
-        result   | _
-        "MoveTo" | _
-        "LineTo" | _
+        result    | _
+        "MoveTo"  | _
+        "LineTo"  | _
+        "ConicTo" | _
+        "BezierTo"| _
 
         types << PathType.values().toList()
     }

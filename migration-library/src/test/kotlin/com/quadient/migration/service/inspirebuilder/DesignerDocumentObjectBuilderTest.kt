@@ -1,5 +1,6 @@
 package com.quadient.migration.service.inspirebuilder
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.PathsConfig
@@ -17,6 +18,7 @@ import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ShapeBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -260,6 +262,66 @@ class DesignerDocumentObjectBuilderTest {
 
         val image = result["Image"].last { it["Id"].textValue() == imageId }
         image["PDFAdvanced"]["Tagging"]["AlternateText"].textValue().shouldBeEqualTo("Description of the image")
+    }
+
+    @Test
+    fun `buildDocumentObject creates path object with geometry and path definitions`() {
+        // given
+        val obj = ShapeBuilder()
+            .name("shape-1")
+            .position { left(20.millimeters()); top(30.millimeters()); width(40.millimeters()); height(50.millimeters()) }
+            .moveTo(1.millimeters(), 2.millimeters())
+            .lineTo(3.millimeters(), 4.millimeters())
+            .conicTo(5.millimeters(), 6.millimeters(), 7.millimeters(), 8.millimeters())
+            .bezierTo(9.millimeters(), 10.millimeters(), 11.millimeters(), 12.millimeters(), 13.millimeters(), 14.millimeters())
+            .fill(Color.fromHex("#FF0000"))
+            .lineFill(Color.fromHex("#00FF00"))
+            .lineWidth(0.7.millimeters())
+            .build()
+
+        val page = DocumentObjectBuilder("P_1", Page)
+            .shape(obj)
+            .build()
+            .mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(page).build().mock()
+
+        // when
+        val xml = subject.buildDocumentObject(template)
+        val result = xmlMapper.readTree(xml.trimIndent())["Layout"]["Layout"]
+
+        // then
+        result["PathObject"].first()["Name"].textValue().shouldBeEqualTo("shape-1")
+
+        val resultShape = result["PathObject"].last()
+        resultShape["Pos"]["X"].textValue().shouldBeEqualTo("0.02")
+        resultShape["Pos"]["Y"].textValue().shouldBeEqualTo("0.03")
+        resultShape["Size"]["X"].textValue().shouldBeEqualTo("0.04")
+        resultShape["Size"]["Y"].textValue().shouldBeEqualTo("0.05")
+        resultShape["LineWidth"].textValue().toDouble().shouldBeEqualTo(0.0007)
+        val fillColor = result.getColorForFillStyle(resultShape["FillStyleId"].textValue())
+        fillColor["RGB"].textValue().shouldBeEqualTo("1.0,0.0,0.0")
+        val lineColor = result.getColorForFillStyle(resultShape["OutlineStyleId"].textValue())
+        lineColor["RGB"].textValue().shouldBeEqualTo("0.0,1.0,0.0")
+
+        val path = resultShape["Path"].toList()
+        val first = path[1]
+        first["X"].textValue().shouldBeEqualTo("0.001")
+        first["Y"].textValue().shouldBeEqualTo("0.002")
+        val second = path[2]
+        second["X"].textValue().shouldBeEqualTo("0.003")
+        second["Y"].textValue().shouldBeEqualTo("0.004")
+        val third = path[3]
+        third["X"].textValue().shouldBeEqualTo("0.007")
+        third["Y"].textValue().shouldBeEqualTo("0.008")
+        third["X1"].textValue().shouldBeEqualTo("0.005")
+        third["Y1"].textValue().shouldBeEqualTo("0.006")
+        val fourth = path[4]
+        fourth["X"].textValue().shouldBeEqualTo("0.013")
+        fourth["Y"].textValue().shouldBeEqualTo("0.014")
+        fourth["X1"].textValue().shouldBeEqualTo("0.011")
+        fourth["Y1"].textValue().shouldBeEqualTo("0.012")
+        fourth["X2"].textValue().shouldBeEqualTo("0.009")
+        fourth["Y2"].textValue().shouldBeEqualTo("0.01")
     }
 
     @Test
@@ -533,6 +595,12 @@ class DesignerDocumentObjectBuilderTest {
         lineColor?.get("RGB")?.textValue().shouldBeEqualTo("${expectedColor.red.toDouble() / 255.0},${expectedColor.green.toDouble() / 255.0},${expectedColor.blue.toDouble() / 255.0}")
 
         borderStyle?.get(line)["LineWidth"]?.textValue()?.toDouble().shouldBeEqualTo(expectedWidth)
+    }
+
+    private fun JsonNode.getColorForFillStyle(fillStyleId: String): JsonNode {
+        val fillStyle = this["FillStyle"].last { it["Id"]?.textValue() == fillStyleId }
+        val colorId = fillStyle["ColorId"].textValue()
+        return this["Color"].last { it["Id"]?.textValue() == colorId }
     }
 
     @Test

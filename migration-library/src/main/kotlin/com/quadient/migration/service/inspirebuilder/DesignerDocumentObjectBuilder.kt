@@ -16,6 +16,7 @@ import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
+import com.quadient.migration.shared.ShapePath
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.millimeters
 import com.quadient.wfdxml.WfdXmlBuilder
@@ -338,18 +339,27 @@ class DesignerDocumentObjectBuilder(
         options?.height?.let { page.setHeight(it.toMeters()) }
         options?.width?.let { page.setWidth(it.toMeters()) }
 
-        val areaModels = mutableListOf<Area>()
+        val pageContentModels = mutableListOf<PageContent>()
         val virtualAreaContent = mutableListOf<DocumentContent>()
 
         content.forEach {
-            if (it is Area) {
-                areaModels.add(it)
-            } else {
-                virtualAreaContent.add(it)
+            when (it) {
+                is Area -> pageContentModels.add(PageContent.AreaContent(it))
+                is Shape -> pageContentModels.add(PageContent.PathObjectContent(it))
+                else -> virtualAreaContent.add(it)
             }
         }
 
-        areaModels.forEach { buildArea(layout, variableStructure, page, it, mainObject, languages) }
+        for (model in pageContentModels) {
+            when (model) {
+                is PageContent.AreaContent -> {
+                    buildArea(layout, variableStructure, page, model.content, mainObject, languages)
+                }
+                is PageContent.PathObjectContent -> {
+                    buildPathObject(layout, page, model.content)
+                }
+            }
+        }
 
         if (virtualAreaContent.isNotEmpty()) {
             buildArea(
@@ -360,6 +370,52 @@ class DesignerDocumentObjectBuilder(
                 mainObject,
                 languages
             )
+        }
+    }
+
+    private fun buildPathObject(layout: Layout, page: Page, model: Shape) {
+        val pathObject = page.addPathObject()
+            .setPosX(model.position.x.toMeters())
+            .setPosY(model.position.y.toMeters())
+            .setWidth(model.position.width.toMeters())
+            .setHeight(model.position.height.toMeters())
+
+        if (model.name != null) {
+            pathObject.setName(model.name)
+        }
+
+        for (path in model.paths) {
+            when (path) {
+                is ShapePath.MoveTo -> pathObject.addMoveTo(path.x.toMeters(), path.y.toMeters())
+                is ShapePath.LineTo -> pathObject.addLineTo(path.x.toMeters(), path.y.toMeters())
+                is ShapePath.BezierTo -> pathObject.addBezierTo(
+                    path.x2.toMeters(), path.y2.toMeters(),
+                    path.x1.toMeters(), path.y1.toMeters(),
+                    path.x0.toMeters(), path.y0.toMeters(),
+                )
+                is ShapePath.ConicTo -> pathObject.addConicTo(
+                    path.x1.toMeters(), path.y1.toMeters(),
+                    path.x0.toMeters(), path.y0.toMeters(),
+                )
+            }
+        }
+
+        pathObject.setLineWidth(model.lineWidth.toMeters())
+
+        if (model.fill != null) {
+            val color = getColorByRGB(layout, model.fill.red(), model.fill.green(), model.fill.blue())
+                ?: layout.addColor().setRGB(model.fill.red(), model.fill.green(), model.fill.blue())
+            val fillStyle = getFillStyleByColor(layout, color)
+                ?: layout.addFillStyle().setColor(color)
+            pathObject.setFillStyle(fillStyle)
+        }
+
+        if (model.lineFill != null) {
+            val color = getColorByRGB(layout, model.lineFill.red(), model.lineFill.green(), model.lineFill.blue())
+                ?: layout.addColor().setRGB(model.lineFill.red(), model.lineFill.green(), model.lineFill.blue())
+            val fillStyle = getFillStyleByColor(layout, color)
+                ?: layout.addFillStyle().setColor(color)
+            pathObject.setLineFillStyle(fillStyle)
         }
     }
 
@@ -451,4 +507,9 @@ class DesignerDocumentObjectBuilder(
     private fun Node.firstElementChildByTag(tag: String): Element? =
         (0 until childNodes.length).asSequence().map { childNodes.item(it) }.filterIsInstance<Element>()
             .firstOrNull { it.tagName == tag }
+
+    private sealed interface PageContent {
+        data class AreaContent(val content: Area): PageContent
+        data class PathObjectContent(val content: Shape): PageContent
+    }
 }

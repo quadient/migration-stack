@@ -102,6 +102,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ifEmpty
 import com.quadient.migration.shared.DataType as DataTypeModel
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
+import com.quadient.migration.api.dto.migrationmodel.Shape
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.shared.VariablePath
@@ -336,6 +337,8 @@ abstract class InspireDocumentObjectBuilder(
                 is Area -> mutableContent.addAll(
                     idx + 1, contentPart.content.resolveAliases(imageRepository, attachmentRepository)
                 )
+
+                is Shape -> {}
 
                 is RepeatedContent -> flowModels.add(RepeatedContentFlow(contentPart))
                 is FirstMatch -> flowModels.add(FirstMatchFlow(contentPart))
