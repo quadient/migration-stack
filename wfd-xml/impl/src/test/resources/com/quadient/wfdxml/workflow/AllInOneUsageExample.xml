@@ -3667,6 +3667,15 @@
                     <LineTo X="0.01"
                             Y="0.0"/>
                 </Path>
+                <TemplatePath>
+                    <Path>
+                        <RuleOddEven>True</RuleOddEven>
+                        <MoveTo X="0.0"
+                                Y="0.0"/>
+                        <LineTo X="0.01"
+                                Y="0.0"/>
+                    </Path>
+                </TemplatePath>
                 <FillStyleId/>
                 <OutlineStyleId>Def.BlackFill</OutlineStyleId>
                 <CapType>Butt</CapType>
@@ -4619,6 +4628,15 @@
                     <LineTo X="0.025"
                             Y="0.04"/>
                 </Path>
+                <TemplatePath>
+                    <Path>
+                        <RuleOddEven>True</RuleOddEven>
+                        <MoveTo X="0.0"
+                                Y="0.0"/>
+                        <LineTo X="0.025"
+                                Y="0.04"/>
+                    </Path>
+                </TemplatePath>
                 <FillStyleId/>
                 <OutlineStyleId>SR_16</OutlineStyleId>
                 <CapType>Butt</CapType>
@@ -4650,6 +4668,15 @@
                     <LineTo X="0.0"
                             Y="0.024999999999999994"/>
                 </Path>
+                <TemplatePath>
+                    <Path>
+                        <RuleOddEven>True</RuleOddEven>
+                        <MoveTo X="0.0"
+                                Y="0.0"/>
+                        <LineTo X="0.0"
+                                Y="0.024999999999999994"/>
+                    </Path>
+                </TemplatePath>
                 <FillStyleId/>
                 <OutlineStyleId>Def.BlackFill</OutlineStyleId>
                 <CapType>Butt</CapType>
@@ -4681,6 +4708,15 @@
                     <LineTo X="0.04500000000000001"
                             Y="0.0"/>
                 </Path>
+                <TemplatePath>
+                    <Path>
+                        <RuleOddEven>True</RuleOddEven>
+                        <MoveTo X="0.0"
+                                Y="0.0"/>
+                        <LineTo X="0.04500000000000001"
+                                Y="0.0"/>
+                    </Path>
+                </TemplatePath>
                 <FillStyleId/>
                 <OutlineStyleId>Def.BlackFill</OutlineStyleId>
                 <CapType>Butt</CapType>
@@ -4712,6 +4748,15 @@
                     <LineTo X="0.04000000000000001"
                             Y="0.01999999999999999"/>
                 </Path>
+                <TemplatePath>
+                    <Path>
+                        <RuleOddEven>True</RuleOddEven>
+                        <MoveTo X="0.0"
+                                Y="0.0"/>
+                        <LineTo X="0.04000000000000001"
+                                Y="0.01999999999999999"/>
+                    </Path>
+                </TemplatePath>
                 <FillStyleId/>
                 <OutlineStyleId>Def.BlackFill</OutlineStyleId>
                 <CapType>Butt</CapType>

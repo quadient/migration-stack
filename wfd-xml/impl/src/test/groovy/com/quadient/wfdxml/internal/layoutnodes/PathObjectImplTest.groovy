@@ -43,6 +43,11 @@ class PathObjectImplTest extends Specification {
                 <Path>
                      <RuleOddEven>True</RuleOddEven>
                 </Path>
+                <TemplatePath>
+                    <Path>
+                         <RuleOddEven>True</RuleOddEven>
+                    </Path>
+                </TemplatePath>
                 <FillStyleId/>
                 <OutlineStyleId/>
                 <CapType>Butt</CapType>
@@ -105,6 +110,15 @@ class PathObjectImplTest extends Specification {
                     <LineTo X="0.24" Y="0.07"/>
                     <MoveTo X="0.016" Y="0.33"/>
                 </Path>
+                <TemplatePath>
+                    <Path>
+                        <RuleOddEven>False</RuleOddEven>
+                        <MoveTo X="0.002" Y="0.003"/>
+                        <LineTo X="0.15" Y="0.35"/>
+                        <LineTo X="0.24" Y="0.07"/>
+                        <MoveTo X="0.016" Y="0.33"/>
+                    </Path>
+                </TemplatePath>
                 <FillStyleId>$idFillStyle</FillStyleId>
                 <OutlineStyleId>$idLineFillStyle</OutlineStyleId>
                 <CapType>Round</CapType>
