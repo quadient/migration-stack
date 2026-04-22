@@ -248,10 +248,7 @@ public class PathObjectImpl extends LayoutObjectImpl<PathObject> implements Path
         return "PathObject";
     }
 
-    @Override
-    public void export(XmlExporter exporter) {
-        exportLayoutObjectProperties(exporter);
-
+    private void exportPath(XmlExporter exporter) {
         exporter.beginElement("Path")
                 .addElementWithBoolData("RuleOddEven", ruleOddEven);
 
@@ -259,33 +256,43 @@ public class PathObjectImpl extends LayoutObjectImpl<PathObject> implements Path
             switch (path.getType()) {
                 case MOVE_TO, LINE_TO -> {
                     exporter.beginElement(convertPathTypeToXmlName(path.getType()))
-                        .addDoubleAttribute("X", path.getX())
-                        .addDoubleAttribute("Y", path.getY())
-                        .endElement();
+                            .addDoubleAttribute("X", path.getX())
+                            .addDoubleAttribute("Y", path.getY())
+                            .endElement();
                 }
                 case CONIC_TO -> {
                     exporter.beginElement(convertPathTypeToXmlName(path.getType()))
-                        .addDoubleAttribute("X", path.getX())
-                        .addDoubleAttribute("Y", path.getY())
-                        .addDoubleAttribute("X1", path.getX1())
-                        .addDoubleAttribute("Y1", path.getY1())
-                        .endElement();
+                            .addDoubleAttribute("X", path.getX())
+                            .addDoubleAttribute("Y", path.getY())
+                            .addDoubleAttribute("X1", path.getX1())
+                            .addDoubleAttribute("Y1", path.getY1())
+                            .endElement();
                 }
                 case BEZIER_TO -> {
                     exporter.beginElement(convertPathTypeToXmlName(path.getType()))
-                        .addDoubleAttribute("X", path.getX())
-                        .addDoubleAttribute("Y", path.getY())
-                        .addDoubleAttribute("X1", path.getX1())
-                        .addDoubleAttribute("Y1", path.getY1())
-                        .addDoubleAttribute("X2", path.getX2())
-                        .addDoubleAttribute("Y2", path.getY2())
-                        .endElement();
+                            .addDoubleAttribute("X", path.getX())
+                            .addDoubleAttribute("Y", path.getY())
+                            .addDoubleAttribute("X1", path.getX1())
+                            .addDoubleAttribute("Y1", path.getY1())
+                            .addDoubleAttribute("X2", path.getX2())
+                            .addDoubleAttribute("Y2", path.getY2())
+                            .endElement();
                 }
             }
         }
+        exporter.endElement();
+    }
 
-        exporter.endElement()
-                .addElementWithIface("FillStyleId", fillStyleId)
+    @Override
+    public void export(XmlExporter exporter) {
+        exportLayoutObjectProperties(exporter);
+
+        this.exportPath(exporter);
+        exporter.beginElement("TemplatePath");
+        this.exportPath(exporter);
+        exporter.endElement();
+
+        exporter.addElementWithIface("FillStyleId", fillStyleId)
                 .addElementWithIface("OutlineStyleId", outLineStyleId)
                 .addElementWithStringData("CapType", convertCapTypToXmlName(capType))
                 .addElementWithStringData("JoinType", convertJoinTypToXmlName(joinType))
