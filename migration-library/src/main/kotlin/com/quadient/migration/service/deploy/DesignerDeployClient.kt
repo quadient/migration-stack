@@ -58,7 +58,7 @@ class DesignerDeployClient(
 ) {
 
     override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
-        return documentObject.type == DocumentObjectType.Page || documentObject.internal != true
+        return documentObject.type != DocumentObjectType.Page && documentObject.internal != true
     }
 
     override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObject>): DeploymentResult {

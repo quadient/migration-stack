@@ -13,6 +13,7 @@ import com.quadient.migration.data.Error
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -26,6 +27,7 @@ import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuild
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.DocumentObjectType.Block
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.tools.aActiveStatus
@@ -103,7 +105,7 @@ class DesignerDeployClientTest {
         val attachment1 = mockAttachment(aAttachment("F_1"))
         val externalBlock = mockObj(
             aDocObj(
-                "Txt_Img_Attachment_1", DocumentObjectType.Block, listOf(
+                "Txt_Img_Attachment_1", Block, listOf(
                     aParagraph(aText(StringValue("Image: "))), ImageRef(image1.id),
                     aParagraph(aText(StringValue("Attachment: "))), AttachmentRef(attachment1.id)
                 )
@@ -111,7 +113,7 @@ class DesignerDeployClientTest {
         )
         val internalBlock = mockObj(
             aDocObj(
-                "Img_2", DocumentObjectType.Block, listOf(ImageRef(image2.id)), internal = true
+                "Img_2", Block, listOf(ImageRef(image2.id)), internal = true
             )
         )
         val page = mockObj(
@@ -150,7 +152,7 @@ class DesignerDeployClientTest {
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", skip = SkipOptions(true, null, null)),
-            aBlock(id = "2", type = DocumentObjectType.Block),
+            aBlock(id = "2", type = Block),
             aBlock(id = "3", type = DocumentObjectType.Page),
             aBlock(id = "4", type = DocumentObjectType.Template),
             aBlock(id = "5", type = DocumentObjectType.Section),
@@ -167,7 +169,7 @@ class DesignerDeployClientTest {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
-            aBlock(id = "1", type = DocumentObjectType.Block),
+            aBlock(id = "1", type = Block),
             aBlock(id = "2", type = DocumentObjectType.Page),
             aBlock(id = "3", type = DocumentObjectType.Template),
             aBlock(id = "4", type = DocumentObjectType.Section),
@@ -295,6 +297,36 @@ class DesignerDeployClientTest {
     }
 
     @Test
+    fun `deploy list of document objects excludes pages and internal objects but includes their transitive external dependencies`() {
+        val spy = spyk(subject)
+        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+
+        val block3 = DocumentObjectBuilder("block3", Block).build()
+        val block2 = DocumentObjectBuilder("block2", Block).internal(true).documentObjectRef(block3).build()
+        val block1 = DocumentObjectBuilder("block1", Block).build()
+        val page = DocumentObjectBuilder("page1", DocumentObjectType.Page).documentObjectRef(block1)
+            .documentObjectRef("block2").build()
+        val template = DocumentObjectBuilder("template1", DocumentObjectType.Template).documentObjectRef(page).build()
+
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template)
+        every { documentObjectRepository.findOrFail("page1") } returns page
+        every { documentObjectRepository.findOrFail("block1") } returns block1
+        every { documentObjectRepository.findOrFail("block2") } returns block2
+        every { documentObjectRepository.findOrFail("block3") } returns block3
+
+        spy.deployDocumentObjects(listOf("template1"), false)
+
+        verify {
+            spy.deployDocumentObjectsInternal(match { docObjects ->
+                val ids = docObjects.map { it.id }
+                ids.containsAll(listOf("template1", "block1", "block3"))
+                    && !ids.contains("page1")
+                    && !ids.contains("block2")
+            })
+        }
+    }
+
+    @Test
     fun `deploy list of document objects with dependencies when dependency is not found`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
@@ -316,7 +348,7 @@ class DesignerDeployClientTest {
     fun `deployDocumentObjects continues deployment when there is exception during document build`() {
         // given
         val innerBlock = aDocObj("B_2")
-        val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, listOf(aDocumentObjectRef(innerBlock.id))))
+        val block = mockObj(aDocObj("B_1", Block, listOf(aDocumentObjectRef(innerBlock.id))))
         val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
 
         every { documentObjectRepository.find(innerBlock.id) } throws IllegalStateException("Not found")

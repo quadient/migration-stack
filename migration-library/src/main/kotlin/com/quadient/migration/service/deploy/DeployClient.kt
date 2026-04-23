@@ -665,8 +665,8 @@ sealed class DeployClient(
                     val model = documentObjectRepository.findOrFail(ref.id)
                     if (shouldIncludeDependency(model)) {
                         dependencies.add(model)
-                        dependencies.addAll(model.findDependencies())
                     }
+                    dependencies.addAll(model.findDependencies())
                 }
             }
         }
