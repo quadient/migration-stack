@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.19] - 2026-04-23
+
+### Added
+
 - Support for interactive simple snippets
 - Added ActivateIds task
 - New column layout content that works as modifier for current block or whole template depending on its settings
@@ -297,7 +305,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.18...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.19...HEAD
+[17.0.19]: https://github.com/quadient/migration-stack/compare/v17.0.18...v17.0.19
 [17.0.18]: https://github.com/quadient/migration-stack/compare/v17.0.17...v17.0.18
 [17.0.17]: https://github.com/quadient/migration-stack/compare/v17.0.16...v17.0.17
 [17.0.16]: https://github.com/quadient/migration-stack/compare/v17.0.15...v17.0.16
