@@ -500,9 +500,15 @@ class InspireDocumentObjectBuilderTest {
                 .addVariable(stringVar.id, VariableRef(clientsVar.id), "Client Name").build()
         )
 
+        val displayRule = aDisplayRule(
+            Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String)
+        )
+        every { displayRuleRepository.findOrFail(displayRule.id) } returns displayRule
+
         val block = mockObj(
             DocumentObjectBuilder("B_1", Block).table {
                 addRepeatedRow(VariableRef(clientsVar.id)) {
+                    displayRuleRef(displayRule)
                     addRow {
                         addCell { string("Client Name") }
                         addCell { paragraph { text { variableRef(stringVar.id) } } }
@@ -515,9 +521,15 @@ class InspireDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val repeatedRowSetId = result["Table"].last()["RowSetId"].textValue()
-        val repeatedRowSet = result["RowSet"].last { it["Id"].textValue() == repeatedRowSetId }
+        val tableRowSetId = result["Table"].last()["RowSetId"].textValue()
+        val conditionRowSet = result["RowSet"].last { it["Id"].textValue() == tableRowSetId }
+        conditionRowSet["RowSetType"].textValue().shouldBeEqualTo("InlCond")
+        conditionRowSet["RowSetCondition"][0]["Condition"].textValue()
+            .shouldBeEqualTo("return (String('A')==String('B'));")
 
+        val repeatedRowSet = result["RowSet"].last {
+            it["Id"].textValue() == conditionRowSet["RowSetCondition"][0]["SubRowId"].textValue()
+        }
         repeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
         val arrayVarId = repeatedRowSet["VariableId"].textValue()
         val arrayVar = result["Variable"].last { it["Id"].textValue() == arrayVarId }

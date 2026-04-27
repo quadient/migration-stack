@@ -219,9 +219,18 @@ class TableBuilder : RowBuilderBase<TableBuilder> {
     @TableBuilderDsl
     class RepeatedRowBuilder(private val variable: VariablePath) : TableRow, RowBuilderBase<RepeatedRowBuilder> {
         override val rows = mutableListOf<TableRow>()
+        var displayRuleRef: DisplayRuleRef? = null
+
+        fun displayRuleRef(id: String) = this.apply { this.displayRuleRef = DisplayRuleRef(id) }
+        fun displayRuleRef(ref: DisplayRuleRef) = this.apply { this.displayRuleRef = ref }
+        fun displayRuleRef(rule: DisplayRule) = this.apply { this.displayRuleRef = DisplayRuleRef(rule.id) }
 
         override fun build(): Table.RepeatedRow {
-            return Table.RepeatedRow(rows = rows.map { (it as Row).build() }, variable)
+            return Table.RepeatedRow(
+                rows = rows.map { (it as Row).build() },
+                variable = variable,
+                displayRuleRef = displayRuleRef,
+            )
         }
     }
 
