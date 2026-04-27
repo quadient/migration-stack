@@ -277,17 +277,27 @@ class InteractiveDocumentObjectBuilder(
             }
         }
 
+        val hasMultipleFlows = interactiveFlowsWithContent.size > 1
+
         interactiveFlowsWithContent.forEach {
             val interactiveFlowText =
                 layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).addParagraph().addText()
 
-            val contentFlows =
-                buildDocumentContentAsFlows(layout, variableStructure, it.value, documentObject.nameOrId(), languages)
+            val flowName = if (hasMultipleFlows && it.key != mainFlowId) {
+                val interactiveFlowName =
+                    currentBaseTemplateData.interactiveFlowNamesToIds.entries.firstOrNull { (_, id) -> id == it.key }?.key
+                        ?: it.key
+                "${documentObject.nameOrId()}_$interactiveFlowName"
+            } else {
+                documentObject.nameOrId()
+            }
+
+            val contentFlows = buildDocumentContentAsFlows(layout, variableStructure, it.value, flowName, languages)
 
             when (val ref = documentObject.displayRuleRef) {
                 null -> contentFlows.forEach { contentFlow -> interactiveFlowText.appendFlow(contentFlow) }
                 else -> interactiveFlowText.appendFlow(
-                    contentFlows.toSingleFlow(layout, variableStructure, documentObject.nameOrId(), DisplayRuleRef(ref.id))
+                    contentFlows.toSingleFlow(layout, variableStructure, flowName, DisplayRuleRef(ref.id))
                 )
             }
         }

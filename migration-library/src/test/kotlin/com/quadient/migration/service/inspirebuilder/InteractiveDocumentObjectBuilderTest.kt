@@ -1088,6 +1088,8 @@ class InteractiveDocumentObjectBuilderTest {
         mainFlowParagraphs[0]["T"][""].textValue().shouldBeEqualTo("main flow text 1")
         mainFlowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("main flow text 2")
         mainFlowParagraphs[2]["T"][""].textValue().shouldBeEqualTo("main flow text 3")
+        result["Flow"].first { it["Id"].textValue() == mainFlowContentFlowId }["Name"].textValue()
+            .shouldBeEqualTo("P_1name")
 
         val interactiveFlow = result["Flow"].first { it["Id"].textValue() == "Def.InteractiveFlow1" }
         val interactiveFlowContentFlowId = interactiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
@@ -1097,10 +1099,12 @@ class InteractiveDocumentObjectBuilderTest {
         interactiveFlowParagraphs[0]["T"][""].textValue().shouldBeEqualTo("interactive flow text 1")
         interactiveFlowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("interactive flow text 2")
         interactiveFlowParagraphs[2]["T"][""].textValue().shouldBeEqualTo("interactive flow text 3")
+        result["Flow"].first { it["Id"].textValue() == interactiveFlowContentFlowId }["Name"].textValue()
+            .shouldBeEqualTo("P_1name_Flow BT 1")
     }
 
     @Test
-    fun `build page with single area with interactive flow`() {
+    fun `build page with single area with interactive flow`(){
         val page = aDocObj(
             "P_1", Page, listOf(
                 anArea(listOf(aParagraph(aText("interactive flow text 1"))), interactiveFlowName = "Logo")
@@ -1142,6 +1146,8 @@ class InteractiveDocumentObjectBuilderTest {
         val interactiveFlowContentFlowId = interactiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
         val interactiveFlowContentFlow = result["Flow"].last { it["Id"].textValue() == interactiveFlowContentFlowId }
         interactiveFlowContentFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("interactive flow text 1")
+        result["Flow"].first { it["Id"].textValue() == interactiveFlowContentFlowId }["Name"].textValue()
+            .shouldBeEqualTo("P_1name")
     }
 
     @Test
