@@ -239,15 +239,14 @@ abstract class InspireDocumentObjectBuilder(
         )
     }
 
-    protected data class WrappedRow(val outer: GeneralRowSet, val inner: GeneralRowSet)
-
     protected open fun buildConditionRow(
         layout: Layout,
         variableStructure: VariableStructure,
         rule: DisplayRule,
-    ): WrappedRow {
-        val successRow = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
-        val conditionRow = layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION)
+        innerRowSet: GeneralRowSet? = null,
+    ): GeneralRowSet {
+        val successRow = innerRowSet ?: layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
+        return layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION)
             .addLineForSelectByCondition(
                 layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
                     .setScript(rule.toScript(
@@ -261,7 +260,17 @@ abstract class InspireDocumentObjectBuilder(
                     )),
                 successRow
             )
-        return WrappedRow(conditionRow, successRow)
+    }
+
+    protected fun wrapRowSetInConditionIfNeeded(
+        layout: Layout,
+        variableStructure: VariableStructure,
+        displayRuleRef: DisplayRuleRef?,
+        rowSet: GeneralRowSet,
+    ): GeneralRowSet {
+        if (displayRuleRef == null) return rowSet
+        val displayRule = displayRuleRepository.findOrFail(displayRuleRef.id)
+        return buildConditionRow(layout, variableStructure, displayRule, rowSet)
     }
 
     fun buildStyleLayoutDelta(textStyles: List<TextStyle>, paragraphStyles: List<ParagraphStyle>): String {
@@ -1094,13 +1103,7 @@ abstract class InspireDocumentObjectBuilder(
     private fun buildSingleRowSet(
         rowModel: Table.Row, layout: Layout, variableStructure: VariableStructure, languages: List<String>
     ): GeneralRowSet {
-        val (outer, inner) = if (rowModel.displayRuleRef == null) {
-            val rowSet = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
-            WrappedRow(rowSet, rowSet)
-        } else {
-            val displayRule = displayRuleRepository.findOrFail(rowModel.displayRuleRef.id)
-            buildConditionRow(layout, variableStructure, displayRule)
-        }
+        val rowSet = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
 
         rowModel.cells.forEach { cellModel ->
             val cellContentFlow = buildDocumentContentAsSingleFlow(
@@ -1138,10 +1141,10 @@ abstract class InspireDocumentObjectBuilder(
 
             buildTableBorderStyle(cellModel.border, layout, cell::setBorderStyle)
 
-            inner.addCell(cell)
+            rowSet.addCell(cell)
         }
 
-        return outer
+        return wrapRowSetInConditionIfNeeded(layout, variableStructure, rowModel.displayRuleRef, rowSet)
     }
 
     private fun buildRepeatedRowSet(
@@ -1171,7 +1174,7 @@ abstract class InspireDocumentObjectBuilder(
         val layoutRoot = layout.root ?: layout.addRoot()
         layoutRoot.addLockedWebNode(repeatedRowSet)
 
-        return repeatedRowSet
+        return wrapRowSetInConditionIfNeeded(layout, variableStructure, repeatedRow.displayRuleRef, repeatedRowSet)
     }
 
     private fun buildUnmappedRepeatedRowFallback(
@@ -1188,7 +1191,9 @@ abstract class InspireDocumentObjectBuilder(
             }
         } ?: rows
 
-        return rowsWithWarning.buildRowSetGroup(layout, variableStructure, languages)
+        return rowsWithWarning.buildRowSetGroup(layout, variableStructure, languages)?.let {
+            wrapRowSetInConditionIfNeeded(layout, variableStructure, repeatedRow.displayRuleRef, it)
+        }
     }
 
     private fun getVariableNameFromPath(

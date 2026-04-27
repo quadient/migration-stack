@@ -24,6 +24,7 @@ import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.FlowArea
 import com.quadient.wfdxml.api.layoutnodes.Page
 import com.quadient.wfdxml.api.layoutnodes.Pages
+import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.module.Layout
@@ -277,9 +278,10 @@ class DesignerDocumentObjectBuilder(
         layout: Layout,
         variableStructure: VariableStructure,
         rule: DisplayRule,
-    ): WrappedRow {
-        val successRow = layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
-        val conditionRow = layout.addRowSet().setType(RowSet.Type.SELECT_BY_INLINE_CONDITION)
+        innerRowSet: GeneralRowSet?,
+    ): GeneralRowSet {
+        val successRow = innerRowSet ?: layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
+        return layout.addRowSet().setType(RowSet.Type.SELECT_BY_INLINE_CONDITION)
             .addLineForSelectByInlineCondition(
                 rule.toScript(
                     layout,
@@ -292,7 +294,6 @@ class DesignerDocumentObjectBuilder(
                 ),
                 successRow
             )
-        return WrappedRow(conditionRow, successRow)
     }
 
     override fun buildDocumentObjectRef(

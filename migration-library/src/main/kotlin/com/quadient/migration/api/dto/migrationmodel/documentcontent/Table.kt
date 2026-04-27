@@ -92,17 +92,19 @@ data class Table(
     data class RepeatedRow(
         val rows: List<Row>,
         val variable: VariablePath,
+        val displayRuleRef: DisplayRuleRef? = null,
     ) : TableRow {
         override fun collectRefs(): List<Ref> {
             val rowRefs = rows.flatMap { it.collectRefs() }
             val varRef = (variable as? VariableRefPath)?.let { VariableRef(it.variableId) }
-            return rowRefs + listOfNotNull(varRef)
+            return rowRefs + listOfNotNull(varRef, displayRuleRef)
         }
 
         fun toDb(): TableEntity.RepeatedRow {
             return TableEntity.RepeatedRow(
                 rows = rows.map(Row::toDb),
                 variable = variable,
+                displayRuleRef = displayRuleRef?.toDb(),
             )
         }
 
@@ -111,6 +113,7 @@ data class Table(
                 return RepeatedRow(
                     rows = row.rows.map(Row::fromDb),
                     variable = row.variable,
+                    displayRuleRef = row.displayRuleRef?.let { DisplayRuleRef.fromDb(it) },
                 )
             }
         }
