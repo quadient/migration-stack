@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Fixed
 
+- Flow name collision in specific Interactive flow cases by suffixing with Interactive flow name when needed
+
 ## [17.0.19] - 2026-04-23
 
 ### Added
