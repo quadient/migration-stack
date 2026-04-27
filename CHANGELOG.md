@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.20] - 2026-04-27
+
+### Added
+
 - Display rule option for repeated row
 
 ### Changed
@@ -309,7 +317,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.19...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.20...HEAD
+[17.0.20]: https://github.com/quadient/migration-stack/compare/v17.0.19...v17.0.20
 [17.0.19]: https://github.com/quadient/migration-stack/compare/v17.0.18...v17.0.19
 [17.0.18]: https://github.com/quadient/migration-stack/compare/v17.0.17...v17.0.18
 [17.0.17]: https://github.com/quadient/migration-stack/compare/v17.0.16...v17.0.17
