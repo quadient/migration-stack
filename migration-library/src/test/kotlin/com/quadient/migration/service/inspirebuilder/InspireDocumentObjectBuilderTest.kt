@@ -38,6 +38,7 @@ import com.quadient.migration.shared.ColumnApplyTo
 import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.DocumentObjectType.Block
 import com.quadient.migration.shared.Function
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType.*
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
@@ -90,7 +91,7 @@ class InspireDocumentObjectBuilderTest {
         every { textStyleRepository.listAll() } returns emptyList()
         every { paragraphStyleRepository.listAll() } returns emptyList()
         every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Fonts/arial.ttf;"
-        every { ipsService.fileExists(any()) } returns true
+        every { ipsService.fileExists(any<IcmPath>()) } returns true
     }
 
     @Test

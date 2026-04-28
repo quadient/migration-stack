@@ -46,6 +46,7 @@ import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.SkipOptions
+import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aActiveStatus
 import com.quadient.migration.tools.aBlockModel
 import com.quadient.migration.tools.aDeployedStatus
@@ -117,7 +118,7 @@ class InteractiveDeployClientTest {
             firstArg<DocumentObject>().internal ?: false
         }
         every { ipsService.writeMetadata(any()) } just runs
-        every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
+        every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
     }
 
     @Test
@@ -208,7 +209,7 @@ class InteractiveDeployClientTest {
         mockBasicSuccessfulIpsOperations()
         every {
             ipsService.deployJld(
-                any(), any(), any(), any(), "icm://Interactive/$tenant/Blocks/defaultFolder/0.jld"
+                any(), any(), any(), any(), "icm://Interactive/$tenant/Blocks/defaultFolder/0.jld".toIcmPath()
             )
         } returns OperationResult.Failure("Problem")
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
@@ -229,12 +230,12 @@ class InteractiveDeployClientTest {
         subject.deployDocumentObjects()
 
         // then
-        verify(exactly = 3) { ipsService.deployJld(any(), any(), any(), any(), any()) }
+        verify(exactly = 3) { ipsService.deployJld(any(), any(), any(), any(), any<IcmPath>()) }
         verify {
             ipsService.setProductionApprovalState(
                 listOf(
-                    "icm://Interactive/$tenant/Blocks/defaultFolder/1.jld",
-                    "icm://Interactive/$tenant/Templates/defaultFolder/0.jld"
+                    "icm://Interactive/$tenant/Blocks/defaultFolder/1.jld".toIcmPath(),
+                    "icm://Interactive/$tenant/Templates/defaultFolder/0.jld".toIcmPath()
                 )
             )
         }
@@ -303,7 +304,7 @@ class InteractiveDeployClientTest {
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
-        every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
+        every { ipsService.tryUpload(any<IcmPath>(), any()) } returns OperationResult.Success
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every {
             statusTrackingRepository.deployed(
@@ -322,8 +323,8 @@ class InteractiveDeployClientTest {
         deploymentResult.deployed.size.shouldBeEqualTo(4)
         deploymentResult.errors.shouldBeEqualTo(emptyList())
 
-        verify { ipsService.tryUpload(expectedImageIcmPath, any()) }
-        verify { ipsService.tryUpload(expectedAttachmentIcmPath, any()) }
+        verify { ipsService.tryUpload(expectedImageIcmPath.toIcmPath(), any()) }
+        verify { ipsService.tryUpload(expectedAttachmentIcmPath.toIcmPath(), any()) }
         verifyBasicIpsOperations(
             listOf(
                 expectedImageIcmPath,
@@ -355,7 +356,7 @@ class InteractiveDeployClientTest {
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
-        every { ipsService.upload(any(), any()) } just runs
+        every { ipsService.upload(any<IcmPath>(), any()) } just runs
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every {
             statusTrackingRepository.deployed(
@@ -378,7 +379,7 @@ class InteractiveDeployClientTest {
         deploymentResult.warnings.size.shouldBeEqualTo(4)
         deploymentResult.errors.shouldBeEqualTo(emptyList())
 
-        verify(exactly = 0) { ipsService.upload(any(), any()) }
+        verify(exactly = 0) { ipsService.upload(any<IcmPath>(), any()) }
         verifyBasicIpsOperations(listOf("icm://Interactive/$tenant/Blocks/defaultFolder/${block.id}.jld"))
     }
 
@@ -407,7 +408,7 @@ class InteractiveDeployClientTest {
                 any(), any<Uuid>(), any(), any(), any(), any(), any()
             )
         } returns aDeployedStatus("id")
-        every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
+        every { ipsService.tryUpload(any<IcmPath>(), any()) } returns OperationResult.Success
 
         mockBasicSuccessfulIpsOperations()
         val expectedImageIcmPath = "icm://Interactive/$tenant/Resources/Images/defaultFolder/${image.sourcePath}"
@@ -417,8 +418,8 @@ class InteractiveDeployClientTest {
         subject.deployDocumentObjects()
 
         // then
-        verify(exactly = 1) { ipsService.tryUpload(expectedImageIcmPath, any()) }
-        verify(exactly = 1) { ipsService.tryUpload(expectedAttachmentIcmPath, any()) }
+        verify(exactly = 1) { ipsService.tryUpload(expectedImageIcmPath.toIcmPath(), any()) }
+        verify(exactly = 1) { ipsService.tryUpload(expectedAttachmentIcmPath.toIcmPath(), any()) }
         verifyBasicIpsOperations(
             listOf(
                 expectedImageIcmPath,
@@ -442,23 +443,23 @@ class InteractiveDeployClientTest {
         } returns aDeployedStatus("id")
         every { textStyleRepository.listAll() } returns emptyList()
         every { paragraphStyleRepository.listAll() } returns emptyList()
-        every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
-        every { ipsService.deployStyleJld(any(), any(), any()) } returns OperationResult.Success
-        every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
+        every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Success
+        every { ipsService.deployStyleJld(any<IcmPath>(), any(), any<IcmPath>()) } returns OperationResult.Success
+        every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
 
         val definitionPathJld =
             "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld"
         val definitionPathWfd = definitionPathJld.replace(".jld", ".wfd")
 
-        every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPathJld
+        every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
 
         // when
         subject.deployStyles()
 
         // then
-        verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd)) }
-        verify { ipsService.deployStyleJld(any(), eq("<xml />"), eq(definitionPathJld)) }
-        verify { ipsService.setProductionApprovalState(eq(listOf(definitionPathWfd, definitionPathJld))) }
+        verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd.toIcmPath())) }
+        verify { ipsService.deployStyleJld(any(), eq("<xml />"), eq(definitionPathJld.toIcmPath())) }
+        verify { ipsService.setProductionApprovalState(eq(listOf(definitionPathWfd.toIcmPath(), definitionPathJld.toIcmPath()))) }
     }
 
     @Test
@@ -474,20 +475,20 @@ class InteractiveDeployClientTest {
         } returns aDeployedStatus("id")
         every { textStyleRepository.listAll() } returns emptyList()
         every { paragraphStyleRepository.listAll() } returns emptyList()
-        every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Failure("Problem")
+        every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Failure("Problem")
 
         val definitionPathJld =
             "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld"
         val definitionPathWfd = definitionPathJld.replace(".jld", ".wfd")
 
-        every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPathJld
+        every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
 
         // when
         subject.deployStyles()
 
         // then
-        verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd)) }
-        verify(exactly = 0) { ipsService.setProductionApprovalState(any()) }
+        verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd.toIcmPath())) }
+        verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
     }
 
     @Test
@@ -731,7 +732,7 @@ class InteractiveDeployClientTest {
         result.deployed.shouldBeEqualTo(
             listOf(
                 DeploymentInfo(
-                    "T_1", ResourceType.DocumentObject, "icm://${template.nameOrId()}"
+                    "T_1", ResourceType.DocumentObject, "icm://${template.nameOrId()}".toIcmPath()
                 )
             )
         )
@@ -742,7 +743,7 @@ class InteractiveDeployClientTest {
             )
         )
 
-        verify(exactly = 1) { ipsService.deployJld(any(), any(), any(), any(), "icm://${template.nameOrId()}") }
+        verify(exactly = 1) { ipsService.deployJld(any<IcmPath>(), any(), any(), any(), "icm://${template.nameOrId()}".toIcmPath()) }
     }
 
     @Test
@@ -793,14 +794,14 @@ class InteractiveDeployClientTest {
         val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
         mockBasicSuccessfulIpsOperations()
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every { statusTrackingRepository.findLastEventRelevantToOutput("skipped", any(), any()) } returns Deployed(Uuid.random(), Clock.System.now(), InspireOutput.Interactive, "")
+        every { statusTrackingRepository.findLastEventRelevantToOutput("skipped", any(), any()) } returns Deployed(Uuid.random(), Clock.System.now(), InspireOutput.Interactive, "".toIcmPath())
         every { statusTrackingRepository.deployed( any(), any<Uuid>(), any(), any(), any(), any(), any() ) } returns aDeployedStatus("id")
         every { statusTrackingRepository.error( any(), any<Uuid>(), any(), any(), any(), any(), any(), any() ) } returns aDeployedStatus("id")
         every { documentObjectRepository.find(template.id) } returns template
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
-        every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/valid.jrd", any()) } returns OperationResult.Success
-        every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/failed.jrd", any()) } returns OperationResult.Failure("oops")
-        every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/targetRule.jrd", any()) } returns OperationResult.Success
+        every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/valid.jrd".toIcmPath(), any()) } returns OperationResult.Success
+        every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/failed.jrd".toIcmPath(), any()) } returns OperationResult.Failure("oops")
+        every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/targetRule.jrd".toIcmPath(), any()) } returns OperationResult.Success
 
         val result = subject.deployDocumentObjects()
 
@@ -819,14 +820,14 @@ class InteractiveDeployClientTest {
             DeploymentError("failed", "oops")
         ))
         result.deployed.shouldBeEqualTo(listOf(
-            DeploymentInfo("valid", ResourceType.DisplayRule, "icm://Interactive/tenant/Rules/defaultFolder/valid.jrd"),
+            DeploymentInfo("valid", ResourceType.DisplayRule, "icm://Interactive/tenant/Rules/defaultFolder/valid.jrd".toIcmPath()),
             DeploymentInfo(
                 "targetRule",
                 ResourceType.DisplayRule,
-                "icm://Interactive/tenant/Rules/defaultFolder/targetRule.jrd"
+                "icm://Interactive/tenant/Rules/defaultFolder/targetRule.jrd".toIcmPath()
             ),
-            DeploymentInfo("B_1", ResourceType.DocumentObject, "icm://B_1name"),
-            DeploymentInfo("T_1", ResourceType.DocumentObject, "icm://T_1name")
+            DeploymentInfo("B_1", ResourceType.DocumentObject, "icm://B_1name".toIcmPath()),
+            DeploymentInfo("T_1", ResourceType.DocumentObject, "icm://T_1name".toIcmPath())
         ))
     }
 
@@ -856,7 +857,7 @@ class InteractiveDeployClientTest {
         val interactiveFolder = documentObject.type.toInteractiveFolder()
 
         val dir = resolveTargetDir(config.defaultTargetFolder, documentObject.targetFolder?.let { IcmPath.from(it) })
-        every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns "icm://Interactive/$tenant/$interactiveFolder/$dir/${documentObject.nameOrId()}.jld"
+        every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns "icm://Interactive/$tenant/$interactiveFolder/$dir/${documentObject.nameOrId()}.jld".toIcmPath()
         every { documentObjectRepository.find(documentObject.id) } returns documentObject
 
         return documentObject
@@ -866,7 +867,7 @@ class InteractiveDeployClientTest {
         val image = this
         val sourcePath = image.sourcePath
         val dir = resolveTargetDir(config.defaultTargetFolder)
-        every { documentObjectBuilder.getImagePath(image) } returns "icm://Interactive/$tenant/Resources/Images/$dir/${image.sourcePath}"
+        every { documentObjectBuilder.getImagePath(image) } returns "icm://Interactive/$tenant/Resources/Images/$dir/${image.sourcePath}".toIcmPath()
 
         every { imageRepository.find(image.id) } returns if (success) {
             image
@@ -902,7 +903,7 @@ class InteractiveDeployClientTest {
         val attachment = this
         val sourcePath = attachment.sourcePath
         val dir = resolveTargetDir(config.defaultTargetFolder)
-        every { documentObjectBuilder.getAttachmentPath(attachment) } returns "icm://Interactive/$tenant/Resources/Attachments/$dir/${attachment.sourcePath}"
+        every { documentObjectBuilder.getAttachmentPath(attachment) } returns "icm://Interactive/$tenant/Resources/Attachments/$dir/${attachment.sourcePath}".toIcmPath()
 
         every { attachmentRepository.find(attachment.id) } returns if (success) {
             attachment
@@ -918,15 +919,15 @@ class InteractiveDeployClientTest {
 
     private fun mockBasicSuccessfulIpsOperations() {
         every {
-            ipsService.deployJld(any(), any(), any(), any(), any())
+            ipsService.deployJld(any(), any(), any(), any(), any<IcmPath>())
         } returns OperationResult.Success
-        every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
+        every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
     }
 
     private fun verifyBasicIpsOperations(expectedOutputPaths: List<String>, deployCount: Int? = null) {
         val deployCountValue = deployCount ?: expectedOutputPaths.size
-        verify(exactly = deployCountValue) { ipsService.deployJld(any(), any(), any(), any(), any()) }
-        verify { ipsService.setProductionApprovalState(expectedOutputPaths) }
+        verify(exactly = deployCountValue) { ipsService.deployJld(any(), any(), any(), any(), any<IcmPath>()) }
+        verify { ipsService.setProductionApprovalState(expectedOutputPaths.map { it.toIcmPath() }) }
     }
 
     private fun mockObj(documentObject: DocumentObject): DocumentObject {
@@ -937,7 +938,7 @@ class InteractiveDeployClientTest {
             val outputPath = "icm://${documentObject.nameOrId()}"
 
             every { documentObjectBuilder.buildDocumentObject(documentObject) } returns xml
-            every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns outputPath
+            every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns outputPath.toIcmPath()
         }
         return documentObject
     }
@@ -958,10 +959,10 @@ class InteractiveDeployClientTest {
                 )
             } returns aErrorStatus("id")
             every { statusTrackingRepository.active(any(), any()) } returns aActiveStatus("id")
-            every { documentObjectBuilder.getDocumentObjectPath(any()) } returns "icm://path"
-            every { ipsService.setProductionApprovalState(any()) } returns OperationResult.Success
-            every { ipsService.tryUpload(any(), any()) } returns OperationResult.Success
-            every { ipsService.deployJld(any(), any(), any(), any(), any()) } returns OperationResult.Success
+            every { documentObjectBuilder.getDocumentObjectPath(any()) } returns "icm://path".toIcmPath()
+            every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
+            every { ipsService.tryUpload(any<IcmPath>(), any()) } returns OperationResult.Success
+            every { ipsService.deployJld(any(), any(), any(), any(), any<IcmPath>()) } returns OperationResult.Success
             every { imageRepository.find(any()) } returns null
         }
 
@@ -1004,7 +1005,7 @@ class InteractiveDeployClientTest {
             givenObjectIsActive("I_2")
             givenObjectIsActive("D_3")
             givenObjectIsDeployed("I_3")
-            every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
+            every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Success
 
 
             // when
@@ -1041,7 +1042,7 @@ class InteractiveDeployClientTest {
             givenObjectIsActive("D_1")
             givenObjectIsActive("I_1")
             aImage("I_1").mock(success = false)
-            every { ipsService.deployJld(any(), any(), any(), any(), any()) } returns OperationResult.Failure("oops")
+            every { ipsService.deployJld(any(), any(), any(), any(), any<IcmPath>()) } returns OperationResult.Failure("oops")
 
             // when
             subject.runDeploy(docObjects)
@@ -1093,7 +1094,7 @@ class InteractiveDeployClientTest {
             val result = subject.runDeploy(docObjects)
 
             // then
-            assertEquals(listOf(DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path")), result.deployed)
+            assertEquals(listOf(DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path".toIcmPath())), result.deployed)
         }
 
         @Test
@@ -1138,9 +1139,9 @@ class InteractiveDeployClientTest {
                     DeploymentInfo(
                         "I_1",
                         ResourceType.Image,
-                        "icm://Interactive/tenant/Resources/Images/defaultFolder/Image_I_1.jpg"
+                        "icm://Interactive/tenant/Resources/Images/defaultFolder/Image_I_1.jpg".toIcmPath()
                     ),
-                    DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path"),
+                    DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path".toIcmPath()),
                 ), result.deployed
             )
         }
@@ -1197,9 +1198,9 @@ class InteractiveDeployClientTest {
                     DeploymentInfo(
                         "R_1",
                         ResourceType.DisplayRule,
-                        "icm://Interactive/tenant/Rules/defaultFolder/R_1.jrd"
+                        "icm://Interactive/tenant/Rules/defaultFolder/R_1.jrd".toIcmPath()
                     ),
-                    DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path"),
+                    DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path".toIcmPath()),
                 ), result.deployed
             )
 
@@ -1218,7 +1219,7 @@ class InteractiveDeployClientTest {
                 output = InspireOutput.Designer,
                 deploymentId = Uuid.random(),
                 timestamp = Clock.System.now(),
-                icmPath = "icm://path",
+                icmPath = "icm://path".toIcmPath(),
                 error = "oops"
             )
         }
@@ -1230,7 +1231,7 @@ class InteractiveDeployClientTest {
                 output = InspireOutput.Designer,
                 deploymentId = Uuid.random(),
                 timestamp = Clock.System.now(),
-                icmPath = "icm://path"
+                icmPath = "icm://path".toIcmPath()
             )
         }
     }

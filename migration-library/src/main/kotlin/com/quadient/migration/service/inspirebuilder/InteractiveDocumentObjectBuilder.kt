@@ -90,7 +90,7 @@ class InteractiveDocumentObjectBuilder(
         }
     }
 
-    override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String {
+    override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): IcmPath {
         val ext = when (type) {
             DocumentObjectType.Snippet -> "jsd"
             else -> "jld"
@@ -99,18 +99,19 @@ class InteractiveDocumentObjectBuilder(
         val fileName = "$nameOrId.$ext"
 
         if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(fileName).toString()
+            return targetFolder.join(fileName)
         }
 
         val tenant = projectConfig.interactiveTenant
         val documentObjectType = type.toInteractiveFolder()
 
-        return IcmPath.root().join("Interactive").join(tenant).join(documentObjectType)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName).toString()
+        return IcmPath.root()
+            .join("Interactive")
+            .join(tenant)
+            .join(documentObjectType)
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
+            .join(fileName)
     }
-
-    override fun getDocumentObjectPath(documentObject: DocumentObject) =
-        getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder?.let { IcmPath.from(it) })
 
     override fun getImagePath(
         id: String,
@@ -118,11 +119,11 @@ class InteractiveDocumentObjectBuilder(
         name: String?,
         targetFolder: IcmPath?,
         sourcePath: String?
-    ): String {
+    ): IcmPath {
         val fileName = "${name ?: id}${imageExtension(imageType, name, sourcePath)}"
 
         if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(fileName).toString()
+            return targetFolder.join(fileName)
         }
 
         val imageConfigPath = projectConfig.paths.images
@@ -133,7 +134,6 @@ class InteractiveDocumentObjectBuilder(
             .join(imageConfigPath.orDefault("Resources/Images"))
             .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
             .join(fileName)
-            .toString()
     }
 
     override fun getDisplayRulePath(rule: DisplayRule): IcmPath {
@@ -152,17 +152,14 @@ class InteractiveDocumentObjectBuilder(
             .join(fileName)
     }
 
-    override fun getImagePath(image: Image) =
-        getImagePath(image.id, image.imageType ?: ImageType.Unknown, image.name, image.targetFolder?.let { IcmPath.from(it) }, image.sourcePath)
-
     override fun getAttachmentPath(
         id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType
-    ): String {
+    ): IcmPath {
         val baseAttachmentName = name ?: id
         val attachmentName = appendExtensionIfMissing(baseAttachmentName, sourcePath)
 
         if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(attachmentName).toString()
+            return targetFolder.join(attachmentName)
         }
 
         val fileConfigPath = when (attachmentType) {
@@ -171,13 +168,10 @@ class InteractiveDocumentObjectBuilder(
         }
 
         return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant).join(fileConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(attachmentName).toString()
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(attachmentName)
     }
 
-    override fun getAttachmentPath(attachment: Attachment): String =
-        getAttachmentPath(attachment.id, attachment.name, attachment.targetFolder?.let { IcmPath.from(it) }, attachment.sourcePath, attachment.attachmentType)
-
-    override fun getStyleDefinitionPath(): String {
+    override fun getStyleDefinitionPath(): IcmPath {
         val styleDefConfigPath = projectConfig.styleDefinitionPath
 
         if (styleDefConfigPath != null && !styleDefConfigPath.isAbsolute()) {
@@ -185,7 +179,7 @@ class InteractiveDocumentObjectBuilder(
         } else if (styleDefConfigPath != null) {
             val pathString = styleDefConfigPath.toString()
             val base = if (pathString.contains(".")) pathString.substringBeforeLast(".") else pathString
-            return "$base.jld"
+            return IcmPath.from("$base.jld")
         }
 
         return IcmPath.root()
@@ -194,14 +188,13 @@ class InteractiveDocumentObjectBuilder(
             .join("CompanyStyles")
             .join(resolveTargetDir(projectConfig.defaultTargetFolder))
             .join("${projectConfig.name}Styles.jld")
-            .toString()
     }
 
-    override fun getFontRootFolder(): String {
+    override fun getFontRootFolder(): IcmPath {
         val fontConfigPath = projectConfig.paths.fonts
 
         return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant)
-            .join(fontConfigPath.orDefault("Resources/Fonts")).toString()
+            .join(fontConfigPath.orDefault("Resources/Fonts"))
     }
 
     override fun applyImageAlternateText(layout: Layout, image: WfdXmlImage, alternateText: String) {
@@ -324,7 +317,7 @@ class InteractiveDocumentObjectBuilder(
             )
         } else {
             layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)
-                .setLocation(getDocumentObjectPath(documentModel))
+                .setLocation(getDocumentObjectPath(documentModel).toString())
         }
 
         if (documentObjectRef.displayRuleRef != null) {
@@ -352,13 +345,13 @@ class InteractiveDocumentObjectBuilder(
     private fun getOrLoadBaseTemplateData(path: IcmPath): BaseTemplateData? {
         if (baseTemplateCache.containsKey(path)) return baseTemplateCache[path]
 
-        if (!ipsService.fileExists(path.toString())) {
+        if (!ipsService.fileExists(path)) {
             baseTemplateCache[path] = null
             return null
         }
 
         return try {
-            val xml = ipsService.wfd2xml(path.toString())
+            val xml = ipsService.wfd2xml(path)
             parseBaseTemplateData(xml).also { baseTemplateCache[path] = it }
         } catch (e: Exception) {
             logger.warn("Failed to load base template data from '$path'.", e)

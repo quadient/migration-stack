@@ -66,6 +66,7 @@ import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.TableAlignment
+import com.quadient.migration.shared.toIcmPath
 import io.mockk.every
 import io.mockk.mockk
 import kotlin.time.Clock
@@ -383,7 +384,7 @@ fun aDeployedStatusEvent(
 ): StatusEvent {
     return Deployed(
         deploymentId = deploymentId,
-        icmPath = icmPath,
+        icmPath = icmPath.toIcmPath(),
         timestamp = timestamp,
         output = output
     )
@@ -404,7 +405,7 @@ fun aErrorStatusEvent(
 ): StatusEvent {
     return com.quadient.migration.data.Error(
         deploymentId = deploymentId,
-        icmPath = icmPath,
+        icmPath = icmPath.toIcmPath(),
         timestamp = timestamp,
         output = output,
         error = error
@@ -456,7 +457,7 @@ fun aDeployedStatusEntity(
         id,
         resourceType,
         projectName,
-        listOf(Deployed(deploymentId = deploymentId, icmPath = icmPath, timestamp = timestamp, output = output))
+        listOf(Deployed(deploymentId = deploymentId, icmPath = icmPath.toIcmPath(), timestamp = timestamp, output = output))
     )
 }
 
@@ -473,7 +474,7 @@ fun aDeployedStatus(
         id,
         projectName,
         resourceType,
-        listOf(Deployed(deploymentId = deploymentId, icmPath = icmPath, timestamp = timestamp, output = output))
+        listOf(Deployed(deploymentId = deploymentId, icmPath = icmPath.toIcmPath(), timestamp = timestamp, output = output))
     )
 }
 
@@ -493,7 +494,7 @@ fun aErrorStatusEntity(
         listOf(
             com.quadient.migration.data.Error(
                 deploymentId = deploymentId,
-                icmPath = icmPath,
+                icmPath = icmPath.toIcmPath(),
                 timestamp = timestamp,
                 output = output,
                 error = "oops"
@@ -518,7 +519,7 @@ fun aErrorStatus(
         listOf(
             com.quadient.migration.data.Error(
                 deploymentId = deploymentId,
-                icmPath = icmPath,
+                icmPath = icmPath.toIcmPath(),
                 timestamp = timestamp,
                 output = output,
                 error = "oops"

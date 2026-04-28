@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.quadient.migration.api.IcmClient
 import com.quadient.migration.api.IpsConfig
 import com.quadient.migration.shared.IcmFileMetadata
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.MetadataValue
 import com.quadient.migration.tools.surroundWith
 import kotlinx.serialization.json.Json
@@ -26,6 +27,10 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
 
     private val logger = LoggerFactory.getLogger(IpsService::class.java)!!
     private val uploadedResources: MutableMap<String, UploadedFile> = mutableMapOf()
+
+    fun xml2wfd(wfdXml: String, outputPath: IcmPath): OperationResult {
+        return xml2wfd(wfdXml, outputPath.toString())
+    }
 
     fun xml2wfd(wfdXml: String, outputPath: String): OperationResult {
         val wfdXmlIpsLocation = "memory://${UUID.randomUUID()}"
@@ -67,11 +72,27 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         return String(outputResult.customData).trimIndent()
     }
 
+    fun wfd2xml(wfdPath: IcmPath): String {
+        return wfd2xml(wfdPath.toString())
+    }
+
+    fun deployJld(
+        baseTemplate: IcmPath, type: String, moduleName: String, xmlContent: String, outputPath: IcmPath
+    ): OperationResult {
+        return deployJld(baseTemplate.toString(), type, moduleName, xmlContent, outputPath.toString())
+    }
+
     fun deployJld(
         baseTemplate: String, type: String, moduleName: String, xmlContent: String, outputPath: String
     ): OperationResult {
         return deployJld(baseTemplate, moduleName, xmlContent) {
             wfId -> client.extractJld(wfId, outputPath, type)
+        }
+    }
+
+    fun deployStyleJld(baseTemplate: IcmPath, xmlContent: String, outputPath: IcmPath): OperationResult {
+        return deployJld(baseTemplate.toString(), "DocumentLayout", xmlContent) {
+                wfId -> client.extractJldStyleDefinition(wfId, outputPath.toString())
         }
     }
 
@@ -143,6 +164,11 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         return OperationResult.Failure(openResult.toString())
     }
 
+    @JvmName("setProductionApprovalStateByIcmPath")
+    fun setProductionApprovalState(paths: List<IcmPath>): OperationResult {
+        return setProductionApprovalState(paths.map { it.toString() })
+    }
+
     fun setProductionApprovalState(paths: List<String>): OperationResult {
         val pathsLocation = "memory://${UUID.randomUUID()}"
         val json = """{"paths":[${paths.joinToString(",") { it.surroundWith("\"") }}]}"""
@@ -161,11 +187,11 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         }
     }
 
-    fun gatherFontData(fontRootFolder: String): String {
+    fun gatherFontData(fontRootFolder: IcmPath): String {
         val resultLocation = "memory://${UUID.randomUUID()}"
 
         val result =
-            runWfd("gatherFontData.wfd", listOf("-f", resultLocation, "-fontRootFolderFontRootFolder", fontRootFolder))
+            runWfd("gatherFontData.wfd", listOf("-f", resultLocation, "-fontRootFolderFontRootFolder", fontRootFolder.toString()))
         if (result !is OperationResult.Success) {
             throw IpsClientException("Failed to gather font data from root folder: $fontRootFolder")
         }
@@ -303,6 +329,10 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         }
     }
 
+    fun tryUpload(path: IcmPath, data: ByteArray): OperationResult {
+        return tryUpload(path.toString(), data)
+    }
+
     fun tryUpload(path: String, data: ByteArray): OperationResult {
         try {
             this.upload(path, data)
@@ -319,10 +349,18 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         client.upload(path, data).throwIfNotOk()
     }
 
+    override fun upload(path: IcmPath, data: ByteArray) {
+        upload(path.toString(), data)
+    }
+
     override fun download(path: String): ByteArray {
         require(path.startsWith("icm://")) { "Expected path to start with icm:// but got '$path" }
 
         return client.download(path).throwIfNotOk().customData
+    }
+
+    override fun download(path: IcmPath): ByteArray {
+        return download(path.toString())
     }
 
     override fun approveFiles(paths: List<String>) {
@@ -335,6 +373,10 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     override fun fileExists(path: String): Boolean {
         require(path.startsWith("icm://")) { "Expected path to start with icm:// but got '$path" }
         return filesExist(listOf(path)).first()
+    }
+
+    override fun fileExists(path: IcmPath): Boolean {
+        return fileExists(path.toString())
     }
 
     override fun filesExist(paths: List<String>): List<Boolean> {
@@ -379,6 +421,10 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         return delete(listOf(path)).first()
     }
 
+    override fun delete(path: IcmPath): Boolean {
+        return delete(path.toString())
+    }
+
     override fun delete(paths: List<String>): List<Boolean> {
         require(paths.all { it.startsWith("icm://") }) { "Expected all paths to start with icm:// but got '$paths" }
         val pathsLocation = "memory://${UUID.randomUUID()}"
@@ -421,6 +467,10 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         return readMetadata(listOf(path)).first()
     }
 
+    override fun readMetadata(path: IcmPath): IcmFileMetadata {
+        return readMetadata(path.toString())
+    }
+
     override fun readMetadata(paths: List<String>): List<IcmFileMetadata> {
         require(paths.all { it.startsWith("icm://") }) { "Expected all paths to start with icm:// but got '$paths" }
         val pathsLocation = "memory://${UUID.randomUUID()}"
@@ -455,6 +505,10 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
 
     override fun writeMetadata(path: String, metadata: Map<String, MetadataValue> ) {
         return writeMetadata(listOf(IcmFileMetadata(path, metadata)))
+    }
+
+    override fun writeMetadata(path: IcmPath, metadata: Map<String, MetadataValue>) {
+        writeMetadata(path.toString(), metadata)
     }
 
     override fun writeMetadata(metadata: List<IcmFileMetadata>) {

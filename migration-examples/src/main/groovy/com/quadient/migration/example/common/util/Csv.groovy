@@ -3,6 +3,7 @@ package com.quadient.migration.example.common.util
 import com.quadient.migration.api.dto.migrationmodel.Tab
 import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.shared.Color
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Size
 import kotlin.time.Instant
@@ -98,6 +99,7 @@ static String serialize(Object obj, Size.Unit unitOverride) {
         case Instant: return obj.toString()
         case Double: return obj.toString()
         case Color: return obj.toHex()
+        case IcmPath: return obj.toString()
         case Size: return unitOverride != null ? obj.toString(unitOverride) : obj.toString()
         case Tabs: return """{ "tabs": ${serialize(obj.tabs)}; "useOutsideTabs": "${serialize(obj.useOutsideTabs)}" }"""
         case Tab: return """{ "position": ${serialize(obj.position)}; "type": "${serialize(obj.type)}" }"""
@@ -135,6 +137,7 @@ static <T> T deserialize(String value, Class<T> cls) {
             def trimmed = value.trim()
             return (trimmed.isEmpty() ? null : trimmed) as T
         }
+        case IcmPath: return IcmPath.from(value) as T
         case Color: return Color.fromHex(value) as T
         case Size: return Size.fromString(value) as T
         case Boolean:

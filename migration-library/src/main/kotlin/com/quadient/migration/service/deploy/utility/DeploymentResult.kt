@@ -5,6 +5,7 @@ package com.quadient.migration.service.deploy.utility
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmPath
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
@@ -28,7 +29,7 @@ data class DeploymentResult(
 data class DeploymentInfo(
     val id: String,
     val type: ResourceType,
-    val targetPath: String,
+    val targetPath: IcmPath,
 )
 
 enum class ResourceType {
@@ -43,17 +44,17 @@ interface ResultTracker {
     val deploymentId: Uuid
     val timestamp: Instant
 
-    fun deployedDocumentObject(id: String, icmPath: String, type: DocumentObjectType)
-    fun deployedImage(id: String, icmPath: String)
-    fun errorDocumentObject(id: String, icmPath: String, type: DocumentObjectType, message: String)
-    fun errorImage(id: String, icmPath: String?, message: String)
-    fun warningImage(id: String, icmPath: String?, message: String)
-    fun deployedAttachment(id: String, icmPath: String)
-    fun errorAttachment(id: String, icmPath: String?, message: String)
-    fun warningAttachment(id: String, icmPath: String?, message: String)
-    fun deployedDisplayRule(id: String, targetPath: String)
-    fun warningDisplayRule(id: String, path: String, message: String)
-    fun errorDisplayRule(id: String, path: String, message: String)
+    fun deployedDocumentObject(id: String, icmPath: IcmPath, type: DocumentObjectType)
+    fun deployedImage(id: String, icmPath: IcmPath)
+    fun errorDocumentObject(id: String, icmPath: IcmPath, type: DocumentObjectType, message: String)
+    fun errorImage(id: String, icmPath: IcmPath?, message: String)
+    fun warningImage(id: String, icmPath: IcmPath?, message: String)
+    fun deployedAttachment(id: String, icmPath: IcmPath)
+    fun errorAttachment(id: String, icmPath: IcmPath?, message: String)
+    fun warningAttachment(id: String, icmPath: IcmPath?, message: String)
+    fun deployedDisplayRule(id: String, targetPath: IcmPath)
+    fun warningDisplayRule(id: String, path: IcmPath, message: String)
+    fun errorDisplayRule(id: String, path: IcmPath, message: String)
 }
 
 class ResultTrackerImpl(
@@ -71,7 +72,7 @@ class ResultTrackerImpl(
     ) : this(statusTrackingRepository, inspireOutput, DeploymentResult(deploymentId), deploymentId, timestamp) {
     }
 
-    override fun deployedDocumentObject(id: String, icmPath: String, type: DocumentObjectType) {
+    override fun deployedDocumentObject(id: String, icmPath: IcmPath, type: DocumentObjectType) {
         statusTrackingRepository?.deployed(
             id = id,
             deploymentId = deploymentId,
@@ -84,7 +85,7 @@ class ResultTrackerImpl(
         deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.DocumentObject, icmPath))
     }
 
-    override fun deployedImage(id: String, icmPath: String) {
+    override fun deployedImage(id: String, icmPath: IcmPath) {
         statusTrackingRepository?.deployed(
             id = id,
             deploymentId = deploymentId,
@@ -96,7 +97,7 @@ class ResultTrackerImpl(
         deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.Image, icmPath))
     }
 
-    override fun errorDocumentObject(id: String, icmPath: String, type: DocumentObjectType, message: String) {
+    override fun errorDocumentObject(id: String, icmPath: IcmPath, type: DocumentObjectType, message: String) {
         statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
@@ -110,7 +111,7 @@ class ResultTrackerImpl(
         deploymentResult.errors.add(DeploymentError(id, message))
     }
 
-    override fun errorImage(id: String, icmPath: String?, message: String) {
+    override fun errorImage(id: String, icmPath: IcmPath?, message: String) {
         statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
@@ -123,7 +124,7 @@ class ResultTrackerImpl(
         deploymentResult.errors.add(DeploymentError(id, message))
     }
 
-    override fun warningImage(id: String, icmPath: String?, message: String) {
+    override fun warningImage(id: String, icmPath: IcmPath?, message: String) {
         statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
@@ -136,7 +137,7 @@ class ResultTrackerImpl(
         deploymentResult.warnings.add(DeploymentWarning(id, message))
     }
 
-    override fun deployedAttachment(id: String, icmPath: String) {
+    override fun deployedAttachment(id: String, icmPath: IcmPath) {
         statusTrackingRepository?.deployed(
             id = id,
             deploymentId = deploymentId,
@@ -148,7 +149,7 @@ class ResultTrackerImpl(
         deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.Attachment, icmPath))
     }
 
-    override fun errorAttachment(id: String, icmPath: String?, message: String) {
+    override fun errorAttachment(id: String, icmPath: IcmPath?, message: String) {
         statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
@@ -161,7 +162,7 @@ class ResultTrackerImpl(
         deploymentResult.errors.add(DeploymentError(id, message))
     }
 
-    override fun warningAttachment(id: String, icmPath: String?, message: String) {
+    override fun warningAttachment(id: String, icmPath: IcmPath?, message: String) {
         statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
@@ -174,7 +175,7 @@ class ResultTrackerImpl(
         deploymentResult.warnings.add(DeploymentWarning(id, message))
     }
 
-    override fun deployedDisplayRule(id: String, targetPath: String) {
+    override fun deployedDisplayRule(id: String, targetPath: IcmPath) {
         statusTrackingRepository?.deployed(
             id = id,
             deploymentId = deploymentId,
@@ -186,7 +187,7 @@ class ResultTrackerImpl(
         deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.DisplayRule, targetPath))
     }
 
-    override fun warningDisplayRule(id: String, path: String, message: String) {
+    override fun warningDisplayRule(id: String, path: IcmPath, message: String) {
         statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
@@ -199,7 +200,7 @@ class ResultTrackerImpl(
         deploymentResult.warnings.add(DeploymentWarning(id, message))
     }
 
-    override fun errorDisplayRule(id: String, path: String, message: String) {
+    override fun errorDisplayRule(id: String, path: IcmPath, message: String) {
         statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,

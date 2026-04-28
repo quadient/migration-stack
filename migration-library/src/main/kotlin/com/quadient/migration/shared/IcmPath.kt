@@ -8,19 +8,30 @@ import com.fasterxml.jackson.databind.JsonSerializer
 import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
 @ConsistentCopyVisibility
 @JsonSerialize(using = IcmPath.JacksonSerializer::class)
 @JsonDeserialize(using = IcmPath.JacksonDeserializer::class)
+@Serializable(with = IcmPathSerializer::class)
 data class IcmPath private constructor(val path: String) {
     companion object {
         private const val SCHEMA = "icm://"
 
         @JvmStatic
         fun from(path: String): IcmPath {
-            return IcmPath(
-                path.replace("vcs:", "icm:").removePrefix("/").removeSuffix("/").replace("\\", "/")
-            )
+            var sanitized = path.replace("vcs:", "icm:").removePrefix("/").replace("\\", "/")
+            if (sanitized.endsWith("/") && !sanitized.endsWith("//")) {
+                sanitized = sanitized.removeSuffix("/")
+            }
+
+            return IcmPath(sanitized)
         }
 
         fun root(): IcmPath {
@@ -63,6 +74,19 @@ data class IcmPath private constructor(val path: String) {
         return "map://interactive/" + this.toString().removePrefix("icm://Interactive/$tenant/")
     }
 
+    fun extension(ext: String): IcmPath {
+        val normalizedExt = if (ext.startsWith(".")) ext else ".$ext"
+        val lastSlash = path.lastIndexOf('/')
+        val lastDot = path.lastIndexOf('.')
+        return if (lastDot > lastSlash && lastSlash != -1) {
+            // Path has an existing extension after the last path separator — replace it
+            IcmPath(path.substring(0, lastDot) + normalizedExt)
+        } else {
+            // No extension found — append
+            IcmPath(path + normalizedExt)
+        }
+    }
+
     operator fun plus(other: IcmPath?): IcmPath {
         return this.join(other)
     }
@@ -102,3 +126,20 @@ fun IcmPath?.orDefault(default: String): IcmPath {
 }
 
 fun String.toIcmPath() = IcmPath.from(this)
+
+object IcmPathSerializer : KSerializer<IcmPath> {
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor("IcmPath", PrimitiveKind.STRING)
+
+    override fun serialize(
+        encoder: Encoder,
+        value: IcmPath
+    ) {
+        encoder.encodeString(value.path)
+    }
+
+    override fun deserialize(decoder: Decoder): IcmPath {
+        val path = decoder.decodeString()
+        return IcmPath.from(path)
+    }
+}

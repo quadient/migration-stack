@@ -37,6 +37,7 @@ import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBu
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTarget
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.Jrd
 import kotlin.time.Clock
 import org.jetbrains.exposed.v1.core.and
@@ -132,7 +133,7 @@ class InteractiveDeployClient(
     private fun deployDisplayRules(
         documentObjects: List<DocumentObject>,
         tracker: ResultTracker,
-        deployDisplayRule: (DisplayRule, String, ByteArray) -> OperationResult,
+        deployDisplayRule: (DisplayRule, IcmPath, ByteArray) -> OperationResult,
     ) {
         val rules = documentObjects
             .flatMap {
@@ -147,7 +148,7 @@ class InteractiveDeployClient(
 
         for (r in rules) {
             val rule = r.resolveTarget(displayRuleRepository::findOrFail)
-            val targetPath = documentObjectBuilder.getDisplayRulePath(rule).toString()
+            val targetPath = documentObjectBuilder.getDisplayRulePath(rule)
 
             if (!shouldDeployObject(rule.id, ResourceType.DisplayRule, targetPath, tracker.deploymentResult)) {
                 logger.info("Skipping deployment of '${rule.id}' as it is not marked for deployment.")
@@ -198,10 +199,10 @@ class InteractiveDeployClient(
         }
     }
 
-    override fun uploadDocumentObject(obj: DocumentObject, targetPath: String, wfdXml: String): OperationResult {
+    override fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult {
         val runCommandType = obj.type.toRunCommandType()
         return ipsService.deployJld(
-            baseTemplate = getBaseTemplateFullPath(projectConfig, obj.baseTemplate).toString(),
+            baseTemplate = getBaseTemplateFullPath(projectConfig, obj.baseTemplate),
             type = runCommandType,
             moduleName = "DocumentLayout",
             xmlContent = wfdXml,
@@ -210,25 +211,25 @@ class InteractiveDeployClient(
 
     }
 
-    override fun uploadImage(img: Image, targetPath: String, data: ByteArray): OperationResult {
+    override fun uploadImage(img: Image, targetPath: IcmPath, data: ByteArray): OperationResult {
         return ipsService.tryUpload(targetPath, data)
     }
 
-    override fun uploadAttachment(att: Attachment, targetPath: String, data: ByteArray): OperationResult {
+    override fun uploadAttachment(att: Attachment, targetPath: IcmPath, data: ByteArray): OperationResult {
         return ipsService.tryUpload(targetPath, data)
     }
 
-    override fun uploadDisplayRule(rule: DisplayRule, targetPath: String, data: ByteArray): OperationResult {
+    override fun uploadDisplayRule(rule: DisplayRule, targetPath: IcmPath, data: ByteArray): OperationResult {
         return ipsService.tryUpload(targetPath, data)
     }
 
     override fun deployDocumentObjectsInternal(
         documentObjects: List<DocumentObject>,
         tracker: ResultTracker,
-        uploadDocumentObject: (DocumentObject, String, String) -> OperationResult,
-        uploadImage: (Image, String, ByteArray) -> OperationResult,
-        uploadAttachment: (Attachment, String, ByteArray) -> OperationResult,
-        uploadDisplayRule: (DisplayRule, String, ByteArray) -> OperationResult,
+        uploadDocumentObject: (DocumentObject, IcmPath, String) -> OperationResult,
+        uploadImage: (Image, IcmPath, ByteArray) -> OperationResult,
+        uploadAttachment: (Attachment, IcmPath, ByteArray) -> OperationResult,
+        uploadDisplayRule: (DisplayRule, IcmPath, ByteArray) -> OperationResult,
     ): DeploymentResult {
         deployImagesAndAttachments(documentObjects, tracker, uploadImage, uploadAttachment)
         deployDisplayRules(documentObjects, tracker, uploadDisplayRule)
@@ -276,7 +277,7 @@ class InteractiveDeployClient(
         val deploymentTimestamp = Clock.System.now()
 
         val outputPathJld = documentObjectBuilder.getStyleDefinitionPath()
-        val outputPathWfd = outputPathJld.replace(".jld", ".wfd")
+        val outputPathWfd = outputPathJld.extension(".wfd")
 
         val xml2wfdResult = ipsService.xml2wfd(
             documentObjectBuilder.buildStyles(emptyList(), emptyList()),

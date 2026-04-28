@@ -1,5 +1,6 @@
 package com.quadient.migration.shared
 
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -96,9 +97,47 @@ class IcmPathTest {
     }
 
     @Test
+    fun `extension replaces existing extension`() {
+        val path = IcmPath.from("icm://Templates/BaseTemplate.wfd")
+
+        assertEquals(path.extension("jld").toString(), "icm://Templates/BaseTemplate.jld")
+    }
+
+    @Test
+    fun `extension replaces existing extension when prefixed with dot`() {
+        val path = IcmPath.from("icm://Templates/BaseTemplate.wfd")
+
+        assertEquals(path.extension(".jld").toString(), "icm://Templates/BaseTemplate.jld")
+    }
+
+    @Test
+    fun `extension appends when no extension exists`() {
+        val path = IcmPath.from("icm://Templates/BaseTemplate")
+
+        assertEquals(path.extension("wfd").toString(), "icm://Templates/BaseTemplate.wfd")
+    }
+
+    @Test
+    fun `extension replaces only the last extension`() {
+        val path = IcmPath.from("icm://Templates/Base.Template.wfd")
+
+        assertEquals(path.extension("jld").toString(), "icm://Templates/Base.Template.jld")
+    }
+
+    @Test
     fun `string to icm path`() {
         val path = "icm://BaseTemplate.wfd".toIcmPath()
 
         assertEquals(path, IcmPath.from("icm://BaseTemplate.wfd"))
+    }
+
+    @Test
+    fun `round-trip kotlinx serialization`() {
+        val original = IcmPath.from("icm://test/dir/template.wfd")
+
+        val json = Json.encodeToString(original)
+        val deserialized = Json.decodeFromString<IcmPath>(json)
+
+        assertEquals(original, deserialized)
     }
 }

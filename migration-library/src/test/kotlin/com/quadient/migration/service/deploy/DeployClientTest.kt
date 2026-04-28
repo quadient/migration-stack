@@ -34,6 +34,7 @@ import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.MetadataValue
+import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aActiveStatusEvent
 import com.quadient.migration.tools.aDeployedStatus
 import com.quadient.migration.tools.aDeployedStatusEvent
@@ -115,10 +116,10 @@ class DeployClientTest {
         every { ipsService.writeMetadata(any()) } returns Unit
 
         val deploymentResult = DeploymentResult(Uuid.random()).apply {
-            deployed.add(DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://doc1.wfd"))
-            deployed.add(DeploymentInfo("doc2", ResourceType.DocumentObject, "icm://doc2.wfd"))
-            deployed.add(DeploymentInfo("img1", ResourceType.Image, "icm://img1.png"))
-            deployed.add(DeploymentInfo("img2", ResourceType.Image, "icm://img2.png"))
+            deployed.add(DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://doc1.wfd".toIcmPath()))
+            deployed.add(DeploymentInfo("doc2", ResourceType.DocumentObject, "icm://doc2.wfd".toIcmPath()))
+            deployed.add(DeploymentInfo("img1", ResourceType.Image, "icm://img1.png".toIcmPath()))
+            deployed.add(DeploymentInfo("img2", ResourceType.Image, "icm://img2.png".toIcmPath()))
         }
 
         subject.postProcessors[0](deploymentResult)
@@ -363,7 +364,7 @@ class DeployClientTest {
 
     private fun ProgressReportItem?.shouldBeNew() {
         this.shouldNotBeNull()
-        this?.nextIcmPath.shouldStartWith("icm://")
+        this?.nextIcmPath.toString().shouldStartWith("icm://")
         this?.deployKind.shouldBeEqualTo(DeployKind.Create)
         this?.lastStatus.shouldBeEqualTo(LastStatus.None)
         this?.deploymentId.shouldBeNull()
@@ -383,7 +384,7 @@ class DeployClientTest {
 
     private fun ProgressReportItem?.shouldBeOverwrite() {
         this.shouldNotBeNull()
-        this?.nextIcmPath.shouldStartWith("icm://")
+        this?.nextIcmPath.toString().shouldStartWith("icm://")
         this?.deployKind.shouldBeEqualTo(DeployKind.Overwrite)
         this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
         this.deploymentId.shouldNotBeNull()
@@ -393,7 +394,7 @@ class DeployClientTest {
 
     private fun ProgressReportItem?.shouldBeKept() {
         this.shouldNotBeNull()
-        this?.nextIcmPath.shouldStartWith("icm://")
+        this?.nextIcmPath.toString().shouldStartWith("icm://")
         this?.deployKind.shouldBeEqualTo(DeployKind.Keep)
         this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
         this.deploymentId.shouldNotBeNull()
@@ -403,7 +404,7 @@ class DeployClientTest {
 
     private fun ProgressReportItem?.shouldBeChangedPath() {
         this.shouldNotBeNull()
-        this?.nextIcmPath.shouldStartWith("icm://")
+        this?.nextIcmPath.toString().shouldStartWith("icm://")
         this?.deployKind.shouldBeEqualTo(DeployKind.Create)
         this!!.lastStatus::class.shouldBeEqualTo(LastStatus.Created::class)
         this.deploymentId.shouldNotBeNull()

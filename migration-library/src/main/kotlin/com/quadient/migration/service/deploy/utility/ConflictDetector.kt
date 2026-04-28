@@ -18,6 +18,7 @@ import com.quadient.migration.data.Deployed
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTarget
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.tools.computeIfPresentOrPut
 import org.slf4j.LoggerFactory
 import kotlin.collections.iterator
@@ -36,10 +37,10 @@ class ConflictDetectorImpl(
 
     override fun runConflictValidation(documentObjects: List<DocumentObject>, deployFn: DeployFn): ValidationResult {
         val pathsToResourcesMap: PathToResources = mutableMapOf()
-        val trackingFn: (ResourceType) -> ((MigrationObject, String, Any) -> OperationResult) = { type ->
+        val trackingFn: (ResourceType) -> ((MigrationObject, IcmPath, Any) -> OperationResult) = { type ->
             { obj, targetPath, _ ->
                 val key = ResourceId(obj.id, type)
-                pathsToResourcesMap.computeIfPresentOrPut(DeployedPath(targetPath), setOf(key)) { it + key }
+                pathsToResourcesMap.computeIfPresentOrPut(targetPath, setOf(key)) { it + key }
                 OperationResult.Success
             }
         }
@@ -67,7 +68,7 @@ class ConflictDetectorImpl(
             }
 
             val id = item.resourceId()
-            previouslyDeployedPaths.computeIfPresentOrPut(DeployedPath(path), setOf(id)) { it + id }
+            previouslyDeployedPaths.computeIfPresentOrPut(path, setOf(id)) { it + id }
         }
 
         val conflictingInBatchResources: PathToResources  = mutableMapOf()
@@ -86,7 +87,7 @@ class ConflictDetectorImpl(
         return ValidationResult(conflictingInBatchResources, conflictingWithPreviousResources, deploymentResult)
     }
 
-    private fun resolveTrackedPath(item: StatusTracking): String? = runCatching {
+    private fun resolveTrackedPath(item: StatusTracking): IcmPath? = runCatching {
         when (item.resourceType) {
             ResourceType.DocumentObject -> documentObjectBuilder.getDocumentObjectPath(
                 documentObjectRepository.findOrFail(item.id)
@@ -99,7 +100,7 @@ class ConflictDetectorImpl(
 
             ResourceType.DisplayRule -> documentObjectBuilder.getDisplayRulePath(
                 displayRuleRepository.findOrFail(item.id).resolveTarget(displayRuleRepository::findOrFail)
-            ).toString()
+            )
 
             ResourceType.TextStyle -> documentObjectBuilder.getStyleDefinitionPath()
             ResourceType.ParagraphStyle -> documentObjectBuilder.getStyleDefinitionPath()
@@ -110,22 +111,16 @@ class ConflictDetectorImpl(
 typealias DeployFn = (
     documentObjects: List<DocumentObject>,
     tracker: ResultTracker,
-    deployDocumentObject: (DocumentObject, String, String) -> OperationResult,
-    deployImage: (Image, String, ByteArray) -> OperationResult,
-    deployAttachment: (Attachment, String, ByteArray) -> OperationResult,
-    deployDisplayRule: (DisplayRule, String, ByteArray) -> OperationResult
+    deployDocumentObject: (DocumentObject, IcmPath, String) -> OperationResult,
+    deployImage: (Image, IcmPath, ByteArray) -> OperationResult,
+    deployAttachment: (Attachment, IcmPath, ByteArray) -> OperationResult,
+    deployDisplayRule: (DisplayRule, IcmPath, ByteArray) -> OperationResult
 ) -> DeploymentResult
 
-@JvmInline
-value class DeployedPath(val path: String) {
-    override fun toString(): String {
-        return path
-    }
-}
-typealias PathToResources = MutableMap<DeployedPath, Set<ResourceId>>
+typealias PathToResources = MutableMap<IcmPath, Set<ResourceId>>
 data class ValidationResult(
-    val conflictingInBatchResources: Map<DeployedPath, Set<ResourceId>>,
-    val conflictingWithPreviousResources: Map<DeployedPath, Set<ResourceId>>,
+    val conflictingInBatchResources: Map<IcmPath, Set<ResourceId>>,
+    val conflictingWithPreviousResources: Map<IcmPath, Set<ResourceId>>,
     val deploymentResult: DeploymentResult,
 ) {
     fun hasNoConflicts() = conflictingInBatchResources.isEmpty() && conflictingWithPreviousResources.isEmpty()

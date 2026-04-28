@@ -3,6 +3,7 @@
 package com.quadient.migration.data
 
 import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.shared.IcmPath
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.serialization.SerialName
@@ -28,7 +29,7 @@ class Deployed(
     val deploymentId: Uuid,
     override val timestamp: Instant,
     val output: InspireOutput,
-    val icmPath: String?,
+    val icmPath: IcmPath?,
     val data: Map<String, String> = emptyMap(),
 ) : StatusEvent()
 
@@ -38,7 +39,7 @@ data class Error(
     val deploymentId: Uuid,
     override val timestamp: Instant,
     val output: InspireOutput,
-    val icmPath: String?,
+    val icmPath: IcmPath?,
     val error: String,
     val data: Map<String, String> = emptyMap(),
 ) : StatusEvent()

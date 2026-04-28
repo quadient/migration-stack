@@ -8,6 +8,8 @@ import com.quadient.migration.service.deploy.DeployClient
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aDocumentObjectRepository
 import com.quadient.migration.tools.aParaStyleRepository
 import com.quadient.migration.tools.aTextStyleRepository
@@ -38,8 +40,8 @@ class StylesValidatorTest {
 
     @BeforeEach
     fun init() {
-        every { documentObjectBuilder.getStyleDefinitionPath() } returns "somepath"
-        every { ipsService.fileExists(any()) } returns true
+        every { documentObjectBuilder.getStyleDefinitionPath() } returns "somepath".toIcmPath()
+        every { ipsService.fileExists(any<IcmPath>()) } returns true
     }
 
     @Test
@@ -69,7 +71,7 @@ class StylesValidatorTest {
             textStylesWithDisplayName = listOf("internal-text" to "Text Display Name"),
             paraStylesWithDisplayName = listOf("internal-para" to "Para Display Name"),
         )
-        every { ipsService.wfd2xml(any()) } returns xml
+        every { ipsService.wfd2xml(any<IcmPath>()) } returns xml
 
         val result = subject.validateAll()
 
@@ -96,7 +98,7 @@ class StylesValidatorTest {
         val xml = buildXml(
             textStyles = listOf("found-text"), paraStyles = listOf("found-para")
         )
-        every { ipsService.wfd2xml(any()) } returns xml
+        every { ipsService.wfd2xml(any<IcmPath>()) } returns xml
 
         val result = subject.validateAll()
 
@@ -118,7 +120,7 @@ class StylesValidatorTest {
         paraStyleRepository.upsert(ParagraphStyleBuilder("para3").build())
 
         val xml = buildXml(textStyles = listOf(), paraStyles = listOf("found-para"))
-        every { ipsService.wfd2xml(any()) } returns xml
+        every { ipsService.wfd2xml(any<IcmPath>()) } returns xml
 
         val result = subject.validateAll()
 
