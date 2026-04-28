@@ -95,6 +95,20 @@ data class IcmPath private constructor(val path: String) {
         return this.join(other)
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (other is String) {
+            return this.path == other
+        }
+        if (other is IcmPath) {
+            return this.path == other.path
+        }
+        return false
+    }
+
+    override fun hashCode(): Int {
+        return path.hashCode()
+    }
+
     object JacksonSerializer : JsonSerializer<IcmPath>() {
         override fun serialize(value: IcmPath, gen: JsonGenerator, serializers: SerializerProvider) {
             gen.writeString(value.toString())

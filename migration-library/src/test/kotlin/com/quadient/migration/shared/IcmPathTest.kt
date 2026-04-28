@@ -140,4 +140,73 @@ class IcmPathTest {
 
         assertEquals(original, deserialized)
     }
+
+    @Test
+    fun `equals returns true for same IcmPath instances`() {
+        val path1 = IcmPath.from("icm://Templates/Base.wfd")
+        val path2 = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(true, path1 == path2)
+        assertEquals(true, path1.equals(path2))
+    }
+
+    @Test
+    fun `equals returns false for different IcmPath instances`() {
+        val path1 = IcmPath.from("icm://Templates/Base.wfd")
+        val path2 = IcmPath.from("icm://Templates/Other.wfd")
+
+        assertEquals(false, path1 == path2)
+    }
+
+    @Test
+    fun `equals returns true when compared with matching String`() {
+        val path = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(true, path.equals("icm://Templates/Base.wfd"))
+    }
+
+    @Test
+    fun `equals returns false when compared with non-matching String`() {
+        val path = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(false, path.equals("icm://Templates/Other.wfd"))
+    }
+
+    @Test
+    fun `equals returns false when compared with null`() {
+        val path = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(false, path.equals(null))
+    }
+
+    @Test
+    fun `equals returns false when compared with unrelated type`() {
+        val path = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(false, path.equals(42))
+    }
+
+    @Test
+    fun `equals after normalization from vcs`() {
+        val fromVcs = IcmPath.from("vcs://Templates/Base.wfd")
+        val fromIcm = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(true, fromVcs == fromIcm)
+    }
+
+    @Test
+    fun `hashCode is consistent for equal IcmPath instances`() {
+        val path1 = IcmPath.from("icm://Templates/Base.wfd")
+        val path2 = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(path1.hashCode(), path2.hashCode())
+    }
+
+    @Test
+    fun `hashCode differs for different paths`() {
+        val path1 = IcmPath.from("icm://Templates/Base.wfd")
+        val path2 = IcmPath.from("icm://Templates/Other.wfd")
+
+        assertEquals(false, path1.hashCode() == path2.hashCode())
+    }
 }
