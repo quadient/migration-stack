@@ -4,7 +4,7 @@ import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.tools.aImageRepository
 import com.quadient.migration.tools.aProjectConfig

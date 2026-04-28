@@ -9,7 +9,7 @@ import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.PathUtil
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.VariableRefPath
 import groovy.transform.Field
 

@@ -9,7 +9,7 @@ package com.quadient.migration.example.common.mapping
 import com.quadient.migration.api.Migration
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 

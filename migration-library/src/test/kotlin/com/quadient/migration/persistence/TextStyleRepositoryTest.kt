@@ -5,7 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.tools.*

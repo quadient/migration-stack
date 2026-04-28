@@ -1,11 +1,11 @@
 package com.quadient.migration.example.common.util
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.quadient.migration.service.deploy.ReportedDisplayRule
-import com.quadient.migration.service.deploy.ReportedDocObject
-import com.quadient.migration.service.deploy.ReportedFile
-import com.quadient.migration.service.deploy.ReportedImage
-import com.quadient.migration.service.deploy.ProgressReport as Report
+import com.quadient.migration.service.deploy.utility.ReportedDisplayRule
+import com.quadient.migration.service.deploy.utility.ReportedDocObject
+import com.quadient.migration.service.deploy.utility.ReportedFile
+import com.quadient.migration.service.deploy.utility.ReportedImage
+import com.quadient.migration.service.deploy.utility.ProgressReport as Report
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter

@@ -7,7 +7,7 @@ import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.TabType

@@ -3,7 +3,7 @@ import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.example.common.mapping.AttachmentsImport
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.SkipOptions
 import org.junit.jupiter.api.Test

@@ -6,7 +6,7 @@
 package com.quadient.migration.example.common
 
 import com.quadient.migration.example.common.util.PathUtil
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 

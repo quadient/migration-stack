@@ -1,9 +1,12 @@
 package com.quadient.migration.service
 
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.file.InvalidPathException
 import java.nio.file.Paths
 
 enum class WriteMode {
@@ -74,4 +77,28 @@ class LocalStorage(private val storageRoot: String, private val projectName: Str
     }
 
     private fun String.toFile() = File(Paths.get(storageRoot, projectName, this).toString())
+}
+
+sealed interface ReadResult {
+    @JvmInline
+    value class Success(val result: ByteArray) : ReadResult
+    @JvmInline
+    value class Error(val errorMessage: String) : ReadResult
+}
+
+fun Storage.readSafely(path: String): ReadResult {
+    try {
+        val byteArray = this.read(path)
+        return ReadResult.Success(byteArray)
+    } catch (_: InvalidPathException) {
+        return ReadResult.Error("File path '$path' is invalid.")
+    } catch (_: SecurityException) {
+        return ReadResult.Error("Access to file '$path' is denied.")
+    } catch (_: FileNotFoundException) {
+        return ReadResult.Error("File '$path' not found.")
+    } catch (_: IOException) {
+        return ReadResult.Error("I/O error occurred.")
+    } catch (_: Exception) {
+        return ReadResult.Error("Unexpected error.")
+    }
 }

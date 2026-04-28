@@ -1537,7 +1537,7 @@ fun DisplayRule.toScript(
     val rule = this.resolveTarget(findRule)
     val def = rule.definition ?: error("Display rule '${rule.id}' definition is null.")
 
-    return if (rule.internal && rule.definition?.containsFunction() != true || output == InspireOutput.Designer) {
+    return if (rule.internal || rule.definition?.containsFunction() == true || output == InspireOutput.Designer) {
         def.toScript(layout, variableStructure, findVar)
     } else {
         for (ref in rule.collectRefs()) {

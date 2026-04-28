@@ -14,9 +14,7 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
@@ -30,6 +28,10 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.deploy.utility.DeploymentError
+import com.quadient.migration.service.deploy.utility.DeploymentResult
+import com.quadient.migration.service.deploy.utility.ResourceType
+import com.quadient.migration.service.deploy.utility.ResultTracker
 import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
@@ -41,7 +43,6 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.json.extract
-import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -94,7 +95,7 @@ class InteractiveDeployClient(
             DocumentObjectTable.skip.extract<String>("skipped") eq "false" and DocumentObjectTable.internal.eq(
                 false
             )
-        ).let { deployOrder(it) }
+        )
     }
 
     override fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObject> {
@@ -128,16 +129,17 @@ class InteractiveDeployClient(
         return documentObjects
     }
 
-    private fun deployDisplayRules(documentObjects: List<DocumentObject>, deploymentId: Uuid, deploymentTimestamp: Instant): DeploymentResult {
-        val deploymentResult = DeploymentResult(deploymentId)
-        val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
-
+    private fun deployDisplayRules(
+        documentObjects: List<DocumentObject>,
+        tracker: ResultTracker,
+        deployDisplayRule: (DisplayRule, String, ByteArray) -> OperationResult,
+    ) {
         val rules = documentObjects
             .flatMap {
                 try {
                     it.getAllExternalDisplayRules()
                 } catch (e: IllegalStateException) {
-                    deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
+                    tracker.deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
                     emptyList()
                 }
             }
@@ -147,7 +149,7 @@ class InteractiveDeployClient(
             val rule = r.resolveTarget(displayRuleRepository::findOrFail)
             val targetPath = documentObjectBuilder.getDisplayRulePath(rule).toString()
 
-            if (!shouldDeployObject(rule.id, ResourceType.DisplayRule, targetPath, deploymentResult)) {
+            if (!shouldDeployObject(rule.id, ResourceType.DisplayRule, targetPath, tracker.deploymentResult)) {
                 logger.info("Skipping deployment of '${rule.id}' as it is not marked for deployment.")
                 continue
             }
@@ -185,7 +187,7 @@ class InteractiveDeployClient(
 
             val jrd = Jrd.fromDisplayRule(rule, projectConfig, variableStructure, findVar)
 
-            val uploadResult = ipsService.tryUpload(targetPath, jrd.toByteArray())
+            val uploadResult = deployDisplayRule(rule, targetPath, jrd.toByteArray())
             if (uploadResult is OperationResult.Failure) {
                 tracker.errorDisplayRule(rule.id, targetPath, uploadResult.message)
                 continue
@@ -194,25 +196,47 @@ class InteractiveDeployClient(
             logger.debug("Deployment of display rule '${rule.nameOrId()}' to '${targetPath}' is successful.")
             tracker.deployedDisplayRule(rule.id, targetPath)
         }
-
-        return deploymentResult
     }
 
-    override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObject>): DeploymentResult {
-        val deploymentId = Uuid.random()
-        val deploymentTimestamp = Clock.System.now()
-        val deploymentResult = DeploymentResult(deploymentId)
+    override fun uploadDocumentObject(obj: DocumentObject, targetPath: String, wfdXml: String): OperationResult {
+        val runCommandType = obj.type.toRunCommandType()
+        return ipsService.deployJld(
+            baseTemplate = getBaseTemplateFullPath(projectConfig, obj.baseTemplate).toString(),
+            type = runCommandType,
+            moduleName = "DocumentLayout",
+            xmlContent = wfdXml,
+            outputPath = targetPath
+        )
 
-        val orderedDocumentObject = deployOrder(documentObjects)
+    }
 
-        deploymentResult += deployImagesAndAttachments(orderedDocumentObject, deploymentId, deploymentTimestamp)
-        deploymentResult += deployDisplayRules(orderedDocumentObject, deploymentId, deploymentTimestamp)
-        val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
+    override fun uploadImage(img: Image, targetPath: String, data: ByteArray): OperationResult {
+        return ipsService.tryUpload(targetPath, data)
+    }
 
-        for (it in orderedDocumentObject) {
+    override fun uploadAttachment(att: Attachment, targetPath: String, data: ByteArray): OperationResult {
+        return ipsService.tryUpload(targetPath, data)
+    }
+
+    override fun uploadDisplayRule(rule: DisplayRule, targetPath: String, data: ByteArray): OperationResult {
+        return ipsService.tryUpload(targetPath, data)
+    }
+
+    override fun deployDocumentObjectsInternal(
+        documentObjects: List<DocumentObject>,
+        tracker: ResultTracker,
+        uploadDocumentObject: (DocumentObject, String, String) -> OperationResult,
+        uploadImage: (Image, String, ByteArray) -> OperationResult,
+        uploadAttachment: (Attachment, String, ByteArray) -> OperationResult,
+        uploadDisplayRule: (DisplayRule, String, ByteArray) -> OperationResult,
+    ): DeploymentResult {
+        deployImagesAndAttachments(documentObjects, tracker, uploadImage, uploadAttachment)
+        deployDisplayRules(documentObjects, tracker, uploadDisplayRule)
+
+        for (it in documentObjects) {
             val targetPath = documentObjectBuilder.getDocumentObjectPath(it)
 
-            if (!shouldDeployObject(it.id, ResourceType.DocumentObject, targetPath, deploymentResult)) {
+            if (!shouldDeployObject(it.id, ResourceType.DocumentObject, targetPath, tracker.deploymentResult)) {
                 logger.info("Skipping deployment of '${it.id}' as it is not marked for deployment.")
                 continue
             }
@@ -228,17 +252,7 @@ class InteractiveDeployClient(
 
             try {
                 val documentObjectXml = documentObjectBuilder.buildDocumentObject(it)
-                val runCommandType = it.type.toRunCommandType()
-
-                val editResult = ipsService.deployJld(
-                    baseTemplate = getBaseTemplateFullPath(projectConfig, it.baseTemplate).toString(),
-                    type = runCommandType,
-                    moduleName = "DocumentLayout",
-                    xmlContent = documentObjectXml,
-                    outputPath = targetPath
-                )
-
-                when (editResult) {
+                when (val editResult = uploadDocumentObject(it, targetPath, documentObjectXml)) {
                     OperationResult.Success -> {
                         logger.debug("Deployment of '$targetPath' is successful.")
                         tracker.deployedDocumentObject(it.id, targetPath, it.type)
@@ -254,7 +268,7 @@ class InteractiveDeployClient(
             }
         }
 
-        return deploymentResult
+        return tracker.deploymentResult
     }
 
     override fun deployStyles() {

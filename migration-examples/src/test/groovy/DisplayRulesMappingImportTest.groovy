@@ -4,7 +4,7 @@ import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.data.Active
 import com.quadient.migration.example.common.mapping.DisplayRulesImport
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 

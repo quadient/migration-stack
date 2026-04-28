@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+- Conflict validation as a check to prevent any overwrites by the following deployment
+
 ### Changed
 
 ### Fixed

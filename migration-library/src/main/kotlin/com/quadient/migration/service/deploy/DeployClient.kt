@@ -15,7 +15,6 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
-import com.quadient.migration.api.dto.migrationmodel.Ref
 import com.quadient.migration.api.dto.migrationmodel.ResourceRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
@@ -27,23 +26,31 @@ import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
+import com.quadient.migration.service.ReadResult
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.deploy.utility.ConflictDetector
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
+import com.quadient.migration.service.deploy.utility.DeploymentError
+import com.quadient.migration.service.deploy.utility.DeploymentResult
+import com.quadient.migration.service.deploy.utility.MetadataValidator
+import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
+import com.quadient.migration.service.deploy.utility.PostProcess
+import com.quadient.migration.service.deploy.utility.PostProcessImpl
+import com.quadient.migration.service.deploy.utility.ProgressReport
+import com.quadient.migration.service.deploy.utility.ProgressReporter
+import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
+import com.quadient.migration.service.deploy.utility.ResourceType
+import com.quadient.migration.service.deploy.utility.ResultTracker
+import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
+import com.quadient.migration.service.deploy.utility.ValidationResult
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
+import com.quadient.migration.service.readSafely
 import com.quadient.migration.service.resolveAlias
-import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.ImageType
-import com.quadient.migration.shared.toMetadata
-import com.quadient.migration.tools.caseInsensitiveSetOf
-import kotlin.time.Clock
-import kotlin.time.Instant
 import org.slf4j.LoggerFactory
-import java.io.FileNotFoundException
-import java.io.IOException
-import java.nio.file.InvalidPathException
-import kotlin.reflect.KClass
+import kotlin.collections.plus
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import com.quadient.migration.data.Error as StatusError
@@ -64,109 +71,37 @@ sealed class DeployClient(
     protected val ipsService: IpsService,
     protected val storage: Storage,
     protected val output: InspireOutput,
-) {
+) : MetadataValidator by MetadataValidatorImpl(),
+    PostProcess by PostProcessImpl(ipsService, documentObjectRepository, imageRepository, displayRuleRepository),
+    ConflictDetector by ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, output),
+    ProgressReporter by ProgressReporterImpl( documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, output)
+{
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
-    val postProcessors: MutableList<(DeploymentResult) -> Unit> = mutableListOf()
 
-    companion object {
-        val DISALLOWED_METADATA = caseInsensitiveSetOf(
-            "Type",
-            "Dependencies",
-            "Tags",
-            "Subject",
-            "PublicTemplate",
-            "StateId",
-            "BusinessProcess",
-            "TicketTitle",
-            "TicketDescription",
-            "TicketIcon",
-            "UserAttachment",
-            "GlobalStorageAttachment",
-            "Languages",
-            "MailMergeModule",
-            "MailMergePath",
-            "Guid",
-            "IM_Path",
-            "IM_PM_Name",
-            "IM_PM_Location",
-            "IM_Context",
-            "ModuleNames",
-            "EM_Paths",
-            "ResultType",
-            "ParamTypes",
-            "Channels",
-            "Master Template",
-            "ProductionActions",
-            "Html Content",
-            "Responsive Html Content",
-            "Brand",
-            "WFDType",
-            "OutputType",
-            "PreviewTypes",
-            "SupportedChannels",
-            "InteractiveFlowsNames",
-            "InteractiveFlowsTypes ",
-        )
-        val IMAGE_DISALLOWED_METADATA = DISALLOWED_METADATA - "Subject"
-    }
-
-    init {
-        addPostProcessor { deploymentResult ->
-            val meta =
-                deploymentResult.deployed
-                    .filter { it.type == ResourceType.DocumentObject || it.type == ResourceType.Image || it.type == ResourceType.DisplayRule }
-                    .mapNotNull { info ->
-                        val obj = when (info.type) {
-                            ResourceType.DocumentObject -> documentObjectRepository.find(info.id)
-                            ResourceType.Image -> imageRepository.find(info.id)
-                            ResourceType.DisplayRule -> displayRuleRepository.find(info.id)
-                            else -> null
-                        }
-                        if (obj == null) {
-                            deploymentResult.warnings.add(
-                                DeploymentWarning(
-                                    info.id,
-                                    "Failed to set metadata for ${info.type} object '${info.id}' at path '${info.targetPath}'."
-                                )
-                            )
-                            null
-                        } else {
-                            val metadata = when (obj) {
-                                is DocumentObject -> obj.metadata
-                                is Image -> obj.metadata
-                                is DisplayRule -> obj.metadata
-                                else -> emptyMap()
-                            }
-                            info to metadata
-                        }
-                    }.mapNotNull { (info, metadata) ->
-                        metadata.ifEmpty { null }?.let {
-                            IcmFileMetadata(path = info.targetPath, metadata = metadata.toMetadata())
-                        }
-                    }
-
-            logger.debug("Writing metadata for ${meta.size} deployed document objects.")
-            ipsService.writeMetadata(meta)
-            logger.debug("Finished writing metadata for deployed document objects.")
-        }
-    }
+    abstract fun uploadDocumentObject(obj: DocumentObject, targetPath: String, wfdXml: String): OperationResult
+    abstract fun uploadImage(img: Image, targetPath: String, data: ByteArray): OperationResult
+    abstract fun uploadAttachment(att: Attachment, targetPath: String, data: ByteArray): OperationResult
+    abstract fun uploadDisplayRule(rule: DisplayRule, targetPath: String, data: ByteArray): OperationResult
 
     abstract fun getAllDocumentObjectsToDeploy(): List<DocumentObject>
     abstract fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObject>
-    abstract fun deployDocumentObjectsInternal(documentObjects: List<DocumentObject>): DeploymentResult
+    abstract fun deployDocumentObjectsInternal(
+        documentObjects: List<DocumentObject>,
+        tracker: ResultTracker,
+        uploadDocumentObject: (DocumentObject, String, String) -> OperationResult,
+        uploadImage: (Image, String, ByteArray) -> OperationResult,
+        uploadAttachment: (Attachment, String, ByteArray) -> OperationResult,
+        uploadDisplayRule: (DisplayRule, String, ByteArray) -> OperationResult,
+    ): DeploymentResult
     abstract fun deployStyles()
-
-    protected fun addPostProcessor(processor: (DeploymentResult) -> Unit) {
-        postProcessors.add(processor)
-    }
 
     abstract fun shouldIncludeDependency(documentObject: DocumentObject): Boolean
 
     fun deployDocumentObjects(): DeploymentResult {
-        val result = deployDocumentObjectsInternal(getAllDocumentObjectsToDeploy())
-        for (processor in postProcessors) {
-            processor(result)
-        }
+        val tracker = ResultTrackerImpl(statusTrackingRepository, output)
+        val ordered = deployOrder(getAllDocumentObjectsToDeploy())
+        val result = deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
+        runPostProcessors(result)
 
         return result
     }
@@ -174,30 +109,28 @@ sealed class DeployClient(
     fun deployDocumentObjects(documentObjectIds: List<String>) = deployDocumentObjects(documentObjectIds, false)
     fun deployDocumentObjects(documentObjectIds: List<String>, skipDependencies: Boolean): DeploymentResult {
         val documentObjects = getDocumentObjectsToDeploy(documentObjectIds)
+        val tracker = ResultTrackerImpl(statusTrackingRepository, output)
         val result = if (skipDependencies) {
-            deployDocumentObjectsInternal(documentObjects)
+            val ordered = deployOrder(documentObjects)
+            deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
         } else {
             val dependencies = documentObjects.flatMap { it.findDependencies() }.filter { it.internal != true }
-            deployDocumentObjectsInternal((documentObjects + dependencies).toSet().toList())
+            val ordered = deployOrder((documentObjects + dependencies).toSet().toList())
+            deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
         }
 
-        for (processor in postProcessors) {
-            processor(result)
-        }
+        runPostProcessors(result)
 
         return result
     }
-
 
     fun deployOrder(documentObjects: List<DocumentObject>): List<DocumentObject> {
         val documentObjectIds = documentObjects.map { it.id }
 
         val deployOrder = mutableListOf<DocumentObject>()
 
-        var toCheck = documentObjects.map {
-            DocObjectWithRef(
-                it, it.collectRefs().filterIsInstance<DocumentObjectRef>().map { it -> it.id }.toSet()
-            )
+        var toCheck = documentObjects.map { obj ->
+            DocObjectWithRef(obj, obj.collectRefs().filterIsInstance<DocumentObjectRef>().map { it.id }.toSet())
         }
         val deployed = mutableSetOf<String>()
 
@@ -243,15 +176,17 @@ sealed class DeployClient(
         return deployOrder
     }
 
-    protected fun deployImagesAndAttachments(documentObjects: List<DocumentObject>, deploymentId: Uuid, deploymentTimestamp: Instant): DeploymentResult {
-        val deploymentResult = DeploymentResult(deploymentId)
-        val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
-
+    protected fun deployImagesAndAttachments(
+        documentObjects: List<DocumentObject>,
+        tracker: ResultTracker,
+        deployImageCb: (Image, String, ByteArray) -> OperationResult,
+        deployAttachmentCb: (Attachment, String, ByteArray) -> OperationResult,
+    ) {
         val allResourceRefs = documentObjects.flatMap {
             try {
                 it.getAllDocumentObjectResourceRefs()
             } catch (e: IllegalStateException) {
-                deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
+                tracker.deploymentResult.errors.add(DeploymentError(it.id, e.message ?: ""))
                 emptyList()
             }
         }.map { resolveAlias(it, imageRepository, attachmentRepository) }
@@ -259,16 +194,18 @@ sealed class DeployClient(
 
         for (resourceRef in allResourceRefs) {
             when (resourceRef) {
-                is ImageRef -> deployImage(resourceRef, deploymentResult, tracker)
-                is AttachmentRef -> deployAttachment(resourceRef, deploymentResult, tracker)
+                is ImageRef -> deployImage(resourceRef, tracker, deployImageCb)
+                is AttachmentRef -> deployAttachment(resourceRef, tracker, deployAttachmentCb)
             }
         }
-
-        return deploymentResult
     }
 
-    private fun deployImage(imageRef: ImageRef, deploymentResult: DeploymentResult, tracker: ResultTracker) {
-        if (!shouldDeployObject(imageRef.id, ResourceType.Image, imageRef.id, deploymentResult)) {
+    private fun deployImage(
+        imageRef: ImageRef,
+        tracker: ResultTracker,
+        deployImage: (Image, String, ByteArray) -> OperationResult,
+    ) {
+        if (!shouldDeployObject(imageRef.id, ResourceType.Image, imageRef.id, tracker.deploymentResult)) {
             logger.info("Skipping deployment of '${imageRef.id}' as it is not marked for deployment.")
             return
         }
@@ -316,7 +253,7 @@ sealed class DeployClient(
 
         logger.debug("Starting deployment of image '${imageModel.nameOrId()}'.")
         val sourcePath = imageModel.sourcePath!!
-        val readResult = readStorageSafely(sourcePath)
+        val readResult = storage.readSafely(sourcePath)
         if (readResult is ReadResult.Error) {
             val message = "Error while reading image source data: ${readResult.errorMessage}."
             logger.error(message)
@@ -327,7 +264,7 @@ sealed class DeployClient(
         val imageData = (readResult as ReadResult.Success).result
         logger.trace("Loaded image data of size ${imageData.size} from storage.")
 
-        val uploadResult = ipsService.tryUpload(icmImagePath, imageData)
+        val uploadResult = deployImage(imageModel, icmImagePath, imageData)
         if (uploadResult is OperationResult.Failure) {
             tracker.errorImage(imageModel.id, icmImagePath, uploadResult.message)
             return
@@ -337,8 +274,12 @@ sealed class DeployClient(
         tracker.deployedImage(imageModel.id, icmImagePath)
     }
 
-    private fun deployAttachment(attachmentRef: AttachmentRef, deploymentResult: DeploymentResult, tracker: ResultTracker) {
-        if (!shouldDeployObject(attachmentRef.id, ResourceType.Attachment, attachmentRef.id, deploymentResult)) {
+    private fun deployAttachment(
+        attachmentRef: AttachmentRef,
+        tracker: ResultTracker,
+        deployAttachment: (Attachment, String, ByteArray) -> OperationResult,
+        ) {
+        if (!shouldDeployObject(attachmentRef.id, ResourceType.Attachment, attachmentRef.id, tracker.deploymentResult)) {
             logger.info("Skipping deployment of attachment '${attachmentRef.id}' as it is not marked for deployment.")
             return
         }
@@ -370,7 +311,7 @@ sealed class DeployClient(
 
         logger.debug("Starting deployment of attachment '${attachmentModel.nameOrId()}'.")
         val sourcePath = attachmentModel.sourcePath!!
-        val readResult = readStorageSafely(sourcePath)
+        val readResult = storage.readSafely(sourcePath)
         if (readResult is ReadResult.Error) {
             val message = "Error while reading attachment source data: ${readResult.errorMessage}."
             logger.error(message)
@@ -381,7 +322,7 @@ sealed class DeployClient(
         val attachmentData = (readResult as ReadResult.Success).result
         logger.trace("Loaded attachment data of size ${attachmentData.size} from storage.")
 
-        val uploadResult = ipsService.tryUpload(icmFilePath, attachmentData)
+        val uploadResult = deployAttachment(attachmentModel, icmFilePath, attachmentData)
         if (uploadResult is OperationResult.Failure) {
             tracker.errorAttachment(attachmentModel.id, icmFilePath, uploadResult.message)
             return
@@ -389,240 +330,6 @@ sealed class DeployClient(
 
         logger.debug("Deployment of attachment '${attachmentModel.nameOrId()}' to '${icmFilePath}' is successful.")
         tracker.deployedAttachment(attachmentModel.id, icmFilePath)
-    }
-
-    fun progressReport(deployId: Uuid? = null): ProgressReport {
-        val objects = getAllDocumentObjectsToDeploy()
-        return progressReportInternal(objects, deployId)
-    }
-
-    fun progressReport(documentObjectIds: List<String>, deployId: Uuid? = null): ProgressReport {
-        val objects = getDocumentObjectsToDeploy(documentObjectIds)
-        return progressReportInternal(objects, deployId)
-    }
-
-    fun progressReportInternal(objects: List<DocumentObject>, deployId: Uuid? = null): ProgressReport {
-        val lastDeployment = deployId?.let { LastDeployment(it, Clock.System.now()) } ?: getLastDeployEvent()
-
-        val report = ProgressReport(deployId ?: Uuid.random(), mutableMapOf())
-
-        val queue: MutableList<Ref> = mutableListOf()
-        val alreadyVisitedRefs = mutableSetOf<Pair<String, KClass<*>>>()
-
-        for (obj in objects) {
-            val nextIcmPath = documentObjectBuilder.getDocumentObjectPath(obj)
-            val deployKind = obj.getDeployKind(nextIcmPath)
-            val lastStatus = obj.getLastStatus(lastDeployment)
-
-            report.addDocumentObject(
-                id = obj.id,
-                deploymentId = lastStatus.deployId,
-                deployTimestamp = lastStatus.deployTimestamp,
-                documentObject = obj,
-                previousIcmPath = lastStatus.icmPath,
-                nextIcmPath = nextIcmPath,
-                lastStatus = lastStatus,
-                deployKind = deployKind,
-                errorMessage = lastStatus.errorMessage,
-            )
-            alreadyVisitedRefs.add(Pair(obj.id, DocumentObjectRef::class))
-            val refs = obj.collectRefs()
-            queue.addAll(refs)
-        }
-
-        while (!queue.isEmpty()) {
-            val ref = queue.removeFirst()
-
-            if (alreadyVisitedRefs.contains(Pair(ref.id, ref::class))) {
-                continue
-            }
-            alreadyVisitedRefs.add(Pair(ref.id, ref::class))
-
-            val resource = when (ref) {
-                is DocumentObjectRef -> {
-                    when (val obj = documentObjectRepository.find(ref.id)) {
-                        null -> {
-                            report.addDocumentObject(
-                                id = ref.id,
-                                documentObject = obj,
-                                deploymentId = null,
-                                deployTimestamp = null,
-                                previousIcmPath = null,
-                                nextIcmPath = null,
-                                deployKind = DeployKind.NotFound,
-                                lastStatus = LastStatus.None,
-                                errorMessage = null,
-                            )
-                            null
-                        }
-                        else -> {
-                            val nextIcmPath =
-                                if (obj.internal == true || (obj.type == DocumentObjectType.Page && output == InspireOutput.Designer)) {
-                                    null
-                                } else {
-                                    documentObjectBuilder.getDocumentObjectPath(obj)
-                                }
-                            val deployKind = obj.getDeployKind(nextIcmPath)
-                            val lastStatus = obj.getLastStatus(lastDeployment)
-
-
-                            report.addDocumentObject(
-                                id = obj.id,
-                                deploymentId = lastStatus.deployId,
-                                deployTimestamp = lastStatus.deployTimestamp,
-                                documentObject = obj,
-                                previousIcmPath = lastStatus.icmPath,
-                                nextIcmPath = nextIcmPath,
-                                deployKind = deployKind,
-                                lastStatus = lastStatus,
-                                errorMessage = lastStatus.errorMessage,
-                            )
-                            obj
-                        }
-                    }
-                }
-
-                is ImageRef -> {
-                    when (val img = imageRepository.find(ref.id)) {
-                        null -> {
-                            report.addImage(
-                                id = ref.id,
-                                image = img,
-                                deploymentId = null,
-                                deployTimestamp = null,
-                                previousIcmPath = null,
-                                nextIcmPath = null,
-                                lastStatus = LastStatus.None,
-                                deployKind = DeployKind.NotFound,
-                                errorMessage = null,
-                            )
-                            null
-                        }
-                        else -> {
-                            val nextIcmPath = documentObjectBuilder.getImagePath(img)
-                            val deployKind = img.getDeployKind(nextIcmPath)
-                            val lastStatus = img.getLastStatus(lastDeployment)
-
-                            report.addImage(
-                                id = img.id,
-                                image = img,
-                                deploymentId = lastStatus.deployId,
-                                deployTimestamp = lastStatus.deployTimestamp,
-                                previousIcmPath = lastStatus.icmPath,
-                                nextIcmPath = nextIcmPath,
-                                lastStatus = lastStatus,
-                                deployKind = deployKind,
-                                errorMessage = lastStatus.errorMessage,
-                            )
-                            img
-                        }
-                    }
-                }
-
-                is AttachmentRef -> {
-                    when (val attachment = attachmentRepository.find(ref.id)) {
-                        null -> {
-                            report.addAttachment(
-                                id = ref.id,
-                                attachment = attachment,
-                                deploymentId = null,
-                                deployTimestamp = null,
-                                previousIcmPath = null,
-                                nextIcmPath = null,
-                                lastStatus = LastStatus.None,
-                                deployKind = DeployKind.NotFound,
-                                errorMessage = null,
-                            )
-                            null
-                        }
-                        else -> {
-                            val nextIcmPath = documentObjectBuilder.getAttachmentPath(attachment)
-                            val deployKind = attachment.getDeployKind(nextIcmPath)
-                            val lastStatus = attachment.getLastStatus(lastDeployment)
-
-                            report.addAttachment(
-                                id = attachment.id,
-                                attachment = attachment,
-                                deploymentId = lastStatus.deployId,
-                                deployTimestamp = lastStatus.deployTimestamp,
-                                previousIcmPath = lastStatus.icmPath,
-                                nextIcmPath = nextIcmPath,
-                                lastStatus = lastStatus,
-                                deployKind = deployKind,
-                                errorMessage = lastStatus.errorMessage,
-                            )
-                            attachment
-                        }
-                    }
-                }
-
-                is DisplayRuleRef -> {
-                    when (output) {
-                        InspireOutput.Interactive, InspireOutput.Evolve -> {
-                            when (val rule = displayRuleRepository.find(ref.id)) {
-                                null -> {
-                                    report.addDisplayRule(
-                                        id = ref.id,
-                                        displayRule = rule,
-                                        deploymentId = null,
-                                        deployTimestamp = null,
-                                        previousIcmPath = null,
-                                        nextIcmPath = null,
-                                        lastStatus = LastStatus.None,
-                                        deployKind = DeployKind.NotFound,
-                                        errorMessage = null,
-                                    )
-                                    null
-                                }
-                                else -> {
-                                    val nextIcmPath = documentObjectBuilder.getDisplayRulePath(rule).toString()
-                                    val deployKind = rule.getDeployKind(nextIcmPath)
-                                    val lastStatus = rule.getLastStatus(lastDeployment)
-
-                                    report.addDisplayRule(
-                                        id = rule.id,
-                                        displayRule = rule,
-                                        deploymentId = lastStatus.deployId,
-                                        deployTimestamp = lastStatus.deployTimestamp,
-                                        previousIcmPath = lastStatus.icmPath,
-                                        nextIcmPath = nextIcmPath,
-                                        lastStatus = lastStatus,
-                                        deployKind = deployKind,
-                                        errorMessage = lastStatus.errorMessage,
-                                    )
-                                    rule
-                                }
-                            }
-                        }
-                        InspireOutput.Designer -> null
-                    }
-                }
-
-                is TextStyleRef -> null
-                is ParagraphStyleRef -> null
-                is VariableRef -> null
-                is VariableStructureRef -> null
-            }
-
-            if (resource != null) {
-                val refs = resource.collectRefs()
-                queue.addAll(refs)
-            }
-        }
-
-        return report
-    }
-
-    protected fun DocumentObject.getInvalidMetadataKeys(): Set<String> {
-        return this.metadata.keys.asSequence().filter { key -> DISALLOWED_METADATA.contains(key) }.toSet()
-    }
-
-    protected fun Image.getInvalidMetadataKeys(): Set<String> {
-        return this.metadata.keys.asSequence().filter { key -> IMAGE_DISALLOWED_METADATA.contains(key) }.toSet()
-    }
-
-    protected fun DisplayRule.getInvalidMetadataKeys(): Set<String> {
-        return this.metadata.keys.asSequence().filter { key -> DISALLOWED_METADATA.contains(key) }.toSet()
     }
 
     protected fun shouldDeployObject(
@@ -651,6 +358,36 @@ sealed class DeployClient(
                 logger.info("Last attempt to deploy '$targetPath' failed with error: '${currentStatus.error}'. Trying again.")
                 true
             }
+        }
+    }
+
+    fun progressReport(deployId: Uuid? = null): ProgressReport {
+        val objects = getAllDocumentObjectsToDeploy()
+        return createProgressReport(objects, deployId)
+    }
+
+    fun progressReport(documentObjectIds: List<String>, deployId: Uuid? = null): ProgressReport {
+        val objects = getDocumentObjectsToDeploy(documentObjectIds)
+        return createProgressReport(objects, deployId)
+    }
+
+    fun validateConflicts(): ValidationResult {
+        // Post processors should not run for conflict validation because they modify content in ICM
+        val pp = clearPostProcessors()
+        try {
+            return runConflictValidation(getAllDocumentObjectsToDeploy(), ::deployDocumentObjectsInternal)
+        } finally {
+            pp.forEach(::addPostProcessor)
+        }
+    }
+
+    fun validateConflicts(documentObjectIds: List<String>): ValidationResult {
+        // Post processors should not run for conflict validation because they modify content in ICM
+        val pp = clearPostProcessors()
+        try {
+            return runConflictValidation(getDocumentObjectsToDeploy(documentObjectIds), ::deployDocumentObjectsInternal)
+        } finally {
+            pp.forEach(::addPostProcessor)
         }
     }
 
@@ -693,180 +430,4 @@ sealed class DeployClient(
 
         return resources
     }
-
-    private fun getLastDeployEvent(): LastDeployment? {
-        return statusTrackingRepository.listAll().mapNotNull {
-            it.statusEvents.findLast { status ->
-                status is Deployed || status is StatusError
-            }
-        }.maxByOrNull { it.timestamp }?.let {
-            when (it) {
-                is Deployed -> LastDeployment(it.deploymentId, it.timestamp)
-                is StatusError -> LastDeployment(it.deploymentId, it.timestamp)
-                is Active -> null
-            }
-        }
-    }
-
-    private fun getLastStatus(
-        id: String,
-        lastDeployment: LastDeployment?,
-        resourceType: ResourceType,
-        output: InspireOutput,
-        internal: Boolean,
-        isPage: Boolean
-    ): LastStatus {
-        if (internal || (isPage && output == InspireOutput.Designer)) return LastStatus.Inlined
-
-        val objectEvents = statusTrackingRepository.findEventsRelevantToOutput(id, resourceType, output)
-            .filter { ev -> lastDeployment?.timestamp?.let { ev.timestamp <= it } ?: true }
-        val lastEvent = objectEvents.lastOrNull()
-        val lastDeployEvent = objectEvents.lastOrNull { it is Deployed || it is StatusError }
-
-        return when (lastDeployEvent) {
-            null -> {
-                if (lastEvent is Active) LastStatus.None
-                else error("No events tracked for $resourceType with id $id and output $output")
-            }
-            is StatusError -> LastStatus.Error(
-                lastDeployEvent.icmPath, lastDeployEvent.deploymentId, lastDeployEvent.timestamp, lastDeployEvent.error
-            )
-
-            else -> {
-                val deployEvent = lastDeployEvent as Deployed
-                if (deployEvent.deploymentId != lastDeployment?.id) {
-                    LastStatus.Unchanged(deployEvent.icmPath, deployEvent.deploymentId, deployEvent.timestamp)
-                } else {
-                    val hasPreviousSuccessfulDeploy =
-                        objectEvents.any { it.timestamp < deployEvent.timestamp && it is Deployed }
-                    if (hasPreviousSuccessfulDeploy) {
-                        LastStatus.Overwritten(deployEvent.icmPath, deployEvent.deploymentId, deployEvent.timestamp)
-                    } else {
-                        LastStatus.Created(deployEvent.icmPath, deployEvent.deploymentId, deployEvent.timestamp)
-                    }
-                }
-            }
-        }
-    }
-
-    private fun DocumentObject.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
-        return getLastStatus(
-            id = this.id,
-            lastDeployment = lastDeployment,
-            resourceType = ResourceType.DocumentObject,
-            output = output,
-            internal = this.internal ?: false,
-            isPage = this.type == DocumentObjectType.Page
-        )
-    }
-
-    private fun Image.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
-        return getLastStatus(
-            id = this.id,
-            lastDeployment = lastDeployment,
-            resourceType = ResourceType.Image,
-            output = output,
-            internal = false,
-            isPage = false
-        )
-    }
-
-    private fun Attachment.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
-        return getLastStatus(
-            id = this.id,
-            lastDeployment = lastDeployment,
-            resourceType = ResourceType.Attachment,
-            output = output,
-            internal = false,
-            isPage = false
-        )
-    }
-
-    private fun DocumentObject.getDeployKind(nextIcmPath: String?): DeployKind {
-        return getDeployKind(
-            this.id,
-            ResourceType.DocumentObject,
-            output,
-            this.internal ?: false,
-            nextIcmPath,
-            this.type == DocumentObjectType.Page
-        )
-    }
-
-    private fun Image.getDeployKind(nextIcmPath: String?): DeployKind {
-        return getDeployKind(this.id, ResourceType.Image, output, false, nextIcmPath)
-    }
-
-    private fun Attachment.getDeployKind(nextIcmPath: String?): DeployKind {
-        return getDeployKind(this.id, ResourceType.Attachment, output, false, nextIcmPath)
-    }
-
-    private fun getDeployKind(
-        id: String,
-        resourceType: ResourceType,
-        output: InspireOutput,
-        internal: Boolean = false,
-        nextIcmPath: String?,
-        isPage: Boolean = false
-    ): DeployKind {
-        if (internal) {
-            return DeployKind.Inline
-        }
-
-        val objectEvents = statusTrackingRepository.findEventsRelevantToOutput(id, resourceType, output)
-        val lastEvent = objectEvents.lastOrNull()
-        return if (lastEvent is Active || lastEvent is StatusError) {
-            val lastDeployEvent = objectEvents.filterIsInstance<Deployed>().lastOrNull()
-            if (lastDeployEvent != null && lastDeployEvent.icmPath != nextIcmPath) {
-                DeployKind.Create
-            } else if (lastDeployEvent != null) {
-                DeployKind.Overwrite
-            } else if (isPage && output == InspireOutput.Designer) {
-                DeployKind.Inline
-            } else {
-                DeployKind.Create
-            }
-        } else {
-            DeployKind.Keep
-        }
-    }
-
-    private fun DisplayRule.getDeployKind(nextIcmPath: String?): DeployKind {
-        return getDeployKind(this.id, ResourceType.DisplayRule, output, this.internal, nextIcmPath)
-    }
-
-    private fun DisplayRule.getLastStatus(lastDeployment: LastDeployment?): LastStatus {
-        return getLastStatus(
-            id = this.id,
-            lastDeployment = lastDeployment,
-            resourceType = ResourceType.DisplayRule,
-            output = output,
-            internal = this.internal,
-            isPage = false
-        )
-    }
-
-    private sealed interface ReadResult {
-        data class Success(val result: ByteArray) : ReadResult
-        data class Error(val errorMessage: String) : ReadResult
-    }
-
-    private fun readStorageSafely(path: String): ReadResult {
-        try {
-            val byteArray = storage.read(path)
-            return ReadResult.Success(byteArray)
-        } catch (_: InvalidPathException) {
-            return ReadResult.Error("File path '$path' is invalid.")
-        } catch (_: SecurityException) {
-            return ReadResult.Error("Access to file '$path' is denied.")
-        } catch (_: FileNotFoundException) {
-            return ReadResult.Error("File '$path' not found.")
-        } catch (_: IOException) {
-            return ReadResult.Error("I/O error occurred.")
-        } catch (_: Exception) {
-            return ReadResult.Error("Unexpected error.")
-        }
-    }
-
-    data class LastDeployment(val id: Uuid, val timestamp: Instant)
 }

@@ -5,7 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObjectFilter
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.toDb
 import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.tools.concat

@@ -50,7 +50,7 @@ import com.quadient.migration.persistence.table.StatusTrackingTable
 import com.quadient.migration.persistence.table.TextStyleTable
 import com.quadient.migration.persistence.table.VariableStructureTable
 import com.quadient.migration.persistence.table.VariableTable
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.Color

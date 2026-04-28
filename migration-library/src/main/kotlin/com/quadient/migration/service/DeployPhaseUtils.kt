@@ -14,8 +14,9 @@ import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.isNullOrBlank
 import com.quadient.migration.shared.toIcmPath
 import org.slf4j.LoggerFactory
+import java.lang.invoke.MethodHandles
 
-private val logger = LoggerFactory.getLogger("com.quadient.migration.service.DeployPhaseUtils")
+private val logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass())
 
 fun List<DocumentContent>.resolveAliases(
     imageRepository: Repository<Image>,
@@ -37,14 +38,14 @@ fun resolveAlias(
             val image = imageRepository.find(ref.id) ?: return ref
             image.targetAttachmentId?.let { targetId ->
                 logger.info("Resolving image '${ref.id}' to attachment '$targetId' via alias")
-                AttachmentRef(targetId)
+                resolveAlias(AttachmentRef(targetId), imageRepository, attachmentRepository)
             } ?: ref
         }
         is AttachmentRef -> {
             val attachment = attachmentRepository.find(ref.id) ?: return ref
             attachment.targetImageId?.let { targetId ->
                 logger.info("Resolving attachment '${ref.id}' to image '$targetId' via alias")
-                ImageRef(targetId)
+                resolveAlias(ImageRef(targetId), imageRepository, attachmentRepository)
             } ?: ref
         }
     }

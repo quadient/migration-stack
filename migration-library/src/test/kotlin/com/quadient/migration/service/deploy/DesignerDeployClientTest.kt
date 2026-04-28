@@ -12,8 +12,12 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.data.Error
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.ResourceId
+import com.quadient.migration.api.dto.migrationmodel.StatusTracking
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -22,17 +26,27 @@ import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
+import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.deploy.utility.DeploymentError
+import com.quadient.migration.service.deploy.utility.DeploymentInfo
+import com.quadient.migration.service.deploy.utility.DeploymentResult
+import com.quadient.migration.service.deploy.utility.MetadataValidator
+import com.quadient.migration.service.deploy.utility.ResourceType
+import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
+import com.quadient.migration.service.deploy.utility.ValidationResult
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.Block
+import com.quadient.migration.shared.DocumentObjectType.Template
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.tools.aActiveStatus
 import com.quadient.migration.tools.aDeployedStatus
 import com.quadient.migration.tools.aErrorStatus
+import com.quadient.migration.tools.computeIfPresentOrPut
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
@@ -50,7 +64,10 @@ import io.mockk.spyk
 import io.mockk.verify
 import kotlin.time.Clock
 import org.jetbrains.exposed.v1.core.Op
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.assertThrows
@@ -100,31 +117,25 @@ class DesignerDeployClientTest {
     @Test
     fun `deployDocumentObjects deploys complex structure template with images and attachments`() {
         // given
-        val image1 = mockImg(aImage("I_1"))
-        val image2 = mockImg(aImage("I_2"))
-        val attachment1 = mockAttachment(aAttachment("F_1"))
-        val externalBlock = mockObj(
-            aDocObj(
-                "Txt_Img_Attachment_1", Block, listOf(
-                    aParagraph(aText(StringValue("Image: "))), ImageRef(image1.id),
-                    aParagraph(aText(StringValue("Attachment: "))), AttachmentRef(attachment1.id)
-                )
+        val image1 = aImage("I_1").mock()
+        val image2 = aImage("I_2").mock()
+        val attachment1 = aAttachment("F_1").mock()
+        val externalBlock = aDocObj(
+            "Txt_Img_Attachment_1", Block, listOf(
+                aParagraph(aText(StringValue("Image: "))), ImageRef(image1.id),
+                aParagraph(aText(StringValue("Attachment: "))), AttachmentRef(attachment1.id)
             )
-        )
-        val internalBlock = mockObj(
-            aDocObj(
-                "Img_2", Block, listOf(ImageRef(image2.id)), internal = true
+        ).mock()
+        val internalBlock = aDocObj(
+            "Img_2", Block, listOf(ImageRef(image2.id)), internal = true
+        ).mock()
+        val page = aDocObj(
+            "P_1", DocumentObjectType.Page, listOf(
+                aDocumentObjectRef(internalBlock.id),
+                aDocumentObjectRef(externalBlock.id)
             )
-        )
-        val page = mockObj(
-            aDocObj(
-                "P_1", DocumentObjectType.Page, listOf(
-                    aDocumentObjectRef(internalBlock.id),
-                    aDocumentObjectRef(externalBlock.id)
-                )
-            )
-        )
-        val template = mockObj(aTemplate("1", listOf(aDocumentObjectRef(page.id))))
+        ).mock()
+        val template = aTemplate("1", listOf(aDocumentObjectRef(page.id))).mock()
 
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
@@ -149,7 +160,9 @@ class DesignerDeployClientTest {
     @Test
     fun `deploy list of document objects validates that no document objects are skipped`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", skip = SkipOptions(true, null, null)),
             aBlock(id = "2", type = Block),
@@ -167,7 +180,9 @@ class DesignerDeployClientTest {
     @Test
     fun `page objects are skipped in deploy`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", type = Block),
             aBlock(id = "2", type = DocumentObjectType.Page),
@@ -182,14 +197,16 @@ class DesignerDeployClientTest {
             spy.deployDocumentObjectsInternal(match { docObjects ->
                 docObjects.size == 3 && docObjects.map { it.id }
                     .containsAll(listOf("1", "3", "4"))
-            })
+            }, any(), any(), any(), any(), any())
         }
     }
 
     @Test
     fun `deploy list of document objects validates that no document objects are internal`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", internal = true),
             aBlock(id = "2", internal = true),
@@ -205,7 +222,9 @@ class DesignerDeployClientTest {
     @Test
     fun `deploy list of document objects validates that no document are missing`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1"),
         )
@@ -219,7 +238,9 @@ class DesignerDeployClientTest {
     @Test
     fun `deploy list of document objects has all kinds of problems`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1"),
             aBlock(id = "2", internal = true),
@@ -247,7 +268,9 @@ class DesignerDeployClientTest {
     @Test
     fun `deploy list of document objects without dependencies`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
@@ -259,13 +282,15 @@ class DesignerDeployClientTest {
         spy.deployDocumentObjects(toDeploy, true)
 
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
-        verify { spy.deployDocumentObjectsInternal(docObjects) }
+        verify { spy.deployDocumentObjectsInternal(docObjects, any(), any(), any(), any(), any()) }
     }
 
     @Test
     fun `deploy list of document objects with recursive dependencies, deduplicates them and skips internal dependencies`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
@@ -292,14 +317,16 @@ class DesignerDeployClientTest {
             spy.deployDocumentObjectsInternal(match { docObjects ->
                 docObjects.size == 7 && docObjects.map { it.id }
                     .containsAll(listOf("1", "2", "3", "4", "5", "6", "7"))
-            })
+            }, any(), any(), any(), any(), any())
         }
     }
 
     @Test
     fun `deploy list of document objects excludes pages and internal objects but includes their transitive external dependencies`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
 
         val block3 = DocumentObjectBuilder("block3", Block).build()
         val block2 = DocumentObjectBuilder("block2", Block).internal(true).documentObjectRef(block3).build()
@@ -322,14 +349,16 @@ class DesignerDeployClientTest {
                 ids.containsAll(listOf("template1", "block1", "block3"))
                     && !ids.contains("page1")
                     && !ids.contains("block2")
-            })
+            }, any(), any(), any(), any(), any())
         }
     }
 
     @Test
     fun `deploy list of document objects with dependencies when dependency is not found`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         val toDeploy = listOf("1")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
@@ -348,8 +377,8 @@ class DesignerDeployClientTest {
     fun `deployDocumentObjects continues deployment when there is exception during document build`() {
         // given
         val innerBlock = aDocObj("B_2")
-        val block = mockObj(aDocObj("B_1", Block, listOf(aDocumentObjectRef(innerBlock.id))))
-        val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
+        val block = aDocObj("B_1", Block, listOf(aDocumentObjectRef(innerBlock.id))).mock()
+        val template = aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))).mock()
 
         every { documentObjectRepository.find(innerBlock.id) } throws IllegalStateException("Not found")
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
@@ -380,7 +409,8 @@ class DesignerDeployClientTest {
         verify(exactly = 1) { ipsService.xml2wfd(any(), "icm://${template.nameOrId()}") }
     }
 
-    private fun mockImg(image: Image, success: Boolean = true): Image {
+    private fun Image.mock(success: Boolean = true): Image {
+        val image = this
         val sourcePath = image.sourcePath
         val imagePath = "icm://${image.nameOrId()}"
 
@@ -401,7 +431,8 @@ class DesignerDeployClientTest {
         return image
     }
 
-    private fun mockAttachment(attachment: Attachment, success: Boolean = true): Attachment {
+    private fun Attachment.mock(success: Boolean = true): Attachment {
+        val attachment = this
         val sourcePath = attachment.sourcePath
         val attachmentPath = "icm://${attachment.nameOrId()}"
 
@@ -422,8 +453,10 @@ class DesignerDeployClientTest {
         return attachment
     }
 
-    private fun mockObj(documentObject: DocumentObject): DocumentObject {
+    private fun DocumentObject.mock(): DocumentObject {
+        val documentObject = this
         every { documentObjectRepository.find(documentObject.id) } returns documentObject
+        every { documentObjectRepository.findOrFail(documentObject.id) } returns documentObject
 
         if (documentObject.internal == false) {
             val xml = "<xml>${documentObject.nameOrId()}</xml>"
@@ -434,6 +467,271 @@ class DesignerDeployClientTest {
             every { ipsService.xml2wfd(xml, outputPath) } returns OperationResult.Success
         }
         return documentObject
+    }
+
+
+    @Nested
+    inner class ConflictValidationTests {
+        val states: MutableMap<Pair<String, ResourceType>, List<StatusEvent>> = mutableMapOf()
+
+        @BeforeEach
+        fun setupAll() {
+            states.clear()
+        }
+
+        @Test
+        fun `validateConflicts shows conflicts in the same batch`() {
+            val t1 = DocumentObjectBuilder("T_1", Template).build().mock().active()
+            val b1 = DocumentObjectBuilder("B_1", Block).build().mock().active()
+            val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(t1, b1, b2)
+            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path"
+            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://same/path"
+
+            val result = subject.validateConflicts()
+
+            assertEquals(1, result.conflictingInBatchResources.size)
+            assertEquals(setOf("B_1", "B_2"), result.conflictingInBatchResources.values.single().map { it.id }.toSet())
+        }
+
+        @Test
+        fun `validateConflicts shows conflicts with previously deployed items`() {
+            val t1 = DocumentObjectBuilder("T_1", Template).build().mock().active()
+            val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://path1").active()
+            val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
+            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://path1"
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(t1, b1, b2)
+
+            val result = subject.validateConflicts()
+
+            assertEquals(1, result.conflictingWithPreviousResources.size)
+            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+        }
+
+        @Test
+        fun `validateConflicts returns empty result for unique active resources`() {
+            val t1 = DocumentObjectBuilder("T_1", Template).build().mock().active()
+            val b1 = DocumentObjectBuilder("B_1", Block).build().mock().active()
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(t1, b1)
+
+            val result = subject.validateConflicts()
+
+            assertTrue(result.hasNoConflicts())
+            assertTrue(result.conflictingInBatchResources.isEmpty())
+            assertTrue(result.conflictingWithPreviousResources.isEmpty())
+        }
+
+        @Test
+        fun `validateConflicts detects collision even when existing resource is not to be currently deployed`() {
+            val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://same/path")
+            val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
+            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://same/path"
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1, b2)
+
+            val result = subject.validateConflicts()
+
+            assertEquals(1, result.conflictingWithPreviousResources.size)
+            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+        }
+
+        @Test
+        fun `validateConflicts ignores previously deployed resources from other outputs`() {
+            val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://same/path", InspireOutput.Interactive)
+            val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
+            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://same/path"
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1, b2)
+
+            val result = subject.validateConflicts()
+
+            assertTrue(result.conflictingWithPreviousResources.isEmpty())
+        }
+
+        @Test
+        fun `validateConflicts uses last deployment for designer output even when newer foreign output deployment exists`() {
+            val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://designer-path")
+                .deployed("icm://interactive-path", InspireOutput.Interactive)
+            val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
+            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://designer-path"
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1, b2)
+
+            val result = subject.validateConflicts()
+
+            assertEquals(1, result.conflictingWithPreviousResources.size)
+            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+        }
+
+        @Test
+        fun `validateConflicts flags when previously deployed path has extra owners`() {
+            val b1 = DocumentObjectBuilder("B_1", Block).build().mock().active()
+            DocumentObjectBuilder("B_2", Block).build().mock().deployed("icm://same/path1")
+            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path1"
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1)
+
+            val result = subject.validateConflicts()
+
+            assertEquals(1, result.conflictingWithPreviousResources.size)
+            assertEquals(setOf("B_1"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+        }
+
+        @Test
+        fun `validateConflicts flags when current batch is superset of previous owners`() {
+            val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://same/path").active()
+            val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
+            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path"
+            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://same/path"
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1, b2)
+
+            val result = subject.validateConflicts()
+
+            assertEquals(1, result.conflictingWithPreviousResources.size)
+            assertEquals(setOf("B_1", "B_2"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+        }
+
+        @Test
+        fun `validateConflicts ignores stale tracked resources that cannot be resolved`() {
+            DocumentObjectBuilder("B_1", Block).build().active().deployed("icm://path1")
+            DocumentObjectBuilder("B_MISSING", Block).build().active().deployed("icm://path1")
+            val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
+            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://path1"
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b2)
+            every { documentObjectRepository.findOrFail("B_MISSING") } throws IllegalArgumentException("not found")
+
+            val result = assertDoesNotThrow<ValidationResult> { subject.validateConflicts() }
+
+            assertEquals(1, result.conflictingWithPreviousResources.size)
+            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+        }
+
+        @Test
+        fun `validateConflicts does not flag same resource deploying to the same path again`() {
+            val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://same/path").active()
+            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path"
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1)
+
+            val result = subject.validateConflicts()
+
+            assertTrue(result.conflictingWithPreviousResources.isEmpty())
+        }
+
+        @Test
+        fun `validateConflicts detects cross resource in batch collisions`() {
+            val i1 = ImageBuilder("I_1").sourcePath("test").build().mock().active()
+            val a1 = AttachmentBuilder("A_1").sourcePath("test").build().mock().active()
+            val b1 = DocumentObjectBuilder("B_1", Block).imageRef(i1).attachmentRef(a1).build().mock().active()
+
+            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path"
+            every { documentObjectBuilder.getImagePath(i1) } returns "icm://same/path"
+            every { documentObjectBuilder.getAttachmentPath(a1) } returns "icm://same/path"
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1)
+
+            val result = subject.validateConflicts()
+
+            assertEquals(1, result.conflictingInBatchResources.size)
+            assertEquals(
+                setOf(
+                    ResourceId("B_1", ResourceType.DocumentObject),
+                    ResourceId("I_1", ResourceType.Image),
+                    ResourceId("A_1", ResourceType.Attachment)
+                ),
+                result.conflictingInBatchResources.values.single()
+            )
+        }
+
+        @Test
+        fun `validateConflicts detects cross resource with previously deployed`() {
+            ImageBuilder("I_1").sourcePath("test").build().mock().deployed("icm://image")
+            val b1 = DocumentObjectBuilder("B_1", Block).build().mock().active()
+            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://image"
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1)
+
+            val result = subject.validateConflicts()
+
+            assertEquals(0, result.conflictingInBatchResources.size)
+            assertEquals(1, result.conflictingWithPreviousResources.size)
+            assertEquals(
+                setOf(ResourceId("B_1", ResourceType.DocumentObject)),
+                result.conflictingWithPreviousResources.values.single()
+            )
+        }
+
+        @Test
+        fun `validateConflicts does not report objects which are not to be currently deployed`() {
+            val spy = spyk(subject)
+            val b1 = DocumentObjectBuilder("B_1", Block).build().mock().active()
+            val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
+            val b3 = DocumentObjectBuilder("B_3", Block).build().mock().active()
+
+            every { spy.getDocumentObjectsToDeploy(listOf("B_1", "B_2")) } returns listOf(b1, b2)
+            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path"
+            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://same/path"
+            every { documentObjectBuilder.getDocumentObjectPath(b3) } returns "icm://same/path"
+
+            val result = spy.validateConflicts(listOf("B_1", "B_2"))
+
+            assertFalse(result.hasNoConflicts())
+            assertEquals(setOf("B_1", "B_2"), result.conflictingInBatchResources.values.single().map { it.id }.toSet())
+            verify(exactly = 1) { spy.getDocumentObjectsToDeploy(listOf("B_1", "B_2")) }
+        }
+
+        @Test
+        fun `validateConflicts by ids validates not found internal and skipped objects`() {
+            every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
+                aBlock(id = "1", internal = true),
+                aBlock(id = "2", skip = SkipOptions(true, null, null)),
+            )
+
+            val ex = assertThrows<IllegalArgumentException> { subject.validateConflicts(listOf("1", "2", "3")) }
+
+            assertEquals(
+                "The following document objects were not found: [3]. The following document objects are internal: [1]. The following document objects are skipped: [2]. ",
+                ex.message
+            )
+        }
+
+        private fun Image.active(): Image {
+            val ev = Active()
+            val events = states.computeIfPresentOrPut(id to ResourceType.Image, listOf(ev)) { it + ev }
+            every { statusTrackingRepository.findLastEventRelevantToOutput(id, any(), any()) } returns ev
+            every { statusTrackingRepository.findEventsRelevantToOutput(id, any(), any()) } returns events
+            every { statusTrackingRepository.listAll() } returns states.map { (k, v) -> StatusTracking(k.first, "", k.second, v) }
+            return this
+        }
+
+        private fun Attachment.active(): Attachment {
+            val ev = Active()
+            val events = states.computeIfPresentOrPut(id to ResourceType.Attachment, listOf(ev)) { it + ev }
+            every { statusTrackingRepository.findLastEventRelevantToOutput(id, any(), any()) } returns ev
+            every { statusTrackingRepository.findEventsRelevantToOutput(id, any(), any()) } returns events
+            every { statusTrackingRepository.listAll() } returns states.map { (k, v) -> StatusTracking(k.first, "", k.second, v) }
+            return this
+        }
+
+        private fun DocumentObject.active(): DocumentObject {
+            val ev = Active()
+            val events = states.computeIfPresentOrPut(id to ResourceType.DocumentObject, listOf(ev)) { it + ev }
+            every { statusTrackingRepository.findLastEventRelevantToOutput(id, any(), any()) } returns ev
+            every { statusTrackingRepository.findEventsRelevantToOutput(id, any(), any()) } returns events
+            every { statusTrackingRepository.listAll() } returns states.map { (k, v) -> StatusTracking(k.first, "", k.second, v) }
+            return this
+        }
+
+        private fun DocumentObject.deployed(path: String?, output: InspireOutput = InspireOutput.Designer): DocumentObject {
+            val ev = Deployed(Uuid.random(), Clock.System.now(), output, path)
+            val events = states.computeIfPresentOrPut(id to ResourceType.DocumentObject, listOf(ev)) { it + ev }
+            every { statusTrackingRepository.findLastEventRelevantToOutput(id, any(), any()) } returns ev
+            every { statusTrackingRepository.findEventsRelevantToOutput(id, any(), any()) } returns events
+            every { statusTrackingRepository.listAll() } returns states.map { (k, v) -> StatusTracking(k.first, "", k.second, v) }
+            return this
+        }
+
+        private fun Image.deployed(path: String?, output: InspireOutput = InspireOutput.Designer): Image {
+            val ev = Deployed(Uuid.random(), Clock.System.now(), output, path)
+            val events = states.computeIfPresentOrPut(id to ResourceType.Image, listOf(ev)) { it + ev }
+            every { statusTrackingRepository.findLastEventRelevantToOutput(id, any(), any()) } returns ev
+            every { statusTrackingRepository.findEventsRelevantToOutput(id, any(), any()) } returns events
+            every { statusTrackingRepository.listAll() } returns states.map { (k, v) -> StatusTracking(k.first, "", k.second, v) }
+            return this
+        }
     }
 
     @Nested
@@ -464,7 +762,7 @@ class DesignerDeployClientTest {
             givenObjectIsDeployed("I_3")
 
             // when
-            subject.deployDocumentObjectsInternal(docObjects)
+            subject.runDeploy(docObjects)
 
             // then
             verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any()) }
@@ -479,8 +777,8 @@ class DesignerDeployClientTest {
                 aDocObj("D_2", content = listOf(ImageRef("I_2"))),
                 aDocObj("D_3", content = listOf(ImageRef("I_3"))),
             )
-            mockImg(aImage("I_1"))
-            mockImg(aImage("I_2"))
+            aImage("I_1").mock()
+            aImage("I_2").mock()
             givenObjectIsDeployed("D_1")
             givenObjectIsError("I_1")
             givenObjectIsError("D_2")
@@ -493,7 +791,7 @@ class DesignerDeployClientTest {
 
 
             // when
-            subject.deployDocumentObjectsInternal(docObjects)
+            subject.runDeploy(docObjects)
 
             // then
             verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any()) }
@@ -509,13 +807,13 @@ class DesignerDeployClientTest {
             val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))))
             givenObjectIsActive("D_1")
             givenObjectIsActive("I_1")
-            mockImg(aImage("I_1"), success = false)
+            aImage("I_1").mock(success = false)
             every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Failure("oops")
             every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd"
             every { ipsService.fileExists(any()) } returns false
 
             // when
-            subject.deployDocumentObjectsInternal(docObjects)
+            subject.runDeploy(docObjects)
 
             // then
             verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any()) }
@@ -526,13 +824,13 @@ class DesignerDeployClientTest {
         @Test
         fun `deployDocumentObjects disallows system metadata`() {
             var count = 0
-            for (key in DeployClient.DISALLOWED_METADATA) {
+            for (key in MetadataValidator.DISALLOWED_METADATA) {
                 // given
                 val docObjects = listOf(aDocObj("D_1", metadata = mapOf(key to listOf(MetadataPrimitive.Str("value")))))
                 givenObjectIsActive("D_1")
 
                 // when
-                val result = subject.deployDocumentObjectsInternal(docObjects)
+                val result = subject.runDeploy(docObjects)
 
                 // then
                 assertEquals(
@@ -543,7 +841,7 @@ class DesignerDeployClientTest {
                 count++
             }
 
-            assertEquals(DeployClient.DISALLOWED_METADATA.size, count)
+            assertEquals(MetadataValidator.DISALLOWED_METADATA.size, count)
         }
 
         @Test
@@ -556,7 +854,7 @@ class DesignerDeployClientTest {
             every { ipsService.xml2wfd(any(), any()) } returns OperationResult.Success
 
             // when
-            val result = subject.deployDocumentObjectsInternal(docObjects)
+            val result = subject.runDeploy(docObjects)
 
             // then
             assertEquals(listOf(DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path")), result.deployed)
@@ -636,5 +934,16 @@ class DesignerDeployClientTest {
                 icmPath = "icm://path"
             )
         }
+    }
+
+    private fun DesignerDeployClient.runDeploy(documentObjects: List<DocumentObject>): DeploymentResult {
+        return subject.deployDocumentObjectsInternal(
+            documentObjects,
+            ResultTrackerImpl(statusTrackingRepository, InspireOutput.Designer),
+            subject::uploadDocumentObject,
+            subject::uploadImage,
+            subject::uploadAttachment,
+            subject::uploadDisplayRule
+        )
     }
 }

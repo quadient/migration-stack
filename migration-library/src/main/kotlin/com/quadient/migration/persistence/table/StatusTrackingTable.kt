@@ -2,7 +2,7 @@ package com.quadient.migration.persistence.table
 
 import com.quadient.migration.api.dto.migrationmodel.StatusTracking
 import com.quadient.migration.data.StatusEvent
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.dao.id.CompositeIdTable

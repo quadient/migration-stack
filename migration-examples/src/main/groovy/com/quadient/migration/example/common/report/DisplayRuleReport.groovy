@@ -19,7 +19,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.PathUtil
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 import groovy.transform.Field
 
 import java.nio.file.Path

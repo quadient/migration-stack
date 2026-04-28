@@ -27,6 +27,13 @@ import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.Error
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.deploy.utility.DeploymentError
+import com.quadient.migration.service.deploy.utility.DeploymentInfo
+import com.quadient.migration.service.deploy.utility.DeploymentResult
+import com.quadient.migration.service.deploy.utility.DeploymentWarning
+import com.quadient.migration.service.deploy.utility.MetadataValidator
+import com.quadient.migration.service.deploy.utility.ResourceType
+import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
@@ -280,14 +287,14 @@ class InteractiveDeployClientTest {
     @Test
     fun `deployDocumentObjects deploys images, attachments and external display rules when used in document objects`() {
         // given
-        val image = mockImage(aImage("Bunny"))
-        val attachment = mockAttachment(aAttachment("Report"))
+        val image = aImage("Bunny").mock()
+        val attachment = aAttachment("Report").mock()
         val rule = DisplayRuleBuilder("R_1")
             .comparison { value("a").equals().value("b") }
             .internal(false)
             .metadata("other") { string("value") }
             .build()
-        mockDisplayRule(rule)
+            .mock()
         val block = mockDocumentObject(aBlock(id = "1", listOf(
             ImageRef(image.id),
             AttachmentRef(attachment.id),
@@ -330,10 +337,10 @@ class InteractiveDeployClientTest {
     @Test
     fun `Images with unknown type or missing source path and attachments with missing source path or skip flag are omitted from deployment`() {
         // given
-        val catImage = mockImage(aImage("Cat", imageType = ImageType.Unknown))
-        val dogImage = mockImage(aImage("Dog", sourcePath = null))
-        val missingAttachment = mockAttachment(aAttachment("MissingDoc", sourcePath = null))
-        val skippedAttachment = mockAttachment(aAttachment("SkippedDoc", skip = SkipOptions(true, null, "Not needed")))
+        val catImage = aImage("Cat", imageType = ImageType.Unknown).mock()
+        val dogImage = aImage("Dog", sourcePath = null).mock()
+        val missingAttachment = aAttachment("MissingDoc", sourcePath = null).mock()
+        val skippedAttachment = aAttachment("SkippedDoc", skip = SkipOptions(true, null, "Not needed")).mock()
 
         val block = mockDocumentObject(
             aBlock(
@@ -378,8 +385,8 @@ class InteractiveDeployClientTest {
     @Test
     fun `Multiple times used image or attachment is deployed only once`() {
         // given
-        val image = mockImage(aImage("Bunny"))
-        val attachment = mockAttachment(aAttachment("Report"))
+        val image = aImage("Bunny").mock()
+        val attachment = aAttachment("Report").mock()
         val innerBlock = aBlock("10", listOf(ImageRef(image.id), AttachmentRef(attachment.id)), internal = true)
         val block = mockDocumentObject(
             aBlock(
@@ -535,7 +542,9 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects validates that no document objects are unsupported`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", skip = SkipOptions(true, null, null)),
             aBlock(id = "2", type = DocumentObjectType.Block),
@@ -551,7 +560,9 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects validates that no document objects are `() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", internal = true),
             aBlock(id = "2", internal = true),
@@ -567,7 +578,9 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects validates that no document are missing`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1"),
         )
@@ -581,7 +594,9 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects has all kinds of problems`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1"),
             aBlock(id = "2", internal = true),
@@ -609,7 +624,9 @@ class InteractiveDeployClientTest {
     @Test
     fun `deploy list of document objects without dependencies`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
@@ -621,13 +638,15 @@ class InteractiveDeployClientTest {
         spy.deployDocumentObjects(toDeploy, true)
 
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
-        verify { spy.deployDocumentObjectsInternal(docObjects) }
+        verify { spy.deployDocumentObjectsInternal(docObjects, any(), any(), any(), any(), any()) }
     }
 
     @Test
     fun `deploy list of document objects with recursive dependencies, deduplicates them and skips internal dependencies`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
@@ -653,14 +672,16 @@ class InteractiveDeployClientTest {
         verify {
             spy.deployDocumentObjectsInternal(match { docObjects ->
                 docObjects.size == 7 && docObjects.map { it.id }.containsAll(listOf("1", "2", "3", "4", "5", "6", "7"))
-            })
+            }, any(), any(), any(), any(), any())
         }
     }
 
     @Test
     fun `deploy list of document objects with dependencies when dependency is not found`() {
         val spy = spyk(subject)
-        every { spy.deployDocumentObjectsInternal(any()) } returns DeploymentResult(Uuid.random())
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
         val toDeploy = listOf("1")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
@@ -730,38 +751,38 @@ class InteractiveDeployClientTest {
             .comparison { value("a").equals().value(Function.UpperCase(Literal("", LiteralDataType.String))) }
             .internal(false)
             .build()
-        mockDisplayRule(skippedRule)
+            .mock()
         val ruleWithFunction = DisplayRuleBuilder("withFunction")
             .comparison { value("a").equals().value(Function.UpperCase(Literal("", LiteralDataType.String))) }
             .internal(false)
             .build()
-        mockDisplayRule(ruleWithFunction)
+            .mock()
         val ruleWithInvalidMetadata = DisplayRuleBuilder("invalidMetadata")
             .comparison { value("a").equals().value("b") }
             .metadata("Brand") { string("value") }
             .internal(false)
             .build()
-        mockDisplayRule(ruleWithInvalidMetadata)
+            .mock()
         val validRule = DisplayRuleBuilder("valid")
             .comparison { value("a").equals().value("b") }
             .internal(false)
             .build()
-        mockDisplayRule(validRule)
+            .mock()
         val failedUpload = DisplayRuleBuilder("failed")
             .comparison { value("a").equals().value("b") }
             .internal(false)
             .build()
-        mockDisplayRule(failedUpload)
+            .mock()
         val withTargetId = DisplayRuleBuilder("withTargetId")
             .targetId("targetRule")
             .internal(false)
             .build()
-        mockDisplayRule(withTargetId)
+            .mock()
         val targetRule = DisplayRuleBuilder("targetRule")
             .comparison { value("a").equals().value("b") }
             .internal(false)
             .build()
-        mockDisplayRule(targetRule)
+            .mock()
         val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, listOf(
             aParagraph(displayRuleRef = DisplayRuleRef(ruleWithFunction.id)),
             aParagraph(displayRuleRef = DisplayRuleRef(ruleWithInvalidMetadata.id)),
@@ -785,15 +806,25 @@ class InteractiveDeployClientTest {
 
         println()
         result.warnings.shouldBeEqualTo(listOf(
-            DeploymentWarning("withFunction", "External display rule 'withFunction' contains functions. Will fallback to internal display rule")
+            DeploymentWarning(
+                "withFunction",
+                "External display rule 'withFunction' contains functions. Will fallback to internal display rule"
+            )
         ))
         result.errors.shouldBeEqualTo(listOf(
-            DeploymentError("invalidMetadata", "Metadata of display rule 'invalidMetadata' contains invalid keys: [Brand]"),
+            DeploymentError(
+                "invalidMetadata",
+                "Metadata of display rule 'invalidMetadata' contains invalid keys: [Brand]"
+            ),
             DeploymentError("failed", "oops")
         ))
         result.deployed.shouldBeEqualTo(listOf(
             DeploymentInfo("valid", ResourceType.DisplayRule, "icm://Interactive/tenant/Rules/defaultFolder/valid.jrd"),
-            DeploymentInfo("targetRule", ResourceType.DisplayRule, "icm://Interactive/tenant/Rules/defaultFolder/targetRule.jrd"),
+            DeploymentInfo(
+                "targetRule",
+                ResourceType.DisplayRule,
+                "icm://Interactive/tenant/Rules/defaultFolder/targetRule.jrd"
+            ),
             DeploymentInfo("B_1", ResourceType.DocumentObject, "icm://B_1name"),
             DeploymentInfo("T_1", ResourceType.DocumentObject, "icm://T_1name")
         ))
@@ -831,7 +862,8 @@ class InteractiveDeployClientTest {
         return documentObject
     }
 
-    private fun mockImage(image: Image, success: Boolean = true): Image {
+    private fun Image.mock(success: Boolean = true): Image {
+        val image = this
         val sourcePath = image.sourcePath
         val dir = resolveTargetDir(config.defaultTargetFolder)
         every { documentObjectBuilder.getImagePath(image) } returns "icm://Interactive/$tenant/Resources/Images/$dir/${image.sourcePath}"
@@ -848,7 +880,8 @@ class InteractiveDeployClientTest {
         return image
     }
 
-    private fun mockDisplayRule(displayRule: DisplayRule, success: Boolean = true): DisplayRule {
+    private fun DisplayRule.mock(success: Boolean = true): DisplayRule {
+        val displayRule = this
         val dir = resolveTargetDir(config.defaultTargetFolder)
         every { documentObjectBuilder.getDisplayRulePath(displayRule) } returns IcmPath.from("icm://Interactive/$tenant/Rules/$dir/${displayRule.nameOrId()}.jrd")
 
@@ -865,7 +898,8 @@ class InteractiveDeployClientTest {
         return displayRule
     }
 
-    private fun mockAttachment(attachment: Attachment, success: Boolean = true): Attachment {
+    private fun Attachment.mock(success: Boolean = true): Attachment {
+        val attachment = this
         val sourcePath = attachment.sourcePath
         val dir = resolveTargetDir(config.defaultTargetFolder)
         every { documentObjectBuilder.getAttachmentPath(attachment) } returns "icm://Interactive/$tenant/Resources/Attachments/$dir/${attachment.sourcePath}"
@@ -947,7 +981,7 @@ class InteractiveDeployClientTest {
             givenObjectIsDeployed("I_3")
 
             // when
-            subject.deployDocumentObjectsInternal(docObjects)
+            subject.runDeploy(docObjects)
 
             // then
             verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any()) }
@@ -962,8 +996,8 @@ class InteractiveDeployClientTest {
                 aDocObj("D_2", content = listOf(ImageRef("I_2"))),
                 aDocObj("D_3", content = listOf(ImageRef("I_3"))),
             )
-            mockImage(aImage("I_1"))
-            mockImage(aImage("I_2"))
+            aImage("I_1").mock()
+            aImage("I_2").mock()
             givenObjectIsDeployed("D_1")
             givenObjectIsError("I_1")
             givenObjectIsError("D_2")
@@ -974,7 +1008,7 @@ class InteractiveDeployClientTest {
 
 
             // when
-            subject.deployDocumentObjectsInternal(docObjects)
+            subject.runDeploy(docObjects)
 
             // then
             verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any()) }
@@ -1006,11 +1040,11 @@ class InteractiveDeployClientTest {
             val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))))
             givenObjectIsActive("D_1")
             givenObjectIsActive("I_1")
-            mockImage(aImage("I_1"), success = false)
+            aImage("I_1").mock(success = false)
             every { ipsService.deployJld(any(), any(), any(), any(), any()) } returns OperationResult.Failure("oops")
 
             // when
-            subject.deployDocumentObjectsInternal(docObjects)
+            subject.runDeploy(docObjects)
 
             // then
             verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any()) }
@@ -1029,13 +1063,13 @@ class InteractiveDeployClientTest {
         @Test
         fun `deployDocumentObjects disallows system metadata`() {
             var count = 0
-            for (key in DeployClient.DISALLOWED_METADATA) {
+            for (key in MetadataValidator.DISALLOWED_METADATA) {
                 // given
                 val docObjects = listOf(aDocObj("D_1", metadata = mapOf(key to listOf(MetadataPrimitive.Str("value")))))
                 givenObjectIsActive("D_1")
 
                 // when
-                val result = subject.deployDocumentObjectsInternal(docObjects)
+                val result = subject.runDeploy(docObjects)
 
                 // then
                 assertEquals(
@@ -1046,7 +1080,7 @@ class InteractiveDeployClientTest {
                 count++
             }
 
-            assertEquals(DeployClient.DISALLOWED_METADATA.size, count)
+            assertEquals(MetadataValidator.DISALLOWED_METADATA.size, count)
         }
 
         @Test
@@ -1056,7 +1090,7 @@ class InteractiveDeployClientTest {
             givenObjectIsActive("D_1")
 
             // when
-            val result = subject.deployDocumentObjectsInternal(docObjects)
+            val result = subject.runDeploy(docObjects)
 
             // then
             assertEquals(listOf(DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path")), result.deployed)
@@ -1065,15 +1099,15 @@ class InteractiveDeployClientTest {
         @Test
         fun `deployImages disallows system metadata`() {
             var count = 0
-            for (key in DeployClient.IMAGE_DISALLOWED_METADATA) {
+            for (key in MetadataValidator.IMAGE_DISALLOWED_METADATA) {
                 // given
                 val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))))
                 givenObjectIsActive("D_1")
                 givenObjectIsActive("I_1")
-                mockImage(aImage("I_1", metadata = mapOf(key to listOf(MetadataPrimitive.Str("value")))))
+                aImage("I_1", metadata = mapOf(key to listOf(MetadataPrimitive.Str("value")))).mock()
 
                 // when
-                val result = subject.deployDocumentObjectsInternal(docObjects)
+                val result = subject.runDeploy(docObjects)
 
                 // then
                 assertEquals(
@@ -1084,7 +1118,7 @@ class InteractiveDeployClientTest {
                 count++
             }
 
-            assertEquals(DeployClient.IMAGE_DISALLOWED_METADATA.size, count)
+            assertEquals(MetadataValidator.IMAGE_DISALLOWED_METADATA.size, count)
         }
 
         @Test
@@ -1093,10 +1127,10 @@ class InteractiveDeployClientTest {
             val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))))
             givenObjectIsActive("D_1")
             givenObjectIsActive("I_1")
-            mockImage(aImage("I_1", metadata = mapOf("other" to listOf(MetadataPrimitive.Str("value")))))
+            aImage("I_1", metadata = mapOf("other" to listOf(MetadataPrimitive.Str("value")))).mock()
 
             // when
-            val result = subject.deployDocumentObjectsInternal(docObjects)
+            val result = subject.runDeploy(docObjects)
 
             // then
             assertEquals(
@@ -1114,7 +1148,7 @@ class InteractiveDeployClientTest {
         @Test
         fun `deployDisplayRules disallows system metadata`() {
             var count = 0
-            for (key in DeployClient.DISALLOWED_METADATA) {
+            for (key in MetadataValidator.DISALLOWED_METADATA) {
                 // given
                 val docObjects = listOf(aDocObj("D_1", content = listOf(aParagraph(displayRuleRef = DisplayRuleRef("R_1")))))
                 val rule = DisplayRuleBuilder("R_1")
@@ -1122,12 +1156,12 @@ class InteractiveDeployClientTest {
                     .internal(false)
                     .metadata(key) { string("value") }
                     .build()
+                    .mock()
                 givenObjectIsActive("D_1")
                 givenObjectIsActive("R_1")
-                mockDisplayRule(rule)
 
                 // when
-                val result = subject.deployDocumentObjectsInternal(docObjects)
+                val result = subject.runDeploy(docObjects)
 
                 // then
                 assertEquals(
@@ -1138,24 +1172,24 @@ class InteractiveDeployClientTest {
                 count++
             }
 
-            assertEquals(DeployClient.DISALLOWED_METADATA.size, count)
+            assertEquals(MetadataValidator.DISALLOWED_METADATA.size, count)
         }
 
         @Test
         fun `deployDisplayRules allows other metadata`() {
             // given
             val docObjects = listOf(aDocObj("D_1", content = listOf(aParagraph(displayRuleRef = DisplayRuleRef("R_1")))))
-            val rule = DisplayRuleBuilder("R_1")
+            DisplayRuleBuilder("R_1")
                 .comparison { value("a").equals().value("b") }
                 .internal(false)
                 .metadata("other") { string("value") }
                 .build()
+                .mock()
             givenObjectIsActive("D_1")
             givenObjectIsActive("R_1")
-            mockDisplayRule(rule)
 
             // when
-            val result = subject.deployDocumentObjectsInternal(docObjects)
+            val result = subject.runDeploy(docObjects)
 
             // then
             assertEquals(
@@ -1200,4 +1234,16 @@ class InteractiveDeployClientTest {
             )
         }
     }
+
+    private fun InteractiveDeployClient.runDeploy(documentObjects: List<DocumentObject>): DeploymentResult {
+        return subject.deployDocumentObjectsInternal(
+            documentObjects,
+            ResultTrackerImpl(statusTrackingRepository, InspireOutput.Interactive),
+            subject::uploadDocumentObject,
+            subject::uploadImage,
+            subject::uploadAttachment,
+            subject::uploadDisplayRule
+        )
+    }
+
 }

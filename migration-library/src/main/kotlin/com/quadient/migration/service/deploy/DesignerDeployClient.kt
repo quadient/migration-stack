@@ -3,10 +3,11 @@
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
+import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
@@ -16,6 +17,9 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.deploy.utility.DeploymentResult
+import com.quadient.migration.service.deploy.utility.ResourceType
+import com.quadient.migration.service.deploy.utility.ResultTracker
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
@@ -30,8 +34,8 @@ import kotlin.uuid.Uuid
 
 class DesignerDeployClient(
     documentObjectRepository: DocumentObjectRepository,
-    imageRepository: Repository<com.quadient.migration.api.dto.migrationmodel.Image>,
-    attachmentRepository: Repository<com.quadient.migration.api.dto.migrationmodel.Attachment>,
+    imageRepository: Repository<Image>,
+    attachmentRepository: Repository<Attachment>,
     statusTrackingRepository: StatusTrackingRepository,
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
@@ -56,24 +60,40 @@ class DesignerDeployClient(
     storage,
     InspireOutput.Designer,
 ) {
-
     override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
         return documentObject.type != DocumentObjectType.Page && documentObject.internal != true
     }
 
-    override fun deployDocumentObjectsInternal(documentObjects: List<DocumentObject>): DeploymentResult {
-        val deploymentId = Uuid.random()
-        val deploymentTimestamp = Clock.System.now()
-        val deploymentResult = DeploymentResult(deploymentId)
+    override fun uploadDocumentObject(obj: DocumentObject, targetPath: String, wfdXml: String): OperationResult {
+        return ipsService.xml2wfd(wfdXml, targetPath)
+    }
 
-        val orderedDocumentObject = deployOrder(documentObjects)
-        deploymentResult += deployImagesAndAttachments(orderedDocumentObject, deploymentId, deploymentTimestamp)
-        val tracker = ResultTracker(statusTrackingRepository, deploymentResult, deploymentId, deploymentTimestamp, output)
+    override fun uploadImage(img: Image, targetPath: String, data: ByteArray): OperationResult {
+        return ipsService.tryUpload(targetPath, data)
+    }
 
-        for (it in orderedDocumentObject) {
+    override fun uploadAttachment(att: Attachment, targetPath: String, data: ByteArray): OperationResult {
+        return ipsService.tryUpload(targetPath, data)
+    }
+
+    override fun uploadDisplayRule(rule: DisplayRule, targetPath: String, data: ByteArray): OperationResult {
+        return OperationResult.Success
+    }
+
+    override fun deployDocumentObjectsInternal(
+        documentObjects: List<DocumentObject>,
+        tracker: ResultTracker,
+        uploadDocumentObject: (DocumentObject, String, String) -> OperationResult,
+        uploadImage: (Image, String, ByteArray) -> OperationResult,
+        uploadAttachment: (Attachment, String, ByteArray) -> OperationResult,
+        uploadDisplayRule: (DisplayRule, String, ByteArray) -> OperationResult,
+    ): DeploymentResult {
+        deployImagesAndAttachments(documentObjects, tracker, uploadImage, uploadAttachment)
+
+        for (it in documentObjects) {
             val targetPath = documentObjectBuilder.getDocumentObjectPath(it)
 
-            if (!shouldDeployObject(it.id, ResourceType.DocumentObject, targetPath, deploymentResult)) {
+            if (!shouldDeployObject(it.id, ResourceType.DocumentObject, targetPath, tracker.deploymentResult)) {
                 logger.info("Skipping deployment of '${it.id}' as it is not marked for deployment.")
                 continue
             }
@@ -88,8 +108,8 @@ class DesignerDeployClient(
             }
 
             try {
-                val templateWfdXml = documentObjectBuilder.buildDocumentObject(it)
-                when (val xml2wfdResult = ipsService.xml2wfd(templateWfdXml, targetPath)) {
+                val templateWfdXml  = documentObjectBuilder.buildDocumentObject(it)
+                when (val xml2wfdResult = uploadDocumentObject(it, targetPath, templateWfdXml)) {
                     OperationResult.Success -> {
                         logger.debug("Deployment of $targetPath is successful.")
                         tracker.deployedDocumentObject(it.id, targetPath, it.type)
@@ -105,7 +125,7 @@ class DesignerDeployClient(
             }
         }
 
-        return deploymentResult
+        return tracker.deploymentResult
     }
 
     override fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObject> {

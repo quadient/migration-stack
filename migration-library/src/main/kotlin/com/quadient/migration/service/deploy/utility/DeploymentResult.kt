@@ -1,10 +1,11 @@
 @file:OptIn(ExperimentalUuidApi::class)
 
-package com.quadient.migration.service.deploy
+package com.quadient.migration.service.deploy.utility
 
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.shared.DocumentObjectType
+import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -37,15 +38,41 @@ enum class ResourceType {
 data class DeploymentError(val id: String, val message: String)
 data class DeploymentWarning(val id: String, val message: String)
 
-class ResultTracker(
-    private val statusTrackingRepository: StatusTrackingRepository,
-    private val deploymentResult: DeploymentResult,
-    private val deploymentId: Uuid,
-    private val timestamp: Instant,
+interface ResultTracker {
+    val deploymentResult: DeploymentResult
+    val deploymentId: Uuid
+    val timestamp: Instant
+
+    fun deployedDocumentObject(id: String, icmPath: String, type: DocumentObjectType)
+    fun deployedImage(id: String, icmPath: String)
+    fun errorDocumentObject(id: String, icmPath: String, type: DocumentObjectType, message: String)
+    fun errorImage(id: String, icmPath: String?, message: String)
+    fun warningImage(id: String, icmPath: String?, message: String)
+    fun deployedAttachment(id: String, icmPath: String)
+    fun errorAttachment(id: String, icmPath: String?, message: String)
+    fun warningAttachment(id: String, icmPath: String?, message: String)
+    fun deployedDisplayRule(id: String, targetPath: String)
+    fun warningDisplayRule(id: String, path: String, message: String)
+    fun errorDisplayRule(id: String, path: String, message: String)
+}
+
+class ResultTrackerImpl(
+    private val statusTrackingRepository: StatusTrackingRepository?,
     private val inspireOutput: InspireOutput,
-) {
-    fun deployedDocumentObject(id: String, icmPath: String, type: DocumentObjectType) {
-        statusTrackingRepository.deployed(
+    override val deploymentResult: DeploymentResult,
+    override val deploymentId: Uuid = Uuid.random(),
+    override val timestamp: Instant = Clock.System.now(),
+) : ResultTracker{
+    constructor(
+        statusTrackingRepository: StatusTrackingRepository?,
+        inspireOutput: InspireOutput,
+        deploymentId: Uuid = Uuid.random(),
+        timestamp: Instant = Clock.System.now(),
+    ) : this(statusTrackingRepository, inspireOutput, DeploymentResult(deploymentId), deploymentId, timestamp) {
+    }
+
+    override fun deployedDocumentObject(id: String, icmPath: String, type: DocumentObjectType) {
+        statusTrackingRepository?.deployed(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
@@ -57,8 +84,8 @@ class ResultTracker(
         deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.DocumentObject, icmPath))
     }
 
-    fun deployedImage(id: String, icmPath: String) {
-        statusTrackingRepository.deployed(
+    override fun deployedImage(id: String, icmPath: String) {
+        statusTrackingRepository?.deployed(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
@@ -69,8 +96,8 @@ class ResultTracker(
         deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.Image, icmPath))
     }
 
-    fun errorDocumentObject(id: String, icmPath: String, type: DocumentObjectType, message: String) {
-        statusTrackingRepository.error(
+    override fun errorDocumentObject(id: String, icmPath: String, type: DocumentObjectType, message: String) {
+        statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
@@ -83,8 +110,8 @@ class ResultTracker(
         deploymentResult.errors.add(DeploymentError(id, message))
     }
 
-    fun errorImage(id: String, icmPath: String?, message: String) {
-        statusTrackingRepository.error(
+    override fun errorImage(id: String, icmPath: String?, message: String) {
+        statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
@@ -96,8 +123,8 @@ class ResultTracker(
         deploymentResult.errors.add(DeploymentError(id, message))
     }
 
-    fun warningImage(id: String, icmPath: String?, message: String) {
-        statusTrackingRepository.error(
+    override fun warningImage(id: String, icmPath: String?, message: String) {
+        statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
@@ -109,8 +136,8 @@ class ResultTracker(
         deploymentResult.warnings.add(DeploymentWarning(id, message))
     }
 
-    fun deployedAttachment(id: String, icmPath: String) {
-        statusTrackingRepository.deployed(
+    override fun deployedAttachment(id: String, icmPath: String) {
+        statusTrackingRepository?.deployed(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
@@ -121,8 +148,8 @@ class ResultTracker(
         deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.Attachment, icmPath))
     }
 
-    fun errorAttachment(id: String, icmPath: String?, message: String) {
-        statusTrackingRepository.error(
+    override fun errorAttachment(id: String, icmPath: String?, message: String) {
+        statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
@@ -134,8 +161,8 @@ class ResultTracker(
         deploymentResult.errors.add(DeploymentError(id, message))
     }
 
-    fun warningAttachment(id: String, icmPath: String?, message: String) {
-        statusTrackingRepository.error(
+    override fun warningAttachment(id: String, icmPath: String?, message: String) {
+        statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
@@ -147,8 +174,8 @@ class ResultTracker(
         deploymentResult.warnings.add(DeploymentWarning(id, message))
     }
 
-    fun deployedDisplayRule(id: String, targetPath: String) {
-        statusTrackingRepository.deployed(
+    override fun deployedDisplayRule(id: String, targetPath: String) {
+        statusTrackingRepository?.deployed(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
@@ -159,8 +186,8 @@ class ResultTracker(
         deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.DisplayRule, targetPath))
     }
 
-    fun warningDisplayRule(id: String, path: String, message: String) {
-        statusTrackingRepository.error(
+    override fun warningDisplayRule(id: String, path: String, message: String) {
+        statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,
@@ -172,8 +199,8 @@ class ResultTracker(
         deploymentResult.warnings.add(DeploymentWarning(id, message))
     }
 
-    fun errorDisplayRule(id: String, path: String, message: String) {
-        statusTrackingRepository.error(
+    override fun errorDisplayRule(id: String, path: String, message: String) {
+        statusTrackingRepository?.error(
             id = id,
             deploymentId = deploymentId,
             timestamp = timestamp,

@@ -7,8 +7,7 @@ import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.persistence.table.DisplayRuleTable
 import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.DocumentObjectTable.variableStructureRef
-import com.quadient.migration.service.deploy.ResourceType
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.tools.concat
 import kotlin.time.Clock
 import kotlin.time.toJavaInstant
