@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+- Fallback placeholder text for unmapped repeated content and row to be distinguishable from one another
+
 ### Fixed
 
 ## [17.0.20] - 2026-04-27

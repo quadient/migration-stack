@@ -1181,7 +1181,7 @@ abstract class InspireDocumentObjectBuilder(
         repeatedRow: Table.RepeatedRow, layout: Layout, variableStructure: VariableStructure, languages: List<String>
     ): GeneralRowSet? {
         val varName = getVariableNameFromPath(repeatedRow.variable, variableStructure)
-        val warning = Paragraph("<repeated by unmapped \$$varName\$>")
+        val warning = Paragraph("<repeated row by unmapped \$$varName\$>")
 
         val rows = repeatedRow.rows
         val rowsWithWarning = rows.firstOrNull()?.let { firstRow ->
@@ -1243,7 +1243,7 @@ abstract class InspireDocumentObjectBuilder(
         languages: List<String>,
     ): Flow {
         val varName = getVariableNameFromPath(model.variablePath, variableStructure)
-        val warning = Paragraph("<repeated by unmapped $$varName$>")
+        val warning = Paragraph("<repeated content by unmapped $$varName$>")
         return buildDocumentContentAsSingleFlow(
             layout, variableStructure, listOf(warning) + model.content, languages = languages
         )
