@@ -1,5 +1,6 @@
 package com.quadient.migration.shared
 
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -96,9 +97,116 @@ class IcmPathTest {
     }
 
     @Test
+    fun `extension replaces existing extension`() {
+        val path = IcmPath.from("icm://Templates/BaseTemplate.wfd")
+
+        assertEquals(path.extension("jld").toString(), "icm://Templates/BaseTemplate.jld")
+    }
+
+    @Test
+    fun `extension replaces existing extension when prefixed with dot`() {
+        val path = IcmPath.from("icm://Templates/BaseTemplate.wfd")
+
+        assertEquals(path.extension(".jld").toString(), "icm://Templates/BaseTemplate.jld")
+    }
+
+    @Test
+    fun `extension appends when no extension exists`() {
+        val path = IcmPath.from("icm://Templates/BaseTemplate")
+
+        assertEquals(path.extension("wfd").toString(), "icm://Templates/BaseTemplate.wfd")
+    }
+
+    @Test
+    fun `extension replaces only the last extension`() {
+        val path = IcmPath.from("icm://Templates/Base.Template.wfd")
+
+        assertEquals(path.extension("jld").toString(), "icm://Templates/Base.Template.jld")
+    }
+
+    @Test
     fun `string to icm path`() {
         val path = "icm://BaseTemplate.wfd".toIcmPath()
 
         assertEquals(path, IcmPath.from("icm://BaseTemplate.wfd"))
+    }
+
+    @Test
+    fun `round-trip kotlinx serialization`() {
+        val original = IcmPath.from("icm://test/dir/template.wfd")
+
+        val json = Json.encodeToString(original)
+        val deserialized = Json.decodeFromString<IcmPath>(json)
+
+        assertEquals(original, deserialized)
+    }
+
+    @Test
+    fun `equals returns true for same IcmPath instances`() {
+        val path1 = IcmPath.from("icm://Templates/Base.wfd")
+        val path2 = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(true, path1 == path2)
+        assertEquals(true, path1.equals(path2))
+    }
+
+    @Test
+    fun `equals returns false for different IcmPath instances`() {
+        val path1 = IcmPath.from("icm://Templates/Base.wfd")
+        val path2 = IcmPath.from("icm://Templates/Other.wfd")
+
+        assertEquals(false, path1 == path2)
+    }
+
+    @Test
+    fun `equals returns true when compared with matching String`() {
+        val path = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(true, path.equals("icm://Templates/Base.wfd"))
+    }
+
+    @Test
+    fun `equals returns false when compared with non-matching String`() {
+        val path = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(false, path.equals("icm://Templates/Other.wfd"))
+    }
+
+    @Test
+    fun `equals returns false when compared with null`() {
+        val path = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(false, path.equals(null))
+    }
+
+    @Test
+    fun `equals returns false when compared with unrelated type`() {
+        val path = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(false, path.equals(42))
+    }
+
+    @Test
+    fun `equals after normalization from vcs`() {
+        val fromVcs = IcmPath.from("vcs://Templates/Base.wfd")
+        val fromIcm = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(true, fromVcs == fromIcm)
+    }
+
+    @Test
+    fun `hashCode is consistent for equal IcmPath instances`() {
+        val path1 = IcmPath.from("icm://Templates/Base.wfd")
+        val path2 = IcmPath.from("icm://Templates/Base.wfd")
+
+        assertEquals(path1.hashCode(), path2.hashCode())
+    }
+
+    @Test
+    fun `hashCode differs for different paths`() {
+        val path1 = IcmPath.from("icm://Templates/Base.wfd")
+        val path2 = IcmPath.from("icm://Templates/Other.wfd")
+
+        assertEquals(false, path1.hashCode() == path2.hashCode())
     }
 }

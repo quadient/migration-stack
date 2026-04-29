@@ -48,7 +48,9 @@ import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.readSafely
 import com.quadient.migration.service.resolveAlias
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
+import com.quadient.migration.shared.toIcmPath
 import org.slf4j.LoggerFactory
 import kotlin.collections.plus
 import kotlin.uuid.ExperimentalUuidApi
@@ -78,20 +80,20 @@ sealed class DeployClient(
 {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
 
-    abstract fun uploadDocumentObject(obj: DocumentObject, targetPath: String, wfdXml: String): OperationResult
-    abstract fun uploadImage(img: Image, targetPath: String, data: ByteArray): OperationResult
-    abstract fun uploadAttachment(att: Attachment, targetPath: String, data: ByteArray): OperationResult
-    abstract fun uploadDisplayRule(rule: DisplayRule, targetPath: String, data: ByteArray): OperationResult
+    abstract fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult
+    abstract fun uploadImage(img: Image, targetPath: IcmPath, data: ByteArray): OperationResult
+    abstract fun uploadAttachment(att: Attachment, targetPath: IcmPath, data: ByteArray): OperationResult
+    abstract fun uploadDisplayRule(rule: DisplayRule, targetPath: IcmPath, data: ByteArray): OperationResult
 
     abstract fun getAllDocumentObjectsToDeploy(): List<DocumentObject>
     abstract fun getDocumentObjectsToDeploy(documentObjectIds: List<String>): List<DocumentObject>
     abstract fun deployDocumentObjectsInternal(
         documentObjects: List<DocumentObject>,
         tracker: ResultTracker,
-        uploadDocumentObject: (DocumentObject, String, String) -> OperationResult,
-        uploadImage: (Image, String, ByteArray) -> OperationResult,
-        uploadAttachment: (Attachment, String, ByteArray) -> OperationResult,
-        uploadDisplayRule: (DisplayRule, String, ByteArray) -> OperationResult,
+        uploadDocumentObject: (DocumentObject, IcmPath, String) -> OperationResult,
+        uploadImage: (Image, IcmPath, ByteArray) -> OperationResult,
+        uploadAttachment: (Attachment, IcmPath, ByteArray) -> OperationResult,
+        uploadDisplayRule: (DisplayRule, IcmPath, ByteArray) -> OperationResult,
     ): DeploymentResult
     abstract fun deployStyles()
 
@@ -179,8 +181,8 @@ sealed class DeployClient(
     protected fun deployImagesAndAttachments(
         documentObjects: List<DocumentObject>,
         tracker: ResultTracker,
-        deployImageCb: (Image, String, ByteArray) -> OperationResult,
-        deployAttachmentCb: (Attachment, String, ByteArray) -> OperationResult,
+        deployImageCb: (Image, IcmPath, ByteArray) -> OperationResult,
+        deployAttachmentCb: (Attachment, IcmPath, ByteArray) -> OperationResult,
     ) {
         val allResourceRefs = documentObjects.flatMap {
             try {
@@ -203,9 +205,9 @@ sealed class DeployClient(
     private fun deployImage(
         imageRef: ImageRef,
         tracker: ResultTracker,
-        deployImage: (Image, String, ByteArray) -> OperationResult,
+        deployImage: (Image, IcmPath, ByteArray) -> OperationResult,
     ) {
-        if (!shouldDeployObject(imageRef.id, ResourceType.Image, imageRef.id, tracker.deploymentResult)) {
+        if (!shouldDeployObject(imageRef.id, ResourceType.Image, imageRef.id.toIcmPath(), tracker.deploymentResult)) {
             logger.info("Skipping deployment of '${imageRef.id}' as it is not marked for deployment.")
             return
         }
@@ -277,9 +279,9 @@ sealed class DeployClient(
     private fun deployAttachment(
         attachmentRef: AttachmentRef,
         tracker: ResultTracker,
-        deployAttachment: (Attachment, String, ByteArray) -> OperationResult,
+        deployAttachment: (Attachment, IcmPath, ByteArray) -> OperationResult,
         ) {
-        if (!shouldDeployObject(attachmentRef.id, ResourceType.Attachment, attachmentRef.id, tracker.deploymentResult)) {
+        if (!shouldDeployObject(attachmentRef.id, ResourceType.Attachment, attachmentRef.id.toIcmPath(), tracker.deploymentResult)) {
             logger.info("Skipping deployment of attachment '${attachmentRef.id}' as it is not marked for deployment.")
             return
         }
@@ -333,7 +335,7 @@ sealed class DeployClient(
     }
 
     protected fun shouldDeployObject(
-        id: String, resourceType: ResourceType, targetPath: String?, deploymentResult: DeploymentResult
+        id: String, resourceType: ResourceType, targetPath: IcmPath?, deploymentResult: DeploymentResult
     ): Boolean {
         val currentStatus = statusTrackingRepository.findLastEventRelevantToOutput(id, resourceType, output)
 

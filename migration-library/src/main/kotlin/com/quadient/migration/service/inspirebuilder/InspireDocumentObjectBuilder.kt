@@ -129,27 +129,27 @@ abstract class InspireDocumentObjectBuilder(
 
     protected val fontDataCache = ConcurrentHashMap<FontKey, String>()
 
-    abstract fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): String
-
-    abstract fun getDocumentObjectPath(documentObject: DocumentObject): String
+    abstract fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): IcmPath
+    fun getDocumentObjectPath(documentObject: DocumentObject) =
+        getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder?.let { IcmPath.from(it) })
 
     abstract fun getImagePath(
         id: String, imageType: ImageType, name: String?, targetFolder: IcmPath?, sourcePath: String?
-    ): String
-
-    abstract fun getImagePath(image: Image): String
+    ): IcmPath
+    fun getImagePath(image: Image) =
+        getImagePath(image.id, image.imageType ?: ImageType.Unknown, image.name, image.targetFolder?.let { IcmPath.from(it) }, image.sourcePath)
 
     abstract fun getAttachmentPath(
         id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType
-    ): String
+    ): IcmPath
+    fun getAttachmentPath(attachment: Attachment): IcmPath =
+        getAttachmentPath(attachment.id, attachment.name, attachment.targetFolder?.let { IcmPath.from(it) }, attachment.sourcePath, attachment.attachmentType)
 
     abstract fun getDisplayRulePath(rule: DisplayRule): IcmPath
 
-    abstract fun getAttachmentPath(attachment: Attachment): String
+    abstract fun getStyleDefinitionPath(): IcmPath
 
-    abstract fun getStyleDefinitionPath(): String
-
-    abstract fun getFontRootFolder(): String
+    abstract fun getFontRootFolder(): IcmPath
 
     abstract fun buildDocumentObject(documentObject: DocumentObject): String
 
@@ -649,7 +649,7 @@ abstract class InspireDocumentObjectBuilder(
 
     protected fun getOrBuildImage(layout: Layout, imageModel: Image, alternateText: String? = null): WfdXmlImage {
         val image = getImageByName(layout, imageModel.nameOrId()) ?: layout.addImage().setName(imageModel.nameOrId())
-            .setImageLocation(getImagePath(imageModel), LocationType.ICM)
+            .setImageLocation(getImagePath(imageModel).toString(), LocationType.ICM)
 
         val options = imageModel.options
         if (options != null) {
@@ -694,7 +694,7 @@ abstract class InspireDocumentObjectBuilder(
             layout.addFlow()
                 .setName(attachmentModel.nameOrId())
                 .setType(Flow.Type.DIRECT_EXTERNAL)
-                .setLocation(getAttachmentPath(attachmentModel))
+                .setLocation(getAttachmentPath(attachmentModel).toString())
         }
 
         return flow

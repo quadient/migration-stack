@@ -24,6 +24,7 @@ import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuild
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmPath
 import kotlin.time.Clock
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -64,29 +65,29 @@ class DesignerDeployClient(
         return documentObject.type != DocumentObjectType.Page && documentObject.internal != true
     }
 
-    override fun uploadDocumentObject(obj: DocumentObject, targetPath: String, wfdXml: String): OperationResult {
+    override fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult {
         return ipsService.xml2wfd(wfdXml, targetPath)
     }
 
-    override fun uploadImage(img: Image, targetPath: String, data: ByteArray): OperationResult {
+    override fun uploadImage(img: Image, targetPath: IcmPath, data: ByteArray): OperationResult {
         return ipsService.tryUpload(targetPath, data)
     }
 
-    override fun uploadAttachment(att: Attachment, targetPath: String, data: ByteArray): OperationResult {
+    override fun uploadAttachment(att: Attachment, targetPath: IcmPath, data: ByteArray): OperationResult {
         return ipsService.tryUpload(targetPath, data)
     }
 
-    override fun uploadDisplayRule(rule: DisplayRule, targetPath: String, data: ByteArray): OperationResult {
+    override fun uploadDisplayRule(rule: DisplayRule, targetPath: IcmPath, data: ByteArray): OperationResult {
         return OperationResult.Success
     }
 
     override fun deployDocumentObjectsInternal(
         documentObjects: List<DocumentObject>,
         tracker: ResultTracker,
-        uploadDocumentObject: (DocumentObject, String, String) -> OperationResult,
-        uploadImage: (Image, String, ByteArray) -> OperationResult,
-        uploadAttachment: (Attachment, String, ByteArray) -> OperationResult,
-        uploadDisplayRule: (DisplayRule, String, ByteArray) -> OperationResult,
+        uploadDocumentObject: (DocumentObject, IcmPath, String) -> OperationResult,
+        uploadImage: (Image, IcmPath, ByteArray) -> OperationResult,
+        uploadAttachment: (Attachment, IcmPath, ByteArray) -> OperationResult,
+        uploadDisplayRule: (DisplayRule, IcmPath, ByteArray) -> OperationResult,
     ): DeploymentResult {
         deployImagesAndAttachments(documentObjects, tracker, uploadImage, uploadAttachment)
 

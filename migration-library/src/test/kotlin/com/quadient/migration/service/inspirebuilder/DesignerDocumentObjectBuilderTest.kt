@@ -104,7 +104,7 @@ class DesignerDocumentObjectBuilderTest {
         every { textStyleRepository.listAll() } returns emptyList()
         every { paragraphStyleRepository.listAll() } returns emptyList()
         every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Fonts/arial.ttf;"
-        every { ipsService.fileExists(any()) } returns false
+        every { ipsService.fileExists(any<IcmPath>()) } returns false
     }
 
     @Test
@@ -811,7 +811,7 @@ class DesignerDocumentObjectBuilderTest {
         val block = aDocObj("B_1", Block, listOf(aParagraph(aText("Text")))).mock()
         val config = aProjectConfig(sourceBaseTemplatePath = "icm://sourceBaseTemplate.wfd")
 
-        every { ipsService.wfd2xml("icm://sourceBaseTemplate.wfd") } returns """
+        every { ipsService.wfd2xml("icm://sourceBaseTemplate.wfd".toIcmPath()) } returns """
         <Workflow>
           <Property>
             <Name>AFPApplyMediumOrientation</Name>
@@ -861,7 +861,7 @@ class DesignerDocumentObjectBuilderTest {
         val block2 = aDocObj("B_2", Block, listOf(aParagraph(aText("Text")))).mock()
         val config = aProjectConfig(sourceBaseTemplatePath = "icm://sourceBaseTemplate.wfd")
 
-        every { ipsService.wfd2xml("icm://sourceBaseTemplate.wfd") } returns """
+        every { ipsService.wfd2xml("icm://sourceBaseTemplate.wfd".toIcmPath()) } returns """
         <Workflow>
           <Property>
             <Name>AFPApplyPageTransformation</Name>
@@ -886,7 +886,7 @@ class DesignerDocumentObjectBuilderTest {
         subject.buildDocumentObject(block2)
 
         // then
-        verify(exactly = 1) { ipsService.wfd2xml(any()) }
+        verify(exactly = 1) { ipsService.wfd2xml(any<IcmPath>()) }
     }
 
     @Test
@@ -948,7 +948,7 @@ class DesignerDocumentObjectBuilderTest {
         subject.buildDocumentObject(blockB)
 
         // then
-        verify(exactly = 1) { ipsService.gatherFontData("icm://") }
+        verify(exactly = 1) { ipsService.gatherFontData("icm://".toIcmPath()) }
     }
 
     private fun DocumentObject.mock(): DocumentObject {
@@ -1072,7 +1072,7 @@ class DesignerDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getImagePath(image)
 
-            path.shouldBeEqualTo(expected)
+            path.toString().shouldBeEqualTo(expected)
         }
 
         @ParameterizedTest
@@ -1100,7 +1100,7 @@ class DesignerDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getDocumentObjectPath(image)
 
-            path.shouldBeEqualTo(expected)
+            path.toString().shouldBeEqualTo(expected)
         }
 
         @ParameterizedTest
@@ -1123,7 +1123,7 @@ class DesignerDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getStyleDefinitionPath()
 
-            path.shouldBeEqualTo(expected)
+            path.toString().shouldBeEqualTo(expected)
         }
 
         @ParameterizedTest
@@ -1137,7 +1137,7 @@ class DesignerDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getFontRootFolder()
 
-            path.shouldBeEqualTo(expected)
+            path.toString().shouldBeEqualTo(expected)
         }
 
         @Test
@@ -1191,7 +1191,7 @@ class DesignerDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getAttachmentPath(attachment)
 
-            path.shouldBeEqualTo(expected)
+            path.toString().shouldBeEqualTo(expected)
         }
 
         @Test
@@ -1202,7 +1202,7 @@ class DesignerDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getAttachmentPath(attachment)
 
-            path.shouldBeEqualTo("icm://document.pdf")
+            path.toString().shouldBeEqualTo("icm://document.pdf")
         }
 
         @Test
@@ -1213,7 +1213,7 @@ class DesignerDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getAttachmentPath(attachment)
 
-            path.shouldBeEqualTo("icm://report.docx")
+            path.toString().shouldBeEqualTo("icm://report.docx")
         }
     }
 }

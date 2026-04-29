@@ -24,6 +24,7 @@ import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmPath
 import kotlin.reflect.KClass
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -220,7 +221,7 @@ class ProgressReporterImpl(
                                     null
                                 }
                                 else -> {
-                                    val nextIcmPath = documentObjectBuilder.getDisplayRulePath(rule).toString()
+                                    val nextIcmPath = documentObjectBuilder.getDisplayRulePath(rule)
                                     val deployKind = rule.getDeployKind(nextIcmPath)
                                     val lastStatus = rule.getLastStatus(lastDeployment)
 
@@ -346,7 +347,7 @@ class ProgressReporterImpl(
         )
     }
 
-    private fun DocumentObject.getDeployKind(nextIcmPath: String?): DeployKind {
+    private fun DocumentObject.getDeployKind(nextIcmPath: IcmPath?): DeployKind {
         return getDeployKind(
             this.id,
             ResourceType.DocumentObject,
@@ -357,11 +358,11 @@ class ProgressReporterImpl(
         )
     }
 
-    private fun Image.getDeployKind(nextIcmPath: String?): DeployKind {
+    private fun Image.getDeployKind(nextIcmPath: IcmPath?): DeployKind {
         return getDeployKind(this.id, ResourceType.Image, output, false, nextIcmPath)
     }
 
-    private fun Attachment.getDeployKind(nextIcmPath: String?): DeployKind {
+    private fun Attachment.getDeployKind(nextIcmPath: IcmPath?): DeployKind {
         return getDeployKind(this.id, ResourceType.Attachment, output, false, nextIcmPath)
     }
 
@@ -370,7 +371,7 @@ class ProgressReporterImpl(
         resourceType: ResourceType,
         output: InspireOutput,
         internal: Boolean = false,
-        nextIcmPath: String?,
+        nextIcmPath: IcmPath?,
         isPage: Boolean = false
     ): DeployKind {
         if (internal) {
@@ -395,7 +396,7 @@ class ProgressReporterImpl(
         }
     }
 
-    private fun DisplayRule.getDeployKind(nextIcmPath: String?): DeployKind {
+    private fun DisplayRule.getDeployKind(nextIcmPath: IcmPath?): DeployKind {
         return getDeployKind(this.id, ResourceType.DisplayRule, output, this.internal, nextIcmPath)
     }
 
@@ -417,26 +418,26 @@ enum class DeployKind {
 
 sealed class LastStatus {
     data class Created(
-        override val icmPath: String?,
+        override val icmPath: IcmPath?,
         override val deployId: Uuid?,
         override val deployTimestamp: Instant?
     ) : LastStatus()
 
     data class Overwritten(
-        override val icmPath: String?,
+        override val icmPath: IcmPath?,
         override val deployId: Uuid?,
         override val deployTimestamp: Instant?
     ) : LastStatus()
 
     data class Unchanged(
-        override val icmPath: String?,
+        override val icmPath: IcmPath?,
         override val deployId: Uuid?,
         override val deployTimestamp: Instant?
     ) : LastStatus()
 
     object Inlined : LastStatus()
     data class Error(
-        override val icmPath: String?,
+        override val icmPath: IcmPath?,
         override val deployId: Uuid?,
         override val deployTimestamp: Instant?,
         override val errorMessage: String?
@@ -444,7 +445,7 @@ sealed class LastStatus {
 
     object None : LastStatus()
 
-    open val icmPath: String?
+    open val icmPath: IcmPath?
         get() = when (this) {
             is Created -> icmPath
             is Overwritten -> icmPath
@@ -483,8 +484,8 @@ sealed class LastStatus {
 
 sealed class ProgressReportItem(
     open val id: String,
-    open val previousIcmPath: String? = null,
-    open val nextIcmPath: String? = null,
+    open val previousIcmPath: IcmPath? = null,
+    open val nextIcmPath: IcmPath? = null,
     open val deployKind: DeployKind,
     open val lastStatus: LastStatus,
     open val deploymentId: Uuid?,
@@ -494,8 +495,8 @@ sealed class ProgressReportItem(
 
 data class ReportedDocObject(
     override val id: String,
-    override val previousIcmPath: String? = null,
-    override val nextIcmPath: String? = null,
+    override val previousIcmPath: IcmPath? = null,
+    override val nextIcmPath: IcmPath? = null,
     override val deployKind: DeployKind,
     override val lastStatus: LastStatus,
     override val deploymentId: Uuid?,
@@ -515,8 +516,8 @@ data class ReportedDocObject(
 
 data class ReportedImage(
     override val id: String,
-    override val previousIcmPath: String? = null,
-    override val nextIcmPath: String? = null,
+    override val previousIcmPath: IcmPath? = null,
+    override val nextIcmPath: IcmPath? = null,
     override val deployKind: DeployKind,
     override val lastStatus: LastStatus,
     override val deploymentId: Uuid?,
@@ -536,8 +537,8 @@ data class ReportedImage(
 
 data class ReportedFile(
     override val id: String,
-    override val previousIcmPath: String? = null,
-    override val nextIcmPath: String? = null,
+    override val previousIcmPath: IcmPath? = null,
+    override val nextIcmPath: IcmPath? = null,
     override val deployKind: DeployKind,
     override val lastStatus: LastStatus,
     override val deploymentId: Uuid?,
@@ -557,8 +558,8 @@ data class ReportedFile(
 
 data class ReportedDisplayRule(
     override val id: String,
-    override val previousIcmPath: String? = null,
-    override val nextIcmPath: String? = null,
+    override val previousIcmPath: IcmPath? = null,
+    override val nextIcmPath: IcmPath? = null,
     override val deployKind: DeployKind,
     override val lastStatus: LastStatus,
     override val deploymentId: Uuid?,
@@ -580,8 +581,8 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
     fun addDocumentObject(
         id: String,
         documentObject: DocumentObject?,
-        previousIcmPath: String? = null,
-        nextIcmPath: String? = null,
+        previousIcmPath: IcmPath? = null,
+        nextIcmPath: IcmPath? = null,
         deployKind: DeployKind,
         lastStatus: LastStatus,
         deploymentId: Uuid?,
@@ -606,8 +607,8 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
     fun addImage(
         id: String,
         image: Image?,
-        previousIcmPath: String? = null,
-        nextIcmPath: String? = null,
+        previousIcmPath: IcmPath? = null,
+        nextIcmPath: IcmPath? = null,
         deployKind: DeployKind,
         lastStatus: LastStatus,
         deploymentId: Uuid?,
@@ -632,8 +633,8 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
     fun addAttachment(
         id: String,
         attachment: Attachment?,
-        previousIcmPath: String? = null,
-        nextIcmPath: String? = null,
+        previousIcmPath: IcmPath? = null,
+        nextIcmPath: IcmPath? = null,
         deployKind: DeployKind,
         lastStatus: LastStatus,
         deploymentId: Uuid?,
@@ -658,8 +659,8 @@ data class ProgressReport(val id: Uuid?, val items: MutableMap<Pair<String, Reso
     fun addDisplayRule(
         id: String,
         displayRule: DisplayRule?,
-        previousIcmPath: String? = null,
-        nextIcmPath: String? = null,
+        previousIcmPath: IcmPath? = null,
+        nextIcmPath: IcmPath? = null,
         deployKind: DeployKind,
         lastStatus: LastStatus,
         deploymentId: Uuid?,

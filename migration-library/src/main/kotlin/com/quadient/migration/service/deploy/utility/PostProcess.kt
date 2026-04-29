@@ -83,7 +83,7 @@ class PostProcessImpl(
                     }
                 }.mapNotNull { (info, metadata) ->
                     metadata.ifEmpty { null }?.let {
-                        IcmFileMetadata(path = info.targetPath, metadata = metadata.toMetadata())
+                        IcmFileMetadata(path = info.targetPath.toString(), metadata = metadata.toMetadata())
                     }
                 }
 

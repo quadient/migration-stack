@@ -10,6 +10,7 @@ import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.Error
 import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.service.deploy.utility.ResourceType
+import com.quadient.migration.shared.IcmPath
 import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -47,7 +48,7 @@ class StatusTrackingRepository(val projectName: String) {
         deploymentId: Uuid,
         timestamp: Instant,
         resourceType: ResourceType,
-        icmPath: String?,
+        icmPath: IcmPath?,
         output: InspireOutput,
         message: String,
         data: Map<String, String> = emptyMap(),
@@ -60,7 +61,7 @@ class StatusTrackingRepository(val projectName: String) {
         deploymentId: String,
         timestamp: Long,
         resourceType: ResourceType,
-        icmPath: String?,
+        icmPath: IcmPath?,
         output: InspireOutput,
         data: Map<String, String> = emptyMap(),
     ): StatusTracking {
@@ -80,7 +81,7 @@ class StatusTrackingRepository(val projectName: String) {
         deploymentId: Uuid,
         timestamp: Instant,
         resourceType: ResourceType,
-        icmPath: String?,
+        icmPath: IcmPath?,
         output: InspireOutput,
         data: Map<String, String> = emptyMap(),
     ): StatusTracking {

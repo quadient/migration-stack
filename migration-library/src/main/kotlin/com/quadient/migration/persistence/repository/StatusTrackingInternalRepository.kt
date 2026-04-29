@@ -7,6 +7,7 @@ import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.persistence.table.StatusTrackingEntity
 import com.quadient.migration.persistence.table.StatusTrackingTable
 import com.quadient.migration.service.deploy.utility.ResourceType
+import com.quadient.migration.shared.IcmPath
 import kotlin.time.Instant
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.eq
@@ -68,7 +69,7 @@ class StatusTrackingInternalRepository(val projectName: String) {
         deploymentId: Uuid,
         timestamp: Instant,
         resourceType: ResourceType,
-        icmPath: String?,
+        icmPath: IcmPath?,
         output: InspireOutput,
         message: String,
         data: Map<String, String> = emptyMap(),
@@ -81,7 +82,7 @@ class StatusTrackingInternalRepository(val projectName: String) {
         deploymentId: Uuid,
         timestamp: Instant,
         resourceType: ResourceType,
-        icmPath: String?,
+        icmPath: IcmPath?,
         output: InspireOutput,
         data: Map<String, String> = emptyMap(),
     ): StatusTrackingEntity {

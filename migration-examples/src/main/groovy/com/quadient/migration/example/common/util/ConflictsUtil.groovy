@@ -1,8 +1,8 @@
 package com.quadient.migration.example.common.util
 
 import com.quadient.migration.api.dto.migrationmodel.ResourceId
-import com.quadient.migration.service.deploy.utility.DeployedPath
 import com.quadient.migration.service.deploy.utility.ValidationResult
+import com.quadient.migration.shared.IcmPath
 import groovy.transform.Field
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -36,7 +36,7 @@ static void logConflictResult(ValidationResult result) {
     logConflictGroup("With previously deployed resources", result.conflictingWithPreviousResources)
 }
 
-private static void logConflictGroup(String title, Map<DeployedPath, Set<ResourceId>> conflicts) {
+private static void logConflictGroup(String title, Map<IcmPath, Set<ResourceId>> conflicts) {
     if (!conflicts || conflicts.isEmpty()) {
         return
     }

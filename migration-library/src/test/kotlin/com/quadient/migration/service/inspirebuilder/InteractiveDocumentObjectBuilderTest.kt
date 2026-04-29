@@ -109,8 +109,8 @@ class InteractiveDocumentObjectBuilderTest {
     @BeforeEach
     fun setUp() {
         every { variableStructureRepository.listAll() } returns emptyList()
-        every { ipsService.fileExists(any()) } returns true
-        every { ipsService.wfd2xml(any()) } returns "<Workflow><Layout><Layout></Layout></Layout></Workflow>"
+        every { ipsService.fileExists(any<IcmPath>()) } returns true
+        every { ipsService.wfd2xml(any<IcmPath>()) } returns "<Workflow><Layout><Layout></Layout></Layout></Workflow>"
     }
 
     @Test
@@ -1037,11 +1037,7 @@ class InteractiveDocumentObjectBuilderTest {
         )
 
         every {
-            ipsService.wfd2xml(
-                getBaseTemplateFullPath(
-                    config, null
-                ).toString()
-            )
+            ipsService.wfd2xml(getBaseTemplateFullPath(config, null))
         } returns """<Workflow>
             <Layout>
                 <Layout>
@@ -1112,11 +1108,7 @@ class InteractiveDocumentObjectBuilderTest {
         )
 
         every {
-            ipsService.wfd2xml(
-                getBaseTemplateFullPath(
-                    config, null
-                ).toString()
-            )
+            ipsService.wfd2xml(getBaseTemplateFullPath(config, null))
         } returns """<Workflow>
             <Layout>
                 <Layout>
@@ -1742,7 +1734,7 @@ class InteractiveDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getImagePath(image)
 
-            path.shouldBeEqualTo(expected)
+            path.toString().shouldBeEqualTo(expected)
         }
 
         @ParameterizedTest
@@ -1771,7 +1763,7 @@ class InteractiveDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getDocumentObjectPath(image)
 
-            path.shouldBeEqualTo(expected)
+            path.toString().shouldBeEqualTo(expected)
         }
 
         @ParameterizedTest
@@ -1795,7 +1787,7 @@ class InteractiveDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getStyleDefinitionPath()
 
-            path.shouldBeEqualTo(expected)
+            path.toString().shouldBeEqualTo(expected)
         }
 
         @ParameterizedTest
@@ -1812,7 +1804,7 @@ class InteractiveDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getFontRootFolder()
 
-            path.shouldBeEqualTo(expected)
+            path.toString().shouldBeEqualTo(expected)
         }
 
         @Test
@@ -1868,7 +1860,7 @@ class InteractiveDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getAttachmentPath(attachment)
 
-            path.shouldBeEqualTo(expected)
+            path.toString().shouldBeEqualTo(expected)
         }
 
         @Test
@@ -1879,7 +1871,7 @@ class InteractiveDocumentObjectBuilderTest {
 
             val path = pathTestSubject.getAttachmentPath(attachment)
 
-            path.shouldBeEqualTo("icm://Interactive/tenant/Documents/document.pdf")
+            path.toString().shouldBeEqualTo("icm://Interactive/tenant/Documents/document.pdf")
         }
     }
 }
