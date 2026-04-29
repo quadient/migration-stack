@@ -34,8 +34,7 @@ class InteractiveSnippetBuilder(
         variableStructure: VariableStructure
     ): String {
         return if (documentObject.content.first() is FirstMatch) {
-            error("First match snippets are not supported yet")
-//            wfdXmlBuilder.buildFirstMatchSnippet(documentObject, layout, variableStructure)
+            wfdXmlBuilder.buildFirstMatchSnippet(documentObject, layout, variableStructure)
         } else if (documentObject.content.all { it is VariableStringContent }) {
             wfdXmlBuilder.buildSimpleSnippet(documentObject, layout, variableStructure)
         } else {

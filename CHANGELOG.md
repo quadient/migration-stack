@@ -9,10 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 
 - Conflict validation as a check to prevent any overwrites by the following deployment
+- Allow building of first match snippets
 
 ### Changed
 
 - Fallback placeholder text for unmapped repeated content and row to be distinguishable from one another
+- Minimal supported Designer version is now 17.0.674.0
 
 ### Fixed
 

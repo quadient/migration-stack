@@ -519,6 +519,23 @@ def snippet = new DocumentObjectBuilder("snippet", DocumentObjectType.Snippet)
         .variableStructureRef(variableStructure)
         .build()
 
+// A simple first match snippet example
+def fmSnippet = new DocumentObjectBuilder("firstMatchSnippet", DocumentObjectType.Snippet)
+    .firstMatch { firstMatchBuilder ->
+        firstMatchBuilder
+            .case { caseBuilder ->
+                caseBuilder.displayRule(displayRuleStateCzechia)
+                caseBuilder.string("Pro více informací navštivte ")
+            }
+            .case { caseBuilder ->
+                caseBuilder.displayRule(displayRuleStateFrance)
+                caseBuilder.string("Pour plus d’informations, visitez ")
+            }
+            .defaultString("For more information visit ")
+    }
+    .build()
+
+
 // A simple shape used as a separator after the table
 def separator = new ShapeBuilder()
     .name("separator")
@@ -580,7 +597,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                     .paragraph {
                         it.styleRef(spaceParagraphStyle).text {
                             it.styleRef(normalStyle)
-                                    .string("For more information visit ")
+                                    .documentObjectRef(fmSnippet)
                                     .hyperlink("https://github.com/quadient/migration-stack", "Migration Stack GitHub", "Migration Stack GitHub URL link")
                         }
                     }
@@ -613,7 +630,7 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
         .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, snippet]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, snippet, fmSnippet]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {

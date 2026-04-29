@@ -1588,6 +1588,79 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `builds a first match snippet`() {
+        val subject = aSubject(aProjectConfig(defaultVariableStructure = "VS_1"))
+        val variable1 = VariableBuilder("V_1").dataType(DataType.String).build().mock()
+        val variable2 = VariableBuilder("V_2").dataType(DataType.String).build().mock()
+        VariableStructureBuilder("VS_1")
+            .addVariable(variable1.id, "Data", "V_1")
+            .addVariable(variable2.id, "Data", "V_2")
+            .build()
+            .mock()
+        val rule1 = aDisplayRule(Literal("A", LiteralDataType.String), Equals, Literal("B", LiteralDataType.String), id = "R_1").mock()
+        val rule2 = aDisplayRule(Literal("C", LiteralDataType.String), Equals, Literal("C", LiteralDataType.String), id = "R_2").mock()
+
+        val docObj = DocumentObjectBuilder("S_1", Snippet)
+            .firstMatch {
+                case {
+                    displayRule(rule1.id)
+                    string("Hello ")
+                    variable(variable1)
+                }
+                case {
+                    displayRule(rule2.id)
+                    string("Goodbye ")
+                    variable(variable2)
+                }
+                defaultString("Default text")
+            }
+            .build()
+            .mock()
+
+        val result = subject.buildDocumentObject(docObj).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // main flow should be SelectByInlineCondition
+        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
+        mainFlow["Type"].textValue().shouldBeEqualTo("InlCond")
+
+        // should have two conditions
+        val conditions = mainFlow["Condition"]
+        conditions.size().shouldBeEqualTo(2)
+
+        // first case condition script
+        conditions[0]["Value"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val case1FlowId = conditions[0][""].textValue()
+        val case1Flow = result["Flow"].last { it["Id"].textValue() == case1FlowId }
+        case1Flow["Type"].textValue().shouldBeEqualTo("OverflowableVariableFormatted")
+        val case1VarId = case1Flow["Variable"].textValue()
+        val case1Var = result["Variable"].last { it["Id"].textValue() == case1VarId }
+        case1Var["Type"].textValue().shouldBeEqualTo("Calculated")
+        case1Var["VarType"].textValue().shouldBeEqualTo("String")
+        case1Var["Script"].textValue().shouldBeEqualTo($$"""return 'Hello ' + '<var name="V_1">';""")
+
+        // second case condition script
+        conditions[1]["Value"].textValue().shouldBeEqualTo("return (String('C')==String('C'));")
+        val case2FlowId = conditions[1][""].textValue()
+        val case2Flow = result["Flow"].last { it["Id"].textValue() == case2FlowId }
+        case2Flow["Type"].textValue().shouldBeEqualTo("OverflowableVariableFormatted")
+        val case2VarId = case2Flow["Variable"].textValue()
+        val case2Var = result["Variable"].last { it["Id"].textValue() == case2VarId }
+        case2Var["Type"].textValue().shouldBeEqualTo("Calculated")
+        case2Var["VarType"].textValue().shouldBeEqualTo("String")
+        case2Var["Script"].textValue().shouldBeEqualTo($$"""return 'Goodbye ' + '<var name="V_2">';""")
+
+        // default flow
+        val defaultFlowId = mainFlow["Default"].textValue()
+        val defaultFlow = result["Flow"].last { it["Id"].textValue() == defaultFlowId }
+        defaultFlow["Type"].textValue().shouldBeEqualTo("OverflowableVariableFormatted")
+        val defaultVarId = defaultFlow["Variable"].textValue()
+        val defaultVar = result["Variable"].last { it["Id"].textValue() == defaultVarId }
+        defaultVar["Type"].textValue().shouldBeEqualTo("Calculated")
+        defaultVar["VarType"].textValue().shouldBeEqualTo("String")
+        defaultVar["Script"].textValue().shouldBeEqualTo("return 'Default text';")
+    }
+
+    @Test
     fun `buildDocumentObject correctly sets table style name`() {
         val block = DocumentObjectBuilder("T1", Block)
             .table { tableStyleName("testTableStyle1") }

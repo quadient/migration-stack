@@ -3,7 +3,7 @@ package com.quadient.migration.service.ipsclient
 data class Version(val major: Int, val minor: Int, val patch: Int, val revision: Int) : Comparable<Version> {
     companion object {
         val SUPPORTED_MAJOR_VERSION_RANGE = listOf(Version(17, 0, 600, 0)..Version(17, 0, 999, 9))
-        val SUPPORTED_VERSION_RANGES = listOf(Version(17, 0, 638, 0)..Version(17, 0, 999, 9))
+        val SUPPORTED_VERSION_RANGES = listOf(Version(17, 0, 674, 0)..Version(17, 0, 999, 9))
 
         fun parse(versionString: String): ParseResult {
             val parts = versionString.split(".")

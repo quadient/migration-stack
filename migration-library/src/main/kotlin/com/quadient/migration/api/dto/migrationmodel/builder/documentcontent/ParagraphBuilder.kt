@@ -1,6 +1,5 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
-import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ColumnLayoutBuilder
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
@@ -9,6 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
@@ -263,6 +263,15 @@ class ParagraphBuilder {
          */
         fun documentObjectRef(documentObjectId: String, displayRuleId: String) = apply {
             content.add(DocumentObjectRef(documentObjectId, DisplayRuleRef(displayRuleId)))
+        }
+
+        /**
+         * Adds a document object reference to the content.
+         * @param documentObject The [DocumentObject] to reference.
+         * @return This builder instance for method chaining.
+         */
+        fun documentObjectRef(documentObject: DocumentObject) = apply {
+            this.content.add(DocumentObjectRef(documentObject.id, null))
         }
 
         /**
