@@ -1,6 +1,7 @@
 package com.quadient.migration.example.common.util
 
 import com.quadient.migration.api.dto.migrationmodel.ResourceId
+import com.quadient.migration.service.deploy.utility.PreviousConflict
 import com.quadient.migration.service.deploy.utility.ValidationResult
 import com.quadient.migration.shared.IcmPath
 import groovy.transform.Field
@@ -33,7 +34,7 @@ static void logConflictResult(ValidationResult result) {
 
     log.error "Conflict validation found potential overwrite risks:"
     logConflictGroup("Within this deployment batch", result.conflictingInBatchResources)
-    logConflictGroup("With previously deployed resources", result.conflictingWithPreviousResources)
+    logPreviousConflictGroup("With previously deployed resources", result.conflictingWithPreviousResources)
 }
 
 private static void logConflictGroup(String title, Map<IcmPath, Set<ResourceId>> conflicts) {
@@ -54,6 +55,36 @@ private static void logConflictGroup(String title, Map<IcmPath, Set<ResourceId>>
 
             lines << "  - ${entry.key.toString()}"
             lines << "    resources: [${resources}]"
+        }
+
+    log.error(lines.join(System.lineSeparator()))
+}
+
+private static void logPreviousConflictGroup(String title, Map<IcmPath, PreviousConflict> conflicts) {
+    if (!conflicts || conflicts.isEmpty()) {
+        return
+    }
+
+    def lines = ["${title} (${conflicts.size()} path${conflicts.size() == 1 ? '' : 's'})"]
+
+    conflicts.entrySet()
+        .sort { a, b -> a.key.toString() <=> b.key.toString() }
+        .each { entry ->
+            def current = entry.value.current
+                .toList()
+                .sort { a, b -> formatResource(a) <=> formatResource(b) }
+                .collect { formatResource(it) }
+                .join(', ')
+
+            def previous = entry.value.previous
+                .toList()
+                .sort { a, b -> formatResource(a) <=> formatResource(b) }
+                .collect { formatResource(it) }
+                .join(', ')
+
+            lines << "  - ${entry.key.toString()}"
+            lines << "    current: [${current}]"
+            lines << "    previously deployed: [${previous}]"
         }
 
     log.error(lines.join(System.lineSeparator()))

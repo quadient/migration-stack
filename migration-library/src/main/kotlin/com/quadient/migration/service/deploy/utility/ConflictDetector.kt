@@ -72,7 +72,7 @@ class ConflictDetectorImpl(
         }
 
         val conflictingInBatchResources: PathToResources  = mutableMapOf()
-        val conflictingWithPreviousResources: PathToResources  = mutableMapOf()
+        val conflictingWithPreviousResources: MutableMap<IcmPath, PreviousConflict> = mutableMapOf()
         for ((path, resources) in pathsToResourcesMap) {
             if (resources.size > 1) {
                 conflictingInBatchResources[path] = resources
@@ -80,7 +80,10 @@ class ConflictDetectorImpl(
 
             val previouslyDeployed = previouslyDeployedPaths[path]
             if (previouslyDeployed != null && resources.any { it !in previouslyDeployed }) {
-                conflictingWithPreviousResources[path] = resources
+                conflictingWithPreviousResources[path] = PreviousConflict(
+                    current = resources,
+                    previous = previouslyDeployed,
+                )
             }
         }
 
@@ -118,9 +121,12 @@ typealias DeployFn = (
 ) -> DeploymentResult
 
 typealias PathToResources = MutableMap<IcmPath, Set<ResourceId>>
+
+data class PreviousConflict(val current: Set<ResourceId>, val previous: Set<ResourceId>)
+
 data class ValidationResult(
     val conflictingInBatchResources: Map<IcmPath, Set<ResourceId>>,
-    val conflictingWithPreviousResources: Map<IcmPath, Set<ResourceId>>,
+    val conflictingWithPreviousResources: Map<IcmPath, PreviousConflict>,
     val deploymentResult: DeploymentResult,
 ) {
     fun hasNoConflicts() = conflictingInBatchResources.isEmpty() && conflictingWithPreviousResources.isEmpty()

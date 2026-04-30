@@ -508,7 +508,8 @@ class DesignerDeployClientTest {
             val result = subject.validateConflicts()
 
             assertEquals(1, result.conflictingWithPreviousResources.size)
-            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().current.map { it.id }.toSet())
+            assertEquals(setOf("B_1"), result.conflictingWithPreviousResources.values.single().previous.map { it.id }.toSet())
         }
 
         @Test
@@ -534,7 +535,8 @@ class DesignerDeployClientTest {
             val result = subject.validateConflicts()
 
             assertEquals(1, result.conflictingWithPreviousResources.size)
-            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().current.map { it.id }.toSet())
+            assertEquals(setOf("B_1"), result.conflictingWithPreviousResources.values.single().previous.map { it.id }.toSet())
         }
 
         @Test
@@ -560,7 +562,8 @@ class DesignerDeployClientTest {
             val result = subject.validateConflicts()
 
             assertEquals(1, result.conflictingWithPreviousResources.size)
-            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().current.map { it.id }.toSet())
+            assertEquals(setOf("B_1"), result.conflictingWithPreviousResources.values.single().previous.map { it.id }.toSet())
         }
 
         @Test
@@ -573,7 +576,8 @@ class DesignerDeployClientTest {
             val result = subject.validateConflicts()
 
             assertEquals(1, result.conflictingWithPreviousResources.size)
-            assertEquals(setOf("B_1"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+            assertEquals(setOf("B_1"), result.conflictingWithPreviousResources.values.single().current.map { it.id }.toSet())
+            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().previous.map { it.id }.toSet())
         }
 
         @Test
@@ -587,7 +591,8 @@ class DesignerDeployClientTest {
             val result = subject.validateConflicts()
 
             assertEquals(1, result.conflictingWithPreviousResources.size)
-            assertEquals(setOf("B_1", "B_2"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+            assertEquals(setOf("B_1", "B_2"), result.conflictingWithPreviousResources.values.single().current.map { it.id }.toSet())
+            assertEquals(setOf("B_1"), result.conflictingWithPreviousResources.values.single().previous.map { it.id }.toSet())
         }
 
         @Test
@@ -602,7 +607,7 @@ class DesignerDeployClientTest {
             val result = assertDoesNotThrow<ValidationResult> { subject.validateConflicts() }
 
             assertEquals(1, result.conflictingWithPreviousResources.size)
-            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().map { it.id }.toSet())
+            assertEquals(setOf("B_2"), result.conflictingWithPreviousResources.values.single().current.map { it.id }.toSet())
         }
 
         @Test
@@ -653,7 +658,7 @@ class DesignerDeployClientTest {
             assertEquals(1, result.conflictingWithPreviousResources.size)
             assertEquals(
                 setOf(ResourceId("B_1", ResourceType.DocumentObject)),
-                result.conflictingWithPreviousResources.values.single()
+                result.conflictingWithPreviousResources.values.single().current
             )
         }
 
