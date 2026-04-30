@@ -20,7 +20,6 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      */
     fun addVariable(id: String, path: String): VariableStructureBuilder = apply {
         structure[id] = VariablePathData(LiteralPath(path), null)
-        return this
     }
 
     /**
@@ -33,7 +32,6 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      */
     fun addVariable(id: String, path: String, name: String): VariableStructureBuilder = apply {
         structure[id] = VariablePathData(LiteralPath(path), name)
-        return this
     }
 
     /**
@@ -47,7 +45,6 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      */
     fun addVariable(id: String, variableRef: VariableRef): VariableStructureBuilder = apply {
         structure[id] = VariablePathData(VariableRefPath(variableRef.id), null)
-        return this
     }
 
     /**
@@ -61,9 +58,8 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      * @param name A name to override the variable's default name.
      * @return This builder instance for method chaining.
      */
-    fun addVariable(id: String, variableRef: VariableRef, name: String) = apply {
+    fun addVariable(id: String, variableRef: VariableRef, name: String): VariableStructureBuilder = apply {
         structure[id] = VariablePathData(VariableRefPath(variableRef.id), name)
-        return this
     }
 
     /**
@@ -77,7 +73,6 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      */
     fun addVariable(id: String, variable: Variable): VariableStructureBuilder = apply {
         structure[id] = VariablePathData(VariableRefPath(variable.id), null)
-        return this
     }
 
     /**
@@ -93,7 +88,6 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      */
     fun addVariable(id: String, variable: Variable, name: String): VariableStructureBuilder = apply {
         structure[id] = VariablePathData(VariableRefPath(variable.id), name)
-        return this
     }
 
     /**
@@ -105,7 +99,6 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      */
     fun addVariable(id: String, variablePathData: VariablePathData): VariableStructureBuilder = apply {
         structure[id] = variablePathData
-        return this
     }
 
     /**
@@ -116,7 +109,6 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      */
     fun structure(structure: Map<String, VariablePathData>): VariableStructureBuilder = apply {
         this.structure = structure.toMutableMap()
-        return this
     }
 
     /**
@@ -127,7 +119,6 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      */
     fun languageVariable(languageVariable: VariableRef?): VariableStructureBuilder = apply {
         this.languageVariable = languageVariable
-        return this
     }
 
     /**
@@ -138,7 +129,6 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
      */
     fun languageVariable(languageVariableId: String?): VariableStructureBuilder = apply {
         this.languageVariable = languageVariableId?.let { VariableRef(it) }
-        return this
     }
 
     /**

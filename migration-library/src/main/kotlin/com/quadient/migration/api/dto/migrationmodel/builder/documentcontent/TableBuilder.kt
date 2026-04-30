@@ -6,7 +6,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
-import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.BorderOptionsBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.HasBorder
 import com.quadient.migration.api.dto.migrationmodel.TableRow as TableRowModel
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
@@ -22,7 +22,7 @@ import com.quadient.migration.shared.VariableRefPath
 annotation class TableBuilderDsl
 
 @TableBuilderDsl
-class TableBuilder : RowBuilderBase<TableBuilder> {
+class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
     override val rows = mutableListOf<TableRow>()
     private var header = mutableListOf<TableRow>()
     private var firstHeader = mutableListOf<TableRow>()
@@ -34,7 +34,7 @@ class TableBuilder : RowBuilderBase<TableBuilder> {
     private var minWidth: Size? = null
     private var maxWidth: Size? = null
     private var percentWidth: Double? = null
-    private var border: BorderOptions? = null
+    override var border: BorderOptions? = null
     private var alignment: TableAlignment = TableAlignment.Left
     private var tableStyleName: String? = null
 
@@ -44,8 +44,6 @@ class TableBuilder : RowBuilderBase<TableBuilder> {
     fun maxWidth(size: Size) = apply { this.maxWidth = size }
     fun percentWidth(percent: Double) = apply { this.percentWidth = percent }
     fun alignment(alignment: TableAlignment) = apply { this.alignment = alignment }
-    fun border(init: BorderOptionsBuilder.() -> Unit) =
-        apply { this.border = BorderOptionsBuilder().apply(init).build() }
 
     /**
      * Add a repeated row group to the table. The rows added to the builder will be repeated
@@ -235,12 +233,12 @@ class TableBuilder : RowBuilderBase<TableBuilder> {
     }
 
     @TableBuilderDsl
-    class Cell : DocumentContentBuilderBase<Cell> {
+    class Cell : DocumentContentBuilderBase<Cell>, HasBorder<Cell> {
         override val content = mutableListOf<DocumentContent>()
         var mergeLeft = false
         var mergeUp = false
         var height: CellHeight? = null
-        var border: BorderOptions? = null
+        override var border: BorderOptions? = null
         var alignment: CellAlignment? = null
 
         fun mergeLeft(value: Boolean) = apply { mergeLeft = value }
@@ -248,8 +246,6 @@ class TableBuilder : RowBuilderBase<TableBuilder> {
         fun heightFixed(size: Size) = apply { height = CellHeight.Fixed(size) }
         fun heightCustom(minHeight: Size, maxHeight: Size) = apply { height = CellHeight.Custom(minHeight, maxHeight) }
         fun alignment(alignment: CellAlignment) = apply { this.alignment = alignment }
-        fun border(init: BorderOptionsBuilder.() -> Unit) =
-            apply { this.border = BorderOptionsBuilder().apply(init).build() }
 
         fun build(): Table.Cell {
             return Table.Cell(

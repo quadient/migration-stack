@@ -1,7 +1,6 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ColumnLayoutBuilder
-import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
@@ -14,13 +13,14 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.TextContent
-import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasDisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTextStyleRef
 
-class ParagraphBuilder {
+class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
     private var styleRef: ParagraphStyleRef? = null
-    private var displayRuleRef: DisplayRuleRef? = null
+    override var displayRuleRef: DisplayRuleRef? = null
     private var content: MutableList<TextBuilder> = mutableListOf()
 
     /**
@@ -43,30 +43,6 @@ class ParagraphBuilder {
      * @return The current instance of [ParagraphBuilder] for method chaining.
      */
     fun styleRef(style: ParagraphStyle) = apply { this.styleRef = ParagraphStyleRef(style.id) }
-
-    /**
-     * Sets the display rule reference for the paragraph.
-     * This makes the paragraph display conditionally based on the rule.
-     * @param displayRuleRef The display rule reference to set.
-     * @return The current instance of [ParagraphBuilder] for method chaining.
-     */
-    fun displayRuleRef(displayRuleRef: DisplayRuleRef?) = apply { this.displayRuleRef = displayRuleRef }
-
-    /**
-     * Sets the display rule reference for the paragraph using a string ID.
-     * This makes the paragraph display conditionally based on the rule.
-     * @param displayRuleRefId The ID of the display rule reference to set.
-     * @return The current instance of [ParagraphBuilder] for method chaining.
-     */
-    fun displayRuleRef(displayRuleRefId: String) = apply { this.displayRuleRef = DisplayRuleRef(displayRuleRefId) }
-
-    /**
-     * Sets the display rule reference for the paragraph using a [DisplayRule] model object.
-     * This makes the paragraph display conditionally based on the rule.
-     * @param rule The display rule whose ID will be used as the reference.
-     * @return The current instance of [ParagraphBuilder] for method chaining.
-     */
-    fun displayRuleRef(rule: DisplayRule) = apply { this.displayRuleRef = DisplayRuleRef(rule.id) }
 
     /**
      * Adds a new text builder to the paragraph content.
@@ -150,55 +126,11 @@ class ParagraphBuilder {
         )
     }
 
-    class TextBuilder() {
-        var styleRef: TextStyleRef? = null
-        var displayRuleRef: DisplayRuleRef? = null
+    class TextBuilder : HasDisplayRuleRef<TextBuilder>, HasTextStyleRef<TextBuilder> {
+        override var styleRef: TextStyleRef? = null
+        override var displayRuleRef: DisplayRuleRef? = null
         var content: MutableList<TextContent> = mutableListOf()
 
-        /**
-         * Sets the style reference for the text.
-         * @param styleRef The style reference to set.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun styleRef(styleRef: TextStyleRef) = apply { this.styleRef = styleRef }
-
-        /**
-         * Sets the style reference for the text using a string ID.
-         * @param styleRefId The ID of the style reference to set.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun styleRef(styleRefId: String) = apply { this.styleRef = TextStyleRef(styleRefId) }
-
-        /**
-         * Sets the style reference for the text using a [TextStyle] model object.
-         * @param style The text style whose ID will be used as the reference.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun styleRef(style: TextStyle) = apply { this.styleRef = TextStyleRef(style.id) }
-
-        /**
-         * Sets the display rule reference for the text.
-         * This makes the text display conditionally based on the rule.
-         * @param displayRuleRef The display rule reference to set.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun displayRuleRef(displayRuleRef: DisplayRuleRef) = apply { this.displayRuleRef = displayRuleRef }
-
-        /**
-         * Sets the display rule reference for the text using a string ID.
-         * This makes the text display conditionally based on the rule.
-         * @param displayRuleRefId The ID of the display rule reference to set.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun displayRuleRef(displayRuleRefId: String) = apply { this.displayRuleRef = DisplayRuleRef(displayRuleRefId) }
-
-        /**
-         * Sets the display rule reference for the text using a [DisplayRule] model object.
-         * This makes the text display conditionally based on the rule.
-         * @param rule The display rule whose ID will be used as the reference.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun displayRuleRef(rule: DisplayRule) = apply { this.displayRuleRef = DisplayRuleRef(rule.id) }
 
         /**
          * Replaces all content with a single [TextContent] item.

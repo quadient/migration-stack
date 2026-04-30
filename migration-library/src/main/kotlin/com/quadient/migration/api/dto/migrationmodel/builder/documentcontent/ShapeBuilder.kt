@@ -2,42 +2,20 @@ package com.quadient.migration.api.dto.migrationmodel.builder.documentcontent
 
 import com.quadient.migration.api.dto.migrationmodel.Shape
 import com.quadient.migration.api.dto.migrationmodel.builder.PositionBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasName
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasPosition
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.ShapePath
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 
-class ShapeBuilder {
-    private var name: String? = null
+class ShapeBuilder: HasName<ShapeBuilder>, HasPosition<ShapeBuilder> {
+    override var name: String? = null
     private val paths: MutableList<ShapePath> = mutableListOf()
-    private var position: Position? = null
+    override var position: Position? = null
     private var fill: Color? = null
     private var lineFill: Color? = null
     private var lineWidth: Size = Size.ofMillimeters(0.2)
-
-    /**
-     * Sets an optional name for the path object.
-     * @param name The name to assign.
-     * @return This builder instance for method chaining.
-     */
-    fun name(name: String) = apply { this.name = name }
-
-    /**
-     * Sets the position of the shape.
-     * @param position The [Position] to be set for the shape.
-     * @return This builder instance for method chaining.
-     */
-    fun position(position: Position) = apply { this.position = position }
-
-    /**
-     * Set the position of the shape using a builder function.
-     * @param block a builder function to build the [Position].
-     * @return This builder instance for method chaining.
-     */
-    fun position(block: PositionBuilder.() -> Unit) = apply {
-        val position = PositionBuilder().apply(block).build()
-        this.position = position
-    }
 
     /**
      * Sets the fill color for the shape interior.

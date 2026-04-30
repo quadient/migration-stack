@@ -5,6 +5,7 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Table
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasDisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.BorderOptionsBuilder
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
@@ -102,9 +103,9 @@ class TableDsl {
     fun border(init: BorderOptionsBuilder.() -> Unit) = apply { this.border = BorderOptionsBuilder().apply(init).build() }
 
     @TableDocumentContentDsl
-    class Row {
+    class Row: HasDisplayRuleRef<Row> {
         val cells = mutableListOf<Cell>()
-        var displayRuleRef: DisplayRuleRef? = null
+        override var displayRuleRef: DisplayRuleRef? = null
 
         /**
          * Add a cell to the row. Cells are added in the order they are defined.
@@ -120,9 +121,6 @@ class TableDsl {
         fun cells(cells: List<Cell>) = apply {
             this.cells.addAll(cells)
         }
-
-        fun displayRuleRef(id: String) = this.apply { this.displayRuleRef = DisplayRuleRef(id) }
-        fun displayRuleRef(ref: DisplayRuleRef) = this.apply { this.displayRuleRef = ref }
 
         fun build(): Table.Row {
             return Table.Row(cells = cells.map { cell ->

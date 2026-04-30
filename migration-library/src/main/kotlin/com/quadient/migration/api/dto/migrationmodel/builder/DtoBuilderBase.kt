@@ -2,11 +2,12 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasName
 
 @Suppress("UNCHECKED_CAST")
 abstract class DtoBuilderBase<T : MigrationObject, K : DtoBuilderBase<T, K>>(
     protected val id: String
-) {
+) : HasName<K> {
     init {
         require(id.isNotEmpty()) { "id cannot be null or empty" }
     }
@@ -14,19 +15,9 @@ abstract class DtoBuilderBase<T : MigrationObject, K : DtoBuilderBase<T, K>>(
     val getId: String
         get() = id
 
-    protected var name: String? = null
+    override var name: String? = null
     protected var originLocations: List<String> = emptyList()
     protected var customFields = CustomFieldMap()
-
-    /**
-     * Sets the name of the object. If not provided the name will default to the id.
-     * @param name The name to set.
-     * @return The builder instance for method chaining.
-     */
-    fun name(name: String?): K {
-        this.name = name
-        return this as K
-    }
 
     /**
      * Sets the custom fields for the object.
