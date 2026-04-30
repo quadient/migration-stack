@@ -5,6 +5,14 @@ import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.Size
 
+@Suppress("UNCHECKED_CAST")
+interface HasBorder<T> {
+    var border: BorderOptions?
+
+    fun border(init: BorderOptionsBuilder.() -> Unit) =
+        apply { this.border = BorderOptionsBuilder().apply(init).build() } as T
+}
+
 class BorderOptionsBuilder {
     private var leftLine: BorderLine? = null
     private var rightLine: BorderLine? = null

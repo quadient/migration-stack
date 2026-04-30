@@ -14,6 +14,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuild
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.SnippetBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
@@ -417,11 +418,11 @@ def paragraph1 = new DocumentObjectBuilder("paragraph1", DocumentObjectType.Bloc
                             it.case {
                                 it.paragraph {
                                     it.styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Dobrý den") }
-                                }.displayRule(displayRuleStateCzechia)
+                                }.displayRuleRef(displayRuleStateCzechia)
                             }.case {
                                 it.paragraph {
                                     it.styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Bonjour") }
-                                }.displayRule(displayRuleStateFrance)
+                                }.displayRuleRef(displayRuleStateFrance)
                             }.defaultParagraph { it.styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Good morning") } }
                         }
                         it.string(", Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi vel diam ut dui vulputate lobortis ac sit amet diam. Donec malesuada eros id vulputate tincidunt. Aenean ac placerat nisi. Morbi porta orci at est interdum, mollis sollicitudin odio pulvinar. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Morbi sem mauris, porta sed erat vel, vestibulum facilisis dui. Maecenas sodales quam neque, ut consectetur ante interdum at.")
@@ -482,11 +483,11 @@ def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType
             fb.case { cb ->
                 cb.name("Czech Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle).text {
                     it.styleRef(normalStyle).string("Nashledanou.")
-                }.build()).displayRule(displayRuleStateCzechia)
+                }.build()).displayRuleRef(displayRuleStateCzechia)
             }.case { cb ->
                 cb.name("French Variant").appendContent(new ParagraphBuilder().styleRef(paragraphStyle).text {
                     it.styleRef(normalStyle).string("Au revoir.")
-                }.build()).displayRule(displayRuleStateFrance)
+                }.build()).displayRuleRef(displayRuleStateFrance)
             }.default(new ParagraphBuilder().styleRef(paragraphStyle).text { it.styleRef(normalStyle).string("Goodbye.") }.build())
         }.build()
 
@@ -513,22 +514,23 @@ def selectByLanguageBlock = new DocumentObjectBuilder("selectByLanguage", Docume
         }.build()
 
 // A simple snippet that combines static text with a variable.
-def snippet = new DocumentObjectBuilder("snippet", DocumentObjectType.Snippet)
-        .string("Lorem ipsum: ")
-        .variable(nameVariable)
-        .variableStructureRef(variableStructure)
-        .build()
+def snippet = new SnippetBuilder("snippet")
+    .simple()
+    .string("Lorem ipsum: ")
+    .variableRef(nameVariable)
+    .variableStructureRef(variableStructure)
+    .build()
 
 // A simple first match snippet example
-def fmSnippet = new DocumentObjectBuilder("firstMatchSnippet", DocumentObjectType.Snippet)
+def fmSnippet = new SnippetBuilder("firstMatchSnippet")
     .firstMatch { firstMatchBuilder ->
         firstMatchBuilder
             .case { caseBuilder ->
-                caseBuilder.displayRule(displayRuleStateCzechia)
+                caseBuilder.displayRuleRef(displayRuleStateCzechia)
                 caseBuilder.string("Pro více informací navštivte ")
             }
             .case { caseBuilder ->
-                caseBuilder.displayRule(displayRuleStateFrance)
+                caseBuilder.displayRuleRef(displayRuleStateFrance)
                 caseBuilder.string("Pour plus d’informations, visitez ")
             }
             .defaultString("For more information visit ")

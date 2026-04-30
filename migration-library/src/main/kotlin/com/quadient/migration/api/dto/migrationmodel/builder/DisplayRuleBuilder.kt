@@ -3,8 +3,13 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
-import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasBaseTemplate
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasInternal
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasMetadata
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSubject
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTargetFolder
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasVariableStructureRef
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
 import com.quadient.migration.shared.BinaryOrGroup
@@ -16,15 +21,22 @@ import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.LiteralOrFunctionCall
 import com.quadient.migration.shared.MetadataPrimitive
 
-class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBuilder>(id) {
+class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBuilder>(id),
+    HasInternal<DisplayRuleBuilder>,
+    HasTargetFolder<DisplayRuleBuilder>,
+    HasSubject<DisplayRuleBuilder>,
+    HasVariableStructureRef<DisplayRuleBuilder>,
+    HasMetadata<DisplayRuleBuilder>,
+    HasBaseTemplate<DisplayRuleBuilder>
+{
+    override var subject: String? = null
+    override var internal = true
+    override var metadata: MutableMap<String, List<MetadataPrimitive>> = mutableMapOf()
+    override var variableStructureRef: VariableStructureRef? = null
+    override var baseTemplate: String? = null
+    override var targetFolder: String? = null
     var definition: DisplayRuleDefinition? = null
-    var subject: String? = null
-    var internal = true
     var targetId: String? = null
-    var metadata: MutableMap<String, List<MetadataPrimitive>> = mutableMapOf()
-    var variableStructureRef: VariableStructureRef? = null
-    var baseTemplate: String? = null
-    var targetFolder: String? = null
 
     /**
      * Sets the definition for this display rule.
@@ -44,9 +56,7 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
         val binaryExpression = BinaryExpressionBuilder().apply(builder).build()
         this.definition = DisplayRuleDefinition(
             group = Group(
-                items = mutableListOf(binaryExpression),
-                operator = GroupOp.And,
-                negation = false
+                items = mutableListOf(binaryExpression), operator = GroupOp.And, negation = false
             )
         )
     }
@@ -61,22 +71,6 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
         val group = DisplayRuleGroupBuilder().apply(builder).build()
         this.definition = DisplayRuleDefinition(group = group)
     }
-
-
-    /**
-     * Sets the subject of the display rule. This is visible as description in Interactive
-     * @param subject the subject of the display rule
-     * @return the builder instance for chaining
-     */
-    fun subject(value: String?) = apply { subject = value }
-
-    /**
-     * Set whether the display rule is internal. Internal objects do not create a separate
-     * file in the target system.
-     * @param internal Boolean indicating if the display rule is internal.
-     * @return This builder instance for method chaining.
-    */
-    fun internal(value: Boolean) = apply { internal = value }
 
     /**
      * Sets the target display rule ID for alias resolution.
@@ -102,48 +96,6 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
     fun variableStructureRef(value: VariableStructureRef) = apply { variableStructureRef = value }
 
     /**
-     * Sets the variable structure reference for this display rule by ID.
-     * @param value ID of the variable structure to reference.
-     * @return This builder instance for method chaining.
-     */
-    fun variableStructureRef(value: String) = apply { variableStructureRef = VariableStructureRef(value) }
-
-    /**
-     * Sets the variable structure reference for this display rule from a [VariableStructure] object.
-     * @param value The [VariableStructure] whose ID will be used as the reference.
-     * @return This builder instance for method chaining.
-     */
-    fun variableStructureRef(value: VariableStructure) = apply { variableStructureRef = VariableStructureRef(value.id) }
-
-    /**
-     * Override the default base template for this display rule.
-     * @param baseTemplate Path to the base template to use for this display rule.
-     * @return This builder instance for method chaining.
-     */
-    fun baseTemplate(value: String?) = apply { baseTemplate = value }
-
-    /**
-     * Set the target folder for the display rule.
-     * @param targetFolder String representing the target folder path.
-     * @return This builder instance for method chaining.
-     */
-    fun targetFolder(value: String?) = apply { targetFolder = value }
-
-    /**
-     * Add metadata to the document object.
-     * Metadata are not stored if empty.
-     * @param key Key of the metadata entry.
-     * @param block Builder function where receiver is a [MetadataBuilder].
-     * @return This builder instance for method chaining.
-     */
-    fun metadata(key: String, block: MetadataBuilder.() -> Unit) = apply {
-        val result = MetadataBuilder().apply(block).build()
-        if (result.isNotEmpty()) {
-            metadata[key] = result
-        }
-    }
-
-    /**
      * Builds the DisplayRule instance with the provided properties.
      * @return A DisplayRule instance with the specified id, name, origin locations, custom fields, and definition.
      */
@@ -165,7 +117,7 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
     }
 }
 
-class DisplayRuleGroupBuilder() {
+class DisplayRuleGroupBuilder {
     private var operator: GroupOp = GroupOp.And
     private var negation: Boolean = false
     private val items = mutableListOf<BinaryOrGroup>()
@@ -229,7 +181,7 @@ class DisplayRuleGroupBuilder() {
     fun build() = Group(items = items, operator = operator, negation = negation)
 }
 
-class BinaryExpressionBuilder() {
+class BinaryExpressionBuilder {
     var left: LiteralOrFunctionCall? = null
     var right: LiteralOrFunctionCall? = null
     var operator: BinOp? = null
@@ -355,11 +307,9 @@ class BinaryExpressionBuilder() {
      * and an operator.
      * @return A BinaryOrGroup instance representing the binary expression.
      */
-    fun build() : BinaryOrGroup {
+    fun build(): BinaryOrGroup {
         return Binary(
-            left = requireNotNull(left),
-            right = requireNotNull(right),
-            operator = requireNotNull(operator)
+            left = requireNotNull(left), right = requireNotNull(right), operator = requireNotNull(operator)
         )
     }
 }

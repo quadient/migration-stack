@@ -1,3 +1,5 @@
+@file:Suppress("UNCHECKED_CAST")
+
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.Attachment
@@ -13,6 +15,7 @@ import com.quadient.migration.api.dto.migrationmodel.Shape
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ColumnLayoutBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ShapeBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.RepeatedContentBuilder
@@ -21,24 +24,19 @@ import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.VariableRefPath
 
-/**
- * Base interface for builders that contain a list of DocumentContent.
- * Provides standard methods for adding various types of document content.
- */
-@Suppress("UNCHECKED_CAST")
-interface DocumentContentBuilderBase<T> {
+interface HasGenericContent<C, T> {
     /**
      * The mutable list of document content.
      * Implementing classes must provide this property.
      */
-    val content: MutableList<DocumentContent>
+    val content: MutableList<C>
 
     /**
      * Replaces all content with a single DocumentContent item.
      * @param content The content to set.
      * @return This builder instance for method chaining.
      */
-    fun content(content: DocumentContent): T = apply {
+    fun content(content: C): T = apply {
         this.content.clear()
         this.content.add(content)
     } as T
@@ -48,7 +46,7 @@ interface DocumentContentBuilderBase<T> {
      * @param content The list of content to set.
      * @return This builder instance for method chaining.
      */
-    fun content(content: List<DocumentContent>): T = apply {
+    fun content(content: List<C>): T = apply {
         this.content.clear()
         this.content.addAll(content)
     } as T
@@ -58,9 +56,13 @@ interface DocumentContentBuilderBase<T> {
      * @param content The content to append.
      * @return This builder instance for method chaining.
      */
-    fun appendContent(content: DocumentContent): T = apply {
+    fun appendContent(content: C): T = apply {
         this.content.add(content)
     } as T
+}
+
+interface HasParagraphContent<T> {
+    val content: MutableList<DocumentContent>
 
     /**
      * Adds a paragraph to the content using a builder function.
@@ -70,6 +72,10 @@ interface DocumentContentBuilderBase<T> {
     fun paragraph(builder: ParagraphBuilder.() -> Unit): T = apply {
         this.content.add(ParagraphBuilder().apply(builder).build())
     } as T
+}
+
+interface HasTableContent<T> {
+    val content: MutableList<DocumentContent>
 
     /**
      * Adds a table to the content using a builder function.
@@ -79,6 +85,10 @@ interface DocumentContentBuilderBase<T> {
     fun table(builder: TableBuilder.() -> Unit): T = apply {
         this.content.add(TableBuilder().apply(builder).build())
     } as T
+}
+
+interface HasImageRefContent<T> {
+    val content: MutableList<DocumentContent>
 
     /**
      * Adds an image reference to the content.
@@ -97,6 +107,10 @@ interface DocumentContentBuilderBase<T> {
     fun imageRef(image: Image): T = apply {
         this.content.add(ImageRef(image.id))
     } as T
+}
+
+interface HasAttachmentRefContent<T> {
+    val content: MutableList<DocumentContent>
 
     /**
      * Adds an attachment reference to the content.
@@ -115,6 +129,10 @@ interface DocumentContentBuilderBase<T> {
     fun attachmentRef(attachment: Attachment): T = apply {
         this.content.add(AttachmentRef(attachment.id))
     } as T
+}
+
+interface HasDocumentObjectRefContent<T> {
+    val content: MutableList<DocumentContent>
 
     /**
      * Adds a document object reference to the content.
@@ -153,6 +171,10 @@ interface DocumentContentBuilderBase<T> {
     fun documentObjectRef(documentObject: DocumentObject, displayRule: DisplayRule): T = apply {
         this.content.add(DocumentObjectRef(documentObject.id, DisplayRuleRef(displayRule.id)))
     } as T
+}
+
+interface HasFirstMatchContent<T> {
+    val content: MutableList<DocumentContent>
 
     /**
      * Adds a first match block to the content using a builder function.
@@ -162,6 +184,10 @@ interface DocumentContentBuilderBase<T> {
     fun firstMatch(builder: FirstMatchBuilder.() -> Unit): T = apply {
         this.content.add(FirstMatchBuilder().apply(builder).build())
     } as T
+}
+
+interface HasSelectByLanguageContent<T> {
+    val content: MutableList<DocumentContent>
 
     /**
      * Adds a select by language block to the content using a builder function.
@@ -171,6 +197,10 @@ interface DocumentContentBuilderBase<T> {
     fun selectByLanguage(builder: SelectByLanguageBuilder.() -> Unit): T = apply {
         this.content.add(SelectByLanguageBuilder().apply(builder).build())
     } as T
+}
+
+interface HasStringContent<C, T> {
+    val content: MutableList<C>
 
     /**
      * Adds a paragraph with the given string to the content.
@@ -178,8 +208,12 @@ interface DocumentContentBuilderBase<T> {
      * @return This builder instance for method chaining.
      */
     fun string(text: String): T = apply {
-        this.content.add(StringValue(text))
+        this.content.add(StringValue(text) as C)
     } as T
+}
+
+interface HasVariableRefContent<C, T>{
+    val content: MutableList<C>
 
     /**
      * Adds a variable to the content.
@@ -187,7 +221,7 @@ interface DocumentContentBuilderBase<T> {
      * @return This builder instance for method chaining.
      */
     fun variableRef(ref: VariableRef): T = apply {
-        this.content.add(ref)
+        this.content.add(ref as C)
     } as T
 
     /**
@@ -196,7 +230,7 @@ interface DocumentContentBuilderBase<T> {
      * @return This builder instance for method chaining.
      */
     fun variableRef(id: String): T = apply {
-        this.content.add(VariableRef(id))
+        this.content.add(VariableRef(id) as C)
     } as T
 
     /**
@@ -204,9 +238,18 @@ interface DocumentContentBuilderBase<T> {
      * @param variable The [Variable] to reference.
      * @return This builder instance for method chaining.
      */
-    fun variable(variable: Variable): T = apply {
-        this.content.add(VariableRef(variable.id))
+    fun variableRef(variable: Variable): T = apply {
+        this.content.add(VariableRef(variable.id) as C)
     } as T
+
+    @Deprecated("Use variableRef instead. This function will be removed in a future version.")
+    fun variable(variable: Variable): T = apply {
+        this.content.add(VariableRef(variable.id) as C)
+    } as T
+}
+
+interface HasRepeatedContent<T> {
+    val content: MutableList<DocumentContent>
 
     /**
      * Adds repeated content to the content using a builder function.
@@ -245,6 +288,10 @@ interface DocumentContentBuilderBase<T> {
      */
     fun repeatedContent(variable: Variable, builder: RepeatedContentBuilder.() -> Unit): T =
         repeatedContent(VariableRefPath(variable.id), builder)
+}
+
+interface HasColumnLayoutContent<T> {
+    val content: MutableList<DocumentContent>
 
     /**
      * Defines a column layout modifier that affects sibling content within the current block.
@@ -254,6 +301,10 @@ interface DocumentContentBuilderBase<T> {
     fun columnLayout(builder: ColumnLayoutBuilder.() -> Unit = {}): T = apply {
         this.content.add(ColumnLayoutBuilder().apply(builder).build())
     } as T
+}
+
+interface HasShapeContent<T> {
+    val content: MutableList<DocumentContent>
 
     /**
      * Adds an existing [Shape] to the content.
@@ -273,3 +324,33 @@ interface DocumentContentBuilderBase<T> {
         this.content.add(ShapeBuilder().apply(builder).build())
     } as T
 }
+
+interface HasAreaContent<T> {
+    val content: MutableList<DocumentContent>
+
+    /**
+     * Adds an area to the object.
+     * @param builder Builder function where receiver is an [AreaBuilder].
+     * @return This builder instance for method chaining.
+     */
+    fun area(builder: AreaBuilder.() -> Unit) = apply {
+        content.add(AreaBuilder().apply(builder).build())
+    } as T
+}
+
+/**
+ * Base interface for builders that contain a list of DocumentContent.
+ * Provides standard methods for adding various types of document content.
+ */
+interface DocumentContentBuilderBase<T> : HasGenericContent<DocumentContent, T>,
+    HasParagraphContent<T>,
+    HasTableContent<T>,
+    HasImageRefContent<T>,
+    HasAttachmentRefContent<T>,
+    HasDocumentObjectRefContent<T>,
+    HasFirstMatchContent<T>,
+    HasSelectByLanguageContent<T>,
+    HasStringContent<DocumentContent, T>,
+    HasVariableRefContent<DocumentContent, T>,
+    HasRepeatedContent<T>,
+    HasColumnLayoutContent<T>
