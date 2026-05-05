@@ -1,4 +1,4 @@
-# API Reference
+# Migration Library API Reference
 
 ## Overview
 
@@ -6,8 +6,6 @@ This document describes the Migration Library API used in parsing scripts. Your 
 XML, JSON, CSV, etc.) into the **Migration Model** - a common intermediate representation for Quadient Inspire content.
 
 All objects are created using **Builder classes** with a fluent API and stored in repositories.
-
-**Related:** See `AGENT.md` for your role and workflow guidance.
 
 ## Getting Started
 
@@ -90,7 +88,7 @@ have `customFields`, `originLocations`, or `name` properties.
 - **Organize with Target Folders** - Use logical folder structure: `.targetFolder("blocks/invoices/headers")`
 - **Use Skip for Non-Migratable Content** - Mark complex/unsupported content: `.skip("manual-name", "reason...")`
 - **Check for Null** - Verify data exists before calling builder methods that expect non-null values
-- **Test Iteratively** - Run your script frequently to catch errors early (see AGENT.md workflow)
+- **Test Iteratively** - Run your script frequently to catch errors early
 
 ## Repository API
 
@@ -624,7 +622,7 @@ def inputPath = migration.projectConfig.inputDataPath.toString()
 Objects support metadata for source system tracking, organized in named groups:
 
 ```groovy
-. metadata("DocumentInfo") { mb ->
+.metadata("DocumentInfo") { mb ->
     mb.string("Document type: Technical Example")
     mb.integer(42L)
     mb.dateTime(Instant.parse("2024-01-15T10:30:00Z"))
@@ -638,7 +636,7 @@ Objects support metadata for source system tracking, organized in named groups:
 Mark objects that cannot be automatically migrated:
 
 ```groovy
-. skip("placeholder-name", "reason for skipping")
+.skip("placeholder-name", "reason for skipping")
 ```
 
 ---
@@ -652,5 +650,5 @@ values, and existence of referenced objects. Validation errors will fail at runt
 
 ## Working Example
 
-See `migration-examples/src/main/groovy/com/quadient/migration/example/example/Import.groovy` for a complete example
+See `src/main/groovy/com/quadient/migration/example/example/Import.groovy` for a complete example
 demonstrating all major object types, conditional logic, language-specific content, tables, and document assembly.

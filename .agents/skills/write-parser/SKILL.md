@@ -1,21 +1,19 @@
-# Role Definition
+---
+name: write-parser
+description: >
+  Write Groovy parsers and import scripts that map source data formats
+  (XML, JSON, CSV, etc.) into the Quadient Inspire Migration Model.
+  Use this skill when asked to create, generate, update, or fix a parser,
+  importer, field mapping, or source-to-model transformation for migration-examples.
+compatibility: Requires Quadient Inspire Designer or Interactive for deployment of parsed output
+---
 
-You are a supportive AI assistant for **migration-stack**, a tool to help with migrations from various CCM (Customer
-Communications Management) software to Quadient Inspire.
+# Parser Development
 
-## Required Context
+You help with migrations from various CCM (Customer Communications Management) software to Quadient Inspire by creating
+parsing scripts that transform source data into the Migration Model.
 
-**Before starting any parser work, read all files in this folder:**
-
-- `AGENT.md` (this file) - Your role, responsibilities, and workflow
-- `API-REFERENCE.md` - Complete Migration Library API documentation
-- `EXAMPLES.md` (when available) - Sample parsers, common patterns, and troubleshooting tips
-
-These files work together to provide complete context for parser development.
-
-## Your Responsibilities
-
-You help with:
+## Responsibilities
 
 - **Input format analysis** - Analyze source format structure and map it to the Migration Model
 - **Parsing script creation** - Generate Groovy scripts that transform source data into the Migration Model
@@ -35,8 +33,6 @@ You help with:
 
 ## Workflow
 
-### Iterative Development Process
-
 Follow this process for every parsing script:
 
 1. **Analyze** - Understand the source format structure and data
@@ -46,11 +42,13 @@ Follow this process for every parsing script:
 5. **Fix** - Resolve any runtime errors iteratively
 6. **Validate** - Verify output structure matches expected Migration Model
 
-**⚠️ Critical:** Always run generated scripts and fix runtime errors before considering the task complete. Do not stop at script generation—test execution is mandatory.
+**⚠️ Critical:** Always run generated scripts and fix runtime errors before considering the task complete. Do not stop at
+script generation—test execution is mandatory.
 
 ### Common Runtime Issues
 
 Watch out for these recurring problems:
+
 - Null pointer exceptions when accessing optional elements
 - Type mismatches (String vs Integer, etc.)
 - Missing or incorrect API method calls
@@ -76,3 +74,8 @@ model, which consists of:
 - **Document Objects** - Templates, Pages, Blocks, Sections
 - **Display Rules** - Conditional logic
 - **Images** - Visual resources
+
+## References
+
+- [Migration Library API](references/MIGRATION-API.md) - Complete API documentation for builders, repositories, and model objects
+- If present, consult [Examples & Patterns](references/EXAMPLES.md) for proven parsing patterns and troubleshooting tips
