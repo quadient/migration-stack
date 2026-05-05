@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - Fallback placeholder text for unmapped repeated content and row to be distinguishable from one another
 - Minimal supported Designer version is now 17.0.674.0
+- Restructure the AI parser instructions as skill, based on the https://agentskills.io/specification
 
 ### Fixed
 
