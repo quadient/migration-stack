@@ -16,17 +16,12 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-try {
-    def result = migration.deployClient.validateConflicts()
+def result = migration.deployClient.validateConflicts()
 
-    if (result.hasNoConflicts()) {
-        log.info "No conflicts detected. Safe to deploy."
-        return
-    }
-
-    ConflictsUtil.logConflictResult(result)
-    System.exit(1)
-} catch (Exception e) {
-    log.error "Validation failed with error: ${e.message}"
-    System.exit(1)
+if (result.hasNoConflicts()) {
+    log.info "No conflicts detected. Safe to deploy."
+    return
 }
+
+ConflictsUtil.logConflictResult(result)
+throw new RuntimeException("Conflict validation failed, check logs for details")

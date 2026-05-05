@@ -17,24 +17,19 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-try {
-    def documentObjects = PathUtil.dataDirPath(binding, "deploy", "${migration.projectConfig.name}-document-objects")
-        .toFile()
-        .text
-        .lines()
-        .toList()
-    log.info "Loaded ${documentObjects.size()} document object IDs for conflict validation"
+def documentObjects = PathUtil.dataDirPath(binding, "deploy", "${migration.projectConfig.name}-document-objects")
+    .toFile()
+    .text
+    .lines()
+    .toList()
+log.info "Loaded ${documentObjects.size()} document object IDs for conflict validation"
 
-    def result = migration.deployClient.validateConflicts(documentObjects)
+def result = migration.deployClient.validateConflicts(documentObjects)
 
-    if (result.hasNoConflicts()) {
-        log.info "No conflicts detected. Safe to deploy."
-        return
-    }
-
-    ConflictsUtil.logConflictResult(result)
-    System.exit(1)
-} catch (Exception e) {
-    log.error "Validation failed with error: ${e.message}"
-    System.exit(1)
+if (result.hasNoConflicts()) {
+    log.info "No conflicts detected. Safe to deploy."
+    return
 }
+
+ConflictsUtil.logConflictResult(result)
+throw new RuntimeException("Conflict validation failed, check logs for details")
