@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - Conflict validation as a check to prevent any overwrites by the following deployment
 - Allow building of first match snippets
+- Possibility to nest repeated row into repeated row
 
 ### Changed
 

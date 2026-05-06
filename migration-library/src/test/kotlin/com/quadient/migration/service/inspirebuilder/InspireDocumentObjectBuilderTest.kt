@@ -613,6 +613,65 @@ class InspireDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `buildDocumentObject creates nested repeated rowsets`() {
+        // given
+        val itemNameVar = mockVar(VariableBuilder("itemNameVar").name("Item Name").dataType(DataType.String).build())
+        val ordersArrayVar = mockVar(VariableBuilder("orders").name("Orders").dataType(DataType.Array).build())
+
+        val variableStructure = mockVarStructure(
+            VariableStructureBuilder("VS_1").addVariable(ordersArrayVar.id, "Data.Clients.Value")
+                .addVariable(itemNameVar.id, ordersArrayVar).build()
+        )
+
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block).table {
+                addRepeatedRow("Data.Clients.Value") {
+                    addRepeatedRow(ordersArrayVar) {
+                        addRow {
+                            addCell { string("Order: ") }
+                            addCell { paragraph { text { variableRef(itemNameVar.id) } } }
+                        }
+                    }
+                }
+            }.variableStructureRef(variableStructure.id).build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then — outer repeated rowset driven by Data.Clients.Value
+        val outerRepeatedRowSetId = result["Table"].last()["RowSetId"].textValue()
+        val outerRepeatedRowSet = result["RowSet"].last { it["Id"].textValue() == outerRepeatedRowSetId }
+        outerRepeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
+        val outerArrayVar = result["Variable"].last { it["Id"].textValue() == outerRepeatedRowSet["VariableId"].textValue() }
+        outerArrayVar["VarType"].textValue().shouldBeEqualTo("Array")
+
+        // then — inner repeated rowset is nested directly inside the outer
+        val innerRepeatedRowSetId = outerRepeatedRowSet["SubRowId"].textValue()
+        val innerRepeatedRowSet = result["RowSet"].last { it["Id"].textValue() == innerRepeatedRowSetId }
+        innerRepeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
+        val innerArrayVar = result["Variable"].last { it["Id"].textValue() == innerRepeatedRowSet["VariableId"].textValue() }
+        innerArrayVar["VarType"].textValue().shouldBeEqualTo("Array")
+
+        // then — single row is nested inside the inner repeated rowset
+        val singleRowId = innerRepeatedRowSet["SubRowId"].textValue()
+        val singleRow = result["RowSet"].last { it["Id"].textValue() == singleRowId }
+        singleRow["RowSetType"].textValue().shouldBeEqualTo("Row")
+
+        val secondCellId = singleRow["SubRowId"][1].textValue()
+        val secondCell = result["Cell"].last { it["Id"].textValue() == secondCellId }
+        val secondCellFlow = result["Flow"].last { it["Id"].textValue() == secondCell["FlowId"].textValue() }
+        val variableId = secondCellFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val variable = result["Variable"].first { it["Id"].textValue() == variableId }
+        variable["Name"].textValue().shouldBeEqualTo("Item Name")
+
+        val lockedWebNodes = result["Root"]["LockedWebNodes"]["LockedWebNode"]
+        val lockedIds = lockedWebNodes.map { it.textValue() }
+        lockedIds.contains(outerRepeatedRowSetId).shouldBeEqualTo(true)
+        lockedIds.contains(innerRepeatedRowSetId).shouldBeEqualTo(true)
+    }
+
+    @Test
     fun `buildDocumentObject creates repeated flow with literal array path`() {
         // given
         val nameVar = mockVar(VariableBuilder("nameVar").name("Name").dataType(DataType.String).build())

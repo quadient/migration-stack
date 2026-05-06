@@ -46,57 +46,6 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
     fun alignment(alignment: TableAlignment) = apply { this.alignment = alignment }
 
     /**
-     * Add a repeated row group to the table. The rows added to the builder will be repeated
-     * for each element of the given variable.
-     * @param variable The literal path or variable reference driving repetition.
-     */
-    fun addRepeatedRow(variable: VariablePath) = RepeatedRowBuilder(variable).apply { rows.add(this) }
-
-    /**
-     * Add a repeated row group to the table and configure it via [init].
-     * @param variable The literal path or variable reference driving repetition.
-     * @return This builder instance for method chaining.
-     */
-    fun addRepeatedRow(variable: VariablePath, init: RepeatedRowBuilder.() -> Unit): TableBuilder =
-        apply { rows.add(RepeatedRowBuilder(variable).apply(init)) }
-
-    /**
-     * Add a repeated row group driven by a literal path (e.g. "Data.Clients").
-     */
-    fun addRepeatedRow(literalPath: String) = addRepeatedRow(LiteralPath(literalPath))
-
-    /**
-     * Add a repeated row group driven by a literal path and configure it via [init].
-     * @return This builder instance for method chaining.
-     */
-    fun addRepeatedRow(literalPath: String, init: RepeatedRowBuilder.() -> Unit) =
-        addRepeatedRow(LiteralPath(literalPath), init)
-
-    /**
-     * Add a repeated row group driven by a registered variable reference.
-     */
-    fun addRepeatedRow(variableRef: VariableRef) = addRepeatedRow(VariableRefPath(variableRef.id))
-
-    /**
-     * Add a repeated row group driven by a registered variable reference and configure it via [init].
-     * @return This builder instance for method chaining.
-     */
-    fun addRepeatedRow(variableRef: VariableRef, init: RepeatedRowBuilder.() -> Unit) =
-        addRepeatedRow(VariableRefPath(variableRef.id), init)
-
-    /**
-     * Add a repeated row group driven by a [Variable] object.
-     */
-    fun addRepeatedRow(variable: Variable) = addRepeatedRow(VariableRefPath(variable.id))
-
-    /**
-     * Add a repeated row group driven by a [Variable] object and configure it via [init].
-     * @return This builder instance for method chaining.
-     */
-    fun addRepeatedRow(variable: Variable, init: RepeatedRowBuilder.() -> Unit) =
-        addRepeatedRow(VariableRefPath(variable.id), init)
-
-    /**
      * Add a column width to the table. Column widths are added in the order they are defined.
      */
     fun addColumnWidth(minWidth: Size, percentWidth: Double) = apply {
@@ -225,7 +174,7 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
 
         override fun build(): Table.RepeatedRow {
             return Table.RepeatedRow(
-                rows = rows.map { (it as Row).build() },
+                rows = rows.map { it.build() },
                 variable = variable,
                 displayRuleRef = displayRuleRef,
             )
@@ -263,7 +212,7 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
 }
 
 /**
- * Common interface for builders that manage a collection of [TableBuilder.Row] entries.
+ * Common interface for builders that manage a collection of [TableBuilder.TableRow] entries.
  * Implemented by both [TableBuilder] and [TableBuilder.RepeatedRowBuilder].
  */
 @Suppress("UNCHECKED_CAST")
@@ -291,4 +240,59 @@ interface RowBuilderBase<T> {
      * @return This builder instance for method chaining.
      */
     fun addRows(rows: List<TableBuilder.Row>): T = apply { this.rows.addAll(rows) } as T
+
+    /**
+     * Add a repeated row group. The rows added to the builder will be repeated
+     * for each element of the given variable.
+     * @param variable The literal path or variable reference driving repetition.
+     */
+    fun addRepeatedRow(variable: VariablePath): TableBuilder.RepeatedRowBuilder =
+        TableBuilder.RepeatedRowBuilder(variable).also { rows.add(it) }
+
+    /**
+     * Add a repeated row group and configure it via [init].
+     * @param variable The literal path or variable reference driving repetition.
+     * @return This builder instance for method chaining.
+     */
+    fun addRepeatedRow(variable: VariablePath, init: TableBuilder.RepeatedRowBuilder.() -> Unit): T =
+        apply { rows.add(TableBuilder.RepeatedRowBuilder(variable).apply(init)) } as T
+
+    /**
+     * Add a repeated row group driven by a literal path (e.g. "Data.Clients").
+     */
+    fun addRepeatedRow(literalPath: String): TableBuilder.RepeatedRowBuilder =
+        addRepeatedRow(LiteralPath(literalPath))
+
+    /**
+     * Add a repeated row group driven by a literal path and configure it via [init].
+     * @return This builder instance for method chaining.
+     */
+    fun addRepeatedRow(literalPath: String, init: TableBuilder.RepeatedRowBuilder.() -> Unit): T =
+        addRepeatedRow(LiteralPath(literalPath), init)
+
+    /**
+     * Add a repeated row group driven by a registered variable reference.
+     */
+    fun addRepeatedRow(variableRef: VariableRef): TableBuilder.RepeatedRowBuilder =
+        addRepeatedRow(VariableRefPath(variableRef.id))
+
+    /**
+     * Add a repeated row group driven by a registered variable reference and configure it via [init].
+     * @return This builder instance for method chaining.
+     */
+    fun addRepeatedRow(variableRef: VariableRef, init: TableBuilder.RepeatedRowBuilder.() -> Unit): T =
+        addRepeatedRow(VariableRefPath(variableRef.id), init)
+
+    /**
+     * Add a repeated row group driven by a [Variable] object.
+     */
+    fun addRepeatedRow(variable: Variable): TableBuilder.RepeatedRowBuilder =
+        addRepeatedRow(VariableRefPath(variable.id))
+
+    /**
+     * Add a repeated row group driven by a [Variable] object and configure it via [init].
+     * @return This builder instance for method chaining.
+     */
+    fun addRepeatedRow(variable: Variable, init: TableBuilder.RepeatedRowBuilder.() -> Unit): T =
+        addRepeatedRow(VariableRefPath(variable.id), init)
 }

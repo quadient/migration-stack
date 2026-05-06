@@ -48,7 +48,7 @@ data class TableEntity(
 
     @Serializable
     data class RepeatedRow(
-        val rows: List<Row>,
+        val rows: List<TableRow>,
         val variable: VariablePath,
         val displayRuleRef: DisplayRuleEntityRef? = null,
     ) : TableRow
