@@ -247,10 +247,7 @@ class Stats {
             }
             this.repeatedContentCount++
             for (innerRow in row.rows) {
-                this.collectDisplayRule(innerRow.displayRuleRef)
-                for (cell in innerRow.cells) {
-                    this.collectContent(cell.content)
-                }
+                this.collectTableRow(innerRow)
             }
         }
     }

@@ -158,13 +158,15 @@ abstract class InspireDocumentObjectBuilder(
     protected fun collectLanguages(documentObject: DocumentObject): List<String> {
         val languages = mutableSetOf<String>()
 
-        fun Table.allRows(): List<Table.Row> =
-            (rows + header + firstHeader + footer + lastFooter).flatMap { row ->
+        fun List<TableRow>.flattenRows(): List<Table.Row> =
+            flatMap { row ->
                 when (row) {
                     is Table.Row -> listOf(row)
-                    is Table.RepeatedRow -> row.rows
+                    is Table.RepeatedRow -> row.rows.flattenRows()
                 }
             }
+
+        fun Table.allRows(): List<Table.Row> = (rows + header + firstHeader + footer + lastFooter).flattenRows()
 
         fun collectLanguagesFromContent(content: List<DocumentContent>) {
             for (item in content) {
@@ -1162,12 +1164,23 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         val repeatedRowSet = layout.addRowSet().setType(RowSet.Type.REPEATED)
+
+        fun addChildRowSets(target: GeneralRowSet) {
+            repeatedRow.rows.forEach { childRow ->
+                when (childRow) {
+                    is Table.Row -> target.addRowSet(buildSingleRowSet(childRow, layout, variableStructure, languages))
+                    is Table.RepeatedRow -> buildRepeatedRowSet(childRow, layout, variableStructure, languages)
+                        ?.let { target.addRowSet(it) }
+                }
+            }
+        }
+
         if (repeatedRow.rows.size > 1) {
             val multipleRowSet = layout.addRowSet().setType(RowSet.Type.MULTIPLE_ROWS)
             repeatedRowSet.addRowSet(multipleRowSet)
-            repeatedRow.rows.forEach { multipleRowSet.addRowSet(buildSingleRowSet(it, layout, variableStructure, languages)) }
+            addChildRowSets(multipleRowSet)
         } else {
-            repeatedRow.rows.forEach { repeatedRowSet.addRowSet(buildSingleRowSet(it, layout, variableStructure, languages)) }
+            addChildRowSets(repeatedRowSet)
         }
         repeatedRowSet.setVariable(arrayVariable)
 
@@ -1184,10 +1197,11 @@ abstract class InspireDocumentObjectBuilder(
         val warning = Paragraph("<repeated row by unmapped \$$varName\$>")
 
         val rows = repeatedRow.rows
-        val rowsWithWarning = rows.firstOrNull()?.let { firstRow ->
+        val rowsWithWarning = (rows.firstOrNull { it is Table.Row } as? Table.Row)?.let { firstRow ->
             firstRow.cells.firstOrNull()?.let { firstCell ->
                 val cellWithWarning = firstCell.copy(content = listOf(warning) + firstCell.content)
-                listOf(firstRow.copy(cells = listOf(cellWithWarning) + firstRow.cells.drop(1))) + rows.drop(1)
+                val modifiedRow = firstRow.copy(cells = listOf(cellWithWarning) + firstRow.cells.drop(1))
+                listOf(modifiedRow) + rows.filter { it !== firstRow }
             }
         } ?: rows
 
@@ -1313,7 +1327,7 @@ abstract class InspireDocumentObjectBuilder(
         } else {
             val numberOfColumns = when (val firstRow = model.rows.firstOrNull()) {
                 is Table.Row -> firstRow.cells.size
-                is Table.RepeatedRow -> firstRow.rows.firstOrNull()?.cells?.size ?: 0
+                is Table.RepeatedRow -> firstRow.rows.firstNotNullOfOrNull { (it as? Table.Row)?.cells?.size } ?: 0
                 null -> 0
             }
             repeat(numberOfColumns) { table.addColumn() }

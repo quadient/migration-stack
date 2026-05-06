@@ -90,7 +90,7 @@ data class Table(
     }
 
     data class RepeatedRow(
-        val rows: List<Row>,
+        val rows: List<TableRow>,
         val variable: VariablePath,
         val displayRuleRef: DisplayRuleRef? = null,
     ) : TableRow {
@@ -102,7 +102,7 @@ data class Table(
 
         fun toDb(): TableEntity.RepeatedRow {
             return TableEntity.RepeatedRow(
-                rows = rows.map(Row::toDb),
+                rows = rows.map { it.toDb() },
                 variable = variable,
                 displayRuleRef = displayRuleRef?.toDb(),
             )
@@ -111,7 +111,7 @@ data class Table(
         companion object {
             fun fromDb(row: TableEntity.RepeatedRow): RepeatedRow {
                 return RepeatedRow(
-                    rows = row.rows.map(Row::fromDb),
+                    rows = row.rows.map(::tableRowFromDb),
                     variable = row.variable,
                     displayRuleRef = row.displayRuleRef?.let { DisplayRuleRef.fromDb(it) },
                 )
