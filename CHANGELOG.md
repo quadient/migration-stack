@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.21] - 2026-05-07
+
+### Added
+
 - Conflict validation as a check to prevent any overwrites by the following deployment
 - Allow building of first match snippets
 - Possibility to nest repeated row into repeated row
@@ -325,7 +333,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.20...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.21...HEAD
+[17.0.21]: https://github.com/quadient/migration-stack/compare/v17.0.20...v17.0.21
 [17.0.20]: https://github.com/quadient/migration-stack/compare/v17.0.19...v17.0.20
 [17.0.19]: https://github.com/quadient/migration-stack/compare/v17.0.18...v17.0.19
 [17.0.18]: https://github.com/quadient/migration-stack/compare/v17.0.17...v17.0.18
