@@ -406,7 +406,7 @@ abstract class InspireDocumentObjectBuilder(
         val singleFlow = if (this.size == 1) {
             this[0]
         } else {
-            val sectionFlow = layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
+            val sectionFlow = layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true).setWebEditingType(SECTION)
             flowName?.let { sectionFlow.setName(it) }
 
             val sectionFlowText = sectionFlow.addParagraph().addText()

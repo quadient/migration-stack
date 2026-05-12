@@ -32,6 +32,7 @@ import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
+import com.quadient.wfdxml.api.layoutnodes.Flow.WebEditingType.SECTION
 import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
@@ -274,7 +275,8 @@ class InteractiveDocumentObjectBuilder(
 
         interactiveFlowsWithContent.forEach {
             val interactiveFlowText =
-                layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).addParagraph().addText()
+                layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).setWebEditingType(SECTION)
+                    .addParagraph().addText()
 
             val flowName = if (hasMultipleFlows && it.key != mainFlowId) {
                 val interactiveFlowName =
