@@ -50,6 +50,7 @@ import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.CellHeight
+import com.quadient.migration.shared.CellOverflow
 import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.IcmPath
@@ -1119,7 +1120,7 @@ abstract class InspireDocumentObjectBuilder(
             } else cellContentFlow
 
             val cell = layout.addCell().setSpanLeft(cellModel.mergeLeft).setSpanUp(cellModel.mergeUp)
-                .setFlowToNextPage(true).setFlow(cellFlow)
+                .setFlowToNextPage(cellModel.overflow != CellOverflow.MoveCellToNextPage).setFlow(cellFlow)
 
             when (cellModel.height) {
                 is CellHeight.Custom -> {

@@ -11,6 +11,7 @@ import com.quadient.migration.api.dto.migrationmodel.TableRow as TableRowModel
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.CellHeight
+import com.quadient.migration.shared.CellOverflow
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.Size
@@ -189,12 +190,14 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
         var height: CellHeight? = null
         override var border: BorderOptions? = null
         var alignment: CellAlignment? = null
+        var overflow: CellOverflow? = null
 
         fun mergeLeft(value: Boolean) = apply { mergeLeft = value }
         fun mergeUp(value: Boolean) = apply { mergeUp = value }
         fun heightFixed(size: Size) = apply { height = CellHeight.Fixed(size) }
         fun heightCustom(minHeight: Size, maxHeight: Size) = apply { height = CellHeight.Custom(minHeight, maxHeight) }
         fun alignment(alignment: CellAlignment) = apply { this.alignment = alignment }
+        fun overflow(overflow: CellOverflow) = apply { this.overflow = overflow }
 
         fun build(): Table.Cell {
             return Table.Cell(
@@ -204,6 +207,7 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
                 height = height,
                 border = border,
                 alignment = alignment,
+                overflow = overflow,
             )
         }
     }
