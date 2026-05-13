@@ -554,7 +554,7 @@ def separator = new ShapeBuilder()
     .name("separator")
     .position {
         it.left(leftMargin)
-        it.top(Size.ofMillimeters(148))
+        it.top(Size.ofMillimeters(32))
         it.width(contentWidth)
         it.height(Size.ofMillimeters(0.2))
     }
@@ -565,7 +565,7 @@ def separator = new ShapeBuilder()
 
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas
-def paragraph1TopMargin = topMargin + Size.ofCentimeters(2)
+def paragraph1TopMargin = topMargin + Size.ofMillimeters(25)
 def signatureTopMargin = pageHeight - Size.ofCentimeters(3)
 def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         .options(new PageOptions(pageWidth, pageHeight))

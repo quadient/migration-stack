@@ -332,6 +332,7 @@ abstract class InspireDocumentObjectBuilder(
         content: List<DocumentContent>,
         flowName: String? = null,
         languages: List<String>,
+        isInline: Boolean = false,
     ): List<Flow> {
         val mutableContent = content.resolveAliases(imageRepository, attachmentRepository).toMutableList()
 
@@ -354,7 +355,7 @@ abstract class InspireDocumentObjectBuilder(
                 is Shape -> {}
 
                 is RepeatedContent -> flowModels.add(RepeatedContentFlow(contentPart))
-                is FirstMatch -> flowModels.add(FirstMatchFlow(contentPart))
+                is FirstMatch -> flowModels.add(FirstMatchFlow(contentPart, isInline))
                 is SelectByLanguage -> flowModels.add(SelectByLanguageFlow(contentPart))
             }
             idx++
@@ -376,7 +377,7 @@ abstract class InspireDocumentObjectBuilder(
 
                 is AttachmentFlow -> buildAttachmentRef(layout, it.ref)
                 is Composite -> buildCompositeFlow(layout, variableStructure, it.parts, nextName(), languages)
-                is FirstMatchFlow -> buildFirstMatch(layout, variableStructure, it.model, false, nextName(), languages)
+                is FirstMatchFlow -> buildFirstMatch(layout, variableStructure, it.model, it.isInline, nextName(), languages)
 
                 is SelectByLanguageFlow -> buildSelectByLanguage(
                     layout, variableStructure, it.model, nextName(), languages
@@ -393,7 +394,7 @@ abstract class InspireDocumentObjectBuilder(
         data class Composite(val parts: List<DocumentContent>) : FlowModel
         data class DocumentObjectRefFlow(val ref: DocumentObjectRef) : FlowModel
         data class AttachmentFlow(val ref: AttachmentRef) : FlowModel
-        data class FirstMatchFlow(val model: FirstMatch) : FlowModel
+        data class FirstMatchFlow(val model: FirstMatch, val isInline: Boolean) : FlowModel
         data class SelectByLanguageFlow(val model: SelectByLanguage) : FlowModel
         data class RepeatedContentFlow(val model: RepeatedContent) : FlowModel
     }
@@ -433,8 +434,9 @@ abstract class InspireDocumentObjectBuilder(
         flowName: String? = null,
         displayRuleRef: DisplayRuleRef? = null,
         languages: List<String>,
+        isInline: Boolean = false,
     ): Flow {
-        return buildDocumentContentAsFlows(layout, variableStructure, content, flowName, languages).toSingleFlow(
+        return buildDocumentContentAsFlows(layout, variableStructure, content, flowName, languages, isInline).toSingleFlow(
             layout, variableStructure, flowName, displayRuleRef
         )
     }

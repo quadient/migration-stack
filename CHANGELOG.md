@@ -12,7 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+- Shape (line) in Migration Model Example moved to header part of the document to avoid collision with new and dynamic content
+
 ### Fixed
+
+- First match snippet in Designer output rendered as an inline first match flow to better fit its inline nature
 
 ## [17.0.21] - 2026-05-07
 

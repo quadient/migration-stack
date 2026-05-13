@@ -17,6 +17,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ShapeBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
@@ -785,6 +786,41 @@ class DesignerDocumentObjectBuilderTest {
 
         result["Flow"].last { it["Id"].textValue() == defaultContentFlowId }["FlowContent"]["P"]["T"][""].textValue()
             .shouldBeEqualTo("I am default")
+    }
+
+    @Test
+    fun `snippet with first match produces inline condition flow without section wrapper flows`() {
+        // given
+        val rule1 = DisplayRuleBuilder("R_1").comparison { value("A").equals().value("B") }.build().mock()
+        val rule2 = DisplayRuleBuilder("R_2").comparison { value("C").equals().value("C") }.build().mock()
+
+        val snippet = DocumentObjectBuilder("S_1", Snippet)
+            .firstMatch {
+                case {
+                    displayRuleRef(rule1)
+                    string("case 1 content")
+                }
+                case {
+                    displayRuleRef(rule2)
+                    string("case 2 content")
+                }
+                defaultParagraph { string("default content") }
+            }
+            .build().mock()
+
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(snippet).build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val conditionFlow = result["Flow"].last { it["Type"]?.textValue() == "InlCond" }
+        val conditions = conditionFlow["Condition"]
+        conditions.size().shouldBeEqualTo(2)
+
+        val caseFlow = result["Flow"].last { it["Id"].textValue() == conditions[0][""].textValue() }
+        caseFlow["SectionFlow"]?.textValue().shouldBeEqualTo("False")
+        caseFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("case 1 content")
     }
 
     @Test

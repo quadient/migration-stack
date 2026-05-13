@@ -296,7 +296,17 @@ class DesignerDocumentObjectBuilder(
         languages: List<String>
     ): Flow? {
         val flow = getFlowByName(layout, documentModel.nameOrId())
-            ?: if (documentModel.internal == true || documentModel.type == DocumentObjectType.Snippet) {
+            ?: if (documentModel.type == DocumentObjectType.Snippet) {
+                buildDocumentContentAsSingleFlow(
+                    layout,
+                    variableStructure,
+                    documentModel.content,
+                    documentModel.nameOrId(),
+                    documentModel.displayRuleRef?.let { DisplayRuleRef(it.id) },
+                    languages,
+                    isInline = true
+                )
+            } else if (documentModel.internal == true) {
                 buildDocumentContentAsSingleFlow(
                     layout,
                     variableStructure,
