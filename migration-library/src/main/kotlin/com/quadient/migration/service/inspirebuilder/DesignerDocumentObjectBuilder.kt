@@ -7,6 +7,7 @@ import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
+import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveAliases
@@ -48,7 +49,7 @@ class DesignerDocumentObjectBuilder(
     documentObjectRepository: DocumentObjectRepository,
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
-    variableRepository: Repository<Variable>,
+    variableRepository: VariableRepository,
     variableStructureRepository: Repository<VariableStructure>,
     displayRuleRepository: Repository<DisplayRule>,
     imageRepository: Repository<Image>,
@@ -338,6 +339,7 @@ class DesignerDocumentObjectBuilder(
             when (it) {
                 is Area -> pageContentModels.add(PageContent.AreaContent(it))
                 is Shape -> pageContentModels.add(PageContent.PathObjectContent(it))
+                is Barcode -> pageContentModels.add(PageContent.BarCodeContent(it))
                 else -> virtualAreaContent.add(it)
             }
         }
@@ -349,6 +351,9 @@ class DesignerDocumentObjectBuilder(
                 }
                 is PageContent.PathObjectContent -> {
                     buildPathObject(layout, page, model.content)
+                }
+                is PageContent.BarCodeContent -> {
+                    model.content.buildContent(variableRepository, page.barcodeFactory, layout, variableStructure, false)
                 }
             }
         }
@@ -503,5 +508,6 @@ class DesignerDocumentObjectBuilder(
     private sealed interface PageContent {
         data class AreaContent(val content: Area): PageContent
         data class PathObjectContent(val content: Shape): PageContent
+        data class BarCodeContent(val content: Barcode): PageContent
     }
 }

@@ -3,6 +3,7 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.Barcode
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
@@ -16,9 +17,12 @@ import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.BarcodeBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.Code39BarcodeBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ColumnLayoutBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ShapeBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.RepeatedContentBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.QrCodeBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.SelectByLanguageBuilder
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariablePath
@@ -338,6 +342,54 @@ interface HasAreaContent<T> {
     } as T
 }
 
+interface HasBarcodeContent<C, T> : HasQrCodeContent<C, T>, HasCode39BarcodeContent<C, T> {
+    override val content: MutableList<C>
+
+    /**
+     * Adds a barcode to the content using an existing [Barcode] instance.
+     * @param barcode The [Barcode] instance to append.
+     * @return This builder instance for method chaining.
+     */
+    fun barcode(barcode: Barcode): T = apply {
+        this.content.add(barcode as C)
+    } as T
+
+    /**
+     * Adds a barcode to the content using a builder function.
+     * @param builder A builder function to construct the [Barcode].
+     * @return This builder instance for method chaining.
+     */
+    fun barcode(builder: BarcodeBuilder.() -> Unit): T = apply {
+        this.content.add(BarcodeBuilder().apply(builder).build() as C)
+    } as T
+}
+
+interface HasQrCodeContent<C, T> {
+    val content: MutableList<C>
+
+    /**
+     * Adds a QR code to the content using a builder function.
+     * @param builder A builder function to construct the QR code.
+     * @return This builder instance for method chaining.
+     */
+    fun qrCode(builder: QrCodeBuilder.() -> Unit): T = apply {
+        this.content.add(QrCodeBuilder().apply(builder).build() as C)
+    } as T
+}
+
+interface HasCode39BarcodeContent<C, T> {
+    val content: MutableList<C>
+
+    /**
+     * Adds a Code 39 barcode to the content using a builder function.
+     * @param builder A builder function to construct the Code 39 barcode.
+     * @return This builder instance for method chaining.
+     */
+    fun code39Barcode(builder: Code39BarcodeBuilder.() -> Unit): T = apply {
+        this.content.add(Code39BarcodeBuilder().apply(builder).build() as C)
+    } as T
+}
+
 /**
  * Base interface for builders that contain a list of DocumentContent.
  * Provides standard methods for adding various types of document content.
@@ -353,4 +405,6 @@ interface DocumentContentBuilderBase<T> : HasGenericContent<DocumentContent, T>,
     HasStringContent<DocumentContent, T>,
     HasVariableRefContent<DocumentContent, T>,
     HasRepeatedContent<T>,
-    HasColumnLayoutContent<T>
+    HasColumnLayoutContent<T>,
+    HasBarcodeContent<DocumentContent, T>
+

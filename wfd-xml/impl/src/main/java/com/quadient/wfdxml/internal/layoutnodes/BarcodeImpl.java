@@ -180,6 +180,7 @@ abstract class BarcodeImpl<S extends Barcode<S>> extends LayoutObjectImpl<S> imp
                 .addElementWithIface("FillStyleId", barcodeFillStyle)
                 .addElementWithIface("FillBackgroungStyleId", backgroundFillStyle)
                 .addElementWithBoolData("UseCodec", useEncoding)
+                .addElementWithStringData("RunaroundType", "Square")
                 .addElementWithStringData("TextCodec", encoding)
                 .addElementWithStringData("SettingsLocation", settingsLocation)
                 .addElementWithStringData("HorizontalAlign", convertHorizontalAlignToXmlName(horizontalAlign))

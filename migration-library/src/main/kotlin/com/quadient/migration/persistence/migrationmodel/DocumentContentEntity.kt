@@ -3,8 +3,11 @@ package com.quadient.migration.persistence.migrationmodel
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.CellHeight
+import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.Position
+import com.quadient.migration.shared.QrCodeErrorCorrectionLevel
+import com.quadient.migration.shared.QrCodeSize
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.TableAlignment
 import kotlinx.serialization.KSerializer
@@ -116,3 +119,47 @@ data class RepeatedContentEntity(
     val variablePath: VariablePath,
     val content: List<DocumentContentEntity>,
 ) : DocumentContentEntity
+
+
+@Serializable
+sealed interface BarcodeEntity : DocumentContentEntity, TextContentEntity {
+    val position: Position?
+    val data: String?
+    val barcodeFill: Color?
+    val backgroundFill: Color?
+    val variableRef: VariableEntityRef?
+}
+
+@Serializable
+data class QrCodeEntity(
+    override val position: Position?,
+    override val data: String?,
+    override val barcodeFill: Color?,
+    override val backgroundFill: Color?,
+    override val variableRef: VariableEntityRef?,
+    val errorCorrection: QrCodeErrorCorrectionLevel,
+    val size: QrCodeSize,
+    val moduleWidth: Size,
+    val quiteZone: Size,
+): BarcodeEntity
+
+@Serializable
+data class Code39BarcodeEntity(
+    override val position: Position?,
+    override val data: String?,
+    override val barcodeFill: Color?,
+    override val backgroundFill: Color?,
+    override val variableRef: VariableEntityRef?,
+    val height: Size,
+    val moduleWidth: Size,
+    val whiteSpace: Double,
+    val useControlSum: Boolean,
+    val ratio: Double,
+    val interCharacterSpaceRatio: Double,
+    val directMetric: Boolean,
+    val firstBarWidth: Size,
+    val secondBarWidth: Size,
+    val firstBarSpace: Size,
+    val secondBarSpace: Size,
+): BarcodeEntity
+

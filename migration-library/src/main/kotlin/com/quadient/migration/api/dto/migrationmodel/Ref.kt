@@ -7,6 +7,7 @@ import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
 import com.quadient.migration.persistence.migrationmodel.HyperlinkEntity
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
 import com.quadient.migration.persistence.migrationmodel.AttachmentEntityRef
+import com.quadient.migration.persistence.migrationmodel.BarcodeEntity
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleEntityRef
 import com.quadient.migration.persistence.migrationmodel.ResourceEntityRef
 import com.quadient.migration.persistence.migrationmodel.StringEntity
@@ -41,6 +42,7 @@ sealed interface TextContent {
             is FirstMatchEntity -> FirstMatch.fromDb(entity)
             is HyperlinkEntity -> Hyperlink.fromDb(entity)
             is ColumnLayoutEntity -> ColumnLayout.fromDb(entity)
+            is BarcodeEntity -> Barcode.fromDb(entity)
         }
     }
 }

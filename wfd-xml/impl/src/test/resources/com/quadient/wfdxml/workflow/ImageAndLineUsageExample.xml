@@ -658,6 +658,7 @@
                 <FillStyleId>SR_5</FillStyleId>
                 <FillBackgroungStyleId></FillBackgroungStyleId>
                 <UseCodec>False</UseCodec>
+                <RunaroundType>Square</RunaroundType>
                 <TextCodec>UTF-8</TextCodec>
                 <HorizontalAlign>Left</HorizontalAlign>
                 <VerticalAlign>Top</VerticalAlign>
@@ -891,6 +892,7 @@
                 <FillStyleId>SR_4</FillStyleId>
                 <FillBackgroungStyleId></FillBackgroungStyleId>
                 <UseCodec>False</UseCodec>
+                <RunaroundType>Square</RunaroundType>
                 <TextCodec>UTF-8</TextCodec>
                 <HorizontalAlign>Left</HorizontalAlign>
                 <VerticalAlign>Top</VerticalAlign>
