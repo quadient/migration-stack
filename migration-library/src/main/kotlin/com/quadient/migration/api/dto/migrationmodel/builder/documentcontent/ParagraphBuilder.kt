@@ -126,10 +126,14 @@ class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
         )
     }
 
-    class TextBuilder : HasDisplayRuleRef<TextBuilder>, HasTextStyleRef<TextBuilder> {
+    class TextBuilder :
+        HasDisplayRuleRef<TextBuilder>,
+        HasTextStyleRef<TextBuilder>,
+        HasBarcodeContent<TextContent, TextBuilder>
+    {
         override var styleRef: TextStyleRef? = null
         override var displayRuleRef: DisplayRuleRef? = null
-        var content: MutableList<TextContent> = mutableListOf()
+        override var content: MutableList<TextContent> = mutableListOf()
 
 
         /**

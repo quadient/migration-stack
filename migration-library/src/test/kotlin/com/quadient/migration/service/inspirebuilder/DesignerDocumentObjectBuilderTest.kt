@@ -17,6 +17,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ShapeBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
@@ -788,6 +789,41 @@ class DesignerDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `snippet with first match produces inline condition flow without section wrapper flows`() {
+        // given
+        val rule1 = DisplayRuleBuilder("R_1").comparison { value("A").equals().value("B") }.build().mock()
+        val rule2 = DisplayRuleBuilder("R_2").comparison { value("C").equals().value("C") }.build().mock()
+
+        val snippet = DocumentObjectBuilder("S_1", Snippet)
+            .firstMatch {
+                case {
+                    displayRuleRef(rule1)
+                    string("case 1 content")
+                }
+                case {
+                    displayRuleRef(rule2)
+                    string("case 2 content")
+                }
+                defaultParagraph { string("default content") }
+            }
+            .build().mock()
+
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(snippet).build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val conditionFlow = result["Flow"].last { it["Type"]?.textValue() == "InlCond" }
+        val conditions = conditionFlow["Condition"]
+        conditions.size().shouldBeEqualTo(2)
+
+        val caseFlow = result["Flow"].last { it["Id"].textValue() == conditions[0][""].textValue() }
+        caseFlow["SectionFlow"]?.textValue().shouldBeEqualTo("False")
+        caseFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("case 1 content")
+    }
+
+    @Test
     fun `build block under display rule has its content wrapped in inline condition`() {
         // given
         val rule = aDisplayRule(Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String)).mock()
@@ -932,6 +968,121 @@ class DesignerDocumentObjectBuilderTest {
         val flow = result["Flow"].first { it["Type"]?.textValue() == "Simple" }
         flow["FlowContent"]["P"]["T"][""][0].textValue().shouldBeEqualTo("Text")
         flow["FlowContent"]["P"]["T"][""][1].textValue().shouldBeEqualTo("\$No Path Variable\$")
+    }
+
+    @Test
+    fun `buildDocumentObject creates QR barcode on page with correct position and properties`() {
+        // given
+        val page = DocumentObjectBuilder("P_1", Page)
+            .barcode {
+                qr {
+                    data("012345")
+                    position { left(20.millimeters()); top(30.millimeters()); width(29.millimeters()); height(29.millimeters()) }
+                    errorCorrection(com.quadient.migration.shared.QrCodeErrorCorrectionLevel.M)
+                    moduleWidth(Size.ofMillimeters(1))
+                    quietZone(Size.ofMillimeters(4))
+                }
+            }
+            .build()
+            .mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(page).build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val barcode = result["Barcode"].last()
+        barcode["Pos"]["X"].textValue().shouldBeEqualTo("0.02")
+        barcode["Pos"]["Y"].textValue().shouldBeEqualTo("0.03")
+        barcode["Size"]["X"].textValue().shouldBeEqualTo("0.029")
+        barcode["Size"]["Y"].textValue().shouldBeEqualTo("0.029")
+        barcode["BarcodeName"].textValue().shouldBeEqualTo("QR")
+        barcode["ConvertString"].textValue().shouldBeEqualTo("012345")
+    }
+
+    @Test
+    fun `buildDocumentObject creates Code39 barcode on page with correct barcode name`() {
+        // given
+        val page = DocumentObjectBuilder("P_1", Page)
+            .barcode {
+                code39 {
+                    data("ABC123")
+                    position { left(10.millimeters()); top(10.millimeters()); width(50.millimeters()); height(20.millimeters()) }
+                }
+            }
+            .build()
+            .mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(page).build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val barcode = result["Barcode"].last()
+        barcode["BarcodeName"].textValue().shouldBeEqualTo("Code 39")
+        barcode["ConvertString"].textValue().shouldBeEqualTo("ABC123")
+        barcode["Pos"]["X"].textValue().shouldBeEqualTo("0.01")
+        barcode["Pos"]["Y"].textValue().shouldBeEqualTo("0.01")
+    }
+
+    @Test
+    fun `buildDocumentObject with barcode driven by variable creates barcode with variable reference`() {
+        // given
+        val barcodeVar = aVariable("barcodeVar", name = "BarcodeData", dataType = DataType.String).mock()
+        val variableStructure = aVariableStructure(
+            structure = mapOf(barcodeVar.id to com.quadient.migration.shared.VariablePathData("Data.Records.Value"))
+        ).mock()
+
+        val page = DocumentObjectBuilder("P_1", Page)
+            .barcode {
+                qr {
+                    variableRef(barcodeVar)
+                    position { left(20.millimeters()); top(30.millimeters()); width(29.millimeters()); height(29.millimeters()) }
+                }
+            }
+            .build()
+            .mock()
+
+        val template = DocumentObjectBuilder("T_1", Template)
+            .variableStructureRef(variableStructure.id)
+            .documentObjectRef(page)
+            .build()
+            .mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val barcode = result["Barcode"].last()
+        barcode["BarcodeName"].textValue().shouldBeEqualTo("QR")
+        val variableId = barcode["VariableId"].textValue()
+        variableId.shouldNotBeEmpty()
+        val variable = result["Variable"].first { it["Id"].textValue() == variableId }
+        variable["Name"].textValue().shouldBeEqualTo("BarcodeData")
+    }
+
+    @Test
+    fun `buildDocumentObject with page containing barcode and text creates both elements`() {
+        // given
+        val page = DocumentObjectBuilder("P_1", Page)
+            .barcode {
+                qr {
+                    data("test-data")
+                    position { left(20.millimeters()); top(30.millimeters()); width(29.millimeters()); height(29.millimeters()) }
+                }
+            }
+            .string("Some text on the page")
+            .build()
+            .mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(page).build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["Barcode"].shouldNotBeNull()
+        result["Barcode"].last()["BarcodeName"].textValue().shouldBeEqualTo("QR")
+        result["FlowArea"].shouldNotBeNull()
     }
 
     @Test

@@ -10,6 +10,7 @@ import com.quadient.migration.persistence.migrationmodel.TableEntity
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
 import com.quadient.migration.persistence.migrationmodel.AttachmentEntityRef
+import com.quadient.migration.persistence.migrationmodel.BarcodeEntity
 import com.quadient.migration.persistence.migrationmodel.ShapeEntity
 import com.quadient.migration.persistence.migrationmodel.RepeatedContentEntity
 import com.quadient.migration.persistence.migrationmodel.VariableStringContentEntity
@@ -29,6 +30,7 @@ sealed interface DocumentContent {
             is VariableStringContentEntity -> VariableStringContent.fromDb(entity)
             is ColumnLayoutEntity -> ColumnLayout.fromDb(entity)
             is ShapeEntity -> Shape.fromDb(entity)
+            is BarcodeEntity -> Barcode.fromDb(entity)
         }
     }
 }
@@ -47,6 +49,7 @@ fun List<DocumentContent>.toDb(): List<DocumentContentEntity> {
             is ResourceRef -> it.toDb()
             is ColumnLayout -> it.toDb()
             is Shape -> it.toDb()
+            is Barcode -> it.toDb()
         }
     }
 }

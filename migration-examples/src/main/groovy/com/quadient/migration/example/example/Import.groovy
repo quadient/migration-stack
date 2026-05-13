@@ -20,6 +20,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ShapeBuilder
+import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.Color
@@ -31,6 +32,8 @@ import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
+import com.quadient.migration.shared.QrCodeErrorCorrectionLevel
+import com.quadient.migration.shared.QrCodeSize
 import com.quadient.migration.shared.TableAlignment
 import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.shared.Size
@@ -186,6 +189,13 @@ def compactParagraphStyle = new ParagraphStyleBuilder("compactParagraphStyle")
             it.additionalLineSpacing(Size.ofMillimeters(1))
         }
         .build()
+
+def alignRightParagraphStyle = new ParagraphStyleBuilder("alignRightParagraphStyle ")
+    .definition {
+        it.alignment(Alignment.Right)
+    }
+    .build()
+
 
 // Define image to be used as a logo, base64 encoded image is hardcoded
 // here for simplicity but any valid image that is saved to the storage
@@ -535,6 +545,7 @@ def fmSnippet = new SnippetBuilder("firstMatchSnippet")
             }
             .defaultString("For more information visit ")
     }
+    .variableStructureRef(variableStructure)
     .build()
 
 
@@ -543,7 +554,7 @@ def separator = new ShapeBuilder()
     .name("separator")
     .position {
         it.left(leftMargin)
-        it.top(Size.ofMillimeters(148))
+        it.top(Size.ofMillimeters(32))
         it.width(contentWidth)
         it.height(Size.ofMillimeters(0.2))
     }
@@ -554,7 +565,7 @@ def separator = new ShapeBuilder()
 
 // A page object which contains the address, paragraphs, table, and signature.
 // All the content is absolutely positioned using FlowAreas
-def paragraph1TopMargin = topMargin + Size.ofCentimeters(2)
+def paragraph1TopMargin = topMargin + Size.ofMillimeters(25)
 def signatureTopMargin = pageHeight - Size.ofCentimeters(3)
 def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         .options(new PageOptions(pageWidth, pageHeight))
@@ -596,11 +607,28 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                     .documentObjectRef(conditionalParagraph)
                     .documentObjectRef(firstMatchBlock)
                     .documentObjectRef(selectByLanguageBlock)
+                    .columnLayout {
+                        it.numberOfColumns(2)
+                        it.gutterWidth(Size.ofMillimeters(5))
+                        it.balancingType(ColumnBalancingType.Balanced)
+                    }
                     .paragraph {
                         it.styleRef(spaceParagraphStyle).text {
                             it.styleRef(normalStyle)
                                     .documentObjectRef(fmSnippet)
                                     .hyperlink("https://github.com/quadient/migration-stack", "Migration Stack GitHub", "Migration Stack GitHub URL link")
+                        }
+                    }
+                    .paragraph {
+                        it.styleRef(alignRightParagraphStyle)
+                        it.text {
+                            it.qrCode {
+                                it.data("https://github.com/quadient/migration-stack")
+                                it.errorCorrection(QrCodeErrorCorrectionLevel.M)
+                                it.size(QrCodeSize.Auto)
+                                it.moduleWidth(Size.ofMillimeters(0.58))
+                                it.quietZone(Size.ofMillimeters(2))
+                            }
                         }
                     }
         }
@@ -644,7 +672,7 @@ for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSenten
 for (item in [displayAddressRule, dummyDisplayHeaderRule, displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {
     migration.displayRuleRepository.upsert(item)
 }
-for (item in [paragraphStyle, headingParaStyle, compactParagraphStyle, spaceParagraphStyle]) {
+for (item in [paragraphStyle, headingParaStyle, compactParagraphStyle, spaceParagraphStyle, alignRightParagraphStyle]) {
     migration.paragraphStyleRepository.upsert(item)
 }
 

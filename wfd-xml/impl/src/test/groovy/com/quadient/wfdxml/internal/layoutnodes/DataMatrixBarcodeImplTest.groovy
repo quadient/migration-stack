@@ -40,6 +40,7 @@ class DataMatrixBarcodeImplTest extends Specification {
           <FillStyleId></FillStyleId>
           <FillBackgroungStyleId></FillBackgroungStyleId>
           <UseCodec>False</UseCodec>
+          <RunaroundType>Square</RunaroundType>
           <TextCodec>UTF-8</TextCodec>
           <HorizontalAlign>Left</HorizontalAlign>
           <VerticalAlign>Top</VerticalAlign>
@@ -115,6 +116,7 @@ class DataMatrixBarcodeImplTest extends Specification {
           <FillStyleId>$barcodeFillId</FillStyleId>
           <FillBackgroungStyleId>$backgroundFillStyleId</FillBackgroungStyleId>
           <UseCodec>True</UseCodec>
+          <RunaroundType>Square</RunaroundType>
           <TextCodec>UTF-32</TextCodec>
           <SettingsLocation>DiskLocation,C://tmp/setting.xml</SettingsLocation>
           <HorizontalAlign>Center</HorizontalAlign>

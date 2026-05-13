@@ -12,6 +12,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.Barcode
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
 import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.Image
@@ -106,6 +107,7 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.Shape
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
+import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariableRefPath
@@ -117,7 +119,7 @@ abstract class InspireDocumentObjectBuilder(
     protected val documentObjectRepository: DocumentObjectRepository,
     protected val textStyleRepository: TextStyleRepository,
     protected val paragraphStyleRepository: ParagraphStyleRepository,
-    protected val variableRepository: Repository<Variable>,
+    protected val variableRepository: VariableRepository,
     protected val variableStructureRepository: Repository<VariableStructure>,
     protected val displayRuleRepository: Repository<DisplayRule>,
     protected val imageRepository: Repository<Image>,
@@ -331,6 +333,7 @@ abstract class InspireDocumentObjectBuilder(
         content: List<DocumentContent>,
         flowName: String? = null,
         languages: List<String>,
+        isInline: Boolean = false,
     ): List<Flow> {
         val mutableContent = content.resolveAliases(imageRepository, attachmentRepository).toMutableList()
 
@@ -338,7 +341,7 @@ abstract class InspireDocumentObjectBuilder(
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
             when (val contentPart = mutableContent[idx]) {
-                is Table, is Paragraph, is ImageRef, is VariableStringContent, is ColumnLayout -> {
+                is Table, is Paragraph, is ImageRef, is VariableStringContent, is ColumnLayout, is Barcode -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
                     flowModels.add(Composite(flowParts))
@@ -353,7 +356,7 @@ abstract class InspireDocumentObjectBuilder(
                 is Shape -> {}
 
                 is RepeatedContent -> flowModels.add(RepeatedContentFlow(contentPart))
-                is FirstMatch -> flowModels.add(FirstMatchFlow(contentPart))
+                is FirstMatch -> flowModels.add(FirstMatchFlow(contentPart, isInline))
                 is SelectByLanguage -> flowModels.add(SelectByLanguageFlow(contentPart))
             }
             idx++
@@ -375,7 +378,7 @@ abstract class InspireDocumentObjectBuilder(
 
                 is AttachmentFlow -> buildAttachmentRef(layout, it.ref)
                 is Composite -> buildCompositeFlow(layout, variableStructure, it.parts, nextName(), languages)
-                is FirstMatchFlow -> buildFirstMatch(layout, variableStructure, it.model, false, nextName(), languages)
+                is FirstMatchFlow -> buildFirstMatch(layout, variableStructure, it.model, it.isInline, nextName(), languages)
 
                 is SelectByLanguageFlow -> buildSelectByLanguage(
                     layout, variableStructure, it.model, nextName(), languages
@@ -392,7 +395,7 @@ abstract class InspireDocumentObjectBuilder(
         data class Composite(val parts: List<DocumentContent>) : FlowModel
         data class DocumentObjectRefFlow(val ref: DocumentObjectRef) : FlowModel
         data class AttachmentFlow(val ref: AttachmentRef) : FlowModel
-        data class FirstMatchFlow(val model: FirstMatch) : FlowModel
+        data class FirstMatchFlow(val model: FirstMatch, val isInline: Boolean) : FlowModel
         data class SelectByLanguageFlow(val model: SelectByLanguage) : FlowModel
         data class RepeatedContentFlow(val model: RepeatedContent) : FlowModel
     }
@@ -432,8 +435,9 @@ abstract class InspireDocumentObjectBuilder(
         flowName: String? = null,
         displayRuleRef: DisplayRuleRef? = null,
         languages: List<String>,
+        isInline: Boolean = false,
     ): Flow {
-        return buildDocumentContentAsFlows(layout, variableStructure, content, flowName, languages).toSingleFlow(
+        return buildDocumentContentAsFlows(layout, variableStructure, content, flowName, languages, isInline).toSingleFlow(
             layout, variableStructure, flowName, displayRuleRef
         )
     }
@@ -755,6 +759,11 @@ abstract class InspireDocumentObjectBuilder(
                     columnLayout = null
                     buildAndAppendImage(layout, text, model)
                 }
+                is Barcode -> {
+                    val element = layout.addElement().setDynamicSizeByRunaround(true)
+                    flow.addParagraph().addText().appendElement(element)
+                    model.buildContent(variableRepository, element.barcodeFactory, layout, variableStructure, true)
+                }
                 else -> error("Content part type ${model::class.simpleName} is not allowed in composite flow.")
             }
 
@@ -802,7 +811,7 @@ abstract class InspireDocumentObjectBuilder(
 
         do {
             val contentPart = content[index]
-            if (contentPart is Table || contentPart is Paragraph || contentPart is ImageRef || contentPart is VariableStringContent || contentPart is ColumnLayout) {
+            if (contentPart is Table || contentPart is Paragraph || contentPart is ImageRef || contentPart is VariableStringContent || contentPart is ColumnLayout || contentPart is Barcode) {
                 flowParts.add(contentPart)
                 index++
             } else {
@@ -885,6 +894,11 @@ abstract class InspireDocumentObjectBuilder(
                     is FirstMatch -> currentText.appendFlow(
                         buildFirstMatch(layout, variableStructure, textContent, true, null, languages)
                     )
+                    is Barcode -> {
+                        val element = layout.addElement().setDynamicSizeByRunaround(true)
+                        currentText.appendElement(element)
+                        textContent.buildContent(variableRepository, element.barcodeFactory, layout, variableStructure, true)
+                    }
                 }
             }
         }

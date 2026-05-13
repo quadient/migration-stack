@@ -32,6 +32,7 @@ import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
+import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.ColumnApplyTo
@@ -43,6 +44,8 @@ import com.quadient.migration.shared.ImageType.*
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
+import com.quadient.migration.shared.QrCodeErrorCorrectionLevel
+import com.quadient.migration.shared.QrCodeSize
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.millimeters
@@ -51,6 +54,7 @@ import com.quadient.migration.tools.getFlowAreaContentFlow
 import com.quadient.migration.tools.model.*
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
+import com.quadient.migration.tools.shouldNotBeNull
 import com.quadient.wfdxml.api.layoutnodes.TextStyleInheritFlag
 import com.quadient.wfdxml.internal.module.layout.LayoutImpl
 import io.mockk.every
@@ -961,6 +965,161 @@ class InspireDocumentObjectBuilderTest {
 
         val section = result["Section"].last { it["Id"].textValue() == sectionId }
         section["Column"].size().shouldBeEqualTo(3)
+    }
+
+    @Test
+    fun `buildDocumentObject creates QR code`() {
+        // given
+        val barcodeVar = mockVar(VariableBuilder("barcodeVar").name("BarcodeData").dataType(DataType.String).build())
+        val variableStructure = mockVarStructure(
+            VariableStructureBuilder("VS_1").addVariable(barcodeVar.id, "Data.Records.Value").build()
+        )
+        val page = DocumentObjectBuilder("P_1", DocumentObjectType.Page)
+            .barcode {
+                qr {
+                    data("012345")
+                    position { left(20.millimeters()); top(30.millimeters()); width(29.millimeters()); height(29.millimeters()) }
+                    errorCorrection(QrCodeErrorCorrectionLevel.H)
+                    size(QrCodeSize.Fixed45x45)
+                    moduleWidth(Size.ofMillimeters(1))
+                    quietZone(Size.ofMillimeters(3))
+                    barcodeFill(Color.fromHex("#1A2B3C"))
+                    backgroundFill(Color.fromHex("#F0E0D0"))
+                    variableRef(barcodeVar)
+                }
+            }
+            .build()
+        mockObj(page)
+
+        val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template)
+            .variableStructureRef(variableStructure.id)
+            .documentObjectRef(page)
+            .build()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val barcode = result["Barcode"].last()
+        barcode["Pos"]["X"].textValue().shouldBeEqualTo("0.02")
+        barcode["Pos"]["Y"].textValue().shouldBeEqualTo("0.03")
+        barcode["Size"]["X"].textValue().shouldBeEqualTo("0.029")
+        barcode["Size"]["Y"].textValue().shouldBeEqualTo("0.029")
+        barcode["BarcodeName"].textValue().shouldBeEqualTo("QR")
+        barcode["ConvertString"].textValue().shouldBeEqualTo("012345")
+        barcode["ShowDataTextProcessed"].textValue().shouldBeEqualTo("True")
+        barcode["FillStyleId"].shouldNotBeNull()
+        barcode["FillBackgroungStyleId"].shouldNotBeNull()
+        val variableId = barcode["VariableId"].textValue()
+        val variable = result["Variable"].first { it["Id"].textValue() == variableId }
+        variable["Name"].textValue().shouldBeEqualTo("BarcodeData")
+
+        val barcodeGenerator = barcode["BarcodeGenerator"]
+        barcodeGenerator["Type"].textValue().shouldBeEqualTo("QRBarcodeGenerator")
+        barcodeGenerator["ModulWidth"].textValue().shouldBeEqualTo("0.001")
+        barcodeGenerator["WhiteSpace"].textValue().shouldBeEqualTo("0.003")
+        barcodeGenerator["ErrorLevel"].textValue().shouldBeEqualTo("72")
+        barcodeGenerator["PredefinedBarcodeSize"].textValue().shouldBeEqualTo("45")
+    }
+
+    @Test
+    fun `buildDocumentObject creates code39 barcode`() {
+        // given
+        val page = DocumentObjectBuilder("P_1", DocumentObjectType.Page)
+            .code39Barcode {
+                data("ABC123")
+                position { left(10.millimeters()); top(10.millimeters()); width(50.millimeters()); height(20.millimeters()) }
+                height(Size.ofMillimeters(15))
+                moduleWidth(Size.ofMillimeters(1))
+                quietZone(5.0)
+                useControlSum(true)
+                ratio(3.5)
+                interCharacterSpaceRatio(2.0)
+                directMetric(true)
+                firstBarWidth(Size.ofMillimeters(2))
+                secondBarWidth(Size.ofMillimeters(3))
+                firstBarSpace(Size.ofMillimeters(4))
+                secondBarSpace(Size.ofMillimeters(5))
+                barcodeFill(Color.fromHex("#2C3E50"))
+                backgroundFill(Color.fromHex("#ECF0F1"))
+            }
+            .build()
+        mockObj(page)
+
+        val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template)
+            .documentObjectRef(page)
+            .build()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val barcode = result["Barcode"].last()
+        barcode["BarcodeName"].textValue().shouldBeEqualTo("Code 39")
+        barcode["ConvertString"].textValue().shouldBeEqualTo("ABC123")
+        barcode["Pos"]["X"].textValue().shouldBeEqualTo("0.01")
+        barcode["Pos"]["Y"].textValue().shouldBeEqualTo("0.01")
+        barcode["Size"]["X"].textValue().shouldBeEqualTo("0.05")
+        barcode["Size"]["Y"].textValue().shouldBeEqualTo("0.02")
+        barcode["FillStyleId"].shouldNotBeNull()
+        barcode["FillBackgroungStyleId"].shouldNotBeNull()
+
+        val barcodeGenerator = barcode["BarcodeGenerator"]
+        barcodeGenerator["Type"].textValue().shouldBeEqualTo("Code39BarcodeGenerator")
+        barcodeGenerator["Ratio"].textValue().shouldBeEqualTo("3.5")
+        barcodeGenerator["Height"].textValue().shouldBeEqualTo("0.015")
+        barcodeGenerator["ModulSize"].textValue().shouldBeEqualTo("0.001")
+        barcodeGenerator["WhiteSpace"].textValue().shouldBeEqualTo("5.0")
+        barcodeGenerator["UseControlSum"].textValue().shouldBeEqualTo("True")
+        barcodeGenerator["InterCharacterSpaceRatio"].textValue().shouldBeEqualTo("2.0")
+        barcodeGenerator["UseDirectMetric"].textValue().shouldBeEqualTo("True")
+        barcodeGenerator["ModuleBlackSize0"].textValue().shouldBeEqualTo("0.002")
+        barcodeGenerator["ModuleBlackSize1"].textValue().shouldBeEqualTo("0.003")
+        barcodeGenerator["ModuleSpaceSize0"].textValue().shouldBeEqualTo("0.004")
+        barcodeGenerator["ModuleSpaceSize1"].textValue().shouldBeEqualTo("0.005")
+    }
+
+    @Test
+    fun `buildDocumentObject creates barcode in composite flow`() {
+        // given
+        val inner = mockObj(
+            DocumentObjectBuilder("S_1", Block)
+                .qrCode { data("QR-123") }
+                .internal(true)
+                .build()
+        )
+
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .documentObjectRef(inner)
+                .build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val barcode = result["Barcode"].last()
+        barcode["BarcodeName"].textValue().shouldBeEqualTo("QR")
+        barcode["ConvertString"].textValue().shouldBeEqualTo("QR-123")
+    }
+
+    @Test
+    fun `buildDocumentObject creates barcode inline in text content`() {
+        // given
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block)
+                .paragraph { text { qrCode { data("QR-456") } } }
+                .build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val barcode = result["Barcode"].last()
+        barcode["BarcodeName"].textValue().shouldBeEqualTo("QR")
+        barcode["ConvertString"].textValue().shouldBeEqualTo("QR-456")
     }
 
     private fun DisplayRule.toScript(): String {

@@ -1,6 +1,8 @@
 package com.quadient.wfdxml.internal.layoutnodes;
 
 import com.quadient.wfdxml.api.layoutnodes.BarcodeFactory;
+import com.quadient.wfdxml.api.layoutnodes.Code39Barcode;
+import com.quadient.wfdxml.api.layoutnodes.QrBarcode;
 import com.quadient.wfdxml.api.layoutnodes.TextStyle;
 import com.quadient.wfdxml.internal.NodeImpl;
 
@@ -17,9 +19,25 @@ public class BarcodeFactoryImpl implements BarcodeFactory {
 
     @Override
     public DataMatrixBarcodeImpl addDataMatrix() {
-        DataMatrixBarcodeImpl dataMatrixBarcode = new DataMatrixBarcodeImpl();
-        dataMatrixBarcode.setDataTextStyle(defTextStyle);
-        children.add(dataMatrixBarcode);
-        return dataMatrixBarcode;
+        DataMatrixBarcodeImpl barcode = new DataMatrixBarcodeImpl();
+        barcode.setDataTextStyle(defTextStyle);
+        children.add(barcode);
+        return barcode;
+    }
+
+    @Override
+    public QrBarcode addQr() {
+        QrBarcodeImpl barcode = new QrBarcodeImpl();
+        barcode.setDataTextStyle(defTextStyle);
+        children.add(barcode);
+        return barcode;
+    }
+
+    @Override
+    public Code39Barcode addCode39() {
+        Code39BarcodeImpl barcode = new Code39BarcodeImpl();
+        barcode.setDataTextStyle(defTextStyle);
+        children.add(barcode);
+        return barcode;
     }
 }

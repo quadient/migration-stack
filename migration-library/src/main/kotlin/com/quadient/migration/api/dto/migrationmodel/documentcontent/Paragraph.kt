@@ -59,6 +59,7 @@ data class Paragraph(
                     is FirstMatch -> textContent.toDb()
                     is Hyperlink -> textContent.toDb()
                     is ColumnLayout -> textContent.toDb()
+                    is Barcode -> textContent.toDb()
                 }
             }.toMutableList(), it.styleRef?.toDb(), it.displayRuleRef?.toDb())
         }.toMutableList(),

@@ -3714,6 +3714,7 @@
                 <FillStyleId>SR_18</FillStyleId>
                 <FillBackgroungStyleId/>
                 <UseCodec>False</UseCodec>
+                <RunaroundType>Square</RunaroundType>
                 <TextCodec>UTF-8</TextCodec>
                 <HorizontalAlign>Left</HorizontalAlign>
                 <VerticalAlign>Top</VerticalAlign>
@@ -4786,6 +4787,7 @@
                 <FillStyleId>SR_17</FillStyleId>
                 <FillBackgroungStyleId/>
                 <UseCodec>False</UseCodec>
+                <RunaroundType>Square</RunaroundType>
                 <TextCodec>UTF-8</TextCodec>
                 <HorizontalAlign>Left</HorizontalAlign>
                 <VerticalAlign>Top</VerticalAlign>

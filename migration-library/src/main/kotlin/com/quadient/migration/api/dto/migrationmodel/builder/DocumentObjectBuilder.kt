@@ -33,7 +33,8 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     HasPdfMetadata<DocumentObjectBuilder>,
     HasSkip<DocumentObjectBuilder>,
     HasAreaContent<DocumentObjectBuilder>,
-    HasShapeContent<DocumentObjectBuilder>
+    HasShapeContent<DocumentObjectBuilder>,
+    HasBarcodeContent<DocumentContent, DocumentObjectBuilder>
 {
     override val content: MutableList<DocumentContent> = mutableListOf()
     override var displayRuleRef: DisplayRuleRef? = null
