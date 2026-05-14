@@ -1126,10 +1126,8 @@ abstract class InspireDocumentObjectBuilder(
             val cellContentFlow = buildDocumentContentAsSingleFlow(
                 layout, variableStructure, cellModel.content, null, null, languages
             )
-            val cellFlow =
-                if (cellContentFlow.type === Flow.Type.SELECT_BY_INLINE_CONDITION || cellContentFlow.type === Flow.Type.SELECT_BY_CONDITION) {
-                layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
-                    .setWebEditingType(SECTION)
+            val cellFlow = if (cellContentFlow.type !== Flow.Type.SIMPLE) {
+                layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true).setWebEditingType(SECTION)
                     .also { it.addParagraph().addText().appendFlow(cellContentFlow) }
             } else cellContentFlow
 
