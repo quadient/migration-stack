@@ -656,7 +656,8 @@ abstract class InspireDocumentObjectBuilder(
 
     protected fun getOrBuildImage(layout: Layout, imageModel: Image, alternateText: String? = null): WfdXmlImage {
         val image = getImageByName(layout, imageModel.nameOrId()) ?: layout.addImage().setName(imageModel.nameOrId())
-            .setImageLocation(getImagePath(imageModel).toString(), LocationType.ICM)
+            .setImageLocation(getImagePath(imageModel).toString(), LocationType.ICM).setUseResizeWidth(true)
+            .setUseResizeHeight(true)
 
         val options = imageModel.options
         if (options != null) {

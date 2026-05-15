@@ -9,14 +9,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 
 - Added barcode and QR code support
+- Cell overflow options
 
 ### Changed
 
 - Shape (line) in Migration Model Example moved to header part of the document to avoid collision with new and dynamic content
+- **Breaking** Pages in Interactive output no longer create standalone template .jld file, but are still taken into 
+  account when distributing content to Interactive flows. 
 
 ### Fixed
 
 - First match snippet in Designer output rendered as an inline first match flow to better fit its inline nature
+- Wrapping cell content to block in Interactive output for specific cases
+- Image dimensions in Interactive can be editable even without specified height or width
 
 ## [17.0.21] - 2026-05-07
 

@@ -115,7 +115,8 @@ class InteractiveDeployClientTest {
     @BeforeEach
     fun setupAll() {
         every { documentObjectBuilder.shouldIncludeInternalDependency(any()) } answers {
-            firstArg<DocumentObject>().internal ?: false
+            val documentObject = firstArg<DocumentObject>()
+            (documentObject.internal ?: false) || documentObject.type == DocumentObjectType.Page
         }
         every { ipsService.writeMetadata(any()) } just runs
         every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
@@ -621,6 +622,61 @@ class InteractiveDeployClientTest {
         )
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
     }
+
+    @Test
+    fun `page objects are silently filtered from deploy list`() {
+        val spy = spyk(subject)
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
+            aBlock(id = "1", type = DocumentObjectType.Block),
+            aBlock(id = "2", type = DocumentObjectType.Page),
+            aBlock(id = "3", type = DocumentObjectType.Template),
+            aBlock(id = "4", type = DocumentObjectType.Section),
+        )
+
+        spy.deployDocumentObjects(listOf("1", "2", "3", "4"))
+
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
+        verify {
+            spy.deployDocumentObjectsInternal(match { docObjects ->
+                docObjects.size == 3 && docObjects.map { it.id }.containsAll(listOf("1", "3", "4"))
+            }, any(), any(), any(), any(), any())
+        }
+    }
+
+    @Test
+    fun `deploy list of document objects excludes pages but includes their transitive external dependencies`() {
+        val spy = spyk(subject)
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
+
+        val block3 = aDocObj("block3", DocumentObjectType.Block)
+        val block2 = aDocObj("block2", DocumentObjectType.Block, internal = true, content = listOf(aDocumentObjectRef(block3.id)))
+        val block1 = aDocObj("block1", DocumentObjectType.Block)
+        val page = aDocObj("page1", DocumentObjectType.Page, content = listOf(aDocumentObjectRef(block1.id), aDocumentObjectRef(block2.id)))
+        val template = aDocObj("template1", DocumentObjectType.Template, content = listOf(aDocumentObjectRef(page.id)))
+
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template)
+        every { documentObjectRepository.findOrFail("page1") } returns page
+        every { documentObjectRepository.findOrFail("block1") } returns block1
+        every { documentObjectRepository.findOrFail("block2") } returns block2
+        every { documentObjectRepository.findOrFail("block3") } returns block3
+
+        spy.deployDocumentObjects(listOf("template1"), false)
+
+        verify {
+            spy.deployDocumentObjectsInternal(match { docObjects ->
+                val ids = docObjects.map { it.id }
+                ids.containsAll(listOf("template1", "block1", "block3"))
+                    && !ids.contains("page1")
+                    && !ids.contains("block2")
+            }, any(), any(), any(), any(), any())
+        }
+    }
+
 
     @Test
     fun `deploy list of document objects without dependencies`() {

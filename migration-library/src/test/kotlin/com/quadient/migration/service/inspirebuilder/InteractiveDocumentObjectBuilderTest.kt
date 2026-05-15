@@ -1022,7 +1022,7 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `build page with multiple areas with interactive flow`() {
+    fun `build template with reference to page inlines page areas as interactive flows`() {
         val page = aDocObj(
             "P_1", Page, listOf(
                 anArea(listOf(aParagraph(aText("interactive flow text 1"))), interactiveFlowName = "Logo"),
@@ -1035,7 +1035,9 @@ class InteractiveDocumentObjectBuilderTest {
                 anArea(listOf(aParagraph(aText("interactive flow text 3"))), interactiveFlowName = "Flow BT 1")
             )
         )
+        val template = aTemplate("T_1", listOf(aDocumentObjectRef(page.id)))
 
+        every { documentObjectRepository.findOrFail(page.id) } returns page
         every {
             ipsService.wfd2xml(getBaseTemplateFullPath(config, null))
         } returns """<Workflow>
@@ -1074,7 +1076,7 @@ class InteractiveDocumentObjectBuilderTest {
         </Workflow>""".trimMargin()
 
         // when
-        val result = subject.buildDocumentObject(page).let { xmlMapper.readTree(it.trimIndent()) }
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
 
         val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
         val mainFlowContentFlowId = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
@@ -1085,7 +1087,7 @@ class InteractiveDocumentObjectBuilderTest {
         mainFlowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("main flow text 2")
         mainFlowParagraphs[2]["T"][""].textValue().shouldBeEqualTo("main flow text 3")
         result["Flow"].first { it["Id"].textValue() == mainFlowContentFlowId }["Name"].textValue()
-            .shouldBeEqualTo("P_1name")
+            .shouldBeEqualTo("T_1")
 
         val interactiveFlow = result["Flow"].first { it["Id"].textValue() == "Def.InteractiveFlow1" }
         val interactiveFlowContentFlowId = interactiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
@@ -1096,50 +1098,7 @@ class InteractiveDocumentObjectBuilderTest {
         interactiveFlowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("interactive flow text 2")
         interactiveFlowParagraphs[2]["T"][""].textValue().shouldBeEqualTo("interactive flow text 3")
         result["Flow"].first { it["Id"].textValue() == interactiveFlowContentFlowId }["Name"].textValue()
-            .shouldBeEqualTo("P_1name_Flow BT 1")
-    }
-
-    @Test
-    fun `build page with single area with interactive flow`(){
-        val page = aDocObj(
-            "P_1", Page, listOf(
-                anArea(listOf(aParagraph(aText("interactive flow text 1"))), interactiveFlowName = "Logo")
-            )
-        )
-
-        every {
-            ipsService.wfd2xml(getBaseTemplateFullPath(config, null))
-        } returns """<Workflow>
-            <Layout>
-                <Layout>
-                    <Flow>
-                        <Id>79</Id>
-                        <Name>Letter Content</Name>
-                    </Flow>
-                    <Flow>
-                        <Id>80</Id>
-                        <Name>Flow BT 1</Name>
-                        <CustomProperty>{&quot;customName&quot;:&quot;Logo&quot;}</CustomProperty>
-                    </Flow>
-                    <Pages>
-                        <InteractiveFlow>
-                            <FlowId>80</FlowId>
-                            <FlowType>Normal</FlowType>
-                        </InteractiveFlow>
-                    </Pages>
-                </Layout>
-            </Layout>
-        </Workflow>""".trimMargin()
-
-        // when
-        val result = subject.buildDocumentObject(page).let { xmlMapper.readTree(it.trimIndent()) }
-
-        val interactiveFlow = result["Flow"].first { it["Id"].textValue() == "Def.InteractiveFlow0" }
-        val interactiveFlowContentFlowId = interactiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
-        val interactiveFlowContentFlow = result["Flow"].last { it["Id"].textValue() == interactiveFlowContentFlowId }
-        interactiveFlowContentFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("interactive flow text 1")
-        result["Flow"].first { it["Id"].textValue() == interactiveFlowContentFlowId }["Name"].textValue()
-            .shouldBeEqualTo("P_1name")
+            .shouldBeEqualTo("T_1_Flow BT 1")
     }
 
     @Test

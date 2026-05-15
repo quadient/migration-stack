@@ -240,34 +240,22 @@ class InteractiveDocumentObjectBuilder(
                 variableStructure
             )
 
-            DocumentObjectType.Page -> {
-                documentObject.content.paragraphIfEmpty().forEach {
-                if (it is Area && !it.interactiveFlowName.isNullOrBlank()) {
-                        val flowName = it.interactiveFlowName!!
-                        val interactiveFlowId = if (flowName.startsWith("Def.")) {
-                            flowName
+            else -> {
+                documentObject.content.paragraphIfEmpty().forEach { documentContentPart ->
+                    if (documentContentPart is DocumentObjectRef) {
+                        val referencedModel = documentObjectRepository.findOrFail(documentContentPart.id)
+                        if (referencedModel.type == DocumentObjectType.Page) {
+                            val pageBaseTemplatePath = getBaseTemplateFullPath(projectConfig, referencedModel.baseTemplate)
+                            val pageBaseTemplateData = getOrLoadBaseTemplateData(pageBaseTemplatePath)
+                                ?: error("Unable to deploy document object ${documentObject.id}. Base template '$pageBaseTemplatePath' for page '${referencedModel.id}' does not exist.")
+                            mapPageContentToInteractiveFlows(referencedModel, pageBaseTemplateData, interactiveFlowsWithContent)
                         } else {
-                            currentBaseTemplateData.interactiveFlowNamesToIds[flowName]
+                            interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(documentContentPart)
                         }
-
-                        if (interactiveFlowId.isNullOrBlank()) {
-                            val errorMessage =
-                                "Failed to find interactive flow '$flowName' in base template '$baseTemplatePath'."
-                            logger.error(errorMessage)
-                            error(errorMessage)
-                        }
-
-                        val interactiveFlowContent =
-                            interactiveFlowsWithContent.getOrPut(interactiveFlowId) { mutableListOf() }
-                        interactiveFlowContent.addAll(it.content)
                     } else {
-                        val interactiveFlowContent = interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }
-                        interactiveFlowContent.add(it)
+                        interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(documentContentPart)
                     }
                 }
-            }
-            else -> {
-                interactiveFlowsWithContent[mainFlowId] = documentObject.content.toMutableList()
             }
         }
 
@@ -332,7 +320,7 @@ class InteractiveDocumentObjectBuilder(
     }
 
     override fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean {
-        return documentObject.internal == true
+        return documentObject.internal == true || documentObject.type == DocumentObjectType.Page
     }
 
     override fun resolveParagraphStyleName(name: String): String =
@@ -343,6 +331,35 @@ class InteractiveDocumentObjectBuilder(
 
     override fun resolveTableStyleName(name: String): String =
         styleDefinitionData?.tableStyleDisplayNamesToName?.get(name) ?: name
+
+    private fun mapPageContentToInteractiveFlows(
+        page: DocumentObject,
+        baseTemplateData: BaseTemplateData,
+        interactiveFlowsWithContent: MutableMap<String, MutableList<DocumentContent>>,
+    ) {
+        val baseTemplatePath = getBaseTemplateFullPath(projectConfig, page.baseTemplate)
+        page.content.paragraphIfEmpty().forEach { contentItem ->
+            if (contentItem is Area && !contentItem.interactiveFlowName.isNullOrBlank()) {
+                val flowName = contentItem.interactiveFlowName!!
+                val interactiveFlowId = if (flowName.startsWith("Def.")) {
+                    flowName
+                } else {
+                    baseTemplateData.interactiveFlowNamesToIds[flowName]
+                }
+
+                if (interactiveFlowId.isNullOrBlank()) {
+                    val errorMessage =
+                        "Failed to find interactive flow '$flowName' in base template '$baseTemplatePath'."
+                    logger.error(errorMessage)
+                    error(errorMessage)
+                }
+
+                interactiveFlowsWithContent.getOrPut(interactiveFlowId) { mutableListOf() }.addAll(contentItem.content)
+            } else {
+                interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(contentItem)
+            }
+        }
+    }
 
     private fun getOrLoadBaseTemplateData(path: IcmPath): BaseTemplateData? {
         if (baseTemplateCache.containsKey(path)) return baseTemplateCache[path]
