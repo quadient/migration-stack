@@ -907,12 +907,12 @@ class InteractiveDocumentObjectBuilderTest {
     @CsvSource("Page", "Template")
     fun `build template interactive flow areas inline correctly`(contentType: DocumentObjectType) {
         val areaContent = listOf<DocumentContent>(
-            AreaBuilder().string("interactive flow text 1").interactiveFlowName("Logo").build(),
-            AreaBuilder().string("main flow text 1").build(),
+            AreaBuilder().paragraph { string("interactive flow text 1") }.interactiveFlowName("Logo").build(),
+            AreaBuilder().paragraph { string("main flow text 1") }.build(),
             ParagraphBuilder().string("main flow text 2").build(),
-            AreaBuilder().string("interactive flow text 2").interactiveFlowName("Def.InteractiveFlow1").build(),
-            AreaBuilder().string("main flow text 3").interactiveFlowName("Def.MainFlow").build(),
-            AreaBuilder().string("interactive flow text 3").interactiveFlowName("Flow BT 1").build()
+            AreaBuilder().paragraph { string("interactive flow text 2") }.interactiveFlowName("Def.InteractiveFlow1").build(),
+            AreaBuilder().paragraph { string("main flow text 3") }.interactiveFlowName("Def.MainFlow").build(),
+            AreaBuilder().paragraph { string("interactive flow text 3") }.interactiveFlowName("Flow BT 1").build()
         )
 
         val template = if (contentType == Page) {
