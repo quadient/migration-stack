@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - Shape (line) in Migration Model Example moved to header part of the document to avoid collision with new and dynamic content
 - **Breaking** Pages in Interactive output no longer create standalone template .jld file, but are still taken into 
-  account when distributing content to Interactive flows. 
+  account when distributing content to Interactive flows. Templates also work directly with areas in its content.
 
 ### Fixed
 

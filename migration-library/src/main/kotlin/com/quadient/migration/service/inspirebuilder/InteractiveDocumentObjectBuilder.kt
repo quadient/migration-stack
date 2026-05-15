@@ -245,15 +245,14 @@ class InteractiveDocumentObjectBuilder(
                     if (documentContentPart is DocumentObjectRef) {
                         val referencedModel = documentObjectRepository.findOrFail(documentContentPart.id)
                         if (referencedModel.type == DocumentObjectType.Page) {
-                            val pageBaseTemplatePath = getBaseTemplateFullPath(projectConfig, referencedModel.baseTemplate)
-                            val pageBaseTemplateData = getOrLoadBaseTemplateData(pageBaseTemplatePath)
-                                ?: error("Unable to deploy document object ${documentObject.id}. Base template '$pageBaseTemplatePath' for page '${referencedModel.id}' does not exist.")
-                            mapPageContentToInteractiveFlows(referencedModel, pageBaseTemplateData, interactiveFlowsWithContent)
+                            referencedModel.content.paragraphIfEmpty().forEach { pageContentPart ->
+                                mapContentItemToInteractiveFlow(pageContentPart, currentBaseTemplateData, interactiveFlowsWithContent)
+                            }
                         } else {
                             interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(documentContentPart)
                         }
                     } else {
-                        interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(documentContentPart)
+                        mapContentItemToInteractiveFlow(documentContentPart, currentBaseTemplateData, interactiveFlowsWithContent)
                     }
                 }
             }
@@ -332,32 +331,28 @@ class InteractiveDocumentObjectBuilder(
     override fun resolveTableStyleName(name: String): String =
         styleDefinitionData?.tableStyleDisplayNamesToName?.get(name) ?: name
 
-    private fun mapPageContentToInteractiveFlows(
-        page: DocumentObject,
+    private fun mapContentItemToInteractiveFlow(
+        contentItem: DocumentContent,
         baseTemplateData: BaseTemplateData,
         interactiveFlowsWithContent: MutableMap<String, MutableList<DocumentContent>>,
     ) {
-        val baseTemplatePath = getBaseTemplateFullPath(projectConfig, page.baseTemplate)
-        page.content.paragraphIfEmpty().forEach { contentItem ->
-            if (contentItem is Area && !contentItem.interactiveFlowName.isNullOrBlank()) {
-                val flowName = contentItem.interactiveFlowName!!
-                val interactiveFlowId = if (flowName.startsWith("Def.")) {
-                    flowName
-                } else {
-                    baseTemplateData.interactiveFlowNamesToIds[flowName]
-                }
-
-                if (interactiveFlowId.isNullOrBlank()) {
-                    val errorMessage =
-                        "Failed to find interactive flow '$flowName' in base template '$baseTemplatePath'."
-                    logger.error(errorMessage)
-                    error(errorMessage)
-                }
-
-                interactiveFlowsWithContent.getOrPut(interactiveFlowId) { mutableListOf() }.addAll(contentItem.content)
+        if (contentItem is Area && !contentItem.interactiveFlowName.isNullOrBlank()) {
+            val flowName = contentItem.interactiveFlowName!!
+            val interactiveFlowId = if (flowName.startsWith("Def.")) {
+                flowName
             } else {
-                interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(contentItem)
+                baseTemplateData.interactiveFlowNamesToIds[flowName]
             }
+
+            if (interactiveFlowId.isNullOrBlank()) {
+                val errorMessage = "Failed to find interactive flow '$flowName' in the base template."
+                logger.error(errorMessage)
+                error(errorMessage)
+            }
+
+            interactiveFlowsWithContent.getOrPut(interactiveFlowId) { mutableListOf() }.addAll(contentItem.content)
+        } else {
+            interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(contentItem)
         }
     }
 
