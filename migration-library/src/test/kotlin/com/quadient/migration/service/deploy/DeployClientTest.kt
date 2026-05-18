@@ -100,6 +100,7 @@ class DeployClientTest {
         every { documentObjectBuilder.getImagePath(any(), any(), any(), any(), any()) } answers { callOriginal() }
         every { documentObjectBuilder.getAttachmentPath(any()) } answers { callOriginal() }
         every { documentObjectBuilder.getAttachmentPath(any(), any(), any(), any(), any()) } answers { callOriginal() }
+        every { documentObjectBuilder.shouldIncludeInternalDependency(any()) } answers { callOriginal() }
     }
 
     @Test
