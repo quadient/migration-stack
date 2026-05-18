@@ -41,6 +41,7 @@ def header = ["Id",
               "Hyperlinks",
               "Column layouts",
               "Shapes",
+              "Barcodes",
               "Paragraph styles",
               "Text styles",
               "Last status",
@@ -97,6 +98,7 @@ file.withWriter { writer ->
         writer.write("$stats.usedHyperlinksCount,") // Used Hyperlinks Count
         writer.write("$stats.columnLayoutsCount,") // Column layouts count
         writer.write("$stats.shapesCount,") // shapes count
+        writer.write("$stats.barcodesCount,") // Barcodes count
         writer.write("$stats.usedParagraphStylesCount,") // Used Paragraph Styles Count
         writer.write("$stats.usedTextStylesCount,") // Used Text Styles Count
         writer.write("$lastStatus.class.simpleName,") // Last status
@@ -125,6 +127,7 @@ class Stats {
     Number repeatedContentCount = 0
     Number columnLayoutsCount = 0
     Number shapesCount = 0
+    Number barcodesCount = 0
 
     Number wordCount = 0
     Number lineCount = 0
@@ -163,6 +166,7 @@ class Stats {
                 case StringValue -> this.collectTextContent([content])
                 case VariableRef -> this.collectTextContent([content])
                 case Shape -> this.shapesCount++
+                case Barcode -> this.barcodesCount++
                 default -> throw new IllegalStateException("Unknown content type: ${content.class.name}")
             }
         }
@@ -206,6 +210,7 @@ class Stats {
                 case VariableRef -> this.usedVariables.add(content.id)
                 case ColumnLayout -> this.columnLayoutsCount++
                 case FirstMatch -> this.collectFirstMatch(content)
+                case Barcode -> this.barcodesCount++
                 default -> throw new IllegalStateException("Unknown text content type: ${content.class.name}")
             }
         }
