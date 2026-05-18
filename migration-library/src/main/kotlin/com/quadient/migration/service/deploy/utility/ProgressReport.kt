@@ -103,7 +103,7 @@ class ProgressReporterImpl(
                         }
                         else -> {
                             val nextIcmPath =
-                                if (obj.internal == true || (obj.type == DocumentObjectType.Page && output == InspireOutput.Designer)) {
+                                if (documentObjectBuilder.shouldIncludeInternalDependency(obj)) {
                                     null
                                 } else {
                                     documentObjectBuilder.getDocumentObjectPath(obj)
