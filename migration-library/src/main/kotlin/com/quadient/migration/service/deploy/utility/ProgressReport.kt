@@ -103,7 +103,7 @@ class ProgressReporterImpl(
                         }
                         else -> {
                             val nextIcmPath =
-                                if (obj.internal == true || (obj.type == DocumentObjectType.Page && output == InspireOutput.Designer)) {
+                                if (documentObjectBuilder.shouldIncludeInternalDependency(obj)) {
                                     null
                                 } else {
                                     documentObjectBuilder.getDocumentObjectPath(obj)
@@ -267,7 +267,7 @@ class ProgressReporterImpl(
         internal: Boolean,
         isPage: Boolean
     ): LastStatus {
-        if (internal || (isPage && output == InspireOutput.Designer)) return LastStatus.Inlined
+        if (internal || isPage) return LastStatus.Inlined
 
         val objectEvents = statusTrackingRepository.findEventsRelevantToOutput(id, resourceType, output)
             .filter { ev -> lastDeployment?.timestamp?.let { ev.timestamp <= it } ?: true }
@@ -386,7 +386,7 @@ class ProgressReporterImpl(
                 DeployKind.Create
             } else if (lastDeployEvent != null) {
                 DeployKind.Overwrite
-            } else if (isPage && output == InspireOutput.Designer) {
+            } else if (isPage) {
                 DeployKind.Inline
             } else {
                 DeployKind.Create

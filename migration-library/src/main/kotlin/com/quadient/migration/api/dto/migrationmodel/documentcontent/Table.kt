@@ -4,6 +4,7 @@ import com.quadient.migration.persistence.migrationmodel.TableEntity
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.CellHeight
+import com.quadient.migration.shared.CellOverflow
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.TableAlignment
@@ -126,6 +127,7 @@ data class Table(
         val height: CellHeight?,
         val border: BorderOptions? = null,
         val alignment: CellAlignment? = null,
+        val overflow: CellOverflow? = null,
     ) : RefValidatable {
         override fun collectRefs(): List<Ref> {
             return content.flatMap {
@@ -145,6 +147,7 @@ data class Table(
                     height = cell.height,
                     border = cell.border,
                     alignment = cell.alignment,
+                    overflow = cell.overflow,
                 )
             }
         }
@@ -157,6 +160,7 @@ data class Table(
                 height = height,
                 border = border,
                 alignment = alignment,
+                overflow = overflow,
             )
         }
     }

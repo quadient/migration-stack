@@ -13,8 +13,8 @@ public class ImageImpl extends NodeImpl<Image> implements Image {
     private boolean useResizeHeight = false;
     private boolean makeTransparent = false;
 
-    private double resizeImageWidth = 0.0;
-    private double resizeImageHeight = 0.0;
+    private Double resizeImageWidth = null;
+    private Double resizeImageHeight = null;
     private double dpiX = 0.0;
     private double dpiY = 0.0;
 
@@ -49,6 +49,7 @@ public class ImageImpl extends NodeImpl<Image> implements Image {
         return useResizeWidth;
     }
 
+    @Override
     public ImageImpl setUseResizeWidth(boolean useResizeWidth) {
         this.useResizeWidth = useResizeWidth;
         return this;
@@ -58,12 +59,13 @@ public class ImageImpl extends NodeImpl<Image> implements Image {
         return useResizeHeight;
     }
 
+    @Override
     public ImageImpl setUseResizeHeight(boolean useResizeHeight) {
         this.useResizeHeight = useResizeHeight;
         return this;
     }
 
-    public double getResizeImageWidth() {
+    public Double getResizeImageWidth() {
         return resizeImageWidth;
     }
 
@@ -72,7 +74,7 @@ public class ImageImpl extends NodeImpl<Image> implements Image {
         return this;
     }
 
-    public double getResizeImageHeight() {
+    public Double getResizeImageHeight() {
         return resizeImageHeight;
     }
 
@@ -290,11 +292,11 @@ public class ImageImpl extends NodeImpl<Image> implements Image {
                 .addElementWithStringData("ImageLocation", imageLocation)
                 .addElementWithDoubleData("ImageDPIX", dpiX)
                 .addElementWithDoubleData("ImageDPIY", dpiY)
-                .addElementWithBoolData("UseResizeWidth", useResizeWidth)
-                .addElementWithDoubleData("ResizeImageWidth", resizeImageWidth)
-                .addElementWithBoolData("UseResizeHeight", useResizeHeight)
-                .addElementWithDoubleData("ResizeImageHeight", resizeImageHeight)
-                .addElementWithBoolData("MakeTransparent", makeTransparent)
+                .addElementWithBoolData("UseResizeWidth", useResizeWidth);
+        if (resizeImageWidth != null) exporter.addElementWithDoubleData("ResizeImageWidth", resizeImageWidth);
+        exporter.addElementWithBoolData("UseResizeHeight", useResizeHeight);
+        if (resizeImageHeight != null) exporter.addElementWithDoubleData("ResizeImageHeight", resizeImageHeight);
+        exporter.addElementWithBoolData("MakeTransparent", makeTransparent)
                 .beginElement("TransparencyR")
                 .addIntAttribute("X", transparencyRX)
                 .addIntAttribute("Y", transparencyRY)

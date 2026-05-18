@@ -38,7 +38,7 @@ static void run(Migration migration, Path path) {
 
     areasFile.withWriter { writer ->
         def headers = [
-            Mapping.displayHeader("templateId", true),
+            Mapping.displayHeader("templateId", false),
             Mapping.displayHeader("templateName", true),
             Mapping.displayHeader("pageId", false),
             Mapping.displayHeader("pageName", true),
@@ -63,6 +63,11 @@ static void run(Migration migration, Path path) {
                     writer.writeLine(buildArea(migration, idx, area, page, template))
                 }
             }
+
+            def directAreas = template.content.findAll { it instanceof Area } as List<Area>
+            directAreas.eachWithIndex { area, idx ->
+                writer.writeLine(buildArea(migration, idx, area, null, template))
+            }
         }
 
         if (usedPageIds.size() != pageIds.size()) {
@@ -83,8 +88,8 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     def builder = new StringBuilder()
     builder.append(Csv.serialize(template?.id) + ",")
     builder.append(Csv.serialize(template?.name) + ",")
-    builder.append(Csv.serialize(page.id) + ",")
-    builder.append(Csv.serialize(page.name) + ",")
+    builder.append(Csv.serialize(page?.id) + ",")
+    builder.append(Csv.serialize(page?.name) + ",")
     builder.append(Csv.serialize(area.interactiveFlowName) + ",")
     builder.append(Csv.serialize(area.flowToNextPage) + ",")
     builder.append(Csv.serialize(area.position.x) + ",")

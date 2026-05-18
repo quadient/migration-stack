@@ -63,6 +63,32 @@ class AreasImportTest {
         verify(migration.mappingRepository).applyAreaMapping("page3")
     }
 
+    @Test
+    void importTemplateDirectAreas() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+
+        when(migration.mappingRepository.getAreaMapping("tmpl1")).thenReturn(new MappingItem.Area(null, [:], [:]))
+
+        when(migration.documentObjectRepository.find("tmpl1")).thenReturn(
+            new DocumentObjectBuilder("tmpl1", DocumentObjectType.Template)
+                    .content([createArea("Address Content", false), createArea(null, false), createArea("Footer", false)])
+                    .build()
+        )
+
+        def input = """\
+            templateId,templateName,pageId,pageName,interactiveFlowName,flowToNextPage,x,y,width,height,contentPreview
+            tmpl1,,,,Updated Address,true,0.0mm,0.0mm,0.0mm,0.0mm,
+            tmpl1,,,,New Header,false,0.0mm,0.0mm,0.0mm,0.0mm,
+            tmpl1,,,,Footer,true,0.0mm,0.0mm,0.0mm,0.0mm,
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+
+        AreasImport.run(migration, mappingFile)
+
+        verify(migration.mappingRepository).upsert("tmpl1", new MappingItem.Area(null, [0: "Updated Address", 1: "New Header", 2: "Footer"], [0: true, 1: false, 2: true]))
+        verify(migration.mappingRepository).applyAreaMapping("tmpl1")
+    }
+
     static Area createArea(String flowName, boolean flowToNextPage) {
         def areaBuilder = new AreaBuilder()
                 .position(new Position(Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0)))

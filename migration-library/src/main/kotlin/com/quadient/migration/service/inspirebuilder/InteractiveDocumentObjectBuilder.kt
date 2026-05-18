@@ -32,6 +32,7 @@ import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
+import com.quadient.wfdxml.api.layoutnodes.Flow.WebEditingType.SECTION
 import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
@@ -239,34 +240,21 @@ class InteractiveDocumentObjectBuilder(
                 variableStructure
             )
 
-            DocumentObjectType.Page -> {
-                documentObject.content.paragraphIfEmpty().forEach {
-                if (it is Area && !it.interactiveFlowName.isNullOrBlank()) {
-                        val flowName = it.interactiveFlowName!!
-                        val interactiveFlowId = if (flowName.startsWith("Def.")) {
-                            flowName
+            else -> {
+                documentObject.content.paragraphIfEmpty().forEach { documentContentPart ->
+                    if (documentContentPart is DocumentObjectRef) {
+                        val referencedModel = documentObjectRepository.findOrFail(documentContentPart.id)
+                        if (referencedModel.type == DocumentObjectType.Page) {
+                            referencedModel.content.paragraphIfEmpty().forEach { pageContentPart ->
+                                mapContentItemToInteractiveFlow(pageContentPart, currentBaseTemplateData, interactiveFlowsWithContent)
+                            }
                         } else {
-                            currentBaseTemplateData.interactiveFlowNamesToIds[flowName]
+                            interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(documentContentPart)
                         }
-
-                        if (interactiveFlowId.isNullOrBlank()) {
-                            val errorMessage =
-                                "Failed to find interactive flow '$flowName' in base template '$baseTemplatePath'."
-                            logger.error(errorMessage)
-                            error(errorMessage)
-                        }
-
-                        val interactiveFlowContent =
-                            interactiveFlowsWithContent.getOrPut(interactiveFlowId) { mutableListOf() }
-                        interactiveFlowContent.addAll(it.content)
                     } else {
-                        val interactiveFlowContent = interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }
-                        interactiveFlowContent.add(it)
+                        mapContentItemToInteractiveFlow(documentContentPart, currentBaseTemplateData, interactiveFlowsWithContent)
                     }
                 }
-            }
-            else -> {
-                interactiveFlowsWithContent[mainFlowId] = documentObject.content.toMutableList()
             }
         }
 
@@ -274,7 +262,8 @@ class InteractiveDocumentObjectBuilder(
 
         interactiveFlowsWithContent.forEach {
             val interactiveFlowText =
-                layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).addParagraph().addText()
+                layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).setWebEditingType(SECTION)
+                    .addParagraph().addText()
 
             val flowName = if (hasMultipleFlows && it.key != mainFlowId) {
                 val interactiveFlowName =
@@ -330,7 +319,7 @@ class InteractiveDocumentObjectBuilder(
     }
 
     override fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean {
-        return documentObject.internal == true
+        return documentObject.internal == true || documentObject.type == DocumentObjectType.Page
     }
 
     override fun resolveParagraphStyleName(name: String): String =
@@ -341,6 +330,31 @@ class InteractiveDocumentObjectBuilder(
 
     override fun resolveTableStyleName(name: String): String =
         styleDefinitionData?.tableStyleDisplayNamesToName?.get(name) ?: name
+
+    private fun mapContentItemToInteractiveFlow(
+        contentItem: DocumentContent,
+        baseTemplateData: BaseTemplateData,
+        interactiveFlowsWithContent: MutableMap<String, MutableList<DocumentContent>>,
+    ) {
+        if (contentItem is Area && !contentItem.interactiveFlowName.isNullOrBlank()) {
+            val flowName = contentItem.interactiveFlowName!!
+            val interactiveFlowId = if (flowName.startsWith("Def.")) {
+                flowName
+            } else {
+                baseTemplateData.interactiveFlowNamesToIds[flowName]
+            }
+
+            if (interactiveFlowId.isNullOrBlank()) {
+                val errorMessage = "Failed to find interactive flow '$flowName' in the base template."
+                logger.error(errorMessage)
+                error(errorMessage)
+            }
+
+            interactiveFlowsWithContent.getOrPut(interactiveFlowId) { mutableListOf() }.addAll(contentItem.content)
+        } else {
+            interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(contentItem)
+        }
+    }
 
     private fun getOrLoadBaseTemplateData(path: IcmPath): BaseTemplateData? {
         if (baseTemplateCache.containsKey(path)) return baseTemplateCache[path]

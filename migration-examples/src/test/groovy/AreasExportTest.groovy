@@ -45,12 +45,33 @@ class AreasExportTest {
         AreasExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId (read-only),templateName (read-only),pageId,pageName (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),contentPreview (read-only)
+            templateId,templateName (read-only),pageId,pageName (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),contentPreview (read-only)
             full tmpl,,full page,,test flow2,false,0mm,0mm,0mm,0mm,
             full tmpl,,full page,,test flow3,true,0mm,0mm,0mm,0mm,
             full tmpl,,full page,,,false,0mm,0mm,0mm,0mm,
             full tmpl,,full page,,test flow5,false,0mm,0mm,0mm,0mm,
             ,,unreferenced page,,test flow,true,0mm,0mm,0mm,0mm,
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+    }
+
+    @Test
+    void exportTemplateDirectAreas() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        when(migration.mappingRepository.getAreaMapping(any())).thenReturn(new MappingItem.Area(null, [:], [:]))
+        when((migration.documentObjectRepository as DocumentObjectRepository).list(any())).thenReturn([
+            new DocumentObjectBuilder("tmpl with areas", DocumentObjectType.Template)
+                    .content([createArea("Address Content"), createArea(null, true), createArea("Footer")])
+                    .build(),
+        ])
+
+        AreasExport.run(migration, mappingFile)
+
+        def expected = """\
+            templateId,templateName (read-only),pageId,pageName (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),contentPreview (read-only)
+            tmpl with areas,,,,Address Content,false,0mm,0mm,0mm,0mm,
+            tmpl with areas,,,,,true,0mm,0mm,0mm,0mm,
+            tmpl with areas,,,,Footer,false,0mm,0mm,0mm,0mm,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

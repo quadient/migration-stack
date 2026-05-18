@@ -35,9 +35,7 @@
         <ImageDPIX>0.0</ImageDPIX>
         <ImageDPIY>0.0</ImageDPIY>
         <UseResizeWidth>False</UseResizeWidth>
-        <ResizeImageWidth>0.0</ResizeImageWidth>
         <UseResizeHeight>False</UseResizeHeight>
-        <ResizeImageHeight>0.0</ResizeImageHeight>
         <MakeTransparent>False</MakeTransparent>
         <TransparencyR X="255" Y="255"/>
         <TransparencyG X="255" Y="255"/>

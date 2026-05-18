@@ -39,6 +39,7 @@ import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTarget
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.Jrd
+import com.quadient.migration.shared.DocumentObjectType
 import kotlin.time.Clock
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -88,14 +89,17 @@ class InteractiveDeployClient(
     }
 
     override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
-        return documentObject.internal != true
+        return documentObject.type != DocumentObjectType.Page && documentObject.internal != true
     }
 
     override fun getAllDocumentObjectsToDeploy(): List<DocumentObject> {
         return documentObjectRepository.list(
-            DocumentObjectTable.skip.extract<String>("skipped") eq "false" and DocumentObjectTable.internal.eq(
-                false
-            )
+            (DocumentObjectTable.type inList listOf(
+                DocumentObjectType.Template.toString(),
+                DocumentObjectType.Block.toString(),
+                DocumentObjectType.Section.toString(),
+                DocumentObjectType.Snippet.toString()
+            ) and DocumentObjectTable.internal.eq(false) and (DocumentObjectTable.skip.extract<String>("skipped") eq "false"))
         )
     }
 
@@ -127,7 +131,7 @@ class InteractiveDeployClient(
         }
         require(error.isEmpty()) { error }
 
-        return documentObjects
+        return documentObjects.filter { it.type != DocumentObjectType.Page }
     }
 
     private fun deployDisplayRules(

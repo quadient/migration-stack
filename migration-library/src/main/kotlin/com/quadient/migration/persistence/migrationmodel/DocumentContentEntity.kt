@@ -3,6 +3,7 @@ package com.quadient.migration.persistence.migrationmodel
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.CellHeight
+import com.quadient.migration.shared.CellOverflow
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.Position
@@ -64,6 +65,7 @@ data class TableEntity(
         val height: CellHeight? = null,
         val border: BorderOptions? = null,
         val alignment: CellAlignment? = null,
+        val overflow: CellOverflow? = null,
     )
 
     @Serializable

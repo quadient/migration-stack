@@ -25,9 +25,7 @@ class ImageImplTest extends Specification {
                   <ImageDPIX>0.0</ImageDPIX>
                   <ImageDPIY>0.0</ImageDPIY>  
                   <UseResizeWidth>False</UseResizeWidth>
-                  <ResizeImageWidth>0.0</ResizeImageWidth>
                   <UseResizeHeight>False</UseResizeHeight>
-                  <ResizeImageHeight>0.0</ResizeImageHeight>
                   <MakeTransparent>False</MakeTransparent>
                   <TransparencyR X="255" Y="255"></TransparencyR>
                   <TransparencyG X="255" Y="255"></TransparencyG>
@@ -90,6 +88,40 @@ class ImageImplTest extends Specification {
                   """)
     }
 
+    def "export image with useResizeWidth and useResizeHeight set to true but no resize values"() {
+        given:
+        ImageImpl image = new ImageImpl()
+                .setUseResizeWidth(true)
+                .setUseResizeHeight(true)
+
+        when:
+        image.export(exporter)
+
+        then:
+        assertXmlEqualsWrapRoot(exporter.buildString(), """
+                  <ImageType>Simple</ImageType>
+                  <ImageDPIX>0.0</ImageDPIX>
+                  <ImageDPIY>0.0</ImageDPIY>
+                  <UseResizeWidth>True</UseResizeWidth>
+                  <UseResizeHeight>True</UseResizeHeight>
+                  <MakeTransparent>False</MakeTransparent>
+                  <TransparencyR X="255" Y="255"></TransparencyR>
+                  <TransparencyG X="255" Y="255"></TransparencyG>
+                  <TransparencyB X="255" Y="255"></TransparencyB>
+                  <UseDifferentImageSizeForHtml>False</UseDifferentImageSizeForHtml>
+                  <AlternativeTextVar/>
+                  <PDFAdvanced>
+                      <Tagging>
+                          <Rule>Figure</Rule>
+                          <AlternateText/>
+                          <Attributes Type="Array"/>
+                          <AlternateTextNodeId/>
+                          <AlternateTextType>1</AlternateTextType>
+                      </Tagging>
+                  </PDFAdvanced>
+                  """)
+    }
+
     def "export image with ICM location"() {
         given:
         ImageImpl image = new ImageImpl().setImageLocation("vcs://Interactive/StandardPackage/Resources/Images/frog.png", LocationType.ICM)
@@ -104,9 +136,7 @@ class ImageImplTest extends Specification {
                   <ImageDPIX>0.0</ImageDPIX>
                   <ImageDPIY>0.0</ImageDPIY>
                   <UseResizeWidth>False</UseResizeWidth>
-                  <ResizeImageWidth>0.0</ResizeImageWidth>
                   <UseResizeHeight>False</UseResizeHeight>
-                  <ResizeImageHeight>0.0</ResizeImageHeight>
                   <MakeTransparent>False</MakeTransparent>
                   <TransparencyR X="255" Y="255"></TransparencyR>
                   <TransparencyG X="255" Y="255"></TransparencyG>
@@ -138,9 +168,7 @@ class ImageImplTest extends Specification {
                   <ImageDPIX>0.0</ImageDPIX>
                   <ImageDPIY>0.0</ImageDPIY>
                   <UseResizeWidth>False</UseResizeWidth>
-                  <ResizeImageWidth>0.0</ResizeImageWidth>
                   <UseResizeHeight>False</UseResizeHeight>
-                  <ResizeImageHeight>0.0</ResizeImageHeight>
                   <MakeTransparent>False</MakeTransparent>
                   <TransparencyR X="255" Y="255"></TransparencyR>
                   <TransparencyG X="255" Y="255"></TransparencyG>
@@ -174,9 +202,7 @@ class ImageImplTest extends Specification {
                   <ImageDPIX>0.0</ImageDPIX>
                   <ImageDPIY>0.0</ImageDPIY>
                   <UseResizeWidth>False</UseResizeWidth>
-                  <ResizeImageWidth>0.0</ResizeImageWidth>
                   <UseResizeHeight>False</UseResizeHeight>
-                  <ResizeImageHeight>0.0</ResizeImageHeight>
                   <MakeTransparent>False</MakeTransparent>
                   <TransparencyR X="255" Y="255"></TransparencyR>
                   <TransparencyG X="255" Y="255"></TransparencyG>
@@ -212,9 +238,7 @@ class ImageImplTest extends Specification {
                   <ImageDPIX>0.0</ImageDPIX>
                   <ImageDPIY>0.0</ImageDPIY>
                   <UseResizeWidth>False</UseResizeWidth>
-                  <ResizeImageWidth>0.0</ResizeImageWidth>
                   <UseResizeHeight>False</UseResizeHeight>
-                  <ResizeImageHeight>0.0</ResizeImageHeight>
                   <MakeTransparent>False</MakeTransparent>
                   <TransparencyR X="255" Y="255"></TransparencyR>
                   <TransparencyG X="255" Y="255"></TransparencyG>

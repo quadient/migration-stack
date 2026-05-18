@@ -18,6 +18,15 @@ enum class CellAlignment {
 }
 
 @Serializable
+enum class CellOverflow {
+    /** Overflow cell content to next page (default). Maps to {@code FlowToNextPage=True}. */
+    OverflowContentToNextPage,
+
+    /** Move cell to next page. Maps to {@code FlowToNextPage=False}. */
+    MoveCellToNextPage,
+}
+
+@Serializable
 sealed interface CellHeight {
     @Serializable
     data class Fixed(val size: Size) : CellHeight

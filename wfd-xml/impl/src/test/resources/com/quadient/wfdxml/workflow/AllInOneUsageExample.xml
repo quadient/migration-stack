@@ -2978,7 +2978,6 @@
                 <ImageDPIX>0.0</ImageDPIX>
                 <ImageDPIY>0.0</ImageDPIY>
                 <UseResizeWidth>False</UseResizeWidth>
-                <ResizeImageWidth>0.0</ResizeImageWidth>
                 <UseResizeHeight>True</UseResizeHeight>
                 <ResizeImageHeight>0.024</ResizeImageHeight>
                 <MakeTransparent>False</MakeTransparent>

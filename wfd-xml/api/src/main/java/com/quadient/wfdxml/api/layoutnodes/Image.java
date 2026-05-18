@@ -17,6 +17,10 @@ public interface Image extends Node<Image> {
 
     Image setResizeHeight(double height);
 
+    Image setUseResizeWidth(boolean useResizeWidth);
+
+    Image setUseResizeHeight(boolean useResizeHeight);
+
     Image setHtmlWidthAndHeight(String htmlWidth, String htmlHeight);
 
     Image setTransparentR(int min, int max);

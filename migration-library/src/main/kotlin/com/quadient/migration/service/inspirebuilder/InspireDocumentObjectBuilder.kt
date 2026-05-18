@@ -51,6 +51,7 @@ import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.CellHeight
+import com.quadient.migration.shared.CellOverflow
 import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.IcmPath
@@ -408,7 +409,7 @@ abstract class InspireDocumentObjectBuilder(
         val singleFlow = if (this.size == 1) {
             this[0]
         } else {
-            val sectionFlow = layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
+            val sectionFlow = layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true).setWebEditingType(SECTION)
             flowName?.let { sectionFlow.setName(it) }
 
             val sectionFlowText = sectionFlow.addParagraph().addText()
@@ -655,7 +656,8 @@ abstract class InspireDocumentObjectBuilder(
 
     protected fun getOrBuildImage(layout: Layout, imageModel: Image, alternateText: String? = null): WfdXmlImage {
         val image = getImageByName(layout, imageModel.nameOrId()) ?: layout.addImage().setName(imageModel.nameOrId())
-            .setImageLocation(getImagePath(imageModel).toString(), LocationType.ICM)
+            .setImageLocation(getImagePath(imageModel).toString(), LocationType.ICM).setUseResizeWidth(true)
+            .setUseResizeHeight(true)
 
         val options = imageModel.options
         if (options != null) {
@@ -1125,15 +1127,13 @@ abstract class InspireDocumentObjectBuilder(
             val cellContentFlow = buildDocumentContentAsSingleFlow(
                 layout, variableStructure, cellModel.content, null, null, languages
             )
-            val cellFlow =
-                if (cellContentFlow.type === Flow.Type.SELECT_BY_INLINE_CONDITION || cellContentFlow.type === Flow.Type.SELECT_BY_CONDITION) {
-                layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
-                    .setWebEditingType(SECTION)
+            val cellFlow = if (cellContentFlow.type !== Flow.Type.SIMPLE) {
+                layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true).setWebEditingType(SECTION)
                     .also { it.addParagraph().addText().appendFlow(cellContentFlow) }
             } else cellContentFlow
 
             val cell = layout.addCell().setSpanLeft(cellModel.mergeLeft).setSpanUp(cellModel.mergeUp)
-                .setFlowToNextPage(true).setFlow(cellFlow)
+                .setFlowToNextPage(cellModel.overflow != CellOverflow.MoveCellToNextPage).setFlow(cellFlow)
 
             when (cellModel.height) {
                 is CellHeight.Custom -> {
