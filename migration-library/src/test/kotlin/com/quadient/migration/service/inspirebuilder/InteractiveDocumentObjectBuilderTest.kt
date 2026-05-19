@@ -916,7 +916,7 @@ class InteractiveDocumentObjectBuilderTest {
         )
 
         val template = if (contentType == Page) {
-            val page = DocumentObjectBuilder("P_1", Page).content(areaContent).build().mock()
+            val page = DocumentObjectBuilder("P_1", Page).internal(true).content(areaContent).build().mock()
             DocumentObjectBuilder("T_1", Template).documentObjectRef(page).build()
         } else {
             DocumentObjectBuilder("T_1", Template).content(areaContent).build()

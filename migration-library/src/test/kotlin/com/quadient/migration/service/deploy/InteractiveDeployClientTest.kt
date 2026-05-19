@@ -624,14 +624,14 @@ class InteractiveDeployClientTest {
     }
 
     @Test
-    fun `page objects are silently filtered from deploy list`() {
+    fun `external page objects are included in deploy list`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
         )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
             aBlock(id = "1", type = DocumentObjectType.Block),
-            aBlock(id = "2", type = DocumentObjectType.Page),
+            aBlock(id = "2", type = DocumentObjectType.Page, internal = false),
             aBlock(id = "3", type = DocumentObjectType.Template),
             aBlock(id = "4", type = DocumentObjectType.Section),
         )
@@ -641,13 +641,13 @@ class InteractiveDeployClientTest {
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
         verify {
             spy.deployDocumentObjectsInternal(match { docObjects ->
-                docObjects.size == 3 && docObjects.map { it.id }.containsAll(listOf("1", "3", "4"))
+                docObjects.size == 4 && docObjects.map { it.id }.containsAll(listOf("1", "2", "3", "4"))
             }, any(), any(), any(), any(), any())
         }
     }
 
     @Test
-    fun `deploy list of document objects excludes pages but includes their transitive external dependencies`() {
+    fun `deploy list of document objects excludes internal pages but includes their transitive external dependencies`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
@@ -656,7 +656,7 @@ class InteractiveDeployClientTest {
         val block3 = aDocObj("block3", DocumentObjectType.Block)
         val block2 = aDocObj("block2", DocumentObjectType.Block, internal = true, content = listOf(aDocumentObjectRef(block3.id)))
         val block1 = aDocObj("block1", DocumentObjectType.Block)
-        val page = aDocObj("page1", DocumentObjectType.Page, content = listOf(aDocumentObjectRef(block1.id), aDocumentObjectRef(block2.id)))
+        val page = aDocObj("page1", DocumentObjectType.Page, internal = true, content = listOf(aDocumentObjectRef(block1.id), aDocumentObjectRef(block2.id)))
         val template = aDocObj("template1", DocumentObjectType.Template, content = listOf(aDocumentObjectRef(page.id)))
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template)

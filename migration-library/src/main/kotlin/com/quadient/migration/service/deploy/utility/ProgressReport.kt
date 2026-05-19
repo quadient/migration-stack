@@ -23,7 +23,6 @@ import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
-import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import kotlin.reflect.KClass
 import kotlin.time.Clock
@@ -265,9 +264,8 @@ class ProgressReporterImpl(
         resourceType: ResourceType,
         output: InspireOutput,
         internal: Boolean,
-        isPage: Boolean
     ): LastStatus {
-        if (internal || isPage) return LastStatus.Inlined
+        if (internal) return LastStatus.Inlined
 
         val objectEvents = statusTrackingRepository.findEventsRelevantToOutput(id, resourceType, output)
             .filter { ev -> lastDeployment?.timestamp?.let { ev.timestamp <= it } ?: true }
@@ -320,8 +318,7 @@ class ProgressReporterImpl(
             lastDeployment = lastDeployment,
             resourceType = ResourceType.DocumentObject,
             output = output,
-            internal = this.internal ?: false,
-            isPage = this.type == DocumentObjectType.Page
+            internal = documentObjectBuilder.shouldIncludeInternalDependency(this),
         )
     }
 
@@ -332,7 +329,6 @@ class ProgressReporterImpl(
             resourceType = ResourceType.Image,
             output = output,
             internal = false,
-            isPage = false
         )
     }
 
@@ -343,7 +339,6 @@ class ProgressReporterImpl(
             resourceType = ResourceType.Attachment,
             output = output,
             internal = false,
-            isPage = false
         )
     }
 
@@ -352,9 +347,8 @@ class ProgressReporterImpl(
             this.id,
             ResourceType.DocumentObject,
             output,
-            this.internal ?: false,
+            documentObjectBuilder.shouldIncludeInternalDependency(this),
             nextIcmPath,
-            this.type == DocumentObjectType.Page
         )
     }
 
@@ -372,7 +366,6 @@ class ProgressReporterImpl(
         output: InspireOutput,
         internal: Boolean = false,
         nextIcmPath: IcmPath?,
-        isPage: Boolean = false
     ): DeployKind {
         if (internal) {
             return DeployKind.Inline
@@ -386,8 +379,6 @@ class ProgressReporterImpl(
                 DeployKind.Create
             } else if (lastDeployEvent != null) {
                 DeployKind.Overwrite
-            } else if (isPage) {
-                DeployKind.Inline
             } else {
                 DeployKind.Create
             }
@@ -407,7 +398,6 @@ class ProgressReporterImpl(
             resourceType = ResourceType.DisplayRule,
             output = output,
             internal = this.internal,
-            isPage = false
         )
     }
 }

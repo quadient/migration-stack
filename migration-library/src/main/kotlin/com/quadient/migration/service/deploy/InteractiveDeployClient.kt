@@ -89,7 +89,7 @@ class InteractiveDeployClient(
     }
 
     override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
-        return documentObject.type != DocumentObjectType.Page && documentObject.internal != true
+        return documentObject.internal != true
     }
 
     override fun getAllDocumentObjectsToDeploy(): List<DocumentObject> {
@@ -98,7 +98,8 @@ class InteractiveDeployClient(
                 DocumentObjectType.Template.toString(),
                 DocumentObjectType.Block.toString(),
                 DocumentObjectType.Section.toString(),
-                DocumentObjectType.Snippet.toString()
+                DocumentObjectType.Snippet.toString(),
+                DocumentObjectType.Page.toString()
             ) and DocumentObjectTable.internal.eq(false) and (DocumentObjectTable.skip.extract<String>("skipped") eq "false"))
         )
     }
@@ -131,7 +132,7 @@ class InteractiveDeployClient(
         }
         require(error.isEmpty()) { error }
 
-        return documentObjects.filter { it.type != DocumentObjectType.Page }
+        return documentObjects
     }
 
     private fun deployDisplayRules(
