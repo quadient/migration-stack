@@ -10,12 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - Added barcode and QR code support
 - Cell overflow options
+- Templates in Interactive output work directly with areas in its content
+- Pages marked as internal are utilized (for Interactive flows) in Interactive output without creating standalone .jld file
 
 ### Changed
 
 - Shape (line) in Migration Model Example moved to header part of the document to avoid collision with new and dynamic content
-- **Breaking** Pages in Interactive output no longer create standalone template .jld file, but are still taken into 
-  account when distributing content to Interactive flows. Templates also work directly with areas in its content.
 
 ### Fixed
 

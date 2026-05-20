@@ -244,7 +244,7 @@ class InteractiveDocumentObjectBuilder(
                 documentObject.content.paragraphIfEmpty().forEach { documentContentPart ->
                     if (documentContentPart is DocumentObjectRef) {
                         val referencedModel = documentObjectRepository.findOrFail(documentContentPart.id)
-                        if (referencedModel.type == DocumentObjectType.Page) {
+                        if (referencedModel.type == DocumentObjectType.Page && referencedModel.internal == true) {
                             referencedModel.content.paragraphIfEmpty().forEach { pageContentPart ->
                                 mapContentItemToInteractiveFlow(pageContentPart, currentBaseTemplateData, interactiveFlowsWithContent)
                             }
@@ -319,7 +319,7 @@ class InteractiveDocumentObjectBuilder(
     }
 
     override fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean {
-        return documentObject.internal == true || documentObject.type == DocumentObjectType.Page
+        return documentObject.internal == true
     }
 
     override fun resolveParagraphStyleName(name: String): String =
