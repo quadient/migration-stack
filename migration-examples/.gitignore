@@ -6,6 +6,9 @@ logs/
 !src/main/groovy/com/quadient/migration/example/common/mapping/*.groovy
 !src/main/groovy/com/quadient/migration/example/common/report/
 !src/main/groovy/com/quadient/migration/example/common/report/*.groovy
+**/layout/*.json
+!src/main/groovy/com/quadient/migration/example/common/layout/
+!src/main/groovy/com/quadient/migration/example/common/layout/*.groovy
 deploy/
 
 src/main/resources/active-project-config

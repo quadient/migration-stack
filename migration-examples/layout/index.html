@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Area Template Analysis</title>
+    <style>
+        :root {
+            --fg: #111;
+            --muted: #666;
+            --line: #e6e6e6;
+            --bg: #f9f9f9;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 0;
+            color: var(--fg);
+            background: #fff;
+        }
+        header {
+            padding: 16px 24px 12px;
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        header h1 { margin: 0; font-size: 18px; flex: 1; }
+        button, #file-input-label {
+            padding: 7px 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: var(--bg);
+            cursor: pointer;
+            font-size: 13px;
+        }
+        button:active, #file-input-label:active { transform: translateY(1px); }
+        #file { display: none; }
+        #status { font-size: 13px; color: var(--muted); }
+
+        main { padding: 20px 24px; }
+
+        /* ── Tabs ─────────────────────────────────────────────────────── */
+        .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--line); }
+        .tab-btn {
+            padding: 8px 18px;
+            border: none;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--muted);
+            border-radius: 0;
+        }
+        .tab-btn.active { border-bottom-color: #2563eb; color: #2563eb; font-weight: 600; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ── Page grid ────────────────────────────────────────────────── */
+        #pages-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 28px;
+            align-items: flex-start;
+        }
+        .page-card {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--bg);
+        }
+        .page-card-title {
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--line);
+            background: #fff;
+        }
+        .page-card-sub {
+            padding: 2px 12px 6px;
+            font-size: 11px;
+            color: var(--muted);
+            background: #fff;
+        }
+        .page-card svg { display: block; }
+
+        /* ── Legend ───────────────────────────────────────────────────── */
+        .legend {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            font-size: 12px;
+            align-items: center;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-swatch {
+            width: 24px; height: 14px;
+            border-radius: 3px;
+            border: 1px solid #aaa;
+        }
+        .legend-swatch.group {
+            background: none;
+            border: 2px dashed #e00;
+        }
+
+        /* ── Similarity matrix ────────────────────────────────────────── */
+        #matrix-wrap { overflow-x: auto; }
+        #matrix-wrap table {
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        #matrix-wrap th, #matrix-wrap td {
+            padding: 5px 8px;
+            border: 1px solid var(--line);
+            white-space: nowrap;
+        }
+        #matrix-wrap th { background: var(--bg); font-weight: 600; }
+        #matrix-wrap td { text-align: center; min-width: 52px; }
+
+        /* ── Families ─────────────────────────────────────────────────── */
+        .family-list { list-style: none; margin: 0; padding: 0; }
+        .family-list li {
+            margin-bottom: 12px;
+            padding: 12px 16px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .family-list li b { font-size: 14px; }
+        code {
+            background: #f0f0f0;
+            border-radius: 4px;
+            padding: 1px 5px;
+            font-size: 12px;
+        }
+
+        #empty { color: var(--muted); font-size: 14px; padding: 40px 0; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Area Template Analysis</h1>
+    <label id="file-input-label" for="file">📂 Load JSON…</label>
+    <input type="file" id="file" accept=".json" />
+    <div id="status">No file loaded — use the button above to open a <code>*-area-analysis.json</code> file.</div>
+</header>
+
+<main id="main">
+    <div id="empty">Load a JSON file to begin.</div>
+
+    <div id="app" hidden>
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="pages">Pages &amp; Areas</button>
+            <button class="tab-btn" data-tab="similarity">Similarity</button>
+            <button class="tab-btn" data-tab="families">Template Families</button>
+        </div>
+
+        <!-- Pages tab -->
+        <div class="tab-panel active" id="tab-pages">
+            <div class="legend">
+                <span style="font-weight:600;font-size:12px">Legend:</span>
+                <span class="legend-item"><span class="legend-swatch" style="background:#4e79a750;border-color:#4e79a7"></span> area</span>
+                <span class="legend-item"><span class="legend-swatch group"></span> proximity group</span>
+                <span class="legend-item" style="font-size:11px;color:var(--muted)">Hover area for details · darker border = contained in parent</span>
+            </div>
+            <div id="pages-grid"></div>
+        </div>
+
+        <!-- Similarity tab -->
+        <div class="tab-panel" id="tab-similarity">
+            <p style="font-size:13px;color:var(--muted);margin-top:0">
+                Compares pages by area structure (x&nbsp;+&nbsp;width normalised to page width, height with 3× tolerance).
+                Score&nbsp;1.0&nbsp;= identical structure, 0.0&nbsp;= nothing in common.
+                Threshold for same-family grouping: <b>0.60</b>.
+            </p>
+            <div id="matrix-wrap"></div>
+        </div>
+
+        <!-- Families tab -->
+        <div class="tab-panel" id="tab-families">
+            <p style="font-size:13px;color:var(--muted);margin-top:0">
+                Pages grouped into base-template candidates based on structural similarity.
+                Pages in the same family share enough area positions/sizes to be served by one base template.
+            </p>
+            <ul class="family-list" id="families-list"></ul>
+        </div>
+    </div>
+</main>
+
+<script>
+// ── Palette (same 15 colours as the Python tool) ──────────────────────────────
+const PALETTE = [
+    "#4e79a7","#f28e2b","#e15759","#76b7b2","#59a14f",
+    "#edc948","#b07aa1","#ff9da7","#9c755f","#bab0ac",
+    "#aecbeb","#ffcfa1","#f4a59d","#b0dbd8","#a8d5a2",
+];
+
+// ── File loading ──────────────────────────────────────────────────────────────
+document.getElementById("file").addEventListener("change", async (e) => {
+    const [file] = e.target.files;
+    if (!file) return;
+    try {
+        const data = JSON.parse(await file.text());
+        document.getElementById("status").textContent =
+            `${file.name}  ·  ${data.pages.length} page(s)  ·  project: ${data.projectName}`;
+        render(data);
+    } catch (err) {
+        document.getElementById("status").textContent = "Error: " + err.message;
+    }
+});
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
+    });
+});
+
+// ── Main render ───────────────────────────────────────────────────────────────
+function render(data) {
+    document.getElementById("empty").hidden = true;
+    document.getElementById("app").hidden   = false;
+
+    renderPages(data.pages);
+    renderMatrix(data.pages, data.similarity.matrix);
+    renderFamilies(data.pages, data.similarity.families);
+}
+
+// ── Pages ─────────────────────────────────────────────────────────────────────
+const CANVAS_W = 260;  // SVG width in px
+const PAD      = 14;
+
+function renderPages(pages) {
+    const grid = document.getElementById("pages-grid");
+    grid.innerHTML = "";
+    pages.forEach(page => grid.appendChild(buildPageCard(page)));
+}
+
+function buildPageCard(page) {
+    const areas  = page.areas;
+    if (!areas.length) {
+        const card = document.createElement("div");
+        card.className = "page-card";
+        card.innerHTML = `<div class="page-card-title">${esc(page.pageName)}</div>
+                          <div class="page-card-sub" style="padding-bottom:12px">No areas</div>`;
+        return card;
+    }
+
+    // Determine scale: fit to CANVAS_W
+    const maxX2 = Math.max(...areas.map(a => a.x + a.w));
+    const maxY2 = Math.max(...areas.map(a => a.y + a.h));
+    const refW  = Math.max(maxX2, 210);   // at least A4 width in mm
+    const scale = (CANVAS_W - 2 * PAD) / refW;
+    const svgH  = Math.ceil(maxY2 * scale + 2 * PAD);
+
+    const svg = svgEl("svg", { width: CANVAS_W, height: svgH,
+        style: "background:#fff;cursor:default" });
+
+    // Proximity group bounding boxes (drawn below areas)
+    (page.proximityGroups || []).forEach((grp, gi) => {
+        const b = grp.bbox;
+        const r = svgEl("rect", {
+            x: sc(b.x, scale), y: sc(b.y, scale),
+            width: sc(b.w, scale), height: sc(b.h, scale),
+            fill: "none", stroke: "#e00", "stroke-width": 1.5,
+            "stroke-dasharray": "5,3"
+        });
+        svg.appendChild(r);
+        const lbl = svgEl("text", {
+            x: sc(b.x, scale) + 2, y: sc(b.y, scale) - 2,
+            "font-size": 7, fill: "#e00", "font-weight": "bold"
+        });
+        lbl.textContent = `G${gi + 1}`;
+        svg.appendChild(lbl);
+    });
+
+    // Areas
+    areas.forEach((a, i) => {
+        const color  = PALETTE[i % PALETTE.length];
+        const isTop  = a.containedIn == null;
+        const rx     = sc(a.x, scale), ry = sc(a.y, scale);
+        const rw     = sc(a.w, scale), rh = sc(a.h, scale);
+        const label  = shortLabel(a.contentPreview) || `area_${i}`;
+        const tip    = `${label}\nx=${a.x}mm  y=${a.y}mm  w=${a.w}mm  h=${a.h}mm`
+                     + (a.flowToNextPage ? "\n[flowToNextPage]" : "")
+                     + (a.interactiveFlowName ? `\nflow: ${a.interactiveFlowName}` : "");
+
+        const rect = svgEl("rect", {
+            x: rx, y: ry, width: rw, height: rh,
+            fill: color, "fill-opacity": "0.32",
+            stroke: color,
+            "stroke-width": isTop ? "1.5" : "1",
+            "stroke-dasharray": isTop ? "none" : "3,2"
+        });
+        const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        title.textContent = tip;
+        rect.appendChild(title);
+        svg.appendChild(rect);
+
+        if (rw > 12 && rh > 8) {
+            const txt = svgEl("text", {
+                x: rx + 2, y: ry + 9,
+                "font-size": 6.5, fill: "#222", "pointer-events": "none",
+                "clip-path": `inset(0 0 0 0)`,
+            });
+            txt.textContent = label.length > 28 ? label.slice(-28) : label;
+            svg.appendChild(txt);
+        }
+    });
+
+    const card = document.createElement("div");
+    card.className = "page-card";
+    card.innerHTML =
+        `<div class="page-card-title">${esc(page.pageName)}</div>` +
+        `<div class="page-card-sub">${areas.length} area(s)` +
+        (page.templateName ? `  ·  tmpl: ${esc(page.templateName)}` : "") +
+        `</div>`;
+    card.appendChild(svg);
+    return card;
+}
+
+// ── Similarity matrix ─────────────────────────────────────────────────────────
+function renderMatrix(pages, matrix) {
+    const n    = pages.length;
+    const wrap = document.getElementById("matrix-wrap");
+    if (n === 0) { wrap.innerHTML = "<p style='color:var(--muted)'>No pages.</p>"; return; }
+
+    const table = document.createElement("table");
+
+    // Header row
+    const thead = table.createTHead();
+    const hrow  = thead.insertRow();
+    hrow.insertCell().innerHTML = "<th></th>";
+    pages.forEach((p, j) => {
+        const th = document.createElement("th");
+        th.title = p.pageName;
+        th.textContent = `${j + 1}`;
+        hrow.appendChild(th);
+    });
+
+    // Body
+    const tbody = table.createTBody();
+    pages.forEach((page, i) => {
+        const row  = tbody.insertRow();
+        const th   = document.createElement("th");
+        th.textContent = `${i + 1}. ${page.pageName.slice(0, 36)}`;
+        row.appendChild(th);
+        matrix[i].forEach((score, j) => {
+            const td = row.insertCell();
+            if (i === j) {
+                td.textContent = "—";
+                td.style.background = "#e8e8e8";
+            } else {
+                td.textContent = score.toFixed(2);
+                const g = Math.round(200 * score);
+                const r = Math.round(255 * (1 - score));
+                td.style.background = `rgb(${r},${g},80)`;
+                if (score >= 0.60) td.style.fontWeight = "700";
+            }
+        });
+    });
+
+    wrap.innerHTML = "";
+    wrap.appendChild(table);
+    const note = document.createElement("p");
+    note.style.cssText = "font-size:11px;color:var(--muted);margin-top:6px";
+    note.textContent = "Green = high similarity · Bold = same family (≥ 0.60). Row/column numbers match.";
+    wrap.appendChild(note);
+}
+
+// ── Template families ─────────────────────────────────────────────────────────
+function renderFamilies(pages, families) {
+    const list = document.getElementById("families-list");
+    list.innerHTML = "";
+    families.forEach((fam, fi) => {
+        const li = document.createElement("li");
+        const label = fam.pageIds.length === 1
+            ? `Base Template ${fi + 1} <span style="color:var(--muted);font-weight:400">(unique page — no shared template needed)</span>`
+            : `Base Template ${fi + 1}`;
+        li.innerHTML = `<b>${label}</b><br>` +
+            fam.pageNames.map(n => `<code>${esc(n)}</code>`).join("  ");
+        list.appendChild(li);
+    });
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function sc(mm, scale) { return Math.round((mm * scale + PAD) * 10) / 10; }
+
+function svgEl(tag, attrs) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+    return el;
+}
+
+function shortLabel(preview) {
+    if (!preview) return "";
+    // Extract last name= segment: "DocObjRef(My Block)" → "My Block"
+    const m = preview.match(/\(([^)]+)\)$/);
+    return m ? m[1] : preview.slice(0, 40);
+}
+
+function esc(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+</script>
+</body>
+</html>
