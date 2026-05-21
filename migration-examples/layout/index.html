@@ -59,12 +59,16 @@
         .tab-panel.active { display: block; }
 
         /* ── Page grid ────────────────────────────────────────────────── */
-        #pages-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 28px;
-            align-items: flex-start;
+        #pages-grid { display: block; }   /* groups stack vertically */
+        .tmpl-group { margin-bottom: 28px; }
+        .tmpl-group-header {
+            display: flex; align-items: baseline; gap: 10px;
+            font-size: 13px; font-weight: 700;
+            padding: 0 0 7px; margin-bottom: 14px;
+            border-bottom: 2px solid var(--line);
         }
+        .tmpl-page-count { font-size: 11px; font-weight: 400; color: var(--muted); }
+        .tmpl-group-pages { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
         .page-card {
             border: 1px solid var(--line);
             border-radius: 10px;
@@ -106,53 +110,98 @@
             border: 2px dashed #e00;
         }
 
-        /* ── Similarity matrix ────────────────────────────────────────── */
-        #matrix-wrap { overflow-x: auto; }
-        #matrix-wrap table {
+        /* ── Similarity matrix wraps ──────────────────────────────────────── */
+        .matrix-wrap { overflow-x: auto; }
+        .matrix-wrap table {
             border-collapse: collapse;
             font-size: 12px;
         }
-        #matrix-wrap th, #matrix-wrap td {
+        .matrix-wrap th, .matrix-wrap td {
             padding: 5px 8px;
             border: 1px solid var(--line);
             white-space: nowrap;
         }
-        #matrix-wrap th { background: var(--bg); font-weight: 600; }
-        #matrix-wrap td { text-align: center; min-width: 52px; }
+        .matrix-wrap th { background: var(--bg); font-weight: 600; }
+        .matrix-wrap td { text-align: center; min-width: 52px; }
 
-        /* ── Segmented level control ──────────────────────────────────────── */
-        .view-level { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-        .seg-ctrl { display: flex; border-radius: 7px; overflow: hidden; border: 1px solid #ccc; }
-        .seg-btn {
-            padding: 5px 16px;
-            border: none;
-            border-right: 1px solid #ccc;
-            background: var(--bg);
-            cursor: pointer;
-            font-size: 12px;
-            color: var(--muted);
-            border-radius: 0;
+        /* ── Global filter bar ─────────────────────────────────────────── */
+        #filter-bar {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 0 14px; margin-bottom: 18px;
+            border-bottom: 1px solid var(--line); flex-wrap: wrap;
         }
-        .seg-btn:last-child { border-right: none; }
-        .seg-btn.active { background: #2563eb; color: #fff; font-weight: 600; }
+        #filter-bar label { font-size: 12px; font-weight: 600; }
+        /* ── Template filter combobox ──────────────────────────────────────── */
+        .tmpl-filter { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+        .filter-anchor { position: relative; }
+        .filter-btn { padding: 5px 12px; font-size: 12px; border-radius: 6px; }
+        .filter-panel {
+            position: absolute; top: calc(100% + 4px); left: 0; z-index: 100;
+            background: #fff; border: 1px solid #ccc; border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            padding: 6px 0; min-width: 230px; max-height: 280px; overflow-y: auto;
+        }
+        .filter-panel label {
+            display: flex; align-items: center; gap: 8px;
+            padding: 5px 14px; font-size: 12px; cursor: pointer; user-select: none;
+        }
+        .filter-panel label:hover { background: var(--bg); }
+        .small-link {
+            background: none; border: none; cursor: pointer;
+            font-size: 12px; color: #2563eb; padding: 0; text-decoration: underline;
+        }
 
-        /* ── Families ─────────────────────────────────────────────────── */
+        /* ── Section headings ──────────────────────────────────────────────── */
+        .section-head {
+            font-size: 13px; font-weight: 700; margin: 22px 0 6px;
+            border-bottom: 1px solid var(--line); padding-bottom: 5px; color: var(--fg);
+        }
+        .section-head:first-of-type { margin-top: 0; }
+        .section-desc { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+
+        /* ── Family hierarchy ──────────────────────────────────────────────── */
         .family-list { list-style: none; margin: 0; padding: 0; }
-        .family-list li {
-            margin-bottom: 12px;
-            padding: 12px 16px;
+        .family-list > li {
+            margin-bottom: 14px;
             border: 1px solid var(--line);
-            border-radius: 8px;
-            font-size: 13px;
-            line-height: 1.7;
+            border-radius: 10px;
+            overflow: hidden;
         }
-        .family-list li b { font-size: 14px; }
+        .family-header {
+            padding: 10px 14px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--line);
+            display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px;
+        }
+        .family-header b { font-size: 14px; }
+        .family-header .muted-note { color: var(--muted); font-weight: 400; font-size: 12px; }
+        .family-slots { padding: 6px 0; }
+        .family-slot {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 5px 14px;
+            border-bottom: 1px solid var(--line);
+            font-size: 12px;
+        }
+        .family-slot:last-child { border-bottom: none; }
+        .slot-num {
+            min-width: 22px; height: 22px; border-radius: 50%;
+            background: #e8f0fe; color: #2563eb;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+        }
+        .orig-pages { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+        .orig-page {
+            background: #f0f0f0; border-radius: 4px;
+            padding: 2px 7px; font-size: 12px;
+        }
         code {
             background: #f0f0f0;
             border-radius: 4px;
             padding: 1px 5px;
             font-size: 12px;
         }
+
+        code.dimmed { color: #bbb; background: #fafafa; border: 1px solid #e8e8e8; }
 
         #empty { color: var(--muted); font-size: 14px; padding: 40px 0; }
     </style>
@@ -175,6 +224,18 @@
             <button class="tab-btn" data-tab="families">Template Families</button>
         </div>
 
+        <!-- Global template filter — applies to all tabs -->
+        <div id="filter-bar">
+            <label>Templates:</label>
+            <div class="filter-anchor">
+                <button class="filter-btn" id="filter-btn">All templates ▾</button>
+                <div class="filter-panel" id="filter-panel" hidden></div>
+            </div>
+            <button class="small-link" id="filter-all">all</button>
+            <span style="color:var(--muted);font-size:12px">·</span>
+            <button class="small-link" id="filter-none">none</button>
+        </div>
+
         <!-- Pages tab -->
         <div class="tab-panel active" id="tab-pages">
             <div class="legend">
@@ -188,27 +249,18 @@
 
         <!-- Similarity tab -->
         <div class="tab-panel" id="tab-similarity">
-            <div class="view-level">
-                <span style="font-size:12px;font-weight:600">Compare by:</span>
-                <div class="seg-ctrl">
-                    <button class="seg-btn active" data-level="page">Page</button>
-                    <button class="seg-btn" data-level="template">Template</button>
-                </div>
-            </div>
-            <p id="similarity-desc" style="font-size:13px;color:var(--muted);margin-top:0"></p>
-            <div id="matrix-wrap"></div>
+            <div class="section-head">Template similarity</div>
+            <p class="section-desc" id="tmpl-matrix-desc"></p>
+            <div class="matrix-wrap" id="tmpl-matrix-wrap"></div>
+
+            <div class="section-head">Page similarity</div>
+            <p class="section-desc" id="page-matrix-desc"></p>
+            <div class="matrix-wrap" id="page-matrix-wrap"></div>
         </div>
 
         <!-- Families tab -->
         <div class="tab-panel" id="tab-families">
-            <div class="view-level">
-                <span style="font-size:12px;font-weight:600">Compare by:</span>
-                <div class="seg-ctrl">
-                    <button class="seg-btn active" data-level="page">Page</button>
-                    <button class="seg-btn" data-level="template">Template</button>
-                </div>
-            </div>
-            <p id="families-desc" style="font-size:13px;color:var(--muted);margin-top:0"></p>
+            <p class="section-desc" id="families-desc"></p>
             <ul class="family-list" id="families-list"></ul>
         </div>
     </div>
@@ -223,8 +275,8 @@ const PALETTE = [
 ];
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let gData      = null;
-let viewLevel  = 'page';   // 'page' | 'template'
+let gData              = null;
+let selectedTmplIds    = new Set();   // template IDs currently checked in the filter
 
 // ── File loading ──────────────────────────────────────────────────────────────
 document.getElementById("file").addEventListener("change", async (e) => {
@@ -250,41 +302,127 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     });
 });
 
-// ── Segmented level toggle (synced across both tab panels) ────────────────────
-document.querySelectorAll(".seg-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-        viewLevel = btn.dataset.level;
-        document.querySelectorAll(".seg-btn").forEach(b =>
-            b.classList.toggle("active", b.dataset.level === viewLevel));
-        if (gData) {
-            renderMatrix(gData);
-            renderFamilies(gData);
-        }
-    });
+// ── Template filter combobox ──────────────────────────────────────────────────
+const filterBtn   = document.getElementById("filter-btn");
+const filterPanel = document.getElementById("filter-panel");
+
+filterBtn.addEventListener("click", e => {
+    filterPanel.hidden = !filterPanel.hidden;
+    e.stopPropagation();
 });
+document.addEventListener("click", () => { filterPanel.hidden = true; });
+filterPanel.addEventListener("click", e => e.stopPropagation());
+
+document.getElementById("filter-all").addEventListener("click", () => {
+    filterPanel.querySelectorAll("input[type=checkbox]").forEach(cb => {
+        cb.checked = true;
+        selectedTmplIds.add(cb.dataset.id);
+    });
+    updateFilterBtn();
+    if (gData) rerender();
+});
+document.getElementById("filter-none").addEventListener("click", () => {
+    filterPanel.querySelectorAll("input[type=checkbox]").forEach(cb => { cb.checked = false; });
+    selectedTmplIds.clear();
+    updateFilterBtn();
+    if (gData) rerender();
+});
+
+function buildFilterPanel(templates) {
+    filterPanel.innerHTML = "";
+    templates.forEach(t => {
+        const label = document.createElement("label");
+        const cb    = document.createElement("input");
+        cb.type = "checkbox"; cb.checked = true; cb.dataset.id = t.templateId;
+        cb.addEventListener("change", () => {
+            if (cb.checked) selectedTmplIds.add(t.templateId);
+            else selectedTmplIds.delete(t.templateId);
+            updateFilterBtn();
+            if (gData) rerender();
+        });
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(" " + t.templateName));
+        filterPanel.appendChild(label);
+    });
+}
+
+function updateFilterBtn() {
+    const total = gData?.similarity?.templateLevel?.templates?.length ?? 0;
+    filterBtn.textContent = selectedTmplIds.size === total
+        ? `All templates (${total}) ▾`
+        : `${selectedTmplIds.size} of ${total} templates ▾`;
+}
 
 // ── Main render ───────────────────────────────────────────────────────────────
 function render(data) {
     gData = data;
     document.getElementById("empty").hidden = true;
     document.getElementById("app").hidden   = false;
-    renderPages(data.pages);
-    renderMatrix(data);
-    renderFamilies(data);
+
+    const tl = data.similarity?.templateLevel;
+    if (tl) {
+        selectedTmplIds = new Set(tl.templates.map(t => t.templateId));
+        buildFilterPanel(tl.templates);
+        updateFilterBtn();
+    } else {
+        document.getElementById("filter-bar").style.display = "none";
+    }
+
+    rerender();
 }
 
-// ── Pages ─────────────────────────────────────────────────────────────────────
+function rerender() {
+    renderPagesGrouped(gData);
+    renderSimilarity(gData);
+    renderFamilies(gData);
+}
+
+// ── Pages & Areas (grouped by template, filtered) ────────────────────────────
 const CANVAS_W = 260;
 const PAD      = 14;
 
-function renderPages(pages) {
+function renderPagesGrouped(data) {
     const grid = document.getElementById("pages-grid");
     grid.innerHTML = "";
-    pages.forEach(page => grid.appendChild(buildPageCard(page)));
+    const tl = data.similarity?.templateLevel;
+
+    if (!tl) {
+        // Old JSON: flat list, no filter
+        const wrap = document.createElement("div");
+        wrap.className = "tmpl-group-pages";
+        data.pages.forEach(page => wrap.appendChild(buildPageCard(page)));
+        grid.appendChild(wrap);
+        return;
+    }
+
+    const selected = tl.templates.filter(t => selectedTmplIds.has(t.templateId));
+    if (selected.length === 0) {
+        grid.innerHTML = "<p style='color:var(--muted);font-size:13px'>No templates selected.</p>";
+        return;
+    }
+
+    selected.forEach(tmpl => {
+        const group  = document.createElement("div");
+        group.className = "tmpl-group";
+
+        const header = document.createElement("div");
+        header.className = "tmpl-group-header";
+        header.innerHTML =
+            `${esc(tmpl.templateName)}` +
+            `<span class="tmpl-page-count">${tmpl.pageIndices.length} page(s)</span>`;
+        group.appendChild(header);
+
+        const pagesWrap = document.createElement("div");
+        pagesWrap.className = "tmpl-group-pages";
+        tmpl.pageIndices.forEach(pi => pagesWrap.appendChild(buildPageCard(data.pages[pi])));
+        group.appendChild(pagesWrap);
+
+        grid.appendChild(group);
+    });
 }
 
 function buildPageCard(page) {
-    const areas  = page.areas;
+    const areas = page.areas;
     if (!areas.length) {
         const card = document.createElement("div");
         card.className = "page-card";
@@ -298,41 +436,32 @@ function buildPageCard(page) {
     const refW  = Math.max(maxX2, 210);
     const scale = (CANVAS_W - 2 * PAD) / refW;
     const svgH  = Math.ceil(maxY2 * scale + 2 * PAD);
-
-    const svg = svgEl("svg", { width: CANVAS_W, height: svgH,
-        style: "background:#fff;cursor:default" });
+    const svg   = svgEl("svg", { width: CANVAS_W, height: svgH, style: "background:#fff;cursor:default" });
 
     (page.proximityGroups || []).forEach((grp, gi) => {
         const b = grp.bbox;
-        const r = svgEl("rect", {
-            x: sc(b.x, scale), y: sc(b.y, scale),
-            width: sc(b.w, scale), height: sc(b.h, scale),
-            fill: "none", stroke: "#e00", "stroke-width": 1.5,
-            "stroke-dasharray": "5,3"
-        });
-        svg.appendChild(r);
-        const lbl = svgEl("text", {
-            x: sc(b.x, scale) + 2, y: sc(b.y, scale) - 2,
-            "font-size": 7, fill: "#e00", "font-weight": "bold"
-        });
+        svg.appendChild(svgEl("rect", {
+            x: sc(b.x, scale), y: sc(b.y, scale), width: sc(b.w, scale), height: sc(b.h, scale),
+            fill: "none", stroke: "#e00", "stroke-width": 1.5, "stroke-dasharray": "5,3"
+        }));
+        const lbl = svgEl("text", { x: sc(b.x, scale) + 2, y: sc(b.y, scale) - 2,
+            "font-size": 7, fill: "#e00", "font-weight": "bold" });
         lbl.textContent = `G${gi + 1}`;
         svg.appendChild(lbl);
     });
 
     areas.forEach((a, i) => {
-        const color  = PALETTE[i % PALETTE.length];
-        const isTop  = a.containedIn == null;
-        const rx     = sc(a.x, scale), ry = sc(a.y, scale);
-        const rw     = sc(a.w, scale), rh = sc(a.h, scale);
-        const label  = shortLabel(a.contentPreview) || `area_${i}`;
-        const tip    = `${label}\nx=${a.x}mm  y=${a.y}mm  w=${a.w}mm  h=${a.h}mm`
-                     + (a.flowToNextPage ? "\n[flowToNextPage]" : "")
-                     + (a.interactiveFlowName ? `\nflow: ${a.interactiveFlowName}` : "");
+        const color = PALETTE[i % PALETTE.length];
+        const isTop = a.containedIn == null;
+        const rx = sc(a.x, scale), ry = sc(a.y, scale), rw = sc(a.w, scale), rh = sc(a.h, scale);
+        const label = shortLabel(a.contentPreview) || `area_${i}`;
+        const tip   = `${label}\nx=${a.x}mm  y=${a.y}mm  w=${a.w}mm  h=${a.h}mm`
+                    + (a.flowToNextPage ? "\n[flowToNextPage]" : "")
+                    + (a.interactiveFlowName ? `\nflow: ${a.interactiveFlowName}` : "");
 
         const rect = svgEl("rect", {
             x: rx, y: ry, width: rw, height: rh,
-            fill: color, "fill-opacity": "0.32",
-            stroke: color,
+            fill: color, "fill-opacity": "0.32", stroke: color,
             "stroke-width": isTop ? "1.5" : "1",
             "stroke-dasharray": isTop ? "none" : "3,2"
         });
@@ -342,10 +471,8 @@ function buildPageCard(page) {
         svg.appendChild(rect);
 
         if (rw > 12 && rh > 8) {
-            const txt = svgEl("text", {
-                x: rx + 2, y: ry + 9,
-                "font-size": 6.5, fill: "#222", "pointer-events": "none",
-            });
+            const txt = svgEl("text", { x: rx + 2, y: ry + 9,
+                "font-size": 6.5, fill: "#222", "pointer-events": "none" });
             txt.textContent = label.length > 28 ? label.slice(-28) : label;
             svg.appendChild(txt);
         }
@@ -364,42 +491,69 @@ function buildPageCard(page) {
     return card;
 }
 
-// ── Similarity matrix ─────────────────────────────────────────────────────────
-function renderMatrix(data) {
-    const wrap = document.getElementById("matrix-wrap");
-    const desc = document.getElementById("similarity-desc");
-    // Support both new (pageLevel/templateLevel) and old (flat) JSON
-    const pl = data.similarity.pageLevel || data.similarity;
-    const tl = data.similarity.templateLevel;
+// ── Similarity (both matrices, filtered by selected templates) ────────────────
+function renderSimilarity(data) {
+    const tl = data.similarity?.templateLevel;
+    const pl = data.similarity?.pageLevel || data.similarity;
 
-    if (viewLevel === "template" && tl) {
-        desc.innerHTML =
-            `Compares <b>templates</b> by positional page matching (page 1↔1, page 2↔2, …).
-            Templates with different page counts are penalised for unmatched pages.
-            Score&nbsp;1.0&nbsp;= identical page sequence, 0.0&nbsp;= nothing in common.
-            Threshold for same-family grouping: <b>0.60</b>.`;
-        buildMatrixTable(wrap, tl.templates.map(t => t.templateName), tl.matrix);
+    // ── Template matrix ──
+    const tmplWrap = document.getElementById("tmpl-matrix-wrap");
+    const tmplDesc = document.getElementById("tmpl-matrix-desc");
+    if (tl) {
+        const selIdx = tl.templates.map((t, i) => selectedTmplIds.has(t.templateId) ? i : -1).filter(i => i >= 0);
+        if (selIdx.length > 0) {
+            tmplDesc.textContent =
+                "Compares templates by positional page matching (page 1↔1, 2↔2, …). " +
+                "Templates with different page counts are penalised for unmatched pages. Score 1.0 = identical, 0.0 = nothing in common.";
+            buildMatrixTable(tmplWrap,
+                selIdx.map(i => tl.templates[i].templateName),
+                selIdx.map(i => selIdx.map(j => tl.matrix[i][j])));
+        } else {
+            tmplDesc.textContent = "";
+            tmplWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No templates selected.</p>";
+        }
     } else {
-        desc.innerHTML =
-            `Compares <b>pages</b> by area structure (x&nbsp;+&nbsp;width normalised to page width, height with 3× tolerance).
-            Score&nbsp;1.0&nbsp;= identical structure, 0.0&nbsp;= nothing in common.
-            Threshold for same-family grouping: <b>0.60</b>.`;
-        buildMatrixTable(wrap, data.pages.map(p => p.pageName), pl.matrix);
+        tmplDesc.textContent = "";
+        tmplWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>Template-level data not available (old JSON format).</p>";
+    }
+
+    // ── Page matrix — only pages from selected templates ──
+    const pageWrap = document.getElementById("page-matrix-wrap");
+    const pageDesc = document.getElementById("page-matrix-desc");
+    let selPageIdx = [];
+
+    if (tl && selectedTmplIds.size > 0) {
+        const seen = new Set();
+        tl.templates.filter(t => selectedTmplIds.has(t.templateId))
+            .forEach(t => t.pageIndices.forEach(pi => { if (!seen.has(pi)) { seen.add(pi); selPageIdx.push(pi); } }));
+        selPageIdx.sort((a, b) => a - b);
+    } else if (!tl) {
+        selPageIdx = data.pages.map((_, i) => i);
+    }
+
+    if (selPageIdx.length > 0) {
+        pageDesc.textContent =
+            "Compares pages by area structure (x + width normalised to page width, height with 3× tolerance). " +
+            "Score 1.0 = identical structure, 0.0 = nothing in common.";
+        buildMatrixTable(pageWrap,
+            selPageIdx.map(i => data.pages[i].pageName),
+            selPageIdx.map(i => selPageIdx.map(j => pl.matrix[i][j])));
+    } else {
+        pageDesc.textContent = "";
+        pageWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No pages to display.</p>";
     }
 }
 
 function buildMatrixTable(wrap, names, matrix) {
     const n = names.length;
-    if (n === 0) { wrap.innerHTML = "<p style='color:var(--muted)'>No data.</p>"; return; }
+    if (n === 0) { wrap.innerHTML = ""; return; }
 
     const table = document.createElement("table");
-    const thead = table.createTHead();
-    const hrow  = thead.insertRow();
+    const hrow  = table.createTHead().insertRow();
     hrow.insertCell().innerHTML = "<th></th>";
     names.forEach((name, j) => {
         const th = document.createElement("th");
-        th.title = name;
-        th.textContent = `${j + 1}`;
+        th.title = name; th.textContent = `${j + 1}`;
         hrow.appendChild(th);
     });
 
@@ -412,12 +566,10 @@ function buildMatrixTable(wrap, names, matrix) {
         matrix[i].forEach((score, j) => {
             const td = row.insertCell();
             if (i === j) {
-                td.textContent = "—";
-                td.style.background = "#e8e8e8";
+                td.textContent = "—"; td.style.background = "#e8e8e8";
             } else {
                 td.textContent = score.toFixed(2);
-                const g = Math.round(200 * score);
-                const r = Math.round(255 * (1 - score));
+                const g = Math.round(200 * score), r = Math.round(255 * (1 - score));
                 td.style.background = `rgb(${r},${g},80)`;
                 if (score >= 0.60) td.style.fontWeight = "700";
             }
@@ -428,55 +580,118 @@ function buildMatrixTable(wrap, names, matrix) {
     wrap.appendChild(table);
     const note = document.createElement("p");
     note.style.cssText = "font-size:11px;color:var(--muted);margin-top:6px";
-    note.textContent = "Green = high similarity · Bold = same family (≥ 0.60). Row/column numbers match.";
+    note.textContent = "Green = high similarity · Bold = same family (≥ 0.60). Numbers match row/column headers.";
     wrap.appendChild(note);
 }
 
-// ── Template families ─────────────────────────────────────────────────────────
+// ── Template families (hierarchical) ─────────────────────────────────────────
 function renderFamilies(data) {
+    const tl   = data.similarity?.templateLevel;
+    const pl   = data.similarity?.pageLevel || data.similarity;
     const list = document.getElementById("families-list");
     const desc = document.getElementById("families-desc");
-    const pl   = data.similarity.pageLevel || data.similarity;
-    const tl   = data.similarity.templateLevel;
     list.innerHTML = "";
 
-    if (viewLevel === "template" && tl) {
-        desc.textContent =
-            "Templates grouped into base-template candidates. " +
-            "Templates in the same family share enough structural similarity to be served by a single base template.";
-        tl.families.forEach((fam, fi) => {
-            const li       = document.createElement("li");
-            const isUnique = fam.templateIds.length === 1;
-            const label    = isUnique
-                ? `Base Template ${fi + 1} <span style="color:var(--muted);font-weight:400">(unique — no shared base template needed)</span>`
-                : `Base Template ${fi + 1}`;
-            const tmplBadges = fam.templateNames.map(n => `<code>${esc(n)}</code>`).join("  ");
-            const pageBadges = fam.pageNames.map(n => `<code>${esc(n)}</code>`).join("  ");
-            li.innerHTML =
-                `<b>${label}</b><br>` +
-                `<span style="color:var(--muted);font-size:12px">Templates:</span> ${tmplBadges}<br>` +
-                `<span style="color:var(--muted);font-size:12px">Pages:</span> ${pageBadges}`;
-            list.appendChild(li);
-        });
-    } else {
-        desc.textContent =
-            "Pages grouped into base-template candidates based on structural similarity. " +
-            "Pages in the same family share enough area positions/sizes to be served by one base template.";
+    if (!tl) {
+        // Fallback: old JSON — flat page families
+        desc.textContent = "Pages grouped by structural similarity into base-template candidates.";
         pl.families.forEach((fam, fi) => {
-            const li       = document.createElement("li");
+            const li = document.createElement("li");
             const isUnique = fam.pageIds.length === 1;
-            const label    = isUnique
-                ? `Base Template ${fi + 1} <span style="color:var(--muted);font-weight:400">(unique page — no shared template needed)</span>`
-                : `Base Template ${fi + 1}`;
-            li.innerHTML = `<b>${label}</b><br>` +
-                fam.pageNames.map(n => `<code>${esc(n)}</code>`).join("  ");
+            li.innerHTML =
+                `<div class="family-header"><b>Base Template ${fi + 1}</b>` +
+                (isUnique ? ` <span class="muted-note">(unique)</span>` : "") + `</div>` +
+                `<div class="family-slots"><div class="family-slot">` +
+                `<span class="orig-pages">${fam.pageNames.map(n => `<span class="orig-page">${esc(n)}</span>`).join("")}</span>` +
+                `</div></div>`;
             list.appendChild(li);
         });
+        return;
     }
+
+    desc.textContent =
+        "Each card is a base template candidate. " +
+        "Numbered rows are proposed base template pages — original pages below each number " +
+        "share enough structural similarity (≥ 0.60) to be served by that one template page.";
+
+    const tmplById = Object.fromEntries(tl.templates.map(t => [t.templateId, t]));
+
+    tl.families.forEach((fam, fi) => {
+        // OR logic: show family if at least one of its templates is currently selected.
+        // Unselected templates stay visible but dimmed to preserve family context.
+        if (!fam.templateIds.some(id => selectedTmplIds.has(id))) return;
+
+        const isUnique     = fam.templateIds.length === 1;
+        const famTemplates = fam.templateIds.map(id => tmplById[id]).filter(Boolean);
+        const multiTmpl    = famTemplates.length > 1;
+
+        // All page indices in this family, in original list order
+        const allPageIdx = famTemplates.flatMap(t => t.pageIndices);
+        allPageIdx.sort((a, b) => a - b);
+
+        // Cluster pages by structural similarity → each cluster = proposed base template page
+        const clusters = clusterByMatrix(allPageIdx, pl.matrix);
+        clusters.sort((a, b) => Math.min(...a) - Math.min(...b));
+
+        // Display label for a page index
+        const labelOf = pi => {
+            const pageName = data.pages[pi].pageName;
+            if (!multiTmpl) return pageName;
+            for (const t of famTemplates) {
+                if (t.pageIndices.includes(pi)) return `${t.templateName} / ${pageName}`;
+            }
+            return pageName;
+        };
+
+        // Template badges: active = normal, inactive = dimmed (but still shown for context)
+        const tmplBadges = fam.templateIds.map((id, idx) =>
+            `<code${selectedTmplIds.has(id) ? "" : ' class="dimmed"'}>${esc(fam.templateNames[idx])}</code>`
+        ).join("  ");
+
+        let slotsHtml = '<div class="family-slots">';
+        clusters.forEach((cluster, ci) => {
+            const badges = cluster.map(pi =>
+                `<span class="orig-page">${esc(labelOf(pi))}</span>`).join("");
+            slotsHtml +=
+                `<div class="family-slot">` +
+                `<span class="slot-num">${ci + 1}</span>` +
+                `<span class="orig-pages">${badges}</span>` +
+                `</div>`;
+        });
+        slotsHtml += "</div>";
+
+        const li = document.createElement("li");
+        li.innerHTML =
+            `<div class="family-header">` +
+            `<b>Base Template ${fi + 1}</b>` +
+            (isUnique ? ` <span class="muted-note">(unique)</span>` : "") +
+            `<span style="margin-left:8px">${tmplBadges}</span>` +
+            `</div>` + slotsHtml;
+        list.appendChild(li);
+    });
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function sc(mm, scale) { return Math.round((mm * scale + PAD) * 10) / 10; }
+
+/** Single-linkage clustering of page list indices using the global page-level similarity matrix. */
+function clusterByMatrix(indices, matrix, threshold = 0.60) {
+    let clusters = indices.map(i => [i]);
+    let changed  = true;
+    while (changed) {
+        changed = false;
+        for (let i = 0; i < clusters.length && !changed; i++) {
+            for (let j = i + 1; j < clusters.length && !changed; j++) {
+                if (clusters[i].some(a => clusters[j].some(b => (matrix[a]?.[b] ?? 0) >= threshold))) {
+                    clusters[i].push(...clusters[j]);
+                    clusters.splice(j, 1);
+                    changed = true;
+                }
+            }
+        }
+    }
+    return clusters;
+}
 
 function svgEl(tag, attrs) {
     const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
@@ -494,5 +709,6 @@ function esc(s) {
     return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 </script>
+
 </body>
 </html>
