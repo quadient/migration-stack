@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Area Template Analysis</title>
+    <title>Layout Export</title>
     <style>
         :root {
             --fg: #111;
@@ -120,6 +120,22 @@
         #matrix-wrap th { background: var(--bg); font-weight: 600; }
         #matrix-wrap td { text-align: center; min-width: 52px; }
 
+        /* ── Segmented level control ──────────────────────────────────────── */
+        .view-level { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+        .seg-ctrl { display: flex; border-radius: 7px; overflow: hidden; border: 1px solid #ccc; }
+        .seg-btn {
+            padding: 5px 16px;
+            border: none;
+            border-right: 1px solid #ccc;
+            background: var(--bg);
+            cursor: pointer;
+            font-size: 12px;
+            color: var(--muted);
+            border-radius: 0;
+        }
+        .seg-btn:last-child { border-right: none; }
+        .seg-btn.active { background: #2563eb; color: #fff; font-weight: 600; }
+
         /* ── Families ─────────────────────────────────────────────────── */
         .family-list { list-style: none; margin: 0; padding: 0; }
         .family-list li {
@@ -143,10 +159,10 @@
 </head>
 <body>
 <header>
-    <h1>Area Template Analysis</h1>
+    <h1>Layout Export</h1>
     <label id="file-input-label" for="file">📂 Load JSON…</label>
     <input type="file" id="file" accept=".json" />
-    <div id="status">No file loaded — use the button above to open a <code>*-area-analysis.json</code> file.</div>
+        <div id="status">No file loaded — use the button above to open a <code>*-layout.json</code> file.</div>
 </header>
 
 <main id="main">
@@ -172,32 +188,43 @@
 
         <!-- Similarity tab -->
         <div class="tab-panel" id="tab-similarity">
-            <p style="font-size:13px;color:var(--muted);margin-top:0">
-                Compares pages by area structure (x&nbsp;+&nbsp;width normalised to page width, height with 3× tolerance).
-                Score&nbsp;1.0&nbsp;= identical structure, 0.0&nbsp;= nothing in common.
-                Threshold for same-family grouping: <b>0.60</b>.
-            </p>
+            <div class="view-level">
+                <span style="font-size:12px;font-weight:600">Compare by:</span>
+                <div class="seg-ctrl">
+                    <button class="seg-btn active" data-level="page">Page</button>
+                    <button class="seg-btn" data-level="template">Template</button>
+                </div>
+            </div>
+            <p id="similarity-desc" style="font-size:13px;color:var(--muted);margin-top:0"></p>
             <div id="matrix-wrap"></div>
         </div>
 
         <!-- Families tab -->
         <div class="tab-panel" id="tab-families">
-            <p style="font-size:13px;color:var(--muted);margin-top:0">
-                Pages grouped into base-template candidates based on structural similarity.
-                Pages in the same family share enough area positions/sizes to be served by one base template.
-            </p>
+            <div class="view-level">
+                <span style="font-size:12px;font-weight:600">Compare by:</span>
+                <div class="seg-ctrl">
+                    <button class="seg-btn active" data-level="page">Page</button>
+                    <button class="seg-btn" data-level="template">Template</button>
+                </div>
+            </div>
+            <p id="families-desc" style="font-size:13px;color:var(--muted);margin-top:0"></p>
             <ul class="family-list" id="families-list"></ul>
         </div>
     </div>
 </main>
 
 <script>
-// ── Palette (same 15 colours as the Python tool) ──────────────────────────────
+// ── Palette ───────────────────────────────────────────────────────────────────
 const PALETTE = [
     "#4e79a7","#f28e2b","#e15759","#76b7b2","#59a14f",
     "#edc948","#b07aa1","#ff9da7","#9c755f","#bab0ac",
     "#aecbeb","#ffcfa1","#f4a59d","#b0dbd8","#a8d5a2",
 ];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let gData      = null;
+let viewLevel  = 'page';   // 'page' | 'template'
 
 // ── File loading ──────────────────────────────────────────────────────────────
 document.getElementById("file").addEventListener("change", async (e) => {
@@ -223,18 +250,31 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
     });
 });
 
+// ── Segmented level toggle (synced across both tab panels) ────────────────────
+document.querySelectorAll(".seg-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        viewLevel = btn.dataset.level;
+        document.querySelectorAll(".seg-btn").forEach(b =>
+            b.classList.toggle("active", b.dataset.level === viewLevel));
+        if (gData) {
+            renderMatrix(gData);
+            renderFamilies(gData);
+        }
+    });
+});
+
 // ── Main render ───────────────────────────────────────────────────────────────
 function render(data) {
+    gData = data;
     document.getElementById("empty").hidden = true;
     document.getElementById("app").hidden   = false;
-
     renderPages(data.pages);
-    renderMatrix(data.pages, data.similarity.matrix);
-    renderFamilies(data.pages, data.similarity.families);
+    renderMatrix(data);
+    renderFamilies(data);
 }
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
-const CANVAS_W = 260;  // SVG width in px
+const CANVAS_W = 260;
 const PAD      = 14;
 
 function renderPages(pages) {
@@ -253,17 +293,15 @@ function buildPageCard(page) {
         return card;
     }
 
-    // Determine scale: fit to CANVAS_W
     const maxX2 = Math.max(...areas.map(a => a.x + a.w));
     const maxY2 = Math.max(...areas.map(a => a.y + a.h));
-    const refW  = Math.max(maxX2, 210);   // at least A4 width in mm
+    const refW  = Math.max(maxX2, 210);
     const scale = (CANVAS_W - 2 * PAD) / refW;
     const svgH  = Math.ceil(maxY2 * scale + 2 * PAD);
 
     const svg = svgEl("svg", { width: CANVAS_W, height: svgH,
         style: "background:#fff;cursor:default" });
 
-    // Proximity group bounding boxes (drawn below areas)
     (page.proximityGroups || []).forEach((grp, gi) => {
         const b = grp.bbox;
         const r = svgEl("rect", {
@@ -281,7 +319,6 @@ function buildPageCard(page) {
         svg.appendChild(lbl);
     });
 
-    // Areas
     areas.forEach((a, i) => {
         const color  = PALETTE[i % PALETTE.length];
         const isTop  = a.containedIn == null;
@@ -308,7 +345,6 @@ function buildPageCard(page) {
             const txt = svgEl("text", {
                 x: rx + 2, y: ry + 9,
                 "font-size": 6.5, fill: "#222", "pointer-events": "none",
-                "clip-path": `inset(0 0 0 0)`,
             });
             txt.textContent = label.length > 28 ? label.slice(-28) : label;
             svg.appendChild(txt);
@@ -317,40 +353,61 @@ function buildPageCard(page) {
 
     const card = document.createElement("div");
     card.className = "page-card";
+    const tmplInfo = page.templateName
+        ? `  ·  tmpl: ${esc(page.templateName)}` +
+          (page.templatePageIndex != null ? ` (pg ${page.templatePageIndex + 1})` : "")
+        : "";
     card.innerHTML =
         `<div class="page-card-title">${esc(page.pageName)}</div>` +
-        `<div class="page-card-sub">${areas.length} area(s)` +
-        (page.templateName ? `  ·  tmpl: ${esc(page.templateName)}` : "") +
-        `</div>`;
+        `<div class="page-card-sub">${areas.length} area(s)${tmplInfo}</div>`;
     card.appendChild(svg);
     return card;
 }
 
 // ── Similarity matrix ─────────────────────────────────────────────────────────
-function renderMatrix(pages, matrix) {
-    const n    = pages.length;
+function renderMatrix(data) {
     const wrap = document.getElementById("matrix-wrap");
-    if (n === 0) { wrap.innerHTML = "<p style='color:var(--muted)'>No pages.</p>"; return; }
+    const desc = document.getElementById("similarity-desc");
+    // Support both new (pageLevel/templateLevel) and old (flat) JSON
+    const pl = data.similarity.pageLevel || data.similarity;
+    const tl = data.similarity.templateLevel;
+
+    if (viewLevel === "template" && tl) {
+        desc.innerHTML =
+            `Compares <b>templates</b> by positional page matching (page 1↔1, page 2↔2, …).
+            Templates with different page counts are penalised for unmatched pages.
+            Score&nbsp;1.0&nbsp;= identical page sequence, 0.0&nbsp;= nothing in common.
+            Threshold for same-family grouping: <b>0.60</b>.`;
+        buildMatrixTable(wrap, tl.templates.map(t => t.templateName), tl.matrix);
+    } else {
+        desc.innerHTML =
+            `Compares <b>pages</b> by area structure (x&nbsp;+&nbsp;width normalised to page width, height with 3× tolerance).
+            Score&nbsp;1.0&nbsp;= identical structure, 0.0&nbsp;= nothing in common.
+            Threshold for same-family grouping: <b>0.60</b>.`;
+        buildMatrixTable(wrap, data.pages.map(p => p.pageName), pl.matrix);
+    }
+}
+
+function buildMatrixTable(wrap, names, matrix) {
+    const n = names.length;
+    if (n === 0) { wrap.innerHTML = "<p style='color:var(--muted)'>No data.</p>"; return; }
 
     const table = document.createElement("table");
-
-    // Header row
     const thead = table.createTHead();
     const hrow  = thead.insertRow();
     hrow.insertCell().innerHTML = "<th></th>";
-    pages.forEach((p, j) => {
+    names.forEach((name, j) => {
         const th = document.createElement("th");
-        th.title = p.pageName;
+        th.title = name;
         th.textContent = `${j + 1}`;
         hrow.appendChild(th);
     });
 
-    // Body
     const tbody = table.createTBody();
-    pages.forEach((page, i) => {
-        const row  = tbody.insertRow();
-        const th   = document.createElement("th");
-        th.textContent = `${i + 1}. ${page.pageName.slice(0, 36)}`;
+    names.forEach((name, i) => {
+        const row = tbody.insertRow();
+        const th  = document.createElement("th");
+        th.textContent = `${i + 1}. ${name.slice(0, 36)}`;
         row.appendChild(th);
         matrix[i].forEach((score, j) => {
             const td = row.insertCell();
@@ -376,18 +433,46 @@ function renderMatrix(pages, matrix) {
 }
 
 // ── Template families ─────────────────────────────────────────────────────────
-function renderFamilies(pages, families) {
+function renderFamilies(data) {
     const list = document.getElementById("families-list");
+    const desc = document.getElementById("families-desc");
+    const pl   = data.similarity.pageLevel || data.similarity;
+    const tl   = data.similarity.templateLevel;
     list.innerHTML = "";
-    families.forEach((fam, fi) => {
-        const li = document.createElement("li");
-        const label = fam.pageIds.length === 1
-            ? `Base Template ${fi + 1} <span style="color:var(--muted);font-weight:400">(unique page — no shared template needed)</span>`
-            : `Base Template ${fi + 1}`;
-        li.innerHTML = `<b>${label}</b><br>` +
-            fam.pageNames.map(n => `<code>${esc(n)}</code>`).join("  ");
-        list.appendChild(li);
-    });
+
+    if (viewLevel === "template" && tl) {
+        desc.textContent =
+            "Templates grouped into base-template candidates. " +
+            "Templates in the same family share enough structural similarity to be served by a single base template.";
+        tl.families.forEach((fam, fi) => {
+            const li       = document.createElement("li");
+            const isUnique = fam.templateIds.length === 1;
+            const label    = isUnique
+                ? `Base Template ${fi + 1} <span style="color:var(--muted);font-weight:400">(unique — no shared base template needed)</span>`
+                : `Base Template ${fi + 1}`;
+            const tmplBadges = fam.templateNames.map(n => `<code>${esc(n)}</code>`).join("  ");
+            const pageBadges = fam.pageNames.map(n => `<code>${esc(n)}</code>`).join("  ");
+            li.innerHTML =
+                `<b>${label}</b><br>` +
+                `<span style="color:var(--muted);font-size:12px">Templates:</span> ${tmplBadges}<br>` +
+                `<span style="color:var(--muted);font-size:12px">Pages:</span> ${pageBadges}`;
+            list.appendChild(li);
+        });
+    } else {
+        desc.textContent =
+            "Pages grouped into base-template candidates based on structural similarity. " +
+            "Pages in the same family share enough area positions/sizes to be served by one base template.";
+        pl.families.forEach((fam, fi) => {
+            const li       = document.createElement("li");
+            const isUnique = fam.pageIds.length === 1;
+            const label    = isUnique
+                ? `Base Template ${fi + 1} <span style="color:var(--muted);font-weight:400">(unique page — no shared template needed)</span>`
+                : `Base Template ${fi + 1}`;
+            li.innerHTML = `<b>${label}</b><br>` +
+                fam.pageNames.map(n => `<code>${esc(n)}</code>`).join("  ");
+            list.appendChild(li);
+        });
+    }
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
@@ -401,7 +486,6 @@ function svgEl(tag, attrs) {
 
 function shortLabel(preview) {
     if (!preview) return "";
-    // Extract last name= segment: "DocObjRef(My Block)" → "My Block"
     const m = preview.match(/\(([^)]+)\)$/);
     return m ? m[1] : preview.slice(0, 40);
 }

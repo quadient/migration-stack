@@ -1,7 +1,7 @@
 //! ---
-//! displayName: Area Template Analysis
+//! displayName: Layout Export
 //! category: Layout
-//! description: Analyse page areas, detect containment and proximity groups, score cross-page similarity and suggest base-template candidates. Output JSON for layout/index.html.
+//! description: Export layout data — areas, containment, proximity groups, cross-page similarity and base-template candidates — as JSON for layout/index.html.
 //! ---
 package com.quadient.migration.example.common.layout
 
@@ -20,25 +20,28 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 @Field Migration migration = initMigration(this.binding)
 
-def dstFile = PathUtil.dataDirPath(binding, "layout", "${migration.projectConfig.name}-area-analysis.json").toFile()
+def dstFile = PathUtil.dataDirPath(binding, "layout", "${migration.projectConfig.name}-layout.json").toFile()
 dstFile.parentFile.mkdirs()
 
-// ── Load pages & templates from the migration model ──────────────────────────
 def templatesAndPages = (migration.documentObjectRepository as DocumentObjectRepository)
         .list(new DocumentObjectFilterBuilder()
                 .types([DocumentObjectType.Page, DocumentObjectType.Template])
                 .build())
 
 def templates = templatesAndPages.findAll { it.type == DocumentObjectType.Template }
-def pages     = templatesAndPages.findAll { it.type == DocumentObjectType.Page }
-def pageIds   = pages.collect { it.id } as Set<String>
+def pages = templatesAndPages.findAll { it.type == DocumentObjectType.Page }
+def pageIds = pages.collect { it.id } as Set<String>
 
-// Build page → template reverse index (a page can appear in at most one template)
+// Build page → template reverse index; also track each page's position within its template
 def pageToTemplate = [:]
+def pageIndexInTemplate = [:]
 templates.each { tmpl ->
-    tmpl.content.findAll { it instanceof DocumentObjectRef && pageIds.contains(it.id) }.each { ref ->
-        pageToTemplate[(ref as DocumentObjectRef).id] = tmpl
-    }
+    tmpl.content
+        .findAll { it instanceof DocumentObjectRef && pageIds.contains(it.id) }
+        .eachWithIndex { ref, idx ->
+            pageToTemplate[(ref as DocumentObjectRef).id] = tmpl
+            pageIndexInTemplate[(ref as DocumentObjectRef).id] = idx
+        }
 }
 
 // ── Build per-page data ───────────────────────────────────────────────────────
@@ -91,12 +94,13 @@ def pageDataList = pages.collect { page ->
          proximityGroup    : a.proximityGroup ?: 0]
     }
 
-    [pageId         : page.id,
-     pageName       : page.name,
-     templateId     : template?.id,
-     templateName   : template?.name,
-     areas          : areas,
-     proximityGroups: proximityGroups]
+    [pageId             : page.id,
+     pageName           : page.name,
+     templateId         : template?.id,
+     templateName       : template?.name,
+     templatePageIndex  : pageIndexInTemplate[page.id],   // position of this page within its template
+     areas              : areas,
+     proximityGroups    : proximityGroups]
 }
 
 // ── Similarity matrix & template-family clustering ───────────────────────────
@@ -117,11 +121,54 @@ def familyData  = families.collect { idxList ->
      pageNames: idxList.collect { pageDataList[it].pageName }]
 }
 
+// ── Template-level similarity & clustering ────────────────────────────────────
+// Group page-list indices by their parent template, preserving intra-template page order.
+def templateGroupMap = [:]
+pageDataList.eachWithIndex { pg, i ->
+    def key = pg.templateId ?: "solo::${pg.pageId}"
+    if (!templateGroupMap.containsKey(key)) templateGroupMap[key] = []
+    templateGroupMap[key] << [listIdx: i as int, order: (pg.templatePageIndex ?: 0) as int]
+}
+
+def templateList = templateGroupMap.collect { key, entries ->
+    def sorted = entries.sort { it.order }
+    def pageIndices = sorted.collect { it.listIdx as int }
+    def firstPg = pageDataList[pageIndices[0]]
+    [templateId  : firstPg.templateId ?: key,
+     templateName: firstPg.templateName ?: firstPg.pageName,
+     pageIndices : pageIndices]
+}
+
+int nt = templateList.size()
+def tmplMatrix = (0..<nt).collect { i ->
+    (0..<nt).collect { j ->
+        if (i == j) return 1.0d
+        if (j < i)  return 0.0d
+        rs(templateSimilarity(
+            templateList[i].pageIndices as List<Integer>,
+            templateList[j].pageIndices as List<Integer>,
+            matrix))
+    }
+}
+(0..<nt).each { i -> (0..<i).each { j -> tmplMatrix[i][j] = tmplMatrix[j][i] } }
+
+def tmplFamilies   = clusterPages((0..<nt).toList(), tmplMatrix)
+def tmplFamilyData = tmplFamilies.collect { idxList ->
+    [templateIds  : idxList.collect { templateList[it].templateId },
+     templateNames: idxList.collect { templateList[it].templateName },
+     pageNames    : idxList.collectMany { ti ->
+         (templateList[ti].pageIndices as List<Integer>).collect { pi -> pageDataList[pi].pageName as String }
+     }]
+}
+
 // ── Write JSON ────────────────────────────────────────────────────────────────
 new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(dstFile, [
         projectName: migration.projectConfig.name,
         pages      : pageDataList,
-        similarity : [matrix: matrix, families: familyData]
+        similarity : [
+            pageLevel    : [matrix: matrix,         families: familyData],
+            templateLevel: [templates: templateList, matrix: tmplMatrix, families: tmplFamilyData]
+        ]
 ])
 println "✓ Written to: ${dstFile.absolutePath}"
 
@@ -262,3 +309,18 @@ static List<List<Integer>> clusterPages(List<Integer> indices,
 
 static double r2(double v)  { Math.round(v * 100) / 100.0 }
 static double rs(double v)  { Math.round(v * 1000) / 1000.0 }
+
+/**
+ * Compare two templates by positional page matching (page 1↔1, page 2↔2, …).
+ * Unmatched pages (different template lengths) contribute 0, penalising the score
+ * proportionally so longer templates aren't artificially favoured.
+ */
+static double templateSimilarity(List<Integer> pagesA, List<Integer> pagesB,
+                                 List<List<Double>> pageMatrix) {
+    int maxLen = Math.max(pagesA.size(), pagesB.size())
+    if (maxLen == 0) return 0.0
+    double total = 0.0
+    int minLen = Math.min(pagesA.size(), pagesB.size())
+    (0..<minLen).each { k -> total += pageMatrix[pagesA[k]][pagesB[k]] as double }
+    return total / maxLen
+}
