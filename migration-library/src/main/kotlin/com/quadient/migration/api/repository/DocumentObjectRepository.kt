@@ -1,5 +1,6 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectFilter
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
@@ -23,9 +24,8 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import java.sql.Types
 
-class DocumentObjectRepository(table: DocumentObjectTable, projectName: String) :
-    Repository<DocumentObject>(table, projectName) {
-    val statusTrackingRepository = StatusTrackingRepository(projectName)
+class DocumentObjectRepository(projectName: ProjectName, private val statusTrackingRepository: StatusTrackingRepository) :
+    Repository<DocumentObject>(DocumentObjectTable, projectName.name) {
 
     val logger = org.slf4j.LoggerFactory.getLogger(DocumentObjectRepository::class.java)!!
 

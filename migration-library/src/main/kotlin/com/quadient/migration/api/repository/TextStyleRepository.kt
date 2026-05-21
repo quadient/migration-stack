@@ -1,5 +1,6 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
@@ -20,9 +21,8 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import kotlin.collections.map
 
-class TextStyleRepository(table: TextStyleTable, projectName: String) :
-    Repository<TextStyle>(table, projectName) {
-    val statusTrackingRepository = StatusTrackingRepository(projectName)
+class TextStyleRepository(projectName: ProjectName, private val statusTrackingRepository: StatusTrackingRepository) :
+    Repository<TextStyle>(TextStyleTable, projectName.name) {
 
     override fun fromDb(row: ResultRow): TextStyle {
         val definitionEntity = row[TextStyleTable.definition]

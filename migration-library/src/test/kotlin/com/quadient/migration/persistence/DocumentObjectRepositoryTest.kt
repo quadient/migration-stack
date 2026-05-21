@@ -1,6 +1,7 @@
 package com.quadient.migration.persistence
 
 import com.quadient.migration.Postgres
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.StringValue
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.Test
 class DocumentObjectRepositoryTest {
     private val projectName = aProjectConfig().name
     private val repo = aDocumentObjectRepository()
-    private val statusRepo = StatusTrackingRepository(projectName)
+    private val statusRepo = StatusTrackingRepository(ProjectName(projectName))
 
     @Test
     fun `roundtrip is correct`() {

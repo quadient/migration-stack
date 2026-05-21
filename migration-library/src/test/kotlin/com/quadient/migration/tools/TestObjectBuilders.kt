@@ -9,6 +9,7 @@ import com.quadient.migration.api.IpsConfig
 import com.quadient.migration.api.MigConfig
 import com.quadient.migration.api.PathsConfig
 import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
@@ -34,6 +35,7 @@ import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
@@ -212,8 +214,9 @@ fun aProjectConfig(
 fun aMigConfig(
     dbConfig: DbConfig = aDbConfig(),
     inspireConfig: InspireConfig = aInspireConfig(),
+    storageRoot: String = "",
 ): MigConfig {
-    return MigConfig(dbConfig = dbConfig, inspireConfig = inspireConfig, storageRoot = "")
+    return MigConfig(dbConfig = dbConfig, inspireConfig = inspireConfig, storageRoot = storageRoot)
 }
 
 fun aVariable(
@@ -528,11 +531,12 @@ fun aErrorStatus(
     )
 }
 
-fun aDocumentObjectRepository() = DocumentObjectRepository(DocumentObjectTable, aProjectConfig().name)
-fun aVariableRepository() = VariableRepository(VariableTable, aProjectConfig().name)
-fun aVariableStructureRepository() = VariableStructureRepository(VariableStructureTable, aProjectConfig().name)
-fun aParaStyleRepository() = ParagraphStyleRepository(ParagraphStyleTable, aProjectConfig().name)
-fun aTextStyleRepository() = TextStyleRepository(TextStyleTable, aProjectConfig().name)
-fun aDisplayRuleRepository() = DisplayRuleRepository(DisplayRuleTable, aProjectConfig().name)
-fun aImageRepository() = ImageRepository(ImageTable, aProjectConfig().name)
-fun aAttachmentRepository() = AttachmentRepository(AttachmentTable, aProjectConfig().name)
+private val statusRepo = StatusTrackingRepository(ProjectName(aProjectConfig().name))
+fun aDocumentObjectRepository() = DocumentObjectRepository(ProjectName(aProjectConfig().name), statusRepo)
+fun aVariableRepository() = VariableRepository(ProjectName(aProjectConfig().name))
+fun aVariableStructureRepository() = VariableStructureRepository(ProjectName(aProjectConfig().name))
+fun aParaStyleRepository() = ParagraphStyleRepository(ProjectName(aProjectConfig().name), statusRepo)
+fun aTextStyleRepository() = TextStyleRepository(ProjectName(aProjectConfig().name), statusRepo)
+fun aDisplayRuleRepository() = DisplayRuleRepository(ProjectName(aProjectConfig().name), statusRepo)
+fun aImageRepository() = ImageRepository(ProjectName(aProjectConfig().name), statusRepo)
+fun aAttachmentRepository() = AttachmentRepository(ProjectName(aProjectConfig().name), statusRepo)

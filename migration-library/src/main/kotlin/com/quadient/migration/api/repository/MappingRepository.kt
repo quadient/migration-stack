@@ -1,5 +1,6 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.Mapping
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
@@ -9,7 +10,7 @@ import com.quadient.migration.persistence.repository.MappingInternalRepository
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 class MappingRepository(
-    private val projectName: String,
+    private val projectName: ProjectName,
     private val documentObjectRepository: DocumentObjectRepository,
     private val imageRepository: ImageRepository,
     private val attachmentRepository: AttachmentRepository,
@@ -19,7 +20,7 @@ class MappingRepository(
     private val variableStructureRepository: VariableStructureRepository,
     private val displayRuleRepository: DisplayRuleRepository,
 ) {
-    private val internalRepository = MappingInternalRepository(projectName)
+    private val internalRepository = MappingInternalRepository(projectName.name)
 
     fun listAll(): List<Mapping> {
         return transaction { internalRepository.listAll().map { it.toDto() } }

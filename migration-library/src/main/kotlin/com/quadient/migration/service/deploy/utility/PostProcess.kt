@@ -5,7 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.Repository
+import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.toMetadata
@@ -24,7 +24,7 @@ interface PostProcess {
 class PostProcessImpl(
     private val ipsService: IpsService,
     private val documentObjectRepository: DocumentObjectRepository,
-    private val imageRepository: Repository<Image>,
+    private val imageRepository: ImageRepository,
     private val displayRuleRepository: DisplayRuleRepository,
 ) : PostProcess {
     private val logger = LoggerFactory.getLogger(this::class.java)!!

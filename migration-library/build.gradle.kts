@@ -9,6 +9,8 @@ val mockkVersion: String by project
 plugins {
     kotlin("jvm") version "2.3.20"
     kotlin("plugin.serialization") version "2.3.20"
+    id("io.insert-koin.compiler.plugin") version "1.0.0"
+    `java-library`
     id("maven-publish")
     id("org.owasp.dependencycheck") version "12.2.0"
 }
@@ -65,6 +67,9 @@ repositories {
 dependencies {
     implementation("com.quadient.wfdxml:wfd-xml-api")
     implementation("com.quadient.wfdxml:wfd-xml-impl")
+
+    api("io.insert-koin:koin-core:4.2.1")
+    implementation("io.insert-koin:koin-annotations:4.2.1")
 
     implementation("org.postgresql:postgresql:$postgresVersion")
     implementation("org.flywaydb:flyway-core:11.12.0")

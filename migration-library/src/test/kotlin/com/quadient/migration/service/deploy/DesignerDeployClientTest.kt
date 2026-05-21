@@ -28,10 +28,14 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeploymentError
 import com.quadient.migration.service.deploy.utility.DeploymentInfo
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidator
+import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
+import com.quadient.migration.service.deploy.utility.PostProcessImpl
+import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.deploy.utility.ValidationResult
@@ -80,6 +84,8 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class DesignerDeployClientTest {
+    val metadataValidator = MetadataValidatorImpl()
+    val postProcess = mockk<PostProcessImpl>(relaxed = true)
     val documentObjectRepository = mockk<DocumentObjectRepository>()
     val imageRepository = mockk<ImageRepository>()
     val attachmentRepository = mockk<AttachmentRepository>()
@@ -94,6 +100,8 @@ class DesignerDeployClientTest {
     val storage = mockk<Storage>()
 
     private val subject = DesignerDeployClient(
+        metadataValidator,
+        postProcess,
         documentObjectRepository,
         imageRepository,
         attachmentRepository,

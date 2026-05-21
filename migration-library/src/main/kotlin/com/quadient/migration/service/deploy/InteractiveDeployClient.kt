@@ -19,17 +19,22 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
-import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeploymentError
 import com.quadient.migration.service.deploy.utility.DeploymentResult
+import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
+import com.quadient.migration.service.deploy.utility.PostProcessImpl
+import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTracker
 import com.quadient.migration.service.getBaseTemplateFullPath
@@ -49,9 +54,11 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class InteractiveDeployClient(
+    metadataValidator: MetadataValidatorImpl,
+    postProcess: PostProcessImpl,
     documentObjectRepository: DocumentObjectRepository,
-    imageRepository: Repository<Image>,
-    attachmentRepository: Repository<Attachment>,
+    imageRepository: ImageRepository,
+    attachmentRepository: AttachmentRepository,
     statusTrackingRepository: StatusTrackingRepository,
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
@@ -63,6 +70,8 @@ class InteractiveDeployClient(
     storage: Storage,
     private val projectConfig: ProjectConfig,
 ) : DeployClient(
+    metadataValidator,
+    postProcess,
     documentObjectRepository,
     imageRepository,
     attachmentRepository,

@@ -1,5 +1,7 @@
 package com.quadient.migration.service
 
+import com.quadient.migration.tools.aMigConfig
+import com.quadient.migration.tools.aProjectConfig
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -22,7 +24,7 @@ class LocalStorageTest {
 
     @BeforeEach
     fun init() {
-        storage = LocalStorage(dir.path, "project")
+        storage = LocalStorage(aMigConfig(storageRoot = dir.path), aProjectConfig(name = "project"))
     }
 
     @AfterEach

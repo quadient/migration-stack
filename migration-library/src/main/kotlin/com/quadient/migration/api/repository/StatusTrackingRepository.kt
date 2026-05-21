@@ -4,6 +4,7 @@ package com.quadient.migration.api.repository
 
 import StatusTrackingInternalRepository
 import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.StatusTracking
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
@@ -16,8 +17,8 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
-class StatusTrackingRepository(val projectName: String) {
-    val internalRepository = StatusTrackingInternalRepository(projectName)
+class StatusTrackingRepository(projectName: ProjectName) {
+    val internalRepository = StatusTrackingInternalRepository(projectName.name)
 
     fun listAll(): List<StatusTracking> {
         return transaction { internalRepository.listAll().map { it.toDto() } }

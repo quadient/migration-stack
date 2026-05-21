@@ -77,5 +77,15 @@ static Migration initMigration(Binding binding) {
 
 private static String getActiveProjectConfigFromFile(ClassLoader classLoader) {
     def activeProjectConfigStream = classLoader.getResourceAsStream('active-project-config')
-    return activeProjectConfigStream == null ? "project-config.toml" : new String(activeProjectConfigStream.readAllBytes(), StandardCharsets.UTF_8)
+    if (activeProjectConfigStream == null) {
+        return "project-config.toml"
+    }
+
+    def result = activeProjectConfigStream.readLines().collect { it.trim() }.find { !it.isEmpty() && !it.startsWith("#") }
+
+    if (result != null) {
+        return result
+    }
+
+    throw new RuntimeException("active-project-config file is empty or does not contain a valid project config name.")
 }

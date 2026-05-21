@@ -3,11 +3,14 @@ package com.quadient.migration.service.inspirebuilder
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.*
+import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
-import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveAliases
@@ -50,10 +53,10 @@ class DesignerDocumentObjectBuilder(
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
     variableRepository: VariableRepository,
-    variableStructureRepository: Repository<VariableStructure>,
-    displayRuleRepository: Repository<DisplayRule>,
-    imageRepository: Repository<Image>,
-    attachmentRepository: Repository<Attachment>,
+    variableStructureRepository: VariableStructureRepository,
+    displayRuleRepository: DisplayRuleRepository,
+    imageRepository: ImageRepository,
+    attachmentRepository: AttachmentRepository,
     projectConfig: ProjectConfig,
     ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(

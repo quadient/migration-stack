@@ -10,17 +10,17 @@ import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
-import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
-import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.imageExtension
 import com.quadient.migration.service.ipsclient.IpsService
@@ -46,10 +46,10 @@ class InteractiveDocumentObjectBuilder(
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
     variableRepository: VariableRepository,
-    variableStructureRepository: Repository<VariableStructure>,
+    variableStructureRepository: VariableStructureRepository,
     displayRuleRepository: DisplayRuleRepository,
-    imageRepository: Repository<Image>,
-    attachmentRepository: Repository<Attachment>,
+    imageRepository: ImageRepository,
+    attachmentRepository: AttachmentRepository,
     projectConfig: ProjectConfig,
     ipsService: IpsService,
 ) : InspireDocumentObjectBuilder(

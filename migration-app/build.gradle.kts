@@ -53,6 +53,7 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.17")
 
     implementation("org.apache.groovy:groovy-all:5.0.0-rc-1")
+    implementation("co.touchlab:stately-concurrent-collections:2.0.0")
 
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")

@@ -1,5 +1,6 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
@@ -18,8 +19,8 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import kotlin.collections.map
 
-class VariableStructureRepository(table: VariableStructureTable, projectName: String) :
-    Repository<VariableStructure>(table, projectName) {
+class VariableStructureRepository(projectName: ProjectName) :
+    Repository<VariableStructure>(VariableStructureTable, projectName.name) {
 
     override fun fromDb(row: ResultRow): VariableStructure {
         return VariableStructure(
