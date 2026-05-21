@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.22] - 2026-05-21
+
+### Added
+
 - Added barcode and QR code support
 - Cell overflow options
 - Templates in Interactive output work directly with areas in its content
@@ -344,7 +352,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.21...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.22...HEAD
+[17.0.22]: https://github.com/quadient/migration-stack/compare/v17.0.21...v17.0.22
 [17.0.21]: https://github.com/quadient/migration-stack/compare/v17.0.20...v17.0.21
 [17.0.20]: https://github.com/quadient/migration-stack/compare/v17.0.19...v17.0.20
 [17.0.19]: https://github.com/quadient/migration-stack/compare/v17.0.18...v17.0.19
