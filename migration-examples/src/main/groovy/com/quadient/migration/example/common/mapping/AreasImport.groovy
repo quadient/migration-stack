@@ -11,10 +11,15 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
+import groovy.transform.Field
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.nio.file.Path
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
+
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 def migration = initMigration(this.binding)
 def areasFile = Mapping.csvPath(binding, migration.projectConfig.name, "areas")
@@ -25,6 +30,7 @@ static void run(Migration migration, Path path) {
     def fileLines = path.toFile().readLines()
     def columnNames = Csv.parseColumnNames(fileLines.removeFirst()).collect { Mapping.normalizeHeader(it) }
 
+    def mappings = new HashMap<String, MappingItem>()
     DocumentObject currentDocumentObject = null
     MappingItem.Area mapping = null
     int areaIndex = 0
@@ -37,8 +43,7 @@ static void run(Migration migration, Path path) {
 
         if (currentDocumentObject?.id != documentObjectId) {
             if (currentDocumentObject != null) {
-                migration.mappingRepository.upsert(currentDocumentObject.id, mapping)
-                migration.mappingRepository.applyAreaMapping(currentDocumentObject.id)
+                mappings[currentDocumentObject.id] = mapping
             }
 
             def documentObjectModel = migration.documentObjectRepository.find(documentObjectId)
@@ -61,7 +66,14 @@ static void run(Migration migration, Path path) {
     }
 
     if (currentDocumentObject != null) {
-        migration.mappingRepository.upsert(currentDocumentObject.id, mapping)
-        migration.mappingRepository.applyAreaMapping(currentDocumentObject.id)
+        mappings[currentDocumentObject.id] = mapping
     }
+
+    def batches = mappings.entrySet().collate(1000)
+    for (int i = 0; i < batches.size(); i++) {
+        log.info("Upserting mappings batch ${i + 1}/${batches.size()} (${batches[i].size()} items)")
+        migration.mappingRepository.upsertBatch(batches[i].collectEntries())
+    }
+    migration.mappingRepository.applyAllAreaMappings()
 }
+

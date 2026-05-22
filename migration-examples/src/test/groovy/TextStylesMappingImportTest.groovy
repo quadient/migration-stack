@@ -38,7 +38,7 @@ class TextStylesMappingImportTest {
 
         TextStylesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository).upsert("new", new MappingItem.TextStyle(
+        verify(migration.mappingRepository).upsertBatch(["new": new MappingItem.TextStyle(
             "newName",
             null,
             new MappingItem.TextStyle.Def(
@@ -52,8 +52,8 @@ class TextStylesMappingImportTest {
                 SuperOrSubscript.None,
                 Size.ofPoints(0.5)
             )
-        ))
-        verify(migration.mappingRepository).applyTextStyleMapping("new")
+        )])
+        verify(migration.mappingRepository).applyAllTextStyleMappings()
     }
 
     @Test
@@ -73,7 +73,7 @@ class TextStylesMappingImportTest {
 
         TextStylesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository).upsert("existing", new MappingItem.TextStyle(
+        verify(migration.mappingRepository).upsertBatch(["existing": new MappingItem.TextStyle(
             "someNewName",
             "otherRef",
             new MappingItem.TextStyle.Def(
@@ -87,7 +87,7 @@ class TextStylesMappingImportTest {
                 SuperOrSubscript.Subscript,
                 Size.ofPoints(2)
             )
-        ))
-        verify(migration.mappingRepository).applyTextStyleMapping("existing")
+        )])
+        verify(migration.mappingRepository).applyAllTextStyleMappings()
     }
 }

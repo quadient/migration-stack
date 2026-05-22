@@ -55,12 +55,12 @@ class AreasImportTest {
 
         AreasImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository).upsert("page1", new MappingItem.Area(null, [0: "flow1", 1: "new flow2", 2: "flow3"], [0: false, 1: false, 2: true]))
-        verify(migration.mappingRepository).applyAreaMapping("page1")
-        verify(migration.mappingRepository).upsert("page2", new MappingItem.Area(null, [0: "flowA", 1: "modified flowB"], [0: true, 1: false]))
-        verify(migration.mappingRepository).applyAreaMapping("page2")
-        verify(migration.mappingRepository).upsert("page3", new MappingItem.Area(null, [0: "new alpha", 1: "beta", 2: "new gamma", 3: "modified delta"], [0: false, 1: true, 2: false, 3: true]))
-        verify(migration.mappingRepository).applyAreaMapping("page3")
+        verify(migration.mappingRepository).upsertBatch([
+            "page1": new MappingItem.Area(null, [0: "flow1", 1: "new flow2", 2: "flow3"], [0: false, 1: false, 2: true]),
+            "page2": new MappingItem.Area(null, [0: "flowA", 1: "modified flowB"], [0: true, 1: false]),
+            "page3": new MappingItem.Area(null, [0: "new alpha", 1: "beta", 2: "new gamma", 3: "modified delta"], [0: false, 1: true, 2: false, 3: true])
+        ])
+        verify(migration.mappingRepository).applyAllAreaMappings()
     }
 
     @Test
@@ -85,8 +85,10 @@ class AreasImportTest {
 
         AreasImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository).upsert("tmpl1", new MappingItem.Area(null, [0: "Updated Address", 1: "New Header", 2: "Footer"], [0: true, 1: false, 2: true]))
-        verify(migration.mappingRepository).applyAreaMapping("tmpl1")
+        verify(migration.mappingRepository).upsertBatch([
+            "tmpl1": new MappingItem.Area(null, [0: "Updated Address", 1: "New Header", 2: "Footer"], [0: true, 1: false, 2: true])
+        ])
+        verify(migration.mappingRepository).applyAllAreaMappings()
     }
 
     static Area createArea(String flowName, boolean flowToNextPage) {

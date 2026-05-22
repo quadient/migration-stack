@@ -41,12 +41,12 @@ class DisplayRulesMappingImportTest {
 
         DisplayRulesImport.run(migration, mappingFile.toFile())
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DisplayRule(null, null, null, null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DisplayRule("keptName", null, null, null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DisplayRule("someName", null, null, null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("overridden")
+        verify(migration.mappingRepository, times(1)).upsertBatch([
+            "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, true),
+            "kept"      : new MappingItem.DisplayRule("keptName", null, null, null, null, true),
+            "overridden": new MappingItem.DisplayRule("someName", null, null, null, null, true)
+        ])
+        verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
     }
 
     @Test
@@ -69,12 +69,12 @@ class DisplayRulesMappingImportTest {
 
         DisplayRulesImport.run(migration, mappingFile.toFile())
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DisplayRule(null, null, null, null, null, false))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DisplayRule(null, null, null, null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DisplayRule(null, null, null, null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("overridden")
+        verify(migration.mappingRepository, times(1)).upsertBatch([
+            "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, false),
+            "kept"      : new MappingItem.DisplayRule(null, null, null, null, null, true),
+            "overridden": new MappingItem.DisplayRule(null, null, null, null, null, true)
+        ])
+        verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
     }
 
     @Test
@@ -97,12 +97,12 @@ class DisplayRulesMappingImportTest {
 
         DisplayRulesImport.run(migration, mappingFile.toFile())
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DisplayRule(null, null, null, null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DisplayRule(null, null, null, "keptTemplate", null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DisplayRule(null, null, null, "overriddenTemplate", null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("overridden")
+        verify(migration.mappingRepository, times(1)).upsertBatch([
+            "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, true),
+            "kept"      : new MappingItem.DisplayRule(null, null, null, "keptTemplate", null, true),
+            "overridden": new MappingItem.DisplayRule(null, null, null, "overriddenTemplate", null, true)
+        ])
+        verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
     }
 
     @Test
@@ -125,12 +125,12 @@ class DisplayRulesMappingImportTest {
 
         DisplayRulesImport.run(migration, mappingFile.toFile())
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DisplayRule(null, null, null, null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DisplayRule(null, "keptFolder", null, null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DisplayRule(null, "overriddenFolder", null, null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("overridden")
+        verify(migration.mappingRepository, times(1)).upsertBatch([
+            "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, true),
+            "kept"      : new MappingItem.DisplayRule(null, "keptFolder", null, null, null, true),
+            "overridden": new MappingItem.DisplayRule(null, "overriddenFolder", null, null, null, true)
+        ])
+        verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
     }
 
     @Test
@@ -153,12 +153,12 @@ class DisplayRulesMappingImportTest {
 
         DisplayRulesImport.run(migration, mappingFile.toFile())
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DisplayRule(null, null, null, null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DisplayRule(null, null, "keptId", null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DisplayRule(null, null, "overriddenId", null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("overridden")
+        verify(migration.mappingRepository, times(1)).upsertBatch([
+            "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, true),
+            "kept"      : new MappingItem.DisplayRule(null, null, "keptId", null, null, true),
+            "overridden": new MappingItem.DisplayRule(null, null, "overriddenId", null, null, true)
+        ])
+        verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
     }
 
     @Test
@@ -181,12 +181,12 @@ class DisplayRulesMappingImportTest {
 
         DisplayRulesImport.run(migration, mappingFile.toFile())
 
-        verify(migration.mappingRepository, times(1)).upsert("unchanged", new MappingItem.DisplayRule(null, null, null, null, null, true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("unchanged")
-        verify(migration.mappingRepository, times(1)).upsert("kept", new MappingItem.DisplayRule(null, null, null, null, "keptVarStruct", true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("kept")
-        verify(migration.mappingRepository, times(1)).upsert("overridden", new MappingItem.DisplayRule(null, null, null, null, "overriddenVarStruct", true))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("overridden")
+        verify(migration.mappingRepository, times(1)).upsertBatch([
+            "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, true),
+            "kept"      : new MappingItem.DisplayRule(null, null, null, null, "keptVarStruct", true),
+            "overridden": new MappingItem.DisplayRule(null, null, null, null, "overriddenVarStruct", true)
+        ])
+        verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
     }
 
     @Test
@@ -232,8 +232,10 @@ class DisplayRulesMappingImportTest {
 
         DisplayRulesImport.run(migration, mappingFile.toFile())
 
-        verify(migration.mappingRepository, times(1)).upsert("rule1", new MappingItem.DisplayRule("myName", "myFolder", "myId", "myTemplate", "myVarStruct", false))
-        verify(migration.mappingRepository, times(1)).applyDisplayRuleMapping("rule1")
+        verify(migration.mappingRepository, times(1)).upsertBatch([
+            "rule1": new MappingItem.DisplayRule("myName", "myFolder", "myId", "myTemplate", "myVarStruct", false)
+        ])
+        verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
     }
 
     static void givenExistingDisplayRule(Migration mig,
@@ -266,4 +268,3 @@ class DisplayRulesMappingImportTest {
                 .thenReturn(new MappingItem.DisplayRule(name, targetFolder, targetId, baseTemplate, variableStructureRef, internal))
     }
 }
-

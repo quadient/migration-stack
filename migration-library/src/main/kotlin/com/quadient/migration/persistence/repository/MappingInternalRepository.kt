@@ -3,10 +3,12 @@ package com.quadient.migration.persistence.repository
 import com.quadient.migration.persistence.migrationmodel.MappingEntity
 import com.quadient.migration.persistence.migrationmodel.MappingItemEntity
 import com.quadient.migration.persistence.table.MappingTable
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import java.sql.Types
 import kotlin.reflect.KClass
 
 class MappingInternalRepository(val projectName: String) {
@@ -39,6 +41,34 @@ class MappingInternalRepository(val projectName: String) {
                 }
                 it.mapping as T
             }
+        }
+    }
+
+    fun upsertBatch(entries: Collection<Pair<String, MappingItemEntity>>) {
+        if (entries.isEmpty()) return
+
+        val columns = listOf("id", "type", "project_name", "mappings")
+        val placeholders = columns.joinToString(",", prefix = "(", postfix = ")") { "?" }
+        val values = (1..entries.size).joinToString(",") { placeholders }
+        val setOnConflict = columns.filter { it != "id" && it != "type" && it != "project_name" }
+            .joinToString(", ") { "$it = EXCLUDED.$it" }
+
+        val sql = """
+            INSERT INTO ${MappingTable.nameInDatabaseCase()} (${columns.joinToString(", ")})
+            VALUES $values
+            ON CONFLICT (id, type, project_name) DO UPDATE SET $setOnConflict
+        """.trimIndent()
+
+        transaction {
+            val stmt = (connection.connection as java.sql.Connection).prepareStatement(sql)
+            var index = 1
+            entries.forEach { (id, mapping) ->
+                stmt.setString(index++, id)
+                stmt.setString(index++, requireNotNull(mapping::class.simpleName))
+                stmt.setString(index++, projectName)
+                stmt.setObject(index++, Json.encodeToString(mapping), Types.OTHER)
+            }
+            stmt.executeUpdate()
         }
     }
 

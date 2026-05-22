@@ -19,7 +19,13 @@ import com.quadient.migration.shared.Size
 
 import java.nio.file.Path
 
+import groovy.transform.Field
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
+
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 def migration = initMigration(this.binding)
 
@@ -30,7 +36,9 @@ run(migration, exportFilePath)
 static void run(Migration migration, Path path) {
     def file = path.toFile().readLines()
     def columnNames = Csv.parseColumnNames(file.removeFirst()).collect { Mapping.normalizeHeader(it) }
+    def total = file.size()
 
+    def mappings = new HashMap<String, MappingItem>()
     for (line in file) {
         def values = Csv.getCells(line, columnNames)
         def id = values.get("id")
@@ -44,10 +52,18 @@ static void run(Migration migration, Path path) {
             )
         }
 
-        def mapping = toMapping(values)
-        migration.mappingRepository.upsert(id, mapping)
-        migration.mappingRepository.applyParagraphStyleMapping(id)
+        mappings[id] = toMapping(values)
+        if (total > 1000 && mappings.size() % 1000 == 0) {
+            log.info("Processed ${mappings.size()}/${total} mappings")
+        }
     }
+
+    def batches = mappings.entrySet().collate(1000)
+    for (int i = 0; i < batches.size(); i++) {
+        log.info("Upserting mappings batch ${i + 1}/${batches.size()} (${batches[i].size()} items)")
+        migration.mappingRepository.upsertBatch(batches[i].collectEntries())
+    }
+    migration.mappingRepository.applyAllParagraphStyleMappings()
 }
 
 private static MappingItem.ParagraphStyle toMapping(Map<String, String> values) {
