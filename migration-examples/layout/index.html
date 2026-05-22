@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Layout Export</title>
+    <title>Layout Analysis</title>
     <style>
         :root {
             --fg: #111;
@@ -58,17 +58,7 @@
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
 
-        /* ── Page grid ────────────────────────────────────────────────── */
-        #pages-grid { display: block; }   /* groups stack vertically */
-        .tmpl-group { margin-bottom: 28px; }
-        .tmpl-group-header {
-            display: flex; align-items: baseline; gap: 10px;
-            font-size: 13px; font-weight: 700;
-            padding: 0 0 7px; margin-bottom: 14px;
-            border-bottom: 2px solid var(--line);
-        }
-        .tmpl-page-count { font-size: 11px; font-weight: 400; color: var(--muted); }
-        .tmpl-group-pages { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+        /* ── Page card (used inside slot previews) ────────────────────────── */
         .page-card {
             border: 1px solid var(--line);
             border-radius: 10px;
@@ -77,38 +67,16 @@
         }
         .page-card-title {
             padding: 8px 12px;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 13px; font-weight: 600;
             border-bottom: 1px solid var(--line);
             background: #fff;
         }
         .page-card-sub {
             padding: 2px 12px 6px;
-            font-size: 11px;
-            color: var(--muted);
+            font-size: 11px; color: var(--muted);
             background: #fff;
         }
         .page-card svg { display: block; }
-
-        /* ── Legend ───────────────────────────────────────────────────── */
-        .legend {
-            display: flex;
-            gap: 18px;
-            flex-wrap: wrap;
-            margin-bottom: 16px;
-            font-size: 12px;
-            align-items: center;
-        }
-        .legend-item { display: flex; align-items: center; gap: 6px; }
-        .legend-swatch {
-            width: 24px; height: 14px;
-            border-radius: 3px;
-            border: 1px solid #aaa;
-        }
-        .legend-swatch.group {
-            background: none;
-            border: 2px dashed #e00;
-        }
 
         /* ── Similarity matrix wraps ──────────────────────────────────────── */
         .matrix-wrap { overflow-x: auto; }
@@ -171,29 +139,69 @@
             padding: 10px 14px;
             background: var(--bg);
             border-bottom: 1px solid var(--line);
-            display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px;
         }
-        .family-header b { font-size: 14px; }
+        .family-header-row1 {
+            display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px;
+            margin-bottom: 4px;
+        }
+        .family-header-row2 {
+            font-size: 12px; color: var(--muted);
+        }
+        .proposed-label {
+            font-size: 11px; color: var(--muted); font-weight: 400;
+        }
+        .proposed-id {
+            font-size: 13px; font-weight: 700; color: #2563eb;
+        }
         .family-header .muted-note { color: var(--muted); font-weight: 400; font-size: 12px; }
         .family-slots { padding: 6px 0; }
         .family-slot {
-            display: flex; align-items: flex-start; gap: 10px;
-            padding: 5px 14px;
             border-bottom: 1px solid var(--line);
-            font-size: 12px;
         }
         .family-slot:last-child { border-bottom: none; }
+        .slot-row {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 6px 14px; cursor: pointer; user-select: none;
+        }
+        .slot-row:hover { background: #f5f8ff; }
         .slot-num {
             min-width: 22px; height: 22px; border-radius: 50%;
             background: #e8f0fe; color: #2563eb;
             display: flex; align-items: center; justify-content: center;
             font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
         }
-        .orig-pages { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+        .slot-expand-icon {
+            margin-left: auto; font-size: 11px; color: var(--muted);
+            flex-shrink: 0; align-self: center;
+        }
+        .orig-pages { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; flex: 1; }
         .orig-page {
             background: #f0f0f0; border-radius: 4px;
             padding: 2px 7px; font-size: 12px;
         }
+        /* Expandable SVG preview area */
+        .slot-preview {
+            display: none;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 10px 14px 14px 46px;
+            background: #fafbff;
+            border-top: 1px dashed var(--line);
+        }
+        .slot-preview.open { display: flex; }
+        .preview-card {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .preview-card-title {
+            padding: 4px 8px;
+            font-size: 11px; font-weight: 600;
+            border-bottom: 1px solid var(--line);
+            background: var(--bg);
+        }
+        .preview-card svg { display: block; }
         code {
             background: #f0f0f0;
             border-radius: 4px;
@@ -208,7 +216,7 @@
 </head>
 <body>
 <header>
-    <h1>Layout Export</h1>
+    <h1>Layout Analysis</h1>
     <label id="file-input-label" for="file">📂 Load JSON…</label>
     <input type="file" id="file" accept=".json" />
         <div id="status">No file loaded — use the button above to open a <code>*-layout.json</code> file.</div>
@@ -219,9 +227,8 @@
 
     <div id="app" hidden>
         <div class="tabs">
-            <button class="tab-btn active" data-tab="pages">Pages &amp; Areas</button>
+            <button class="tab-btn active" data-tab="families">Template Families</button>
             <button class="tab-btn" data-tab="similarity">Similarity</button>
-            <button class="tab-btn" data-tab="families">Template Families</button>
         </div>
 
         <!-- Global template filter — applies to all tabs -->
@@ -236,17 +243,6 @@
             <button class="small-link" id="filter-none">none</button>
         </div>
 
-        <!-- Pages tab -->
-        <div class="tab-panel active" id="tab-pages">
-            <div class="legend">
-                <span style="font-weight:600;font-size:12px">Legend:</span>
-                <span class="legend-item"><span class="legend-swatch" style="background:#4e79a750;border-color:#4e79a7"></span> area</span>
-                <span class="legend-item"><span class="legend-swatch group"></span> proximity group</span>
-                <span class="legend-item" style="font-size:11px;color:var(--muted)">Hover area for details · darker border = contained in parent</span>
-            </div>
-            <div id="pages-grid"></div>
-        </div>
-
         <!-- Similarity tab -->
         <div class="tab-panel" id="tab-similarity">
             <div class="section-head">Template similarity</div>
@@ -259,7 +255,7 @@
         </div>
 
         <!-- Families tab -->
-        <div class="tab-panel" id="tab-families">
+        <div class="tab-panel active" id="tab-families">
             <p class="section-desc" id="families-desc"></p>
             <ul class="family-list" id="families-list"></ul>
         </div>
@@ -372,54 +368,13 @@ function render(data) {
 }
 
 function rerender() {
-    renderPagesGrouped(gData);
     renderSimilarity(gData);
     renderFamilies(gData);
 }
 
-// ── Pages & Areas (grouped by template, filtered) ────────────────────────────
-const CANVAS_W = 260;
-const PAD      = 14;
-
-function renderPagesGrouped(data) {
-    const grid = document.getElementById("pages-grid");
-    grid.innerHTML = "";
-    const tl = data.similarity?.templateLevel;
-
-    if (!tl) {
-        // Old JSON: flat list, no filter
-        const wrap = document.createElement("div");
-        wrap.className = "tmpl-group-pages";
-        data.pages.forEach(page => wrap.appendChild(buildPageCard(page)));
-        grid.appendChild(wrap);
-        return;
-    }
-
-    const selected = tl.templates.filter(t => selectedTmplIds.has(t.templateId));
-    if (selected.length === 0) {
-        grid.innerHTML = "<p style='color:var(--muted);font-size:13px'>No templates selected.</p>";
-        return;
-    }
-
-    selected.forEach(tmpl => {
-        const group  = document.createElement("div");
-        group.className = "tmpl-group";
-
-        const header = document.createElement("div");
-        header.className = "tmpl-group-header";
-        header.innerHTML =
-            `${esc(tmpl.templateName)}` +
-            `<span class="tmpl-page-count">${tmpl.pageIndices.length} page(s)</span>`;
-        group.appendChild(header);
-
-        const pagesWrap = document.createElement("div");
-        pagesWrap.className = "tmpl-group-pages";
-        tmpl.pageIndices.forEach(pi => pagesWrap.appendChild(buildPageCard(data.pages[pi])));
-        group.appendChild(pagesWrap);
-
-        grid.appendChild(group);
-    });
-}
+// ── Page card builder (used inline in slot previews) ─────────────────────────
+const CANVAS_W = 180;   // narrower for inline previews
+const PAD      = 10;
 
 function buildPageCard(page) {
     const areas = page.areas;
@@ -441,7 +396,7 @@ function buildPageCard(page) {
     (page.proximityGroups || []).forEach((grp, gi) => {
         const b = grp.bbox;
         svg.appendChild(svgEl("rect", {
-            x: sc(b.x, scale), y: sc(b.y, scale), width: sc(b.w, scale), height: sc(b.h, scale),
+            x: sc(b.x, scale), y: sc(b.y, scale), width: sd(b.w, scale), height: sd(b.h, scale),
             fill: "none", stroke: "#e00", "stroke-width": 1.5, "stroke-dasharray": "5,3"
         }));
         const lbl = svgEl("text", { x: sc(b.x, scale) + 2, y: sc(b.y, scale) - 2,
@@ -453,7 +408,7 @@ function buildPageCard(page) {
     areas.forEach((a, i) => {
         const color = PALETTE[i % PALETTE.length];
         const isTop = a.containedIn == null;
-        const rx = sc(a.x, scale), ry = sc(a.y, scale), rw = sc(a.w, scale), rh = sc(a.h, scale);
+        const rx = sc(a.x, scale), ry = sc(a.y, scale), rw = sd(a.w, scale), rh = sd(a.h, scale);
         const label = shortLabel(a.contentPreview) || `area_${i}`;
         const tip   = `${label}\nx=${a.x}mm  y=${a.y}mm  w=${a.w}mm  h=${a.h}mm`
                     + (a.flowToNextPage ? "\n[flowToNextPage]" : "")
@@ -532,12 +487,17 @@ function renderSimilarity(data) {
     }
 
     if (selPageIdx.length > 0) {
+        // Sort pages by family order so similar pages cluster on the diagonal
+        const pl2 = data.similarity?.pageLevel || data.similarity;
+        const familyOrder = buildFamilyPageOrder(data, selPageIdx);
+        const orderedIdx  = familyOrder.length === selPageIdx.length ? familyOrder : selPageIdx;
+
         pageDesc.textContent =
             "Compares pages by area structure (x + width normalised to page width, height with 3× tolerance). " +
-            "Score 1.0 = identical structure, 0.0 = nothing in common.";
+            "Score 1.0 = identical structure, 0.0 = nothing in common. Pages sorted by proposed family.";
         buildMatrixTable(pageWrap,
-            selPageIdx.map(i => data.pages[i].pageName),
-            selPageIdx.map(i => selPageIdx.map(j => pl.matrix[i][j])));
+            orderedIdx.map(i => data.pages[i].pageName),
+            orderedIdx.map(i => orderedIdx.map(j => pl.matrix[i][j])));
     } else {
         pageDesc.textContent = "";
         pageWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No pages to display.</p>";
@@ -584,7 +544,7 @@ function buildMatrixTable(wrap, names, matrix) {
     wrap.appendChild(note);
 }
 
-// ── Template families (hierarchical) ─────────────────────────────────────────
+// ── Template families (templates-first, expandable slot previews) ─────────────
 function renderFamilies(data) {
     const tl   = data.similarity?.templateLevel;
     const pl   = data.similarity?.pageLevel || data.similarity;
@@ -599,41 +559,40 @@ function renderFamilies(data) {
             const li = document.createElement("li");
             const isUnique = fam.pageIds.length === 1;
             li.innerHTML =
-                `<div class="family-header"><b>Base Template ${fi + 1}</b>` +
-                (isUnique ? ` <span class="muted-note">(unique)</span>` : "") + `</div>` +
-                `<div class="family-slots"><div class="family-slot">` +
+                `<div class="family-header">` +
+                `<div class="family-header-row1">` +
+                `<span class="proposed-label">Proposed</span>` +
+                `<span class="proposed-id">Base Template ${fi + 1}</span>` +
+                (isUnique ? `<span class="muted-note">(unique)</span>` : "") + `</div></div>` +
+                `<div class="family-slots"><div class="family-slot"><div class="slot-row">` +
                 `<span class="orig-pages">${fam.pageNames.map(n => `<span class="orig-page">${esc(n)}</span>`).join("")}</span>` +
-                `</div></div>`;
+                `</div></div></div>`;
             list.appendChild(li);
         });
         return;
     }
 
     desc.textContent =
-        "Each card is a base template candidate. " +
-        "Numbered rows are proposed base template pages — original pages below each number " +
-        "share enough structural similarity (≥ 0.60) to be served by that one template page.";
+        "Templates (top) lead to a proposed base template. " +
+        "Numbered rows are proposed base template pages — click a row to preview the original pages that would merge into it.";
 
     const tmplById = Object.fromEntries(tl.templates.map(t => [t.templateId, t]));
+    let   familyCounter = 0;
 
-    tl.families.forEach((fam, fi) => {
-        // OR logic: show family if at least one of its templates is currently selected.
-        // Unselected templates stay visible but dimmed to preserve family context.
+    tl.families.forEach((fam) => {
         if (!fam.templateIds.some(id => selectedTmplIds.has(id))) return;
+        familyCounter++;
 
         const isUnique     = fam.templateIds.length === 1;
         const famTemplates = fam.templateIds.map(id => tmplById[id]).filter(Boolean);
         const multiTmpl    = famTemplates.length > 1;
 
-        // All page indices in this family, in original list order
         const allPageIdx = famTemplates.flatMap(t => t.pageIndices);
         allPageIdx.sort((a, b) => a - b);
 
-        // Cluster pages by structural similarity → each cluster = proposed base template page
         const clusters = clusterByMatrix(allPageIdx, pl.matrix);
         clusters.sort((a, b) => Math.min(...a) - Math.min(...b));
 
-        // Display label for a page index
         const labelOf = pi => {
             const pageName = data.pages[pi].pageName;
             if (!multiTmpl) return pageName;
@@ -643,36 +602,111 @@ function renderFamilies(data) {
             return pageName;
         };
 
-        // Template badges: active = normal, inactive = dimmed (but still shown for context)
+        // Templates-first badges row
         const tmplBadges = fam.templateIds.map((id, idx) =>
             `<code${selectedTmplIds.has(id) ? "" : ' class="dimmed"'}>${esc(fam.templateNames[idx])}</code>`
         ).join("  ");
 
+        const li = document.createElement("li");
+
+        let headerHtml =
+            `<div class="family-header">` +
+            `<div class="family-header-row1">${tmplBadges}` +
+            `<span style="margin-left:auto;display:flex;align-items:baseline;gap:5px">` +
+            `<span class="proposed-label">→ Proposed</span>` +
+            `<span class="proposed-id">Base Template ${familyCounter}</span>` +
+            (isUnique ? `<span class="muted-note">(unique)</span>` : "") +
+            `</span></div>` +
+            `<div class="family-header-row2">${clusters.length} page slot(s) · ${allPageIdx.length} original page(s) · click a slot to preview</div>` +
+            `</div>`;
+
         let slotsHtml = '<div class="family-slots">';
         clusters.forEach((cluster, ci) => {
-            const badges = cluster.map(pi =>
+            const slotId  = `slot-${familyCounter}-${ci}`;
+            const badges  = cluster.map(pi =>
                 `<span class="orig-page">${esc(labelOf(pi))}</span>`).join("");
             slotsHtml +=
-                `<div class="family-slot">` +
+                `<div class="family-slot" data-slot-id="${slotId}">` +
+                `<div class="slot-row" onclick="toggleSlotPreview(this)">` +
                 `<span class="slot-num">${ci + 1}</span>` +
                 `<span class="orig-pages">${badges}</span>` +
+                `<span class="slot-expand-icon">▶</span>` +
+                `</div>` +
+                `<div class="slot-preview" id="${slotId}"></div>` +
                 `</div>`;
         });
         slotsHtml += "</div>";
 
-        const li = document.createElement("li");
-        li.innerHTML =
-            `<div class="family-header">` +
-            `<b>Base Template ${fi + 1}</b>` +
-            (isUnique ? ` <span class="muted-note">(unique)</span>` : "") +
-            `<span style="margin-left:8px">${tmplBadges}</span>` +
-            `</div>` + slotsHtml;
+        li.innerHTML = headerHtml + slotsHtml;
+
+        // Attach page indices to each slot for lazy SVG building
+        li.querySelectorAll(".family-slot").forEach((slotEl, ci) => {
+            slotEl.dataset.pageIndices = JSON.stringify(clusters[ci]);
+        });
+
         list.appendChild(li);
     });
+
+    if (familyCounter === 0) {
+        list.innerHTML = "<p style='color:var(--muted);font-size:13px'>No families match the current filter.</p>";
+    }
+}
+
+function toggleSlotPreview(rowEl) {
+    const slotEl   = rowEl.closest(".family-slot");
+    const preview  = slotEl.querySelector(".slot-preview");
+    const icon     = rowEl.querySelector(".slot-expand-icon");
+    const isOpen   = preview.classList.toggle("open");
+    icon.textContent = isOpen ? "▼" : "▶";
+
+    if (isOpen && preview.childElementCount === 0) {
+        // Lazy-build SVG cards
+        const pageIndices = JSON.parse(slotEl.dataset.pageIndices || "[]");
+        pageIndices.forEach(pi => {
+            const page = gData.pages[pi];
+            const wrap = document.createElement("div");
+            wrap.className = "preview-card";
+            const title = document.createElement("div");
+            title.className = "preview-card-title";
+            title.textContent = page.pageName;
+            wrap.appendChild(title);
+            const card = buildPageCard(page);
+            // Extract just the SVG from the card
+            const svg = card.querySelector("svg");
+            if (svg) wrap.appendChild(svg);
+            preview.appendChild(wrap);
+        });
+    }
+}
+
+/** Build a family-ordered list of page indices for matrix sorting. */
+function buildFamilyPageOrder(data, selPageIdx) {
+    const tl = data.similarity?.templateLevel;
+    if (!tl) return selPageIdx;
+    const pl = data.similarity?.pageLevel || data.similarity;
+    const selSet = new Set(selPageIdx);
+    const order  = [];
+    const seen   = new Set();
+
+    tl.families.forEach(fam => {
+        if (!fam.templateIds.some(id => selectedTmplIds.has(id))) return;
+        const tmplById   = Object.fromEntries(tl.templates.map(t => [t.templateId, t]));
+        const famPageIdx = fam.templateIds.flatMap(id => tmplById[id]?.pageIndices ?? [])
+                               .filter(pi => selSet.has(pi));
+        famPageIdx.sort((a, b) => a - b);
+        const clusters = clusterByMatrix(famPageIdx, pl.matrix);
+        clusters.sort((a, b) => Math.min(...a) - Math.min(...b));
+        clusters.forEach(cluster => cluster.forEach(pi => { if (!seen.has(pi)) { seen.add(pi); order.push(pi); } }));
+    });
+
+    // Append any remaining pages not captured by families
+    selPageIdx.forEach(pi => { if (!seen.has(pi)) order.push(pi); });
+    return order;
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
-function sc(mm, scale) { return Math.round((mm * scale + PAD) * 10) / 10; }
+function sc(mm, scale) { return Math.round((mm * scale + PAD) * 10) / 10; }  // position (adds PAD)
+function sd(mm, scale) { return Math.round(mm * scale * 10) / 10; }           // dimension (no PAD)
 
 /** Single-linkage clustering of page list indices using the global page-level similarity matrix. */
 function clusterByMatrix(indices, matrix, threshold = 0.60) {
