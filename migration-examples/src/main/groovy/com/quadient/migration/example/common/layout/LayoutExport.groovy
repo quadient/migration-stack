@@ -44,55 +44,31 @@ templates.each { tmpl ->
             }
 }
 
-def pageDataList = pages.collect { page ->
+def pageDataList = []
+
+pages.each { page ->
     def template = pageToTemplate[page.id]
+    def processed = processAreas(migration, page.content.findAll { it instanceof Area } as List<Area>)
+    pageDataList << [pageId           : page.id,
+                     pageName         : page.name,
+                     templateId       : template?.id,
+                     templateName     : template?.name,
+                     templatePageIndex: pagePositionInTemplate[page.id],
+                     areas            : processed.areas,
+                     proximityGroups  : processed.proximityGroups]
+}
 
-    def areaList = (page.content.findAll { it instanceof Area } as List<Area>)
-            .findAll { area -> area.position != null && area.position.width.toMillimeters() > 0 && area.position.height.toMillimeters() > 0 && area.position.x.toMillimeters() < 315.0   // 1.5 × A4 width guard
-            }
-            .collect { area ->
-                double x = area.position.x.toMillimeters()
-                double y = area.position.y.toMillimeters()
-                double w = area.position.width.toMillimeters()
-                double h = area.position.height.toMillimeters()
-                [x                  : x, y: y, w: w, h: h, x2: x + w, y2: y + h, sz: w * h,
-                 flowToNextPage     : area.flowToNextPage,
-                 interactiveFlowName: area.interactiveFlowName ?: "",
-                 contentPreview     : buildContentPreview(migration, area)]
-            }
-
-    def containment = findContainment(areaList)
-
-    // Proximity grouping: vertical sweep with 5.3 mm gap (~15 pt)
-    def groups = groupByProximity(areaList)
-    groups.eachWithIndex { groupIndices, gi -> groupIndices.each { idx -> areaList[idx].proximityGroup = gi }
-    }
-
-    def proximityGroups = groups.collect { groupIndices ->
-        def subset = groupIndices.collect { areaList[it] }
-        double bx = subset.min { it.x as double }.x as double
-        double by = subset.min { it.y as double }.y as double
-        double bx2 = subset.max { it.x2 as double }.x2 as double
-        double by2 = subset.max { it.y2 as double }.y2 as double
-        [areaIndices: groupIndices, bbox: [x: round2(bx), y: round2(by), w: round2(bx2 - bx), h: round2(by2 - by)]]
-    }
-
-    def areas = areaList.withIndex().collect { a, i ->
-        [x                  : round2(a.x), y: round2(a.y), w: round2(a.w), h: round2(a.h),
-         flowToNextPage     : a.flowToNextPage,
-         interactiveFlowName: a.interactiveFlowName,
-         contentPreview     : a.contentPreview,
-         containedIn        : containment[i],   // list index of parent area, or null if top-level
-         proximityGroup     : a.proximityGroup ?: 0]
-    }
-
-    [pageId           : page.id,
-     pageName         : page.name,
-     templateId       : template?.id,
-     templateName     : template?.name,
-     templatePageIndex: pagePositionInTemplate[page.id],
-     areas            : areas,
-     proximityGroups  : proximityGroups]
+templates.each { tmpl ->
+    def directAreas = tmpl.content.findAll { it instanceof Area } as List<Area>
+    if (!directAreas) return
+    def processed = processAreas(migration, directAreas)
+    pageDataList << [pageId           : tmpl.id,
+                     pageName         : tmpl.name,
+                     templateId       : tmpl.id,
+                     templateName     : tmpl.name,
+                     templatePageIndex: null,
+                     areas            : processed.areas,
+                     proximityGroups  : processed.proximityGroups]
 }
 
 int pageCount = pageDataList.size()
@@ -118,7 +94,7 @@ def templateList = templateGroupMap.collect { key, entries ->
     def pageIndices = entries.sort { it.order }.collect { it.listIdx as int }
     def firstPage = pageDataList[pageIndices[0]]
     [templateId  : firstPage.templateId ?: key,
-     templateName: firstPage.templateName ?: firstPage.pageName,
+     templateName: firstPage.templateName ?: firstPage.pageName ?: firstPage.templateId ?: key,
      pageIndices : pageIndices]
 }
 
@@ -140,6 +116,52 @@ new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(dstFile,
          similarity : [pageLevel    : [matrix: pageMatrix],
                        templateLevel: [templates: templateList, matrix: templateMatrix]]])
 println "Written to: ${dstFile.absolutePath}"
+
+/** Processes raw areas into the structured area + proximity-group format used by the JSON output. */
+static Map processAreas(Migration migration, List<Area> rawAreas) {
+    def areaList = rawAreas
+            .findAll { area ->
+                area.position != null &&
+                area.position.width.toMillimeters() > 0 &&
+                area.position.height.toMillimeters() > 0 &&
+                area.position.x.toMillimeters() < 315.0   // 1.5 × A4 width guard
+            }
+            .collect { area ->
+                double x = area.position.x.toMillimeters()
+                double y = area.position.y.toMillimeters()
+                double w = area.position.width.toMillimeters()
+                double h = area.position.height.toMillimeters()
+                [x: x, y: y, w: w, h: h, x2: x + w, y2: y + h, sz: w * h,
+                 flowToNextPage     : area.flowToNextPage,
+                 interactiveFlowName: area.interactiveFlowName ?: "",
+                 contentPreview     : buildContentPreview(migration, area)]
+            }
+
+    def containment = findContainment(areaList)
+
+    def groups = groupByProximity(areaList)
+    groups.eachWithIndex { groupIndices, gi -> groupIndices.each { idx -> areaList[idx].proximityGroup = gi } }
+
+    def proximityGroups = groups.collect { groupIndices ->
+        def subset = groupIndices.collect { areaList[it] }
+        double bx  = subset.min { it.x  as double }.x  as double
+        double by  = subset.min { it.y  as double }.y  as double
+        double bx2 = subset.max { it.x2 as double }.x2 as double
+        double by2 = subset.max { it.y2 as double }.y2 as double
+        [areaIndices: groupIndices, bbox: [x: round2(bx), y: round2(by), w: round2(bx2 - bx), h: round2(by2 - by)]]
+    }
+
+    def areas = areaList.withIndex().collect { a, i ->
+        [x                  : round2(a.x), y: round2(a.y), w: round2(a.w), h: round2(a.h),
+         flowToNextPage     : a.flowToNextPage,
+         interactiveFlowName: a.interactiveFlowName,
+         contentPreview     : a.contentPreview,
+         containedIn        : containment[i],   // list index of parent area, or null if top-level
+         proximityGroup     : a.proximityGroup ?: 0]
+    }
+
+    [areas: areas, proximityGroups: proximityGroups]
+}
 
 /** Summarise area content as a human-readable string. */
 static String buildContentPreview(Migration migration, Area area) {

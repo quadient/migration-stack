@@ -549,7 +549,7 @@
                 if (currentData) rerender();
             });
             label.appendChild(cb);
-            label.appendChild(document.createTextNode(" " + t.templateName));
+            label.appendChild(document.createTextNode(" " + templateName(t)));
             filterPanel.appendChild(label);
         });
     }
@@ -589,7 +589,7 @@
             const card = document.createElement("div");
             card.className = "page-card";
             card.innerHTML =
-                `<div class="page-card-title">${htmlEsc(page.pageName)}</div>` +
+                `<div class="page-card-title">${htmlEsc(pageName(page))}</div>` +
                 `<div class="page-card-sub" style="padding-bottom:12px">No areas</div>`;
             return card;
         }
@@ -657,7 +657,7 @@
         const card = document.createElement("div");
         card.className = "page-card";
         card.innerHTML =
-            `<div class="page-card-title">${htmlEsc(page.pageName)}</div>` +
+            `<div class="page-card-title">${htmlEsc(pageName(page))}</div>` +
             `<div class="page-card-sub">${areas.length} area(s)${tmplInfo}</div>`;
         card.appendChild(svg);
         return card;
@@ -678,7 +678,7 @@
                     "Compares templates by positional page matching (page 1↔1, 2↔2, …). " +
                     "Templates with different page counts are penalised for unmatched pages. Score 1.0 = identical, 0.0 = nothing in common.";
                 buildMatrixTable(tmplWrap,
-                    selectedIndices.map(i => tl.templates[i].templateName),
+                    selectedIndices.map(i => templateName(tl.templates[i])),
                     selectedIndices.map(i => selectedIndices.map(j => tl.matrix[i][j])));
             } else {
                 tmplDesc.textContent = "";
@@ -714,7 +714,7 @@
                 "Compares pages by area structure (x + width normalised to page width, height with 3× tolerance). " +
                 "Score 1.0 = identical structure, 0.0 = nothing in common. Pages sorted by proposed family.";
             buildMatrixTable(pageWrap,
-                ordered.map(i => data.pages[i].pageName),
+                ordered.map(i => pageName(data.pages[i])),
                 ordered.map(i => ordered.map(j => pl.matrix[i][j])));
         } else {
             pageDesc.textContent = "";
@@ -733,7 +733,7 @@
         hrow.insertCell().innerHTML = "<th></th>";
         names.forEach((name, j) => {
             const th = document.createElement("th");
-            th.title = name;
+            th.title = name ?? "";
             th.textContent = `${j + 1}`;
             hrow.appendChild(th);
         });
@@ -742,7 +742,7 @@
         names.forEach((name, i) => {
             const row = tbody.insertRow();
             const th = document.createElement("th");
-            th.textContent = `${i + 1}. ${name.slice(0, 36)}`;
+            th.textContent = `${i + 1}. ${(name ?? "").slice(0, 36)}`;
             row.appendChild(th);
             matrix[i].forEach((score, j) => {
                 const td = row.insertCell();
@@ -784,7 +784,7 @@
                     (cluster.length === 1 ? `<span class="muted-note">(unique)</span>` : "") +
                     `</div></div>` +
                     `<div class="family-slots"><div class="family-slot"><div class="slot-row">` +
-                    `<span class="orig-pages">${cluster.map(i => `<span class="orig-page">${htmlEsc(data.pages[i].pageName)}</span>`).join("")}</span>` +
+                    `<span class="orig-pages">${cluster.map(i => `<span class="orig-page">${htmlEsc(pageName(data.pages[i]))}</span>`).join("")}</span>` +
                     `</div></div></div>`;
                 list.appendChild(li);
             });
@@ -808,13 +808,13 @@
             const clusters = clusterPages(pageIndices, pl.matrix).sort((a, b) => Math.min(...a) - Math.min(...b));
 
             const pageLabel = pi => {
-                const name = data.pages[pi].pageName;
+                const name = pageName(data.pages[pi]);
                 const owner = hasMultipleTemplates && templates.find(t => t.pageIndices.includes(pi));
-                return owner ? `${owner.templateName} / ${name}` : name;
+                return owner ? `${templateName(owner)} / ${name}` : name;
             };
 
             const templateBadges = fam.templateIds.map((id, idx) =>
-                `<code${visibleTemplates.has(id) ? "" : ' class="dimmed"'}>${htmlEsc(fam.templateNames[idx])}</code>`
+                `<code${visibleTemplates.has(id) ? "" : ' class="dimmed"'}>${htmlEsc(fam.templateNames[idx] ?? id)}</code>`
             ).join("  ");
 
             let slotsHtml = '<div class="family-slots">';
@@ -871,7 +871,7 @@
                 wrap.className = "preview-card";
                 const title = document.createElement("div");
                 title.className = "preview-card-title";
-                title.textContent = currentData.pages[pi].pageName;
+                title.textContent = pageName(currentData.pages[pi]);
                 wrap.appendChild(title);
                 const svg = buildPageCard(currentData.pages[pi]).querySelector("svg");
                 if (svg) wrap.appendChild(svg);
@@ -917,7 +917,7 @@
         return clusterPages(tl.templates.map((_, i) => i), tl.matrix)
             .map(cluster => ({
                 templateIds: cluster.map(i => tl.templates[i].templateId),
-                templateNames: cluster.map(i => tl.templates[i].templateName),
+                templateNames: cluster.map(i => tl.templates[i].templateName ?? tl.templates[i].templateId),
             }));
     }
 
@@ -986,6 +986,14 @@
 
     function htmlEsc(s) {
         return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function pageName(page) {
+        return page.pageName ?? page.pageId;
+    }
+
+    function templateName(tmpl) {
+        return tmpl.templateName ?? tmpl.templateId;
     }
 </script>
 </body>
