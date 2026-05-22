@@ -29,27 +29,25 @@ def templatesAndPages = (migration.documentObjectRepository as DocumentObjectRep
                 .build())
 
 def templates = templatesAndPages.findAll { it.type == DocumentObjectType.Template }
-def pages = templatesAndPages.findAll { it.type == DocumentObjectType.Page }
-def pageIds = pages.collect { it.id } as Set<String>
+def pages     = templatesAndPages.findAll { it.type == DocumentObjectType.Page }
+def pageIds   = pages.collect { it.id } as Set<String>
 
-// Build page → template reverse index; also track each page's position within its template
-def pageToTemplate = [:]
-def pageIndexInTemplate = [:]
+// Page → template lookup; also track each page's position within its template
+def pageToTemplate       = [:]
+def pagePositionInTemplate = [:]
 templates.each { tmpl ->
     tmpl.content
         .findAll { it instanceof DocumentObjectRef && pageIds.contains(it.id) }
         .eachWithIndex { ref, idx ->
-            pageToTemplate[(ref as DocumentObjectRef).id] = tmpl
-            pageIndexInTemplate[(ref as DocumentObjectRef).id] = idx
+            pageToTemplate[(ref as DocumentObjectRef).id]         = tmpl
+            pagePositionInTemplate[(ref as DocumentObjectRef).id] = idx
         }
 }
 
-// ── Build per-page data ───────────────────────────────────────────────────────
 def pageDataList = pages.collect { page ->
     def template = pageToTemplate[page.id]
 
-    // Collect valid areas (skip nulls, off-page and zero-dimension artifacts)
-    def areaDataList = (page.content.findAll { it instanceof Area } as List<Area>)
+    def areaList = (page.content.findAll { it instanceof Area } as List<Area>)
             .findAll { area ->
                 area.position != null &&
                 area.position.width.toMillimeters()  > 0 &&
@@ -62,67 +60,58 @@ def pageDataList = pages.collect { page ->
                 double w = area.position.width.toMillimeters()
                 double h = area.position.height.toMillimeters()
                 [x: x, y: y, w: w, h: h, x2: x + w, y2: y + h, sz: w * h,
-                 flowToNextPage    : area.flowToNextPage,
+                 flowToNextPage     : area.flowToNextPage,
                  interactiveFlowName: area.interactiveFlowName ?: "",
-                 contentPreview    : buildContentPreview(migration, area)]
+                 contentPreview     : buildContentPreview(migration, area)]
             }
 
-    // Containment: find the smallest enclosing parent for each area
-    def containment = findContainment(areaDataList)
+    def containment = findContainment(areaList)
 
     // Proximity grouping: vertical sweep with 5.3 mm gap (~15 pt)
-    def groups = groupByProximity(areaDataList)
-    groups.eachWithIndex { grpIndices, gi ->
-        grpIndices.each { idx -> areaDataList[idx].proximityGroup = gi }
+    def groups = groupByProximity(areaList)
+    groups.eachWithIndex { groupIndices, gi ->
+        groupIndices.each { idx -> areaList[idx].proximityGroup = gi }
     }
 
-    def proximityGroups = groups.collect { grpIndices ->
-        def subset = grpIndices.collect { areaDataList[it] }
+    def proximityGroups = groups.collect { groupIndices ->
+        def subset = groupIndices.collect { areaList[it] }
         double bx  = subset.min { it.x  as double }.x  as double
         double by  = subset.min { it.y  as double }.y  as double
         double bx2 = subset.max { it.x2 as double }.x2 as double
         double by2 = subset.max { it.y2 as double }.y2 as double
-        [areaIndices: grpIndices, bbox: [x: r2(bx), y: r2(by), w: r2(bx2 - bx), h: r2(by2 - by)]]
+        [areaIndices: groupIndices, bbox: [x: round2(bx), y: round2(by), w: round2(bx2 - bx), h: round2(by2 - by)]]
     }
 
-    def areas = areaDataList.withIndex().collect { a, i ->
-        [x: r2(a.x), y: r2(a.y), w: r2(a.w), h: r2(a.h),
-         flowToNextPage    : a.flowToNextPage,
+    def areas = areaList.withIndex().collect { a, i ->
+        [x: round2(a.x), y: round2(a.y), w: round2(a.w), h: round2(a.h),
+         flowToNextPage     : a.flowToNextPage,
          interactiveFlowName: a.interactiveFlowName,
-         contentPreview    : a.contentPreview,
-         containedIn       : containment[i],          // list index of parent, or null
-         proximityGroup    : a.proximityGroup ?: 0]
+         contentPreview     : a.contentPreview,
+         containedIn        : containment[i],   // list index of parent area, or null if top-level
+         proximityGroup     : a.proximityGroup ?: 0]
     }
 
-    [pageId             : page.id,
-     pageName           : page.name,
-     templateId         : template?.id,
-     templateName       : template?.name,
-     templatePageIndex  : pageIndexInTemplate[page.id],   // position of this page within its template
-     areas              : areas,
-     proximityGroups    : proximityGroups]
+    [pageId            : page.id,
+     pageName          : page.name,
+     templateId        : template?.id,
+     templateName      : template?.name,
+     templatePageIndex : pagePositionInTemplate[page.id],
+     areas             : areas,
+     proximityGroups   : proximityGroups]
 }
 
-// ── Similarity matrix & template-family clustering ───────────────────────────
-int n = pageDataList.size()
+int pageCount = pageDataList.size()
 
-def matrix = (0..<n).collect { i ->
-    (0..<n).collect { j ->
+def pageMatrix = (0..<pageCount).collect { i ->
+    (0..<pageCount).collect { j ->
         if (i == j) return 1.0d
-        if (j < i)  return 0.0d   // filled symmetrically below
-        rs(pageSimilarity(pageDataList[i].areas as List<Map>, pageDataList[j].areas as List<Map>))
+        if (j < i)  return 0.0d
+        round3(pageSimilarity(pageDataList[i].areas as List<Map>, pageDataList[j].areas as List<Map>))
     }
 }
-(0..<n).each { i -> (0..<i).each { j -> matrix[i][j] = matrix[j][i] } }
+(0..<pageCount).each { i -> (0..<i).each { j -> pageMatrix[i][j] = pageMatrix[j][i] } }
 
-def families    = clusterPages((0..<n).toList(), matrix)
-def familyData  = families.collect { idxList ->
-    [pageIds  : idxList.collect { pageDataList[it].pageId },
-     pageNames: idxList.collect { pageDataList[it].pageName }]
-}
-
-// ── Template-level similarity & clustering ────────────────────────────────────
-// Group page-list indices by their parent template, preserving intra-template page order.
+// Group page-list indices by their parent template, preserving intra-template page order
 def templateGroupMap = [:]
 pageDataList.eachWithIndex { pg, i ->
     def key = pg.templateId ?: "solo::${pg.pageId}"
@@ -131,48 +120,35 @@ pageDataList.eachWithIndex { pg, i ->
 }
 
 def templateList = templateGroupMap.collect { key, entries ->
-    def sorted = entries.sort { it.order }
-    def pageIndices = sorted.collect { it.listIdx as int }
-    def firstPg = pageDataList[pageIndices[0]]
-    [templateId  : firstPg.templateId ?: key,
-     templateName: firstPg.templateName ?: firstPg.pageName,
+    def pageIndices = entries.sort { it.order }.collect { it.listIdx as int }
+    def firstPage   = pageDataList[pageIndices[0]]
+    [templateId  : firstPage.templateId ?: key,
+     templateName: firstPage.templateName ?: firstPage.pageName,
      pageIndices : pageIndices]
 }
 
-int nt = templateList.size()
-def tmplMatrix = (0..<nt).collect { i ->
-    (0..<nt).collect { j ->
+int templateCount = templateList.size()
+def templateMatrix = (0..<templateCount).collect { i ->
+    (0..<templateCount).collect { j ->
         if (i == j) return 1.0d
         if (j < i)  return 0.0d
-        rs(templateSimilarity(
+        round3(templateSimilarity(
             templateList[i].pageIndices as List<Integer>,
             templateList[j].pageIndices as List<Integer>,
-            matrix))
+            pageMatrix))
     }
 }
-(0..<nt).each { i -> (0..<i).each { j -> tmplMatrix[i][j] = tmplMatrix[j][i] } }
+(0..<templateCount).each { i -> (0..<i).each { j -> templateMatrix[i][j] = templateMatrix[j][i] } }
 
-def tmplFamilies   = clusterPages((0..<nt).toList(), tmplMatrix)
-def tmplFamilyData = tmplFamilies.collect { idxList ->
-    [templateIds  : idxList.collect { templateList[it].templateId },
-     templateNames: idxList.collect { templateList[it].templateName },
-     pageNames    : idxList.collectMany { ti ->
-         (templateList[ti].pageIndices as List<Integer>).collect { pi -> pageDataList[pi].pageName as String }
-     }]
-}
-
-// ── Write JSON ────────────────────────────────────────────────────────────────
 new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(dstFile, [
         projectName: migration.projectConfig.name,
         pages      : pageDataList,
         similarity : [
-            pageLevel    : [matrix: matrix,         families: familyData],
-            templateLevel: [templates: templateList, matrix: tmplMatrix, families: tmplFamilyData]
+            pageLevel    : [matrix: pageMatrix],
+            templateLevel: [templates: templateList, matrix: templateMatrix]
         ]
 ])
 println "✓ Written to: ${dstFile.absolutePath}"
-
-// ── Static helper functions ───────────────────────────────────────────────────
 
 /** Summarise area content as a human-readable string. */
 static String buildContentPreview(Migration migration, Area area) {
@@ -192,8 +168,8 @@ static String buildContentPreview(Migration migration, Area area) {
 
 /**
  * For each area find its smallest enclosing parent within the same page.
- * Returns a map of list-index → list-index (parent), or empty if top-level.
- * Tolerance: 0.7 mm (~2 pt) to absorb rounding differences.
+ * Returns a map of list-index → list-index (parent).
+ * Tolerance of 0.7 mm (~2 pt) absorbs rounding differences.
  */
 static Map<Integer, Integer> findContainment(List<Map> areas) {
     def containment = [:]
@@ -246,69 +222,42 @@ static List<List<Integer>> groupByProximity(List<Map> areas, double yGapMm = 5.3
 /**
  * Compare two pages by greedy bipartite matching on area geometry.
  * Each area is described by (x, width) normalised to pageRefMm and
- * height with a log-ratio so a 3× difference scores ~1.0 (i.e. large
+ * height with a log-ratio so a 3× difference scores ~1.0 (large
  * height differences are tolerated but still weakly penalised).
  * Unmatched areas (different counts) reduce the score proportionally.
  */
 static double pageSimilarity(List<Map> areasA, List<Map> areasB,
                              double pageRefMm = 210.0, double matchThreshold = 0.5) {
-    def va = areasA.findAll { (it.w as double) > 0 && (it.h as double) > 0 && (it.x as double) < pageRefMm * 1.5 }
-    def vb = areasB.findAll { (it.w as double) > 0 && (it.h as double) > 0 && (it.x as double) < pageRefMm * 1.5 }
-    if (!va || !vb) return 0.0
+    def validA = areasA.findAll { (it.w as double) > 0 && (it.h as double) > 0 && (it.x as double) < pageRefMm * 1.5 }
+    def validB = areasB.findAll { (it.w as double) > 0 && (it.h as double) > 0 && (it.x as double) < pageRefMm * 1.5 }
+    if (!validA || !validB) return 0.0
 
-    def dists = []
-    va.eachWithIndex { a, i ->
-        vb.eachWithIndex { b, j ->
-            double xd = Math.abs((a.x as double) - (b.x as double)) / pageRefMm
-            double wd = Math.abs((a.w as double) - (b.w as double)) / pageRefMm
-            double hA = Math.max(a.h as double, 0.1)
-            double hB = Math.max(b.h as double, 0.1)
-            double hr = Math.abs(Math.log(hA / hB)) / Math.log(3.0)
-            dists << [d: Math.sqrt(xd * xd + wd * wd + hr * hr), i: i, j: j]
+    def distances = []
+    validA.eachWithIndex { a, i ->
+        validB.eachWithIndex { b, j ->
+            double xDist  = Math.abs((a.x as double) - (b.x as double)) / pageRefMm
+            double wDist  = Math.abs((a.w as double) - (b.w as double)) / pageRefMm
+            double hRatio = Math.abs(Math.log(Math.max(a.h as double, 0.1) / Math.max(b.h as double, 0.1))) / Math.log(3.0)
+            distances << [d: Math.sqrt(xDist * xDist + wDist * wDist + hRatio * hRatio), i: i, j: j]
         }
     }
-    dists.sort { it.d }
+    distances.sort { it.d }
 
     def matchedA = [] as Set
     def matchedB = [] as Set
     double total = 0.0
-    dists.each { e ->
-        if (!(e.i in matchedA) && !(e.j in matchedB)) {
-            matchedA << e.i; matchedB << e.j
-            total += Math.max(0.0, 1.0 - (e.d as double) / matchThreshold)
+    distances.each { pair ->
+        if (!(pair.i in matchedA) && !(pair.j in matchedB)) {
+            matchedA << pair.i; matchedB << pair.j
+            total += Math.max(0.0, 1.0 - (pair.d as double) / matchThreshold)
         }
     }
-    int slots = Math.max(va.size(), vb.size())
+    int slots = Math.max(validA.size(), validB.size())
     return slots > 0 ? total / slots : 0.0
 }
 
-/**
- * Greedy single-linkage clustering: merge two families when any pair of
- * their pages has similarity >= threshold.
- */
-static List<List<Integer>> clusterPages(List<Integer> indices,
-                                        List<List<Double>> matrix,
-                                        double threshold = 0.60) {
-    def families = indices.collect { [it] }
-    boolean changed = true
-    while (changed) {
-        changed = false
-        for (int i = 0; i < families.size() && !changed; i++) {
-            for (int j = i + 1; j < families.size() && !changed; j++) {
-                boolean merge = families[i].any { a -> families[j].any { b -> (matrix[a][b] as double) >= threshold } }
-                if (merge) {
-                    families[i].addAll(families[j])
-                    families.remove(j)
-                    changed = true
-                }
-            }
-        }
-    }
-    return families
-}
-
-static double r2(double v)  { Math.round(v * 100) / 100.0 }
-static double rs(double v)  { Math.round(v * 1000) / 1000.0 }
+static double round2(double v) { Math.round(v * 100) / 100.0 }
+static double round3(double v) { Math.round(v * 1000) / 1000.0 }
 
 /**
  * Compare two templates by positional page matching (page 1↔1, page 2↔2, …).
@@ -320,7 +269,6 @@ static double templateSimilarity(List<Integer> pagesA, List<Integer> pagesB,
     int maxLen = Math.max(pagesA.size(), pagesB.size())
     if (maxLen == 0) return 0.0
     double total = 0.0
-    int minLen = Math.min(pagesA.size(), pagesB.size())
-    (0..<minLen).each { k -> total += pageMatrix[pagesA[k]][pagesB[k]] as double }
+    (0..<Math.min(pagesA.size(), pagesB.size())).each { k -> total += pageMatrix[pagesA[k]][pagesB[k]] as double }
     return total / maxLen
 }
