@@ -26,13 +26,13 @@ annotation class Ips {
             .withEnv("CX_LIC_SERVER", System.getenv("CX_LIC_SERVER"))
             .withExposedPorts(30354)
 
-        override fun beforeAll(p0: ExtensionContext?) {
+        override fun beforeAll(p0: ExtensionContext) {
             ips.start()
             PORT = ips.getMappedPort(30354)
             HOST = ips.host
         }
 
-        override fun afterAll(p0: ExtensionContext?) {
+        override fun afterAll(p0: ExtensionContext) {
             ips.stop()
         }
     }

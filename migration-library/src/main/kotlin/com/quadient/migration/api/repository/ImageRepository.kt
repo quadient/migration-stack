@@ -33,7 +33,7 @@ class ImageRepository(projectName: ProjectName, private val statusTrackingReposi
             lastUpdated = row[ImageTable.created],
             sourcePath = row[ImageTable.sourcePath],
             imageType = ImageType.valueOf(row[ImageTable.imageType]),
-            options = row[ImageTable.options],
+            options = row[ImageTable.imageOptions],
             targetFolder = row[ImageTable.targetFolder]?.let(IcmPath::from)?.toString(),
             metadata = row[ImageTable.metadata],
             skip = row[ImageTable.skip],
@@ -69,7 +69,7 @@ class ImageRepository(projectName: ProjectName, private val statusTrackingReposi
                 it[ImageTable.created] = existingItem?.created ?: now
                 it[ImageTable.lastUpdated] = now
                 it[ImageTable.sourcePath] = dto.sourcePath
-                it[ImageTable.options] = dto.options
+                it[ImageTable.imageOptions] = dto.options
                 it[ImageTable.imageType] = dto.imageType?.toString() ?: ImageType.Unknown.toString()
                 it[ImageTable.targetFolder] = dto.targetFolder
                 it[ImageTable.metadata] = dto.metadata

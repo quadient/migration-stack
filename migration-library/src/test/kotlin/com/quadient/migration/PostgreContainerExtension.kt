@@ -23,7 +23,7 @@ annotation class Postgres {
         private val postgres = PostgreSQLContainer("postgres:16-alpine")
         private lateinit var mig: Migration
 
-        override fun beforeAll(p0: ExtensionContext?) {
+        override fun beforeAll(p0: ExtensionContext) {
             postgres.start();
             mig = Migration(
                 aMigConfig(
@@ -39,11 +39,11 @@ annotation class Postgres {
             )
         }
 
-        override fun afterAll(p0: ExtensionContext?) {
+        override fun afterAll(p0: ExtensionContext) {
             postgres.stop()
         }
 
-        override fun afterEach(p0: ExtensionContext?) {
+        override fun afterEach(p0: ExtensionContext) {
             mig.repositories.forEach { it.deleteAll() }
         }
     }

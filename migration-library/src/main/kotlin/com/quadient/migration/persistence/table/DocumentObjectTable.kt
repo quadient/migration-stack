@@ -24,7 +24,7 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
     val displayRuleRef = varchar("display_rule_ref", 255).nullable()
     val variableStructureRef = varchar("variable_structure_ref", 255).nullable()
     val baseTemplate = varchar("base_template", 255).nullable()
-    val options = jsonb<DocumentObjectOptions>("options", Json).nullable()
+    val documentObjectOptions = jsonb<DocumentObjectOptions>("options", Json).nullable()
     val pdfMetadata = jsonb<PdfMetadataEntity>("pdf_metadata", Json).nullable()
     val metadata = jsonb<Map<String, List<MetadataPrimitive>>>("metadata", Json)
     val skip = jsonb<SkipOptions>("skip", Json)
@@ -45,7 +45,7 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
             displayRuleRef = result[displayRuleRef]?.let { DisplayRuleRef(it) },
             variableStructureRef = result[variableStructureRef]?.let { VariableStructureRef(it) },
             baseTemplate = result[baseTemplate],
-            options = result[options],
+            options = result[documentObjectOptions],
             pdfMetadata = result[pdfMetadata]?.let(PdfMetadata::fromDb),
             metadata = result[metadata],
             skip = result[skip],
