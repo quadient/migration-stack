@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+### Fixed
+
+## [17.0.23] - 2026-05-25
+
+### Added
+
+### Changed
+
 - Bach database operations in mappings
 
 ### Fixed
@@ -354,7 +362,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.22...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.23...HEAD
+[17.0.23]: https://github.com/quadient/migration-stack/compare/v17.0.22...v17.0.23
 [17.0.22]: https://github.com/quadient/migration-stack/compare/v17.0.21...v17.0.22
 [17.0.21]: https://github.com/quadient/migration-stack/compare/v17.0.20...v17.0.21
 [17.0.20]: https://github.com/quadient/migration-stack/compare/v17.0.19...v17.0.20
