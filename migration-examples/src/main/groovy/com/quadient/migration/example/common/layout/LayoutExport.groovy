@@ -24,7 +24,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 @Field static final double PROXIMITY_GAP_MM = 5.3     // vertical gap threshold for proximity grouping
 @Field static final double CONTAINMENT_TOL_MM = 0.7   // tolerance (~2 pt) for containment checks
 
-@Field Migration migration = initMigration(LayoutExport.binding)
+@Field Migration migration = initMigration(this.binding)
 
 def dstFile = PathUtil.dataDirPath(binding, "layout", "${migration.projectConfig.name}-layout.json").toFile()
 dstFile.parentFile.mkdirs()
@@ -238,7 +238,7 @@ static Map<Integer, Integer> findContainment(List<WorkingArea> areas) {
  * Returns a list of groups, each group being a list of list-indices. */
 static List<List<Integer>> groupByProximity(List<WorkingArea> workingAreas, double groupingGap = PROXIMITY_GAP_MM) {
     if (!workingAreas) return []
-    List<Integer> sortedIndices = (0..<workingAreas.size()).sort { int i, int j ->
+    List<Integer> sortedIndices = (0..<workingAreas.size()).toList().sort { int i, int j ->
         workingAreas[i].y <=> workingAreas[j].y ?: workingAreas[i].x <=> workingAreas[j].x
     }
     List<List<Integer>> groups = []
