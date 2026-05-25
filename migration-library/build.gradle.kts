@@ -99,3 +99,13 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
 }
+
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "org.springframework.security" && requested.name == "spring-security-crypto") {
+            useVersion(libs.versions.spring.security.crypto.get())
+            because("CVE fix: override transitive spring-security-crypto to ${libs.versions.spring.security.crypto.get()}")
+        }
+    }
+}
+

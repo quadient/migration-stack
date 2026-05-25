@@ -27,6 +27,8 @@ ktor = "3.5.0"
 groovy-all = "6.0.0-alpha-1"
 stately = "2.1.0"
 
+spring-security-crypto = "7.0.5"
+
 # wfd-xml
 spock = "2.4-M4-groovy-4.0"
 xmlunit = "2.11.0"
