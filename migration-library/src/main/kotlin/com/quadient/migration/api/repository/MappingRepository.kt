@@ -1,15 +1,35 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.ProjectName
+import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
+import com.quadient.migration.api.dto.migrationmodel.TextStyle
+import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.Mapping
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
+import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.persistence.migrationmodel.MappingItemEntity
 import com.quadient.migration.persistence.repository.MappingInternalRepository
+import com.quadient.migration.persistence.table.AttachmentTable
+import com.quadient.migration.persistence.table.DisplayRuleTable
+import com.quadient.migration.persistence.table.DocumentObjectTable
+import com.quadient.migration.persistence.table.ImageTable
+import com.quadient.migration.persistence.table.MigrationObjectTable
+import com.quadient.migration.persistence.table.ParagraphStyleTable
+import com.quadient.migration.persistence.table.TextStyleTable
+import com.quadient.migration.persistence.table.VariableStructureTable
+import com.quadient.migration.persistence.table.VariableTable
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.slf4j.LoggerFactory
 
 class MappingRepository(
-    private val projectName: String,
+    private val projectName: ProjectName,
     private val documentObjectRepository: DocumentObjectRepository,
     private val imageRepository: ImageRepository,
     private val attachmentRepository: AttachmentRepository,
@@ -19,30 +39,31 @@ class MappingRepository(
     private val variableStructureRepository: VariableStructureRepository,
     private val displayRuleRepository: DisplayRuleRepository,
 ) {
-    private val internalRepository = MappingInternalRepository(projectName)
+    private val logger = LoggerFactory.getLogger(this::class.java)!!
+    private val internalRepository = MappingInternalRepository(projectName.name)
 
     fun listAll(): List<Mapping> {
         return transaction { internalRepository.listAll().map { it.toDto() } }
     }
 
     fun applyAll() {
-        for (mapping in listAll()) {
-            when (mapping.mapping) {
-                is MappingItem.DocumentObject -> applyDocumentObjectMapping(mapping.id)
-                is MappingItem.Image -> applyImageMapping(mapping.id)
-                is MappingItem.Attachment -> applyAttachmentMapping(mapping.id)
-                is MappingItem.TextStyle -> applyTextStyleMapping(mapping.id)
-                is MappingItem.ParagraphStyle -> applyParagraphStyleMapping(mapping.id)
-                is MappingItem.Variable -> applyVariableMapping(mapping.id)
-                is MappingItem.Area -> applyAreaMapping(mapping.id)
-                is MappingItem.VariableStructure -> applyVariableStructureMapping(mapping.id)
-                is MappingItem.DisplayRule -> applyVariableStructureMapping(mapping.id)
-            }
-        }
+        applyAllDocumentObjectMappings()
+        applyAllAreaMappings()
+        applyAllImageMappings()
+        applyAllAttachmentMappings()
+        applyAllTextStyleMappings()
+        applyAllParagraphStyleMappings()
+        applyAllVariableMappings()
+        applyAllVariableStructureMappings()
+        applyAllDisplayRuleMappings()
     }
 
     fun upsert(id: String, mapping: MappingItem): Mapping {
         return transaction { internalRepository.upsert(id, mapping.toDb()).toDto() }
+    }
+
+    fun upsertBatch(entries: Map<String, MappingItem>) {
+        return transaction { internalRepository.upsertBatch(entries.map { (k, v) -> k to v.toDb() }) }
     }
 
     fun getDocumentObjectMapping(id: String): MappingItem.DocumentObject {
@@ -128,6 +149,42 @@ class MappingRepository(
         }
 
         attachmentRepository.upsert(mapping.apply(attachment))
+    }
+
+    fun applyAllAttachmentMappings() {
+        applyAllResourceMappings<Attachment, MappingItemEntity.Attachment>(attachmentRepository, AttachmentTable)
+    }
+
+    fun applyAllAreaMappings() {
+        applyAllResourceMappings<DocumentObject, MappingItemEntity.Area>(documentObjectRepository, DocumentObjectTable)
+    }
+
+    fun applyAllDocumentObjectMappings() {
+        applyAllResourceMappings<DocumentObject, MappingItemEntity.DocumentObject>(documentObjectRepository, DocumentObjectTable)
+    }
+
+    fun applyAllImageMappings() {
+        applyAllResourceMappings<Image, MappingItemEntity.Image>(imageRepository, ImageTable)
+    }
+
+    fun applyAllTextStyleMappings() {
+        applyAllResourceMappings<TextStyle, MappingItemEntity.TextStyle>(textStyleRepository, TextStyleTable)
+    }
+
+    fun applyAllParagraphStyleMappings() {
+        applyAllResourceMappings<ParagraphStyle, MappingItemEntity.ParagraphStyle>(paragraphStyleRepository, ParagraphStyleTable)
+    }
+
+    fun applyAllVariableMappings() {
+        applyAllResourceMappings<Variable, MappingItemEntity.Variable>(variableRepository, VariableTable)
+    }
+
+    fun applyAllVariableStructureMappings() {
+        applyAllResourceMappings<VariableStructure, MappingItemEntity.VariableStructure>(variableStructureRepository, VariableStructureTable)
+    }
+
+    fun applyAllDisplayRuleMappings() {
+        applyAllResourceMappings<DisplayRule, MappingItemEntity.DisplayRule>(displayRuleRepository, DisplayRuleTable)
     }
 
     fun getTextStyleMapping(id: String): MappingItem.TextStyle {
@@ -233,5 +290,27 @@ class MappingRepository(
 
     fun deleteAll() {
         internalRepository.deleteAll()
+    }
+
+    private inline fun <reified O : MigrationObject, reified T : MappingItemEntity> applyAllResourceMappings(
+        repo: Repository<O>,
+        table: MigrationObjectTable,
+    ) {
+        transaction {
+            val mappings = internalRepository
+                .listByType(T::class)
+                .associate { it.resourceId.value to it.mapping as T }
+
+            val migObjects = repo.list(table.id inList mappings.keys).associateBy { it.id }
+
+            val migObjectsToUpsert = mappings
+                .mapNotNull { (id, mapping) -> migObjects[id]?.let { mapping.apply(it) as O } }
+
+            val batches = migObjectsToUpsert.chunked(1000)
+            batches.forEachIndexed { index, batch ->
+                logger.info("Upserting ${T::class.simpleName} batch ${index + 1}/${batches.size} (${batch.size} items)")
+                repo.upsertBatch(batch)
+            }
+        }
     }
 }

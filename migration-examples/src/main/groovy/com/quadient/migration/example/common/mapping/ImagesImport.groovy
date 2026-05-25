@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
@@ -16,7 +17,13 @@ import com.quadient.migration.shared.SkipOptions
 
 import java.nio.file.Path
 
+import groovy.transform.Field
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
+
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 def migration = initMigration(this.binding)
 
@@ -30,7 +37,9 @@ static void run(Migration migration, Path imagesFilePath) {
     def output = migration.projectConfig.inspireOutput
     def imageLines = imagesFilePath.toFile().readLines()
     def imageColumnNames  = Csv.parseColumnNames(imageLines.removeFirst()).collect { Mapping.normalizeHeader(it) }
+    def total = imageLines.size()
 
+    def mappings = new HashMap<String, MappingItem>()
     for (line in imageLines) {
         def values = Csv.getCells(line, imageColumnNames)
         def id = values.get("id")
@@ -77,7 +86,16 @@ static void run(Migration migration, Path imagesFilePath) {
         def newSkipPlaceholder = Csv.deserialize(values.get("skipPlaceholder"), String.class)
         existingMapping.skip = new SkipOptions(newSkip, newSkipPlaceholder, newSkipReason)
 
-        migration.mappingRepository.upsert(id, existingMapping)
-        migration.mappingRepository.applyImageMapping(id)
+        mappings[id] = existingMapping
+        if (total > 1000 && mappings.size() % 1000 == 0) {
+            log.info("Processed ${mappings.size()}/${total} mappings")
+        }
     }
+
+    def batches = mappings.entrySet().collate(1000)
+    for (int i = 0; i < batches.size(); i++) {
+        log.info("Upserting mappings batch ${i + 1}/${batches.size()} (${batches[i].size()} items)")
+        migration.mappingRepository.upsertBatch(batches[i].collectEntries())
+    }
+    migration.mappingRepository.applyAllImageMappings()
 }

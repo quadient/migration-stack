@@ -19,8 +19,10 @@ import com.quadient.migration.api.dto.migrationmodel.ResourceRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
@@ -60,9 +62,11 @@ import com.quadient.migration.data.Error as StatusError
 data class DocObjectWithRef(val obj: DocumentObject, val documentObjectRefs: Set<String>)
 
 sealed class DeployClient(
+    private val metadataValidator: MetadataValidatorImpl,
+    private val postProcess: PostProcessImpl,
     protected val documentObjectRepository: DocumentObjectRepository,
-    protected val imageRepository: Repository<Image>,
-    protected val attachmentRepository: Repository<Attachment>,
+    protected val imageRepository: ImageRepository,
+    protected val attachmentRepository: AttachmentRepository,
     protected val statusTrackingRepository: StatusTrackingRepository,
     protected val textStyleRepository: TextStyleRepository,
     protected val paragraphStyleRepository: ParagraphStyleRepository,
@@ -73,10 +77,9 @@ sealed class DeployClient(
     protected val ipsService: IpsService,
     protected val storage: Storage,
     protected val output: InspireOutput,
-) : MetadataValidator by MetadataValidatorImpl(),
-    PostProcess by PostProcessImpl(ipsService, documentObjectRepository, imageRepository, displayRuleRepository),
-    ConflictDetector by ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, output),
-    ProgressReporter by ProgressReporterImpl( documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, output)
+) : MetadataValidator by metadataValidator, PostProcess by postProcess,
+    ProgressReporter by ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, output),
+    ConflictDetector by ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, output)
 {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
 

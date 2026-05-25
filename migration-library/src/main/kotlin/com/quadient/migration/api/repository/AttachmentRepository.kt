@@ -1,5 +1,6 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
@@ -18,8 +19,9 @@ import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import java.sql.Types
 import kotlin.time.Clock
 
-class AttachmentRepository(table: AttachmentTable, projectName: String) : Repository<Attachment>(table, projectName) {
-    val statusTrackingRepository = StatusTrackingRepository(projectName)
+class AttachmentRepository(projectName: ProjectName, private val statusTrackingRepository: StatusTrackingRepository) :
+    Repository<Attachment>(AttachmentTable, projectName.name) {
+
     override fun fromDb(row: ResultRow): Attachment {
         return Attachment(
             id = row[AttachmentTable.id].value,

@@ -10,9 +10,10 @@ import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.ResourceId
 import com.quadient.migration.api.dto.migrationmodel.StatusTracking
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.Repository
+import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
@@ -26,8 +27,8 @@ import kotlin.uuid.ExperimentalUuidApi
 
 class ConflictDetectorImpl(
     private val documentObjectRepository: DocumentObjectRepository,
-    private val imageRepository: Repository<Image>,
-    private val attachmentRepository: Repository<Attachment>,
+    private val imageRepository: ImageRepository,
+    private val attachmentRepository: AttachmentRepository,
     private val displayRuleRepository: DisplayRuleRepository,
     private val documentObjectBuilder: InspireDocumentObjectBuilder,
     private val statusTrackingRepository: StatusTrackingRepository,

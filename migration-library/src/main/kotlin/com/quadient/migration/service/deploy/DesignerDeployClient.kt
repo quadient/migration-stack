@@ -8,16 +8,21 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
-import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeploymentResult
+import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
+import com.quadient.migration.service.deploy.utility.PostProcessImpl
+import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTracker
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
@@ -34,9 +39,11 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class DesignerDeployClient(
+    metadataValidator: MetadataValidatorImpl,
+    postProcess: PostProcessImpl,
     documentObjectRepository: DocumentObjectRepository,
-    imageRepository: Repository<Image>,
-    attachmentRepository: Repository<Attachment>,
+    imageRepository: ImageRepository,
+    attachmentRepository: AttachmentRepository,
     statusTrackingRepository: StatusTrackingRepository,
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
@@ -47,6 +54,8 @@ class DesignerDeployClient(
     ipsService: IpsService,
     storage: Storage,
 ) : DeployClient(
+    metadataValidator,
+    postProcess,
     documentObjectRepository,
     imageRepository,
     attachmentRepository,

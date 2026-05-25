@@ -16,9 +16,10 @@ import com.quadient.migration.api.dto.migrationmodel.Ref
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.api.repository.Repository
+import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
@@ -39,8 +40,8 @@ interface ProgressReporter {
 
 class ProgressReporterImpl(
     private val documentObjectRepository: DocumentObjectRepository,
-    private val imageRepository: Repository<Image>,
-    private val attachmentRepository: Repository<Attachment>,
+    private val imageRepository: ImageRepository,
+    private val attachmentRepository: AttachmentRepository,
     private val displayRuleRepository: DisplayRuleRepository,
     private val documentObjectBuilder: InspireDocumentObjectBuilder,
     private val statusTrackingRepository: StatusTrackingRepository,

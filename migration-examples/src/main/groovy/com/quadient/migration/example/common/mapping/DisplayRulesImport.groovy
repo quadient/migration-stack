@@ -7,11 +7,18 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.utility.ResourceType
 
+import groovy.transform.Field
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
+
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 def migration = initMigration(this.binding)
 
@@ -26,7 +33,9 @@ static void run(Migration migration, File file) {
 
     def lines = file.readLines()
     def columnNames = Csv.parseColumnNames(lines.removeFirst()).collect { Mapping.normalizeHeader(it) }
+    def total = lines.size()
 
+    def mappings = new HashMap<String, MappingItem>()
     for (line in lines) {
         def values = Csv.getCells(line, columnNames)
         def id = values.get("id")
@@ -68,7 +77,16 @@ static void run(Migration migration, File file) {
             migration.statusTrackingRepository.deployed(existingRule.id, deploymentId, now, ResourceType.DisplayRule, null, output, [reason: "Manual"])
         }
 
-        migration.mappingRepository.upsert(id, existingMapping)
-        migration.mappingRepository.applyDisplayRuleMapping(id)
+        mappings[id] = existingMapping
+        if (total > 1000 && mappings.size() % 1000 == 0) {
+            log.info("Processed ${mappings.size()}/${total} mappings")
+        }
     }
+
+    def batches = mappings.entrySet().collate(1000)
+    for (int i = 0; i < batches.size(); i++) {
+        log.info("Upserting mappings batch ${i + 1}/${batches.size()} (${batches[i].size()} items)")
+        migration.mappingRepository.upsertBatch(batches[i].collectEntries())
+    }
+    migration.mappingRepository.applyAllDisplayRuleMappings()
 }

@@ -39,6 +39,20 @@ class MappingEntity(id: EntityID<CompositeID>) : CompositeEntity(id) {
 sealed class MappingItemEntity {
     abstract val name: String?
 
+    fun apply(entity: MigrationObject): MigrationObject {
+        return when (this) {
+            is DocumentObject -> this.apply(entity as DocumentObjectModel)
+            is Area -> this.apply(entity as DocumentObjectModel)
+            is Image -> this.apply(entity as ImageModel)
+            is Attachment -> this.apply(entity as AttachmentModel)
+            is ParagraphStyle -> this.apply(entity as ParagraphStyleModel)
+            is TextStyle -> this.apply(entity as TextStyleModel)
+            is Variable -> this.apply(entity as VariableModel)
+            is VariableStructure -> this.apply(entity as VariableStructureModel)
+            is DisplayRule -> this.apply(entity as DisplayRuleModel)
+        }
+    }
+
     @Serializable
     data class DocumentObject(
         override val name: String?,

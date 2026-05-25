@@ -1,5 +1,7 @@
 package com.quadient.migration.service
 
+import com.quadient.migration.api.MigConfig
+import com.quadient.migration.api.ProjectConfig
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
@@ -32,7 +34,16 @@ interface Storage {
     fun write(path: String, data: ByteArray, writeMode: WriteMode) = openWrite(path, writeMode).use { it.write(data) }
 }
 
-class LocalStorage(private val storageRoot: String, private val projectName: String) : Storage {
+class LocalStorage(private val config: MigConfig, private val projectConfig: ProjectConfig) : Storage {
+    init {
+        require(config.storageRoot != null) {
+            "'storageRoot' must be configured in order to use the storage"
+        }
+    }
+
+    val projectName = projectConfig.name
+    val storageRoot = config.storageRoot
+
     override fun openRead(path: String): InputStream {
         return path.toFile().inputStream()
     }

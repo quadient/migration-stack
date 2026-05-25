@@ -1,6 +1,7 @@
 package com.quadient.migration.persistence
 
 import com.quadient.migration.Postgres
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
@@ -17,7 +18,7 @@ import org.junit.jupiter.api.Test
 class AttachmentRepositoryTest {
     private val projectName = aProjectConfig().name
     private val repo = aAttachmentRepository()
-    private val statusRepo = StatusTrackingRepository(projectName)
+    private val statusRepo = StatusTrackingRepository(ProjectName(projectName))
 
     @Test
     fun roundtrip() {

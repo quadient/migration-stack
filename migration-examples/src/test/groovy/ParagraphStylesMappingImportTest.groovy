@@ -38,7 +38,7 @@ class ParagraphStylesMappingImportTest {
 
         ParagraphStylesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository).upsert("new", new MappingItem.ParagraphStyle(
+        verify(migration.mappingRepository).upsertBatch(["new": new MappingItem.ParagraphStyle(
             "newName",
             null,
             new MappingItem.ParagraphStyle.Def(
@@ -54,8 +54,8 @@ class ParagraphStylesMappingImportTest {
                 null,
                 null
             )
-        ))
-        verify(migration.mappingRepository).applyParagraphStyleMapping("new")
+        )])
+        verify(migration.mappingRepository).applyAllParagraphStyleMappings()
     }
 
     @Test
@@ -75,7 +75,7 @@ class ParagraphStylesMappingImportTest {
 
         ParagraphStylesImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository).upsert("existing", new MappingItem.ParagraphStyle(
+        verify(migration.mappingRepository).upsertBatch(["existing": new MappingItem.ParagraphStyle(
             "someNewName",
             "otherRef",
             new MappingItem.ParagraphStyle.Def(
@@ -91,7 +91,7 @@ class ParagraphStylesMappingImportTest {
                 null,
                 null
             )
-        ))
-        verify(migration.mappingRepository).applyParagraphStyleMapping("existing")
+        )])
+        verify(migration.mappingRepository).applyAllParagraphStyleMappings()
     }
 }

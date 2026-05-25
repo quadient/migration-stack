@@ -38,10 +38,11 @@ class AttachmentsMappingImportTest {
 
         AttachmentsImport.run(migration, mappingFile)
 
-        verify(migration.mappingRepository, times(1)).upsert("attachment1", new MappingItem.Attachment("newName", "newFolder", "newPath", AttachmentType.Attachment, new SkipOptions(false, null, null), "img123"))
-        verify(migration.mappingRepository, times(1)).applyAttachmentMapping("attachment1")
-        verify(migration.mappingRepository, times(1)).upsert("attachment2", new MappingItem.Attachment(null, null, null, AttachmentType.Document, new SkipOptions(true, "placeholder", "reason"), null))
-        verify(migration.mappingRepository, times(1)).applyAttachmentMapping("attachment2")
+        verify(migration.mappingRepository, times(1)).upsertBatch([
+            "attachment1": new MappingItem.Attachment("newName", "newFolder", "newPath", AttachmentType.Attachment, new SkipOptions(false, null, null), "img123"),
+            "attachment2": new MappingItem.Attachment(null, null, null, AttachmentType.Document, new SkipOptions(true, "placeholder", "reason"), null)
+        ])
+        verify(migration.mappingRepository, times(1)).applyAllAttachmentMappings()
     }
 
     static void givenExistingAttachment(Migration mig, String id, String name, String targetFolder, String sourcePath, AttachmentType attachmentType) {
@@ -83,16 +84,15 @@ class AttachmentsMappingImportTest {
         verify(migration.attachmentRepository, times(3)).upsert(any(Attachment.class))
 
         verify(migration.statusTrackingRepository, times(1)).active(eq("newAttachment1"), eq(ResourceType.Attachment), any(Map.class))
-        verify(migration.mappingRepository, times(1)).upsert("newAttachment1", new MappingItem.Attachment("AttachmentName", "MyFolder", "path/to/file.pdf", AttachmentType.Document, new SkipOptions(false, null, null), "img1"))
-        verify(migration.mappingRepository, times(1)).applyAttachmentMapping("newAttachment1")
-
         verify(migration.statusTrackingRepository, times(1)).active(eq("newAttachment2"), eq(ResourceType.Attachment), any(Map.class))
-        verify(migration.mappingRepository, times(1)).upsert("newAttachment2", new MappingItem.Attachment("AnotherAttachment", "AnotherFolder", "another/path.doc", AttachmentType.Attachment, new SkipOptions(false, null, null), null))
-        verify(migration.mappingRepository, times(1)).applyAttachmentMapping("newAttachment2")
-
         verify(migration.statusTrackingRepository, times(1)).deployed(eq("newAttachment3"), anyString(), anyLong(), eq(ResourceType.Attachment), eq((String)null), eq(InspireOutput.Interactive), eq(["reason": "Manual"]))
-        verify(migration.mappingRepository, times(1)).upsert("newAttachment3", new MappingItem.Attachment("DeployedAttachment", null, "deployed/file.pdf", AttachmentType.Document, new SkipOptions(true, "skip-placeholder", "skip-reason"), "img99"))
-        verify(migration.mappingRepository, times(1)).applyAttachmentMapping("newAttachment3")
+
+        verify(migration.mappingRepository, times(1)).upsertBatch([
+            "newAttachment1": new MappingItem.Attachment("AttachmentName", "MyFolder", "path/to/file.pdf", AttachmentType.Document, new SkipOptions(false, null, null), "img1"),
+            "newAttachment2": new MappingItem.Attachment("AnotherAttachment", "AnotherFolder", "another/path.doc", AttachmentType.Attachment, new SkipOptions(false, null, null), null),
+            "newAttachment3": new MappingItem.Attachment("DeployedAttachment", null, "deployed/file.pdf", AttachmentType.Document, new SkipOptions(true, "skip-placeholder", "skip-reason"), "img99")
+        ])
+        verify(migration.mappingRepository, times(1)).applyAllAttachmentMappings()
     }
 
     static void givenNewAttachment(Migration mig, String id) {

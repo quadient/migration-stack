@@ -1,6 +1,7 @@
 package com.quadient.migration.persistence
 
 import com.quadient.migration.Postgres
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
@@ -39,7 +40,7 @@ class MappingRepositoryTest {
     val displayRuleRepository = mockk<DisplayRuleRepository>()
 
     private val repo = MappingRepository(
-        projectConfig.name,
+        ProjectName(projectConfig.name),
         documentObjectRepository,
         imageRepository,
         attachmentRepository,

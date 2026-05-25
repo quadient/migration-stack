@@ -1,56 +1,111 @@
 package com.quadient.migration.api
 
-import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.api.repository.*
-import com.quadient.migration.data.*
-import com.quadient.migration.persistence.repository.*
-import com.quadient.migration.persistence.table.*
 import com.quadient.migration.service.LocalStorage
+import com.quadient.migration.service.RefCollector
 import com.quadient.migration.service.ReferenceValidator
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.StylesValidator
 import com.quadient.migration.service.deploy.DeployClient
 import com.quadient.migration.service.deploy.DesignerDeployClient
 import com.quadient.migration.service.deploy.InteractiveDeployClient
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
+import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
+import com.quadient.migration.service.deploy.utility.PostProcessImpl
+import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
-import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.Version
 import com.quadient.migration.service.ipsclient.display
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.koin.core.KoinApplication
+import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.koinApplication
+import org.koin.dsl.module
 import org.slf4j.LoggerFactory
 
-class Migration(public val config: MigConfig, public val projectConfig: ProjectConfig) {
-    private val logger = LoggerFactory.getLogger(Migration::class.java)!!
+@JvmInline
+value class ProjectName(val name: String) {
+    override fun toString(): String {
+        return name
+    }
+}
 
-    private val projectName = projectConfig.name
-    private val ipsConfig = config.inspireConfig.ipsConfig
-    private val ipsService = IpsService(ipsConfig)
+class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
+    private val logger = LoggerFactory.getLogger(Migration::class.java)
+    private val projectName = ProjectName(projectConfig.name)
+
+    private val migrationModule = module {
+        single<ProjectConfig> { projectConfig }
+        single<MigConfig> { config }
+        single<ProjectName> { projectName }
+
+        single<IpsService> { IpsService(config.inspireConfig.ipsConfig) }
+        single<IcmClient> { get<IpsService>() }
+        single<Storage> { get<LocalStorage>() }
+
+        singleOf(::VariableRepository)
+        singleOf(::DocumentObjectRepository)
+        singleOf(::TextStyleRepository)
+        singleOf(::ParagraphStyleRepository)
+        singleOf(::VariableStructureRepository)
+        singleOf(::DisplayRuleRepository)
+        singleOf(::ImageRepository)
+        singleOf(::AttachmentRepository)
+        singleOf(::StatusTrackingRepository)
+        singleOf(::MappingRepository)
+
+        singleOf(::LocalStorage)
+
+        singleOf(::InteractiveDocumentObjectBuilder)
+        singleOf(::DesignerDocumentObjectBuilder)
+
+        singleOf(::InteractiveDeployClient)
+        singleOf(::DesignerDeployClient)
+
+        singleOf(::MetadataValidatorImpl)
+        singleOf(::PostProcessImpl)
+
+        singleOf(::ReferenceValidator)
+        singleOf(::StylesValidator)
+        singleOf(::RefCollector)
+    }
+
+    private val koinApp: KoinApplication = koinApplication {
+        modules(migrationModule)
+    }
+
+    private val koin = koinApp.koin
+
     val repositories = mutableListOf<Repository<*>>()
 
-    val variableRepository: Repository<Variable>
-    val documentObjectRepository: Repository<DocumentObject>
-    val textStyleRepository: Repository<TextStyle>
-    val paragraphStyleRepository: Repository<ParagraphStyle>
-    val variableStructureRepository: Repository<VariableStructure>
-    val displayRuleRepository: Repository<DisplayRule>
-    val imageRepository: Repository<Image>
-    val attachmentRepository: Repository<Attachment>
-    val statusTrackingRepository = StatusTrackingRepository(projectName)
-    val mappingRepository: MappingRepository
+    val variableRepository: VariableRepository by lazy { koin.get() }
+    val documentObjectRepository: DocumentObjectRepository by lazy { koin.get() }
+    val textStyleRepository: TextStyleRepository by lazy { koin.get() }
+    val paragraphStyleRepository: ParagraphStyleRepository by lazy { koin.get() }
+    val variableStructureRepository: VariableStructureRepository by lazy { koin.get() }
+    val displayRuleRepository: DisplayRuleRepository by lazy { koin.get() }
+    val imageRepository: ImageRepository by lazy { koin.get() }
+    val attachmentRepository: AttachmentRepository by lazy { koin.get() }
+    val statusTrackingRepository: StatusTrackingRepository by lazy { koin.get() }
+    val mappingRepository: MappingRepository by lazy { koin.get() }
 
-    val icmClient: IcmClient = ipsService
-
-    val deployClient: DeployClient
-
-    val referenceValidator: ReferenceValidator
-    val stylesValidator: StylesValidator
-    val storage: Storage by lazy {
-        require(config.storageRoot != null) { "'storageRoot' must be configured in order to use the storage" }
-        LocalStorage(config.storageRoot, projectName)
+    val icmClient: IcmClient by lazy { koin.get() }
+    val deployClient: DeployClient by lazy {
+        if (projectConfig.inspireOutput in listOf(InspireOutput.Interactive, InspireOutput.Evolve)) {
+            koin.get<InteractiveDeployClient>()
+        } else {
+            koin.get<DesignerDeployClient>()
+        }
     }
+    val referenceValidator: ReferenceValidator by lazy { koin.get() }
+    val stylesValidator: StylesValidator by lazy { koin.get() }
+    val referenceCollector: RefCollector by lazy { koin.get() }
+    val storage: Storage by lazy { koin.get<LocalStorage>() }
+
+    private val ipsService: IpsService by lazy { koin.get() }
 
     init {
         Database.connect(
@@ -66,36 +121,6 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
             .load()
             .migrate()
 
-        val variableRepository = VariableRepository(VariableTable, projectName)
-        val documentObjectRepository = DocumentObjectRepository(DocumentObjectTable, projectName)
-        val textStyleRepository = TextStyleRepository(TextStyleTable, projectName)
-        val paragraphStyleRepository = ParagraphStyleRepository(ParagraphStyleTable, projectName)
-        val variableStructureRepository = VariableStructureRepository(VariableStructureTable, projectName)
-        val displayRuleRepository = DisplayRuleRepository(DisplayRuleTable, projectName)
-        val imageRepository = ImageRepository(ImageTable, projectName)
-        val attachmentRepository = AttachmentRepository(AttachmentTable, projectName)
-
-        this.variableRepository = variableRepository
-        this.documentObjectRepository = documentObjectRepository
-        this.textStyleRepository = textStyleRepository
-        this.paragraphStyleRepository = paragraphStyleRepository
-        this.variableStructureRepository = variableStructureRepository
-        this.displayRuleRepository = displayRuleRepository
-        this.imageRepository = imageRepository
-        this.attachmentRepository = attachmentRepository
-
-        this.mappingRepository = MappingRepository(
-            projectName,
-            documentObjectRepository,
-            imageRepository,
-            attachmentRepository,
-            textStyleRepository,
-            paragraphStyleRepository,
-            variableRepository,
-            variableStructureRepository,
-            displayRuleRepository,
-        )
-
         repositories.add(variableRepository)
         repositories.add(documentObjectRepository)
         repositories.add(textStyleRepository)
@@ -104,87 +129,6 @@ class Migration(public val config: MigConfig, public val projectConfig: ProjectC
         repositories.add(displayRuleRepository)
         repositories.add(imageRepository)
         repositories.add(attachmentRepository)
-
-        this.referenceValidator = ReferenceValidator(
-            documentObjectRepository,
-            variableRepository,
-            textStyleRepository,
-            paragraphStyleRepository,
-            variableStructureRepository,
-            displayRuleRepository,
-            imageRepository,
-            attachmentRepository,
-        )
-
-        val inspireDocumentObjectBuilder: InspireDocumentObjectBuilder
-        this.deployClient =
-            if (projectConfig.inspireOutput == InspireOutput.Interactive || projectConfig.inspireOutput == InspireOutput.Evolve) {
-                inspireDocumentObjectBuilder = InteractiveDocumentObjectBuilder(
-                    documentObjectRepository,
-                    textStyleRepository,
-                    paragraphStyleRepository,
-                    variableRepository,
-                    variableStructureRepository,
-                    displayRuleRepository,
-                    imageRepository,
-                    attachmentRepository,
-                    projectConfig,
-                    ipsService,
-                )
-
-                InteractiveDeployClient(
-                    documentObjectRepository,
-                    imageRepository,
-                    attachmentRepository,
-                    statusTrackingRepository,
-                    textStyleRepository,
-                    paragraphStyleRepository,
-                    displayRuleRepository,
-                    variableRepository,
-                    variableStructureRepository,
-                    inspireDocumentObjectBuilder,
-                    ipsService,
-                    storage,
-                    projectConfig
-                )
-            } else {
-                inspireDocumentObjectBuilder  = DesignerDocumentObjectBuilder(
-                    documentObjectRepository,
-                    textStyleRepository,
-                    paragraphStyleRepository,
-                    variableRepository,
-                    variableStructureRepository,
-                    displayRuleRepository,
-                    imageRepository,
-                    attachmentRepository,
-                    projectConfig,
-                    ipsService,
-                )
-
-                DesignerDeployClient(
-                    documentObjectRepository,
-                    imageRepository,
-                    attachmentRepository,
-                    statusTrackingRepository,
-                    textStyleRepository,
-                    paragraphStyleRepository,
-                    displayRuleRepository,
-                    variableRepository,
-                    variableStructureRepository,
-                    inspireDocumentObjectBuilder,
-                    ipsService,
-                    storage,
-                )
-            }
-
-        this.stylesValidator = StylesValidator(
-            documentObjectRepository,
-            textStyleRepository,
-            paragraphStyleRepository,
-            inspireDocumentObjectBuilder,
-            deployClient,
-            ipsService
-        )
 
         logger.debug("Setting up shutdown hook for IPS service")
         Runtime.getRuntime().addShutdownHook(Thread {

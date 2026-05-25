@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.utility.ResourceType
@@ -15,7 +16,13 @@ import com.quadient.migration.shared.SkipOptions
 
 import java.nio.file.Path
 
+import groovy.transform.Field
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
+
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 def migration = initMigration(this.binding)
 
@@ -29,8 +36,10 @@ static void run(Migration migration, Path documentObjFilePath) {
     def docObjectLines = documentObjFilePath.toFile().readLines()
 
     def docObjectColumnNames = Csv.parseColumnNames(docObjectLines.removeFirst()).collect { Mapping.normalizeHeader(it) }
+    def total = docObjectLines.size()
     def output = migration.projectConfig.inspireOutput
 
+    def mappings = new HashMap<String, MappingItem>()
     for (line in docObjectLines) {
         def values = Csv.getCells(line, docObjectColumnNames)
         def id = values.get("id")
@@ -78,7 +87,16 @@ static void run(Migration migration, Path documentObjFilePath) {
         def skipObj = new SkipOptions(newSkip, newSkipPlaceholder, newSkipReason)
         Mapping.mapProp(existingMapping, existingDocObject, "skip", skipObj)
 
-        migration.mappingRepository.upsert(id, existingMapping)
-        migration.mappingRepository.applyDocumentObjectMapping(id)
+        mappings[id] = existingMapping
+        if (total > 1000 && mappings.size() % 1000 == 0) {
+            log.info("Processed ${mappings.size()}/${total} mappings")
+        }
     }
+
+    def batches = mappings.entrySet().collate(1000)
+    for (int i = 0; i < batches.size(); i++) {
+        log.info("Upserting mappings batch ${i + 1}/${batches.size()} (${batches[i].size()} items)")
+        migration.mappingRepository.upsertBatch(batches[i].collectEntries())
+    }
+    migration.mappingRepository.applyAllDocumentObjectMappings()
 }

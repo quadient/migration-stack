@@ -107,7 +107,11 @@ import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.Shape
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
+import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.DisplayRuleRepository
+import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariableRefPath
@@ -120,10 +124,10 @@ abstract class InspireDocumentObjectBuilder(
     protected val textStyleRepository: TextStyleRepository,
     protected val paragraphStyleRepository: ParagraphStyleRepository,
     protected val variableRepository: VariableRepository,
-    protected val variableStructureRepository: Repository<VariableStructure>,
-    protected val displayRuleRepository: Repository<DisplayRule>,
-    protected val imageRepository: Repository<Image>,
-    protected val attachmentRepository: Repository<Attachment>,
+    protected val variableStructureRepository: VariableStructureRepository,
+    protected val displayRuleRepository: DisplayRuleRepository,
+    protected val imageRepository: ImageRepository,
+    protected val attachmentRepository: AttachmentRepository,
     protected val projectConfig: ProjectConfig,
     protected val ipsService: IpsService,
     protected val output: InspireOutput,

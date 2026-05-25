@@ -27,11 +27,15 @@ import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.Error
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeploymentError
 import com.quadient.migration.service.deploy.utility.DeploymentInfo
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.DeploymentWarning
 import com.quadient.migration.service.deploy.utility.MetadataValidator
+import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
+import com.quadient.migration.service.deploy.utility.PostProcessImpl
+import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
@@ -78,6 +82,7 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class InteractiveDeployClientTest {
+    val metadataValidator = MetadataValidatorImpl()
     val documentObjectRepository = mockk<DocumentObjectRepository>()
     val imageRepository = mockk<ImageRepository>()
     val attachmentRepository = mockk<AttachmentRepository>()
@@ -95,8 +100,11 @@ class InteractiveDeployClientTest {
         baseTemplatePath = "icm://Interactive/tenant/BaseTemplates/templ.wfd"
     )
     val tenant = config.interactiveTenant
+    val postProcess = PostProcessImpl(ipsService, documentObjectRepository, imageRepository, displayRuleRepository)
 
     private val subject = InteractiveDeployClient(
+        metadataValidator,
+        postProcess,
         documentObjectRepository,
         imageRepository,
         attachmentRepository,

@@ -1,6 +1,7 @@
 package com.quadient.migration.persistence
 
 import com.quadient.migration.Postgres
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Tab
 import com.quadient.migration.api.dto.migrationmodel.Tabs
@@ -26,7 +27,7 @@ import org.junit.jupiter.api.Test
 class ParagraphStyleRepositoryTest {
     private val repo = aParaStyleRepository()
     private val docRepo = aDocumentObjectRepository()
-    private val statusRepo = StatusTrackingRepository(aProjectConfig().name)
+    private val statusRepo = StatusTrackingRepository(ProjectName(aProjectConfig().name))
 
     @Test
     fun `roundtrip is correct`() {

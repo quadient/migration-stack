@@ -1,5 +1,6 @@
 package com.quadient.migration.api.repository
 
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
@@ -22,9 +23,8 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import kotlin.collections.map
 
-class ParagraphStyleRepository(table: ParagraphStyleTable, projectName: String) :
-    Repository<ParagraphStyle>(table, projectName) {
-    val statusTrackingRepository = StatusTrackingRepository(projectName)
+class ParagraphStyleRepository(projectName: ProjectName, private val statusTrackingRepository: StatusTrackingRepository) :
+    Repository<ParagraphStyle>(ParagraphStyleTable, projectName.name) {
     override fun fromDb(row: ResultRow): ParagraphStyle {
         val definitionEntity = row[ParagraphStyleTable.definition]
         val definition = ParagraphStyleDefinition(
