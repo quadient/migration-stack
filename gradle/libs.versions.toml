@@ -1,0 +1,125 @@
+[versions]
+# common
+kotlin = "2.3.20"
+koin = "4.2.1"
+koin-compiler-plugin = "1.0.0"
+slf4j = "2.0.17"
+logback = "1.5.32"
+jackson = "2.21.2"
+junit-jupiter = "5.10.0"
+testcontainers = "2.0.3"
+mockito = "5.13.0"
+groovy = "4.0.23"
+kotlinx-datetime = "0.6.2"
+owasp-dependencycheck = "12.2.0"
+
+# library
+postgres = "42.7.10"
+flyway = "11.12.0"
+exposed = "1.1.1"
+kotlinx-serialization = "1.10.0"
+ktoml = "0.6.0"
+mockk = "1.14.9"
+
+# app
+koin-ktor = "3.5.6"
+ktor = "3.2.3"
+groovy-all = "5.0.0-rc-1"
+stately = "2.0.0"
+
+# wfd-xml
+spock = "2.4-M4-groovy-4.0"
+xmlunit = "2.10.0"
+cglib = "3.3.0"
+release = "3.0.2"
+
+[libraries]
+# common
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
+jackson-dataformat-xml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-xml", version.ref = "jackson" }
+jackson-dataformat-toml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-toml", version.ref = "jackson" }
+jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson" }
+
+koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
+koin-annotations = { module = "io.insert-koin:koin-annotations", version.ref = "koin" }
+
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql", version.ref = "testcontainers" }
+
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+
+groovy-xml = { module = "org.apache.groovy:groovy-xml", version.ref = "groovy" }
+
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+
+# library
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgres" }
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-crypt = { module = "org.jetbrains.exposed:exposed-crypt", version.ref = "exposed" }
+exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
+exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
+exposed-json = { module = "org.jetbrains.exposed:exposed-json", version.ref = "exposed" }
+
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+ktoml-core = { module = "com.akuleshov7:ktoml-core", version.ref = "ktoml" }
+ktoml-file = { module = "com.akuleshov7:ktoml-file", version.ref = "ktoml" }
+
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+
+# app
+koin-ktor = { module = "io.insert-koin:koin-ktor", version.ref = "koin-ktor" }
+koin-logger-slf4j = { module = "io.insert-koin:koin-logger-slf4j", version.ref = "koin-ktor" }
+
+ktor-server-core-jvm = { module = "io.ktor:ktor-server-core-jvm", version.ref = "ktor" }
+ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-serialization-jackson = { module = "io.ktor:ktor-serialization-jackson", version.ref = "ktor" }
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
+
+groovy-all = { module = "org.apache.groovy:groovy-all", version.ref = "groovy-all" }
+stately-concurrent-collections = { module = "co.touchlab:stately-concurrent-collections", version.ref = "stately" }
+kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+
+# examples
+groovy-base = { module = "org.apache.groovy:groovy", version.ref = "groovy" }
+groovy-toml = { module = "org.apache.groovy:groovy-toml", version.ref = "groovy" }
+groovy-sql = { module = "org.apache.groovy:groovy-sql", version.ref = "groovy" }
+groovy-json = { module = "org.apache.groovy:groovy-json", version.ref = "groovy" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit-jupiter" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
+
+# wfd-xml
+spock-core = { module = "org.spockframework:spock-core", version.ref = "spock" }
+testcontainers-spock = { module = "com.github.testcontainers.testcontainers-java:testcontainers-spock", version.ref = "testcontainers" }
+xmlunit-core = { module = "org.xmlunit:xmlunit-core", version.ref = "xmlunit" }
+cglib = { module = "cglib:cglib", version.ref = "cglib" }
+
+[plugins]
+# common
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+koin-compiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koin-compiler-plugin" }
+owasp-dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "owasp-dependencycheck" }
+
+# app
+ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
+
+# wfd-xml
+release = { id = "net.researchgate.release", version.ref = "release" }

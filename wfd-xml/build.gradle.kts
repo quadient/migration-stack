@@ -1,8 +1,8 @@
 plugins {
     java
     `maven-publish`
-    id("net.researchgate.release") version "3.0.2"
-    id("org.owasp.dependencycheck") version "12.2.0"
+    alias(libs.plugins.release)
+    alias(libs.plugins.owasp.dependencycheck)
 }
 
 release {

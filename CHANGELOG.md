@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+- Unify dependency version under a single catalogue
+
 ### Fixed
 
 ## [17.0.23] - 2026-05-25

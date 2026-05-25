@@ -1,6 +1,6 @@
 plugins {
     id("groovy")
-    id("org.owasp.dependencycheck") version "12.2.0"
+    alias(libs.plugins.owasp.dependencycheck)
 }
 
 group = "com.quadient"
@@ -31,19 +31,30 @@ dependencyCheck {
     }
 }
 
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath("org.owasp:dependency-check-gradle:12.2.0")
-    }
+apply {
+    from(file("gradle/tasks.gradle.kts"))
 }
 
-apply {
-    from(file("gradle/dependencies.gradle"))
-    from(file("gradle/tasks.gradle.kts"))
-    plugin("org.owasp.dependencycheck")
+dependencies {
+    implementation("com.quadient:migration-library")
+
+    implementation(libs.groovy.base)
+    implementation(libs.groovy.xml)
+    implementation(libs.groovy.toml)
+    implementation(libs.groovy.sql)
+    implementation(libs.groovy.json)
+    implementation(libs.jackson.databind)
+    implementation(libs.slf4j.api)
+
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.junit.jupiter.api)
+    testImplementation(libs.junit.jupiter.engine)
+    testImplementation(libs.postgresql)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.kotlinx.datetime)
+
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 tasks.test {

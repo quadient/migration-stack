@@ -8,3 +8,11 @@ includeBuild("build-logic")
 
 project(":api").name = "${rootProject.name}-api"
 project(":impl").name = "${rootProject.name}-impl"
+
+dependencyResolutionManagement {
+    versionCatalogs {
+        create("libs") {
+            from(files("../gradle/libs.versions.toml"))
+        }
+    }
+}

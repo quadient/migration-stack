@@ -1,18 +1,10 @@
-val kotlinVersion: String by project
-val kotlinXSerialization: String by project
-val logbackVersion: String by project
-val postgresVersion: String by project
-val exposedVersion: String by project
-val jacksonVersion: String by project
-val mockkVersion: String by project
-
 plugins {
-    kotlin("jvm") version "2.3.20"
-    kotlin("plugin.serialization") version "2.3.20"
-    id("io.insert-koin.compiler.plugin") version "1.0.0"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.koin.compiler)
     `java-library`
     id("maven-publish")
-    id("org.owasp.dependencycheck") version "12.2.0"
+    alias(libs.plugins.owasp.dependencycheck)
 }
 
 group = "com.quadient"
@@ -68,42 +60,40 @@ dependencies {
     implementation("com.quadient.wfdxml:wfd-xml-api")
     implementation("com.quadient.wfdxml:wfd-xml-impl")
 
-    api("io.insert-koin:koin-core:4.2.1")
-    implementation("io.insert-koin:koin-annotations:4.2.1")
+    api(libs.koin.core)
+    implementation(libs.koin.annotations)
 
-    implementation("org.postgresql:postgresql:$postgresVersion")
-    implementation("org.flywaydb:flyway-core:11.12.0")
-    implementation("org.flywaydb:flyway-database-postgresql:11.12.0")
+    implementation(libs.postgresql)
+    implementation(libs.flyway.core)
+    implementation(libs.flyway.database.postgresql)
 
     // exposed
-    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-crypt:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
+    implementation(libs.exposed.core)
+    implementation(libs.exposed.crypt)
+    implementation(libs.exposed.dao)
+    implementation(libs.exposed.jdbc)
+    implementation(libs.exposed.kotlin.datetime)
+    implementation(libs.exposed.json)
 
-    implementation("org.jetbrains.exposed:exposed-kotlin-datetime:$exposedVersion")
+    implementation(libs.slf4j.api)
+    implementation(libs.logback.classic)
 
-    implementation("org.jetbrains.exposed:exposed-json:$exposedVersion")
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.ktoml.core)
+    implementation(libs.ktoml.file)
 
-    implementation("org.slf4j:slf4j-api:2.0.7")
-    implementation("ch.qos.logback:logback-classic:$logbackVersion")
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.jackson.dataformat.xml)
+    implementation(libs.jackson.dataformat.toml)
 
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinXSerialization")
-    implementation("com.akuleshov7:ktoml-core:0.6.0")
-    implementation("com.akuleshov7:ktoml-file:0.6.0")
+    testImplementation(libs.mockk)
 
-    implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml:$jacksonVersion")
-    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-toml:$jacksonVersion")
-
-    testImplementation("io.mockk:mockk:${mockkVersion}")
-
-    testImplementation("org.junit.jupiter:junit-jupiter:5.8.1")
-    testImplementation("org.testcontainers:testcontainers:2.0.3")
-    testImplementation("org.testcontainers:testcontainers-junit-jupiter:2.0.3")
-    testImplementation("org.testcontainers:testcontainers-postgresql:2.0.3")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.testcontainers)
+    testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation(libs.testcontainers.postgresql)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 tasks.test {
