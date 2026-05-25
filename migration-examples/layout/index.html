@@ -602,7 +602,7 @@
         const svg = svgEl("svg", {width: CANVAS_W, height: svgH, style: "background:#fff;cursor:default"});
 
         (page.proximityGroups || []).forEach((grp, gi) => {
-            const b = grp.bbox;
+            const b = grp.position;
             svg.appendChild(svgEl("rect", {
                 x: svgPos(b.x, scale), y: svgPos(b.y, scale),
                 width: svgDim(b.w, scale), height: svgDim(b.h, scale),
