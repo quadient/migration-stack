@@ -468,533 +468,718 @@
     </div>
 </main>
 
-<script>
-    const PALETTE = [
-        "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
-        "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
-        "#aecbeb", "#ffcfa1", "#f4a59d", "#b0dbd8", "#a8d5a2",
-    ];
+<script type="module">
+/**
+ * @typedef {Object} LayoutData
+ * @property {string} projectName
+ * @property {PageEntry[]} pages
+ * @property {Similarity} similarity
+ */
 
-    const CANVAS_W = 180;
-    const PAD = 10;
-    const CLUSTER_THRESHOLD = 0.60;
+/**
+ * @typedef {Object} Similarity
+ * @property {PageLevel} pageLevel
+ * @property {TemplateLevel} [templateLevel]
+ */
 
-    let currentData = null;
-    let visibleTemplates = new Set();
-    let templateFamilies = [];   // computed from tl.matrix at load time; drives both renderFamilies and pageOrderByFamily
+/**
+ * @typedef {Object} PageLevel
+ * @property {number[][]} matrix
+ */
 
-    document.getElementById("file").addEventListener("change", async (e) => {
-        const [file] = e.target.files;
-        if (!file) return;
-        try {
-            const data = JSON.parse(await file.text());
-            document.getElementById("status").textContent =
-                `${file.name}  ·  ${data.pages.length} page(s)  ·  project: ${data.projectName}`;
-            render(data);
-        } catch (err) {
-            document.getElementById("status").textContent = "Error: " + err.message;
-        }
-    });
+/**
+ * @typedef {Object} TemplateLevel
+ * @property {TemplateEntry[]} templates
+ * @property {number[][]} matrix
+ */
 
-    document.querySelectorAll(".tab-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-            document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
-            btn.classList.add("active");
-            document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
-        });
-    });
+/**
+ * @typedef {Object} TemplateEntry
+ * @property {string} templateId
+ * @property {string} templateName
+ * @property {number[]} pageIndices
+ */
 
-    const filterBtn = document.getElementById("filter-btn");
-    const filterPanel = document.getElementById("filter-panel");
+/**
+ * @typedef {Object} PageEntry
+ * @property {string} pageId
+ * @property {string} pageName
+ * @property {string|null} templateId
+ * @property {string|null} templateName
+ * @property {number|null} templatePageIndex
+ * @property {AreaEntry[]} areas
+ * @property {ProximityGroup[]} proximityGroups
+ */
 
-    filterBtn.addEventListener("click", e => {
-        filterPanel.hidden = !filterPanel.hidden;
-        e.stopPropagation();
-    });
-    document.addEventListener("click", () => {
-        filterPanel.hidden = true;
-    });
-    filterPanel.addEventListener("click", e => e.stopPropagation());
+/**
+ * @typedef {Object} AreaEntry
+ * @property {number} x
+ * @property {number} y
+ * @property {number} w
+ * @property {number} h
+ * @property {boolean} flowToNextPage
+ * @property {string} interactiveFlowName
+ * @property {string} contentPreview
+ * @property {number|null} containedIn
+ * @property {number} proximityGroup
+ */
 
-    document.getElementById("filter-all").addEventListener("click", () => {
-        filterPanel.querySelectorAll("input[type=checkbox]").forEach(cb => {
-            cb.checked = true;
-            visibleTemplates.add(cb.dataset.id);
-        });
-        updateFilterBtn();
-        if (currentData) rerender();
-    });
-    document.getElementById("filter-none").addEventListener("click", () => {
-        filterPanel.querySelectorAll("input[type=checkbox]").forEach(cb => {
-            cb.checked = false;
-        });
-        visibleTemplates.clear();
-        updateFilterBtn();
-        if (currentData) rerender();
-    });
+/**
+ * @typedef {Object} ProximityGroup
+ * @property {number[]} areaIndices
+ * @property {Position} position
+ */
 
-    function buildFilterPanel(templates) {
-        filterPanel.innerHTML = "";
-        templates.forEach(t => {
-            const label = document.createElement("label");
-            const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.checked = true;
-            cb.dataset.id = t.templateId;
-            cb.addEventListener("change", () => {
-                if (cb.checked) visibleTemplates.add(t.templateId);
-                else visibleTemplates.delete(t.templateId);
-                updateFilterBtn();
-                if (currentData) rerender();
-            });
-            label.appendChild(cb);
-            label.appendChild(document.createTextNode(" " + templateName(t)));
-            filterPanel.appendChild(label);
-        });
+/**
+ * @typedef {Object} Position
+ * @property {number} x
+ * @property {number} y
+ * @property {number} w
+ * @property {number} h
+ */
+
+/**
+ * @typedef {Object} TemplateFamily
+ * @property {string[]} templateIds
+ * @property {string[]} templateNames
+ */
+
+/** @type {string[]} */
+const PALETTE = [
+    "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
+    "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
+    "#aecbeb", "#ffcfa1", "#f4a59d", "#b0dbd8", "#a8d5a2",
+];
+
+const CANVAS_W = 180;
+const PAD = 10;
+const CLUSTER_THRESHOLD = 0.60;
+
+/** @type {LayoutData|null} */
+let currentData = null;
+/** @type {Set<string>} */
+let visibleTemplates = new Set();
+/** @type {TemplateFamily[]} */
+let templateFamilies = [];
+
+const filterBtn = /** @type {HTMLButtonElement} */ (document.getElementById("filter-btn"));
+const filterPanel = /** @type {HTMLElement} */ (document.getElementById("filter-panel"));
+
+document.getElementById("file").addEventListener("change", async (e) => {
+    const input = /** @type {HTMLInputElement} */ (e.target);
+    const [file] = /** @type {FileList} */ (input.files);
+    if (!file) return;
+    try {
+        /** @type {LayoutData} */
+        const data = JSON.parse(await file.text());
+        document.getElementById("status").textContent =
+            `${file.name}  ·  ${data.pages.length} page(s)  ·  project: ${data.projectName}`;
+        render(data);
+    } catch (err) {
+        document.getElementById("status").textContent = "Error: " + /** @type {Error} */ (err).message;
     }
+});
 
-    function updateFilterBtn() {
-        const total = currentData?.similarity?.templateLevel?.templates?.length ?? 0;
-        filterBtn.textContent = visibleTemplates.size === total
-            ? `All templates (${total}) ▾`
-            : `${visibleTemplates.size} of ${total} templates ▾`;
-    }
+document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-" + /** @type {HTMLElement} */ (btn).dataset.tab).classList.add("active");
+    });
+});
 
-    function render(data) {
-        currentData = data;
-        document.getElementById("empty").hidden = true;
-        document.getElementById("app").hidden = false;
+filterBtn.addEventListener("click", e => {
+    filterPanel.hidden = !filterPanel.hidden;
+    e.stopPropagation();
+});
+document.addEventListener("click", () => {
+    filterPanel.hidden = true;
+});
+filterPanel.addEventListener("click", e => e.stopPropagation());
 
-        const tl = data.similarity?.templateLevel;
-        if (tl) {
-            templateFamilies = computeTemplateFamilies(tl);
-            visibleTemplates = new Set(tl.templates.map(t => t.templateId));
-            buildFilterPanel(tl.templates);
+document.getElementById("filter-all").addEventListener("click", () => {
+    filterPanel.querySelectorAll("input[type=checkbox]").forEach(cb => {
+        /** @type {HTMLInputElement} */ (cb).checked = true;
+        visibleTemplates.add(/** @type {HTMLInputElement} */ (cb).dataset.id);
+    });
+    updateFilterBtn();
+    if (currentData) rerender();
+});
+document.getElementById("filter-none").addEventListener("click", () => {
+    filterPanel.querySelectorAll("input[type=checkbox]").forEach(cb => {
+        /** @type {HTMLInputElement} */ (cb).checked = false;
+    });
+    visibleTemplates.clear();
+    updateFilterBtn();
+    if (currentData) rerender();
+});
+
+/**
+ * @param {TemplateEntry[]} templates
+ */
+function buildFilterPanel(templates) {
+    filterPanel.innerHTML = "";
+    templates.forEach(t => {
+        const label = document.createElement("label");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = true;
+        cb.dataset.id = t.templateId;
+        cb.addEventListener("change", () => {
+            if (cb.checked) visibleTemplates.add(t.templateId);
+            else visibleTemplates.delete(t.templateId);
             updateFilterBtn();
-        } else {
-            document.getElementById("filter-bar").style.display = "none";
-        }
+            if (currentData) rerender();
+        });
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(" " + templateName(t)));
+        filterPanel.appendChild(label);
+    });
+}
 
-        rerender();
+/** @returns {void} */
+function updateFilterBtn() {
+    const total = currentData?.similarity?.templateLevel?.templates?.length ?? 0;
+    filterBtn.textContent = visibleTemplates.size === total
+        ? `All templates (${total}) ▾`
+        : `${visibleTemplates.size} of ${total} templates ▾`;
+}
+
+/**
+ * @param {LayoutData} data
+ */
+function render(data) {
+    currentData = data;
+    document.getElementById("empty").hidden = true;
+    document.getElementById("app").hidden = false;
+
+    const tl = data.similarity?.templateLevel;
+    if (tl) {
+        templateFamilies = computeTemplateFamilies(tl);
+        visibleTemplates = new Set(tl.templates.map(t => t.templateId));
+        buildFilterPanel(tl.templates);
+        updateFilterBtn();
+    } else {
+        /** @type {HTMLElement} */ (document.getElementById("filter-bar")).style.display = "none";
     }
 
-    function rerender() {
-        renderSimilarity(currentData);
-        renderFamilies(currentData);
-    }
+    rerender();
+}
 
-    function buildPageCard(page) {
-        if (!page.areas.length) {
-            const card = document.createElement("div");
-            card.className = "page-card";
-            card.innerHTML =
-                `<div class="page-card-title">${htmlEsc(pageName(page))}</div>` +
-                `<div class="page-card-sub" style="padding-bottom:12px">No areas</div>`;
-            return card;
-        }
+/** @returns {void} */
+function rerender() {
+    renderSimilarity(currentData);
+    renderFamilies(currentData);
+}
 
-        const areas = page.areas;
-        const maxX2 = Math.max(...areas.map(a => a.x + a.w));
-        const maxY2 = Math.max(...areas.map(a => a.y + a.h));
-        const scale = (CANVAS_W - 2 * PAD) / Math.max(maxX2, 210);
-        const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
-        const svg = svgEl("svg", {width: CANVAS_W, height: svgH, style: "background:#fff;cursor:default"});
-
-        (page.proximityGroups || []).forEach((grp, gi) => {
-            const b = grp.position;
-            svg.appendChild(svgEl("rect", {
-                x: svgPos(b.x, scale), y: svgPos(b.y, scale),
-                width: svgDim(b.w, scale), height: svgDim(b.h, scale),
-                fill: "none", stroke: "#e00", "stroke-width": 1.5, "stroke-dasharray": "5,3"
-            }));
-            const lbl = svgEl("text", {
-                x: svgPos(b.x, scale) + 2, y: svgPos(b.y, scale) - 2,
-                "font-size": 7, fill: "#e00", "font-weight": "bold"
-            });
-            lbl.textContent = `G${gi + 1}`;
-            svg.appendChild(lbl);
-        });
-
-        areas.forEach((a, i) => {
-            const color = PALETTE[i % PALETTE.length];
-            const isRoot = a.containedIn == null;
-            const rx = svgPos(a.x, scale), ry = svgPos(a.y, scale),
-                rw = svgDim(a.w, scale), rh = svgDim(a.h, scale);
-            const label = areaLabel(a.contentPreview) || `area_${i}`;
-            const tip = `${label}\nx=${a.x}mm  y=${a.y}mm  w=${a.w}mm  h=${a.h}mm`
-                + (a.flowToNextPage ? "\n[flowToNextPage]" : "")
-                + (a.interactiveFlowName ? `\nflow: ${a.interactiveFlowName}` : "");
-
-            const rect = svgEl("rect", {
-                x: rx, y: ry, width: rw, height: rh,
-                fill: color, "fill-opacity": "0.32", stroke: color,
-                "stroke-width": isRoot ? "1.5" : "1",
-                "stroke-dasharray": isRoot ? "none" : "3,2"
-            });
-            const titleEl = document.createElementNS("http://www.w3.org/2000/svg", "title");
-            titleEl.textContent = tip;
-            rect.appendChild(titleEl);
-            svg.appendChild(rect);
-
-            if (rw > 12 && rh > 8) {
-                const txt = svgEl("text", {
-                    x: rx + 2,
-                    y: ry + 9,
-                    "font-size": 6.5,
-                    fill: "#222",
-                    "pointer-events": "none"
-                });
-                txt.textContent = label.length > 28 ? label.slice(-28) : label;
-                svg.appendChild(txt);
-            }
-        });
-
-        const tmplInfo = page.templateName
-            ? `  ·  tmpl: ${htmlEsc(page.templateName)}` +
-            (page.templatePageIndex != null ? ` (pg ${page.templatePageIndex + 1})` : "")
-            : "";
+/**
+ * @param {PageEntry} page
+ * @returns {HTMLDivElement}
+ */
+function buildPageCard(page) {
+    if (!page.areas.length) {
         const card = document.createElement("div");
         card.className = "page-card";
         card.innerHTML =
             `<div class="page-card-title">${htmlEsc(pageName(page))}</div>` +
-            `<div class="page-card-sub">${areas.length} area(s)${tmplInfo}</div>`;
-        card.appendChild(svg);
+            `<div class="page-card-sub" style="padding-bottom:12px">No areas</div>`;
         return card;
     }
 
-    function renderSimilarity(data) {
-        const tl = data.similarity?.templateLevel;
-        const pl = data.similarity?.pageLevel || data.similarity;
+    const areas = page.areas;
+    const maxX2 = Math.max(...areas.map(a => a.x + a.w));
+    const maxY2 = Math.max(...areas.map(a => a.y + a.h));
+    const scale = (CANVAS_W - 2 * PAD) / Math.max(maxX2, 210);
+    const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
+    const svg = svgEl("svg", {width: CANVAS_W, height: svgH, style: "background:#fff;cursor:default"});
 
-        const tmplWrap = document.getElementById("tmpl-matrix-wrap");
-        const tmplDesc = document.getElementById("tmpl-matrix-desc");
-        if (tl) {
-            const selectedIndices = tl.templates
-                .map((t, i) => visibleTemplates.has(t.templateId) ? i : -1)
-                .filter(i => i >= 0);
-            if (selectedIndices.length > 0) {
-                tmplDesc.textContent =
-                    "Compares templates by positional page matching (page 1↔1, 2↔2, …). " +
-                    "Templates with different page counts are penalised for unmatched pages. Score 1.0 = identical, 0.0 = nothing in common.";
-                buildMatrixTable(tmplWrap,
-                    selectedIndices.map(i => templateName(tl.templates[i])),
-                    selectedIndices.map(i => selectedIndices.map(j => tl.matrix[i][j])));
-            } else {
-                tmplDesc.textContent = "";
-                tmplWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No templates selected.</p>";
-            }
+    (page.proximityGroups || []).forEach((grp, gi) => {
+        const b = grp.position;
+        svg.appendChild(svgEl("rect", {
+            x: svgPos(b.x, scale), y: svgPos(b.y, scale),
+            width: svgDim(b.w, scale), height: svgDim(b.h, scale),
+            fill: "none", stroke: "#e00", "stroke-width": 1.5, "stroke-dasharray": "5,3"
+        }));
+        const lbl = svgEl("text", {
+            x: svgPos(b.x, scale) + 2, y: svgPos(b.y, scale) - 2,
+            "font-size": 7, fill: "#e00", "font-weight": "bold"
+        });
+        lbl.textContent = `G${gi + 1}`;
+        svg.appendChild(lbl);
+    });
+
+    areas.forEach((a, i) => {
+        const color = PALETTE[i % PALETTE.length];
+        const isRoot = a.containedIn == null;
+        const rx = svgPos(a.x, scale), ry = svgPos(a.y, scale),
+            rw = svgDim(a.w, scale), rh = svgDim(a.h, scale);
+        const label = areaLabel(a.contentPreview) || `area_${i}`;
+        const tip = `${label}\nx=${a.x}mm  y=${a.y}mm  w=${a.w}mm  h=${a.h}mm`
+            + (a.flowToNextPage ? "\n[flowToNextPage]" : "")
+            + (a.interactiveFlowName ? `\nflow: ${a.interactiveFlowName}` : "");
+
+        const rect = svgEl("rect", {
+            x: rx, y: ry, width: rw, height: rh,
+            fill: color, "fill-opacity": "0.32", stroke: color,
+            "stroke-width": isRoot ? "1.5" : "1",
+            "stroke-dasharray": isRoot ? "none" : "3,2"
+        });
+        const titleEl = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        titleEl.textContent = tip;
+        rect.appendChild(titleEl);
+        svg.appendChild(rect);
+
+        if (rw > 12 && rh > 8) {
+            const txt = svgEl("text", {
+                x: rx + 2,
+                y: ry + 9,
+                "font-size": 6.5,
+                fill: "#222",
+                "pointer-events": "none"
+            });
+            txt.textContent = label.length > 28 ? label.slice(-28) : label;
+            svg.appendChild(txt);
+        }
+    });
+
+    const tmplInfo = page.templateName
+        ? `  ·  tmpl: ${htmlEsc(page.templateName)}` +
+        (page.templatePageIndex != null ? ` (pg ${page.templatePageIndex + 1})` : "")
+        : "";
+    const card = document.createElement("div");
+    card.className = "page-card";
+    card.innerHTML =
+        `<div class="page-card-title">${htmlEsc(pageName(page))}</div>` +
+        `<div class="page-card-sub">${areas.length} area(s)${tmplInfo}</div>`;
+    card.appendChild(svg);
+    return card;
+}
+
+/**
+ * @param {LayoutData} data
+ */
+function renderSimilarity(data) {
+    const tl = data.similarity?.templateLevel;
+    const pl = data.similarity?.pageLevel || data.similarity;
+
+    const tmplWrap = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-wrap"));
+    const tmplDesc = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-desc"));
+    if (tl) {
+        /** @type {number[]} */
+        const selectedIndices = tl.templates
+            .map((t, i) => visibleTemplates.has(t.templateId) ? i : -1)
+            .filter(i => i >= 0);
+        if (selectedIndices.length > 0) {
+            tmplDesc.textContent =
+                "Compares templates by positional page matching (page 1↔1, 2↔2, …). " +
+                "Templates with different page counts are penalised for unmatched pages. Score 1.0 = identical, 0.0 = nothing in common.";
+            buildMatrixTable(tmplWrap,
+                selectedIndices.map(i => templateName(tl.templates[i])),
+                selectedIndices.map(i => selectedIndices.map(j => tl.matrix[i][j])));
         } else {
             tmplDesc.textContent = "";
-            tmplWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>Template-level data not available (old JSON format).</p>";
+            tmplWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No templates selected.</p>";
         }
-
-        const pageWrap = document.getElementById("page-matrix-wrap");
-        const pageDesc = document.getElementById("page-matrix-desc");
-        let selectedPageIndices = [];
-
-        if (tl && visibleTemplates.size > 0) {
-            const seen = new Set();
-            tl.templates
-                .filter(t => visibleTemplates.has(t.templateId))
-                .forEach(t => t.pageIndices.forEach(pi => {
-                    if (!seen.has(pi)) {
-                        seen.add(pi);
-                        selectedPageIndices.push(pi);
-                    }
-                }));
-            selectedPageIndices.sort((a, b) => a - b);
-        } else if (!tl) {
-            selectedPageIndices = data.pages.map((_, i) => i);
-        }
-
-        if (selectedPageIndices.length > 0) {
-            const ordered = pageOrderByFamily(data, selectedPageIndices);
-            pageDesc.textContent =
-                "Compares pages by area structure (x + width normalised to page width, height with 3× tolerance). " +
-                "Score 1.0 = identical structure, 0.0 = nothing in common. Pages sorted by proposed family.";
-            buildMatrixTable(pageWrap,
-                ordered.map(i => pageName(data.pages[i])),
-                ordered.map(i => ordered.map(j => pl.matrix[i][j])));
-        } else {
-            pageDesc.textContent = "";
-            pageWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No pages to display.</p>";
-        }
+    } else {
+        tmplDesc.textContent = "";
+        tmplWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>Template-level data not available (old JSON format).</p>";
     }
 
-    function buildMatrixTable(wrap, names, matrix) {
-        if (!names.length) {
-            wrap.innerHTML = "";
-            return;
-        }
+    const pageWrap = /** @type {HTMLElement} */ (document.getElementById("page-matrix-wrap"));
+    const pageDesc = /** @type {HTMLElement} */ (document.getElementById("page-matrix-desc"));
+    /** @type {number[]} */
+    let selectedPageIndices = [];
 
-        const table = document.createElement("table");
-        const hrow = table.createTHead().insertRow();
-        hrow.insertCell().innerHTML = "<th></th>";
-        names.forEach((name, j) => {
-            const th = document.createElement("th");
-            th.title = name ?? "";
-            th.textContent = `${j + 1}`;
-            hrow.appendChild(th);
-        });
-
-        const tbody = table.createTBody();
-        names.forEach((name, i) => {
-            const row = tbody.insertRow();
-            const th = document.createElement("th");
-            th.textContent = `${i + 1}. ${(name ?? "").slice(0, 36)}`;
-            row.appendChild(th);
-            matrix[i].forEach((score, j) => {
-                const td = row.insertCell();
-                if (i === j) {
-                    td.textContent = "—";
-                    td.style.background = "#e8e8e8";
-                } else {
-                    td.textContent = score.toFixed(2);
-                    const g = Math.round(200 * score), r = Math.round(255 * (1 - score));
-                    td.style.background = `rgb(${r},${g},80)`;
-                    if (score >= CLUSTER_THRESHOLD) td.style.fontWeight = "700";
+    if (tl && visibleTemplates.size > 0) {
+        /** @type {Set<number>} */
+        const seen = new Set();
+        tl.templates
+            .filter(t => visibleTemplates.has(t.templateId))
+            .forEach(t => t.pageIndices.forEach(pi => {
+                if (!seen.has(pi)) {
+                    seen.add(pi);
+                    selectedPageIndices.push(pi);
                 }
-            });
-        });
-
-        wrap.innerHTML = "";
-        wrap.appendChild(table);
-        const note = document.createElement("p");
-        note.style.cssText = "font-size:11px;color:var(--muted);margin-top:6px";
-        note.textContent = `Green = high similarity · Bold = same family (≥ ${CLUSTER_THRESHOLD}). Numbers match row/column headers.`;
-        wrap.appendChild(note);
+            }));
+        selectedPageIndices.sort((a, b) => a - b);
+    } else if (!tl) {
+        selectedPageIndices = data.pages.map((_, i) => i);
     }
 
-    function renderFamilies(data) {
-        const tl = data.similarity?.templateLevel;
-        const pl = data.similarity?.pageLevel || data.similarity;
-        const list = document.getElementById("families-list");
-        const desc = document.getElementById("families-desc");
-        list.innerHTML = "";
+    if (selectedPageIndices.length > 0) {
+        const ordered = pageOrderByFamily(data, selectedPageIndices);
+        pageDesc.textContent =
+            "Compares pages by area structure (x + width normalised to page width, height with 3× tolerance). " +
+            "Score 1.0 = identical structure, 0.0 = nothing in common. Pages sorted by proposed family.";
+        buildMatrixTable(pageWrap,
+            ordered.map(i => pageName(data.pages[i])),
+            ordered.map(i => ordered.map(j => pl.matrix[i][j])));
+    } else {
+        pageDesc.textContent = "";
+        pageWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No pages to display.</p>";
+    }
+}
 
-        if (!tl) {
-            desc.textContent = "Pages grouped by structural similarity into base-template candidates.";
-            clusterPages(data.pages.map((_, i) => i), pl.matrix).forEach((cluster, fi) => {
-                const li = document.createElement("li");
-                li.innerHTML =
-                    `<div class="family-header"><div class="family-header-row1">` +
-                    `<span class="proposed-label">Proposed</span>` +
-                    `<span class="proposed-id">Base Template ${fi + 1}</span>` +
-                    (cluster.length === 1 ? `<span class="muted-note">(unique)</span>` : "") +
-                    `</div></div>` +
-                    `<div class="family-slots"><div class="family-slot"><div class="slot-row">` +
-                    `<span class="orig-pages">${cluster.map(i => `<span class="orig-page">${htmlEsc(pageName(data.pages[i]))}</span>`).join("")}</span>` +
-                    `</div></div></div>`;
-                list.appendChild(li);
-            });
-            return;
-        }
+/**
+ * @param {HTMLElement} wrap
+ * @param {string[]} names
+ * @param {number[][]} matrix
+ */
+function buildMatrixTable(wrap, names, matrix) {
+    if (!names.length) {
+        wrap.innerHTML = "";
+        return;
+    }
 
-        desc.textContent =
-            "Templates (top) lead to a proposed base template. " +
-            "Numbered rows are proposed base template pages — click a row to preview the original pages that would merge into it.";
+    const table = document.createElement("table");
+    const hrow = table.createTHead().insertRow();
+    hrow.insertCell().innerHTML = "<th></th>";
+    names.forEach((name, j) => {
+        const th = document.createElement("th");
+        th.title = name ?? "";
+        th.textContent = `${j + 1}`;
+        hrow.appendChild(th);
+    });
 
-        const templateById = Object.fromEntries(tl.templates.map(t => [t.templateId, t]));
-        let familyIndex = 0;
+    const tbody = table.createTBody();
+    names.forEach((name, i) => {
+        const row = tbody.insertRow();
+        const th = document.createElement("th");
+        th.textContent = `${i + 1}. ${(name ?? "").slice(0, 36)}`;
+        row.appendChild(th);
+        matrix[i].forEach((score, j) => {
+            const td = row.insertCell();
+            if (i === j) {
+                td.textContent = "—";
+                td.style.background = "#e8e8e8";
+            } else {
+                td.textContent = score.toFixed(2);
+                const g = Math.round(200 * score), r = Math.round(255 * (1 - score));
+                td.style.background = `rgb(${r},${g},80)`;
+                if (score >= CLUSTER_THRESHOLD) td.style.fontWeight = "700";
+            }
+        });
+    });
 
-        templateFamilies.forEach(fam => {
-            if (!fam.templateIds.some(id => visibleTemplates.has(id))) return;
-            familyIndex++;
+    wrap.innerHTML = "";
+    wrap.appendChild(table);
+    const note = document.createElement("p");
+    note.style.cssText = "font-size:11px;color:var(--muted);margin-top:6px";
+    note.textContent = `Green = high similarity · Bold = same family (≥ ${CLUSTER_THRESHOLD}). Numbers match row/column headers.`;
+    wrap.appendChild(note);
+}
 
-            const templates = fam.templateIds.map(id => templateById[id]).filter(Boolean);
-            const hasMultipleTemplates = templates.length > 1;
-            const pageIndices = templates.flatMap(t => t.pageIndices).sort((a, b) => a - b);
-            const clusters = clusterPages(pageIndices, pl.matrix).sort((a, b) => Math.min(...a) - Math.min(...b));
+/**
+ * @param {LayoutData} data
+ */
+function renderFamilies(data) {
+    const tl = data.similarity?.templateLevel;
+    const pl = data.similarity?.pageLevel || data.similarity;
+    const list = /** @type {HTMLElement} */ (document.getElementById("families-list"));
+    const desc = /** @type {HTMLElement} */ (document.getElementById("families-desc"));
+    list.innerHTML = "";
 
-            const pageLabel = pi => {
-                const name = pageName(data.pages[pi]);
-                const owner = hasMultipleTemplates && templates.find(t => t.pageIndices.includes(pi));
-                return owner ? `${templateName(owner)} / ${name}` : name;
-            };
-
-            const templateBadges = fam.templateIds.map((id, idx) =>
-                `<code${visibleTemplates.has(id) ? "" : ' class="dimmed"'}>${htmlEsc(fam.templateNames[idx] ?? id)}</code>`
-            ).join("  ");
-
-            let slotsHtml = '<div class="family-slots">';
-            clusters.forEach((cluster, ci) => {
-                const slotId = `slot-${familyIndex}-${ci}`;
-                const cohesion = minPairScore(cluster, pl.matrix);
-                slotsHtml +=
-                    `<div class="family-slot">` +
-                    `<div class="slot-row" onclick="toggleSlotPreview(this)">` +
-                    `<span class="slot-num">${ci + 1}</span>` +
-                    `<span class="cohesion-dot ${cohesionClass(cohesion)}" ` +
-                    `title="${cohesion !== null ? `Cohesion (min pair): ${cohesion.toFixed(2)}` : "Single page"}"></span>` +
-                    `<span class="orig-pages">${cluster.map(pi => `<span class="orig-page">${htmlEsc(pageLabel(pi))}</span>`).join("")}</span>` +
-                    `<span class="slot-expand-icon">▶</span>` +
-                    `</div>` +
-                    `<div class="slot-preview" id="${slotId}"></div>` +
-                    `</div>`;
-            });
-            slotsHtml += "</div>";
-
+    if (!tl) {
+        desc.textContent = "Pages grouped by structural similarity into base-template candidates.";
+        clusterPages(data.pages.map((_, i) => i), pl.matrix).forEach((cluster, fi) => {
             const li = document.createElement("li");
             li.innerHTML =
-                `<div class="family-header">` +
-                `<div class="family-header-row1">${templateBadges}` +
-                `<span style="margin-left:auto;display:flex;align-items:baseline;gap:5px">` +
-                `<span class="proposed-label">→ Proposed</span>` +
-                `<span class="proposed-id">Base Template ${familyIndex}</span>` +
-                (fam.templateIds.length === 1 ? `<span class="muted-note">(unique)</span>` : "") +
-                `</span></div>` +
-                `<div class="family-header-row2">${clusters.length} page slot(s) · ${pageIndices.length} original page(s) · click a slot to preview</div>` +
-                `</div>` + slotsHtml;
-
-            li.querySelectorAll(".family-slot").forEach((slotEl, ci) => {
-                slotEl.dataset.pageIndices = JSON.stringify(clusters[ci]);
-            });
+                `<div class="family-header"><div class="family-header-row1">` +
+                `<span class="proposed-label">Proposed</span>` +
+                `<span class="proposed-id">Base Template ${fi + 1}</span>` +
+                (cluster.length === 1 ? `<span class="muted-note">(unique)</span>` : "") +
+                `</div></div>` +
+                `<div class="family-slots"><div class="family-slot"><div class="slot-row">` +
+                `<span class="orig-pages">${cluster.map(i => `<span class="orig-page">${htmlEsc(pageName(data.pages[i]))}</span>`).join("")}</span>` +
+                `</div></div></div>`;
             list.appendChild(li);
         });
-
-        if (familyIndex === 0) {
-            list.innerHTML = "<p style='color:var(--muted);font-size:13px'>No families match the current filter.</p>";
-        }
+        return;
     }
 
-    function toggleSlotPreview(rowEl) {
-        const slotEl = rowEl.closest(".family-slot");
-        const preview = slotEl.querySelector(".slot-preview");
-        const icon = rowEl.querySelector(".slot-expand-icon");
-        const isOpen = preview.classList.toggle("open");
-        icon.textContent = isOpen ? "▼" : "▶";
+    desc.textContent =
+        "Templates (top) lead to a proposed base template. " +
+        "Numbered rows are proposed base template pages — click a row to preview the original pages that would merge into it.";
 
-        if (isOpen && preview.childElementCount === 0) {
-            JSON.parse(slotEl.dataset.pageIndices || "[]").forEach(pi => {
-                const wrap = document.createElement("div");
-                wrap.className = "preview-card";
-                const title = document.createElement("div");
-                title.className = "preview-card-title";
-                title.textContent = pageName(currentData.pages[pi]);
-                wrap.appendChild(title);
-                const svg = buildPageCard(currentData.pages[pi]).querySelector("svg");
-                if (svg) wrap.appendChild(svg);
-                preview.appendChild(wrap);
-            });
-        }
-    }
+    /** @type {Record<string, TemplateEntry>} */
+    const templateById = Object.fromEntries(tl.templates.map(t => [t.templateId, t]));
+    let familyIndex = 0;
 
-    /** Reorders page indices so pages in the same family are adjacent — produces diagonal blocks in the similarity matrix. */
-    function pageOrderByFamily(data, indices) {
-        const tl = data.similarity?.templateLevel;
-        if (!tl) return indices;
+    templateFamilies.forEach(fam => {
+        if (!fam.templateIds.some(id => visibleTemplates.has(id))) return;
+        familyIndex++;
 
-        const pl = data.similarity?.pageLevel || data.similarity;
-        const indexSet = new Set(indices);
-        const templateById = Object.fromEntries(tl.templates.map(t => [t.templateId, t]));
-        const order = [];
-        const seen = new Set();
+        const templates = fam.templateIds.map(id => templateById[id]).filter(Boolean);
+        const hasMultipleTemplates = templates.length > 1;
+        /** @type {number[]} */
+        const pageIndices = templates.flatMap(t => t.pageIndices).sort((a, b) => a - b);
+        const clusters = clusterPages(pageIndices, pl.matrix).sort((a, b) => Math.min(...a) - Math.min(...b));
 
-        templateFamilies.forEach(fam => {
-            if (!fam.templateIds.some(id => visibleTemplates.has(id))) return;
-            const famIndices = fam.templateIds
-                .flatMap(id => templateById[id]?.pageIndices ?? [])
-                .filter(pi => indexSet.has(pi))
-                .sort((a, b) => a - b);
-            clusterPages(famIndices, pl.matrix)
-                .sort((a, b) => Math.min(...a) - Math.min(...b))
-                .forEach(cluster => cluster.forEach(pi => {
-                    if (!seen.has(pi)) {
-                        seen.add(pi);
-                        order.push(pi);
-                    }
-                }));
+        /**
+         * @param {number} pi
+         * @returns {string}
+         */
+        const pageLabel = pi => {
+            const name = pageName(data.pages[pi]);
+            const owner = hasMultipleTemplates && templates.find(t => t.pageIndices.includes(pi));
+            return owner ? `${templateName(owner)} / ${name}` : name;
+        };
+
+        const templateBadges = fam.templateIds.map((id, idx) =>
+            `<code${visibleTemplates.has(id) ? "" : ' class="dimmed"'}>${htmlEsc(fam.templateNames[idx] ?? id)}</code>`
+        ).join("  ");
+
+        let slotsHtml = '<div class="family-slots">';
+        clusters.forEach((cluster, ci) => {
+            const slotId = `slot-${familyIndex}-${ci}`;
+            const cohesion = minPairScore(cluster, pl.matrix);
+            slotsHtml +=
+                `<div class="family-slot">` +
+                `<div class="slot-row" data-action="toggle-preview">` +
+                `<span class="slot-num">${ci + 1}</span>` +
+                `<span class="cohesion-dot ${cohesionClass(cohesion)}" ` +
+                `title="${cohesion !== null ? `Cohesion (min pair): ${cohesion.toFixed(2)}` : "Single page"}"></span>` +
+                `<span class="orig-pages">${cluster.map(pi => `<span class="orig-page">${htmlEsc(pageLabel(pi))}</span>`).join("")}</span>` +
+                `<span class="slot-expand-icon">▶</span>` +
+                `</div>` +
+                `<div class="slot-preview" id="${slotId}"></div>` +
+                `</div>`;
         });
+        slotsHtml += "</div>";
+
+        const li = document.createElement("li");
+        li.innerHTML =
+            `<div class="family-header">` +
+            `<div class="family-header-row1">${templateBadges}` +
+            `<span style="margin-left:auto;display:flex;align-items:baseline;gap:5px">` +
+            `<span class="proposed-label">→ Proposed</span>` +
+            `<span class="proposed-id">Base Template ${familyIndex}</span>` +
+            (fam.templateIds.length === 1 ? `<span class="muted-note">(unique)</span>` : "") +
+            `</span></div>` +
+            `<div class="family-header-row2">${clusters.length} page slot(s) · ${pageIndices.length} original page(s) · click a slot to preview</div>` +
+            `</div>` + slotsHtml;
+
+        li.querySelectorAll(".family-slot").forEach((slotEl, ci) => {
+            /** @type {HTMLElement} */ (slotEl).dataset.pageIndices = JSON.stringify(clusters[ci]);
+        });
+        list.appendChild(li);
+    });
+
+    if (familyIndex === 0) {
+        list.innerHTML = "<p style='color:var(--muted);font-size:13px'>No families match the current filter.</p>";
+    }
+}
+
+// Event delegation for slot preview toggle
+document.getElementById("families-list").addEventListener("click", (e) => {
+    const target = /** @type {HTMLElement} */ (e.target);
+    const row = /** @type {HTMLElement|null} */ (target.closest("[data-action='toggle-preview']"));
+    if (!row) return;
+    toggleSlotPreview(row);
+});
+
+/**
+ * @param {HTMLElement} rowEl
+ */
+function toggleSlotPreview(rowEl) {
+    const slotEl = /** @type {HTMLElement} */ (rowEl.closest(".family-slot"));
+    const preview = /** @type {HTMLElement} */ (slotEl.querySelector(".slot-preview"));
+    const icon = /** @type {HTMLElement} */ (rowEl.querySelector(".slot-expand-icon"));
+    const isOpen = preview.classList.toggle("open");
+    icon.textContent = isOpen ? "▼" : "▶";
+
+    if (isOpen && preview.childElementCount === 0) {
+        /** @type {number[]} */
+        const indices = JSON.parse(slotEl.dataset.pageIndices || "[]");
         indices.forEach(pi => {
-            if (!seen.has(pi)) order.push(pi);
+            const wrap = document.createElement("div");
+            wrap.className = "preview-card";
+            const title = document.createElement("div");
+            title.className = "preview-card-title";
+            title.textContent = pageName(currentData.pages[pi]);
+            wrap.appendChild(title);
+            const svg = buildPageCard(currentData.pages[pi]).querySelector("svg");
+            if (svg) wrap.appendChild(svg);
+            preview.appendChild(wrap);
         });
-        return order;
     }
+}
 
-    /** Clusters templates by structural similarity and returns families with templateIds/templateNames. */
-    function computeTemplateFamilies(tl) {
-        return clusterPages(tl.templates.map((_, i) => i), tl.matrix)
-            .map(cluster => ({
-                templateIds: cluster.map(i => tl.templates[i].templateId),
-                templateNames: cluster.map(i => tl.templates[i].templateName ?? tl.templates[i].templateId),
+/**
+ * Reorders page indices so pages in the same family are adjacent —
+ * produces diagonal blocks in the similarity matrix.
+ * @param {LayoutData} data
+ * @param {number[]} indices
+ * @returns {number[]}
+ */
+function pageOrderByFamily(data, indices) {
+    const tl = data.similarity?.templateLevel;
+    if (!tl) return indices;
+
+    const pl = data.similarity?.pageLevel || data.similarity;
+    /** @type {Set<number>} */
+    const indexSet = new Set(indices);
+    /** @type {Record<string, TemplateEntry>} */
+    const templateById = Object.fromEntries(tl.templates.map(t => [t.templateId, t]));
+    /** @type {number[]} */
+    const order = [];
+    /** @type {Set<number>} */
+    const seen = new Set();
+
+    templateFamilies.forEach(fam => {
+        if (!fam.templateIds.some(id => visibleTemplates.has(id))) return;
+        const famIndices = fam.templateIds
+            .flatMap(id => templateById[id]?.pageIndices ?? [])
+            .filter(pi => indexSet.has(pi))
+            .sort((a, b) => a - b);
+        clusterPages(famIndices, pl.matrix)
+            .sort((a, b) => Math.min(...a) - Math.min(...b))
+            .forEach(cluster => cluster.forEach(pi => {
+                if (!seen.has(pi)) {
+                    seen.add(pi);
+                    order.push(pi);
+                }
             }));
-    }
+    });
+    indices.forEach(pi => {
+        if (!seen.has(pi)) order.push(pi);
+    });
+    return order;
+}
 
-    /**
-     * Average-linkage agglomerative clustering: merges two clusters when their mean cross-pair
-     * similarity meets CLUSTER_THRESHOLD. Avoids the chaining effect of single-linkage.
-     */
-    function clusterPages(indices, matrix) {
-        let clusters = indices.map(i => [i]);
-        let changed = true;
-        while (changed) {
-            changed = false;
-            outer: for (let i = 0; i < clusters.length; i++) {
-                for (let j = i + 1; j < clusters.length; j++) {
-                    const scores = clusters[i].flatMap(a => clusters[j].map(b => matrix[a]?.[b] ?? 0));
-                    const avg = scores.reduce((s, v) => s + v, 0) / scores.length;
-                    if (avg >= CLUSTER_THRESHOLD) {
-                        clusters[i].push(...clusters[j]);
-                        clusters.splice(j, 1);
-                        changed = true;
-                        break outer;
-                    }
+/**
+ * Clusters templates by structural similarity and returns families with templateIds/templateNames.
+ * @param {TemplateLevel} tl
+ * @returns {TemplateFamily[]}
+ */
+function computeTemplateFamilies(tl) {
+    return clusterPages(tl.templates.map((_, i) => i), tl.matrix)
+        .map(cluster => ({
+            templateIds: cluster.map(i => tl.templates[i].templateId),
+            templateNames: cluster.map(i => tl.templates[i].templateName ?? tl.templates[i].templateId),
+        }));
+}
+
+/**
+ * Average-linkage agglomerative clustering: merges two clusters when their mean cross-pair
+ * similarity meets CLUSTER_THRESHOLD. Avoids the chaining effect of single-linkage.
+ * @param {number[]} indices
+ * @param {number[][]} matrix
+ * @returns {number[][]}
+ */
+function clusterPages(indices, matrix) {
+    /** @type {number[][]} */
+    let clusters = indices.map(i => [i]);
+    let changed = true;
+    while (changed) {
+        changed = false;
+        outer: for (let i = 0; i < clusters.length; i++) {
+            for (let j = i + 1; j < clusters.length; j++) {
+                const scores = clusters[i].flatMap(a => clusters[j].map(b => matrix[a]?.[b] ?? 0));
+                const avg = scores.reduce((s, v) => s + v, 0) / scores.length;
+                if (avg >= CLUSTER_THRESHOLD) {
+                    clusters[i].push(...clusters[j]);
+                    clusters.splice(j, 1);
+                    changed = true;
+                    break outer;
                 }
             }
         }
-        return clusters;
     }
+    return clusters;
+}
 
-    /** Minimum pairwise similarity within a cluster — indicates how tight the grouping is. */
-    function minPairScore(cluster, matrix) {
-        if (cluster.length < 2) return null;
-        let min = 1;
-        for (let i = 0; i < cluster.length; i++)
-            for (let j = i + 1; j < cluster.length; j++)
-                min = Math.min(min, matrix[cluster[i]]?.[cluster[j]] ?? 0);
-        return min;
-    }
+/**
+ * Minimum pairwise similarity within a cluster — indicates how tight the grouping is.
+ * @param {number[]} cluster
+ * @param {number[][]} matrix
+ * @returns {number|null}
+ */
+function minPairScore(cluster, matrix) {
+    if (cluster.length < 2) return null;
+    let min = 1;
+    for (let i = 0; i < cluster.length; i++)
+        for (let j = i + 1; j < cluster.length; j++)
+            min = Math.min(min, matrix[cluster[i]]?.[cluster[j]] ?? 0);
+    return min;
+}
 
-    function cohesionClass(score) {
-        if (score === null) return "cohesion-solo";
-        if (score >= 0.75) return "cohesion-high";
-        if (score >= 0.50) return "cohesion-mid";
-        return "cohesion-low";
-    }
+/**
+ * @param {number|null} score
+ * @returns {string}
+ */
+function cohesionClass(score) {
+    if (score === null) return "cohesion-solo";
+    if (score >= 0.75) return "cohesion-high";
+    if (score >= 0.50) return "cohesion-mid";
+    return "cohesion-low";
+}
 
-    function svgEl(tag, attrs) {
-        const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
-        Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
-        return el;
-    }
+/**
+ * @param {string} tag
+ * @param {Record<string, string|number>} attrs
+ * @returns {SVGElement}
+ */
+function svgEl(tag, attrs) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, String(v)));
+    return el;
+}
 
-    // svgPos offsets by PAD (use for x/y); svgDim does not (use for width/height)
-    function svgPos(mm, scale) {
-        return Math.round((mm * scale + PAD) * 10) / 10;
-    }
+/**
+ * Offsets by PAD (use for x/y positions).
+ * @param {number} mm
+ * @param {number} scale
+ * @returns {number}
+ */
+function svgPos(mm, scale) {
+    return Math.round((mm * scale + PAD) * 10) / 10;
+}
 
-    function svgDim(mm, scale) {
-        return Math.round(mm * scale * 10) / 10;
-    }
+/**
+ * Scales without offset (use for width/height dimensions).
+ * @param {number} mm
+ * @param {number} scale
+ * @returns {number}
+ */
+function svgDim(mm, scale) {
+    return Math.round(mm * scale * 10) / 10;
+}
 
-    function areaLabel(preview) {
-        if (!preview) return "";
-        const m = preview.match(/\(([^)]+)\)$/);
-        return m ? m[1] : preview.slice(0, 40);
-    }
+/**
+ * @param {string} preview
+ * @returns {string}
+ */
+function areaLabel(preview) {
+    if (!preview) return "";
+    const m = preview.match(/\(([^)]+)\)$/);
+    return m ? m[1] : preview.slice(0, 40);
+}
 
-    function htmlEsc(s) {
-        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
+/**
+ * @param {string} s
+ * @returns {string}
+ */
+function htmlEsc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
-    function pageName(page) {
-        return page.pageName ?? page.pageId;
-    }
+/**
+ * @param {PageEntry} page
+ * @returns {string}
+ */
+function pageName(page) {
+    return page.pageName ?? page.pageId;
+}
 
-    function templateName(tmpl) {
-        return tmpl.templateName ?? tmpl.templateId;
-    }
+/**
+ * @param {TemplateEntry} tmpl
+ * @returns {string}
+ */
+function templateName(tmpl) {
+    return tmpl.templateName ?? tmpl.templateId;
+}
 </script>
 </body>
 </html>
