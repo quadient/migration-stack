@@ -455,7 +455,7 @@
 /**
  * @typedef {Object} Similarity
  * @property {PageLevel} pageLevel
- * @property {TemplateLevel} [templateLevel]
+ * @property {TemplateLevel} templateLevel
  */
 
 /**
@@ -626,31 +626,18 @@ function updateFilterBtn() {
 
 /**
  * @param {LayoutData} data
- * @returns {PageLevel}
- */
-function getPageLevel(data) {
-    return data.similarity?.pageLevel || data.similarity;
-}
-
-/**
- * @param {LayoutData} data
  */
 function render(data) {
     currentData = data;
     document.getElementById("empty").hidden = true;
     document.getElementById("app").hidden = false;
 
-    const tl = data.similarity?.templateLevel;
-    if (tl) {
-        templateById = Object.fromEntries(tl.templates.map(t => [t.templateId, t]));
-        templateFamilies = computeTemplateFamilies(tl);
-        visibleTemplates = new Set(tl.templates.map(t => t.templateId));
-        buildFilterPanel(tl.templates);
-        updateFilterBtn();
-    } else {
-        templateById = {};
-        /** @type {HTMLElement} */ (document.getElementById("filter-bar")).style.display = "none";
-    }
+    const templateLevel = data.similarity.templateLevel;
+    templateById = Object.fromEntries(templateLevel.templates.map(t => [t.templateId, t]));
+    templateFamilies = computeTemplateFamilies(templateLevel);
+    visibleTemplates = new Set(templateLevel.templates.map(t => t.templateId));
+    buildFilterPanel(templateLevel.templates);
+    updateFilterBtn();
 
     rerender();
 }
@@ -675,18 +662,18 @@ function buildPageSvg(page) {
     const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
     const svg = svgEl("svg", {width: CANVAS_W, height: svgH, style: "background:#fff;cursor:default"});
 
-    (page.proximityGroups || []).forEach((grp, gi) => {
-        const b = grp.position;
+    (page.proximityGroups || []).forEach((group, i) => {
+        const position = group.position;
         svg.appendChild(svgEl("rect", {
-            x: svgPos(b.x, scale), y: svgPos(b.y, scale),
-            width: svgDim(b.w, scale), height: svgDim(b.h, scale),
+            x: svgPos(position.x, scale), y: svgPos(position.y, scale),
+            width: svgDim(position.w, scale), height: svgDim(position.h, scale),
             fill: "none", stroke: "#e00", "stroke-width": 1.5, "stroke-dasharray": "5,3"
         }));
         const lbl = svgEl("text", {
-            x: svgPos(b.x, scale) + 2, y: svgPos(b.y, scale) - 2,
+            x: svgPos(position.x, scale) + 2, y: svgPos(position.y, scale) - 2,
             "font-size": 7, fill: "#e00", "font-weight": "bold"
         });
-        lbl.textContent = `G${gi + 1}`;
+        lbl.textContent = `G${i + 1}`;
         svg.appendChild(lbl);
     });
 
@@ -731,46 +718,37 @@ function buildPageSvg(page) {
  * @param {LayoutData} data
  */
 function renderSimilarity(data) {
-    const templateLevel = data.similarity?.templateLevel;
-    const pageLevel = getPageLevel(data);
+    const {templateLevel, pageLevel} = data.similarity;
 
     const templateWrap = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-wrap"));
     const templateDescription = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-desc"));
-    if (templateLevel) {
-        /** @type {number[]} */
-        const selectedIndices = templateLevel.templates
-            .map((t, i) => visibleTemplates.has(t.templateId) ? i : -1)
-            .filter(i => i >= 0);
-        if (selectedIndices.length > 0) {
-            templateDescription.textContent =
-                "Compares templates by positional page matching (page 1↔1, 2↔2, …). " +
-                "Templates with different page counts are penalised for unmatched pages. Score 1.0 = identical, 0.0 = nothing in common.";
-            buildMatrixTable(templateWrap,
-                selectedIndices.map(i => templateName(templateLevel.templates[i])),
-                selectedIndices.map(i => selectedIndices.map(j => templateLevel.matrix[i][j])));
-        } else {
-            templateDescription.textContent = "";
-            templateWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No templates selected.</p>";
-        }
+    /** @type {number[]} */
+    const selectedIndices = templateLevel.templates
+        .map((t, i) => visibleTemplates.has(t.templateId) ? i : -1)
+        .filter(i => i >= 0);
+    if (selectedIndices.length > 0) {
+        templateDescription.textContent =
+            "Compares templates by positional page matching (page 1↔1, 2↔2, …). " +
+            "Templates with different page counts are penalised for unmatched pages. Score 1.0 = identical, 0.0 = nothing in common.";
+        buildMatrixTable(templateWrap,
+            selectedIndices.map(i => templateName(templateLevel.templates[i])),
+            selectedIndices.map(i => selectedIndices.map(j => templateLevel.matrix[i][j])));
     } else {
         templateDescription.textContent = "";
-        templateWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>Template-level data not available (old JSON format).</p>";
+        templateWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No templates selected.</p>";
     }
 
     const pageWrap = /** @type {HTMLElement} */ (document.getElementById("page-matrix-wrap"));
     const pageDesc = /** @type {HTMLElement} */ (document.getElementById("page-matrix-desc"));
-    /** @type {number[]} */
-    let selectedPageIndices = [];
 
-    if (templateLevel && visibleTemplates.size > 0) {
-        selectedPageIndices = [...new Set(
+    /** @type {number[]} */
+    const selectedPageIndices = visibleTemplates.size > 0
+        ? [...new Set(
             templateLevel.templates
                 .filter(t => visibleTemplates.has(t.templateId))
                 .flatMap(t => t.pageIndices)
-        )].sort((a, b) => a - b);
-    } else if (!templateLevel) {
-        selectedPageIndices = data.pages.map((_, i) => i);
-    }
+        )].sort((a, b) => a - b)
+        : [];
 
     if (selectedPageIndices.length > 0) {
         const ordered = pageOrderByFamily(data, selectedPageIndices);
@@ -839,29 +817,10 @@ function buildMatrixTable(wrap, names, matrix) {
  * @param {LayoutData} data
  */
 function renderFamilies(data) {
-    const templateLevel = data.similarity?.templateLevel;
-    const pageLevel = getPageLevel(data);
+    const {pageLevel} = data.similarity;
     const familyList = /** @type {HTMLElement} */ (document.getElementById("families-list"));
     const familyDescription = /** @type {HTMLElement} */ (document.getElementById("families-desc"));
     familyList.innerHTML = "";
-
-    if (!templateLevel) {
-        familyDescription.textContent = "Pages grouped by structural similarity into base-template candidates.";
-        clusterPages(data.pages.map((_, i) => i), pageLevel.matrix).forEach((cluster, fi) => {
-            const family = document.createElement("li");
-            family.innerHTML =
-                `<div class="family-header"><div class="family-header-row1">` +
-                `<span class="proposed-label">Proposed</span>` +
-                `<span class="proposed-id">Base Template ${fi + 1}</span>` +
-                (cluster.length === 1 ? `<span class="muted-note">(unique)</span>` : "") +
-                `</div></div>` +
-                `<div class="family-slots"><div class="family-slot"><div class="slot-row">` +
-                `<span class="orig-pages">${cluster.map(i => `<span class="orig-page">${htmlEsc(pageName(data.pages[i]))}</span>`).join("")}</span>` +
-                `</div></div></div>`;
-            familyList.appendChild(family);
-        });
-        return;
-    }
 
     familyDescription.textContent =
         "Templates (top) lead to a proposed base template. " +
@@ -976,10 +935,7 @@ function toggleSlotPreview(rowEl) {
  * @returns {number[]}
  */
 function pageOrderByFamily(data, indices) {
-    const tl = data.similarity?.templateLevel;
-    if (!tl) return indices;
-
-    const pl = getPageLevel(data);
+    const {pageLevel} = data.similarity;
     /** @type {Set<number>} */
     const indexSet = new Set(indices);
     /** @type {number[]} */
@@ -993,7 +949,7 @@ function pageOrderByFamily(data, indices) {
             .flatMap(id => templateById[id]?.pageIndices ?? [])
             .filter(pi => indexSet.has(pi))
             .sort((a, b) => a - b);
-        clusterPages(famIndices, pl.matrix)
+        clusterPages(famIndices, pageLevel.matrix)
             .sort((a, b) => Math.min(...a) - Math.min(...b))
             .forEach(cluster => cluster.forEach(pi => {
                 if (!seen.has(pi)) {
