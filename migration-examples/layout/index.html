@@ -97,32 +97,6 @@
             display: block;
         }
 
-        .page-card {
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            overflow: hidden;
-            background: var(--bg);
-        }
-
-        .page-card-title {
-            padding: 8px 12px;
-            font-size: 13px;
-            font-weight: 600;
-            border-bottom: 1px solid var(--line);
-            background: #fff;
-        }
-
-        .page-card-sub {
-            padding: 2px 12px 6px;
-            font-size: 11px;
-            color: var(--muted);
-            background: #fff;
-        }
-
-        .page-card svg {
-            display: block;
-        }
-
         .matrix-wrap {
             overflow-x: auto;
         }
@@ -469,6 +443,8 @@
 </main>
 
 <script type="module">
+// @ts-check
+
 /**
  * @typedef {Object} LayoutData
  * @property {string} projectName
@@ -561,6 +537,8 @@ let currentData = null;
 let visibleTemplates = new Set();
 /** @type {TemplateFamily[]} */
 let templateFamilies = [];
+/** @type {Record<string, TemplateEntry>} */
+let templateById = {};
 
 const filterBtn = /** @type {HTMLButtonElement} */ (document.getElementById("filter-btn"));
 const filterPanel = /** @type {HTMLElement} */ (document.getElementById("filter-panel"));
@@ -648,6 +626,14 @@ function updateFilterBtn() {
 
 /**
  * @param {LayoutData} data
+ * @returns {PageLevel}
+ */
+function getPageLevel(data) {
+    return data.similarity?.pageLevel || data.similarity;
+}
+
+/**
+ * @param {LayoutData} data
  */
 function render(data) {
     currentData = data;
@@ -656,11 +642,13 @@ function render(data) {
 
     const tl = data.similarity?.templateLevel;
     if (tl) {
+        templateById = Object.fromEntries(tl.templates.map(t => [t.templateId, t]));
         templateFamilies = computeTemplateFamilies(tl);
         visibleTemplates = new Set(tl.templates.map(t => t.templateId));
         buildFilterPanel(tl.templates);
         updateFilterBtn();
     } else {
+        templateById = {};
         /** @type {HTMLElement} */ (document.getElementById("filter-bar")).style.display = "none";
     }
 
@@ -675,19 +663,12 @@ function rerender() {
 
 /**
  * @param {PageEntry} page
- * @returns {HTMLDivElement}
+ * @returns {SVGElement|null}
  */
-function buildPageCard(page) {
-    if (!page.areas.length) {
-        const card = document.createElement("div");
-        card.className = "page-card";
-        card.innerHTML =
-            `<div class="page-card-title">${htmlEsc(pageName(page))}</div>` +
-            `<div class="page-card-sub" style="padding-bottom:12px">No areas</div>`;
-        return card;
-    }
-
+function buildPageSvg(page) {
     const areas = page.areas;
+    if (!areas.length) return null;
+
     const maxX2 = Math.max(...areas.map(a => a.x + a.w));
     const maxY2 = Math.max(...areas.map(a => a.y + a.h));
     const scale = (CANVAS_W - 2 * PAD) / Math.max(maxX2, 210);
@@ -743,47 +724,37 @@ function buildPageCard(page) {
         }
     });
 
-    const tmplInfo = page.templateName
-        ? `  ·  tmpl: ${htmlEsc(page.templateName)}` +
-        (page.templatePageIndex != null ? ` (pg ${page.templatePageIndex + 1})` : "")
-        : "";
-    const card = document.createElement("div");
-    card.className = "page-card";
-    card.innerHTML =
-        `<div class="page-card-title">${htmlEsc(pageName(page))}</div>` +
-        `<div class="page-card-sub">${areas.length} area(s)${tmplInfo}</div>`;
-    card.appendChild(svg);
-    return card;
+    return svg;
 }
 
 /**
  * @param {LayoutData} data
  */
 function renderSimilarity(data) {
-    const tl = data.similarity?.templateLevel;
-    const pl = data.similarity?.pageLevel || data.similarity;
+    const templateLevel = data.similarity?.templateLevel;
+    const pageLevel = getPageLevel(data);
 
-    const tmplWrap = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-wrap"));
-    const tmplDesc = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-desc"));
-    if (tl) {
+    const templateWrap = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-wrap"));
+    const templateDescription = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-desc"));
+    if (templateLevel) {
         /** @type {number[]} */
-        const selectedIndices = tl.templates
+        const selectedIndices = templateLevel.templates
             .map((t, i) => visibleTemplates.has(t.templateId) ? i : -1)
             .filter(i => i >= 0);
         if (selectedIndices.length > 0) {
-            tmplDesc.textContent =
+            templateDescription.textContent =
                 "Compares templates by positional page matching (page 1↔1, 2↔2, …). " +
                 "Templates with different page counts are penalised for unmatched pages. Score 1.0 = identical, 0.0 = nothing in common.";
-            buildMatrixTable(tmplWrap,
-                selectedIndices.map(i => templateName(tl.templates[i])),
-                selectedIndices.map(i => selectedIndices.map(j => tl.matrix[i][j])));
+            buildMatrixTable(templateWrap,
+                selectedIndices.map(i => templateName(templateLevel.templates[i])),
+                selectedIndices.map(i => selectedIndices.map(j => templateLevel.matrix[i][j])));
         } else {
-            tmplDesc.textContent = "";
-            tmplWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No templates selected.</p>";
+            templateDescription.textContent = "";
+            templateWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No templates selected.</p>";
         }
     } else {
-        tmplDesc.textContent = "";
-        tmplWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>Template-level data not available (old JSON format).</p>";
+        templateDescription.textContent = "";
+        templateWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>Template-level data not available (old JSON format).</p>";
     }
 
     const pageWrap = /** @type {HTMLElement} */ (document.getElementById("page-matrix-wrap"));
@@ -791,19 +762,13 @@ function renderSimilarity(data) {
     /** @type {number[]} */
     let selectedPageIndices = [];
 
-    if (tl && visibleTemplates.size > 0) {
-        /** @type {Set<number>} */
-        const seen = new Set();
-        tl.templates
-            .filter(t => visibleTemplates.has(t.templateId))
-            .forEach(t => t.pageIndices.forEach(pi => {
-                if (!seen.has(pi)) {
-                    seen.add(pi);
-                    selectedPageIndices.push(pi);
-                }
-            }));
-        selectedPageIndices.sort((a, b) => a - b);
-    } else if (!tl) {
+    if (templateLevel && visibleTemplates.size > 0) {
+        selectedPageIndices = [...new Set(
+            templateLevel.templates
+                .filter(t => visibleTemplates.has(t.templateId))
+                .flatMap(t => t.pageIndices)
+        )].sort((a, b) => a - b);
+    } else if (!templateLevel) {
         selectedPageIndices = data.pages.map((_, i) => i);
     }
 
@@ -814,7 +779,7 @@ function renderSimilarity(data) {
             "Score 1.0 = identical structure, 0.0 = nothing in common. Pages sorted by proposed family.";
         buildMatrixTable(pageWrap,
             ordered.map(i => pageName(data.pages[i])),
-            ordered.map(i => ordered.map(j => pl.matrix[i][j])));
+            ordered.map(i => ordered.map(j => pageLevel.matrix[i][j])));
     } else {
         pageDesc.textContent = "";
         pageWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No pages to display.</p>";
@@ -833,31 +798,31 @@ function buildMatrixTable(wrap, names, matrix) {
     }
 
     const table = document.createElement("table");
-    const hrow = table.createTHead().insertRow();
-    hrow.insertCell().innerHTML = "<th></th>";
+    const headerRow = table.createTHead().insertRow();
+    headerRow.appendChild(document.createElement("th"));
     names.forEach((name, j) => {
         const th = document.createElement("th");
         th.title = name ?? "";
         th.textContent = `${j + 1}`;
-        hrow.appendChild(th);
+        headerRow.appendChild(th);
     });
 
-    const tbody = table.createTBody();
+    const body = table.createTBody();
     names.forEach((name, i) => {
-        const row = tbody.insertRow();
-        const th = document.createElement("th");
-        th.textContent = `${i + 1}. ${(name ?? "").slice(0, 36)}`;
-        row.appendChild(th);
+        const row = body.insertRow();
+        const headerCell = document.createElement("th");
+        headerCell.textContent = `${i + 1}. ${(name ?? "").slice(0, 36)}`;
+        row.appendChild(headerCell);
         matrix[i].forEach((score, j) => {
-            const td = row.insertCell();
+            const cell = row.insertCell();
             if (i === j) {
-                td.textContent = "—";
-                td.style.background = "#e8e8e8";
+                cell.textContent = "—";
+                cell.style.background = "#e8e8e8";
             } else {
-                td.textContent = score.toFixed(2);
+                cell.textContent = score.toFixed(2);
                 const g = Math.round(200 * score), r = Math.round(255 * (1 - score));
-                td.style.background = `rgb(${r},${g},80)`;
-                if (score >= CLUSTER_THRESHOLD) td.style.fontWeight = "700";
+                cell.style.background = `rgb(${r},${g},80)`;
+                if (score >= CLUSTER_THRESHOLD) cell.style.fontWeight = "700";
             }
         });
     });
@@ -874,17 +839,17 @@ function buildMatrixTable(wrap, names, matrix) {
  * @param {LayoutData} data
  */
 function renderFamilies(data) {
-    const tl = data.similarity?.templateLevel;
-    const pl = data.similarity?.pageLevel || data.similarity;
-    const list = /** @type {HTMLElement} */ (document.getElementById("families-list"));
-    const desc = /** @type {HTMLElement} */ (document.getElementById("families-desc"));
-    list.innerHTML = "";
+    const templateLevel = data.similarity?.templateLevel;
+    const pageLevel = getPageLevel(data);
+    const familyList = /** @type {HTMLElement} */ (document.getElementById("families-list"));
+    const familyDescription = /** @type {HTMLElement} */ (document.getElementById("families-desc"));
+    familyList.innerHTML = "";
 
-    if (!tl) {
-        desc.textContent = "Pages grouped by structural similarity into base-template candidates.";
-        clusterPages(data.pages.map((_, i) => i), pl.matrix).forEach((cluster, fi) => {
-            const li = document.createElement("li");
-            li.innerHTML =
+    if (!templateLevel) {
+        familyDescription.textContent = "Pages grouped by structural similarity into base-template candidates.";
+        clusterPages(data.pages.map((_, i) => i), pageLevel.matrix).forEach((cluster, fi) => {
+            const family = document.createElement("li");
+            family.innerHTML =
                 `<div class="family-header"><div class="family-header-row1">` +
                 `<span class="proposed-label">Proposed</span>` +
                 `<span class="proposed-id">Base Template ${fi + 1}</span>` +
@@ -893,17 +858,15 @@ function renderFamilies(data) {
                 `<div class="family-slots"><div class="family-slot"><div class="slot-row">` +
                 `<span class="orig-pages">${cluster.map(i => `<span class="orig-page">${htmlEsc(pageName(data.pages[i]))}</span>`).join("")}</span>` +
                 `</div></div></div>`;
-            list.appendChild(li);
+            familyList.appendChild(family);
         });
         return;
     }
 
-    desc.textContent =
+    familyDescription.textContent =
         "Templates (top) lead to a proposed base template. " +
         "Numbered rows are proposed base template pages — click a row to preview the original pages that would merge into it.";
 
-    /** @type {Record<string, TemplateEntry>} */
-    const templateById = Object.fromEntries(tl.templates.map(t => [t.templateId, t]));
     let familyIndex = 0;
 
     templateFamilies.forEach(fam => {
@@ -914,7 +877,7 @@ function renderFamilies(data) {
         const hasMultipleTemplates = templates.length > 1;
         /** @type {number[]} */
         const pageIndices = templates.flatMap(t => t.pageIndices).sort((a, b) => a - b);
-        const clusters = clusterPages(pageIndices, pl.matrix).sort((a, b) => Math.min(...a) - Math.min(...b));
+        const clusters = clusterPages(pageIndices, pageLevel.matrix).sort((a, b) => Math.min(...a) - Math.min(...b));
 
         /**
          * @param {number} pi
@@ -932,8 +895,7 @@ function renderFamilies(data) {
 
         let slotsHtml = '<div class="family-slots">';
         clusters.forEach((cluster, ci) => {
-            const slotId = `slot-${familyIndex}-${ci}`;
-            const cohesion = minPairScore(cluster, pl.matrix);
+            const cohesion = minPairScore(cluster, pageLevel.matrix);
             slotsHtml +=
                 `<div class="family-slot">` +
                 `<div class="slot-row" data-action="toggle-preview">` +
@@ -943,7 +905,7 @@ function renderFamilies(data) {
                 `<span class="orig-pages">${cluster.map(pi => `<span class="orig-page">${htmlEsc(pageLabel(pi))}</span>`).join("")}</span>` +
                 `<span class="slot-expand-icon">▶</span>` +
                 `</div>` +
-                `<div class="slot-preview" id="${slotId}"></div>` +
+                `<div class="slot-preview"></div>` +
                 `</div>`;
         });
         slotsHtml += "</div>";
@@ -963,11 +925,11 @@ function renderFamilies(data) {
         li.querySelectorAll(".family-slot").forEach((slotEl, ci) => {
             /** @type {HTMLElement} */ (slotEl).dataset.pageIndices = JSON.stringify(clusters[ci]);
         });
-        list.appendChild(li);
+        familyList.appendChild(li);
     });
 
     if (familyIndex === 0) {
-        list.innerHTML = "<p style='color:var(--muted);font-size:13px'>No families match the current filter.</p>";
+        familyList.innerHTML = "<p style='color:var(--muted);font-size:13px'>No families match the current filter.</p>";
     }
 }
 
@@ -999,7 +961,7 @@ function toggleSlotPreview(rowEl) {
             title.className = "preview-card-title";
             title.textContent = pageName(currentData.pages[pi]);
             wrap.appendChild(title);
-            const svg = buildPageCard(currentData.pages[pi]).querySelector("svg");
+            const svg = buildPageSvg(currentData.pages[pi]);
             if (svg) wrap.appendChild(svg);
             preview.appendChild(wrap);
         });
@@ -1017,11 +979,9 @@ function pageOrderByFamily(data, indices) {
     const tl = data.similarity?.templateLevel;
     if (!tl) return indices;
 
-    const pl = data.similarity?.pageLevel || data.similarity;
+    const pl = getPageLevel(data);
     /** @type {Set<number>} */
     const indexSet = new Set(indices);
-    /** @type {Record<string, TemplateEntry>} */
-    const templateById = Object.fromEntries(tl.templates.map(t => [t.templateId, t]));
     /** @type {number[]} */
     const order = [];
     /** @type {Set<number>} */
