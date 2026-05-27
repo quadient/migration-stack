@@ -18,28 +18,20 @@
 
         body {
             font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-            margin: 0;
+            margin: 24px;
             color: var(--fg);
             background: #fff;
         }
 
-        header {
-            padding: 16px 24px 12px;
-            border-bottom: 1px solid var(--line);
+        .toolbar {
             display: flex;
+            gap: 8px;
             align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
+            margin-bottom: 12px;
         }
 
-        header h1 {
-            margin: 0;
-            font-size: 18px;
-            flex: 1;
-        }
-
-        button, #file-input-label {
-            padding: 7px 14px;
+        button, input[type="file"] {
+            padding: 8px 10px;
             border: 1px solid #ccc;
             border-radius: 8px;
             background: var(--bg);
@@ -47,56 +39,55 @@
             font-size: 13px;
         }
 
-        button:active, #file-input-label:active {
-            transform: translateY(1px);
+        button:disabled {
+            opacity: 0.5;
+            cursor: default;
         }
 
-        #file {
-            display: none;
-        }
-
-        #status {
+        .status {
             font-size: 13px;
-            color: var(--muted);
+            color: #c00;
         }
 
-        main {
-            padding: 20px 24px;
-        }
-
-        .tabs {
+        /* Layout: split view */
+        .split-layout {
             display: flex;
-            gap: 4px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid var(--line);
+            gap: 24px;
         }
 
-        .tab-btn {
-            padding: 8px 18px;
-            border: none;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
+        .families-pane {
+            flex: 1;
+            min-width: 0;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .similarity-pane {
+            flex: 1;
+            min-width: 0;
+            border-left: 1px solid var(--line);
+            padding-left: 24px;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .similarity-pane .section-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .similarity-pane .close-btn {
+            margin-left: auto;
             background: none;
+            border: none;
+            font-size: 18px;
             cursor: pointer;
-            font-size: 14px;
             color: var(--muted);
-            border-radius: 0;
+            padding: 0 4px;
         }
 
-        .tab-btn.active {
-            border-bottom-color: #2563eb;
-            color: #2563eb;
-            font-weight: 600;
-        }
-
-        .tab-panel {
-            display: none;
-        }
-
-        .tab-panel.active {
-            display: block;
-        }
-
+        /* Matrix */
         .matrix-wrap {
             overflow-x: auto;
         }
@@ -122,70 +113,6 @@
             min-width: 52px;
         }
 
-        #filter-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 0 14px;
-            margin-bottom: 18px;
-            border-bottom: 1px solid var(--line);
-            flex-wrap: wrap;
-        }
-
-        #filter-bar label {
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .filter-anchor {
-            position: relative;
-        }
-
-        .filter-btn {
-            padding: 5px 12px;
-            font-size: 12px;
-            border-radius: 6px;
-        }
-
-        .filter-panel {
-            position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
-            z-index: 100;
-            background: #fff;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-            padding: 6px 0;
-            min-width: 230px;
-            max-height: 280px;
-            overflow-y: auto;
-        }
-
-        .filter-panel label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 5px 14px;
-            font-size: 12px;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .filter-panel label:hover {
-            background: var(--bg);
-        }
-
-        .small-link {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 12px;
-            color: #2563eb;
-            padding: 0;
-            text-decoration: underline;
-        }
-
         .section-head {
             font-size: 13px;
             font-weight: 700;
@@ -199,12 +126,7 @@
             margin-top: 0;
         }
 
-        .section-desc {
-            font-size: 12px;
-            color: var(--muted);
-            margin: 0 0 10px;
-        }
-
+        /* Family list */
         .family-list {
             list-style: none;
             margin: 0;
@@ -216,6 +138,11 @@
             border: 1px solid var(--line);
             border-radius: 10px;
             overflow: hidden;
+            transition: opacity 0.2s;
+        }
+
+        .family-list > li.dimmed {
+            opacity: 0.45;
         }
 
         .family-header {
@@ -226,33 +153,14 @@
 
         .family-header-row1 {
             display: flex;
-            align-items: baseline;
+            align-items: center;
             flex-wrap: wrap;
             gap: 6px;
-            margin-bottom: 4px;
         }
 
-        .family-header-row2 {
-            font-size: 12px;
-            color: var(--muted);
-        }
-
-        .proposed-label {
-            font-size: 11px;
-            color: var(--muted);
-            font-weight: 400;
-        }
-
-        .proposed-id {
-            font-size: 13px;
-            font-weight: 700;
-            color: #2563eb;
-        }
-
-        .family-header .muted-note {
-            color: var(--muted);
-            font-weight: 400;
-            font-size: 12px;
+        .family-header-row1 input[type="checkbox"] {
+            margin: 0 4px 0 0;
+            cursor: pointer;
         }
 
         .family-slots {
@@ -285,7 +193,7 @@
             height: 22px;
             border-radius: 50%;
             background: #e8f0fe;
-            color: #2563eb;
+            color: #4a7ab5;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -293,6 +201,22 @@
             font-weight: 700;
             flex-shrink: 0;
             margin-top: 1px;
+            margin-right: 4px;
+            cursor: pointer;
+            border: 2px solid #a8c4e0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .slot-num.all-selected {
+            background: #6b9fd4;
+            border-color: #6b9fd4;
+            color: #fff;
+        }
+
+        .slot-num.none-selected {
+            background: #fff;
+            border-color: #ccc;
+            color: #999;
         }
 
         .cohesion-dot {
@@ -333,6 +257,18 @@
             gap: 4px;
             align-items: center;
             flex: 1;
+        }
+
+        .orig-page-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+        }
+
+        .orig-page-label input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
         }
 
         .orig-page {
@@ -380,67 +316,35 @@
             padding: 1px 5px;
             font-size: 12px;
         }
-
-        code.dimmed {
-            color: #bbb;
-            background: #fafafa;
-            border: 1px solid #e8e8e8;
-        }
-
-        #empty {
-            color: var(--muted);
-            font-size: 14px;
-            padding: 40px 0;
-        }
     </style>
 </head>
 <body>
-<header>
-    <h1>Layout Analysis</h1>
-    <label id="file-input-label" for="file">📂 Load JSON…</label>
+
+<div class="toolbar">
+    <button id="similarity-btn" disabled>Show similarity</button>
+    <button id="select-all">Select all</button>
+    <button id="select-none">Deselect all</button>
     <input type="file" id="file" accept=".json"/>
-    <div id="status">No file loaded — use the button above to open a <code>*-layout.json</code> file.</div>
-</header>
+    <div class="status" id="status"></div>
+</div>
 
-<main id="main">
-    <div id="empty">Load a JSON file to begin.</div>
-
-    <div id="app" hidden>
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="families">Template Families</button>
-            <button class="tab-btn" data-tab="similarity">Similarity</button>
+<div id="app" hidden>
+    <div class="split-layout">
+        <div class="families-pane">
+            <ul class="family-list" id="families-list"></ul>
         </div>
-
-        <!-- Global template filter — applies to all tabs -->
-        <div id="filter-bar">
-            <label>Templates:</label>
-            <div class="filter-anchor">
-                <button class="filter-btn" id="filter-btn">All templates ▾</button>
-                <div class="filter-panel" id="filter-panel" hidden></div>
+        <div class="similarity-pane" id="similarity-pane" hidden>
+            <div class="section-head">
+                Template similarity
+                <button class="close-btn" id="similarity-close" title="Close">&times;</button>
             </div>
-            <button class="small-link" id="filter-all">all</button>
-            <span style="color:var(--muted);font-size:12px">·</span>
-            <button class="small-link" id="filter-none">none</button>
-        </div>
-
-        <!-- Similarity tab -->
-        <div class="tab-panel" id="tab-similarity">
-            <div class="section-head">Template similarity</div>
-            <p class="section-desc" id="tmpl-matrix-desc"></p>
             <div class="matrix-wrap" id="tmpl-matrix-wrap"></div>
 
             <div class="section-head">Page similarity</div>
-            <p class="section-desc" id="page-matrix-desc"></p>
             <div class="matrix-wrap" id="page-matrix-wrap"></div>
         </div>
-
-        <!-- Families tab -->
-        <div class="tab-panel active" id="tab-families">
-            <p class="section-desc" id="families-desc"></p>
-            <ul class="family-list" id="families-list"></ul>
-        </div>
     </div>
-</main>
+</div>
 
 <script type="module">
 // @ts-check
@@ -527,101 +431,96 @@ const PALETTE = [
     "#aecbeb", "#ffcfa1", "#f4a59d", "#b0dbd8", "#a8d5a2",
 ];
 
-const CANVAS_W = 180;
+const CANVAS_W = 400;
 const PAD = 10;
 const CLUSTER_THRESHOLD = 0.60;
 
 /** @type {LayoutData|null} */
 let currentData = null;
-/** @type {Set<string>} */
-let visibleTemplates = new Set();
 /** @type {TemplateFamily[]} */
 let templateFamilies = [];
 /** @type {Record<string, TemplateEntry>} */
 let templateById = {};
+/** @type {Set<number>} - indices into templateFamilies that are selected */
+let selectedFamilies = new Set();
+/** @type {Set<number>} - global page indices that are selected (for similarity) */
+let selectedPages = new Set();
+/** @type {Map<number, string>} - global page index → stable display label (e.g. "2a.1") */
+let pageNumberMap = new Map();
 
-const filterBtn = /** @type {HTMLButtonElement} */ (document.getElementById("filter-btn"));
-const filterPanel = /** @type {HTMLElement} */ (document.getElementById("filter-panel"));
+const statusEl = /** @type {HTMLElement} */ (document.getElementById("status"));
+const fileInput = /** @type {HTMLInputElement} */ (document.getElementById("file"));
+const similarityBtn = /** @type {HTMLButtonElement} */ (document.getElementById("similarity-btn"));
+const similarityPane = /** @type {HTMLElement} */ (document.getElementById("similarity-pane"));
 
-document.getElementById("file").addEventListener("change", async (e) => {
-    const input = /** @type {HTMLInputElement} */ (e.target);
-    const [file] = /** @type {FileList} */ (input.files);
-    if (!file) return;
+/**
+ * @param {File} file
+ */
+async function loadFile(file) {
     try {
         /** @type {LayoutData} */
         const data = JSON.parse(await file.text());
-        document.getElementById("status").textContent =
-            `${file.name}  ·  ${data.pages.length} page(s)  ·  project: ${data.projectName}`;
+        statusEl.textContent = "";
         render(data);
     } catch (err) {
-        document.getElementById("status").textContent = "Error: " + /** @type {Error} */ (err).message;
+        statusEl.textContent = "Error: " + /** @type {Error} */ (err).message;
+    }
+}
+
+fileInput.addEventListener("change", () => {
+    const [file] = /** @type {FileList} */ (fileInput.files);
+    if (file) loadFile(file);
+});
+
+document.body.addEventListener("dragover", e => e.preventDefault());
+document.body.addEventListener("drop", e => {
+    e.preventDefault();
+    const file = e.dataTransfer?.files[0];
+    if (file) loadFile(file);
+});
+
+document.getElementById("select-all").addEventListener("click", () => {
+    templateFamilies.forEach((_, i) => selectedFamilies.add(i));
+    updateFamilyCheckboxes();
+    updateToolbarState();
+    if (!similarityPane.hidden) renderSimilarity();
+});
+
+document.getElementById("select-none").addEventListener("click", () => {
+    selectedFamilies.clear();
+    updateFamilyCheckboxes();
+    updateToolbarState();
+    if (!similarityPane.hidden) renderSimilarity();
+});
+
+similarityBtn.addEventListener("click", () => {
+    if (similarityPane.hidden) {
+        similarityPane.hidden = false;
+        renderSimilarity();
+    } else {
+        similarityPane.hidden = true;
     }
 });
 
-document.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-        document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
-        btn.classList.add("active");
-        document.getElementById("tab-" + /** @type {HTMLElement} */ (btn).dataset.tab).classList.add("active");
-    });
+document.getElementById("similarity-close").addEventListener("click", () => {
+    similarityPane.hidden = true;
 });
 
-filterBtn.addEventListener("click", e => {
-    filterPanel.hidden = !filterPanel.hidden;
-    e.stopPropagation();
-});
-document.addEventListener("click", () => {
-    filterPanel.hidden = true;
-});
-filterPanel.addEventListener("click", e => e.stopPropagation());
-
-document.getElementById("filter-all").addEventListener("click", () => {
-    filterPanel.querySelectorAll("input[type=checkbox]").forEach(cb => {
-        /** @type {HTMLInputElement} */ (cb).checked = true;
-        visibleTemplates.add(/** @type {HTMLInputElement} */ (cb).dataset.id);
-    });
-    updateFilterBtn();
-    if (currentData) rerender();
-});
-document.getElementById("filter-none").addEventListener("click", () => {
-    filterPanel.querySelectorAll("input[type=checkbox]").forEach(cb => {
-        /** @type {HTMLInputElement} */ (cb).checked = false;
-    });
-    visibleTemplates.clear();
-    updateFilterBtn();
-    if (currentData) rerender();
-});
-
-/**
- * @param {TemplateEntry[]} templates
- */
-function buildFilterPanel(templates) {
-    filterPanel.innerHTML = "";
-    templates.forEach(t => {
-        const label = document.createElement("label");
-        const cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.checked = true;
-        cb.dataset.id = t.templateId;
-        cb.addEventListener("change", () => {
-            if (cb.checked) visibleTemplates.add(t.templateId);
-            else visibleTemplates.delete(t.templateId);
-            updateFilterBtn();
-            if (currentData) rerender();
-        });
-        label.appendChild(cb);
-        label.appendChild(document.createTextNode(" " + templateName(t)));
-        filterPanel.appendChild(label);
-    });
+/** @returns {void} */
+function updateToolbarState() {
+    const hasData = currentData != null;
+    similarityBtn.disabled = !hasData;
+    document.getElementById("select-all").disabled = !hasData;
+    document.getElementById("select-none").disabled = !hasData;
 }
 
 /** @returns {void} */
-function updateFilterBtn() {
-    const total = currentData?.similarity?.templateLevel?.templates?.length ?? 0;
-    filterBtn.textContent = visibleTemplates.size === total
-        ? `All templates (${total}) ▾`
-        : `${visibleTemplates.size} of ${total} templates ▾`;
+function updateFamilyCheckboxes() {
+    document.querySelectorAll("#families-list > li").forEach((li, i) => {
+        const cb = /** @type {HTMLInputElement|null} */ (li.querySelector("input[type=checkbox]"));
+        if (cb) cb.checked = selectedFamilies.has(i);
+        li.classList.toggle("dimmed", !selectedFamilies.has(i));
+    });
 }
 
 /**
@@ -629,23 +528,33 @@ function updateFilterBtn() {
  */
 function render(data) {
     currentData = data;
-    document.getElementById("empty").hidden = true;
     document.getElementById("app").hidden = false;
+    similarityPane.hidden = true;
 
     const templateLevel = data.similarity.templateLevel;
     templateById = Object.fromEntries(templateLevel.templates.map(t => [t.templateId, t]));
     templateFamilies = computeTemplateFamilies(templateLevel);
-    visibleTemplates = new Set(templateLevel.templates.map(t => t.templateId));
-    buildFilterPanel(templateLevel.templates);
-    updateFilterBtn();
+    selectedFamilies = new Set(templateFamilies.map((_, i) => i));
+    selectedPages = new Set(templateLevel.templates.flatMap(t => t.pageIndices));
 
-    rerender();
-}
+    // Build stable page numbering scoped per template (e.g. "2a.1", "2a.2", "3.1")
+    pageNumberMap = new Map();
+    const {pageLevel} = data.similarity;
+    templateFamilies.forEach((fam, fi) => {
+        const famTemplates = fam.templateIds.map(id => templateById[id]).filter(Boolean);
+        famTemplates.forEach((tmpl, tidx) => {
+            const prefix = familyPrefix(fi, fam, tidx);
+            const tmplPages = [...tmpl.pageIndices].sort((a, b) => a - b);
+            tmplPages.forEach((pi, pageIdx) => {
+                if (!pageNumberMap.has(pi)) {
+                    pageNumberMap.set(pi, `${prefix}.${pageIdx + 1}`);
+                }
+            });
+        });
+    });
 
-/** @returns {void} */
-function rerender() {
-    renderSimilarity(currentData);
-    renderFamilies(currentData);
+    renderFamilies(data);
+    updateToolbarState();
 }
 
 /**
@@ -714,63 +623,63 @@ function buildPageSvg(page) {
     return svg;
 }
 
-/**
- * @param {LayoutData} data
- */
-function renderSimilarity(data) {
-    const {templateLevel, pageLevel} = data.similarity;
+/** @returns {void} */
+function renderSimilarity() {
+    const {templateLevel, pageLevel} = currentData.similarity;
 
     const templateWrap = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-wrap"));
-    const templateDescription = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-desc"));
+    const pageWrap = /** @type {HTMLElement} */ (document.getElementById("page-matrix-wrap"));
+
     /** @type {number[]} */
-    const selectedIndices = templateLevel.templates
-        .map((t, i) => visibleTemplates.has(t.templateId) ? i : -1)
-        .filter(i => i >= 0);
-    if (selectedIndices.length > 0) {
-        templateDescription.textContent =
-            "Compares templates by positional page matching (page 1↔1, 2↔2, …). " +
-            "Templates with different page counts are penalised for unmatched pages. Score 1.0 = identical, 0.0 = nothing in common.";
-        buildMatrixTable(templateWrap,
-            selectedIndices.map(i => templateName(templateLevel.templates[i])),
-            selectedIndices.map(i => selectedIndices.map(j => templateLevel.matrix[i][j])));
+    const selectedTemplateIndices = [];
+    /** @type {string[]} */
+    const templateLabels = [];
+    /** @type {string[]} */
+    const templateColHeaders = [];
+    selectedFamilies.forEach(fi => {
+        const fam = templateFamilies[fi];
+        fam.templateIds.forEach((id, idx) => {
+            const ti = templateLevel.templates.findIndex(t => t.templateId === id);
+            if (ti >= 0) {
+                selectedTemplateIndices.push(ti);
+                const shortId = familyPrefix(fi, fam, idx);
+                templateLabels.push(`${shortId}. ${templateName(templateLevel.templates[ti])}`);
+                templateColHeaders.push(shortId);
+            }
+        });
+    });
+
+    if (selectedTemplateIndices.length > 0) {
+        buildMatrixTable(templateWrap, templateLabels, templateColHeaders,
+            selectedTemplateIndices.map(i => selectedTemplateIndices.map(j => templateLevel.matrix[i][j])));
     } else {
-        templateDescription.textContent = "";
         templateWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No templates selected.</p>";
     }
 
-    const pageWrap = /** @type {HTMLElement} */ (document.getElementById("page-matrix-wrap"));
-    const pageDesc = /** @type {HTMLElement} */ (document.getElementById("page-matrix-desc"));
-
     /** @type {number[]} */
-    const selectedPageIndices = visibleTemplates.size > 0
-        ? [...new Set(
-            templateLevel.templates
-                .filter(t => visibleTemplates.has(t.templateId))
-                .flatMap(t => t.pageIndices)
-        )].sort((a, b) => a - b)
-        : [];
+    const selectedPageIndices = [...new Set(
+        selectedTemplateIndices.flatMap(i => templateLevel.templates[i].pageIndices)
+    )].filter(pi => selectedPages.has(pi)).sort((a, b) => a - b);
 
     if (selectedPageIndices.length > 0) {
-        const ordered = pageOrderByFamily(data, selectedPageIndices);
-        pageDesc.textContent =
-            "Compares pages by area structure (x + width normalised to page width, height with 3× tolerance). " +
-            "Score 1.0 = identical structure, 0.0 = nothing in common. Pages sorted by proposed family.";
-        buildMatrixTable(pageWrap,
-            ordered.map(i => pageName(data.pages[i])),
+        const ordered = pageOrderByFamily(selectedPageIndices);
+        const pageLabels = ordered.map(pi => `${pageNumberMap.get(pi)} ${pageName(currentData.pages[pi])}`);
+        const pageColHeaders = ordered.map(pi => `${pageNumberMap.get(pi)}`);
+        buildMatrixTable(pageWrap, pageLabels, pageColHeaders,
             ordered.map(i => ordered.map(j => pageLevel.matrix[i][j])));
     } else {
-        pageDesc.textContent = "";
         pageWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No pages to display.</p>";
     }
 }
 
 /**
  * @param {HTMLElement} wrap
- * @param {string[]} names
+ * @param {string[]} labels - row labels (displayed in row header cells as-is)
+ * @param {string[]} colHeaders - short column headers
  * @param {number[][]} matrix
  */
-function buildMatrixTable(wrap, names, matrix) {
-    if (!names.length) {
+function buildMatrixTable(wrap, labels, colHeaders, matrix) {
+    if (!labels.length) {
         wrap.innerHTML = "";
         return;
     }
@@ -778,23 +687,23 @@ function buildMatrixTable(wrap, names, matrix) {
     const table = document.createElement("table");
     const headerRow = table.createTHead().insertRow();
     headerRow.appendChild(document.createElement("th"));
-    names.forEach((name, j) => {
+    colHeaders.forEach((col, j) => {
         const th = document.createElement("th");
-        th.title = name ?? "";
-        th.textContent = `${j + 1}`;
+        th.title = labels[j] ?? "";
+        th.textContent = col;
         headerRow.appendChild(th);
     });
 
     const body = table.createTBody();
-    names.forEach((name, i) => {
+    labels.forEach((label, i) => {
         const row = body.insertRow();
         const headerCell = document.createElement("th");
-        headerCell.textContent = `${i + 1}. ${(name ?? "").slice(0, 36)}`;
+        headerCell.textContent = (label ?? "").slice(0, 42);
         row.appendChild(headerCell);
         matrix[i].forEach((score, j) => {
             const cell = row.insertCell();
             if (i === j) {
-                cell.textContent = "—";
+                cell.textContent = "\u2014";
                 cell.style.background = "#e8e8e8";
             } else {
                 cell.textContent = score.toFixed(2);
@@ -807,10 +716,6 @@ function buildMatrixTable(wrap, names, matrix) {
 
     wrap.innerHTML = "";
     wrap.appendChild(table);
-    const note = document.createElement("p");
-    note.style.cssText = "font-size:11px;color:var(--muted);margin-top:6px";
-    note.textContent = `Green = high similarity · Bold = same family (≥ ${CLUSTER_THRESHOLD}). Numbers match row/column headers.`;
-    wrap.appendChild(note);
 }
 
 /**
@@ -819,50 +724,35 @@ function buildMatrixTable(wrap, names, matrix) {
 function renderFamilies(data) {
     const {pageLevel} = data.similarity;
     const familyList = /** @type {HTMLElement} */ (document.getElementById("families-list"));
-    const familyDescription = /** @type {HTMLElement} */ (document.getElementById("families-desc"));
     familyList.innerHTML = "";
 
-    familyDescription.textContent =
-        "Templates (top) lead to a proposed base template. " +
-        "Numbered rows are proposed base template pages — click a row to preview the original pages that would merge into it.";
-
-    let familyIndex = 0;
-
-    templateFamilies.forEach(fam => {
-        if (!fam.templateIds.some(id => visibleTemplates.has(id))) return;
-        familyIndex++;
-
+    templateFamilies.forEach((fam, familyIndex) => {
         const templates = fam.templateIds.map(id => templateById[id]).filter(Boolean);
-        const hasMultipleTemplates = templates.length > 1;
         /** @type {number[]} */
         const pageIndices = templates.flatMap(t => t.pageIndices).sort((a, b) => a - b);
-        const clusters = clusterPages(pageIndices, pageLevel.matrix).sort((a, b) => Math.min(...a) - Math.min(...b));
-
-        /**
-         * @param {number} pi
-         * @returns {string}
-         */
-        const pageLabel = pi => {
-            const name = pageName(data.pages[pi]);
-            const owner = hasMultipleTemplates && templates.find(t => t.pageIndices.includes(pi));
-            return owner ? `${templateName(owner)} / ${name}` : name;
-        };
+        const clusters = clusterPages(pageIndices, pageLevel.matrix)
+            .map(c => c.sort((a, b) => a - b))
+            .sort((a, b) => Math.min(...a) - Math.min(...b));
 
         const templateBadges = fam.templateIds.map((id, idx) =>
-            `<code${visibleTemplates.has(id) ? "" : ' class="dimmed"'}>${htmlEsc(fam.templateNames[idx] ?? id)}</code>`
+            `<code><strong>${familyPrefix(familyIndex, fam, idx)}.</strong> ${htmlEsc(fam.templateNames[idx] ?? id)}</code>`
         ).join("  ");
 
         let slotsHtml = '<div class="family-slots">';
         clusters.forEach((cluster, ci) => {
             const cohesion = minPairScore(cluster, pageLevel.matrix);
+            const checkedCount = cluster.filter(pi => selectedPages.has(pi)).length;
+            const slotState = checkedCount === cluster.length ? "all-selected" : checkedCount === 0 ? "none-selected" : "";
             slotsHtml +=
                 `<div class="family-slot">` +
                 `<div class="slot-row" data-action="toggle-preview">` +
-                `<span class="slot-num">${ci + 1}</span>` +
+                `<span class="slot-num ${slotState}" data-action="toggle-slot">${ci + 1}</span>` +
                 `<span class="cohesion-dot ${cohesionClass(cohesion)}" ` +
                 `title="${cohesion !== null ? `Cohesion (min pair): ${cohesion.toFixed(2)}` : "Single page"}"></span>` +
-                `<span class="orig-pages">${cluster.map(pi => `<span class="orig-page">${htmlEsc(pageLabel(pi))}</span>`).join("")}</span>` +
-                `<span class="slot-expand-icon">▶</span>` +
+                `<span class="orig-pages">${cluster.map(pi =>
+                    `<label class="orig-page-label"><input type="checkbox" data-page="${pi}" ${selectedPages.has(pi) ? "checked" : ""}/><span class="orig-page"><strong>${pageNumberMap.get(pi)}</strong> ${htmlEsc(pageName(data.pages[pi]))}</span></label>`
+                ).join("")}</span>` +
+                `<span class="slot-expand-icon">&#9654;</span>` +
                 `</div>` +
                 `<div class="slot-preview"></div>` +
                 `</div>`;
@@ -870,15 +760,13 @@ function renderFamilies(data) {
         slotsHtml += "</div>";
 
         const li = document.createElement("li");
+        li.dataset.familyIndex = String(familyIndex);
         li.innerHTML =
             `<div class="family-header">` +
-            `<div class="family-header-row1">${templateBadges}` +
-            `<span style="margin-left:auto;display:flex;align-items:baseline;gap:5px">` +
-            `<span class="proposed-label">→ Proposed</span>` +
-            `<span class="proposed-id">Base Template ${familyIndex}</span>` +
-            (fam.templateIds.length === 1 ? `<span class="muted-note">(unique)</span>` : "") +
-            `</span></div>` +
-            `<div class="family-header-row2">${clusters.length} page slot(s) · ${pageIndices.length} original page(s) · click a slot to preview</div>` +
+            `<div class="family-header-row1">` +
+            `<input type="checkbox" checked data-family="${familyIndex}"/>` +
+            `${templateBadges}` +
+            `</div>` +
             `</div>` + slotsHtml;
 
         li.querySelectorAll(".family-slot").forEach((slotEl, ci) => {
@@ -886,15 +774,73 @@ function renderFamilies(data) {
         });
         familyList.appendChild(li);
     });
-
-    if (familyIndex === 0) {
-        familyList.innerHTML = "<p style='color:var(--muted);font-size:13px'>No families match the current filter.</p>";
-    }
 }
 
-// Event delegation for slot preview toggle
+/**
+ * Updates slot number visual state based on checked pages in the slot.
+ * @param {HTMLElement} slotNumEl
+ * @param {HTMLElement} slotEl
+ */
+function updateSlotNumState(slotNumEl, slotEl) {
+    const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (slotEl.querySelectorAll("input[data-page]"));
+    const checkedCount = [...checkboxes].filter(cb => cb.checked).length;
+    slotNumEl.classList.toggle("all-selected", checkedCount === checkboxes.length);
+    slotNumEl.classList.toggle("none-selected", checkedCount === 0);
+}
+
+// Event delegation for family checkboxes
+document.getElementById("families-list").addEventListener("change", (e) => {
+    const cb = /** @type {HTMLInputElement} */ (e.target);
+    if (cb.type !== "checkbox") return;
+    if (cb.dataset.family != null) {
+        const fi = parseInt(cb.dataset.family);
+        if (cb.checked) selectedFamilies.add(fi);
+        else selectedFamilies.delete(fi);
+        cb.closest("li").classList.toggle("dimmed", !cb.checked);
+        updateToolbarState();
+    } else if (cb.dataset.page != null) {
+        const pi = parseInt(cb.dataset.page);
+        if (cb.checked) selectedPages.add(pi);
+        else selectedPages.delete(pi);
+        // Hide/show corresponding preview cards
+        document.querySelectorAll(`.preview-card[data-page-index="${pi}"]`).forEach(card => {
+            /** @type {HTMLElement} */ (card).hidden = !cb.checked;
+        });
+        // Update slot number state
+        const slotEl = /** @type {HTMLElement} */ (cb.closest(".family-slot"));
+        const slotNum = /** @type {HTMLElement} */ (slotEl.querySelector(".slot-num"));
+        updateSlotNumState(slotNum, slotEl);
+    }
+    if (!similarityPane.hidden) renderSimilarity();
+});
+
+// Event delegation for slot preview toggle and slot number toggle
 document.getElementById("families-list").addEventListener("click", (e) => {
     const target = /** @type {HTMLElement} */ (e.target);
+    if (target.type === "checkbox" || target.closest(".orig-page-label")) return;
+
+    // Slot number click — toggle all page checkboxes in this slot
+    if (target.dataset.action === "toggle-slot") {
+        e.stopPropagation();
+        const slotEl = /** @type {HTMLElement} */ (target.closest(".family-slot"));
+        const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (slotEl.querySelectorAll("input[data-page]"));
+        const allChecked = [...checkboxes].every(cb => cb.checked);
+        checkboxes.forEach(cb => {
+            cb.checked = !allChecked;
+            const pi = parseInt(cb.dataset.page);
+            if (cb.checked) selectedPages.add(pi);
+            else selectedPages.delete(pi);
+        });
+        updateSlotNumState(target, slotEl);
+        // Update preview card visibility
+        slotEl.querySelectorAll(".preview-card").forEach(card => {
+            const pi = parseInt(/** @type {HTMLElement} */ (card).dataset.pageIndex);
+            /** @type {HTMLElement} */ (card).hidden = !selectedPages.has(pi);
+        });
+        if (!similarityPane.hidden) renderSimilarity();
+        return;
+    }
+
     const row = /** @type {HTMLElement|null} */ (target.closest("[data-action='toggle-preview']"));
     if (!row) return;
     toggleSlotPreview(row);
@@ -908,7 +854,7 @@ function toggleSlotPreview(rowEl) {
     const preview = /** @type {HTMLElement} */ (slotEl.querySelector(".slot-preview"));
     const icon = /** @type {HTMLElement} */ (rowEl.querySelector(".slot-expand-icon"));
     const isOpen = preview.classList.toggle("open");
-    icon.textContent = isOpen ? "▼" : "▶";
+    icon.textContent = isOpen ? "\u25BC" : "\u25B6";
 
     if (isOpen && preview.childElementCount === 0) {
         /** @type {number[]} */
@@ -916,6 +862,8 @@ function toggleSlotPreview(rowEl) {
         indices.forEach(pi => {
             const wrap = document.createElement("div");
             wrap.className = "preview-card";
+            wrap.dataset.pageIndex = String(pi);
+            if (!selectedPages.has(pi)) wrap.hidden = true;
             const title = document.createElement("div");
             title.className = "preview-card-title";
             title.textContent = pageName(currentData.pages[pi]);
@@ -928,14 +876,12 @@ function toggleSlotPreview(rowEl) {
 }
 
 /**
- * Reorders page indices so pages in the same family are adjacent —
- * produces diagonal blocks in the similarity matrix.
- * @param {LayoutData} data
+ * Reorders page indices so pages in the same family are adjacent.
  * @param {number[]} indices
  * @returns {number[]}
  */
-function pageOrderByFamily(data, indices) {
-    const {pageLevel} = data.similarity;
+function pageOrderByFamily(indices) {
+    const {pageLevel} = currentData.similarity;
     /** @type {Set<number>} */
     const indexSet = new Set(indices);
     /** @type {number[]} */
@@ -943,8 +889,8 @@ function pageOrderByFamily(data, indices) {
     /** @type {Set<number>} */
     const seen = new Set();
 
-    templateFamilies.forEach(fam => {
-        if (!fam.templateIds.some(id => visibleTemplates.has(id))) return;
+    templateFamilies.forEach((fam, fi) => {
+        if (!selectedFamilies.has(fi)) return;
         const famIndices = fam.templateIds
             .flatMap(id => templateById[id]?.pageIndices ?? [])
             .filter(pi => indexSet.has(pi))
@@ -965,7 +911,19 @@ function pageOrderByFamily(data, indices) {
 }
 
 /**
- * Clusters templates by structural similarity and returns families with templateIds/templateNames.
+ * Returns a short prefix for a template within a family (e.g. "2a" or "3").
+ * @param {number} familyIndex
+ * @param {TemplateFamily} fam
+ * @param {number} templateIndex - index within the family's templateIds
+ * @returns {string}
+ */
+function familyPrefix(familyIndex, fam, templateIndex) {
+    const num = familyIndex + 1;
+    const letter = fam.templateIds.length > 1 ? String.fromCharCode(97 + templateIndex) : "";
+    return `${num}${letter}`;
+}
+
+/**
  * @param {TemplateLevel} tl
  * @returns {TemplateFamily[]}
  */
@@ -978,8 +936,7 @@ function computeTemplateFamilies(tl) {
 }
 
 /**
- * Average-linkage agglomerative clustering: merges two clusters when their mean cross-pair
- * similarity meets CLUSTER_THRESHOLD. Avoids the chaining effect of single-linkage.
+ * Average-linkage agglomerative clustering.
  * @param {number[]} indices
  * @param {number[][]} matrix
  * @returns {number[][]}
@@ -1007,7 +964,6 @@ function clusterPages(indices, matrix) {
 }
 
 /**
- * Minimum pairwise similarity within a cluster — indicates how tight the grouping is.
  * @param {number[]} cluster
  * @param {number[][]} matrix
  * @returns {number|null}
@@ -1044,7 +1000,6 @@ function svgEl(tag, attrs) {
 }
 
 /**
- * Offsets by PAD (use for x/y positions).
  * @param {number} mm
  * @param {number} scale
  * @returns {number}
@@ -1054,7 +1009,6 @@ function svgPos(mm, scale) {
 }
 
 /**
- * Scales without offset (use for width/height dimensions).
  * @param {number} mm
  * @param {number} scale
  * @returns {number}
