@@ -433,6 +433,7 @@
  * @typedef {Object} TemplateGroup
  * @property {string[]} templateIds
  * @property {string[]} templateNames
+ * @property {number[][]} pageGroups - sorted page-index clusters, stable after render
  */
 
 /** @type {string[]} */
@@ -552,6 +553,7 @@ function render(data) {
     selectedPages = new Set(templateLevel.templates.flatMap(t => t.pageIndices));
 
     // Build stable page numbering scoped per template (e.g. "2a.1", "2a.2", "3.1")
+    // and compute sorted page-group clusters once for reuse across render and similarity
     pageNumberMap = new Map();
     const {pageLevel} = data.similarity;
     templateGroups.forEach((group, i) => {
@@ -565,6 +567,11 @@ function render(data) {
                 }
             });
         });
+
+        const pageIndices = groupTemplates.flatMap(t => t.pageIndices).sort((a, b) => a - b);
+        group.pageGroups = groupPages(pageIndices, pageLevel.matrix)
+            .map(pg => pg.sort((a, b) => a - b))
+            .sort((a, b) => Math.min(...a) - Math.min(...b));
     });
 
     renderTemplateGroups(data);
@@ -688,7 +695,7 @@ function renderSimilarity() {
     /** @type {number[]} */
     const selectedPageIndices = [...new Set(
         selectedTemplateIndices.flatMap(i => templateLevel.templates[i].pageIndices)
-    )].filter(pi => selectedPages.has(pi)).sort((a, b) => a - b);
+    )].filter(j => selectedPages.has(j)).sort((a, b) => a - b);
 
     if (selectedPageIndices.length > 0) {
         const ordered = pageOrderByGroup(selectedPageIndices);
@@ -756,12 +763,7 @@ function renderTemplateGroups(data) {
     groupsEl.innerHTML = "";
 
     templateGroups.forEach((group, groupIndex) => {
-        const templates = group.templateIds.map(id => templateById[id]).filter(Boolean);
-        /** @type {number[]} */
-        const pageIndices = templates.flatMap(t => t.pageIndices).sort((a, b) => a - b);
-        const pageGroups = groupPages(pageIndices, pageLevel.matrix)
-            .map(c => c.sort((a, b) => a - b))
-            .sort((a, b) => Math.min(...a) - Math.min(...b));
+        const pageGroups = group.pageGroups;
 
         const templateBadges = group.templateIds.map((id, idx) =>
             `<code><strong>${templateGroupPrefix(groupIndex, group, idx)}.</strong> ${htmlEsc(group.templateNames[idx] ?? id)}</code>`
@@ -895,7 +897,16 @@ function togglePageCards(rowEl) {
             if (!selectedPages.has(pi)) wrap.hidden = true;
             const title = document.createElement("div");
             title.className = "page-card-title";
-            title.textContent = pageName(currentData.pages[pi]);
+            const pageNum = pageNumberMap.get(pi);
+            if (pageNum) {
+                const numSpan = document.createElement("span");
+                numSpan.style.fontWeight = "700";
+                numSpan.textContent = pageNum + " ";
+                title.appendChild(numSpan);
+                title.appendChild(document.createTextNode(pageName(currentData.pages[pi])));
+            } else {
+                title.textContent = pageName(currentData.pages[pi]);
+            }
             title.style.cursor = "pointer";
             title.addEventListener("click", () => {
                 const cb = /** @type {HTMLInputElement|null} */ (
@@ -920,7 +931,6 @@ function togglePageCards(rowEl) {
  * @returns {number[]}
  */
 function pageOrderByGroup(indices) {
-    const {pageLevel} = currentData.similarity;
     /** @type {Set<number>} */
     const indexSet = new Set(indices);
     /** @type {number[]} */
@@ -930,18 +940,14 @@ function pageOrderByGroup(indices) {
 
     templateGroups.forEach((group, fi) => {
         if (!selectedGroups.has(fi)) return;
-        const groupIndices = group.templateIds
-            .flatMap(id => templateById[id]?.pageIndices ?? [])
-            .filter(pi => indexSet.has(pi))
-            .sort((a, b) => a - b);
-        groupPages(groupIndices, pageLevel.matrix)
-            .sort((a, b) => Math.min(...a) - Math.min(...b))
-            .forEach(pageGroup => pageGroup.forEach(pi => {
-                if (!seen.has(pi)) {
+        group.pageGroups.forEach(pageGroup => {
+            pageGroup.forEach(pi => {
+                if (indexSet.has(pi) && !seen.has(pi)) {
                     seen.add(pi);
                     order.push(pi);
                 }
-            }));
+            });
+        });
     });
     indices.forEach(pi => {
         if (!seen.has(pi)) order.push(pi);
