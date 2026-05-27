@@ -66,7 +66,7 @@
             gap: 24px;
         }
 
-        .families-pane {
+        .templates-pane {
             flex: 1;
             min-width: 0;
             max-height: calc(100vh - 100px);
@@ -137,14 +137,14 @@
             margin-top: 0;
         }
 
-        /* Family list */
-        .family-list {
+        /* Template groups */
+        .template-groups {
             list-style: none;
             margin: 0;
             padding: 0;
         }
 
-        .family-list > li {
+        .template-groups > li {
             margin-bottom: 14px;
             border: 1px solid var(--line);
             border-radius: 10px;
@@ -152,41 +152,41 @@
             transition: opacity 0.2s;
         }
 
-        .family-list > li.dimmed {
+        .template-groups > li.dimmed {
             opacity: 0.45;
         }
 
-        .family-header {
+        .tg-header {
             padding: 10px 14px;
             background: var(--bg);
             border-bottom: 1px solid var(--line);
         }
 
-        .family-header-row1 {
+        .tg-header-row1 {
             display: flex;
             align-items: center;
             flex-wrap: wrap;
             gap: 6px;
         }
 
-        .family-header-row1 input[type="checkbox"] {
+        .tg-header-row1 input[type="checkbox"] {
             margin: 0 4px 0 0;
             cursor: pointer;
         }
 
-        .family-slots {
+        .page-groups {
             padding: 6px 0;
         }
 
-        .family-slot {
+        .page-group {
             border-bottom: 1px solid var(--line);
         }
 
-        .family-slot:last-child {
+        .page-group:last-child {
             border-bottom: none;
         }
 
-        .slot-row {
+        .pg-row {
             display: flex;
             align-items: flex-start;
             gap: 10px;
@@ -195,11 +195,11 @@
             user-select: none;
         }
 
-        .slot-row:hover {
+        .pg-row:hover {
             background: #f5f8ff;
         }
 
-        .slot-num {
+        .pg-num {
             min-width: 22px;
             height: 22px;
             border-radius: 50%;
@@ -218,13 +218,13 @@
             transition: background 0.15s, color 0.15s;
         }
 
-        .slot-num.all-selected {
+        .pg-num.all-selected {
             background: #6b9fd4;
             border-color: #6b9fd4;
             color: #fff;
         }
 
-        .slot-num.none-selected {
+        .pg-num.none-selected {
             background: #fff;
             border-color: #ccc;
             color: #999;
@@ -254,7 +254,7 @@
             background: #d1d5db;
         }
 
-        .slot-expand-icon {
+        .pg-expand-icon {
             margin-left: auto;
             font-size: 11px;
             color: var(--muted);
@@ -262,7 +262,7 @@
             align-self: center;
         }
 
-        .orig-pages {
+        .page-labels {
             display: flex;
             flex-wrap: wrap;
             gap: 4px;
@@ -270,26 +270,26 @@
             flex: 1;
         }
 
-        .orig-page-label {
+        .page-label {
             display: inline-flex;
             align-items: center;
             gap: 3px;
             cursor: pointer;
         }
 
-        .orig-page-label input[type="checkbox"] {
+        .page-label input[type="checkbox"] {
             margin: 0;
             cursor: pointer;
         }
 
-        .orig-page {
+        .page-tag {
             background: #f0f0f0;
             border-radius: 4px;
             padding: 2px 7px;
             font-size: 12px;
         }
 
-        .slot-preview {
+        .pg-cards {
             display: none;
             flex-wrap: wrap;
             gap: 16px;
@@ -298,18 +298,18 @@
             border-top: 1px dashed var(--line);
         }
 
-        .slot-preview.open {
+        .pg-cards.open {
             display: flex;
         }
 
-        .preview-card {
+        .page-card {
             border: 1px solid var(--line);
             border-radius: 8px;
             overflow: hidden;
             background: #fff;
         }
 
-        .preview-card-title {
+        .page-card-title {
             padding: 4px 8px;
             font-size: 11px;
             font-weight: 600;
@@ -317,7 +317,7 @@
             background: var(--bg);
         }
 
-        .preview-card svg {
+        .page-card svg {
             display: block;
         }
 
@@ -341,8 +341,8 @@
 
 <div id="app" hidden>
     <div class="split-layout">
-        <div class="families-pane">
-            <ul class="family-list" id="families-list"></ul>
+        <div class="templates-pane">
+            <ul class="template-groups" id="template-groups"></ul>
         </div>
         <div class="similarity-pane" id="similarity-pane" hidden>
             <div class="section-head">
@@ -430,7 +430,7 @@
  */
 
 /**
- * @typedef {Object} TemplateFamily
+ * @typedef {Object} TemplateGroup
  * @property {string[]} templateIds
  * @property {string[]} templateNames
  */
@@ -444,16 +444,16 @@ const PALETTE = [
 
 const CANVAS_W = 400;
 const PAD = 10;
-const CLUSTER_THRESHOLD = 0.60;
+const GROUP_THRESHOLD = 0.60;
 
 /** @type {LayoutData|null} */
 let currentData = null;
-/** @type {TemplateFamily[]} */
-let templateFamilies = [];
+/** @type {TemplateGroup[]} */
+let templateGroups = [];
 /** @type {Record<string, TemplateEntry>} */
 let templateById = {};
-/** @type {Set<number>} - indices into templateFamilies that are selected */
-let selectedFamilies = new Set();
+/** @type {Set<number>} - indices into templateGroups that are selected */
+let selectedGroups = new Set();
 /** @type {Set<number>} - global page indices that are selected (for similarity) */
 let selectedPages = new Set();
 /** @type {Map<number, string>} - global page index → stable display label (e.g. "2a.1") */
@@ -491,15 +491,15 @@ document.body.addEventListener("drop", e => {
 });
 
 document.getElementById("select-all").addEventListener("click", () => {
-    templateFamilies.forEach((_, i) => selectedFamilies.add(i));
-    updateFamilyCheckboxes();
+    templateGroups.forEach((_, i) => selectedGroups.add(i));
+    updateGroupCheckboxes();
     updateToolbarState();
     if (!similarityPane.hidden) renderSimilarity();
 });
 
 document.getElementById("select-none").addEventListener("click", () => {
-    selectedFamilies.clear();
-    updateFamilyCheckboxes();
+    selectedGroups.clear();
+    updateGroupCheckboxes();
     updateToolbarState();
     if (!similarityPane.hidden) renderSimilarity();
 });
@@ -529,11 +529,11 @@ function updateToolbarState() {
 }
 
 /** @returns {void} */
-function updateFamilyCheckboxes() {
-    document.querySelectorAll("#families-list > li").forEach((li, i) => {
+function updateGroupCheckboxes() {
+    document.querySelectorAll("#template-groups > li").forEach((li, i) => {
         const cb = /** @type {HTMLInputElement|null} */ (li.querySelector("input[type=checkbox]"));
-        if (cb) cb.checked = selectedFamilies.has(i);
-        li.classList.toggle("dimmed", !selectedFamilies.has(i));
+        if (cb) cb.checked = selectedGroups.has(i);
+        li.classList.toggle("dimmed", !selectedGroups.has(i));
     });
 }
 
@@ -547,18 +547,18 @@ function render(data) {
 
     const templateLevel = data.similarity.templateLevel;
     templateById = Object.fromEntries(templateLevel.templates.map(t => [t.templateId, t]));
-    templateFamilies = computeTemplateFamilies(templateLevel);
-    selectedFamilies = new Set(templateFamilies.map((_, i) => i));
+    templateGroups = computeTemplateGroups(templateLevel);
+    selectedGroups = new Set(templateGroups.map((_, i) => i));
     selectedPages = new Set(templateLevel.templates.flatMap(t => t.pageIndices));
 
     // Build stable page numbering scoped per template (e.g. "2a.1", "2a.2", "3.1")
     pageNumberMap = new Map();
     const {pageLevel} = data.similarity;
-    templateFamilies.forEach((fam, fi) => {
-        const famTemplates = fam.templateIds.map(id => templateById[id]).filter(Boolean);
-        famTemplates.forEach((tmpl, tidx) => {
-            const prefix = familyPrefix(fi, fam, tidx);
-            const tmplPages = [...tmpl.pageIndices].sort((a, b) => a - b);
+    templateGroups.forEach((group, i) => {
+        const groupTemplates = group.templateIds.map(id => templateById[id]).filter(Boolean);
+        groupTemplates.forEach((template, j) => {
+            const prefix = templateGroupPrefix(i, group, j);
+            const tmplPages = [...template.pageIndices].sort((a, b) => a - b);
             tmplPages.forEach((pi, pageIdx) => {
                 if (!pageNumberMap.has(pi)) {
                     pageNumberMap.set(pi, `${prefix}.${pageIdx + 1}`);
@@ -567,7 +567,7 @@ function render(data) {
         });
     });
 
-    renderFamilies(data);
+    renderTemplateGroups(data);
     updateToolbarState();
 }
 
@@ -592,12 +592,12 @@ function buildPageSvg(page) {
             width: svgDim(position.w, scale), height: svgDim(position.h, scale),
             fill: "none", stroke: "#e00", "stroke-width": 1.5, "stroke-dasharray": "5,3"
         }));
-        const lbl = svgEl("text", {
+        const label = svgEl("text", {
             x: svgPos(position.x, scale) + 2, y: svgPos(position.y, scale) - 2,
             "font-size": 7, fill: "#e00", "font-weight": "bold"
         });
-        lbl.textContent = `G${i + 1}`;
-        svg.appendChild(lbl);
+        label.textContent = `G${i + 1}`;
+        svg.appendChild(label);
     });
 
     areas.forEach((a, i) => {
@@ -665,14 +665,14 @@ function renderSimilarity() {
     const templateLabels = [];
     /** @type {string[]} */
     const templateColHeaders = [];
-    selectedFamilies.forEach(fi => {
-        const fam = templateFamilies[fi];
-        fam.templateIds.forEach((id, idx) => {
-            const ti = templateLevel.templates.findIndex(t => t.templateId === id);
-            if (ti >= 0) {
-                selectedTemplateIndices.push(ti);
-                const shortId = familyPrefix(fi, fam, idx);
-                templateLabels.push(`${shortId}. ${templateName(templateLevel.templates[ti])}`);
+    selectedGroups.forEach(i => {
+        const group = templateGroups[i];
+        group.templateIds.forEach((id, j) => {
+            const templateIndex = templateLevel.templates.findIndex(t => t.templateId === id);
+            if (templateIndex >= 0) {
+                selectedTemplateIndices.push(templateIndex);
+                const shortId = templateGroupPrefix(i, group, j);
+                templateLabels.push(`${shortId}. ${templateName(templateLevel.templates[templateIndex])}`);
                 templateColHeaders.push(shortId);
             }
         });
@@ -691,7 +691,7 @@ function renderSimilarity() {
     )].filter(pi => selectedPages.has(pi)).sort((a, b) => a - b);
 
     if (selectedPageIndices.length > 0) {
-        const ordered = pageOrderByFamily(selectedPageIndices);
+        const ordered = pageOrderByGroup(selectedPageIndices);
         const pageLabels = ordered.map(pi => `${pageNumberMap.get(pi)} ${pageName(currentData.pages[pi])}`);
         const pageColHeaders = ordered.map(pi => `${pageNumberMap.get(pi)}`);
         buildMatrixTable(pageWrap, pageLabels, pageColHeaders,
@@ -738,7 +738,7 @@ function buildMatrixTable(wrap, labels, colHeaders, matrix) {
                 cell.textContent = score.toFixed(2);
                 const g = Math.round(200 * score), r = Math.round(255 * (1 - score));
                 cell.style.background = `rgb(${r},${g},80)`;
-                if (score >= CLUSTER_THRESHOLD) cell.style.fontWeight = "700";
+                if (score >= GROUP_THRESHOLD) cell.style.fontWeight = "700";
             }
         });
     });
@@ -750,81 +750,81 @@ function buildMatrixTable(wrap, labels, colHeaders, matrix) {
 /**
  * @param {LayoutData} data
  */
-function renderFamilies(data) {
+function renderTemplateGroups(data) {
     const {pageLevel} = data.similarity;
-    const familyList = /** @type {HTMLElement} */ (document.getElementById("families-list"));
-    familyList.innerHTML = "";
+    const groupsEl = /** @type {HTMLElement} */ (document.getElementById("template-groups"));
+    groupsEl.innerHTML = "";
 
-    templateFamilies.forEach((fam, familyIndex) => {
-        const templates = fam.templateIds.map(id => templateById[id]).filter(Boolean);
+    templateGroups.forEach((group, groupIndex) => {
+        const templates = group.templateIds.map(id => templateById[id]).filter(Boolean);
         /** @type {number[]} */
         const pageIndices = templates.flatMap(t => t.pageIndices).sort((a, b) => a - b);
-        const clusters = clusterPages(pageIndices, pageLevel.matrix)
+        const pageGroups = groupPages(pageIndices, pageLevel.matrix)
             .map(c => c.sort((a, b) => a - b))
             .sort((a, b) => Math.min(...a) - Math.min(...b));
 
-        const templateBadges = fam.templateIds.map((id, idx) =>
-            `<code><strong>${familyPrefix(familyIndex, fam, idx)}.</strong> ${htmlEsc(fam.templateNames[idx] ?? id)}</code>`
+        const templateBadges = group.templateIds.map((id, idx) =>
+            `<code><strong>${templateGroupPrefix(groupIndex, group, idx)}.</strong> ${htmlEsc(group.templateNames[idx] ?? id)}</code>`
         ).join("  ");
 
-        let slotsHtml = '<div class="family-slots">';
-        clusters.forEach((cluster, ci) => {
-            const cohesion = minPairScore(cluster, pageLevel.matrix);
-            const checkedCount = cluster.filter(pi => selectedPages.has(pi)).length;
-            const slotState = checkedCount === cluster.length ? "all-selected" : checkedCount === 0 ? "none-selected" : "";
-            slotsHtml +=
-                `<div class="family-slot">` +
-                `<div class="slot-row" data-action="toggle-preview">` +
-                `<span class="slot-num ${slotState}" data-action="toggle-slot">${ci + 1}</span>` +
+        let groupsHtml = '<div class="page-groups">';
+        pageGroups.forEach((pageGroup, ci) => {
+            const cohesion = minPairScore(pageGroup, pageLevel.matrix);
+            const checkedCount = pageGroup.filter(pi => selectedPages.has(pi)).length;
+            const pgState = checkedCount === pageGroup.length ? "all-selected" : checkedCount === 0 ? "none-selected" : "";
+            groupsHtml +=
+                `<div class="page-group">` +
+                `<div class="pg-row" data-action="toggle-preview">` +
+                `<span class="pg-num ${pgState}" data-action="toggle-pg">${ci + 1}</span>` +
                 `<span class="cohesion-dot ${cohesionClass(cohesion)}" ` +
                 `title="${cohesion !== null ? `Cohesion (min pair): ${cohesion.toFixed(2)}` : "Single page"}"></span>` +
-                `<span class="orig-pages">${cluster.map(pi =>
-                    `<label class="orig-page-label"><input type="checkbox" data-page="${pi}" ${selectedPages.has(pi) ? "checked" : ""}/><span class="orig-page"><strong>${pageNumberMap.get(pi)}</strong> ${htmlEsc(pageName(data.pages[pi]))}</span></label>`
+                `<span class="page-labels">${pageGroup.map(pi =>
+                    `<label class="page-label"><input type="checkbox" data-page="${pi}" ${selectedPages.has(pi) ? "checked" : ""}/><span class="page-tag"><strong>${pageNumberMap.get(pi)}</strong> ${htmlEsc(pageName(data.pages[pi]))}</span></label>`
                 ).join("")}</span>` +
-                `<span class="slot-expand-icon">&#9654;</span>` +
+                `<span class="pg-expand-icon">&#9654;</span>` +
                 `</div>` +
-                `<div class="slot-preview"></div>` +
+                `<div class="pg-cards"></div>` +
                 `</div>`;
         });
-        slotsHtml += "</div>";
+        groupsHtml += "</div>";
 
         const li = document.createElement("li");
-        li.dataset.familyIndex = String(familyIndex);
+        li.dataset.groupIndex = String(groupIndex);
         li.innerHTML =
-            `<div class="family-header">` +
-            `<div class="family-header-row1">` +
-            `<input type="checkbox" checked data-family="${familyIndex}"/>` +
+            `<div class="tg-header">` +
+            `<div class="tg-header-row1">` +
+            `<input type="checkbox" checked data-group="${groupIndex}"/>` +
             `${templateBadges}` +
             `</div>` +
-            `</div>` + slotsHtml;
+            `</div>` + groupsHtml;
 
-        li.querySelectorAll(".family-slot").forEach((slotEl, ci) => {
-            /** @type {HTMLElement} */ (slotEl).dataset.pageIndices = JSON.stringify(clusters[ci]);
+        li.querySelectorAll(".page-group").forEach((pgEl, ci) => {
+            /** @type {HTMLElement} */ (pgEl).dataset.pageIndices = JSON.stringify(pageGroups[ci]);
         });
-        familyList.appendChild(li);
+        groupsEl.appendChild(li);
     });
 }
 
 /**
- * Updates slot number visual state based on checked pages in the slot.
- * @param {HTMLElement} slotNumEl
- * @param {HTMLElement} slotEl
+ * Updates page-group number visual state based on checked pages.
+ * @param {HTMLElement} pgNumEl
+ * @param {HTMLElement} pgEl
  */
-function updateSlotNumState(slotNumEl, slotEl) {
-    const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (slotEl.querySelectorAll("input[data-page]"));
+function updatePageGroupNumState(pgNumEl, pgEl) {
+    const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (pgEl.querySelectorAll("input[data-page]"));
     const checkedCount = [...checkboxes].filter(cb => cb.checked).length;
-    slotNumEl.classList.toggle("all-selected", checkedCount === checkboxes.length);
-    slotNumEl.classList.toggle("none-selected", checkedCount === 0);
+    pgNumEl.classList.toggle("all-selected", checkedCount === checkboxes.length);
+    pgNumEl.classList.toggle("none-selected", checkedCount === 0);
 }
 
-// Event delegation for family checkboxes
-document.getElementById("families-list").addEventListener("change", (e) => {
+// Event delegation for group checkboxes
+document.getElementById("template-groups").addEventListener("change", (e) => {
     const cb = /** @type {HTMLInputElement} */ (e.target);
     if (cb.type !== "checkbox") return;
-    if (cb.dataset.family != null) {
-        const fi = parseInt(cb.dataset.family);
-        if (cb.checked) selectedFamilies.add(fi);
-        else selectedFamilies.delete(fi);
+    if (cb.dataset.group != null) {
+        const fi = parseInt(cb.dataset.group);
+        if (cb.checked) selectedGroups.add(fi);
+        else selectedGroups.delete(fi);
         cb.closest("li").classList.toggle("dimmed", !cb.checked);
         updateToolbarState();
     } else if (cb.dataset.page != null) {
@@ -832,27 +832,27 @@ document.getElementById("families-list").addEventListener("change", (e) => {
         if (cb.checked) selectedPages.add(pi);
         else selectedPages.delete(pi);
         // Hide/show corresponding preview cards
-        document.querySelectorAll(`.preview-card[data-page-index="${pi}"]`).forEach(card => {
+        document.querySelectorAll(`.page-card[data-page-index="${pi}"]`).forEach(card => {
             /** @type {HTMLElement} */ (card).hidden = !cb.checked;
         });
-        // Update slot number state
-        const slotEl = /** @type {HTMLElement} */ (cb.closest(".family-slot"));
-        const slotNum = /** @type {HTMLElement} */ (slotEl.querySelector(".slot-num"));
-        updateSlotNumState(slotNum, slotEl);
+        // Update page-group number state
+        const pgEl = /** @type {HTMLElement} */ (cb.closest(".page-group"));
+        const pgNum = /** @type {HTMLElement} */ (pgEl.querySelector(".pg-num"));
+        updatePageGroupNumState(pgNum, pgEl);
     }
     if (!similarityPane.hidden) renderSimilarity();
 });
 
-// Event delegation for slot preview toggle and slot number toggle
-document.getElementById("families-list").addEventListener("click", (e) => {
+// Event delegation for page-group toggle
+document.getElementById("template-groups").addEventListener("click", (e) => {
     const target = /** @type {HTMLElement} */ (e.target);
-    if (target.type === "checkbox" || target.closest(".orig-page-label")) return;
+    if (target.type === "checkbox" || target.closest(".page-label")) return;
 
-    // Slot number click — toggle all page checkboxes in this slot
-    if (target.dataset.action === "toggle-slot") {
+    // Page-group number click — toggle all page checkboxes in this group
+    if (target.dataset.action === "toggle-pg") {
         e.stopPropagation();
-        const slotEl = /** @type {HTMLElement} */ (target.closest(".family-slot"));
-        const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (slotEl.querySelectorAll("input[data-page]"));
+        const pgEl = /** @type {HTMLElement} */ (target.closest(".page-group"));
+        const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (pgEl.querySelectorAll("input[data-page]"));
         const allChecked = [...checkboxes].every(cb => cb.checked);
         checkboxes.forEach(cb => {
             cb.checked = !allChecked;
@@ -860,9 +860,9 @@ document.getElementById("families-list").addEventListener("click", (e) => {
             if (cb.checked) selectedPages.add(pi);
             else selectedPages.delete(pi);
         });
-        updateSlotNumState(target, slotEl);
+        updatePageGroupNumState(target, pgEl);
         // Update preview card visibility
-        slotEl.querySelectorAll(".preview-card").forEach(card => {
+        pgEl.querySelectorAll(".page-card").forEach(card => {
             const pi = parseInt(/** @type {HTMLElement} */ (card).dataset.pageIndex);
             /** @type {HTMLElement} */ (card).hidden = !selectedPages.has(pi);
         });
@@ -872,30 +872,40 @@ document.getElementById("families-list").addEventListener("click", (e) => {
 
     const row = /** @type {HTMLElement|null} */ (target.closest("[data-action='toggle-preview']"));
     if (!row) return;
-    toggleSlotPreview(row);
+    togglePageCards(row);
 });
 
 /**
  * @param {HTMLElement} rowEl
  */
-function toggleSlotPreview(rowEl) {
-    const slotEl = /** @type {HTMLElement} */ (rowEl.closest(".family-slot"));
-    const preview = /** @type {HTMLElement} */ (slotEl.querySelector(".slot-preview"));
-    const icon = /** @type {HTMLElement} */ (rowEl.querySelector(".slot-expand-icon"));
+function togglePageCards(rowEl) {
+    const pgEl = /** @type {HTMLElement} */ (rowEl.closest(".page-group"));
+    const preview = /** @type {HTMLElement} */ (pgEl.querySelector(".pg-cards"));
+    const icon = /** @type {HTMLElement} */ (rowEl.querySelector(".pg-expand-icon"));
     const isOpen = preview.classList.toggle("open");
     icon.textContent = isOpen ? "\u25BC" : "\u25B6";
 
     if (isOpen && preview.childElementCount === 0) {
         /** @type {number[]} */
-        const indices = JSON.parse(slotEl.dataset.pageIndices || "[]");
+        const indices = JSON.parse(pgEl.dataset.pageIndices || "[]");
         indices.forEach(pi => {
             const wrap = document.createElement("div");
-            wrap.className = "preview-card";
+            wrap.className = "page-card";
             wrap.dataset.pageIndex = String(pi);
             if (!selectedPages.has(pi)) wrap.hidden = true;
             const title = document.createElement("div");
-            title.className = "preview-card-title";
+            title.className = "page-card-title";
             title.textContent = pageName(currentData.pages[pi]);
+            title.style.cursor = "pointer";
+            title.addEventListener("click", () => {
+                const cb = /** @type {HTMLInputElement|null} */ (
+                    document.querySelector(`input[data-page="${pi}"]`)
+                );
+                if (cb) {
+                    cb.checked = !cb.checked;
+                    cb.dispatchEvent(new Event("change", {bubbles: true}));
+                }
+            });
             wrap.appendChild(title);
             const svg = buildPageSvg(currentData.pages[pi]);
             if (svg) wrap.appendChild(svg);
@@ -905,11 +915,11 @@ function toggleSlotPreview(rowEl) {
 }
 
 /**
- * Reorders page indices so pages in the same family are adjacent.
+ * Reorders page indices so pages in the same template group are adjacent.
  * @param {number[]} indices
  * @returns {number[]}
  */
-function pageOrderByFamily(indices) {
+function pageOrderByGroup(indices) {
     const {pageLevel} = currentData.similarity;
     /** @type {Set<number>} */
     const indexSet = new Set(indices);
@@ -918,15 +928,15 @@ function pageOrderByFamily(indices) {
     /** @type {Set<number>} */
     const seen = new Set();
 
-    templateFamilies.forEach((fam, fi) => {
-        if (!selectedFamilies.has(fi)) return;
-        const famIndices = fam.templateIds
+    templateGroups.forEach((group, fi) => {
+        if (!selectedGroups.has(fi)) return;
+        const groupIndices = group.templateIds
             .flatMap(id => templateById[id]?.pageIndices ?? [])
             .filter(pi => indexSet.has(pi))
             .sort((a, b) => a - b);
-        clusterPages(famIndices, pageLevel.matrix)
+        groupPages(groupIndices, pageLevel.matrix)
             .sort((a, b) => Math.min(...a) - Math.min(...b))
-            .forEach(cluster => cluster.forEach(pi => {
+            .forEach(pageGroup => pageGroup.forEach(pi => {
                 if (!seen.has(pi)) {
                     seen.add(pi);
                     order.push(pi);
@@ -940,69 +950,69 @@ function pageOrderByFamily(indices) {
 }
 
 /**
- * Returns a short prefix for a template within a family (e.g. "2a" or "3").
- * @param {number} familyIndex
- * @param {TemplateFamily} fam
- * @param {number} templateIndex - index within the family's templateIds
+ * Returns a short prefix for a template within a group (e.g. "2a" or "3").
+ * @param {number} groupIndex
+ * @param {TemplateGroup} group
+ * @param {number} templateIndex - index within the group's templateIds
  * @returns {string}
  */
-function familyPrefix(familyIndex, fam, templateIndex) {
-    const num = familyIndex + 1;
-    const letter = fam.templateIds.length > 1 ? String.fromCharCode(97 + templateIndex) : "";
+function templateGroupPrefix(groupIndex, group, templateIndex) {
+    const num = groupIndex + 1;
+    const letter = group.templateIds.length > 1 ? String.fromCharCode(97 + templateIndex) : "";
     return `${num}${letter}`;
 }
 
 /**
- * @param {TemplateLevel} tl
- * @returns {TemplateFamily[]}
+ * @param {TemplateLevel} templateLevel
+ * @returns {TemplateGroup[]}
  */
-function computeTemplateFamilies(tl) {
-    return clusterPages(tl.templates.map((_, i) => i), tl.matrix)
-        .map(cluster => ({
-            templateIds: cluster.map(i => tl.templates[i].templateId),
-            templateNames: cluster.map(i => tl.templates[i].templateName ?? tl.templates[i].templateId),
+function computeTemplateGroups(templateLevel) {
+    return groupPages(templateLevel.templates.map((_, i) => i), templateLevel.matrix)
+        .map(pageGroup => ({
+            templateIds: pageGroup.map(i => templateLevel.templates[i].templateId),
+            templateNames: pageGroup.map(i => templateLevel.templates[i].templateName ?? templateLevel.templates[i].templateId),
         }));
 }
 
 /**
- * Average-linkage agglomerative clustering.
+ * Average-linkage agglomerative grouping.
  * @param {number[]} indices
  * @param {number[][]} matrix
  * @returns {number[][]}
  */
-function clusterPages(indices, matrix) {
+function groupPages(indices, matrix) {
     /** @type {number[][]} */
-    let clusters = indices.map(i => [i]);
+    let pageGroups = indices.map(i => [i]);
     let changed = true;
     while (changed) {
         changed = false;
-        outer: for (let i = 0; i < clusters.length; i++) {
-            for (let j = i + 1; j < clusters.length; j++) {
-                const scores = clusters[i].flatMap(a => clusters[j].map(b => matrix[a]?.[b] ?? 0));
+        outer: for (let i = 0; i < pageGroups.length; i++) {
+            for (let j = i + 1; j < pageGroups.length; j++) {
+                const scores = pageGroups[i].flatMap(a => pageGroups[j].map(b => matrix[a]?.[b] ?? 0));
                 const avg = scores.reduce((s, v) => s + v, 0) / scores.length;
-                if (avg >= CLUSTER_THRESHOLD) {
-                    clusters[i].push(...clusters[j]);
-                    clusters.splice(j, 1);
+                if (avg >= GROUP_THRESHOLD) {
+                    pageGroups[i].push(...pageGroups[j]);
+                    pageGroups.splice(j, 1);
                     changed = true;
                     break outer;
                 }
             }
         }
     }
-    return clusters;
+    return pageGroups;
 }
 
 /**
- * @param {number[]} cluster
+ * @param {number[]} pageGroup
  * @param {number[][]} matrix
  * @returns {number|null}
  */
-function minPairScore(cluster, matrix) {
-    if (cluster.length < 2) return null;
+function minPairScore(pageGroup, matrix) {
+    if (pageGroup.length < 2) return null;
     let min = 1;
-    for (let i = 0; i < cluster.length; i++)
-        for (let j = i + 1; j < cluster.length; j++)
-            min = Math.min(min, matrix[cluster[i]]?.[cluster[j]] ?? 0);
+    for (let i = 0; i < pageGroup.length; i++)
+        for (let j = i + 1; j < pageGroup.length; j++)
+            min = Math.min(min, matrix[pageGroup[i]]?.[pageGroup[j]] ?? 0);
     return min;
 }
 
