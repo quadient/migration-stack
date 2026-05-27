@@ -44,6 +44,17 @@
             cursor: default;
         }
 
+        #similarity-btn {
+            border: 2px solid #6b9fd4;
+            color: #4a7ab5;
+            font-weight: 600;
+        }
+
+        #similarity-btn.active {
+            background: #6b9fd4;
+            color: #fff;
+        }
+
         .status {
             font-size: 13px;
             color: #c00;
@@ -496,14 +507,17 @@ document.getElementById("select-none").addEventListener("click", () => {
 similarityBtn.addEventListener("click", () => {
     if (similarityPane.hidden) {
         similarityPane.hidden = false;
+        similarityBtn.classList.add("active");
         renderSimilarity();
     } else {
         similarityPane.hidden = true;
+        similarityBtn.classList.remove("active");
     }
 });
 
 document.getElementById("similarity-close").addEventListener("click", () => {
     similarityPane.hidden = true;
+    similarityBtn.classList.remove("active");
 });
 
 /** @returns {void} */
@@ -592,9 +606,24 @@ function buildPageSvg(page) {
         const rx = svgPos(a.x, scale), ry = svgPos(a.y, scale),
             rw = svgDim(a.w, scale), rh = svgDim(a.h, scale);
         const label = areaLabel(a.contentPreview) || `area_${i}`;
-        const tip = `${label}\nx=${a.x}mm  y=${a.y}mm  w=${a.w}mm  h=${a.h}mm`
-            + (a.flowToNextPage ? "\n[flowToNextPage]" : "")
-            + (a.interactiveFlowName ? `\nflow: ${a.interactiveFlowName}` : "");
+
+        // Build stacked tooltip: current area + all overlapping areas (smallest to largest)
+        const overlapping = areas
+            .map((o, oi) => ({o, oi}))
+            .filter(({o, oi}) => oi !== i
+                && o.x < a.x + a.w && o.x + o.w > a.x
+                && o.y < a.y + a.h && o.y + o.h > a.y)
+            .sort((x, y) => (x.o.w * x.o.h) - (y.o.w * y.o.h));
+
+        /** @param {AreaEntry} ar @param {number} idx */
+        const areaTip = (ar, idx) => {
+            const l = areaLabel(ar.contentPreview) || `area_${idx}`;
+            return `${l}  (${ar.w}×${ar.h}mm)`
+                + (ar.flowToNextPage ? " [flow→]" : "")
+                + (ar.interactiveFlowName ? ` flow:${ar.interactiveFlowName}` : "");
+        };
+
+        const tip = [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n· ");
 
         const rect = svgEl("rect", {
             x: rx, y: ry, width: rw, height: rh,
