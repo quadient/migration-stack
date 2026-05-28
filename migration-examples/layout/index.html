@@ -678,6 +678,18 @@ function render(data) {
 }
 
 /**
+ * @param {AreaEntry} ar
+ * @param {number} idx
+ * @returns {string}
+ */
+function areaTip(ar, idx) {
+    const name = areaLabel(ar.contentPreview) || `area_${idx}`;
+    return `${name}\nw ${ar.w}mm · h ${ar.h}mm · x ${ar.x}mm · y ${ar.y}mm`
+        + (ar.flowToNextPage ? " · [↓]" : "")
+        + (ar.interactiveFlowName ? ` · flow:${ar.interactiveFlowName}` : "");
+}
+
+/**
  * @param {PageEntry} page
  * @returns {SVGElement|null}
  */
@@ -691,16 +703,31 @@ function buildPageSvg(page) {
     const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
     const svg = svgEl("svg", {width: canvasW, height: svgH, style: "background:#fff;cursor:default"});
 
-    (page.proximityGroups || []).forEach((group, i) => {
-        const position = group.position;
-        svg.appendChild(svgEl("rect", {
-            x: svgPos(position.x, scale), y: svgPos(position.y, scale),
-            width: svgDim(position.w, scale), height: svgDim(position.h, scale),
-            fill: "none", stroke: "#e00", "stroke-width": 1.5, "stroke-dasharray": "5,3"
-        }));
+    const proximityGroups = page.proximityGroups || [];
+
+    proximityGroups.forEach((group, i) => {
+        const p = group.position;
+        const tip = `G${i + 1}\nw ${p.w}mm · h ${p.h}mm · x ${p.x}mm · y ${p.y}mm`;
+
+        const bg = svgEl("rect", {
+            x: svgPos(p.x, scale), y: svgPos(p.y, scale),
+            width: svgDim(p.w, scale), height: svgDim(p.h, scale),
+            fill: "transparent", stroke: "none", "pointer-events": "all"
+        });
+        bg.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {textContent: tip}));
+        svg.appendChild(bg);
+
+        const border = svgEl("rect", {
+            x: svgPos(p.x, scale), y: svgPos(p.y, scale),
+            width: svgDim(p.w, scale), height: svgDim(p.h, scale),
+            fill: "none", stroke: "#e00", "stroke-width": 1.5, "stroke-dasharray": "5,3",
+            "pointer-events": "none"
+        });
+        svg.appendChild(border);
+
         const label = svgEl("text", {
-            x: svgPos(position.x, scale) + 2, y: svgPos(position.y, scale) - 2,
-            "font-size": 7, fill: "#e00", "font-weight": "bold"
+            x: svgPos(p.x, scale) + 2, y: svgPos(p.y, scale) - 2,
+            "font-size": 7, fill: "#e00", "font-weight": "bold", "pointer-events": "none"
         });
         label.textContent = `G${i + 1}`;
         svg.appendChild(label);
@@ -711,25 +738,17 @@ function buildPageSvg(page) {
         const isRoot = a.containedIn == null;
         const rx = svgPos(a.x, scale), ry = svgPos(a.y, scale),
             rw = svgDim(a.w, scale), rh = svgDim(a.h, scale);
-        const label = areaLabel(a.contentPreview) || `area_${i}`;
 
-        // Build stacked tooltip: current area + all overlapping areas (smallest to largest)
         const overlapping = areas
             .map((o, oi) => ({o, oi}))
             .filter(({o, oi}) => oi !== i
                 && o.x < a.x + a.w && o.x + o.w > a.x
                 && o.y < a.y + a.h && o.y + o.h > a.y)
-            .sort((x, y) => (x.o.w * x.o.h) - (y.o.w * y.o.h));
+            .sort((a, b) => (a.o.w * a.o.h) - (b.o.w * b.o.h));
 
-        /** @param {AreaEntry} ar @param {number} idx */
-        const areaTip = (ar, idx) => {
-            const l = areaLabel(ar.contentPreview) || `area_${idx}`;
-            return `${l}  (${ar.w}×${ar.h}mm)`
-                + (ar.flowToNextPage ? " [flow→]" : "")
-                + (ar.interactiveFlowName ? ` flow:${ar.interactiveFlowName}` : "");
-        };
-
-        const tip = [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n· ");
+        const pg = proximityGroups[a.proximityGroup];
+        const pgLine = pg ? `G${a.proximityGroup + 1}\nw ${pg.position.w}mm · h ${pg.position.h}mm · x ${pg.position.x}mm · y ${pg.position.y}mm\n\n` : "";
+        const tip = pgLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
 
         const rect = svgEl("rect", {
             x: rx, y: ry, width: rw, height: rh,
@@ -737,20 +756,13 @@ function buildPageSvg(page) {
             "stroke-width": isRoot ? "1.5" : "1",
             "stroke-dasharray": isRoot ? "none" : "3,2"
         });
-        const titleEl = document.createElementNS("http://www.w3.org/2000/svg", "title");
-        titleEl.textContent = tip;
-        rect.appendChild(titleEl);
+        rect.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {textContent: tip}));
         svg.appendChild(rect);
 
         if (rw > 12 && rh > 8) {
-            const txt = svgEl("text", {
-                x: rx + 2,
-                y: ry + 9,
-                "font-size": 6.5,
-                fill: "#222",
-                "pointer-events": "none"
-            });
-            txt.textContent = label.length > 28 ? label.slice(-28) : label;
+            const name = areaLabel(a.contentPreview) || `area_${i}`;
+            const txt = svgEl("text", {x: rx + 2, y: ry + 9, "font-size": 6.5, fill: "#222", "pointer-events": "none"});
+            txt.textContent = name.length > 28 ? name.slice(-28) : name;
             svg.appendChild(txt);
         }
     });
