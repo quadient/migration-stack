@@ -321,6 +321,63 @@
             display: block;
         }
 
+        .toolbar-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .toolbar-control input[type="range"] {
+            padding: 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+            width: 80px;
+            accent-color: #6b9fd4;
+        }
+
+        .toolbar-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .toolbar-control input[type="range"] {
+            padding: 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+            width: 80px;
+            accent-color: #6b9fd4;
+        }
+
+        .toolbar-control output {
+            font-size: 12px;
+            color: #4a7ab5;
+            font-weight: 600;
+            min-width: 2.8em;
+        }
+
+        .toolbar-control select {
+            padding: 4px 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: var(--bg);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .toolbar-sep {
+            width: 1px;
+            height: 24px;
+            background: #ddd;
+            margin: 0 4px;
+        }
+
         code {
             background: #f0f0f0;
             border-radius: 4px;
@@ -335,6 +392,25 @@
     <button id="similarity-btn" disabled>Show similarity</button>
     <button id="select-all">Select all</button>
     <button id="select-none">Deselect all</button>
+    <div class="toolbar-sep"></div>
+    <label class="toolbar-control" title="Page card display size">
+        Page size: <input type="range" id="card-size" min="180" max="700" step="10" value="400"/>
+        <output id="card-size-out">400</output>
+    </label>
+    <div class="toolbar-sep"></div>
+    <label class="toolbar-control" title="Similarity threshold for grouping pages and templates">
+        Threshold: <input type="range" id="threshold" min="0.10" max="0.95" step="0.05" value="0.60"/>
+        <output id="threshold-out">0.60</output>
+    </label>
+    <label class="toolbar-control" title="Grouping linkage strategy">
+        Strategy:
+        <select id="group-strategy">
+            <option value="average" selected>Average</option>
+            <option value="single">Single (any pair)</option>
+            <option value="complete">Complete (all pairs)</option>
+        </select>
+    </label>
+    <div class="toolbar-sep"></div>
     <input type="file" id="file" accept=".json"/>
     <div class="status" id="status"></div>
 </div>
@@ -443,9 +519,11 @@ const PALETTE = [
     "#aecbeb", "#ffcfa1", "#f4a59d", "#b0dbd8", "#a8d5a2",
 ];
 
-const CANVAS_W = 400;
+let canvasW = 400;
 const PAD = 10;
-const GROUP_THRESHOLD = 0.60;
+let groupThreshold = 0.60;
+/** @type {"single"|"average"|"complete"} */
+let groupStrategy = "average";
 
 /** @type {LayoutData|null} */
 let currentData = null;
@@ -521,6 +599,27 @@ document.getElementById("similarity-close").addEventListener("click", () => {
     similarityBtn.classList.remove("active");
 });
 
+document.getElementById("card-size").addEventListener("input", (e) => {
+    canvasW = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLOutputElement} */ (document.getElementById("card-size-out")).value = String(canvasW);
+    document.querySelectorAll(".pg-cards.open").forEach(preview => {
+        const pgEl = /** @type {HTMLElement} */ (preview.closest(".page-group"));
+        const indices = JSON.parse(pgEl.dataset.pageIndices || "[]");
+        buildPageCards(/** @type {HTMLElement} */ (preview), indices);
+    });
+});
+
+document.getElementById("threshold").addEventListener("input", (e) => {
+    groupThreshold = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLOutputElement} */ (document.getElementById("threshold-out")).value = groupThreshold.toFixed(2);
+    if (currentData) render(currentData);
+});
+
+document.getElementById("group-strategy").addEventListener("change", (e) => {
+    groupStrategy = /** @type {"single"|"average"|"complete"} */ (/** @type {HTMLSelectElement} */ (e.target).value);
+    if (currentData) render(currentData);
+});
+
 /** @returns {void} */
 function updateToolbarState() {
     const hasData = currentData != null;
@@ -560,10 +659,10 @@ function render(data) {
         const groupTemplates = group.templateIds.map(id => templateById[id]).filter(Boolean);
         groupTemplates.forEach((template, j) => {
             const prefix = templateGroupPrefix(i, group, j);
-            const tmplPages = [...template.pageIndices].sort((a, b) => a - b);
-            tmplPages.forEach((pi, pageIdx) => {
-                if (!pageNumberMap.has(pi)) {
-                    pageNumberMap.set(pi, `${prefix}.${pageIdx + 1}`);
+            const templatePages = [...template.pageIndices].sort((a, b) => a - b);
+            templatePages.forEach((pageIndex, k) => {
+                if (!pageNumberMap.has(pageIndex)) {
+                    pageNumberMap.set(pageIndex, `${prefix}.${k + 1}`);
                 }
             });
         });
@@ -588,9 +687,9 @@ function buildPageSvg(page) {
 
     const maxX2 = Math.max(...areas.map(a => a.x + a.w));
     const maxY2 = Math.max(...areas.map(a => a.y + a.h));
-    const scale = (CANVAS_W - 2 * PAD) / Math.max(maxX2, 210);
+    const scale = (canvasW - 2 * PAD) / Math.max(maxX2, 210);
     const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
-    const svg = svgEl("svg", {width: CANVAS_W, height: svgH, style: "background:#fff;cursor:default"});
+    const svg = svgEl("svg", {width: canvasW, height: svgH, style: "background:#fff;cursor:default"});
 
     (page.proximityGroups || []).forEach((group, i) => {
         const position = group.position;
@@ -745,7 +844,7 @@ function buildMatrixTable(wrap, labels, colHeaders, matrix) {
                 cell.textContent = score.toFixed(2);
                 const g = Math.round(200 * score), r = Math.round(255 * (1 - score));
                 cell.style.background = `rgb(${r},${g},80)`;
-                if (score >= GROUP_THRESHOLD) cell.style.fontWeight = "700";
+                if (score >= groupThreshold) cell.style.fontWeight = "700";
             }
         });
     });
@@ -888,41 +987,50 @@ function togglePageCards(rowEl) {
     icon.textContent = isOpen ? "\u25BC" : "\u25B6";
 
     if (isOpen && preview.childElementCount === 0) {
-        /** @type {number[]} */
         const indices = JSON.parse(pgEl.dataset.pageIndices || "[]");
-        indices.forEach(pi => {
-            const wrap = document.createElement("div");
-            wrap.className = "page-card";
-            wrap.dataset.pageIndex = String(pi);
-            if (!selectedPages.has(pi)) wrap.hidden = true;
-            const title = document.createElement("div");
-            title.className = "page-card-title";
-            const pageNum = pageNumberMap.get(pi);
-            if (pageNum) {
-                const numSpan = document.createElement("span");
-                numSpan.style.fontWeight = "700";
-                numSpan.textContent = pageNum + " ";
-                title.appendChild(numSpan);
-                title.appendChild(document.createTextNode(pageName(currentData.pages[pi])));
-            } else {
-                title.textContent = pageName(currentData.pages[pi]);
-            }
-            title.style.cursor = "pointer";
-            title.addEventListener("click", () => {
-                const cb = /** @type {HTMLInputElement|null} */ (
-                    document.querySelector(`input[data-page="${pi}"]`)
-                );
-                if (cb) {
-                    cb.checked = !cb.checked;
-                    cb.dispatchEvent(new Event("change", {bubbles: true}));
-                }
-            });
-            wrap.appendChild(title);
-            const svg = buildPageSvg(currentData.pages[pi]);
-            if (svg) wrap.appendChild(svg);
-            preview.appendChild(wrap);
-        });
+        buildPageCards(preview, indices);
     }
+}
+
+/**
+ * Populates a .pg-cards container with page card elements.
+ * @param {HTMLElement} preview
+ * @param {number[]} indices
+ */
+function buildPageCards(preview, indices) {
+    preview.innerHTML = "";
+    indices.forEach(pi => {
+        const wrap = document.createElement("div");
+        wrap.className = "page-card";
+        wrap.dataset.pageIndex = String(pi);
+        if (!selectedPages.has(pi)) wrap.hidden = true;
+        const title = document.createElement("div");
+        title.className = "page-card-title";
+        const pageNum = pageNumberMap.get(pi);
+        if (pageNum) {
+            const numSpan = document.createElement("span");
+            numSpan.style.fontWeight = "700";
+            numSpan.textContent = pageNum + " ";
+            title.appendChild(numSpan);
+            title.appendChild(document.createTextNode(pageName(currentData.pages[pi])));
+        } else {
+            title.textContent = pageName(currentData.pages[pi]);
+        }
+        title.style.cursor = "pointer";
+        title.addEventListener("click", () => {
+            const cb = /** @type {HTMLInputElement|null} */ (
+                document.querySelector(`input[data-page="${pi}"]`)
+            );
+            if (cb) {
+                cb.checked = !cb.checked;
+                cb.dispatchEvent(new Event("change", {bubbles: true}));
+            }
+        });
+        wrap.appendChild(title);
+        const svg = buildPageSvg(currentData.pages[pi]);
+        if (svg) wrap.appendChild(svg);
+        preview.appendChild(wrap);
+    });
 }
 
 /**
@@ -977,11 +1085,15 @@ function computeTemplateGroups(templateLevel) {
         .map(pageGroup => ({
             templateIds: pageGroup.map(i => templateLevel.templates[i].templateId),
             templateNames: pageGroup.map(i => templateLevel.templates[i].templateName ?? templateLevel.templates[i].templateId),
+            pageGroups: /** @type {number[][]} */ ([]),
         }));
 }
 
 /**
- * Average-linkage agglomerative grouping.
+ * Agglomerative grouping with configurable linkage strategy.
+ * - single:   merge if ANY pair exceeds threshold (loose)
+ * - average:  merge if AVERAGE of all pairs exceeds threshold (default)
+ * - complete: merge if ALL pairs exceed threshold (strict)
  * @param {number[]} indices
  * @param {number[][]} matrix
  * @returns {number[][]}
@@ -995,8 +1107,11 @@ function groupPages(indices, matrix) {
         outer: for (let i = 0; i < pageGroups.length; i++) {
             for (let j = i + 1; j < pageGroups.length; j++) {
                 const scores = pageGroups[i].flatMap(a => pageGroups[j].map(b => matrix[a]?.[b] ?? 0));
-                const avg = scores.reduce((s, v) => s + v, 0) / scores.length;
-                if (avg >= GROUP_THRESHOLD) {
+                const linkScore =
+                    groupStrategy === "single"   ? Math.max(...scores) :
+                    groupStrategy === "complete" ? Math.min(...scores) :
+                    scores.reduce((s, v) => s + v, 0) / scores.length; // average
+                if (linkScore >= groupThreshold) {
                     pageGroups[i].push(...pageGroups[j]);
                     pageGroups.splice(j, 1);
                     changed = true;
