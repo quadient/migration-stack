@@ -5,6 +5,8 @@
 //! ---
 package com.quadient.migration.example.common.layout
 
+import com.fasterxml.jackson.core.util.DefaultIndenter
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.Area
@@ -122,7 +124,7 @@ List<List<Double>> templateMatrix = buildSymmetricMatrix(templateList.size()) { 
     templateSimilarity(templateList[i].pageIndices, templateList[j].pageIndices, pageMatrix)
 }
 
-new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(dstFile,
+new ObjectMapper().writer(layoutJsonPrettyPrinter()).writeValue(dstFile,
         [projectName: migration.projectConfig.name,
          pages      : pageEntries,
          similarity : [pageLevel    : [matrix: pageMatrix],
@@ -130,6 +132,12 @@ new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(dstFile,
 println "Written to: ${dstFile.absolutePath}"
 
 // --- Helper methods ---
+
+static DefaultPrettyPrinter layoutJsonPrettyPrinter() {
+    DefaultPrettyPrinter printer = new DefaultPrettyPrinter()
+    printer.indentArraysWith(DefaultIndenter.SYSTEM_LINEFEED_INSTANCE)
+    printer
+}
 
 /** Builds a symmetric similarity matrix, computing only the upper triangle. */
 static List<List<Double>> buildSymmetricMatrix(int n, Closure<Double> scoreFn) {
