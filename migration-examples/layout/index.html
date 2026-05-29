@@ -399,11 +399,11 @@
     </label>
     <div class="toolbar-sep"></div>
     <label class="toolbar-control" title="Similarity threshold for grouping pages and templates">
-        Threshold: <input type="range" id="threshold" min="0.10" max="0.95" step="0.05" value="0.60"/>
+        Threshold: <input type="range" id="threshold" min="0.10" max="0.95" step="0.01" value="0.60"/>
         <output id="threshold-out">0.60</output>
     </label>
     <label class="toolbar-control" title="Vertical gap threshold for proximity grouping within page cards">
-        Proximity gap: <input type="range" id="proximity-gap" min="0" max="20" step="0.5" value="5.3"/>
+        Proximity gap: <input type="range" id="proximity-gap" min="0" max="20" step="0.1" value="5.3"/>
         <output id="proximity-gap-out">5.3</output>
     </label>
     <label class="toolbar-control" title="Grouping linkage strategy">
@@ -637,6 +637,21 @@ document.getElementById("proximity-gap").addEventListener("input", (e) => {
 document.getElementById("group-strategy").addEventListener("change", (e) => {
     groupStrategy = /** @type {"single"|"average"|"complete"} */ (/** @type {HTMLSelectElement} */ (e.target).value);
     if (currentData) render(currentData);
+});
+
+document.querySelectorAll("input[type='range']").forEach(input => {
+    input.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const slider = /** @type {HTMLInputElement} */ (e.currentTarget);
+        const min = slider.min === "" ? 0 : parseFloat(slider.min);
+        const max = slider.max === "" ? 100 : parseFloat(slider.max);
+        const step = slider.step === "" || slider.step === "any" ? 1 : parseFloat(slider.step);
+        const current = parseFloat(slider.value);
+        const direction = e.deltaY < 0 ? 1 : -1;
+        const next = Math.min(max, Math.max(min, current + direction * step));
+        slider.value = String(roundTo(next, sliderStepDecimals(slider)));
+        slider.dispatchEvent(new Event("input", {bubbles: true}));
+    }, {passive: false});
 });
 
 /** @returns {void} */
@@ -1308,6 +1323,17 @@ function templateSimilarity(pagesA, pagesB, pageMatrix) {
 function roundTo(value, decimals) {
     const factor = 10 ** decimals;
     return Math.round(value * factor) / factor;
+}
+
+/**
+ * @param {HTMLInputElement} slider
+ * @returns {number}
+ */
+function sliderStepDecimals(slider) {
+    const step = slider.step;
+    if (!step || step === "any") return 0;
+    const dot = step.indexOf(".");
+    return dot >= 0 ? step.length - dot - 1 : 0;
 }
 
 /**
