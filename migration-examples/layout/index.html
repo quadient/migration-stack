@@ -402,6 +402,10 @@
         Threshold: <input type="range" id="threshold" min="0.10" max="0.95" step="0.05" value="0.60"/>
         <output id="threshold-out">0.60</output>
     </label>
+    <label class="toolbar-control" title="Vertical gap threshold for proximity grouping within page cards">
+        Proximity gap: <input type="range" id="proximity-gap" min="0" max="20" step="0.5" value="5.3"/>
+        <output id="proximity-gap-out">5.3</output>
+    </label>
     <label class="toolbar-control" title="Grouping linkage strategy">
         Strategy:
         <select id="group-strategy">
@@ -440,7 +444,13 @@
  * @typedef {Object} LayoutData
  * @property {string} projectName
  * @property {PageEntry[]} pages
+ * @property {TemplateEntry[]} templates
+ */
+
+/**
+ * @typedef {Object} LayoutAnalysis
  * @property {Similarity} similarity
+ * @property {ProximityGroup[][]} pageProximityGroups
  */
 
 /**
@@ -475,7 +485,6 @@
  * @property {string|null} templateName
  * @property {number|null} templatePageIndex
  * @property {AreaEntry[]} areas
- * @property {ProximityGroup[]} proximityGroups
  */
 
 /**
@@ -488,7 +497,6 @@
  * @property {string} interactiveFlowName
  * @property {string} contentPreview
  * @property {number|null} containedIn
- * @property {number} proximityGroup
  */
 
 /**
@@ -519,14 +527,19 @@ const PALETTE = [
     "#aecbeb", "#ffcfa1", "#f4a59d", "#b0dbd8", "#a8d5a2",
 ];
 
+const PAGE_REF_MM = 210;
+const DEFAULT_PROXIMITY_GAP_MM = 5.3;
 let canvasW = 400;
 const PAD = 10;
 let groupThreshold = 0.60;
+let proximityGap = DEFAULT_PROXIMITY_GAP_MM;
 /** @type {"single"|"average"|"complete"} */
 let groupStrategy = "average";
 
 /** @type {LayoutData|null} */
 let currentData = null;
+/** @type {LayoutAnalysis|null} */
+let currentAnalysis = null;
 /** @type {TemplateGroup[]} */
 let templateGroups = [];
 /** @type {Record<string, TemplateEntry>} */
@@ -549,7 +562,7 @@ const similarityPane = /** @type {HTMLElement} */ (document.getElementById("simi
 async function loadFile(file) {
     try {
         /** @type {LayoutData} */
-        const data = JSON.parse(await file.text());
+        const data = normalizeLayoutData(JSON.parse(await file.text()));
         statusEl.textContent = "";
         render(data);
     } catch (err) {
@@ -615,6 +628,12 @@ document.getElementById("threshold").addEventListener("input", (e) => {
     if (currentData) render(currentData);
 });
 
+document.getElementById("proximity-gap").addEventListener("input", (e) => {
+    proximityGap = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLOutputElement} */ (document.getElementById("proximity-gap-out")).value = proximityGap.toFixed(1);
+    if (currentData) render(currentData);
+});
+
 document.getElementById("group-strategy").addEventListener("change", (e) => {
     groupStrategy = /** @type {"single"|"average"|"complete"} */ (/** @type {HTMLSelectElement} */ (e.target).value);
     if (currentData) render(currentData);
@@ -642,10 +661,11 @@ function updateGroupCheckboxes() {
  */
 function render(data) {
     currentData = data;
+    currentAnalysis = analyzeLayoutData(data);
     document.getElementById("app").hidden = false;
     similarityPane.hidden = true;
 
-    const templateLevel = data.similarity.templateLevel;
+    const templateLevel = currentAnalysis.similarity.templateLevel;
     templateById = Object.fromEntries(templateLevel.templates.map(t => [t.templateId, t]));
     templateGroups = computeTemplateGroups(templateLevel);
     selectedGroups = new Set(templateGroups.map((_, i) => i));
@@ -654,7 +674,7 @@ function render(data) {
     // Build stable page numbering scoped per template (e.g. "2a.1", "2a.2", "3.1")
     // and compute sorted page-group clusters once for reuse across render and similarity
     pageNumberMap = new Map();
-    const {pageLevel} = data.similarity;
+    const {pageLevel} = currentAnalysis.similarity;
     templateGroups.forEach((group, i) => {
         const groupTemplates = group.templateIds.map(id => templateById[id]).filter(Boolean);
         groupTemplates.forEach((template, j) => {
@@ -691,9 +711,10 @@ function areaTip(ar, idx) {
 
 /**
  * @param {PageEntry} page
+ * @param {ProximityGroup[]} proximityGroups
  * @returns {SVGElement|null}
  */
-function buildPageSvg(page) {
+function buildPageSvg(page, proximityGroups) {
     const areas = page.areas;
     if (!areas.length) return null;
 
@@ -702,8 +723,10 @@ function buildPageSvg(page) {
     const scale = (canvasW - 2 * PAD) / Math.max(maxX2, 210);
     const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
     const svg = svgEl("svg", {width: canvasW, height: svgH, style: "background:#fff;cursor:default"});
-
-    const proximityGroups = page.proximityGroups || [];
+    const proximityGroupByArea = new Map();
+    proximityGroups.forEach((group, groupIndex) => {
+        group.areaIndices.forEach(areaIndex => proximityGroupByArea.set(areaIndex, groupIndex));
+    });
 
     proximityGroups.forEach((group, i) => {
         const p = group.position;
@@ -746,8 +769,9 @@ function buildPageSvg(page) {
                 && o.y < a.y + a.h && o.y + o.h > a.y)
             .sort((a, b) => (a.o.w * a.o.h) - (b.o.w * b.o.h));
 
-        const pg = proximityGroups[a.proximityGroup];
-        const pgLine = pg ? `G${a.proximityGroup + 1}\nw ${pg.position.w}mm · h ${pg.position.h}mm · x ${pg.position.x}mm · y ${pg.position.y}mm\n\n` : "";
+        const proximityGroupIndex = proximityGroupByArea.get(i);
+        const pg = proximityGroupIndex != null ? proximityGroups[proximityGroupIndex] : null;
+        const pgLine = pg ? `G${proximityGroupIndex + 1}\nw ${pg.position.w}mm · h ${pg.position.h}mm · x ${pg.position.x}mm · y ${pg.position.y}mm\n\n` : "";
         const tip = pgLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
 
         const rect = svgEl("rect", {
@@ -772,7 +796,7 @@ function buildPageSvg(page) {
 
 /** @returns {void} */
 function renderSimilarity() {
-    const {templateLevel, pageLevel} = currentData.similarity;
+    const {templateLevel, pageLevel} = currentAnalysis.similarity;
 
     const templateWrap = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-wrap"));
     const pageWrap = /** @type {HTMLElement} */ (document.getElementById("page-matrix-wrap"));
@@ -869,7 +893,7 @@ function buildMatrixTable(wrap, labels, colHeaders, matrix) {
  * @param {LayoutData} data
  */
 function renderTemplateGroups(data) {
-    const {pageLevel} = data.similarity;
+    const {pageLevel} = currentAnalysis.similarity;
     const groupsEl = /** @type {HTMLElement} */ (document.getElementById("template-groups"));
     groupsEl.innerHTML = "";
 
@@ -1039,7 +1063,7 @@ function buildPageCards(preview, indices) {
             }
         });
         wrap.appendChild(title);
-        const svg = buildPageSvg(currentData.pages[pi]);
+        const svg = buildPageSvg(currentData.pages[pi], currentAnalysis.pageProximityGroups[pi] ?? []);
         if (svg) wrap.appendChild(svg);
         preview.appendChild(wrap);
     });
@@ -1086,6 +1110,204 @@ function templateGroupPrefix(groupIndex, group, templateIndex) {
     const num = groupIndex + 1;
     const letter = group.templateIds.length > 1 ? String.fromCharCode(97 + templateIndex) : "";
     return `${num}${letter}`;
+}
+
+/**
+ * @param {unknown} raw
+ * @returns {LayoutData}
+ */
+function normalizeLayoutData(raw) {
+    const data = /** @type {{projectName?: string, pages?: PageEntry[], templates?: TemplateEntry[], similarity?: {templateLevel?: {templates?: TemplateEntry[]}}}} */ (raw ?? {});
+    const pages = Array.isArray(data.pages) ? data.pages : [];
+    const templates = Array.isArray(data.templates) && data.templates.length
+        ? data.templates
+        : Array.isArray(data.similarity?.templateLevel?.templates) && data.similarity.templateLevel.templates.length
+            ? data.similarity.templateLevel.templates
+            : deriveTemplates(pages);
+    return {
+        projectName: data.projectName ?? "",
+        pages,
+        templates,
+    };
+}
+
+/**
+ * @param {LayoutData} data
+ * @returns {LayoutAnalysis}
+ */
+function analyzeLayoutData(data) {
+    const pageProximityGroups = data.pages.map(page => groupByProximity(page.areas, proximityGap));
+    const pageMatrix = buildSymmetricMatrix(data.pages.length, (i, j) => pageSimilarity(data.pages[i].areas, data.pages[j].areas));
+    const templateLevel = {templates: data.templates, matrix: []};
+    templateLevel.matrix = buildSymmetricMatrix(data.templates.length, (i, j) =>
+        templateSimilarity(data.templates[i].pageIndices, data.templates[j].pageIndices, pageMatrix)
+    );
+    return {
+        similarity: {
+            pageLevel: {matrix: pageMatrix},
+            templateLevel,
+        },
+        pageProximityGroups,
+    };
+}
+
+/**
+ * @param {PageEntry[]} pages
+ * @returns {TemplateEntry[]}
+ */
+function deriveTemplates(pages) {
+    /** @type {Map<string, number[]>} */
+    const templatePages = new Map();
+    pages.forEach((page, pageIndex) => {
+        const key = page.templateId ?? `orphan:${page.pageId}`;
+        if (!templatePages.has(key)) templatePages.set(key, []);
+        templatePages.get(key).push(pageIndex);
+    });
+    return [...templatePages.entries()].map(([key, pageIndices]) => {
+        const sortedPageIndices = [...pageIndices].sort((a, b) => {
+            const pageA = pages[a];
+            const pageB = pages[b];
+            return (pageA.templatePageIndex ?? 0) - (pageB.templatePageIndex ?? 0);
+        });
+        const first = pages[sortedPageIndices[0]];
+        return {
+            templateId: first.templateId ?? key,
+            templateName: first.templateName ?? first.templateId ?? key,
+            pageIndices: sortedPageIndices,
+        };
+    });
+}
+
+/**
+ * @param {number} size
+ * @param {(i: number, j: number) => number} scoreFn
+ * @returns {number[][]}
+ */
+function buildSymmetricMatrix(size, scoreFn) {
+    /** @type {number[][]} */
+    const matrix = [];
+    for (let i = 0; i < size; i++) {
+        matrix[i] = [];
+        for (let j = 0; j < size; j++) {
+            if (i === j) matrix[i][j] = 1;
+            else if (j < i) matrix[i][j] = matrix[j][i];
+            else matrix[i][j] = roundTo(scoreFn(i, j), 3);
+        }
+    }
+    return matrix;
+}
+
+/**
+ * Vertical sweep grouping: areas whose Y ranges overlap or are within
+ * the proximity gap of each other are placed in the same group.
+ * @param {AreaEntry[]} areas
+ * @param {number} groupingGap
+ * @returns {ProximityGroup[]}
+ */
+function groupByProximity(areas, groupingGap) {
+    if (!areas.length) return [];
+    const sortedIndices = areas.map((_, i) => i).sort((a, b) => areas[a].y - areas[b].y || areas[a].x - areas[b].x);
+    /** @type {number[][]} */
+    const groupedIndices = [];
+    let current = [sortedIndices[0]];
+    let curY2 = areas[sortedIndices[0]].y + areas[sortedIndices[0]].h;
+    sortedIndices.slice(1).forEach(idx => {
+        const area = areas[idx];
+        if (area.y <= curY2 + groupingGap) {
+            current.push(idx);
+            curY2 = Math.max(curY2, area.y + area.h);
+        } else {
+            groupedIndices.push(current);
+            current = [idx];
+            curY2 = area.y + area.h;
+        }
+    });
+    groupedIndices.push(current);
+
+    return groupedIndices.map(areaIndices => {
+        const subset = areaIndices.map(index => areas[index]);
+        const x = Math.min(...subset.map(area => area.x));
+        const y = Math.min(...subset.map(area => area.y));
+        const x2 = Math.max(...subset.map(area => area.x + area.w));
+        const y2 = Math.max(...subset.map(area => area.y + area.h));
+        return {
+            areaIndices,
+            position: {
+                x: roundTo(x, 2),
+                y: roundTo(y, 2),
+                w: roundTo(x2 - x, 2),
+                h: roundTo(y2 - y, 2),
+            },
+        };
+    });
+}
+
+/**
+ * Compare two pages by greedy bipartite matching on area geometry.
+ * Each area is described by (x, width) normalised to page reference width and
+ * height with a log-ratio so a 3x difference scores about 1.0.
+ * @param {AreaEntry[]} areasA
+ * @param {AreaEntry[]} areasB
+ * @param {number} [matchThreshold]
+ * @returns {number}
+ */
+function pageSimilarity(areasA, areasB, matchThreshold = 0.5) {
+    if (!areasA.length || !areasB.length) return 0;
+
+    /** @type {{distance: number, indexA: number, indexB: number}[]} */
+    const areaMatches = [];
+    areasA.forEach((areaA, indexA) => {
+        areasB.forEach((areaB, indexB) => {
+            const xDist = Math.abs(areaA.x - areaB.x) / PAGE_REF_MM;
+            const wDist = Math.abs(areaA.w - areaB.w) / PAGE_REF_MM;
+            const hRatio = Math.abs(Math.log(Math.max(areaA.h, 0.1) / Math.max(areaB.h, 0.1))) / Math.log(3);
+            areaMatches.push({
+                distance: Math.sqrt(xDist * xDist + wDist * wDist + hRatio * hRatio),
+                indexA,
+                indexB,
+            });
+        });
+    });
+    areaMatches.sort((a, b) => a.distance - b.distance);
+
+    const matchedA = new Set();
+    const matchedB = new Set();
+    let total = 0;
+    areaMatches.forEach(match => {
+        if (matchedA.has(match.indexA) || matchedB.has(match.indexB)) return;
+        matchedA.add(match.indexA);
+        matchedB.add(match.indexB);
+        total += Math.max(0, 1 - match.distance / matchThreshold);
+    });
+    const slots = Math.max(areasA.length, areasB.length);
+    return slots > 0 ? total / slots : 0;
+}
+
+/**
+ * Compare two templates by positional page matching (page 1<->1, page 2<->2, ...).
+ * Unmatched pages contribute 0, penalising different template lengths proportionally.
+ * @param {number[]} pagesA
+ * @param {number[]} pagesB
+ * @param {number[][]} pageMatrix
+ * @returns {number}
+ */
+function templateSimilarity(pagesA, pagesB, pageMatrix) {
+    const maxLen = Math.max(pagesA.length, pagesB.length);
+    if (maxLen === 0) return 0;
+    let total = 0;
+    for (let i = 0; i < Math.min(pagesA.length, pagesB.length); i++)
+        total += pageMatrix[pagesA[i]]?.[pagesB[i]] ?? 0;
+    return total / maxLen;
+}
+
+/**
+ * @param {number} value
+ * @param {number} decimals
+ * @returns {number}
+ */
+function roundTo(value, decimals) {
+    const factor = 10 ** decimals;
+    return Math.round(value * factor) / factor;
 }
 
 /**
