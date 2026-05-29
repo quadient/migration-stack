@@ -504,6 +504,32 @@
  * @property {number[][]} pageGroups - sorted page-index clusters, stable after render
  */
 
+/**
+ * @typedef {Object} Settings
+ * @property {number} canvasW
+ * @property {number} groupThreshold
+ * @property {number} proximityGap
+ * @property {"single"|"average"|"complete"} groupStrategy
+ */
+
+/**
+ * @typedef {Object} UiState
+ * @property {Set<string>} selectedTemplateIds
+ * @property {Set<number>} selectedPages
+ * @property {Set<string>} openPageGroups
+ * @property {boolean} similarityOpen
+ */
+
+/**
+ * @typedef {Object} ViewModel
+ * @property {TemplateLevel} templateLevel
+ * @property {PageLevel} pageLevel
+ * @property {TemplateGroup[]} templateGroups
+ * @property {Record<string, TemplateEntry>} templateById
+ * @property {Map<number, string>} pageNumberMap
+ * @property {Set<string>} pageGroupKeys
+ */
+
 /** @type {string[]} */
 const PALETTE = [
     "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
@@ -513,27 +539,28 @@ const PALETTE = [
 
 const PAGE_REF_MM = 210;
 const DEFAULT_PROXIMITY_GAP_MM = 5.3;
-let canvasW = 400;
 const PAD = 10;
-let groupThreshold = 0.60;
-let proximityGap = DEFAULT_PROXIMITY_GAP_MM;
-/** @type {"single"|"average"|"complete"} */
-let groupStrategy = "average";
+/** @type {Settings} */
+const settings = {
+    canvasW: 400,
+    groupThreshold: 0.60,
+    proximityGap: DEFAULT_PROXIMITY_GAP_MM,
+    groupStrategy: "average",
+};
 
 /** @type {LayoutData|null} */
 let currentData = null;
 /** @type {LayoutAnalysis|null} */
 let currentAnalysis = null;
-/** @type {TemplateGroup[]} */
-let templateGroups = [];
-/** @type {Record<string, TemplateEntry>} */
-let templateById = {};
-/** @type {Set<number>} - indices into templateGroups that are selected */
-let selectedGroups = new Set();
-/** @type {Set<number>} - global page indices that are selected (for similarity) */
-let selectedPages = new Set();
-/** @type {Map<number, string>} - global page index → stable display label (e.g. "2a.1") */
-let pageNumberMap = new Map();
+/** @type {ViewModel|null} */
+let currentViewModel = null;
+/** @type {UiState} */
+let uiState = {
+    selectedTemplateIds: new Set(),
+    selectedPages: new Set(),
+    openPageGroups: new Set(),
+    similarityOpen: false,
+};
 
 const statusEl = /** @type {HTMLElement} */ (document.getElementById("status"));
 const fileInput = /** @type {HTMLInputElement} */ (document.getElementById("file"));
@@ -567,21 +594,23 @@ document.body.addEventListener("drop", e => {
 });
 
 document.getElementById("select-all").addEventListener("click", () => {
-    templateGroups.forEach((_, i) => selectedGroups.add(i));
+    if (!currentViewModel) return;
+    uiState.selectedTemplateIds = new Set(currentViewModel.templateLevel.templates.map(t => t.templateId));
     updateGroupCheckboxes();
     updateToolbarState();
-    if (!similarityPane.hidden) renderSimilarity();
+    if (uiState.similarityOpen) renderSimilarity();
 });
 
 document.getElementById("select-none").addEventListener("click", () => {
-    selectedGroups.clear();
+    uiState.selectedTemplateIds.clear();
     updateGroupCheckboxes();
     updateToolbarState();
-    if (!similarityPane.hidden) renderSimilarity();
+    if (uiState.similarityOpen) renderSimilarity();
 });
 
 similarityBtn.addEventListener("click", () => {
-    if (similarityPane.hidden) {
+    uiState.similarityOpen = !uiState.similarityOpen;
+    if (uiState.similarityOpen) {
         similarityPane.hidden = false;
         similarityBtn.classList.add("active");
         renderSimilarity();
@@ -592,13 +621,14 @@ similarityBtn.addEventListener("click", () => {
 });
 
 document.getElementById("similarity-close").addEventListener("click", () => {
+    uiState.similarityOpen = false;
     similarityPane.hidden = true;
     similarityBtn.classList.remove("active");
 });
 
 document.getElementById("card-size").addEventListener("input", (e) => {
-    canvasW = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
-    /** @type {HTMLOutputElement} */ (document.getElementById("card-size-out")).value = String(canvasW);
+    settings.canvasW = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLOutputElement} */ (document.getElementById("card-size-out")).value = String(settings.canvasW);
     document.querySelectorAll(".pg-cards.open").forEach(preview => {
         const pgEl = /** @type {HTMLElement} */ (preview.closest(".page-group"));
         const indices = JSON.parse(pgEl.dataset.pageIndices || "[]");
@@ -607,19 +637,19 @@ document.getElementById("card-size").addEventListener("input", (e) => {
 });
 
 document.getElementById("threshold").addEventListener("input", (e) => {
-    groupThreshold = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
-    /** @type {HTMLOutputElement} */ (document.getElementById("threshold-out")).value = groupThreshold.toFixed(2);
+    settings.groupThreshold = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLOutputElement} */ (document.getElementById("threshold-out")).value = settings.groupThreshold.toFixed(2);
     if (currentData) render(currentData);
 });
 
 document.getElementById("proximity-gap").addEventListener("input", (e) => {
-    proximityGap = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
-    /** @type {HTMLOutputElement} */ (document.getElementById("proximity-gap-out")).value = proximityGap.toFixed(1);
+    settings.proximityGap = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLOutputElement} */ (document.getElementById("proximity-gap-out")).value = settings.proximityGap.toFixed(1);
     if (currentData) render(currentData);
 });
 
 document.getElementById("group-strategy").addEventListener("change", (e) => {
-    groupStrategy = /** @type {"single"|"average"|"complete"} */ (/** @type {HTMLSelectElement} */ (e.target).value);
+    settings.groupStrategy = /** @type {"single"|"average"|"complete"} */ (/** @type {HTMLSelectElement} */ (e.target).value);
     if (currentData) render(currentData);
 });
 
@@ -648,10 +678,13 @@ function updateToolbarState() {
 
 /** @returns {void} */
 function updateGroupCheckboxes() {
+    if (!currentViewModel) return;
     document.querySelectorAll("#template-groups > li").forEach((li, i) => {
         const cb = /** @type {HTMLInputElement|null} */ (li.querySelector("input[type=checkbox]"));
-        if (cb) cb.checked = selectedGroups.has(i);
-        li.classList.toggle("dimmed", !selectedGroups.has(i));
+        const group = currentViewModel.templateGroups[i];
+        const checked = group ? isTemplateGroupSelected(group) : false;
+        if (cb) cb.checked = checked;
+        li.classList.toggle("dimmed", !checked);
     });
 }
 
@@ -659,73 +692,21 @@ function updateGroupCheckboxes() {
  * @param {LayoutData} data
  */
 function render(data) {
-    const preserveSelection = currentData === data && currentAnalysis != null;
-    const previousPageSelection = preserveSelection ? new Set(selectedPages) : null;
-    const previousTemplateSelection = preserveSelection ? selectedTemplateIds() : null;
-    const previousOpenPageGroups = preserveSelection ? openPageGroupKeys() : null;
-    const similarityWasOpen = !similarityPane.hidden;
-    const similarity = preserveSelection
-        ? currentAnalysis.similarity
-        : buildSimilarity(data);
-    const pageProximityGroups = preserveSelection && currentAnalysis.proximityGap === proximityGap
-        ? currentAnalysis.pageProximityGroups
-        : buildPageProximityGroups(data.pages, proximityGap);
-
+    const dataChanged = currentData !== data;
     currentData = data;
-    currentAnalysis = {similarity, pageProximityGroups, proximityGap};
+    currentAnalysis = ensureAnalysis(data, currentAnalysis, settings);
+    currentViewModel = buildViewModel(data, currentAnalysis, settings);
+    uiState = reconcileUiState(uiState, currentViewModel, dataChanged);
+
     document.getElementById("app").hidden = false;
-    similarityPane.hidden = true;
-
-    const templateLevel = similarity.templateLevel;
-    templateById = Object.fromEntries(templateLevel.templates.map(t => [t.templateId, t]));
-    templateGroups = computeTemplateGroups(templateLevel);
-    if (preserveSelection && previousTemplateSelection) {
-        selectedGroups = new Set(
-            templateGroups
-                .map((group, i) => group.templateIds.every(id => previousTemplateSelection.has(id)) ? i : -1)
-                .filter(i => i >= 0)
-        );
-    } else {
-        selectedGroups = new Set(templateGroups.map((_, i) => i));
-    }
-    if (preserveSelection && previousPageSelection) {
-        selectedPages = new Set([...previousPageSelection].filter(i => i >= 0 && i < data.pages.length));
-    } else {
-        selectedPages = new Set(templateLevel.templates.flatMap(t => t.pageIndices));
-    }
-
-    // Build stable page numbering scoped per template (e.g. "2a.1", "2a.2", "3.1")
-    // and compute sorted page-group clusters once for reuse across render and similarity
-    pageNumberMap = new Map();
-    const {pageLevel} = similarity;
-    templateGroups.forEach((group, i) => {
-        const groupTemplates = group.templateIds.map(id => templateById[id]).filter(Boolean);
-        groupTemplates.forEach((template, j) => {
-            const prefix = templateGroupPrefix(i, group, j);
-            const templatePages = [...template.pageIndices];
-            templatePages.forEach((pageIndex, k) => {
-                if (!pageNumberMap.has(pageIndex)) {
-                    pageNumberMap.set(pageIndex, `${prefix}.${k + 1}`);
-                }
-            });
-        });
-
-        const pageIndices = groupTemplates.flatMap(t => t.pageIndices).sort((a, b) => a - b);
-        group.pageGroups = groupPages(pageIndices, pageLevel.matrix)
-            .map(pg => pg.sort((a, b) => a - b))
-            .sort((a, b) => Math.min(...a) - Math.min(...b));
-    });
-
+    similarityPane.hidden = !uiState.similarityOpen;
+    similarityBtn.classList.toggle("active", uiState.similarityOpen);
     renderTemplateGroups(data);
     updateGroupCheckboxes();
-    if (previousOpenPageGroups) reopenPageGroups(previousOpenPageGroups);
+    reopenPageGroups(uiState.openPageGroups);
     updateToolbarState();
-    if (similarityWasOpen) {
-        similarityPane.hidden = false;
-        similarityBtn.classList.add("active");
+    if (uiState.similarityOpen) {
         renderSimilarity();
-    } else {
-        similarityBtn.classList.remove("active");
     }
 }
 
@@ -752,9 +733,9 @@ function buildPageSvg(page, proximityGroups) {
 
     const maxX2 = Math.max(...areas.map(a => a.x + a.w));
     const maxY2 = Math.max(...areas.map(a => a.y + a.h));
-    const scale = (canvasW - 2 * PAD) / Math.max(maxX2, 210);
+    const scale = (settings.canvasW - 2 * PAD) / Math.max(maxX2, 210);
     const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
-    const svg = svgEl("svg", {width: canvasW, height: svgH, style: "background:#fff;cursor:default"});
+    const svg = svgEl("svg", {width: settings.canvasW, height: svgH, style: "background:#fff;cursor:default"});
     const proximityGroupByArea = new Map();
     proximityGroups.forEach((group, groupIndex) => {
         group.areaIndices.forEach(areaIndex => proximityGroupByArea.set(areaIndex, groupIndex));
@@ -828,7 +809,8 @@ function buildPageSvg(page, proximityGroups) {
 
 /** @returns {void} */
 function renderSimilarity() {
-    const {templateLevel, pageLevel} = currentAnalysis.similarity;
+    if (!currentViewModel) return;
+    const {templateLevel, pageLevel, templateGroups, pageNumberMap} = currentViewModel;
 
     const templateWrap = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-wrap"));
     const pageWrap = /** @type {HTMLElement} */ (document.getElementById("page-matrix-wrap"));
@@ -839,9 +821,9 @@ function renderSimilarity() {
     const templateLabels = [];
     /** @type {string[]} */
     const templateColHeaders = [];
-    selectedGroups.forEach(i => {
-        const group = templateGroups[i];
+    templateGroups.forEach((group, i) => {
         group.templateIds.forEach((id, j) => {
+            if (!uiState.selectedTemplateIds.has(id)) return;
             const templateIndex = templateLevel.templates.findIndex(t => t.templateId === id);
             if (templateIndex >= 0) {
                 selectedTemplateIndices.push(templateIndex);
@@ -862,7 +844,7 @@ function renderSimilarity() {
     /** @type {number[]} */
     const selectedPageIndices = [...new Set(
         selectedTemplateIndices.flatMap(i => templateLevel.templates[i].pageIndices)
-    )].filter(j => selectedPages.has(j)).sort((a, b) => a - b);
+    )].filter(j => uiState.selectedPages.has(j)).sort((a, b) => a - b);
 
     if (selectedPageIndices.length > 0) {
         const ordered = pageOrderByGroup(selectedPageIndices);
@@ -912,7 +894,7 @@ function buildMatrixTable(wrap, labels, colHeaders, matrix) {
                 cell.textContent = score.toFixed(2);
                 const g = Math.round(200 * score), r = Math.round(255 * (1 - score));
                 cell.style.background = `rgb(${r},${g},80)`;
-                if (score >= groupThreshold) cell.style.fontWeight = "700";
+                if (score >= settings.groupThreshold) cell.style.fontWeight = "700";
             }
         });
     });
@@ -925,7 +907,8 @@ function buildMatrixTable(wrap, labels, colHeaders, matrix) {
  * @param {LayoutData} data
  */
 function renderTemplateGroups(data) {
-    const {pageLevel} = currentAnalysis.similarity;
+    if (!currentViewModel) return;
+    const {pageLevel, templateGroups, pageNumberMap} = currentViewModel;
     const groupsEl = /** @type {HTMLElement} */ (document.getElementById("template-groups"));
     groupsEl.innerHTML = "";
 
@@ -939,7 +922,7 @@ function renderTemplateGroups(data) {
         let groupsHtml = '<div class="page-groups">';
         pageGroups.forEach((pageGroup, ci) => {
             const cohesion = minPairScore(pageGroup, pageLevel.matrix);
-            const checkedCount = pageGroup.filter(pi => selectedPages.has(pi)).length;
+            const checkedCount = pageGroup.filter(pi => uiState.selectedPages.has(pi)).length;
             const pgState = checkedCount === pageGroup.length ? "all-selected" : checkedCount === 0 ? "none-selected" : "";
             groupsHtml +=
                 `<div class="page-group">` +
@@ -948,7 +931,7 @@ function renderTemplateGroups(data) {
                 `<span class="cohesion-dot ${cohesionClass(cohesion)}" ` +
                 `title="${cohesion !== null ? `Cohesion (min pair): ${cohesion.toFixed(2)}` : "Single page"}"></span>` +
                 `<span class="page-labels">${pageGroup.map(pi =>
-                    `<label class="page-label"><input type="checkbox" data-page="${pi}" ${selectedPages.has(pi) ? "checked" : ""}/><span class="page-tag"><strong>${pageNumberMap.get(pi)}</strong> ${htmlEsc(pageName(data.pages[pi]))}</span></label>`
+                    `<label class="page-label"><input type="checkbox" data-page="${pi}" ${uiState.selectedPages.has(pi) ? "checked" : ""}/><span class="page-tag"><strong>${pageNumberMap.get(pi)}</strong> ${htmlEsc(pageName(data.pages[pi]))}</span></label>`
                 ).join("")}</span>` +
                 `<span class="pg-expand-icon">&#9654;</span>` +
                 `</div>` +
@@ -962,7 +945,7 @@ function renderTemplateGroups(data) {
         li.innerHTML =
             `<div class="tg-header">` +
             `<div class="tg-header-row1">` +
-            `<input type="checkbox" checked data-group="${groupIndex}"/>` +
+            `<input type="checkbox" ${isTemplateGroupSelected(group) ? "checked" : ""} data-group="${groupIndex}"/>` +
             `${templateBadges}` +
             `</div>` +
             `</div>` + groupsHtml;
@@ -991,15 +974,20 @@ document.getElementById("template-groups").addEventListener("change", (e) => {
     const cb = /** @type {HTMLInputElement} */ (e.target);
     if (cb.type !== "checkbox") return;
     if (cb.dataset.group != null) {
-        const fi = parseInt(cb.dataset.group);
-        if (cb.checked) selectedGroups.add(fi);
-        else selectedGroups.delete(fi);
+        const groupIndex = parseInt(cb.dataset.group);
+        const group = currentViewModel?.templateGroups[groupIndex];
+        if (group) {
+            group.templateIds.forEach(id => {
+                if (cb.checked) uiState.selectedTemplateIds.add(id);
+                else uiState.selectedTemplateIds.delete(id);
+            });
+        }
         cb.closest("li").classList.toggle("dimmed", !cb.checked);
         updateToolbarState();
     } else if (cb.dataset.page != null) {
         const pi = parseInt(cb.dataset.page);
-        if (cb.checked) selectedPages.add(pi);
-        else selectedPages.delete(pi);
+        if (cb.checked) uiState.selectedPages.add(pi);
+        else uiState.selectedPages.delete(pi);
         // Hide/show corresponding preview cards
         document.querySelectorAll(`.page-card[data-page-index="${pi}"]`).forEach(card => {
             /** @type {HTMLElement} */ (card).hidden = !cb.checked;
@@ -1009,7 +997,7 @@ document.getElementById("template-groups").addEventListener("change", (e) => {
         const pgNum = /** @type {HTMLElement} */ (pgEl.querySelector(".pg-num"));
         updatePageGroupNumState(pgNum, pgEl);
     }
-    if (!similarityPane.hidden) renderSimilarity();
+    if (uiState.similarityOpen) renderSimilarity();
 });
 
 // Event delegation for page-group toggle
@@ -1026,16 +1014,16 @@ document.getElementById("template-groups").addEventListener("click", (e) => {
         checkboxes.forEach(cb => {
             cb.checked = !allChecked;
             const pi = parseInt(cb.dataset.page);
-            if (cb.checked) selectedPages.add(pi);
-            else selectedPages.delete(pi);
+            if (cb.checked) uiState.selectedPages.add(pi);
+            else uiState.selectedPages.delete(pi);
         });
         updatePageGroupNumState(target, pgEl);
         // Update preview card visibility
         pgEl.querySelectorAll(".page-card").forEach(card => {
             const pi = parseInt(/** @type {HTMLElement} */ (card).dataset.pageIndex);
-            /** @type {HTMLElement} */ (card).hidden = !selectedPages.has(pi);
+            /** @type {HTMLElement} */ (card).hidden = !uiState.selectedPages.has(pi);
         });
-        if (!similarityPane.hidden) renderSimilarity();
+        if (uiState.similarityOpen) renderSimilarity();
         return;
     }
 
@@ -1052,6 +1040,9 @@ function togglePageCards(rowEl) {
     const preview = /** @type {HTMLElement} */ (pgEl.querySelector(".pg-cards"));
     const icon = /** @type {HTMLElement} */ (rowEl.querySelector(".pg-expand-icon"));
     const isOpen = preview.classList.toggle("open");
+    const key = pageGroupKey(JSON.parse(pgEl.dataset.pageIndices || "[]"));
+    if (isOpen) uiState.openPageGroups.add(key);
+    else uiState.openPageGroups.delete(key);
     icon.textContent = isOpen ? "\u25BC" : "\u25B6";
 
     if (isOpen && preview.childElementCount === 0) {
@@ -1071,10 +1062,10 @@ function buildPageCards(preview, indices) {
         const wrap = document.createElement("div");
         wrap.className = "page-card";
         wrap.dataset.pageIndex = String(pi);
-        if (!selectedPages.has(pi)) wrap.hidden = true;
+        if (!uiState.selectedPages.has(pi)) wrap.hidden = true;
         const title = document.createElement("div");
         title.className = "page-card-title";
-        const pageNum = pageNumberMap.get(pi);
+        const pageNum = currentViewModel.pageNumberMap.get(pi);
         if (pageNum) {
             const numSpan = document.createElement("span");
             numSpan.style.fontWeight = "700";
@@ -1107,6 +1098,7 @@ function buildPageCards(preview, indices) {
  * @returns {number[]}
  */
 function pageOrderByGroup(indices) {
+    if (!currentViewModel) return indices;
     /** @type {Set<number>} */
     const indexSet = new Set(indices);
     /** @type {number[]} */
@@ -1114,8 +1106,8 @@ function pageOrderByGroup(indices) {
     /** @type {Set<number>} */
     const seen = new Set();
 
-    templateGroups.forEach((group, fi) => {
-        if (!selectedGroups.has(fi)) return;
+    currentViewModel.templateGroups.forEach(group => {
+        if (!isTemplateGroupSelected(group)) return;
         group.pageGroups.forEach(pageGroup => {
             pageGroup.forEach(pi => {
                 if (indexSet.has(pi) && !seen.has(pi)) {
@@ -1145,17 +1137,6 @@ function templateGroupPrefix(groupIndex, group, templateIndex) {
 }
 
 /**
- * @returns {Set<string>}
- */
-function openPageGroupKeys() {
-    return new Set(
-        [...document.querySelectorAll(".page-group")]
-            .filter(pgEl => pgEl.querySelector(".pg-cards.open"))
-            .map(pgEl => pageGroupKey(JSON.parse(/** @type {HTMLElement} */ (pgEl).dataset.pageIndices || "[]")))
-    );
-}
-
-/**
  * @param {Set<string>} keys
  * @returns {void}
  */
@@ -1178,13 +1159,90 @@ function pageGroupKey(pageIndices) {
 }
 
 /**
- * @returns {Set<string>}
+ * @param {TemplateGroup} group
+ * @returns {boolean}
  */
-function selectedTemplateIds() {
-    return new Set(
-        [...selectedGroups]
-            .flatMap(i => templateGroups[i]?.templateIds ?? [])
-    );
+function isTemplateGroupSelected(group) {
+    return group.templateIds.every(id => uiState.selectedTemplateIds.has(id));
+}
+
+/**
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis|null} previousAnalysis
+ * @param {Settings} activeSettings
+ * @returns {LayoutAnalysis}
+ */
+function ensureAnalysis(data, previousAnalysis, activeSettings) {
+    const sameData = currentData === data && previousAnalysis != null;
+    const similarity = sameData
+        ? previousAnalysis.similarity
+        : buildSimilarity(data);
+    const pageProximityGroups = sameData && previousAnalysis.proximityGap === activeSettings.proximityGap
+        ? previousAnalysis.pageProximityGroups
+        : buildPageProximityGroups(data.pages, activeSettings.proximityGap);
+    return {
+        similarity,
+        pageProximityGroups,
+        proximityGap: activeSettings.proximityGap,
+    };
+}
+
+/**
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis} analysis
+ * @param {Settings} activeSettings
+ * @returns {ViewModel}
+ */
+function buildViewModel(data, analysis, activeSettings) {
+    const {templateLevel, pageLevel} = analysis.similarity;
+    const templateById = Object.fromEntries(templateLevel.templates.map(t => [t.templateId, t]));
+    const templateGroups = computeTemplateGroups(templateLevel, pageLevel.matrix, activeSettings);
+    const pageNumberMap = new Map();
+    const pageGroupKeys = new Set();
+
+    templateGroups.forEach((group, groupIndex) => {
+        const groupTemplates = group.templateIds.map(id => templateById[id]).filter(Boolean);
+        groupTemplates.forEach((template, templateIndex) => {
+            const prefix = templateGroupPrefix(groupIndex, group, templateIndex);
+            template.pageIndices.forEach((pageIndex, pageOffset) => {
+                if (!pageNumberMap.has(pageIndex)) {
+                    pageNumberMap.set(pageIndex, `${prefix}.${pageOffset + 1}`);
+                }
+            });
+        });
+        group.pageGroups.forEach(pageGroup => pageGroupKeys.add(pageGroupKey(pageGroup)));
+    });
+
+    return {templateLevel, pageLevel, templateGroups, templateById, pageNumberMap, pageGroupKeys};
+}
+
+/**
+ * @param {UiState} previousState
+ * @param {ViewModel} viewModel
+ * @param {boolean} dataChanged
+ * @returns {UiState}
+ */
+function reconcileUiState(previousState, viewModel, dataChanged) {
+    if (dataChanged) {
+        return {
+            selectedTemplateIds: new Set(viewModel.templateLevel.templates.map(t => t.templateId)),
+            selectedPages: new Set(viewModel.templateLevel.templates.flatMap(t => t.pageIndices)),
+            openPageGroups: new Set(),
+            similarityOpen: false,
+        };
+    }
+    return {
+        selectedTemplateIds: new Set(
+            [...previousState.selectedTemplateIds].filter(id => viewModel.templateById[id] != null)
+        ),
+        selectedPages: new Set(
+            [...previousState.selectedPages].filter(i => i >= 0 && i < currentData.pages.length)
+        ),
+        openPageGroups: new Set(
+            [...previousState.openPageGroups].filter(key => viewModel.pageGroupKeys.has(key))
+        ),
+        similarityOpen: previousState.similarityOpen,
+    };
 }
 
 /**
@@ -1411,15 +1469,33 @@ function sliderStepDecimals(slider) {
 
 /**
  * @param {TemplateLevel} templateLevel
+ * @param {number[][]} pageMatrix
+ * @param {Settings} activeSettings
  * @returns {TemplateGroup[]}
  */
-function computeTemplateGroups(templateLevel) {
-    return groupPages(templateLevel.templates.map((_, i) => i), templateLevel.matrix)
+function computeTemplateGroups(templateLevel, pageMatrix, activeSettings) {
+    return groupPages(templateLevel.templates.map((_, i) => i), templateLevel.matrix, activeSettings)
         .map(pageGroup => ({
             templateIds: pageGroup.map(i => templateLevel.templates[i].templateId),
             templateNames: pageGroup.map(i => templateLevel.templates[i].templateName ?? templateLevel.templates[i].templateId),
-            pageGroups: /** @type {number[][]} */ ([]),
+            pageGroups: buildTemplatePageGroups(pageGroup, templateLevel, pageMatrix, activeSettings),
         }));
+}
+
+/**
+ * @param {number[]} templateIndices
+ * @param {TemplateLevel} templateLevel
+ * @param {number[][]} pageMatrix
+ * @param {Settings} activeSettings
+ * @returns {number[][]}
+ */
+function buildTemplatePageGroups(templateIndices, templateLevel, pageMatrix, activeSettings) {
+    const pageIndices = templateIndices
+        .flatMap(templateIndex => templateLevel.templates[templateIndex].pageIndices)
+        .sort((a, b) => a - b);
+    return groupPages(pageIndices, pageMatrix, activeSettings)
+        .map(pg => pg.sort((a, b) => a - b))
+        .sort((a, b) => Math.min(...a) - Math.min(...b));
 }
 
 /**
@@ -1429,9 +1505,10 @@ function computeTemplateGroups(templateLevel) {
  * - complete: merge if ALL pairs exceed threshold (strict)
  * @param {number[]} indices
  * @param {number[][]} matrix
+ * @param {Settings} activeSettings
  * @returns {number[][]}
  */
-function groupPages(indices, matrix) {
+function groupPages(indices, matrix, activeSettings) {
     /** @type {number[][]} */
     let pageGroups = indices.map(i => [i]);
     let changed = true;
@@ -1441,10 +1518,10 @@ function groupPages(indices, matrix) {
             for (let j = i + 1; j < pageGroups.length; j++) {
                 const scores = pageGroups[i].flatMap(a => pageGroups[j].map(b => matrix[a]?.[b] ?? 0));
                 const linkScore =
-                    groupStrategy === "single"   ? Math.max(...scores) :
-                    groupStrategy === "complete" ? Math.min(...scores) :
+                    activeSettings.groupStrategy === "single"   ? Math.max(...scores) :
+                    activeSettings.groupStrategy === "complete" ? Math.min(...scores) :
                     scores.reduce((s, v) => s + v, 0) / scores.length; // average
-                if (linkScore >= groupThreshold) {
+                if (linkScore >= activeSettings.groupThreshold) {
                     pageGroups[i].push(...pageGroups[j]);
                     pageGroups.splice(j, 1);
                     changed = true;
