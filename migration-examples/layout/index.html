@@ -595,45 +595,25 @@ document.body.addEventListener("drop", e => {
 
 document.getElementById("select-all").addEventListener("click", () => {
     if (!currentViewModel) return;
-    uiState.selectedTemplateIds = new Set(currentViewModel.templateLevel.templates.map(t => t.templateId));
-    updateGroupCheckboxes();
-    updateToolbarState();
-    if (uiState.similarityOpen) renderSimilarity();
+    selectAllTemplates();
 });
 
 document.getElementById("select-none").addEventListener("click", () => {
-    uiState.selectedTemplateIds.clear();
-    updateGroupCheckboxes();
-    updateToolbarState();
-    if (uiState.similarityOpen) renderSimilarity();
+    clearTemplateSelection();
 });
 
 similarityBtn.addEventListener("click", () => {
-    uiState.similarityOpen = !uiState.similarityOpen;
-    if (uiState.similarityOpen) {
-        similarityPane.hidden = false;
-        similarityBtn.classList.add("active");
-        renderSimilarity();
-    } else {
-        similarityPane.hidden = true;
-        similarityBtn.classList.remove("active");
-    }
+    setSimilarityOpen(!uiState.similarityOpen);
 });
 
 document.getElementById("similarity-close").addEventListener("click", () => {
-    uiState.similarityOpen = false;
-    similarityPane.hidden = true;
-    similarityBtn.classList.remove("active");
+    setSimilarityOpen(false);
 });
 
 document.getElementById("card-size").addEventListener("input", (e) => {
     settings.canvasW = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
     /** @type {HTMLOutputElement} */ (document.getElementById("card-size-out")).value = String(settings.canvasW);
-    document.querySelectorAll(".pg-cards.open").forEach(preview => {
-        const pgEl = /** @type {HTMLElement} */ (preview.closest(".page-group"));
-        const indices = JSON.parse(pgEl.dataset.pageIndices || "[]");
-        buildPageCards(/** @type {HTMLElement} */ (preview), indices);
-    });
+    refreshOpenPageGroups();
 });
 
 document.getElementById("threshold").addEventListener("input", (e) => {
@@ -913,45 +893,12 @@ function renderTemplateGroups(data) {
     groupsEl.innerHTML = "";
 
     templateGroups.forEach((group, groupIndex) => {
-        const pageGroups = group.pageGroups;
-
-        const templateBadges = group.templateIds.map((id, idx) =>
-            `<code><strong>${templateGroupPrefix(groupIndex, group, idx)}.</strong> ${htmlEsc(group.templateNames[idx] ?? id)}</code>`
-        ).join("  ");
-
-        let groupsHtml = '<div class="page-groups">';
-        pageGroups.forEach((pageGroup, ci) => {
-            const cohesion = minPairScore(pageGroup, pageLevel.matrix);
-            const checkedCount = pageGroup.filter(pi => uiState.selectedPages.has(pi)).length;
-            const pgState = checkedCount === pageGroup.length ? "all-selected" : checkedCount === 0 ? "none-selected" : "";
-            groupsHtml +=
-                `<div class="page-group">` +
-                `<div class="pg-row" data-action="toggle-preview">` +
-                `<span class="pg-num ${pgState}" data-action="toggle-pg">${ci + 1}</span>` +
-                `<span class="cohesion-dot ${cohesionClass(cohesion)}" ` +
-                `title="${cohesion !== null ? `Cohesion (min pair): ${cohesion.toFixed(2)}` : "Single page"}"></span>` +
-                `<span class="page-labels">${pageGroup.map(pi =>
-                    `<label class="page-label"><input type="checkbox" data-page="${pi}" ${uiState.selectedPages.has(pi) ? "checked" : ""}/><span class="page-tag"><strong>${pageNumberMap.get(pi)}</strong> ${htmlEsc(pageName(data.pages[pi]))}</span></label>`
-                ).join("")}</span>` +
-                `<span class="pg-expand-icon">&#9654;</span>` +
-                `</div>` +
-                `<div class="pg-cards"></div>` +
-                `</div>`;
-        });
-        groupsHtml += "</div>";
-
         const li = document.createElement("li");
         li.dataset.groupIndex = String(groupIndex);
-        li.innerHTML =
-            `<div class="tg-header">` +
-            `<div class="tg-header-row1">` +
-            `<input type="checkbox" ${isTemplateGroupSelected(group) ? "checked" : ""} data-group="${groupIndex}"/>` +
-            `${templateBadges}` +
-            `</div>` +
-            `</div>` + groupsHtml;
+        li.innerHTML = renderTemplateGroupItem(group, groupIndex, pageLevel.matrix, pageNumberMap, data);
 
         li.querySelectorAll(".page-group").forEach((pgEl, ci) => {
-            /** @type {HTMLElement} */ (pgEl).dataset.pageIndices = JSON.stringify(pageGroups[ci]);
+            /** @type {HTMLElement} */ (pgEl).dataset.pageIndices = JSON.stringify(group.pageGroups[ci]);
         });
         groupsEl.appendChild(li);
     });
@@ -969,6 +916,103 @@ function updatePageGroupNumState(pgNumEl, pgEl) {
     pgNumEl.classList.toggle("none-selected", checkedCount === 0);
 }
 
+/**
+ * @param {TemplateGroup} group
+ * @param {number} groupIndex
+ * @returns {string}
+ */
+function renderTemplateBadges(group, groupIndex) {
+    return group.templateIds.map((id, idx) =>
+        `<code><strong>${templateGroupPrefix(groupIndex, group, idx)}.</strong> ${htmlEsc(group.templateNames[idx] ?? id)}</code>`
+    ).join("  ");
+}
+
+/**
+ * @param {number[]} pageGroup
+ * @param {number} pageGroupIndex
+ * @param {number[][]} pageMatrix
+ * @param {Map<number, string>} pageNumberMap
+ * @param {LayoutData} data
+ * @returns {string}
+ */
+function renderPageGroupRow(pageGroup, pageGroupIndex, pageMatrix, pageNumberMap, data) {
+    const cohesion = minPairScore(pageGroup, pageMatrix);
+    const checkedCount = pageGroup.filter(pi => uiState.selectedPages.has(pi)).length;
+    const pgState = checkedCount === pageGroup.length ? "all-selected" : checkedCount === 0 ? "none-selected" : "";
+    return `<div class="page-group">`
+        + `<div class="pg-row" data-action="toggle-preview">`
+        + `<span class="pg-num ${pgState}" data-action="toggle-pg">${pageGroupIndex + 1}</span>`
+        + `<span class="cohesion-dot ${cohesionClass(cohesion)}" `
+        + `title="${cohesion !== null ? `Cohesion (min pair): ${cohesion.toFixed(2)}` : "Single page"}"></span>`
+        + `<span class="page-labels">${pageGroup.map(pi =>
+            `<label class="page-label"><input type="checkbox" data-page="${pi}" ${uiState.selectedPages.has(pi) ? "checked" : ""}/><span class="page-tag"><strong>${pageNumberMap.get(pi)}</strong> ${htmlEsc(pageName(data.pages[pi]))}</span></label>`
+        ).join("")}</span>`
+        + `<span class="pg-expand-icon">&#9654;</span>`
+        + `</div>`
+        + `<div class="pg-cards"></div>`
+        + `</div>`;
+}
+
+/**
+ * @param {TemplateGroup} group
+ * @param {number} groupIndex
+ * @param {number[][]} pageMatrix
+ * @param {Map<number, string>} pageNumberMap
+ * @param {LayoutData} data
+ * @returns {string}
+ */
+function renderTemplateGroupItem(group, groupIndex, pageMatrix, pageNumberMap, data) {
+    const pageGroupsHtml = group.pageGroups
+        .map((pageGroup, pageGroupIndex) => renderPageGroupRow(pageGroup, pageGroupIndex, pageMatrix, pageNumberMap, data))
+        .join("");
+    return `<div class="tg-header">`
+        + `<div class="tg-header-row1">`
+        + `<input type="checkbox" ${isTemplateGroupSelected(group) ? "checked" : ""} data-group="${groupIndex}"/>`
+        + `${renderTemplateBadges(group, groupIndex)}`
+        + `</div>`
+        + `</div>`
+        + `<div class="page-groups">${pageGroupsHtml}</div>`;
+}
+
+/**
+ * @param {number} pageIndex
+ * @returns {HTMLElement}
+ */
+function buildPageCard(pageIndex) {
+    const wrap = document.createElement("div");
+    wrap.className = "page-card";
+    wrap.dataset.pageIndex = String(pageIndex);
+    if (!uiState.selectedPages.has(pageIndex)) wrap.hidden = true;
+
+    const title = document.createElement("div");
+    title.className = "page-card-title";
+    const pageNum = currentViewModel.pageNumberMap.get(pageIndex);
+    if (pageNum) {
+        const numSpan = document.createElement("span");
+        numSpan.style.fontWeight = "700";
+        numSpan.textContent = pageNum + " ";
+        title.appendChild(numSpan);
+        title.appendChild(document.createTextNode(pageName(currentData.pages[pageIndex])));
+    } else {
+        title.textContent = pageName(currentData.pages[pageIndex]);
+    }
+    title.style.cursor = "pointer";
+    title.addEventListener("click", () => {
+        const cb = /** @type {HTMLInputElement|null} */ (
+            document.querySelector(`input[data-page="${pageIndex}"]`)
+        );
+        if (cb) {
+            cb.checked = !cb.checked;
+            cb.dispatchEvent(new Event("change", {bubbles: true}));
+        }
+    });
+    wrap.appendChild(title);
+
+    const svg = buildPageSvg(currentData.pages[pageIndex], currentAnalysis.pageProximityGroups[pageIndex] ?? []);
+    if (svg) wrap.appendChild(svg);
+    return wrap;
+}
+
 // Event delegation for group checkboxes
 document.getElementById("template-groups").addEventListener("change", (e) => {
     const cb = /** @type {HTMLInputElement} */ (e.target);
@@ -976,28 +1020,15 @@ document.getElementById("template-groups").addEventListener("change", (e) => {
     if (cb.dataset.group != null) {
         const groupIndex = parseInt(cb.dataset.group);
         const group = currentViewModel?.templateGroups[groupIndex];
-        if (group) {
-            group.templateIds.forEach(id => {
-                if (cb.checked) uiState.selectedTemplateIds.add(id);
-                else uiState.selectedTemplateIds.delete(id);
-            });
-        }
-        cb.closest("li").classList.toggle("dimmed", !cb.checked);
-        updateToolbarState();
+        if (group) setTemplateGroupSelection(group, cb.checked);
     } else if (cb.dataset.page != null) {
         const pi = parseInt(cb.dataset.page);
-        if (cb.checked) uiState.selectedPages.add(pi);
-        else uiState.selectedPages.delete(pi);
-        // Hide/show corresponding preview cards
-        document.querySelectorAll(`.page-card[data-page-index="${pi}"]`).forEach(card => {
-            /** @type {HTMLElement} */ (card).hidden = !cb.checked;
-        });
-        // Update page-group number state
+        setPageSelection(pi, cb.checked);
         const pgEl = /** @type {HTMLElement} */ (cb.closest(".page-group"));
         const pgNum = /** @type {HTMLElement} */ (pgEl.querySelector(".pg-num"));
         updatePageGroupNumState(pgNum, pgEl);
     }
-    if (uiState.similarityOpen) renderSimilarity();
+    refreshSelectionViews();
 });
 
 // Event delegation for page-group toggle
@@ -1014,16 +1045,10 @@ document.getElementById("template-groups").addEventListener("click", (e) => {
         checkboxes.forEach(cb => {
             cb.checked = !allChecked;
             const pi = parseInt(cb.dataset.page);
-            if (cb.checked) uiState.selectedPages.add(pi);
-            else uiState.selectedPages.delete(pi);
+            setPageSelection(pi, cb.checked);
         });
         updatePageGroupNumState(target, pgEl);
-        // Update preview card visibility
-        pgEl.querySelectorAll(".page-card").forEach(card => {
-            const pi = parseInt(/** @type {HTMLElement} */ (card).dataset.pageIndex);
-            /** @type {HTMLElement} */ (card).hidden = !uiState.selectedPages.has(pi);
-        });
-        if (uiState.similarityOpen) renderSimilarity();
+        refreshSelectionViews();
         return;
     }
 
@@ -1036,19 +1061,9 @@ document.getElementById("template-groups").addEventListener("click", (e) => {
  * @param {HTMLElement} rowEl
  */
 function togglePageCards(rowEl) {
-    const pgEl = /** @type {HTMLElement} */ (rowEl.closest(".page-group"));
-    const preview = /** @type {HTMLElement} */ (pgEl.querySelector(".pg-cards"));
-    const icon = /** @type {HTMLElement} */ (rowEl.querySelector(".pg-expand-icon"));
-    const isOpen = preview.classList.toggle("open");
-    const key = pageGroupKey(JSON.parse(pgEl.dataset.pageIndices || "[]"));
-    if (isOpen) uiState.openPageGroups.add(key);
-    else uiState.openPageGroups.delete(key);
-    icon.textContent = isOpen ? "\u25BC" : "\u25B6";
-
-    if (isOpen && preview.childElementCount === 0) {
-        const indices = JSON.parse(pgEl.dataset.pageIndices || "[]");
-        buildPageCards(preview, indices);
-    }
+    const pageGroupEl = /** @type {HTMLElement} */ (rowEl.closest(".page-group"));
+    const preview = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-cards"));
+    setPageGroupOpen(pageGroupEl, !preview.classList.contains("open"));
 }
 
 /**
@@ -1059,36 +1074,7 @@ function togglePageCards(rowEl) {
 function buildPageCards(preview, indices) {
     preview.innerHTML = "";
     indices.forEach(pi => {
-        const wrap = document.createElement("div");
-        wrap.className = "page-card";
-        wrap.dataset.pageIndex = String(pi);
-        if (!uiState.selectedPages.has(pi)) wrap.hidden = true;
-        const title = document.createElement("div");
-        title.className = "page-card-title";
-        const pageNum = currentViewModel.pageNumberMap.get(pi);
-        if (pageNum) {
-            const numSpan = document.createElement("span");
-            numSpan.style.fontWeight = "700";
-            numSpan.textContent = pageNum + " ";
-            title.appendChild(numSpan);
-            title.appendChild(document.createTextNode(pageName(currentData.pages[pi])));
-        } else {
-            title.textContent = pageName(currentData.pages[pi]);
-        }
-        title.style.cursor = "pointer";
-        title.addEventListener("click", () => {
-            const cb = /** @type {HTMLInputElement|null} */ (
-                document.querySelector(`input[data-page="${pi}"]`)
-            );
-            if (cb) {
-                cb.checked = !cb.checked;
-                cb.dispatchEvent(new Event("change", {bubbles: true}));
-            }
-        });
-        wrap.appendChild(title);
-        const svg = buildPageSvg(currentData.pages[pi], currentAnalysis.pageProximityGroups[pi] ?? []);
-        if (svg) wrap.appendChild(svg);
-        preview.appendChild(wrap);
+        preview.appendChild(buildPageCard(pi));
     });
 }
 
@@ -1143,10 +1129,9 @@ function templateGroupPrefix(groupIndex, group, templateIndex) {
 function reopenPageGroups(keys) {
     document.querySelectorAll(".page-group").forEach(pgEl => {
         const groupEl = /** @type {HTMLElement} */ (pgEl);
-        const key = pageGroupKey(JSON.parse(groupEl.dataset.pageIndices || "[]"));
+        const key = pageGroupKey(pageGroupIndices(groupEl));
         if (!keys.has(key)) return;
-        const rowEl = /** @type {HTMLElement|null} */ (groupEl.querySelector("[data-action='toggle-preview']"));
-        if (rowEl && !groupEl.querySelector(".pg-cards.open")) togglePageCards(rowEl);
+        if (!groupEl.querySelector(".pg-cards.open")) setPageGroupOpen(groupEl, true);
     });
 }
 
@@ -1156,6 +1141,125 @@ function reopenPageGroups(keys) {
  */
 function pageGroupKey(pageIndices) {
     return pageIndices.join(",");
+}
+
+/**
+ * @returns {void}
+ */
+function selectAllTemplates() {
+    if (!currentViewModel) return;
+    uiState.selectedTemplateIds = new Set(currentViewModel.templateLevel.templates.map(t => t.templateId));
+    refreshSelectionViews();
+}
+
+/**
+ * @returns {void}
+ */
+function clearTemplateSelection() {
+    uiState.selectedTemplateIds.clear();
+    refreshSelectionViews();
+}
+
+/**
+ * @param {boolean} open
+ * @returns {void}
+ */
+function setSimilarityOpen(open) {
+    uiState.similarityOpen = open;
+    similarityPane.hidden = !open;
+    similarityBtn.classList.toggle("active", open);
+    if (open) renderSimilarity();
+}
+
+/**
+ * @param {TemplateGroup} group
+ * @param {boolean} selected
+ * @returns {void}
+ */
+function setTemplateGroupSelection(group, selected) {
+    group.templateIds.forEach(id => {
+        if (selected) uiState.selectedTemplateIds.add(id);
+        else uiState.selectedTemplateIds.delete(id);
+    });
+}
+
+/**
+ * @param {number} pageIndex
+ * @param {boolean} selected
+ * @returns {void}
+ */
+function setPageSelection(pageIndex, selected) {
+    if (selected) uiState.selectedPages.add(pageIndex);
+    else uiState.selectedPages.delete(pageIndex);
+    document.querySelectorAll(`.page-card[data-page-index="${pageIndex}"]`).forEach(card => {
+        /** @type {HTMLElement} */ (card).hidden = !selected;
+    });
+}
+
+/**
+ * @returns {void}
+ */
+function refreshSelectionViews() {
+    updateGroupCheckboxes();
+    updateToolbarState();
+    refreshOpenPageGroups();
+    if (uiState.similarityOpen) renderSimilarity();
+}
+
+/**
+ * @param {HTMLElement} pageGroupEl
+ * @returns {number[]}
+ */
+function pageGroupIndices(pageGroupEl) {
+    return JSON.parse(pageGroupEl.dataset.pageIndices || "[]");
+}
+
+/**
+ * @param {string} key
+ * @returns {number[]}
+ */
+function pageGroupIndicesFromKey(key) {
+    return key.split(",").filter(Boolean).map(Number);
+}
+
+/**
+ * @returns {void}
+ */
+function refreshOpenPageGroups() {
+    uiState.openPageGroups.forEach(key => refreshOpenPageCardsByIndices(pageGroupIndicesFromKey(key)));
+}
+
+/**
+ * @param {number[]} indices
+ * @returns {void}
+ */
+function refreshOpenPageCardsByIndices(indices) {
+    const key = pageGroupKey(indices);
+    document.querySelectorAll(".page-group").forEach(pgEl => {
+        const groupEl = /** @type {HTMLElement} */ (pgEl);
+        if (pageGroupKey(pageGroupIndices(groupEl)) !== key) return;
+        const preview = /** @type {HTMLElement|null} */ (groupEl.querySelector(".pg-cards.open"));
+        if (preview) buildPageCards(preview, indices);
+    });
+}
+
+/**
+ * @param {HTMLElement} pageGroupEl
+ * @param {boolean} open
+ * @returns {void}
+ */
+function setPageGroupOpen(pageGroupEl, open) {
+    const preview = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-cards"));
+    const icon = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-expand-icon"));
+    const indices = pageGroupIndices(pageGroupEl);
+    const key = pageGroupKey(indices);
+
+    preview.classList.toggle("open", open);
+    if (open) uiState.openPageGroups.add(key);
+    else uiState.openPageGroups.delete(key);
+    icon.textContent = open ? "\u25BC" : "\u25B6";
+
+    if (open) buildPageCards(preview, indices);
 }
 
 /**
