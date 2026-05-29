@@ -104,7 +104,9 @@ pageEntries.eachWithIndex { PageEntry pg, int i ->
 }
 
 List<TemplateEntry> templateList = templateGroupMap.collect { String key, List<Integer> indices ->
-    List<Integer> pageIndices = indices.sort { pageEntries[it].templatePageIndex ?: 0 }
+    List<Integer> pageIndices = indices.sort { int pageIndex ->
+        templatePageOrder(pageEntries[pageIndex])
+    }
     PageEntry first = pageEntries[pageIndices[0]]
     new TemplateEntry(templateId: first.templateId ?: key,
             templateName: first.templateName ?: first.templateId ?: key,
@@ -199,6 +201,10 @@ static Map<Integer, Integer> findContainment(List<WorkingArea> areas) {
 }
 
 static double round2dp(double v) { Math.round(v * 100) / 100.0 }
+
+static int templatePageOrder(PageEntry page) {
+    page.templatePageIndex != null ? page.templatePageIndex : Integer.MAX_VALUE
+}
 
 class WorkingArea {
     double x

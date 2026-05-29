@@ -338,23 +338,6 @@
             accent-color: #6b9fd4;
         }
 
-        .toolbar-control {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 13px;
-            color: var(--muted);
-        }
-
-        .toolbar-control input[type="range"] {
-            padding: 0;
-            border: none;
-            background: none;
-            cursor: pointer;
-            width: 80px;
-            accent-color: #6b9fd4;
-        }
-
         .toolbar-control output {
             font-size: 12px;
             color: #4a7ab5;
@@ -451,6 +434,7 @@
  * @typedef {Object} LayoutAnalysis
  * @property {Similarity} similarity
  * @property {ProximityGroup[][]} pageProximityGroups
+ * @property {number} proximityGap
  */
 
 /**
@@ -675,26 +659,50 @@ function updateGroupCheckboxes() {
  * @param {LayoutData} data
  */
 function render(data) {
+    const preserveSelection = currentData === data && currentAnalysis != null;
+    const previousPageSelection = preserveSelection ? new Set(selectedPages) : null;
+    const previousTemplateSelection = preserveSelection ? selectedTemplateIds() : null;
+    const previousOpenPageGroups = preserveSelection ? openPageGroupKeys() : null;
+    const similarityWasOpen = !similarityPane.hidden;
+    const similarity = preserveSelection
+        ? currentAnalysis.similarity
+        : buildSimilarity(data);
+    const pageProximityGroups = preserveSelection && currentAnalysis.proximityGap === proximityGap
+        ? currentAnalysis.pageProximityGroups
+        : buildPageProximityGroups(data.pages, proximityGap);
+
     currentData = data;
-    currentAnalysis = analyzeLayoutData(data);
+    currentAnalysis = {similarity, pageProximityGroups, proximityGap};
     document.getElementById("app").hidden = false;
     similarityPane.hidden = true;
 
-    const templateLevel = currentAnalysis.similarity.templateLevel;
+    const templateLevel = similarity.templateLevel;
     templateById = Object.fromEntries(templateLevel.templates.map(t => [t.templateId, t]));
     templateGroups = computeTemplateGroups(templateLevel);
-    selectedGroups = new Set(templateGroups.map((_, i) => i));
-    selectedPages = new Set(templateLevel.templates.flatMap(t => t.pageIndices));
+    if (preserveSelection && previousTemplateSelection) {
+        selectedGroups = new Set(
+            templateGroups
+                .map((group, i) => group.templateIds.every(id => previousTemplateSelection.has(id)) ? i : -1)
+                .filter(i => i >= 0)
+        );
+    } else {
+        selectedGroups = new Set(templateGroups.map((_, i) => i));
+    }
+    if (preserveSelection && previousPageSelection) {
+        selectedPages = new Set([...previousPageSelection].filter(i => i >= 0 && i < data.pages.length));
+    } else {
+        selectedPages = new Set(templateLevel.templates.flatMap(t => t.pageIndices));
+    }
 
     // Build stable page numbering scoped per template (e.g. "2a.1", "2a.2", "3.1")
     // and compute sorted page-group clusters once for reuse across render and similarity
     pageNumberMap = new Map();
-    const {pageLevel} = currentAnalysis.similarity;
+    const {pageLevel} = similarity;
     templateGroups.forEach((group, i) => {
         const groupTemplates = group.templateIds.map(id => templateById[id]).filter(Boolean);
         groupTemplates.forEach((template, j) => {
             const prefix = templateGroupPrefix(i, group, j);
-            const templatePages = [...template.pageIndices].sort((a, b) => a - b);
+            const templatePages = [...template.pageIndices];
             templatePages.forEach((pageIndex, k) => {
                 if (!pageNumberMap.has(pageIndex)) {
                     pageNumberMap.set(pageIndex, `${prefix}.${k + 1}`);
@@ -709,7 +717,16 @@ function render(data) {
     });
 
     renderTemplateGroups(data);
+    updateGroupCheckboxes();
+    if (previousOpenPageGroups) reopenPageGroups(previousOpenPageGroups);
     updateToolbarState();
+    if (similarityWasOpen) {
+        similarityPane.hidden = false;
+        similarityBtn.classList.add("active");
+        renderSimilarity();
+    } else {
+        similarityBtn.classList.remove("active");
+    }
 }
 
 /**
@@ -1128,6 +1145,49 @@ function templateGroupPrefix(groupIndex, group, templateIndex) {
 }
 
 /**
+ * @returns {Set<string>}
+ */
+function openPageGroupKeys() {
+    return new Set(
+        [...document.querySelectorAll(".page-group")]
+            .filter(pgEl => pgEl.querySelector(".pg-cards.open"))
+            .map(pgEl => pageGroupKey(JSON.parse(/** @type {HTMLElement} */ (pgEl).dataset.pageIndices || "[]")))
+    );
+}
+
+/**
+ * @param {Set<string>} keys
+ * @returns {void}
+ */
+function reopenPageGroups(keys) {
+    document.querySelectorAll(".page-group").forEach(pgEl => {
+        const groupEl = /** @type {HTMLElement} */ (pgEl);
+        const key = pageGroupKey(JSON.parse(groupEl.dataset.pageIndices || "[]"));
+        if (!keys.has(key)) return;
+        const rowEl = /** @type {HTMLElement|null} */ (groupEl.querySelector("[data-action='toggle-preview']"));
+        if (rowEl && !groupEl.querySelector(".pg-cards.open")) togglePageCards(rowEl);
+    });
+}
+
+/**
+ * @param {number[]} pageIndices
+ * @returns {string}
+ */
+function pageGroupKey(pageIndices) {
+    return pageIndices.join(",");
+}
+
+/**
+ * @returns {Set<string>}
+ */
+function selectedTemplateIds() {
+    return new Set(
+        [...selectedGroups]
+            .flatMap(i => templateGroups[i]?.templateIds ?? [])
+    );
+}
+
+/**
  * @param {unknown} raw
  * @returns {LayoutData}
  */
@@ -1148,22 +1208,27 @@ function normalizeLayoutData(raw) {
 
 /**
  * @param {LayoutData} data
- * @returns {LayoutAnalysis}
+ * @returns {Similarity}
  */
-function analyzeLayoutData(data) {
-    const pageProximityGroups = data.pages.map(page => groupByProximity(page.areas, proximityGap));
+function buildSimilarity(data) {
     const pageMatrix = buildSymmetricMatrix(data.pages.length, (i, j) => pageSimilarity(data.pages[i].areas, data.pages[j].areas));
     const templateLevel = {templates: data.templates, matrix: []};
     templateLevel.matrix = buildSymmetricMatrix(data.templates.length, (i, j) =>
         templateSimilarity(data.templates[i].pageIndices, data.templates[j].pageIndices, pageMatrix)
     );
     return {
-        similarity: {
-            pageLevel: {matrix: pageMatrix},
-            templateLevel,
-        },
-        pageProximityGroups,
+        pageLevel: {matrix: pageMatrix},
+        templateLevel,
     };
+}
+
+/**
+ * @param {PageEntry[]} pages
+ * @param {number} groupingGap
+ * @returns {ProximityGroup[][]}
+ */
+function buildPageProximityGroups(pages, groupingGap) {
+    return pages.map(page => groupByProximity(page.areas, groupingGap));
 }
 
 /**
@@ -1182,7 +1247,7 @@ function deriveTemplates(pages) {
         const sortedPageIndices = [...pageIndices].sort((a, b) => {
             const pageA = pages[a];
             const pageB = pages[b];
-            return (pageA.templatePageIndex ?? 0) - (pageB.templatePageIndex ?? 0);
+            return templatePageOrder(pageA) - templatePageOrder(pageB) || a - b;
         });
         const first = pages[sortedPageIndices[0]];
         return {
@@ -1210,6 +1275,14 @@ function buildSymmetricMatrix(size, scoreFn) {
         }
     }
     return matrix;
+}
+
+/**
+ * @param {PageEntry} page
+ * @returns {number}
+ */
+function templatePageOrder(page) {
+    return page.templatePageIndex ?? Number.MAX_SAFE_INTEGER;
 }
 
 /**
