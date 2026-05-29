@@ -43,21 +43,15 @@ Set<String> allDocObjRefIds = [] as Set<String>
 Set<String> allImageRefIds = [] as Set<String>
 (templates + pages).each { DocumentObject obj ->
     obj.content.findAll { it instanceof Area }.each { area ->
-        (area as Area).content.each { c ->
-            if (c instanceof DocumentObjectRef) allDocObjRefIds << c.id
-            else if (c instanceof ImageRef) allImageRefIds << c.id
+        (area as Area).content.each { c -> if (c instanceof DocumentObjectRef) allDocObjRefIds << c.id else if (c instanceof ImageRef) allImageRefIds << c.id
         }
     }
 }
 
-Map<String, DocumentObject> docObjCache = allDocObjRefIds
-        ? migration.documentObjectRepository.list(new DocumentObjectFilterBuilder().ids(allDocObjRefIds.toList()).build())
-        .collectEntries { [(it.id): it] } as Map<String, DocumentObject>
-        : [:] as Map<String, DocumentObject>
-Map<String, Image> imageCache = allImageRefIds
-        ? migration.imageRepository.listAll().findAll { allImageRefIds.contains(it.id) }
-        .collectEntries { [(it.id): it] } as Map<String, Image>
-        : [:] as Map<String, Image>
+Map<String, DocumentObject> docObjCache = allDocObjRefIds ? migration.documentObjectRepository.list(new DocumentObjectFilterBuilder().ids(allDocObjRefIds.toList()).build())
+        .collectEntries { [(it.id): it] } as Map<String, DocumentObject> : [:] as Map<String, DocumentObject>
+Map<String, Image> imageCache = allImageRefIds ? migration.imageRepository.listAll().findAll { allImageRefIds.contains(it.id) }
+        .collectEntries { [(it.id): it] } as Map<String, Image> : [:] as Map<String, Image>
 
 templates.each { DocumentObject tmpl ->
     tmpl.content
@@ -77,8 +71,8 @@ templates.each { DocumentObject tmpl ->
     List<Area> directAreas = tmpl.content.findAll { it instanceof Area } as List<Area>
     if (directAreas) {
         List<AreaEntry> areas = processAreas(docObjCache, imageCache, directAreas)
-        pageEntries << new PageEntry(pageId: tmpl.id,
-                pageName: tmpl.name,
+        pageEntries << new PageEntry(pageId: null,
+                pageName: null,
                 templateId: tmpl.id,
                 templateName: tmpl.name,
                 templatePageIndex: null,
@@ -104,8 +98,7 @@ pageEntries.eachWithIndex { PageEntry pg, int i ->
 }
 
 List<TemplateEntry> templateList = templateGroupMap.collect { String key, List<Integer> indices ->
-    List<Integer> pageIndices = indices.sort { int pageIndex ->
-        templatePageOrder(pageEntries[pageIndex])
+    List<Integer> pageIndices = indices.sort { int pageIndex -> templatePageOrder(pageEntries[pageIndex])
     }
     PageEntry first = pageEntries[pageIndices[0]]
     new TemplateEntry(templateId: first.templateId ?: key,
@@ -130,11 +123,7 @@ static DefaultPrettyPrinter layoutJsonPrettyPrinter() {
 /** Processes raw areas into the structured area format used by the JSON output. */
 static List<AreaEntry> processAreas(Map<String, DocumentObject> docObjCache, Map<String, Image> imageCache, List<Area> modelAreas) {
     List<WorkingArea> workingAreas = modelAreas
-            .findAll { area ->
-                area.position != null &&
-                area.position.width.toMillimeters() > 0 &&
-                area.position.height.toMillimeters() > 0 &&
-                area.position.x.toMillimeters() < MAX_X_MM
+            .findAll { area -> area.position != null && area.position.width.toMillimeters() > 0 && area.position.height.toMillimeters() > 0 && area.position.x.toMillimeters() < MAX_X_MM
             }
             .collect { Area area ->
                 double x = area.position.x.toMillimeters()
@@ -188,8 +177,7 @@ static Map<Integer, Integer> findContainment(List<WorkingArea> areas) {
     areas.eachWithIndex { WorkingArea inner, int i ->
         areas.eachWithIndex { WorkingArea outer, int j ->
             if (i == j || outer.areaSize <= inner.areaSize) return
-            if (outer.x - CONTAINMENT_TOL_MM <= inner.x && outer.y - CONTAINMENT_TOL_MM <= inner.y &&
-                    inner.x2 <= outer.x2 + CONTAINMENT_TOL_MM && inner.y2 <= outer.y2 + CONTAINMENT_TOL_MM) {
+            if (outer.x - CONTAINMENT_TOL_MM <= inner.x && outer.y - CONTAINMENT_TOL_MM <= inner.y && inner.x2 <= outer.x2 + CONTAINMENT_TOL_MM && inner.y2 <= outer.y2 + CONTAINMENT_TOL_MM) {
                 Integer cur = containment[i]
                 if (cur == null || areas[cur].areaSize > outer.areaSize) {
                     containment[i] = j

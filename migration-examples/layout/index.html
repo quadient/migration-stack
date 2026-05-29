@@ -463,9 +463,9 @@
 
 /**
  * @typedef {Object} PageEntry
- * @property {string} pageId
- * @property {string} pageName
- * @property {string|null} templateId
+ * @property {string|null} pageId      - null for template-direct virtual pages (no real page object)
+ * @property {string|null} pageName    - null for template-direct virtual pages
+ * @property {string|null} templateId  - null for orphan pages not belonging to any template
  * @property {string|null} templateName
  * @property {number|null} templatePageIndex
  * @property {AreaEntry[]} areas
@@ -1449,9 +1449,12 @@ function deriveTemplates(pages) {
             return templatePageOrder(pageA) - templatePageOrder(pageB) || a - b;
         });
         const first = pages[sortedPageIndices[0]];
+        const isOrphan = first.templateId == null;
         return {
             templateId: first.templateId ?? key,
-            templateName: first.templateName ?? first.templateId ?? key,
+            templateName: isOrphan
+                ? `Orphan: ${first.pageName ?? first.pageId ?? "Unknown"}`
+                : (first.templateName ?? first.templateId ?? key),
             pageIndices: sortedPageIndices,
         };
     });
@@ -1751,7 +1754,7 @@ function htmlEsc(s) {
  * @returns {string}
  */
 function pageName(page) {
-    return page.pageName ?? page.pageId;
+    return page.pageName ?? page.pageId ?? "Virtual page";
 }
 
 /**
