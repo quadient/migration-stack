@@ -794,47 +794,84 @@ function renderSimilarity() {
 
     const templateWrap = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-wrap"));
     const pageWrap = /** @type {HTMLElement} */ (document.getElementById("page-matrix-wrap"));
+    const templateMatrixModel = buildTemplateMatrixModel(templateLevel, templateGroups);
+    if (templateMatrixModel) {
+        buildMatrixTable(templateWrap, templateMatrixModel.labels, templateMatrixModel.colHeaders, templateMatrixModel.matrix);
+    } else {
+        renderMatrixEmptyState(templateWrap, "No templates selected.");
+    }
 
+    const pageMatrixModel = buildPageMatrixModel(templateLevel, pageLevel, pageNumberMap, templateMatrixModel?.indices ?? []);
+    if (pageMatrixModel) {
+        buildMatrixTable(pageWrap, pageMatrixModel.labels, pageMatrixModel.colHeaders, pageMatrixModel.matrix);
+    } else {
+        renderMatrixEmptyState(pageWrap, "No pages to display.");
+    }
+}
+
+/**
+ * @param {TemplateLevel} templateLevel
+ * @param {TemplateGroup[]} templateGroups
+ * @returns {{indices: number[], labels: string[], colHeaders: string[], matrix: number[][]}|null}
+ */
+function buildTemplateMatrixModel(templateLevel, templateGroups) {
     /** @type {number[]} */
-    const selectedTemplateIndices = [];
+    const indices = [];
     /** @type {string[]} */
-    const templateLabels = [];
+    const labels = [];
     /** @type {string[]} */
-    const templateColHeaders = [];
-    templateGroups.forEach((group, i) => {
-        group.templateIds.forEach((id, j) => {
+    const colHeaders = [];
+
+    templateGroups.forEach((group, groupIndex) => {
+        group.templateIds.forEach((id, templateIndexInGroup) => {
             if (!uiState.selectedTemplateIds.has(id)) return;
             const templateIndex = templateLevel.templates.findIndex(t => t.templateId === id);
-            if (templateIndex >= 0) {
-                selectedTemplateIndices.push(templateIndex);
-                const shortId = templateGroupPrefix(i, group, j);
-                templateLabels.push(`${shortId}. ${templateName(templateLevel.templates[templateIndex])}`);
-                templateColHeaders.push(shortId);
-            }
+            if (templateIndex < 0) return;
+            const shortId = templateGroupPrefix(groupIndex, group, templateIndexInGroup);
+            indices.push(templateIndex);
+            labels.push(`${shortId}. ${templateName(templateLevel.templates[templateIndex])}`);
+            colHeaders.push(shortId);
         });
     });
 
-    if (selectedTemplateIndices.length > 0) {
-        buildMatrixTable(templateWrap, templateLabels, templateColHeaders,
-            selectedTemplateIndices.map(i => selectedTemplateIndices.map(j => templateLevel.matrix[i][j])));
-    } else {
-        templateWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No templates selected.</p>";
-    }
+    if (!indices.length) return null;
+    return {
+        indices,
+        labels,
+        colHeaders,
+        matrix: indices.map(i => indices.map(j => templateLevel.matrix[i][j])),
+    };
+}
 
-    /** @type {number[]} */
+/**
+ * @param {TemplateLevel} templateLevel
+ * @param {PageLevel} pageLevel
+ * @param {Map<number, string>} pageNumberMap
+ * @param {number[]} selectedTemplateIndices
+ * @returns {{labels: string[], colHeaders: string[], matrix: number[][]}|null}
+ */
+function buildPageMatrixModel(templateLevel, pageLevel, pageNumberMap, selectedTemplateIndices) {
     const selectedPageIndices = [...new Set(
         selectedTemplateIndices.flatMap(i => templateLevel.templates[i].pageIndices)
     )].filter(j => uiState.selectedPages.has(j)).sort((a, b) => a - b);
 
-    if (selectedPageIndices.length > 0) {
-        const ordered = pageOrderByGroup(selectedPageIndices);
-        const pageLabels = ordered.map(pi => `${pageNumberMap.get(pi)} ${pageName(currentData.pages[pi])}`);
-        const pageColHeaders = ordered.map(pi => `${pageNumberMap.get(pi)}`);
-        buildMatrixTable(pageWrap, pageLabels, pageColHeaders,
-            ordered.map(i => ordered.map(j => pageLevel.matrix[i][j])));
-    } else {
-        pageWrap.innerHTML = "<p style='color:var(--muted);font-size:13px'>No pages to display.</p>";
-    }
+    if (!selectedPageIndices.length) return null;
+
+    const ordered = pageOrderByGroup(selectedPageIndices);
+    return {
+        labels: ordered.map(pi => `${pageNumberMap.get(pi)} ${pageName(currentData.pages[pi])}`),
+        colHeaders: ordered.map(pi => `${pageNumberMap.get(pi)}`),
+        matrix: ordered.map(i => ordered.map(j => pageLevel.matrix[i][j])),
+    };
+}
+
+/**
+ * @param {HTMLElement} wrap
+ * @param {string} message
+ * @returns {void}
+ */
+function renderMatrixEmptyState(wrap, message) {
+    wrap.innerHTML = `<p style='color:var(--muted);font-size:13px'>${htmlEsc(message)}</p>`;
 }
 
 /**
@@ -1494,7 +1531,7 @@ function groupByProximity(areas, groupingGap) {
 
 /**
  * Compare two pages by greedy bipartite matching on area geometry.
- * Each area is described by (x, width) normalised to page reference width and
+ * Each area is described by (x, width) normalized to page reference width and
  * height with a log-ratio so a 3x difference scores about 1.0.
  * @param {AreaEntry[]} areasA
  * @param {AreaEntry[]} areasB
@@ -1535,7 +1572,7 @@ function pageSimilarity(areasA, areasB, matchThreshold = 0.5) {
 
 /**
  * Compare two templates by positional page matching (page 1<->1, page 2<->2, ...).
- * Unmatched pages contribute 0, penalising different template lengths proportionally.
+ * Unmatched pages contribute 0, penalizing different template lengths proportionally.
  * @param {number[]} pagesA
  * @param {number[]} pagesB
  * @param {number[][]} pageMatrix
