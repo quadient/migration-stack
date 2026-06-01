@@ -43,15 +43,20 @@ Set<String> allDocObjRefIds = [] as Set<String>
 Set<String> allImageRefIds = [] as Set<String>
 (templates + pages).each { DocumentObject obj ->
     obj.content.findAll { it instanceof Area }.each { area ->
-        (area as Area).content.each { c -> if (c instanceof DocumentObjectRef) allDocObjRefIds << c.id else if (c instanceof ImageRef) allImageRefIds << c.id
+        (area as Area).content.each {
+            contentItem ->
+                if (contentItem instanceof DocumentObjectRef) allDocObjRefIds << contentItem.id
+                else if (contentItem instanceof ImageRef) allImageRefIds << contentItem.id
         }
     }
 }
 
-Map<String, DocumentObject> docObjCache = allDocObjRefIds ? migration.documentObjectRepository.list(new DocumentObjectFilterBuilder().ids(allDocObjRefIds.toList()).build())
-        .collectEntries { [(it.id): it] } as Map<String, DocumentObject> : [:] as Map<String, DocumentObject>
-Map<String, Image> imageCache = allImageRefIds ? migration.imageRepository.listAll().findAll { allImageRefIds.contains(it.id) }
-        .collectEntries { [(it.id): it] } as Map<String, Image> : [:] as Map<String, Image>
+Map<String, DocumentObject> docObjCache = allDocObjRefIds
+        ? migration.documentObjectRepository.list(new DocumentObjectFilterBuilder().ids(allDocObjRefIds.toList()).build()).collectEntries { [(it.id): it] } as Map<String, DocumentObject>
+        : [:] as Map<String, DocumentObject>
+Map<String, Image> imageCache = allImageRefIds
+        ? migration.imageRepository.listAll().findAll { allImageRefIds.contains(it.id) }.collectEntries { [(it.id): it] } as Map<String, Image>
+        : [:] as Map<String, Image>
 
 templates.each { DocumentObject tmpl ->
     tmpl.content
@@ -92,14 +97,13 @@ pages.findAll { !assignedPageIds.contains(it.id) }.each { DocumentObject page ->
 
 // Group page-list indices by their parent template
 Map<String, List<Integer>> templateGroupMap = [:]
-pageEntries.eachWithIndex { PageEntry pg, int i ->
-    String key = pg.templateId ?: "orphan:${pg.pageId}"
+pageEntries.eachWithIndex { PageEntry pageEntry, int i ->
+    String key = pageEntry.templateId ?: "orphan:${pageEntry.pageId}"
     templateGroupMap.computeIfAbsent(key) { [] } << i
 }
 
 List<TemplateEntry> templateList = templateGroupMap.collect { String key, List<Integer> indices ->
-    List<Integer> pageIndices = indices.sort { int pageIndex -> templatePageOrder(pageEntries[pageIndex])
-    }
+    List<Integer> pageIndices = indices.sort { int pageIndex -> templatePageOrder(pageEntries[pageIndex]) }
     PageEntry first = pageEntries[pageIndices[0]]
     new TemplateEntry(templateId: first.templateId ?: key,
             templateName: first.templateName ?: first.templateId ?: key,
