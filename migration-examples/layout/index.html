@@ -498,10 +498,17 @@
  */
 
 /**
+ * @typedef {Object} PageGroup
+ * @property {string} key
+ * @property {number[]} pageIndices
+ */
+
+/**
  * @typedef {Object} TemplateGroup
+ * @property {string} key
  * @property {string[]} templateIds
  * @property {string[]} templateNames
- * @property {number[][]} pageGroups - sorted page-index clusters, stable after render
+ * @property {PageGroup[]} pageGroups - sorted page clusters with stable membership-based keys
  */
 
 /**
@@ -526,6 +533,8 @@
  * @property {PageLevel} pageLevel
  * @property {TemplateGroup[]} templateGroups
  * @property {Record<string, TemplateEntry>} templateById
+ * @property {Record<string, TemplateGroup>} templateGroupByKey
+ * @property {Record<string, PageGroup>} pageGroupByKey
  * @property {Map<number, string>} pageNumberMap
  * @property {Set<string>} pageGroupKeys
  */
@@ -659,9 +668,10 @@ function updateToolbarState() {
 /** @returns {void} */
 function updateGroupCheckboxes() {
     if (!currentViewModel) return;
-    document.querySelectorAll("#template-groups > li").forEach((li, i) => {
+    document.querySelectorAll("#template-groups > li").forEach(li => {
         const cb = /** @type {HTMLInputElement|null} */ (li.querySelector("input[type=checkbox]"));
-        const group = currentViewModel.templateGroups[i];
+        const groupKey = /** @type {HTMLElement} */ (li).dataset.groupKey;
+        const group = groupKey ? currentViewModel.templateGroupByKey[groupKey] : null;
         const checked = group ? isTemplateGroupSelected(group) : false;
         if (cb) cb.checked = checked;
         li.classList.toggle("dimmed", !checked);
@@ -931,11 +941,11 @@ function renderTemplateGroups(data) {
 
     templateGroups.forEach((group, groupIndex) => {
         const li = document.createElement("li");
-        li.dataset.groupIndex = String(groupIndex);
+        li.dataset.groupKey = group.key;
         li.innerHTML = renderTemplateGroupItem(group, groupIndex, pageLevel.matrix, pageNumberMap, data);
 
         li.querySelectorAll(".page-group").forEach((pgEl, ci) => {
-            /** @type {HTMLElement} */ (pgEl).dataset.pageIndices = JSON.stringify(group.pageGroups[ci]);
+            /** @type {HTMLElement} */ (pgEl).dataset.pageGroupKey = group.pageGroups[ci].key;
         });
         groupsEl.appendChild(li);
     });
@@ -965,7 +975,7 @@ function renderTemplateBadges(group, groupIndex) {
 }
 
 /**
- * @param {number[]} pageGroup
+ * @param {PageGroup} pageGroup
  * @param {number} pageGroupIndex
  * @param {number[][]} pageMatrix
  * @param {Map<number, string>} pageNumberMap
@@ -973,15 +983,15 @@ function renderTemplateBadges(group, groupIndex) {
  * @returns {string}
  */
 function renderPageGroupRow(pageGroup, pageGroupIndex, pageMatrix, pageNumberMap, data) {
-    const cohesion = minPairScore(pageGroup, pageMatrix);
-    const checkedCount = pageGroup.filter(pi => uiState.selectedPages.has(pi)).length;
-    const pgState = checkedCount === pageGroup.length ? "all-selected" : checkedCount === 0 ? "none-selected" : "";
+    const cohesion = minPairScore(pageGroup.pageIndices, pageMatrix);
+    const checkedCount = pageGroup.pageIndices.filter(pi => uiState.selectedPages.has(pi)).length;
+    const pgState = checkedCount === pageGroup.pageIndices.length ? "all-selected" : checkedCount === 0 ? "none-selected" : "";
     return `<div class="page-group">`
         + `<div class="pg-row" data-action="toggle-preview">`
         + `<span class="pg-num ${pgState}" data-action="toggle-pg">${pageGroupIndex + 1}</span>`
         + `<span class="cohesion-dot ${cohesionClass(cohesion)}" `
         + `title="${cohesion !== null ? `Cohesion (min pair): ${cohesion.toFixed(2)}` : "Single page"}"></span>`
-        + `<span class="page-labels">${pageGroup.map(pi =>
+        + `<span class="page-labels">${pageGroup.pageIndices.map(pi =>
             `<label class="page-label"><input type="checkbox" data-page="${pi}" ${uiState.selectedPages.has(pi) ? "checked" : ""}/><span class="page-tag"><strong>${pageNumberMap.get(pi)}</strong> ${htmlEsc(pageName(data.pages[pi]))}</span></label>`
         ).join("")}</span>`
         + `<span class="pg-expand-icon">&#9654;</span>`
@@ -1004,7 +1014,7 @@ function renderTemplateGroupItem(group, groupIndex, pageMatrix, pageNumberMap, d
         .join("");
     return `<div class="tg-header">`
         + `<div class="tg-header-row1">`
-        + `<input type="checkbox" ${isTemplateGroupSelected(group) ? "checked" : ""} data-group="${groupIndex}"/>`
+        + `<input type="checkbox" ${isTemplateGroupSelected(group) ? "checked" : ""} data-group-key="${group.key}"/>`
         + `${renderTemplateBadges(group, groupIndex)}`
         + `</div>`
         + `</div>`
@@ -1054,9 +1064,8 @@ function buildPageCard(pageIndex) {
 document.getElementById("template-groups").addEventListener("change", (e) => {
     const cb = /** @type {HTMLInputElement} */ (e.target);
     if (cb.type !== "checkbox") return;
-    if (cb.dataset.group != null) {
-        const groupIndex = parseInt(cb.dataset.group);
-        const group = currentViewModel?.templateGroups[groupIndex];
+    if (cb.dataset.groupKey != null) {
+        const group = currentViewModel?.templateGroupByKey[cb.dataset.groupKey];
         if (group) setTemplateGroupSelection(group, cb.checked);
     } else if (cb.dataset.page != null) {
         const pi = parseInt(cb.dataset.page);
@@ -1132,7 +1141,7 @@ function pageOrderByGroup(indices) {
     currentViewModel.templateGroups.forEach(group => {
         if (!isTemplateGroupSelected(group)) return;
         group.pageGroups.forEach(pageGroup => {
-            pageGroup.forEach(pi => {
+            pageGroup.pageIndices.forEach(pi => {
                 if (indexSet.has(pi) && !seen.has(pi)) {
                     seen.add(pi);
                     order.push(pi);
@@ -1166,18 +1175,10 @@ function templateGroupPrefix(groupIndex, group, templateIndex) {
 function reopenPageGroups(keys) {
     document.querySelectorAll(".page-group").forEach(pgEl => {
         const groupEl = /** @type {HTMLElement} */ (pgEl);
-        const key = pageGroupKey(pageGroupIndices(groupEl));
+        const key = groupEl.dataset.pageGroupKey ?? "";
         if (!keys.has(key)) return;
         if (!groupEl.querySelector(".pg-cards.open")) setPageGroupOpen(groupEl, true);
     });
-}
-
-/**
- * @param {number[]} pageIndices
- * @returns {string}
- */
-function pageGroupKey(pageIndices) {
-    return pageIndices.join(",");
 }
 
 /**
@@ -1248,33 +1249,29 @@ function refreshSelectionViews() {
  * @returns {number[]}
  */
 function pageGroupIndices(pageGroupEl) {
-    return JSON.parse(pageGroupEl.dataset.pageIndices || "[]");
-}
-
-/**
- * @param {string} key
- * @returns {number[]}
- */
-function pageGroupIndicesFromKey(key) {
-    return key.split(",").filter(Boolean).map(Number);
+    if (!currentViewModel) return [];
+    const key = pageGroupEl.dataset.pageGroupKey ?? "";
+    return currentViewModel.pageGroupByKey[key]?.pageIndices ?? [];
 }
 
 /**
  * @returns {void}
  */
 function refreshOpenPageGroups() {
-    uiState.openPageGroups.forEach(key => refreshOpenPageCardsByIndices(pageGroupIndicesFromKey(key)));
+    uiState.openPageGroups.forEach(key => refreshOpenPageCardsByKey(key));
 }
 
 /**
- * @param {number[]} indices
+ * @param {string} key
  * @returns {void}
  */
-function refreshOpenPageCardsByIndices(indices) {
-    const key = pageGroupKey(indices);
+function refreshOpenPageCardsByKey(key) {
+    if (!currentViewModel) return;
+    const indices = currentViewModel.pageGroupByKey[key]?.pageIndices;
+    if (!indices) return;
     document.querySelectorAll(".page-group").forEach(pgEl => {
         const groupEl = /** @type {HTMLElement} */ (pgEl);
-        if (pageGroupKey(pageGroupIndices(groupEl)) !== key) return;
+        if ((groupEl.dataset.pageGroupKey ?? "") !== key) return;
         const preview = /** @type {HTMLElement|null} */ (groupEl.querySelector(".pg-cards.open"));
         if (preview) buildPageCards(preview, indices);
     });
@@ -1288,8 +1285,8 @@ function refreshOpenPageCardsByIndices(indices) {
 function setPageGroupOpen(pageGroupEl, open) {
     const preview = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-cards"));
     const icon = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-expand-icon"));
+    const key = pageGroupEl.dataset.pageGroupKey ?? "";
     const indices = pageGroupIndices(pageGroupEl);
-    const key = pageGroupKey(indices);
 
     preview.classList.toggle("open", open);
     if (open) uiState.openPageGroups.add(key);
@@ -1337,7 +1334,10 @@ function ensureAnalysis(data, previousAnalysis, activeSettings) {
 function buildViewModel(data, analysis, activeSettings) {
     const {templateLevel, pageLevel} = analysis.similarity;
     const templateById = Object.fromEntries(templateLevel.templates.map(t => [t.templateId, t]));
-    const templateGroups = computeTemplateGroups(templateLevel, pageLevel.matrix, activeSettings);
+    const templateGroups = computeTemplateGroups(data, templateLevel, pageLevel.matrix, activeSettings);
+    const templateGroupByKey = Object.fromEntries(templateGroups.map(group => [group.key, group]));
+    /** @type {Record<string, PageGroup>} */
+    const pageGroupByKey = {};
     const pageNumberMap = new Map();
     const pageGroupKeys = new Set();
 
@@ -1351,10 +1351,13 @@ function buildViewModel(data, analysis, activeSettings) {
                 }
             });
         });
-        group.pageGroups.forEach(pageGroup => pageGroupKeys.add(pageGroupKey(pageGroup)));
+        group.pageGroups.forEach(pageGroup => {
+            pageGroupKeys.add(pageGroup.key);
+            pageGroupByKey[pageGroup.key] = pageGroup;
+        });
     });
 
-    return {templateLevel, pageLevel, templateGroups, templateById, pageNumberMap, pageGroupKeys};
+    return {templateLevel, pageLevel, templateGroups, templateById, templateGroupByKey, pageGroupByKey, pageNumberMap, pageGroupKeys};
 }
 
 /**
@@ -1477,6 +1480,34 @@ function buildSymmetricMatrix(size, scoreFn) {
         }
     }
     return matrix;
+}
+
+/**
+ * @param {string[]} templateIds
+ * @returns {string}
+ */
+function templateGroupKey(templateIds) {
+    return `tmpl:${[...templateIds].sort().join("|")}`;
+}
+
+/**
+ * @param {LayoutData} data
+ * @param {number[]} pageIndices
+ * @returns {string}
+ */
+function pageGroupKey(data, pageIndices) {
+    return `pg:${pageIndices.map(i => renderUnitKey(data.pages[i], i)).sort().join("|")}`;
+}
+
+/**
+ * @param {PageEntry} page
+ * @param {number} pageIndex
+ * @returns {string}
+ */
+function renderUnitKey(page, pageIndex) {
+    if (page.pageId != null) return `page:${page.pageId}`;
+    if (page.templateId != null) return `virtual:${page.templateId}:${pageIndex}`;
+    return `index:${pageIndex}`;
 }
 
 /**
@@ -1612,34 +1643,38 @@ function sliderStepDecimals(slider) {
 }
 
 /**
+ * @param {LayoutData} data
  * @param {TemplateLevel} templateLevel
  * @param {number[][]} pageMatrix
  * @param {Settings} activeSettings
  * @returns {TemplateGroup[]}
  */
-function computeTemplateGroups(templateLevel, pageMatrix, activeSettings) {
+function computeTemplateGroups(data, templateLevel, pageMatrix, activeSettings) {
     return groupPages(templateLevel.templates.map((_, i) => i), templateLevel.matrix, activeSettings)
-        .map(pageGroup => ({
-            templateIds: pageGroup.map(i => templateLevel.templates[i].templateId),
-            templateNames: pageGroup.map(i => templateLevel.templates[i].templateName ?? templateLevel.templates[i].templateId),
-            pageGroups: buildTemplatePageGroups(pageGroup, templateLevel, pageMatrix, activeSettings),
+        .map(templateIndices => ({
+            key: templateGroupKey(templateIndices.map(i => templateLevel.templates[i].templateId)),
+            templateIds: templateIndices.map(i => templateLevel.templates[i].templateId),
+            templateNames: templateIndices.map(i => templateLevel.templates[i].templateName ?? templateLevel.templates[i].templateId),
+            pageGroups: buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings),
         }));
 }
 
 /**
+ * @param {LayoutData} data
  * @param {number[]} templateIndices
  * @param {TemplateLevel} templateLevel
  * @param {number[][]} pageMatrix
  * @param {Settings} activeSettings
- * @returns {number[][]}
+ * @returns {PageGroup[]}
  */
-function buildTemplatePageGroups(templateIndices, templateLevel, pageMatrix, activeSettings) {
+function buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings) {
     const pageIndices = templateIndices
         .flatMap(templateIndex => templateLevel.templates[templateIndex].pageIndices)
         .sort((a, b) => a - b);
     return groupPages(pageIndices, pageMatrix, activeSettings)
         .map(pg => pg.sort((a, b) => a - b))
-        .sort((a, b) => Math.min(...a) - Math.min(...b));
+        .sort((a, b) => Math.min(...a) - Math.min(...b))
+        .map(pg => ({key: pageGroupKey(data, pg), pageIndices: pg}));
 }
 
 /**
