@@ -465,10 +465,17 @@
  * @typedef {Object} PageEntry
  * @property {string|null} pageId      - null for template-direct virtual pages (no real page object)
  * @property {string|null} pageName    - null for template-direct virtual pages
+ * @property {PageSizeEntry|null} pageSize
  * @property {string|null} templateId  - null for orphan pages not belonging to any template
  * @property {string|null} templateName
  * @property {number|null} templatePageIndex
  * @property {AreaEntry[]} areas
+*/
+
+/**
+ * @typedef {Object} PageSizeEntry
+ * @property {number} w
+ * @property {number} h
  */
 
 /**
@@ -726,6 +733,9 @@ function buildPageSvg(page, proximityGroups) {
     const scale = (settings.canvasW - 2 * PAD) / Math.max(maxX2, 210);
     const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
     const svg = svgEl("svg", {width: settings.canvasW, height: svgH, style: "background:#fff;cursor:default"});
+    svg.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {
+        textContent: pageCardTooltip(page)
+    }));
     const proximityGroupByArea = new Map();
     proximityGroups.forEach((group, groupIndex) => {
         group.areaIndices.forEach(areaIndex => proximityGroupByArea.set(areaIndex, groupIndex));
@@ -1043,6 +1053,7 @@ function buildPageCard(pageIndex) {
     } else {
         title.textContent = pageName(currentData.pages[pageIndex]);
     }
+    title.title = pageCardTooltip(currentData.pages[pageIndex]);
     title.style.cursor = "pointer";
     title.addEventListener("click", () => {
         const cb = /** @type {HTMLInputElement|null} */ (
@@ -1790,6 +1801,31 @@ function htmlEsc(s) {
  */
 function pageName(page) {
     return page.pageName ?? page.pageId ?? "Virtual page";
+}
+
+/**
+ * @param {PageEntry} page
+ * @returns {string}
+ */
+function pageSizeLabel(page) {
+    if (page.pageSize == null) return "default";
+    return `${formatMm(page.pageSize.w)} x ${formatMm(page.pageSize.h)} mm`;
+}
+
+/**
+ * @param {PageEntry} page
+ * @returns {string}
+ */
+function pageCardTooltip(page) {
+    return `${pageName(page)}\npage size: ${pageSizeLabel(page)}`;
+}
+
+/**
+ * @param {number} value
+ * @returns {string}
+ */
+function formatMm(value) {
+    return Number.isInteger(value) ? String(value) : String(roundTo(value, 2));
 }
 
 /**

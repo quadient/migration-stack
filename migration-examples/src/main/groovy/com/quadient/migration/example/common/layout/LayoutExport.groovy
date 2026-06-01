@@ -16,6 +16,7 @@ import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectFilterBuilder
 import com.quadient.migration.example.common.util.PathUtil
+import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.DocumentObjectType
 import groovy.transform.Field
 
@@ -67,6 +68,7 @@ templates.each { DocumentObject tmpl ->
                 List<AreaEntry> areas = processAreas(docObjCache, imageCache, page.content.findAll { it instanceof Area } as List<Area>)
                 pageEntries << new PageEntry(pageId: page.id,
                         pageName: page.name,
+                        pageSize: pageSize(page),
                         templateId: tmpl.id,
                         templateName: tmpl.name,
                         templatePageIndex: idx,
@@ -78,6 +80,7 @@ templates.each { DocumentObject tmpl ->
         List<AreaEntry> areas = processAreas(docObjCache, imageCache, directAreas)
         pageEntries << new PageEntry(pageId: null,
                 pageName: null,
+                pageSize: null,
                 templateId: tmpl.id,
                 templateName: tmpl.name,
                 templatePageIndex: null,
@@ -89,6 +92,7 @@ pages.findAll { !assignedPageIds.contains(it.id) }.each { DocumentObject page ->
     List<AreaEntry> areas = processAreas(docObjCache, imageCache, page.content.findAll { it instanceof Area } as List<Area>)
     pageEntries << new PageEntry(pageId: page.id,
             pageName: page.name,
+            pageSize: pageSize(page),
             templateId: null,
             templateName: null,
             templatePageIndex: null,
@@ -198,6 +202,16 @@ static int templatePageOrder(PageEntry page) {
     page.templatePageIndex != null ? page.templatePageIndex : Integer.MAX_VALUE
 }
 
+static PageSizeEntry pageSize(DocumentObject page) {
+    PageOptions options = page.options instanceof PageOptions ? page.options as PageOptions : null
+    if (options?.width == null || options?.height == null) {
+        return null
+    }
+    return new PageSizeEntry(
+            w: round2dp(options.width.toMillimeters()),
+            h: round2dp(options.height.toMillimeters()))
+}
+
 class WorkingArea {
     double x
     double y
@@ -225,10 +239,16 @@ class AreaEntry {
 class PageEntry {
     String pageId
     String pageName
+    PageSizeEntry pageSize
     String templateId
     String templateName
     Integer templatePageIndex
     List<AreaEntry> areas
+}
+
+class PageSizeEntry {
+    double w
+    double h
 }
 
 class TemplateEntry {
