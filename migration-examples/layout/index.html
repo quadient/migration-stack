@@ -618,15 +618,17 @@ function parseSizeMm(str) {
     const m = str.trim().match(/^(-?\d*\.?\d+)\s*(pt|mm|cm|dm|m|in)$/i);
     if (!m) return null;
     const v = parseFloat(m[1]);
+    let mm;
     switch (m[2].toLowerCase()) {
-        case 'pt': return v * 25.4 / 72;
-        case 'mm': return v;
-        case 'cm': return v * 10;
-        case 'dm': return v * 100;
-        case 'm':  return v * 1000;
-        case 'in': return v * 25.4;
+        case 'pt': mm = v * 25.4 / 72; break;
+        case 'mm': mm = v; break;
+        case 'cm': mm = v * 10; break;
+        case 'dm': mm = v * 100; break;
+        case 'm':  mm = v * 1000; break;
+        case 'in': mm = v * 25.4; break;
         default:   return null;
     }
+    return roundTo(mm, 2);
 }
 
 /**
@@ -685,7 +687,10 @@ function parseCsvToLayoutData(text) {
         const row = parseCsvLine(lines[i]);
         const pageId = col(row, 'pageId') || null;
         const templateId = col(row, 'templateId') || null;
-        const pageKey = pageId ? `page:${pageId}` : templateId ? `virtual:${templateId}` : `row:${i}`;
+        const pageKey = pageId && templateId ? `tmpl:${templateId}:page:${pageId}`
+                      : pageId              ? `page:${pageId}`
+                      : templateId          ? `virtual:${templateId}`
+                      : `row:${i}`;
         if (!pageMap.has(pageKey)) {
             pageMap.set(pageKey, {
                 meta: {
