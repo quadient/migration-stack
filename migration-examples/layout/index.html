@@ -687,10 +687,13 @@ function parseCsvToLayoutData(text) {
         const row = parseCsvLine(lines[i]);
         const pageId = col(row, 'pageId') || null;
         const templateId = col(row, 'templateId') || null;
-        const pageKey = pageId && templateId ? `tmpl:${templateId}:page:${pageId}`
-                      : pageId              ? `page:${pageId}`
-                      : templateId          ? `virtual:${templateId}`
-                      : `row:${i}`;
+        const pageKey = pageId && templateId
+            ? `tmpl:${templateId}:page:${pageId}`
+            : pageId
+                ? `page:${pageId}`
+                : templateId
+                    ? `virtual:${templateId}`
+                    : `row:${i}`;
         if (!pageMap.has(pageKey)) {
             pageMap.set(pageKey, {
                 meta: {
