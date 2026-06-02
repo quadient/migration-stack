@@ -1,13 +1,9 @@
 import org.gradle.internal.os.OperatingSystem;
 
-val kotlin_version: String by project
-val logback_version: String by project
-val ktor_version: String by project
-
 plugins {
-    kotlin("jvm") version "2.1.10"
-    id("io.ktor.plugin") version "3.2.3"
-    kotlin("plugin.serialization") version "2.2.0"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.ktor)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 group = "com.quadient.migration"
@@ -30,33 +26,33 @@ dependencies {
     implementation("com.quadient:migration-library")
     implementation("com.quadient:migration-examples")
 
-    implementation("io.insert-koin:koin-ktor:3.5.6")
-    implementation("io.insert-koin:koin-logger-slf4j:3.5.6")
+    implementation(libs.koin.ktor)
+    implementation(libs.koin.logger.slf4j)
 
-    implementation("io.ktor:ktor-server-core-jvm:${ktor_version}")
-    implementation("io.ktor:ktor-server-netty:${ktor_version}")
-    implementation("io.ktor:ktor-server-core:${ktor_version}")
-    implementation("io.ktor:ktor-client-core:${ktor_version}")
-    implementation("io.ktor:ktor-client-cio:${ktor_version}")
-    implementation("io.ktor:ktor-server-content-negotiation:${ktor_version}")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:${ktor_version}")
-    implementation("io.ktor:ktor-serialization-jackson:${ktor_version}")
+    implementation(libs.ktor.server.core.jvm)
+    implementation(libs.ktor.server.netty)
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.server.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.serialization.jackson)
 
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.18.2")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.2")
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.module.kotlin)
+    implementation(libs.jackson.datatype.jsr310)
 
     // Update only after ktor migrates to kotlinx-serialization 1.9.0
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
+    implementation(libs.kotlinx.datetime)
 
-    implementation("ch.qos.logback:logback-classic:${logback_version}")
-    implementation("org.slf4j:slf4j-api:2.0.17")
+    implementation(libs.logback.classic)
+    implementation(libs.slf4j.api)
 
-    implementation("org.apache.groovy:groovy-all:5.0.0-rc-1")
-    implementation("co.touchlab:stately-concurrent-collections:2.0.0")
+    implementation(libs.groovy.all)
+    implementation(libs.stately.concurrent.collections)
 
-    testImplementation("io.ktor:ktor-server-test-host")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.kotlin.test.junit)
 }
 
 // Distribution build

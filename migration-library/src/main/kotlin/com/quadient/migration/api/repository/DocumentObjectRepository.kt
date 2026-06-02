@@ -128,7 +128,7 @@ class DocumentObjectRepository(projectName: ProjectName, private val statusTrack
                 it[DocumentObjectTable.displayRuleRef] = dto.displayRuleRef?.id
                 it[DocumentObjectTable.variableStructureRef] = dto.variableStructureRef?.id
                 it[DocumentObjectTable.baseTemplate] = dto.baseTemplate
-                it[DocumentObjectTable.options] = dto.options
+                it[DocumentObjectTable.documentObjectOptions] = dto.options
                 it[DocumentObjectTable.pdfMetadata] = dto.pdfMetadata?.toDb()
                 it[DocumentObjectTable.metadata] = dto.metadata
                 it[DocumentObjectTable.skip] = dto.skip
