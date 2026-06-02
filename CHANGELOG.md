@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+- layout/index.html that visualizes csv data of `Export Areas` script. It calculates similarity, suggests merged areas
+  and groups similar templates and pages together as potential based template candidates. Has several options to adjust
+  the results.
+
 ### Changed
 
 - Unify dependency version under a single catalogue
