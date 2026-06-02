@@ -863,8 +863,8 @@ function updateGroupCheckboxes() {
  */
 function render(data) {
     const dataChanged = currentData !== data;
-    currentData = data;
     currentAnalysis = ensureAnalysis(data, currentAnalysis, settings);
+    currentData = data;
     currentViewModel = buildViewModel(data, currentAnalysis, settings);
     uiState = reconcileUiState(uiState, currentViewModel, dataChanged);
 
