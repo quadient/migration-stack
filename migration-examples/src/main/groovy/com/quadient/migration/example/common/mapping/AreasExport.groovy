@@ -13,6 +13,7 @@ import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.PageOptions
 import groovy.transform.Field
 
 import java.nio.file.Path
@@ -42,6 +43,8 @@ static void run(Migration migration, Path path) {
             Mapping.displayHeader("templateName", true),
             Mapping.displayHeader("pageId", false),
             Mapping.displayHeader("pageName", true),
+            Mapping.displayHeader("pageWidth", true),
+            Mapping.displayHeader("pageHeight", true),
             Mapping.displayHeader("interactiveFlowName", false),
             Mapping.displayHeader("flowToNextPage", false),
             Mapping.displayHeader("x", true),
@@ -90,6 +93,9 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     builder.append(Csv.serialize(template?.name) + ",")
     builder.append(Csv.serialize(page?.id) + ",")
     builder.append(Csv.serialize(page?.name) + ",")
+    def pageOptions = page?.options instanceof PageOptions ? page.options as PageOptions : null
+    builder.append(Csv.serialize(pageOptions?.width) + ",")
+    builder.append(Csv.serialize(pageOptions?.height) + ",")
     builder.append(Csv.serialize(area.interactiveFlowName) + ",")
     builder.append(Csv.serialize(area.flowToNextPage) + ",")
     builder.append(Csv.serialize(area.position.x) + ",")
@@ -103,21 +109,11 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     builder.append(Csv.serialize(area.content.collect {
         switch (it) {
             case DocumentObjectRef:
-                def id = it.id
-                def name = documentObjectIdsToNames.get(id)
-                if (name == null) {
-                    return "DocumentObjectRef(id=$id)"
-                } else {
-                    return "DocumentObjectRef(id=$id name=$name)"
-                }
+                def name = documentObjectIdsToNames.get(it.id)
+                return name ? "DocObjRef($name)" : "DocObjRef(${it.id})"
             case ImageRef:
-                def id = it.id
-                def name = imageIdsToNames.get(id)
-                if (name == null) {
-                    return "ImageRef(id=$id)"
-                } else {
-                    return "ImageRef(id=$id name=$name)"
-                }
+                def name = imageIdsToNames.get(it.id)
+                return name ? "ImageRef($name)" : "ImageRef(${it.id})"
             default:
                 return it.toString()
         }
