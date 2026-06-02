@@ -1,0 +1,1997 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Layout Analysis</title>
+    <style>
+        :root {
+            --fg: #111;
+            --muted: #666;
+            --line: #e6e6e6;
+            --bg: #f9f9f9;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            margin: 24px;
+            color: var(--fg);
+            background: #fff;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        button, input[type="file"] {
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: var(--bg);
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        #similarity-btn {
+            border: 2px solid #6b9fd4;
+            color: #4a7ab5;
+            font-weight: 600;
+        }
+
+        #similarity-btn.active {
+            background: #6b9fd4;
+            color: #fff;
+        }
+
+        .status {
+            font-size: 13px;
+            color: #c00;
+        }
+
+        /* Layout: split view */
+        .split-layout {
+            display: flex;
+            gap: 24px;
+        }
+
+        .templates-pane {
+            flex: 1;
+            min-width: 0;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .similarity-pane {
+            flex: 1;
+            min-width: 0;
+            border-left: 1px solid var(--line);
+            padding-left: 24px;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        .similarity-pane .section-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .similarity-pane .close-btn {
+            margin-left: auto;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: var(--muted);
+            padding: 0 4px;
+        }
+
+        /* Matrix */
+        .matrix-wrap {
+            overflow-x: auto;
+        }
+
+        .matrix-wrap table {
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .matrix-wrap th, .matrix-wrap td {
+            padding: 5px 8px;
+            border: 1px solid var(--line);
+            white-space: nowrap;
+        }
+
+        .matrix-wrap th {
+            background: var(--bg);
+            font-weight: 600;
+        }
+
+        .matrix-wrap td {
+            text-align: center;
+            min-width: 52px;
+        }
+
+        .section-head {
+            font-size: 13px;
+            font-weight: 700;
+            margin: 22px 0 6px;
+            border-bottom: 1px solid var(--line);
+            padding-bottom: 5px;
+            color: var(--fg);
+        }
+
+        .section-head:first-of-type {
+            margin-top: 0;
+        }
+
+        /* Template groups */
+        .template-groups {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .template-groups > li {
+            margin-bottom: 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: opacity 0.2s;
+        }
+
+        .template-groups > li.dimmed {
+            opacity: 0.45;
+        }
+
+        .tg-header {
+            padding: 10px 14px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .tg-header-row1 {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .tg-header-row1 input[type="checkbox"] {
+            margin: 0 4px 0 0;
+            cursor: pointer;
+        }
+
+        .page-groups {
+            padding: 6px 0;
+        }
+
+        .page-group {
+            border-bottom: 1px solid var(--line);
+        }
+
+        .page-group:last-child {
+            border-bottom: none;
+        }
+
+        .pg-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 6px 14px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .pg-row:hover {
+            background: #f5f8ff;
+        }
+
+        .pg-num {
+            min-width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #e8f0fe;
+            color: #4a7ab5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-top: 1px;
+            margin-right: 4px;
+            cursor: pointer;
+            border: 2px solid #a8c4e0;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .pg-num.all-selected {
+            background: #6b9fd4;
+            border-color: #6b9fd4;
+            color: #fff;
+        }
+
+        .pg-num.none-selected {
+            background: #fff;
+            border-color: #ccc;
+            color: #999;
+        }
+
+        .cohesion-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 7px;
+        }
+
+        .cohesion-high {
+            background: #22c55e;
+        }
+
+        .cohesion-mid {
+            background: #f59e0b;
+        }
+
+        .cohesion-low {
+            background: #ef4444;
+        }
+
+        .cohesion-solo {
+            background: #d1d5db;
+        }
+
+        .pg-expand-icon {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--muted);
+            flex-shrink: 0;
+            align-self: center;
+        }
+
+        .page-labels {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+            flex: 1;
+        }
+
+        .page-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+        }
+
+        .page-label input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .page-tag {
+            background: #f0f0f0;
+            border-radius: 4px;
+            padding: 2px 7px;
+            font-size: 12px;
+        }
+
+        .pg-cards {
+            display: none;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 10px 14px 14px 46px;
+            background: #fafbff;
+            border-top: 1px dashed var(--line);
+        }
+
+        .pg-cards.open {
+            display: flex;
+        }
+
+        .page-card {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .page-card-title {
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--line);
+            background: var(--bg);
+        }
+
+        .page-card svg {
+            display: block;
+        }
+
+        .toolbar-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .toolbar-control input[type="range"] {
+            padding: 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+            width: 80px;
+            accent-color: #6b9fd4;
+        }
+
+        .toolbar-control output {
+            font-size: 12px;
+            color: #4a7ab5;
+            font-weight: 600;
+            min-width: 2.8em;
+        }
+
+        .toolbar-control select {
+            padding: 4px 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: var(--bg);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .toolbar-sep {
+            width: 1px;
+            height: 24px;
+            background: #ddd;
+            margin: 0 4px;
+        }
+
+        code {
+            background: #f0f0f0;
+            border-radius: 4px;
+            padding: 1px 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="toolbar">
+    <button id="similarity-btn" disabled>Show similarity</button>
+    <button id="select-all">Select all</button>
+    <button id="select-none">Deselect all</button>
+    <div class="toolbar-sep"></div>
+    <label class="toolbar-control" title="Page card display size">
+        Page size: <input type="range" id="card-size" min="180" max="700" step="10" value="400"/>
+        <output id="card-size-out">400</output>
+    </label>
+    <div class="toolbar-sep"></div>
+    <label class="toolbar-control" title="Similarity threshold for grouping pages and templates">
+        Threshold: <input type="range" id="threshold" min="0.10" max="0.95" step="0.01" value="0.60"/>
+        <output id="threshold-out">0.60</output>
+    </label>
+    <label class="toolbar-control" title="Vertical gap threshold for proximity grouping within page cards">
+        Proximity gap: <input type="range" id="proximity-gap" min="0" max="20" step="0.1" value="5.3"/>
+        <output id="proximity-gap-out">5.3</output>
+    </label>
+    <label class="toolbar-control" title="Grouping linkage strategy">
+        Strategy:
+        <select id="group-strategy">
+            <option value="average" selected>Average</option>
+            <option value="single">Single (any pair)</option>
+            <option value="complete">Complete (all pairs)</option>
+        </select>
+    </label>
+    <div class="toolbar-sep"></div>
+    <input type="file" id="file" accept=".csv"/>
+    <div class="status" id="status"></div>
+</div>
+
+<div id="app" hidden>
+    <div class="split-layout">
+        <div class="templates-pane">
+            <ul class="template-groups" id="template-groups"></ul>
+        </div>
+        <div class="similarity-pane" id="similarity-pane" hidden>
+            <div class="section-head">
+                Template similarity
+                <button class="close-btn" id="similarity-close" title="Close">&times;</button>
+            </div>
+            <div class="matrix-wrap" id="tmpl-matrix-wrap"></div>
+
+            <div class="section-head">Page similarity</div>
+            <div class="matrix-wrap" id="page-matrix-wrap"></div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+// @ts-check
+
+/**
+ * @typedef {Object} LayoutData
+ * @property {PageEntry[]} pages
+ * @property {TemplateEntry[]} templates
+ */
+
+/**
+ * @typedef {Object} LayoutAnalysis
+ * @property {Similarity} similarity
+ * @property {ProximityGroup[][]} pageProximityGroups
+ * @property {number} proximityGap
+ */
+
+/**
+ * @typedef {Object} Similarity
+ * @property {PageLevel} pageLevel
+ * @property {TemplateLevel} templateLevel
+ */
+
+/**
+ * @typedef {Object} PageLevel
+ * @property {number[][]} matrix
+ */
+
+/**
+ * @typedef {Object} TemplateLevel
+ * @property {TemplateEntry[]} templates
+ * @property {number[][]} matrix
+ */
+
+/**
+ * @typedef {Object} TemplateEntry
+ * @property {string} templateId
+ * @property {string} templateName
+ * @property {number[]} pageIndices
+ */
+
+/**
+ * @typedef {Object} PageEntry
+ * @property {string|null} pageId      - null for template-direct virtual pages (no real page object)
+ * @property {string|null} pageName    - null for template-direct virtual pages
+ * @property {PageSizeEntry|null} pageSize
+ * @property {string|null} templateId  - null for orphan pages not belonging to any template
+ * @property {string|null} templateName
+ * @property {number|null} templatePageIndex
+ * @property {AreaEntry[]} areas
+*/
+
+/**
+ * @typedef {Object} PageSizeEntry
+ * @property {number} w
+ * @property {number} h
+ */
+
+/**
+ * @typedef {Object} AreaEntry
+ * @property {number} x
+ * @property {number} y
+ * @property {number} w
+ * @property {number} h
+ * @property {boolean} flowToNextPage
+ * @property {string} interactiveFlowName
+ * @property {string} contentPreview
+ * @property {number|null} containedIn
+ */
+
+/**
+ * @typedef {Object} ProximityGroup
+ * @property {number[]} areaIndices
+ * @property {Position} position
+ */
+
+/**
+ * @typedef {Object} Position
+ * @property {number} x
+ * @property {number} y
+ * @property {number} w
+ * @property {number} h
+ */
+
+/**
+ * @typedef {Object} PageGroup
+ * @property {string} key
+ * @property {number[]} pageIndices
+ */
+
+/**
+ * @typedef {Object} TemplateGroup
+ * @property {string} key
+ * @property {string[]} templateIds
+ * @property {string[]} templateNames
+ * @property {PageGroup[]} pageGroups - sorted page clusters with stable membership-based keys
+ */
+
+/**
+ * @typedef {Object} Settings
+ * @property {number} canvasW
+ * @property {number} groupThreshold
+ * @property {number} proximityGap
+ * @property {"single"|"average"|"complete"} groupStrategy
+ */
+
+/**
+ * @typedef {Object} UiState
+ * @property {Set<string>} selectedTemplateIds
+ * @property {Set<number>} selectedPages
+ * @property {Set<string>} openPageGroups
+ * @property {boolean} similarityOpen
+ */
+
+/**
+ * @typedef {Object} ViewModel
+ * @property {TemplateLevel} templateLevel
+ * @property {PageLevel} pageLevel
+ * @property {TemplateGroup[]} templateGroups
+ * @property {Record<string, TemplateEntry>} templateById
+ * @property {Record<string, TemplateGroup>} templateGroupByKey
+ * @property {Record<string, PageGroup>} pageGroupByKey
+ * @property {Map<number, string>} pageNumberMap
+ * @property {Set<string>} pageGroupKeys
+ */
+
+/** @type {string[]} */
+const PALETTE = [
+    "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
+    "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
+    "#aecbeb", "#ffcfa1", "#f4a59d", "#b0dbd8", "#a8d5a2",
+];
+
+const PAGE_REF_MM = 210;
+const DEFAULT_PROXIMITY_GAP_MM = 5.3;
+const PAD = 10;
+/** @type {Settings} */
+const settings = {
+    canvasW: 400,
+    groupThreshold: 0.60,
+    proximityGap: DEFAULT_PROXIMITY_GAP_MM,
+    groupStrategy: "average",
+};
+
+/** @type {LayoutData|null} */
+let currentData = null;
+/** @type {LayoutAnalysis|null} */
+let currentAnalysis = null;
+/** @type {ViewModel|null} */
+let currentViewModel = null;
+/** @type {UiState} */
+let uiState = {
+    selectedTemplateIds: new Set(),
+    selectedPages: new Set(),
+    openPageGroups: new Set(),
+    similarityOpen: false,
+};
+
+const statusEl = /** @type {HTMLElement} */ (document.getElementById("status"));
+const fileInput = /** @type {HTMLInputElement} */ (document.getElementById("file"));
+const similarityBtn = /** @type {HTMLButtonElement} */ (document.getElementById("similarity-btn"));
+const similarityPane = /** @type {HTMLElement} */ (document.getElementById("similarity-pane"));
+
+/**
+ * Parses one RFC-4180 CSV line into an array of field strings.
+ * @param {string} line
+ * @returns {string[]}
+ */
+function parseCsvLine(line) {
+    const cols = [];
+    let i = 0, field = '', inQuotes = false;
+    while (i < line.length) {
+        const c = line[i];
+        if (inQuotes) {
+            if (c === '"' && line[i + 1] === '"') { field += '"'; i++; }
+            else if (c === '"') { inQuotes = false; }
+            else { field += c; }
+        } else {
+            if (c === ',') { cols.push(field); field = ''; }
+            else if (c === '"') { inQuotes = true; }
+            else { field += c; }
+        }
+        i++;
+    }
+    cols.push(field);
+    return cols;
+}
+
+/**
+ * Parses a Size string (e.g. "210.0000mm", "595.2756pt", "8.2677in") to millimetres.
+ * Returns null for empty or invalid input.
+ * @param {string} str
+ * @returns {number|null}
+ */
+function parseSizeMm(str) {
+    if (!str || !str.trim()) return null;
+    const m = str.trim().match(/^(-?\d*\.?\d+)\s*(pt|mm|cm|dm|m|in)$/i);
+    if (!m) return null;
+    const v = parseFloat(m[1]);
+    let mm;
+    switch (m[2].toLowerCase()) {
+        case 'pt': mm = v * 25.4 / 72; break;
+        case 'mm': mm = v; break;
+        case 'cm': mm = v * 10; break;
+        case 'dm': mm = v * 100; break;
+        case 'm':  mm = v * 1000; break;
+        case 'in': mm = v * 25.4; break;
+        default:   return null;
+    }
+    return roundTo(mm, 2);
+}
+
+/**
+ * Computes containment for each area: the index of its smallest enclosing area, or null.
+ * Mirrors the findContainment algorithm in LayoutExport.groovy.
+ * @param {{x: number, y: number, w: number, h: number}[]} areas
+ * @returns {(number|null)[]}
+ */
+function computeContainment(areas) {
+    const TOL = 0.7;
+    const containment = /** @type {(number|null)[]} */ (new Array(areas.length).fill(null));
+    for (let i = 0; i < areas.length; i++) {
+        const inner = areas[i];
+        const innerSize = inner.w * inner.h;
+        for (let j = 0; j < areas.length; j++) {
+            if (i === j) continue;
+            const outer = areas[j];
+            const outerSize = outer.w * outer.h;
+            if (outerSize <= innerSize) continue;
+            if (outer.x - TOL <= inner.x && outer.y - TOL <= inner.y
+                    && (inner.x + inner.w) <= (outer.x + outer.w) + TOL
+                    && (inner.y + inner.h) <= (outer.y + outer.h) + TOL) {
+                const cur = containment[i];
+                const curSize = cur != null ? areas[cur].w * areas[cur].h : Infinity;
+                if (curSize > outerSize) containment[i] = j;
+            }
+        }
+    }
+    return containment;
+}
+
+/**
+ * Parses the areas CSV produced by AreasExport.groovy into a LayoutData object.
+ * Templates and templatePageIndex are derived from row order; containedIn is computed from geometry.
+ * @param {string} text
+ * @returns {LayoutData}
+ */
+function parseCsvToLayoutData(text) {
+    const lines = text.split(/\r?\n/);
+    if (!lines.length) return { pages: [], templates: [] };
+
+    // Parse headers, stripping the " (read-only)" suffix added by Mapping.displayHeader
+    const headers = parseCsvLine(lines[0]).map(h => {
+        const s = h.trim();
+        return s.endsWith(' (read-only)') ? s.slice(0, -' (read-only)'.length) : s;
+    });
+
+    /** @param {string[]} row @param {string} name @returns {string} */
+    const col = (row, name) => { const idx = headers.indexOf(name); return idx >= 0 ? (row[idx] ?? '') : ''; };
+
+    // Group rows into pages; each unique page in the CSV keeps its declaration order
+    /** @type {Map<string, {meta: {pageId:string|null,pageName:string|null,templateId:string|null,templateName:string|null,pageWidth:string,pageHeight:string}, rows:string[][]}>} */
+    const pageMap = new Map();
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const row = parseCsvLine(lines[i]);
+        const pageId = col(row, 'pageId') || null;
+        const templateId = col(row, 'templateId') || null;
+        const pageKey = pageId && templateId
+            ? `tmpl:${templateId}:page:${pageId}`
+            : pageId
+                ? `page:${pageId}`
+                : templateId
+                    ? `virtual:${templateId}`
+                    : `row:${i}`;
+        if (!pageMap.has(pageKey)) {
+            pageMap.set(pageKey, {
+                meta: {
+                    pageId,
+                    pageName: col(row, 'pageName') || null,
+                    templateId,
+                    templateName: col(row, 'templateName') || null,
+                    pageWidth: col(row, 'pageWidth'),
+                    pageHeight: col(row, 'pageHeight'),
+                },
+                rows: [],
+            });
+        }
+        pageMap.get(pageKey).rows.push(row);
+    }
+
+    // Assign templatePageIndex as the ordinal of each real page within its template (CSV order)
+    /** @type {Map<string, number>} */
+    const pageIndexMap = new Map();
+    /** @type {Map<string, number>} */
+    const tmplPageCounter = new Map();
+    for (const [pageKey, { meta }] of pageMap) {
+        if (!meta.templateId || !meta.pageId) continue;
+        const n = tmplPageCounter.get(meta.templateId) ?? 0;
+        pageIndexMap.set(pageKey, n);
+        tmplPageCounter.set(meta.templateId, n + 1);
+    }
+
+    // Build PageEntry objects
+    /** @type {PageEntry[]} */
+    const pages = [];
+    for (const [pageKey, { meta, rows }] of pageMap) {
+        const rawAreas = /** @type {{x:number,y:number,w:number,h:number,flowToNextPage:boolean,interactiveFlowName:string,contentPreview:string}[]} */ (
+            rows.map(row => {
+                const x = parseSizeMm(col(row, 'x'));
+                const y = parseSizeMm(col(row, 'y'));
+                const w = parseSizeMm(col(row, 'width'));
+                const h = parseSizeMm(col(row, 'height'));
+                if (x == null || y == null || w == null || h == null) return null;
+                return {
+                    x, y, w, h,
+                    flowToNextPage: col(row, 'flowToNextPage') === 'true',
+                    interactiveFlowName: col(row, 'interactiveFlowName') || '',
+                    contentPreview: col(row, 'contentPreview') || '',
+                };
+            }).filter(a => a != null)
+        );
+
+        const containment = computeContainment(rawAreas);
+        const areas = /** @type {AreaEntry[]} */ (rawAreas.map((a, idx) => ({ ...a, containedIn: containment[idx] })));
+
+        const pw = parseSizeMm(meta.pageWidth);
+        const ph = parseSizeMm(meta.pageHeight);
+        pages.push(/** @type {PageEntry} */ ({
+            pageId: meta.pageId,
+            pageName: meta.pageName,
+            pageSize: pw != null && ph != null ? { w: pw, h: ph } : null,
+            templateId: meta.templateId,
+            templateName: meta.templateName,
+            templatePageIndex: pageIndexMap.get(pageKey) ?? null,
+            areas,
+        }));
+    }
+
+    return { pages, templates: deriveTemplates(pages) };
+}
+
+/**
+ * @param {File} file
+ */
+async function loadFile(file) {
+    try {
+        statusEl.textContent = "";
+        render(parseCsvToLayoutData(await file.text()));
+    } catch (err) {
+        statusEl.textContent = "Error: " + /** @type {Error} */ (err).message;
+    }
+}
+
+fileInput.addEventListener("change", () => {
+    const [file] = /** @type {FileList} */ (fileInput.files);
+    if (file) loadFile(file);
+});
+
+document.body.addEventListener("dragover", e => e.preventDefault());
+document.body.addEventListener("drop", e => {
+    e.preventDefault();
+    const file = e.dataTransfer?.files[0];
+    if (file) loadFile(file);
+});
+
+document.getElementById("select-all").addEventListener("click", () => {
+    if (!currentViewModel) return;
+    selectAllTemplates();
+});
+
+document.getElementById("select-none").addEventListener("click", () => {
+    clearTemplateSelection();
+});
+
+similarityBtn.addEventListener("click", () => {
+    setSimilarityOpen(!uiState.similarityOpen);
+});
+
+document.getElementById("similarity-close").addEventListener("click", () => {
+    setSimilarityOpen(false);
+});
+
+document.getElementById("card-size").addEventListener("input", (e) => {
+    settings.canvasW = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLOutputElement} */ (document.getElementById("card-size-out")).value = String(settings.canvasW);
+    refreshOpenPageGroups();
+});
+
+document.getElementById("threshold").addEventListener("input", (e) => {
+    settings.groupThreshold = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLOutputElement} */ (document.getElementById("threshold-out")).value = settings.groupThreshold.toFixed(2);
+    if (currentData) render(currentData);
+});
+
+document.getElementById("proximity-gap").addEventListener("input", (e) => {
+    settings.proximityGap = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLOutputElement} */ (document.getElementById("proximity-gap-out")).value = settings.proximityGap.toFixed(1);
+    if (currentData) render(currentData);
+});
+
+document.getElementById("group-strategy").addEventListener("change", (e) => {
+    settings.groupStrategy = /** @type {"single"|"average"|"complete"} */ (/** @type {HTMLSelectElement} */ (e.target).value);
+    if (currentData) render(currentData);
+});
+
+document.querySelectorAll("input[type='range']").forEach(input => {
+    input.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const slider = /** @type {HTMLInputElement} */ (e.currentTarget);
+        const min = slider.min === "" ? 0 : parseFloat(slider.min);
+        const max = slider.max === "" ? 100 : parseFloat(slider.max);
+        const step = slider.step === "" || slider.step === "any" ? 1 : parseFloat(slider.step);
+        const current = parseFloat(slider.value);
+        const direction = e.deltaY < 0 ? 1 : -1;
+        const next = Math.min(max, Math.max(min, current + direction * step));
+        slider.value = String(roundTo(next, sliderStepDecimals(slider)));
+        slider.dispatchEvent(new Event("input", {bubbles: true}));
+    }, {passive: false});
+});
+
+/** @returns {void} */
+function updateToolbarState() {
+    const hasData = currentData != null;
+    similarityBtn.disabled = !hasData;
+    document.getElementById("select-all").disabled = !hasData;
+    document.getElementById("select-none").disabled = !hasData;
+}
+
+/** @returns {void} */
+function updateGroupCheckboxes() {
+    if (!currentViewModel) return;
+    document.querySelectorAll("#template-groups > li").forEach(li => {
+        const cb = /** @type {HTMLInputElement|null} */ (li.querySelector("input[type=checkbox]"));
+        const groupKey = /** @type {HTMLElement} */ (li).dataset.groupKey;
+        const group = groupKey ? currentViewModel.templateGroupByKey[groupKey] : null;
+        const checked = group ? isTemplateGroupSelected(group) : false;
+        if (cb) cb.checked = checked;
+        li.classList.toggle("dimmed", !checked);
+    });
+}
+
+/**
+ * @param {LayoutData} data
+ */
+function render(data) {
+    const dataChanged = currentData !== data;
+    currentAnalysis = ensureAnalysis(data, currentAnalysis, settings);
+    currentData = data;
+    currentViewModel = buildViewModel(data, currentAnalysis, settings);
+    uiState = reconcileUiState(uiState, currentViewModel, dataChanged);
+
+    document.getElementById("app").hidden = false;
+    similarityPane.hidden = !uiState.similarityOpen;
+    similarityBtn.classList.toggle("active", uiState.similarityOpen);
+    renderTemplateGroups(data);
+    updateGroupCheckboxes();
+    reopenPageGroups(uiState.openPageGroups);
+    updateToolbarState();
+    if (uiState.similarityOpen) {
+        renderSimilarity();
+    }
+}
+
+/**
+ * @param {AreaEntry} ar
+ * @param {number} idx
+ * @returns {string}
+ */
+function areaTip(ar, idx) {
+    const name = areaLabel(ar.contentPreview) || `area_${idx}`;
+    return `${name}\nw ${ar.w}mm · h ${ar.h}mm · x ${ar.x}mm · y ${ar.y}mm`
+        + (ar.flowToNextPage ? " · [↓]" : "")
+        + (ar.interactiveFlowName ? ` · flow:${ar.interactiveFlowName}` : "");
+}
+
+/**
+ * @param {PageEntry} page
+ * @param {ProximityGroup[]} proximityGroups
+ * @returns {SVGElement|null}
+ */
+function buildPageSvg(page, proximityGroups) {
+    const areas = page.areas;
+    if (!areas.length) return null;
+
+    const maxX2 = Math.max(...areas.map(a => a.x + a.w));
+    const maxY2 = Math.max(...areas.map(a => a.y + a.h));
+    const scale = (settings.canvasW - 2 * PAD) / Math.max(maxX2, 210);
+    const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
+    const svg = svgEl("svg", {width: settings.canvasW, height: svgH, style: "background:#fff;cursor:default"});
+    svg.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {
+        textContent: pageCardTooltip(page)
+    }));
+    const proximityGroupByArea = new Map();
+    proximityGroups.forEach((group, groupIndex) => {
+        group.areaIndices.forEach(areaIndex => proximityGroupByArea.set(areaIndex, groupIndex));
+    });
+
+    proximityGroups.forEach((group, i) => {
+        const p = group.position;
+        const tip = `G${i + 1}\nw ${p.w}mm · h ${p.h}mm · x ${p.x}mm · y ${p.y}mm`;
+
+        const bg = svgEl("rect", {
+            x: svgPos(p.x, scale), y: svgPos(p.y, scale),
+            width: svgDim(p.w, scale), height: svgDim(p.h, scale),
+            fill: "transparent", stroke: "none", "pointer-events": "all"
+        });
+        bg.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {textContent: tip}));
+        svg.appendChild(bg);
+
+        const border = svgEl("rect", {
+            x: svgPos(p.x, scale), y: svgPos(p.y, scale),
+            width: svgDim(p.w, scale), height: svgDim(p.h, scale),
+            fill: "none", stroke: "#e00", "stroke-width": 1.5, "stroke-dasharray": "5,3",
+            "pointer-events": "none"
+        });
+        svg.appendChild(border);
+
+        const label = svgEl("text", {
+            x: svgPos(p.x, scale) + 2, y: svgPos(p.y, scale) - 2,
+            "font-size": 7, fill: "#e00", "font-weight": "bold", "pointer-events": "none"
+        });
+        label.textContent = `G${i + 1}`;
+        svg.appendChild(label);
+    });
+
+    areas.forEach((a, i) => {
+        const color = PALETTE[i % PALETTE.length];
+        const isRoot = a.containedIn == null;
+        const rx = svgPos(a.x, scale), ry = svgPos(a.y, scale),
+            rw = svgDim(a.w, scale), rh = svgDim(a.h, scale);
+
+        const overlapping = areas
+            .map((o, oi) => ({o, oi}))
+            .filter(({o, oi}) => oi !== i
+                && o.x < a.x + a.w && o.x + o.w > a.x
+                && o.y < a.y + a.h && o.y + o.h > a.y)
+            .sort((a, b) => (a.o.w * a.o.h) - (b.o.w * b.o.h));
+
+        const proximityGroupIndex = proximityGroupByArea.get(i);
+        const pg = proximityGroupIndex != null ? proximityGroups[proximityGroupIndex] : null;
+        const pgLine = pg ? `G${proximityGroupIndex + 1}\nw ${pg.position.w}mm · h ${pg.position.h}mm · x ${pg.position.x}mm · y ${pg.position.y}mm\n\n` : "";
+        const tip = pgLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
+
+        const rect = svgEl("rect", {
+            x: rx, y: ry, width: rw, height: rh,
+            fill: color, "fill-opacity": "0.32", stroke: color,
+            "stroke-width": isRoot ? "1.5" : "1",
+            "stroke-dasharray": isRoot ? "none" : "3,2"
+        });
+        rect.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {textContent: tip}));
+        svg.appendChild(rect);
+
+        if (rw > 12 && rh > 8) {
+            const name = areaLabel(a.contentPreview) || `area_${i}`;
+            const txt = svgEl("text", {x: rx + 2, y: ry + 9, "font-size": 6.5, fill: "#222", "pointer-events": "none"});
+            txt.textContent = name.length > 28 ? name.slice(-28) : name;
+            svg.appendChild(txt);
+        }
+    });
+
+    return svg;
+}
+
+/** @returns {void} */
+function renderSimilarity() {
+    if (!currentViewModel) return;
+    const {templateLevel, pageLevel, templateGroups, pageNumberMap} = currentViewModel;
+
+    const templateWrap = /** @type {HTMLElement} */ (document.getElementById("tmpl-matrix-wrap"));
+    const pageWrap = /** @type {HTMLElement} */ (document.getElementById("page-matrix-wrap"));
+    const templateMatrixModel = buildTemplateMatrixModel(templateLevel, templateGroups);
+    if (templateMatrixModel) {
+        buildMatrixTable(templateWrap, templateMatrixModel.labels, templateMatrixModel.colHeaders, templateMatrixModel.matrix);
+    } else {
+        renderMatrixEmptyState(templateWrap, "No templates selected.");
+    }
+
+    const pageMatrixModel = buildPageMatrixModel(templateLevel, pageLevel, pageNumberMap, templateMatrixModel?.indices ?? []);
+    if (pageMatrixModel) {
+        buildMatrixTable(pageWrap, pageMatrixModel.labels, pageMatrixModel.colHeaders, pageMatrixModel.matrix);
+    } else {
+        renderMatrixEmptyState(pageWrap, "No pages to display.");
+    }
+}
+
+/**
+ * @param {TemplateLevel} templateLevel
+ * @param {TemplateGroup[]} templateGroups
+ * @returns {{indices: number[], labels: string[], colHeaders: string[], matrix: number[][]}|null}
+ */
+function buildTemplateMatrixModel(templateLevel, templateGroups) {
+    /** @type {number[]} */
+    const indices = [];
+    /** @type {string[]} */
+    const labels = [];
+    /** @type {string[]} */
+    const colHeaders = [];
+
+    templateGroups.forEach((group, groupIndex) => {
+        group.templateIds.forEach((id, templateIndexInGroup) => {
+            if (!uiState.selectedTemplateIds.has(id)) return;
+            const templateIndex = templateLevel.templates.findIndex(t => t.templateId === id);
+            if (templateIndex < 0) return;
+            const shortId = templateGroupPrefix(groupIndex, group, templateIndexInGroup);
+            indices.push(templateIndex);
+            labels.push(`${shortId}. ${templateName(templateLevel.templates[templateIndex])}`);
+            colHeaders.push(shortId);
+        });
+    });
+
+    if (!indices.length) return null;
+    return {
+        indices,
+        labels,
+        colHeaders,
+        matrix: indices.map(i => indices.map(j => templateLevel.matrix[i][j])),
+    };
+}
+
+/**
+ * @param {TemplateLevel} templateLevel
+ * @param {PageLevel} pageLevel
+ * @param {Map<number, string>} pageNumberMap
+ * @param {number[]} selectedTemplateIndices
+ * @returns {{labels: string[], colHeaders: string[], matrix: number[][]}|null}
+ */
+function buildPageMatrixModel(templateLevel, pageLevel, pageNumberMap, selectedTemplateIndices) {
+    const selectedPageIndices = [...new Set(
+        selectedTemplateIndices.flatMap(i => templateLevel.templates[i].pageIndices)
+    )].filter(j => uiState.selectedPages.has(j)).sort((a, b) => a - b);
+
+    if (!selectedPageIndices.length) return null;
+
+    const ordered = pageOrderByGroup(selectedPageIndices);
+    return {
+        labels: ordered.map(pi => `${pageNumberMap.get(pi)} ${pageName(currentData.pages[pi])}`),
+        colHeaders: ordered.map(pi => `${pageNumberMap.get(pi)}`),
+        matrix: ordered.map(i => ordered.map(j => pageLevel.matrix[i][j])),
+    };
+}
+
+/**
+ * @param {HTMLElement} wrap
+ * @param {string} message
+ * @returns {void}
+ */
+function renderMatrixEmptyState(wrap, message) {
+    wrap.innerHTML = `<p style='color:var(--muted);font-size:13px'>${htmlEsc(message)}</p>`;
+}
+
+/**
+ * @param {HTMLElement} wrap
+ * @param {string[]} labels - row labels (displayed in row header cells as-is)
+ * @param {string[]} colHeaders - short column headers
+ * @param {number[][]} matrix
+ */
+function buildMatrixTable(wrap, labels, colHeaders, matrix) {
+    if (!labels.length) {
+        wrap.innerHTML = "";
+        return;
+    }
+
+    const table = document.createElement("table");
+    const headerRow = table.createTHead().insertRow();
+    headerRow.appendChild(document.createElement("th"));
+    colHeaders.forEach((col, j) => {
+        const th = document.createElement("th");
+        th.title = labels[j] ?? "";
+        th.textContent = col;
+        headerRow.appendChild(th);
+    });
+
+    const body = table.createTBody();
+    labels.forEach((label, i) => {
+        const row = body.insertRow();
+        const headerCell = document.createElement("th");
+        headerCell.textContent = (label ?? "").slice(0, 42);
+        row.appendChild(headerCell);
+        matrix[i].forEach((score, j) => {
+            const cell = row.insertCell();
+            if (i === j) {
+                cell.textContent = "\u2014";
+                cell.style.background = "#e8e8e8";
+            } else {
+                cell.textContent = score.toFixed(2);
+                const g = Math.round(200 * score), r = Math.round(255 * (1 - score));
+                cell.style.background = `rgb(${r},${g},80)`;
+                if (score >= settings.groupThreshold) cell.style.fontWeight = "700";
+            }
+        });
+    });
+
+    wrap.innerHTML = "";
+    wrap.appendChild(table);
+}
+
+/**
+ * @param {LayoutData} data
+ */
+function renderTemplateGroups(data) {
+    if (!currentViewModel) return;
+    const {pageLevel, templateGroups, pageNumberMap} = currentViewModel;
+    const groupsEl = /** @type {HTMLElement} */ (document.getElementById("template-groups"));
+    groupsEl.innerHTML = "";
+
+    templateGroups.forEach((group, groupIndex) => {
+        const li = document.createElement("li");
+        li.dataset.groupKey = group.key;
+        li.innerHTML = renderTemplateGroupItem(group, groupIndex, pageLevel.matrix, pageNumberMap, data);
+
+        li.querySelectorAll(".page-group").forEach((pgEl, ci) => {
+            /** @type {HTMLElement} */ (pgEl).dataset.pageGroupKey = group.pageGroups[ci].key;
+        });
+        groupsEl.appendChild(li);
+    });
+}
+
+/**
+ * Updates page-group number visual state based on checked pages.
+ * @param {HTMLElement} pgNumEl
+ * @param {HTMLElement} pgEl
+ */
+function updatePageGroupNumState(pgNumEl, pgEl) {
+    const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (pgEl.querySelectorAll("input[data-page]"));
+    const checkedCount = [...checkboxes].filter(cb => cb.checked).length;
+    pgNumEl.classList.toggle("all-selected", checkedCount === checkboxes.length);
+    pgNumEl.classList.toggle("none-selected", checkedCount === 0);
+}
+
+/**
+ * @param {TemplateGroup} group
+ * @param {number} groupIndex
+ * @returns {string}
+ */
+function renderTemplateBadges(group, groupIndex) {
+    return group.templateIds.map((id, idx) =>
+        `<code><strong>${templateGroupPrefix(groupIndex, group, idx)}.</strong> ${htmlEsc(group.templateNames[idx] ?? id)}</code>`
+    ).join("  ");
+}
+
+/**
+ * @param {PageGroup} pageGroup
+ * @param {number} pageGroupIndex
+ * @param {number[][]} pageMatrix
+ * @param {Map<number, string>} pageNumberMap
+ * @param {LayoutData} data
+ * @returns {string}
+ */
+function renderPageGroupRow(pageGroup, pageGroupIndex, pageMatrix, pageNumberMap, data) {
+    const cohesion = minPairScore(pageGroup.pageIndices, pageMatrix);
+    const checkedCount = pageGroup.pageIndices.filter(pi => uiState.selectedPages.has(pi)).length;
+    const pgState = checkedCount === pageGroup.pageIndices.length ? "all-selected" : checkedCount === 0 ? "none-selected" : "";
+    return `<div class="page-group">`
+        + `<div class="pg-row" data-action="toggle-preview">`
+        + `<span class="pg-num ${pgState}" data-action="toggle-pg">${pageGroupIndex + 1}</span>`
+        + `<span class="cohesion-dot ${cohesionClass(cohesion)}" `
+        + `title="${cohesion !== null ? `Cohesion (min pair): ${cohesion.toFixed(2)}` : "Single page"}"></span>`
+        + `<span class="page-labels">${pageGroup.pageIndices.map(pi =>
+            `<label class="page-label"><input type="checkbox" data-page="${pi}" ${uiState.selectedPages.has(pi) ? "checked" : ""}/><span class="page-tag"><strong>${pageNumberMap.get(pi)}</strong> ${htmlEsc(pageName(data.pages[pi]))}</span></label>`
+        ).join("")}</span>`
+        + `<span class="pg-expand-icon">&#9654;</span>`
+        + `</div>`
+        + `<div class="pg-cards"></div>`
+        + `</div>`;
+}
+
+/**
+ * @param {TemplateGroup} group
+ * @param {number} groupIndex
+ * @param {number[][]} pageMatrix
+ * @param {Map<number, string>} pageNumberMap
+ * @param {LayoutData} data
+ * @returns {string}
+ */
+function renderTemplateGroupItem(group, groupIndex, pageMatrix, pageNumberMap, data) {
+    const pageGroupsHtml = group.pageGroups
+        .map((pageGroup, pageGroupIndex) => renderPageGroupRow(pageGroup, pageGroupIndex, pageMatrix, pageNumberMap, data))
+        .join("");
+    return `<div class="tg-header">`
+        + `<div class="tg-header-row1">`
+        + `<input type="checkbox" ${isTemplateGroupSelected(group) ? "checked" : ""} data-group-key="${group.key}"/>`
+        + `${renderTemplateBadges(group, groupIndex)}`
+        + `</div>`
+        + `</div>`
+        + `<div class="page-groups">${pageGroupsHtml}</div>`;
+}
+
+/**
+ * @param {number} pageIndex
+ * @returns {HTMLElement}
+ */
+function buildPageCard(pageIndex) {
+    const wrap = document.createElement("div");
+    wrap.className = "page-card";
+    wrap.dataset.pageIndex = String(pageIndex);
+    if (!uiState.selectedPages.has(pageIndex)) wrap.hidden = true;
+
+    const title = document.createElement("div");
+    title.className = "page-card-title";
+    const pageNum = currentViewModel.pageNumberMap.get(pageIndex);
+    if (pageNum) {
+        const numSpan = document.createElement("span");
+        numSpan.style.fontWeight = "700";
+        numSpan.textContent = pageNum + " ";
+        title.appendChild(numSpan);
+        title.appendChild(document.createTextNode(pageName(currentData.pages[pageIndex])));
+    } else {
+        title.textContent = pageName(currentData.pages[pageIndex]);
+    }
+    title.title = pageCardTooltip(currentData.pages[pageIndex]);
+    title.style.cursor = "pointer";
+    title.addEventListener("click", () => {
+        const cb = /** @type {HTMLInputElement|null} */ (
+            document.querySelector(`input[data-page="${pageIndex}"]`)
+        );
+        if (cb) {
+            cb.checked = !cb.checked;
+            cb.dispatchEvent(new Event("change", {bubbles: true}));
+        }
+    });
+    wrap.appendChild(title);
+
+    const svg = buildPageSvg(currentData.pages[pageIndex], currentAnalysis.pageProximityGroups[pageIndex] ?? []);
+    if (svg) wrap.appendChild(svg);
+    return wrap;
+}
+
+// Event delegation for group checkboxes
+document.getElementById("template-groups").addEventListener("change", (e) => {
+    const cb = /** @type {HTMLInputElement} */ (e.target);
+    if (cb.type !== "checkbox") return;
+    if (cb.dataset.groupKey != null) {
+        const group = currentViewModel?.templateGroupByKey[cb.dataset.groupKey];
+        if (group) setTemplateGroupSelection(group, cb.checked);
+    } else if (cb.dataset.page != null) {
+        const pi = parseInt(cb.dataset.page);
+        setPageSelection(pi, cb.checked);
+        const pgEl = /** @type {HTMLElement} */ (cb.closest(".page-group"));
+        const pgNum = /** @type {HTMLElement} */ (pgEl.querySelector(".pg-num"));
+        updatePageGroupNumState(pgNum, pgEl);
+    }
+    refreshSelectionViews();
+});
+
+// Event delegation for page-group toggle
+document.getElementById("template-groups").addEventListener("click", (e) => {
+    const target = /** @type {HTMLElement} */ (e.target);
+    if (target.type === "checkbox" || target.closest(".page-label")) return;
+
+    // Page-group number click — toggle all page checkboxes in this group
+    if (target.dataset.action === "toggle-pg") {
+        e.stopPropagation();
+        const pgEl = /** @type {HTMLElement} */ (target.closest(".page-group"));
+        const checkboxes = /** @type {NodeListOf<HTMLInputElement>} */ (pgEl.querySelectorAll("input[data-page]"));
+        const allChecked = [...checkboxes].every(cb => cb.checked);
+        checkboxes.forEach(cb => {
+            cb.checked = !allChecked;
+            const pi = parseInt(cb.dataset.page);
+            setPageSelection(pi, cb.checked);
+        });
+        updatePageGroupNumState(target, pgEl);
+        refreshSelectionViews();
+        return;
+    }
+
+    const row = /** @type {HTMLElement|null} */ (target.closest("[data-action='toggle-preview']"));
+    if (!row) return;
+    togglePageCards(row);
+});
+
+/**
+ * @param {HTMLElement} rowEl
+ */
+function togglePageCards(rowEl) {
+    const pageGroupEl = /** @type {HTMLElement} */ (rowEl.closest(".page-group"));
+    const preview = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-cards"));
+    setPageGroupOpen(pageGroupEl, !preview.classList.contains("open"));
+}
+
+/**
+ * Populates a .pg-cards container with page card elements.
+ * @param {HTMLElement} preview
+ * @param {number[]} indices
+ */
+function buildPageCards(preview, indices) {
+    preview.innerHTML = "";
+    indices.forEach(pi => {
+        preview.appendChild(buildPageCard(pi));
+    });
+}
+
+/**
+ * Reorders page indices so pages in the same template group are adjacent.
+ * @param {number[]} indices
+ * @returns {number[]}
+ */
+function pageOrderByGroup(indices) {
+    if (!currentViewModel) return indices;
+    /** @type {Set<number>} */
+    const indexSet = new Set(indices);
+    /** @type {number[]} */
+    const order = [];
+    /** @type {Set<number>} */
+    const seen = new Set();
+
+    currentViewModel.templateGroups.forEach(group => {
+        if (!isTemplateGroupSelected(group)) return;
+        group.pageGroups.forEach(pageGroup => {
+            pageGroup.pageIndices.forEach(pi => {
+                if (indexSet.has(pi) && !seen.has(pi)) {
+                    seen.add(pi);
+                    order.push(pi);
+                }
+            });
+        });
+    });
+    indices.forEach(pi => {
+        if (!seen.has(pi)) order.push(pi);
+    });
+    return order;
+}
+
+/**
+ * Returns a short prefix for a template within a group (e.g. "2a" or "3").
+ * @param {number} groupIndex
+ * @param {TemplateGroup} group
+ * @param {number} templateIndex - index within the group's templateIds
+ * @returns {string}
+ */
+function templateGroupPrefix(groupIndex, group, templateIndex) {
+    const num = groupIndex + 1;
+    const letter = group.templateIds.length > 1 ? String.fromCharCode(97 + templateIndex) : "";
+    return `${num}${letter}`;
+}
+
+/**
+ * @param {Set<string>} keys
+ * @returns {void}
+ */
+function reopenPageGroups(keys) {
+    document.querySelectorAll(".page-group").forEach(pgEl => {
+        const groupEl = /** @type {HTMLElement} */ (pgEl);
+        const key = groupEl.dataset.pageGroupKey ?? "";
+        if (!keys.has(key)) return;
+        if (!groupEl.querySelector(".pg-cards.open")) setPageGroupOpen(groupEl, true);
+    });
+}
+
+/**
+ * @returns {void}
+ */
+function selectAllTemplates() {
+    if (!currentViewModel) return;
+    uiState.selectedTemplateIds = new Set(currentViewModel.templateLevel.templates.map(t => t.templateId));
+    refreshSelectionViews();
+}
+
+/**
+ * @returns {void}
+ */
+function clearTemplateSelection() {
+    uiState.selectedTemplateIds.clear();
+    refreshSelectionViews();
+}
+
+/**
+ * @param {boolean} open
+ * @returns {void}
+ */
+function setSimilarityOpen(open) {
+    uiState.similarityOpen = open;
+    similarityPane.hidden = !open;
+    similarityBtn.classList.toggle("active", open);
+    if (open) renderSimilarity();
+}
+
+/**
+ * @param {TemplateGroup} group
+ * @param {boolean} selected
+ * @returns {void}
+ */
+function setTemplateGroupSelection(group, selected) {
+    group.templateIds.forEach(id => {
+        if (selected) uiState.selectedTemplateIds.add(id);
+        else uiState.selectedTemplateIds.delete(id);
+    });
+}
+
+/**
+ * @param {number} pageIndex
+ * @param {boolean} selected
+ * @returns {void}
+ */
+function setPageSelection(pageIndex, selected) {
+    if (selected) uiState.selectedPages.add(pageIndex);
+    else uiState.selectedPages.delete(pageIndex);
+    document.querySelectorAll(`.page-card[data-page-index="${pageIndex}"]`).forEach(card => {
+        /** @type {HTMLElement} */ (card).hidden = !selected;
+    });
+}
+
+/**
+ * @returns {void}
+ */
+function refreshSelectionViews() {
+    updateGroupCheckboxes();
+    updateToolbarState();
+    refreshOpenPageGroups();
+    if (uiState.similarityOpen) renderSimilarity();
+}
+
+/**
+ * @param {HTMLElement} pageGroupEl
+ * @returns {number[]}
+ */
+function pageGroupIndices(pageGroupEl) {
+    if (!currentViewModel) return [];
+    const key = pageGroupEl.dataset.pageGroupKey ?? "";
+    return currentViewModel.pageGroupByKey[key]?.pageIndices ?? [];
+}
+
+/**
+ * @returns {void}
+ */
+function refreshOpenPageGroups() {
+    uiState.openPageGroups.forEach(key => refreshOpenPageCardsByKey(key));
+}
+
+/**
+ * @param {string} key
+ * @returns {void}
+ */
+function refreshOpenPageCardsByKey(key) {
+    if (!currentViewModel) return;
+    const indices = currentViewModel.pageGroupByKey[key]?.pageIndices;
+    if (!indices) return;
+    document.querySelectorAll(".page-group").forEach(pgEl => {
+        const groupEl = /** @type {HTMLElement} */ (pgEl);
+        if ((groupEl.dataset.pageGroupKey ?? "") !== key) return;
+        const preview = /** @type {HTMLElement|null} */ (groupEl.querySelector(".pg-cards.open"));
+        if (preview) buildPageCards(preview, indices);
+    });
+}
+
+/**
+ * @param {HTMLElement} pageGroupEl
+ * @param {boolean} open
+ * @returns {void}
+ */
+function setPageGroupOpen(pageGroupEl, open) {
+    const preview = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-cards"));
+    const icon = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-expand-icon"));
+    const key = pageGroupEl.dataset.pageGroupKey ?? "";
+    const indices = pageGroupIndices(pageGroupEl);
+
+    preview.classList.toggle("open", open);
+    if (open) uiState.openPageGroups.add(key);
+    else uiState.openPageGroups.delete(key);
+    icon.textContent = open ? "\u25BC" : "\u25B6";
+
+    if (open) buildPageCards(preview, indices);
+}
+
+/**
+ * @param {TemplateGroup} group
+ * @returns {boolean}
+ */
+function isTemplateGroupSelected(group) {
+    return group.templateIds.every(id => uiState.selectedTemplateIds.has(id));
+}
+
+/**
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis|null} previousAnalysis
+ * @param {Settings} activeSettings
+ * @returns {LayoutAnalysis}
+ */
+function ensureAnalysis(data, previousAnalysis, activeSettings) {
+    const sameData = currentData === data && previousAnalysis != null;
+    const similarity = sameData
+        ? previousAnalysis.similarity
+        : buildSimilarity(data);
+    const pageProximityGroups = sameData && previousAnalysis.proximityGap === activeSettings.proximityGap
+        ? previousAnalysis.pageProximityGroups
+        : buildPageProximityGroups(data.pages, activeSettings.proximityGap);
+    return {
+        similarity,
+        pageProximityGroups,
+        proximityGap: activeSettings.proximityGap,
+    };
+}
+
+/**
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis} analysis
+ * @param {Settings} activeSettings
+ * @returns {ViewModel}
+ */
+function buildViewModel(data, analysis, activeSettings) {
+    const {templateLevel, pageLevel} = analysis.similarity;
+    const templateById = Object.fromEntries(templateLevel.templates.map(t => [t.templateId, t]));
+    const templateGroups = computeTemplateGroups(data, templateLevel, pageLevel.matrix, activeSettings);
+    const templateGroupByKey = Object.fromEntries(templateGroups.map(group => [group.key, group]));
+    /** @type {Record<string, PageGroup>} */
+    const pageGroupByKey = {};
+    const pageNumberMap = new Map();
+    const pageGroupKeys = new Set();
+
+    templateGroups.forEach((group, groupIndex) => {
+        const groupTemplates = group.templateIds.map(id => templateById[id]).filter(Boolean);
+        groupTemplates.forEach((template, templateIndex) => {
+            const prefix = templateGroupPrefix(groupIndex, group, templateIndex);
+            template.pageIndices.forEach((pageIndex, pageOffset) => {
+                if (!pageNumberMap.has(pageIndex)) {
+                    pageNumberMap.set(pageIndex, `${prefix}.${pageOffset + 1}`);
+                }
+            });
+        });
+        group.pageGroups.forEach(pageGroup => {
+            pageGroupKeys.add(pageGroup.key);
+            pageGroupByKey[pageGroup.key] = pageGroup;
+        });
+    });
+
+    return {templateLevel, pageLevel, templateGroups, templateById, templateGroupByKey, pageGroupByKey, pageNumberMap, pageGroupKeys};
+}
+
+/**
+ * @param {UiState} previousState
+ * @param {ViewModel} viewModel
+ * @param {boolean} dataChanged
+ * @returns {UiState}
+ */
+function reconcileUiState(previousState, viewModel, dataChanged) {
+    if (dataChanged) {
+        return {
+            selectedTemplateIds: new Set(viewModel.templateLevel.templates.map(t => t.templateId)),
+            selectedPages: new Set(viewModel.templateLevel.templates.flatMap(t => t.pageIndices)),
+            openPageGroups: new Set(),
+            similarityOpen: false,
+        };
+    }
+    return {
+        selectedTemplateIds: new Set(
+            [...previousState.selectedTemplateIds].filter(id => viewModel.templateById[id] != null)
+        ),
+        selectedPages: new Set(
+            [...previousState.selectedPages].filter(i => i >= 0 && i < currentData.pages.length)
+        ),
+        openPageGroups: new Set(
+            [...previousState.openPageGroups].filter(key => viewModel.pageGroupKeys.has(key))
+        ),
+        similarityOpen: previousState.similarityOpen,
+    };
+}
+
+/**
+ * @param {LayoutData} data
+ * @returns {Similarity}
+ */
+function buildSimilarity(data) {
+    const pageMatrix = buildSymmetricMatrix(data.pages.length, (i, j) => pageSimilarity(data.pages[i].areas, data.pages[j].areas));
+    const templateLevel = {templates: data.templates, matrix: []};
+    templateLevel.matrix = buildSymmetricMatrix(data.templates.length, (i, j) =>
+        templateSimilarity(data.templates[i].pageIndices, data.templates[j].pageIndices, pageMatrix)
+    );
+    return {
+        pageLevel: {matrix: pageMatrix},
+        templateLevel,
+    };
+}
+
+/**
+ * @param {PageEntry[]} pages
+ * @param {number} groupingGap
+ * @returns {ProximityGroup[][]}
+ */
+function buildPageProximityGroups(pages, groupingGap) {
+    return pages.map(page => groupByProximity(page.areas, groupingGap));
+}
+
+/**
+ * @param {PageEntry[]} pages
+ * @returns {TemplateEntry[]}
+ */
+function deriveTemplates(pages) {
+    /** @type {Map<string, number[]>} */
+    const templatePages = new Map();
+    pages.forEach((page, pageIndex) => {
+        const key = page.templateId ?? `orphan:${page.pageId}`;
+        if (!templatePages.has(key)) templatePages.set(key, []);
+        templatePages.get(key).push(pageIndex);
+    });
+    return [...templatePages.entries()].map(([key, pageIndices]) => {
+        const sortedPageIndices = [...pageIndices].sort((a, b) => {
+            const pageA = pages[a];
+            const pageB = pages[b];
+            return templatePageOrder(pageA) - templatePageOrder(pageB) || a - b;
+        });
+        const first = pages[sortedPageIndices[0]];
+        const isOrphan = first.templateId == null;
+        return {
+            templateId: first.templateId ?? key,
+            templateName: isOrphan
+                ? `Orphan: ${first.pageName ?? first.pageId ?? "Unknown"}`
+                : (first.templateName ?? first.templateId ?? key),
+            pageIndices: sortedPageIndices,
+        };
+    });
+}
+
+/**
+ * @param {number} size
+ * @param {(i: number, j: number) => number} scoreFn
+ * @returns {number[][]}
+ */
+function buildSymmetricMatrix(size, scoreFn) {
+    /** @type {number[][]} */
+    const matrix = [];
+    for (let i = 0; i < size; i++) {
+        matrix[i] = [];
+        for (let j = 0; j < size; j++) {
+            if (i === j) matrix[i][j] = 1;
+            else if (j < i) matrix[i][j] = matrix[j][i];
+            else matrix[i][j] = roundTo(scoreFn(i, j), 3);
+        }
+    }
+    return matrix;
+}
+
+/**
+ * @param {string[]} templateIds
+ * @returns {string}
+ */
+function templateGroupKey(templateIds) {
+    return `tmpl:${[...templateIds].sort().join("|")}`;
+}
+
+/**
+ * @param {LayoutData} data
+ * @param {number[]} pageIndices
+ * @returns {string}
+ */
+function pageGroupKey(data, pageIndices) {
+    return `pg:${pageIndices.map(i => renderUnitKey(data.pages[i], i)).sort().join("|")}`;
+}
+
+/**
+ * @param {PageEntry} page
+ * @param {number} pageIndex
+ * @returns {string}
+ */
+function renderUnitKey(page, pageIndex) {
+    if (page.pageId != null) return `page:${page.pageId}`;
+    if (page.templateId != null) return `virtual:${page.templateId}:${pageIndex}`;
+    return `index:${pageIndex}`;
+}
+
+/**
+ * @param {PageEntry} page
+ * @returns {number}
+ */
+function templatePageOrder(page) {
+    return page.templatePageIndex ?? Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * Vertical sweep grouping: areas whose Y ranges overlap or are within
+ * the proximity gap of each other are placed in the same group.
+ * @param {AreaEntry[]} areas
+ * @param {number} groupingGap
+ * @returns {ProximityGroup[]}
+ */
+function groupByProximity(areas, groupingGap) {
+    if (!areas.length) return [];
+    const sortedIndices = areas.map((_, i) => i).sort((a, b) => areas[a].y - areas[b].y || areas[a].x - areas[b].x);
+    /** @type {number[][]} */
+    const groupedIndices = [];
+    let current = [sortedIndices[0]];
+    let curY2 = areas[sortedIndices[0]].y + areas[sortedIndices[0]].h;
+    sortedIndices.slice(1).forEach(idx => {
+        const area = areas[idx];
+        if (area.y <= curY2 + groupingGap) {
+            current.push(idx);
+            curY2 = Math.max(curY2, area.y + area.h);
+        } else {
+            groupedIndices.push(current);
+            current = [idx];
+            curY2 = area.y + area.h;
+        }
+    });
+    groupedIndices.push(current);
+
+    return groupedIndices.map(areaIndices => {
+        const subset = areaIndices.map(index => areas[index]);
+        const x = Math.min(...subset.map(area => area.x));
+        const y = Math.min(...subset.map(area => area.y));
+        const x2 = Math.max(...subset.map(area => area.x + area.w));
+        const y2 = Math.max(...subset.map(area => area.y + area.h));
+        return {
+            areaIndices,
+            position: {
+                x: roundTo(x, 2),
+                y: roundTo(y, 2),
+                w: roundTo(x2 - x, 2),
+                h: roundTo(y2 - y, 2),
+            },
+        };
+    });
+}
+
+/**
+ * Compare two pages by greedy bipartite matching on area geometry.
+ * Each area is described by (x, width) normalized to page reference width and
+ * height with a log-ratio so a 3x difference scores about 1.0.
+ * @param {AreaEntry[]} areasA
+ * @param {AreaEntry[]} areasB
+ * @param {number} [matchThreshold]
+ * @returns {number}
+ */
+function pageSimilarity(areasA, areasB, matchThreshold = 0.5) {
+    if (!areasA.length || !areasB.length) return 0;
+
+    /** @type {{distance: number, indexA: number, indexB: number}[]} */
+    const areaMatches = [];
+    areasA.forEach((areaA, indexA) => {
+        areasB.forEach((areaB, indexB) => {
+            const xDist = Math.abs(areaA.x - areaB.x) / PAGE_REF_MM;
+            const wDist = Math.abs(areaA.w - areaB.w) / PAGE_REF_MM;
+            const hRatio = Math.abs(Math.log(Math.max(areaA.h, 0.1) / Math.max(areaB.h, 0.1))) / Math.log(3);
+            areaMatches.push({
+                distance: Math.sqrt(xDist * xDist + wDist * wDist + hRatio * hRatio),
+                indexA,
+                indexB,
+            });
+        });
+    });
+    areaMatches.sort((a, b) => a.distance - b.distance);
+
+    const matchedA = new Set();
+    const matchedB = new Set();
+    let total = 0;
+    areaMatches.forEach(match => {
+        if (matchedA.has(match.indexA) || matchedB.has(match.indexB)) return;
+        matchedA.add(match.indexA);
+        matchedB.add(match.indexB);
+        total += Math.max(0, 1 - match.distance / matchThreshold);
+    });
+    const slots = Math.max(areasA.length, areasB.length);
+    return slots > 0 ? total / slots : 0;
+}
+
+/**
+ * Compare two templates by positional page matching (page 1<->1, page 2<->2, ...).
+ * Unmatched pages contribute 0, penalizing different template lengths proportionally.
+ * @param {number[]} pagesA
+ * @param {number[]} pagesB
+ * @param {number[][]} pageMatrix
+ * @returns {number}
+ */
+function templateSimilarity(pagesA, pagesB, pageMatrix) {
+    const maxLen = Math.max(pagesA.length, pagesB.length);
+    if (maxLen === 0) return 0;
+    let total = 0;
+    for (let i = 0; i < Math.min(pagesA.length, pagesB.length); i++)
+        total += pageMatrix[pagesA[i]]?.[pagesB[i]] ?? 0;
+    return total / maxLen;
+}
+
+/**
+ * @param {number} value
+ * @param {number} decimals
+ * @returns {number}
+ */
+function roundTo(value, decimals) {
+    const factor = 10 ** decimals;
+    return Math.round(value * factor) / factor;
+}
+
+/**
+ * @param {HTMLInputElement} slider
+ * @returns {number}
+ */
+function sliderStepDecimals(slider) {
+    const step = slider.step;
+    if (!step || step === "any") return 0;
+    const dot = step.indexOf(".");
+    return dot >= 0 ? step.length - dot - 1 : 0;
+}
+
+/**
+ * @param {LayoutData} data
+ * @param {TemplateLevel} templateLevel
+ * @param {number[][]} pageMatrix
+ * @param {Settings} activeSettings
+ * @returns {TemplateGroup[]}
+ */
+function computeTemplateGroups(data, templateLevel, pageMatrix, activeSettings) {
+    return groupPages(templateLevel.templates.map((_, i) => i), templateLevel.matrix, activeSettings)
+        .map(templateIndices => ({
+            key: templateGroupKey(templateIndices.map(i => templateLevel.templates[i].templateId)),
+            templateIds: templateIndices.map(i => templateLevel.templates[i].templateId),
+            templateNames: templateIndices.map(i => templateLevel.templates[i].templateName ?? templateLevel.templates[i].templateId),
+            pageGroups: buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings),
+        }));
+}
+
+/**
+ * @param {LayoutData} data
+ * @param {number[]} templateIndices
+ * @param {TemplateLevel} templateLevel
+ * @param {number[][]} pageMatrix
+ * @param {Settings} activeSettings
+ * @returns {PageGroup[]}
+ */
+function buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings) {
+    const pageIndices = templateIndices
+        .flatMap(templateIndex => templateLevel.templates[templateIndex].pageIndices)
+        .sort((a, b) => a - b);
+    return groupPages(pageIndices, pageMatrix, activeSettings)
+        .map(pg => pg.sort((a, b) => a - b))
+        .sort((a, b) => Math.min(...a) - Math.min(...b))
+        .map(pg => ({key: pageGroupKey(data, pg), pageIndices: pg}));
+}
+
+/**
+ * Agglomerative grouping with configurable linkage strategy.
+ * - single:   merge if ANY pair exceeds threshold (loose)
+ * - average:  merge if AVERAGE of all pairs exceeds threshold (default)
+ * - complete: merge if ALL pairs exceed threshold (strict)
+ * @param {number[]} indices
+ * @param {number[][]} matrix
+ * @param {Settings} activeSettings
+ * @returns {number[][]}
+ */
+function groupPages(indices, matrix, activeSettings) {
+    /** @type {number[][]} */
+    let pageGroups = indices.map(i => [i]);
+    let changed = true;
+    while (changed) {
+        changed = false;
+        outer: for (let i = 0; i < pageGroups.length; i++) {
+            for (let j = i + 1; j < pageGroups.length; j++) {
+                const scores = pageGroups[i].flatMap(a => pageGroups[j].map(b => matrix[a]?.[b] ?? 0));
+                const linkScore =
+                    activeSettings.groupStrategy === "single"   ? Math.max(...scores) :
+                    activeSettings.groupStrategy === "complete" ? Math.min(...scores) :
+                    scores.reduce((s, v) => s + v, 0) / scores.length; // average
+                if (linkScore >= activeSettings.groupThreshold) {
+                    pageGroups[i].push(...pageGroups[j]);
+                    pageGroups.splice(j, 1);
+                    changed = true;
+                    break outer;
+                }
+            }
+        }
+    }
+    return pageGroups;
+}
+
+/**
+ * @param {number[]} pageGroup
+ * @param {number[][]} matrix
+ * @returns {number|null}
+ */
+function minPairScore(pageGroup, matrix) {
+    if (pageGroup.length < 2) return null;
+    let min = 1;
+    for (let i = 0; i < pageGroup.length; i++)
+        for (let j = i + 1; j < pageGroup.length; j++)
+            min = Math.min(min, matrix[pageGroup[i]]?.[pageGroup[j]] ?? 0);
+    return min;
+}
+
+/**
+ * @param {number|null} score
+ * @returns {string}
+ */
+function cohesionClass(score) {
+    if (score === null) return "cohesion-solo";
+    if (score >= 0.75) return "cohesion-high";
+    if (score >= 0.50) return "cohesion-mid";
+    return "cohesion-low";
+}
+
+/**
+ * @param {string} tag
+ * @param {Record<string, string|number>} attrs
+ * @returns {SVGElement}
+ */
+function svgEl(tag, attrs) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, String(v)));
+    return el;
+}
+
+/**
+ * @param {number} mm
+ * @param {number} scale
+ * @returns {number}
+ */
+function svgPos(mm, scale) {
+    return Math.round((mm * scale + PAD) * 10) / 10;
+}
+
+/**
+ * @param {number} mm
+ * @param {number} scale
+ * @returns {number}
+ */
+function svgDim(mm, scale) {
+    return Math.round(mm * scale * 10) / 10;
+}
+
+/**
+ * @param {string} preview
+ * @returns {string}
+ */
+function areaLabel(preview) {
+    if (!preview) return "";
+    const m = preview.match(/\(([^)]+)\)$/);
+    return m ? m[1] : preview.slice(0, 40);
+}
+
+/**
+ * @param {string} s
+ * @returns {string}
+ */
+function htmlEsc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * @param {PageEntry} page
+ * @returns {string}
+ */
+function pageName(page) {
+    return page.pageName ?? page.pageId ?? "Virtual page";
+}
+
+/**
+ * @param {PageEntry} page
+ * @returns {string}
+ */
+function pageSizeLabel(page) {
+    if (page.pageSize == null) return "default";
+    return `${formatMm(page.pageSize.w)} x ${formatMm(page.pageSize.h)} mm`;
+}
+
+/**
+ * @param {PageEntry} page
+ * @returns {string}
+ */
+function pageCardTooltip(page) {
+    return `${pageName(page)}\npage size: ${pageSizeLabel(page)}`;
+}
+
+/**
+ * @param {number} value
+ * @returns {string}
+ */
+function formatMm(value) {
+    return Number.isInteger(value) ? String(value) : String(roundTo(value, 2));
+}
+
+/**
+ * @param {TemplateEntry} tmpl
+ * @returns {string}
+ */
+function templateName(tmpl) {
+    return tmpl.templateName ?? tmpl.templateId;
+}
+</script>
+</body>
+</html>
