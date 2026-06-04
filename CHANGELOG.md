@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.24] - 2026-06-04
+
+### Added
+
 - layout/index.html that visualizes csv data of `Export Areas` script. It calculates similarity, suggests merged areas
   and groups similar templates and pages together as potential based template candidates. Has several options to adjust
   the results.
@@ -368,7 +376,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.23...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.24...HEAD
+[17.0.24]: https://github.com/quadient/migration-stack/compare/v17.0.23...v17.0.24
 [17.0.23]: https://github.com/quadient/migration-stack/compare/v17.0.22...v17.0.23
 [17.0.22]: https://github.com/quadient/migration-stack/compare/v17.0.21...v17.0.22
 [17.0.21]: https://github.com/quadient/migration-stack/compare/v17.0.20...v17.0.21
