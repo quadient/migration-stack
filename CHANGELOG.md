@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - layout/index.html that visualizes csv data of `Export Areas` script. It calculates similarity, suggests merged areas
   and groups similar templates and pages together as potential based template candidates. Has several options to adjust
   the results.
+- allow mapping variables to system variables (e.g. PageCounter) via variable structure paths and names
 
 ### Changed
 
