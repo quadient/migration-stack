@@ -334,10 +334,6 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
         children = children.stream()
                 .filter(child -> layoutDeltaAllowedGroups.contains(child.getName()))
                 .map(child -> {
-                    if (child.getName().equals("Data") && child instanceof Tree<?> dataNode) {
-                        dataNode.children = dataNode.children.stream().filter(dataChild -> dataChild.getName() == null || !dataChild.getName().equals("SystemVariable")).toList();
-                        return dataNode;
-                    }
                     if (child.getName().equals("TextStyles") && child instanceof Tree<?> textStylesNode) {
                         textStylesNode.children = textStylesNode.children.stream().filter(textStyleChild -> !textStyleChild.getName().equals("Normal")).toList();
                         return textStylesNode;

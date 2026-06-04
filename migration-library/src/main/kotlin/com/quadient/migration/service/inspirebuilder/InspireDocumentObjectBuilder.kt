@@ -463,7 +463,7 @@ abstract class InspireDocumentObjectBuilder(
             val literalPath = variablePathData.path.resolve(variableStructureModel, variableRepository::findOrFail)
                 ?: error("Variable '$variableId' referenced as array path has no resolvable literal path in structure")
             removeDataFromVariablePath(literalPath)
-        }.filter { it.isNotBlank() }
+        }.filter { it.isNotBlank() }.filter { it != "SystemVariable" && !it.startsWith("SystemVariable.") }
 
         val variableTree = buildVariableTree(normalizedVariablePaths)
 

@@ -125,8 +125,6 @@ class InteractiveDocumentObjectBuilderTest {
         val flowDefinitions = result["Flow"]
         flowDefinitions.size().shouldBeEqualTo(3)
         flowDefinitions[2]["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("some text$${variable.name}$")
-
-        Assertions.assertNull(result["Variable"])
     }
 
     @Test
@@ -364,8 +362,8 @@ class InteractiveDocumentObjectBuilderTest {
 
         // then
         val variableDefinitions = result["Variable"]
-        variableDefinitions.size().shouldBeEqualTo(12)
-        val longVarForward = variableDefinitions.first { it["Name"].textValue() == "varName1" }
+        variableDefinitions.size().shouldBeEqualTo(73)
+        val longVarForward = variableDefinitions.first { it["Name"]?.textValue() == "varName1" }
 
         longVarForward["Name"].textValue().shouldBeEqualTo(longVar.name)
         longVarForward["ParentId"].textValue().shouldBeEqualTo("Data.Clients.Value")
@@ -376,18 +374,18 @@ class InteractiveDocumentObjectBuilderTest {
         longVarContent["VarType"].textValue().shouldBeEqualTo("Int64")
         longVarContent["Content"].textValue().shouldBeEqualTo("2025")
 
-        val currencyVarId = variableDefinitions.first { it["Name"].textValue() == "Money" }["Id"].textValue()
+        val currencyVarId = variableDefinitions.first { it["Name"]?.textValue() == "Money" }["Id"].textValue()
         variableDefinitions.last { it["Id"].textValue() == currencyVarId }["Content"].textValue()
             .shouldBeEqualTo("249.99")
 
-        val boolVarId = variableDefinitions.first { it["Name"].textValue() == "varName3" }["Id"].textValue()
+        val boolVarId = variableDefinitions.first { it["Name"]?.textValue() == "varName3" }["Id"].textValue()
         variableDefinitions.last { it["Id"].textValue() == boolVarId }["Content"].textValue().shouldBeEqualTo("True")
 
-        val clientsVar = variableDefinitions.first { it["Name"].textValue() == "Clients" }
+        val clientsVar = variableDefinitions.first { it["Name"]?.textValue() == "Clients" }
         clientsVar["ParentId"].textValue().shouldBeEqualTo("Def.Data")
-        variableDefinitions.first { it["Name"].textValue() == "Value" }["ParentId"].textValue()
+        variableDefinitions.first { it["Name"]?.textValue() == "Value" }["ParentId"].textValue()
             .shouldBeEqualTo(clientsVar["Id"].textValue())
-        variableDefinitions.first { it["Name"].textValue() == "Count" }["ParentId"].textValue()
+        variableDefinitions.first { it["Name"]?.textValue() == "Count" }["ParentId"].textValue()
             .shouldBeEqualTo(clientsVar["Id"].textValue())
 
         result["Data"]["RepeatedBy"].textValue().shouldBeEqualTo("Data.Clients")
@@ -1534,6 +1532,35 @@ class InteractiveDocumentObjectBuilderTest {
         val tables = result["Table"].filter { it["TableStyleId"]?.textValue() != null }.map { it["TableStyleId"].textValue() }
         tables.shouldBeOfSize(3)
         tables.toSet().shouldBeEqualTo(setOf("Others.first_internal", "Others.second_internal"))
+    }
+
+    @Test
+    fun `block referencing system variable by path does not create duplicate SystemVariable node`() {
+        // given
+        val pageCounterVar = VariableBuilder("pageCounter").name("PageCounter").dataType(DataType.Integer).build().mock()
+        val variableStructure = VariableStructureBuilder("vs1")
+            .addVariable(pageCounterVar.id, "Data.SystemVariable", "PageCounter")
+            .build().mock()
+        val config = aProjectConfig(defaultVariableStructure = variableStructure.id)
+        val block = DocumentObjectBuilder("1", Block).paragraph {
+            text { variableRef(pageCounterVar) }
+        }.build()
+
+        // when
+        val subject = aSubject(config)
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
+        val contentFlowId = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+
+        val contentFlow = result["Flow"].last { it["Id"].textValue() == contentFlowId }
+        val variableId = contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+
+        val variableData = result["Variable"].first { it["Id"].textValue() == variableId }
+        variableData["Name"].textValue().shouldBeEqualTo("PageCounter")
+        variableData["ParentId"].textValue().shouldBeEqualTo("Def.SystemVariables")
+        variableData["Forward"]["useExisting"].textValue().shouldBeEqualTo("True")
     }
 
     private fun DocumentObject.mock(): DocumentObject {
