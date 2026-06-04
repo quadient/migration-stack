@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.quadient.migration"
-version = "17.0.23"
+version = "17.0.24"
 
 application {
     mainClass = "io.ktor.server.netty.EngineMain"
