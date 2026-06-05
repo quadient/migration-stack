@@ -22,6 +22,7 @@ dependencies {
     testImplementation(libs.spock.core)
     testImplementation(libs.groovy.xml)
     testImplementation(libs.mockito.core)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 
