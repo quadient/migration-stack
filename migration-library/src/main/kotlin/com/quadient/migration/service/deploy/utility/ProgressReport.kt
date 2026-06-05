@@ -24,6 +24,7 @@ import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
+import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.shared.IcmPath
 import kotlin.reflect.KClass
 import kotlin.time.Clock
@@ -45,6 +46,7 @@ class ProgressReporterImpl(
     private val displayRuleRepository: DisplayRuleRepository,
     private val documentObjectBuilder: InspireDocumentObjectBuilder,
     private val statusTrackingRepository: StatusTrackingRepository,
+    private val resourcePathProvider: ResourcePathProvider,
     private val output: InspireOutput,
 ) : ProgressReporter {
     override fun createProgressReport(objects: List<DocumentObject>, deployId: Uuid?): ProgressReport {
@@ -56,7 +58,7 @@ class ProgressReporterImpl(
         val alreadyVisitedRefs = mutableSetOf<Pair<String, KClass<*>>>()
 
         for (obj in objects) {
-            val nextIcmPath = documentObjectBuilder.getDocumentObjectPath(obj)
+            val nextIcmPath = resourcePathProvider.getDocumentObjectPath(obj)
             val deployKind = obj.getDeployKind(nextIcmPath)
             val lastStatus = obj.getLastStatus(lastDeployment)
 
@@ -106,7 +108,7 @@ class ProgressReporterImpl(
                                 if (documentObjectBuilder.shouldIncludeInternalDependency(obj)) {
                                     null
                                 } else {
-                                    documentObjectBuilder.getDocumentObjectPath(obj)
+                                    resourcePathProvider.getDocumentObjectPath(obj)
                                 }
                             val deployKind = obj.getDeployKind(nextIcmPath)
                             val lastStatus = obj.getLastStatus(lastDeployment)
@@ -145,7 +147,7 @@ class ProgressReporterImpl(
                             null
                         }
                         else -> {
-                            val nextIcmPath = documentObjectBuilder.getImagePath(img)
+                            val nextIcmPath = resourcePathProvider.getImagePath(img)
                             val deployKind = img.getDeployKind(nextIcmPath)
                             val lastStatus = img.getLastStatus(lastDeployment)
 
@@ -182,7 +184,7 @@ class ProgressReporterImpl(
                             null
                         }
                         else -> {
-                            val nextIcmPath = documentObjectBuilder.getAttachmentPath(attachment)
+                            val nextIcmPath = resourcePathProvider.getAttachmentPath(attachment)
                             val deployKind = attachment.getDeployKind(nextIcmPath)
                             val lastStatus = attachment.getLastStatus(lastDeployment)
 
@@ -221,7 +223,7 @@ class ProgressReporterImpl(
                                     null
                                 }
                                 else -> {
-                                    val nextIcmPath = documentObjectBuilder.getDisplayRulePath(rule)
+                                    val nextIcmPath = resourcePathProvider.getDisplayRulePath(rule)
                                     val deployKind = rule.getDeployKind(nextIcmPath)
                                     val lastStatus = rule.getLastStatus(lastDeployment)
 

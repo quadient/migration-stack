@@ -10,7 +10,6 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
-import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.Barcode
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
@@ -32,12 +31,10 @@ import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
-import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.FlowModel.*
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.ScriptResult
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder.ScriptResult.*
-import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.resolveAlias
 import com.quadient.migration.service.resolveAliases
 import com.quadient.migration.shared.Alignment
@@ -46,8 +43,6 @@ import com.quadient.migration.shared.Binary
 import com.quadient.migration.shared.ColumnApplyTo
 import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.DisplayRuleDefinition
-import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.CellHeight
@@ -100,7 +95,6 @@ import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeOptio
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.SUB_TREE
 import kotlin.time.Clock
 import org.slf4j.LoggerFactory
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ifEmpty
 import com.quadient.migration.shared.DataType as DataTypeModel
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
@@ -112,6 +106,8 @@ import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
+import com.quadient.migration.service.IcmDataCache
+import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariableRefPath
@@ -129,34 +125,11 @@ abstract class InspireDocumentObjectBuilder(
     protected val imageRepository: ImageRepository,
     protected val attachmentRepository: AttachmentRepository,
     protected val projectConfig: ProjectConfig,
-    protected val ipsService: IpsService,
+    protected val resourcePathProvider: ResourcePathProvider,
     protected val output: InspireOutput,
+    protected val icmDataCache: IcmDataCache,
 ) {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
-
-    protected val fontDataCache = ConcurrentHashMap<FontKey, String>()
-
-    abstract fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): IcmPath
-    fun getDocumentObjectPath(documentObject: DocumentObject) =
-        getDocumentObjectPath(documentObject.nameOrId(), documentObject.type, documentObject.targetFolder?.let { IcmPath.from(it) })
-
-    abstract fun getImagePath(
-        id: String, imageType: ImageType, name: String?, targetFolder: IcmPath?, sourcePath: String?
-    ): IcmPath
-    fun getImagePath(image: Image) =
-        getImagePath(image.id, image.imageType ?: ImageType.Unknown, image.name, image.targetFolder?.let { IcmPath.from(it) }, image.sourcePath)
-
-    abstract fun getAttachmentPath(
-        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType
-    ): IcmPath
-    fun getAttachmentPath(attachment: Attachment): IcmPath =
-        getAttachmentPath(attachment.id, attachment.name, attachment.targetFolder?.let { IcmPath.from(it) }, attachment.sourcePath, attachment.attachmentType)
-
-    abstract fun getDisplayRulePath(rule: DisplayRule): IcmPath
-
-    abstract fun getStyleDefinitionPath(): IcmPath
-
-    abstract fun getFontRootFolder(): IcmPath
 
     abstract fun buildDocumentObject(documentObject: DocumentObject): String
 
@@ -240,7 +213,7 @@ abstract class InspireDocumentObjectBuilder(
                     variableStructure,
                     variableRepository::findOrFail,
                     displayRuleRepository::findOrFail,
-                    ::getDisplayRulePath,
+                    resourcePathProvider::getDisplayRulePath,
                     output,
                     projectConfig.interactiveTenant
                 )),
@@ -263,7 +236,7 @@ abstract class InspireDocumentObjectBuilder(
                         variableStructure,
                         variableRepository::findOrFail,
                         displayRuleRepository::findOrFail,
-                        ::getDisplayRulePath,
+                        resourcePathProvider::getDisplayRulePath,
                         output,
                         projectConfig.interactiveTenant
                     )),
@@ -287,11 +260,6 @@ abstract class InspireDocumentObjectBuilder(
 
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
-
-        if (fontDataCache.isEmpty()) {
-            val fontDataString = ipsService.gatherFontData(getFontRootFolder())
-            fontDataCache.putAll(fontDataStringToMap(fontDataString))
-        }
 
         buildTextStyles(layout, textStyles)
         buildParagraphStyles(layout, paragraphStyles)
@@ -318,11 +286,6 @@ abstract class InspireDocumentObjectBuilder(
 
         layout.pages.setMainFlow(flow)
         layout.addRoot().setAllowRuntimeModifications(true)
-
-        if (fontDataCache.isEmpty()) {
-            val fontDataString = ipsService.gatherFontData(getFontRootFolder())
-            fontDataCache.putAll(fontDataStringToMap(fontDataString))
-        }
 
         buildTextStyles(layout, textStyles)
         buildParagraphStyles(layout, paragraphStyles)
@@ -500,8 +463,8 @@ abstract class InspireDocumentObjectBuilder(
     private fun upsertSubFont(font: Font, isBold: Boolean, isItalic: Boolean): SubFont? {
         val subFontName = buildFontName(isBold, isItalic)
 
-        val fontLocation = fontDataCache[FontKey(font.name, subFontName)]
-            ?: fontDataCache[FontKey(font.name, buildFontName(bold = false, italic = false))]
+        val fontLocation = icmDataCache.font[FontKey(font.name, subFontName)]
+            ?: icmDataCache.font[FontKey(font.name, buildFontName(bold = false, italic = false))]
             ?: return null
 
         font.subFonts.removeAll { it.name == subFontName }
@@ -660,7 +623,7 @@ abstract class InspireDocumentObjectBuilder(
 
     protected fun getOrBuildImage(layout: Layout, imageModel: Image, alternateText: String? = null): WfdXmlImage {
         val image = getImageByName(layout, imageModel.nameOrId()) ?: layout.addImage().setName(imageModel.nameOrId())
-            .setImageLocation(getImagePath(imageModel).toString(), LocationType.ICM).setUseResizeWidth(true)
+            .setImageLocation(resourcePathProvider.getImagePath(imageModel).toString(), LocationType.ICM).setUseResizeWidth(true)
             .setUseResizeHeight(true)
 
         val options = imageModel.options
@@ -706,7 +669,7 @@ abstract class InspireDocumentObjectBuilder(
             layout.addFlow()
                 .setName(attachmentModel.nameOrId())
                 .setType(Flow.Type.DIRECT_EXTERNAL)
-                .setLocation(getAttachmentPath(attachmentModel).toString())
+                .setLocation(resourcePathProvider.getAttachmentPath(attachmentModel).toString())
         }
 
         return flow
@@ -1009,7 +972,7 @@ abstract class InspireDocumentObjectBuilder(
                     variableStructure,
                     variableRepository::findOrFail,
                     displayRuleRepository::findOrFail,
-                    ::getDisplayRulePath,
+                    resourcePathProvider::getDisplayRulePath,
                     output,
                     projectConfig.interactiveTenant
                 ),
@@ -1430,7 +1393,7 @@ abstract class InspireDocumentObjectBuilder(
                     variableStructure,
                     variableRepository::findOrFail,
                     displayRuleRepository::findOrFail,
-                    ::getDisplayRulePath,
+                    resourcePathProvider::getDisplayRulePath,
                     output,
                     projectConfig.interactiveTenant
                 ),

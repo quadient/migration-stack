@@ -16,7 +16,7 @@ import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Deployed
-import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
+import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTarget
 import com.quadient.migration.shared.IcmPath
@@ -30,8 +30,8 @@ class ConflictDetectorImpl(
     private val imageRepository: ImageRepository,
     private val attachmentRepository: AttachmentRepository,
     private val displayRuleRepository: DisplayRuleRepository,
-    private val documentObjectBuilder: InspireDocumentObjectBuilder,
     private val statusTrackingRepository: StatusTrackingRepository,
+    private val resourcePathProvider: ResourcePathProvider,
     private val output: InspireOutput,
 ) : ConflictDetector {
     private val logger = LoggerFactory.getLogger(this::class.java)
@@ -93,21 +93,21 @@ class ConflictDetectorImpl(
 
     private fun resolveTrackedPath(item: StatusTracking): IcmPath? = runCatching {
         when (item.resourceType) {
-            ResourceType.DocumentObject -> documentObjectBuilder.getDocumentObjectPath(
+            ResourceType.DocumentObject -> resourcePathProvider.getDocumentObjectPath(
                 documentObjectRepository.findOrFail(item.id)
             )
 
-            ResourceType.Image -> documentObjectBuilder.getImagePath(imageRepository.findOrFail(item.id))
-            ResourceType.Attachment -> documentObjectBuilder.getAttachmentPath(
+            ResourceType.Image -> resourcePathProvider.getImagePath(imageRepository.findOrFail(item.id))
+            ResourceType.Attachment -> resourcePathProvider.getAttachmentPath(
                 attachmentRepository.findOrFail(item.id)
             )
 
-            ResourceType.DisplayRule -> documentObjectBuilder.getDisplayRulePath(
+            ResourceType.DisplayRule -> resourcePathProvider.getDisplayRulePath(
                 displayRuleRepository.findOrFail(item.id).resolveTarget(displayRuleRepository::findOrFail)
             )
 
-            ResourceType.TextStyle -> documentObjectBuilder.getStyleDefinitionPath()
-            ResourceType.ParagraphStyle -> documentObjectBuilder.getStyleDefinitionPath()
+            ResourceType.TextStyle -> resourcePathProvider.getStyleDefinitionPath()
+            ResourceType.ParagraphStyle -> resourcePathProvider.getStyleDefinitionPath()
         }
     }.getOrNull()
 }

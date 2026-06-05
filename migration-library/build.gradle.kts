@@ -87,6 +87,8 @@ dependencies {
     implementation(libs.jackson.dataformat.xml)
     implementation(libs.jackson.dataformat.toml)
 
+    implementation(libs.okhttp)
+
     testImplementation(libs.mockk)
 
     testImplementation(libs.junit.jupiter)

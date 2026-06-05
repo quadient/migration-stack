@@ -11,14 +11,11 @@ import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
-import com.quadient.migration.service.imageExtension
-import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.service.IcmDataCache
+import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.resolveAliases
-import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.IcmPath
-import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.ShapePath
 import com.quadient.migration.shared.Position
@@ -42,7 +39,6 @@ import org.w3c.dom.Node
 import org.xml.sax.InputSource
 import java.io.StringReader
 import java.io.StringWriter
-import java.util.concurrent.ConcurrentHashMap
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.TransformerFactory.newInstance
 import javax.xml.transform.dom.DOMSource
@@ -57,8 +53,9 @@ class DesignerDocumentObjectBuilder(
     displayRuleRepository: DisplayRuleRepository,
     imageRepository: ImageRepository,
     attachmentRepository: AttachmentRepository,
+    resourcePathProvider: ResourcePathProvider,
     projectConfig: ProjectConfig,
-    ipsService: IpsService,
+    icmDataCache: IcmDataCache,
 ) : InspireDocumentObjectBuilder(
     documentObjectRepository,
     textStyleRepository,
@@ -69,88 +66,20 @@ class DesignerDocumentObjectBuilder(
     imageRepository,
     attachmentRepository,
     projectConfig,
-    ipsService,
-    InspireOutput.Designer,
+    resourcePathProvider,
+    projectConfig.inspireOutput,
+    icmDataCache,
 ) {
-    private val sourceBaseTemplateCache = ConcurrentHashMap<IcmPath, String>()
-
     private val resolvedStyleDefinitionPath: IcmPath? by lazy {
-        val path = getStyleDefinitionPath()
+        val path = resourcePathProvider.getStyleDefinitionPath()
         try {
-            if (ipsService.fileExists(path)) path else null
+            if (icmDataCache.fileExists(path)) path else null
         } catch (e: Exception) {
             throw RuntimeException("Failed to check for style definition existence", e)
         }
     }
 
     val defaultPosition = Position(15.millimeters(), 15.millimeters(), 180.millimeters(), 267.millimeters())
-
-    override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): IcmPath {
-        val fileName = "$nameOrId.wfd"
-
-        if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(fileName)
-        }
-
-        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName)
-    }
-
-    override fun getImagePath(
-        id: String, imageType: ImageType, name: String?, targetFolder: IcmPath?, sourcePath: String?
-    ): IcmPath {
-        val fileName = "${name ?: id}${imageExtension(imageType, name, sourcePath)}"
-
-        if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(fileName)
-        }
-
-        val imageConfigPath = projectConfig.paths.images
-
-        return IcmPath.root().join(imageConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName)
-    }
-
-    override fun getAttachmentPath(
-        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType
-    ): IcmPath {
-        val baseAttachmentName = name ?: id
-        val attachmentName = appendExtensionIfMissing(baseAttachmentName, sourcePath)
-
-        if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(attachmentName)
-        }
-
-        val fileConfigPath = when (attachmentType) {
-            AttachmentType.Attachment -> projectConfig.paths.attachments
-            AttachmentType.Document -> projectConfig.paths.documents
-        }
-
-        return IcmPath.root().join(fileConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(attachmentName)
-    }
-
-    override fun getStyleDefinitionPath(): IcmPath {
-        val styleDefinitionPath = projectConfig.styleDefinitionPath
-
-        if (styleDefinitionPath != null && !styleDefinitionPath.isAbsolute()) {
-            throw IllegalArgumentException("The configured style definition path '${styleDefinitionPath}' is not absolute.")
-        } else if (styleDefinitionPath != null) {
-            return styleDefinitionPath
-        }
-
-        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder))
-            .join("${projectConfig.name}Styles.wfd")
-    }
-
-    override fun getDisplayRulePath(rule: DisplayRule): IcmPath {
-        error("External display rules are not supported and should not be used for Designer output. Report this as a bug.")
-    }
-
-    override fun getFontRootFolder(): IcmPath {
-        val fontConfigPath = projectConfig.paths.fonts
-
-        return IcmPath.root().join(fontConfigPath)
-    }
 
     override fun applyImageAlternateText(layout: Layout, image: WfdXmlImage, alternateText: String) {
         image.setAlternateText(alternateText)
@@ -164,10 +93,6 @@ class DesignerDocumentObjectBuilder(
         val pageModels = mutableListOf<DocumentObject>()
         val virtualPageContent = mutableListOf<DocumentContent>()
 
-        if (fontDataCache.isEmpty()) {
-            val fontDataString = ipsService.gatherFontData(getFontRootFolder())
-            fontDataCache.putAll(fontDataStringToMap(fontDataString))
-        }
         val variableStructure = initVariableStructure(layout, documentObject.variableStructureRef?.id)
         val languages = collectLanguages(documentObject)
 
@@ -261,7 +186,7 @@ class DesignerDocumentObjectBuilder(
                 variableStructure,
                 variableRepository::findOrFail,
                 displayRuleRepository::findOrFail,
-                ::getDisplayRulePath,
+                resourcePathProvider::getDisplayRulePath,
                 InspireOutput.Designer,
                 projectConfig.interactiveTenant,
             ),
@@ -283,7 +208,7 @@ class DesignerDocumentObjectBuilder(
                     variableStructure,
                     variableRepository::findOrFail,
                     displayRuleRepository::findOrFail,
-                    ::getDisplayRulePath,
+                    resourcePathProvider::getDisplayRulePath,
                     InspireOutput.Designer,
                     projectConfig.interactiveTenant,
                 ),
@@ -320,7 +245,7 @@ class DesignerDocumentObjectBuilder(
                 )
             } else {
                 layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)
-                    .setLocation(getDocumentObjectPath(documentModel).toString())
+                    .setLocation(resourcePathProvider.getDocumentObjectPath(documentModel).toString())
             }
 
         if (documentObjectRef.displayRuleRef != null) {
@@ -479,9 +404,7 @@ class DesignerDocumentObjectBuilder(
     }
 
     private fun enrichLayoutWithSourceBaseTemplate(documentObjectXml: String, sourceBaseTemplatePath: IcmPath): String {
-        val sourceBaseTemplateXml = sourceBaseTemplateCache.computeIfAbsent(sourceBaseTemplatePath) {
-            ipsService.wfd2xml(it)
-        }
+        val sourceBaseTemplateXml = icmDataCache.wfd2Xml(sourceBaseTemplatePath)
 
         val sourceBaseTemplateDoc = sourceBaseTemplateXml.toXmlDocument()
         val documentObjectDoc = documentObjectXml.toXmlDocument()

@@ -2,7 +2,7 @@
 
 package com.quadient.migration.service.deploy
 
-import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
@@ -24,7 +24,6 @@ import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
-import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
@@ -46,6 +45,7 @@ import com.quadient.migration.service.deploy.utility.ResultTracker
 import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.deploy.utility.ValidationResult
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
+import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.readSafely
@@ -62,8 +62,12 @@ import com.quadient.migration.data.Error as StatusError
 data class DocObjectWithRef(val obj: DocumentObject, val documentObjectRefs: Set<String>)
 
 sealed class DeployClient(
+    private val projectConfig: ProjectConfig,
     private val metadataValidator: MetadataValidatorImpl,
     private val postProcess: PostProcessImpl,
+    private val conflictDetector: ConflictDetectorImpl,
+    private val progressReporter: ProgressReporterImpl,
+    private val resourcePathProvider: ResourcePathProvider,
     protected val documentObjectRepository: DocumentObjectRepository,
     protected val imageRepository: ImageRepository,
     protected val attachmentRepository: AttachmentRepository,
@@ -73,13 +77,13 @@ sealed class DeployClient(
     protected val displayRuleRepository: DisplayRuleRepository,
     protected val variableRepository: VariableRepository,
     protected val variableStructureRepository: VariableStructureRepository,
-    val documentObjectBuilder: InspireDocumentObjectBuilder,
+    protected val documentObjectBuilder: InspireDocumentObjectBuilder,
     protected val ipsService: IpsService,
     protected val storage: Storage,
-    protected val output: InspireOutput,
-) : MetadataValidator by metadataValidator, PostProcess by postProcess,
-    ProgressReporter by ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, output),
-    ConflictDetector by ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, output)
+) : MetadataValidator by metadataValidator,
+    PostProcess by postProcess,
+    ProgressReporter by progressReporter,
+    ConflictDetector by conflictDetector
 {
     protected val logger = LoggerFactory.getLogger(this::class.java)!!
 
@@ -103,7 +107,7 @@ sealed class DeployClient(
     abstract fun shouldIncludeDependency(documentObject: DocumentObject): Boolean
 
     fun deployDocumentObjects(): DeploymentResult {
-        val tracker = ResultTrackerImpl(statusTrackingRepository, output)
+        val tracker = ResultTrackerImpl(statusTrackingRepository, projectConfig.inspireOutput)
         val ordered = deployOrder(getAllDocumentObjectsToDeploy())
         val result = deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
         runPostProcessors(result)
@@ -114,7 +118,7 @@ sealed class DeployClient(
     fun deployDocumentObjects(documentObjectIds: List<String>) = deployDocumentObjects(documentObjectIds, false)
     fun deployDocumentObjects(documentObjectIds: List<String>, skipDependencies: Boolean): DeploymentResult {
         val documentObjects = getDocumentObjectsToDeploy(documentObjectIds)
-        val tracker = ResultTrackerImpl(statusTrackingRepository, output)
+        val tracker = ResultTrackerImpl(statusTrackingRepository, projectConfig.inspireOutput)
         val result = if (skipDependencies) {
             val ordered = deployOrder(documentObjects)
             deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
@@ -223,7 +227,7 @@ sealed class DeployClient(
             return
         }
 
-        val icmImagePath = documentObjectBuilder.getImagePath(imageModel)
+        val icmImagePath = resourcePathProvider.getImagePath(imageModel)
 
         val invalidMetadata = imageModel.getInvalidMetadataKeys()
         if (invalidMetadata.isNotEmpty()) {
@@ -297,7 +301,7 @@ sealed class DeployClient(
             return
         }
 
-        val icmFilePath = documentObjectBuilder.getAttachmentPath(attachmentModel)
+        val icmFilePath = resourcePathProvider.getAttachmentPath(attachmentModel)
 
         if (attachmentModel.skip.skipped) {
             val reason = attachmentModel.skip.reason?.let { " Reason: $it" } ?: ""
@@ -340,7 +344,7 @@ sealed class DeployClient(
     protected fun shouldDeployObject(
         id: String, resourceType: ResourceType, targetPath: IcmPath?, deploymentResult: DeploymentResult
     ): Boolean {
-        val currentStatus = statusTrackingRepository.findLastEventRelevantToOutput(id, resourceType, output)
+        val currentStatus = statusTrackingRepository.findLastEventRelevantToOutput(id, resourceType, projectConfig.inspireOutput)
 
         return when (currentStatus) {
             null -> {
@@ -360,7 +364,7 @@ sealed class DeployClient(
             }
 
             is StatusError -> {
-                logger.info("Last attempt to deploy '$targetPath' failed with error: '${currentStatus.error}'. Trying again.")
+                logger.info("Previous run failed '$targetPath' with error: '${currentStatus.error}'. Will now attempt to deploy again.")
                 true
             }
         }

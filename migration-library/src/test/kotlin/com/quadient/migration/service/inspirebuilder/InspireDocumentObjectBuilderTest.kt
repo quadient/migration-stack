@@ -29,6 +29,8 @@ import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
+import com.quadient.migration.service.DesignerIcmDataCache
+import com.quadient.migration.service.DesignerResourcePathProvider
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp
@@ -64,6 +66,7 @@ import org.junit.jupiter.api.Test
 import kotlin.collections.last
 
 class InspireDocumentObjectBuilderTest {
+    private val config = aProjectConfig(output = InspireOutput.Designer)
     private val documentObjectRepository = mockk<DocumentObjectRepository>()
     private val textStyleRepository = mockk<TextStyleRepository>()
     private val paragraphStyleRepository = mockk<ParagraphStyleRepository>()
@@ -73,6 +76,8 @@ class InspireDocumentObjectBuilderTest {
     private val imageRepository = mockk<ImageRepository>()
     private val attachmentRepository = mockk<AttachmentRepository>()
     private val ipsService = mockk<IpsService>()
+    private val resourcePathProvider = DesignerResourcePathProvider(config)
+    private val icmDataCache = DesignerIcmDataCache(ipsService, resourcePathProvider)
 
     private val xmlMapper = XmlMapper().also { it.findAndRegisterModules() }
 
@@ -85,8 +90,9 @@ class InspireDocumentObjectBuilderTest {
         displayRuleRepository,
         imageRepository,
         attachmentRepository,
-        aProjectConfig(output = InspireOutput.Designer),
-        ipsService,
+        resourcePathProvider,
+        config,
+        icmDataCache,
     )
 
     @BeforeEach

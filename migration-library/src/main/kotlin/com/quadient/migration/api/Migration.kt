@@ -6,45 +6,88 @@ import com.quadient.migration.service.RefCollector
 import com.quadient.migration.service.ReferenceValidator
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.StylesValidator
+import com.quadient.migration.service.deploy.CaApiClient
 import com.quadient.migration.service.deploy.DeployClient
 import com.quadient.migration.service.deploy.DesignerDeployClient
+import com.quadient.migration.service.deploy.EvolveDeployClient
 import com.quadient.migration.service.deploy.InteractiveDeployClient
-import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
-import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
+import com.quadient.migration.service.DesignerIcmDataCache
+import com.quadient.migration.service.DesignerResourcePathProvider
+import com.quadient.migration.service.EvolveIcmDataCache
+import com.quadient.migration.service.EvolveResourcePathProvider
+import com.quadient.migration.service.IcmDataCache
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
+import com.quadient.migration.service.InteractiveIcmDataCache
+import com.quadient.migration.service.InteractiveResourcePathProvider
+import com.quadient.migration.service.ResourcePathProvider
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
+import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
+import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.Version
 import com.quadient.migration.service.ipsclient.display
+import okhttp3.OkHttpClient
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.core.KoinApplication
 import org.koin.core.module.dsl.singleOf
+import org.koin.dsl.bind
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 import org.slf4j.LoggerFactory
-
-@JvmInline
-value class ProjectName(val name: String) {
-    override fun toString(): String {
-        return name
-    }
-}
+import java.util.concurrent.TimeUnit
 
 class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
     private val logger = LoggerFactory.getLogger(Migration::class.java)
     private val projectName = ProjectName(projectConfig.name)
 
+    private val designerModule = module {
+        singleOf(::DesignerDeployClient) bind DeployClient::class
+        singleOf(::DesignerResourcePathProvider) bind ResourcePathProvider::class
+        singleOf(::DesignerIcmDataCache) bind IcmDataCache::class
+        singleOf(::DesignerDocumentObjectBuilder) bind InspireDocumentObjectBuilder::class
+    }
+
+    private val evolveModule = module {
+        singleOf(::EvolveDeployClient) bind DeployClient::class
+        singleOf(::EvolveResourcePathProvider) bind ResourcePathProvider::class
+        singleOf(::EvolveIcmDataCache) bind IcmDataCache::class
+        singleOf(::InteractiveDocumentObjectBuilder) bind InspireDocumentObjectBuilder::class
+        singleOf(::CaApiClient)
+    }
+
+    private val interactiveModule = module {
+        singleOf(::InteractiveDeployClient) bind DeployClient::class
+        singleOf(::InteractiveResourcePathProvider) bind ResourcePathProvider::class
+        singleOf(::InteractiveIcmDataCache) bind IcmDataCache::class
+        singleOf(::InteractiveDocumentObjectBuilder) bind InspireDocumentObjectBuilder::class
+    }
+
     private val migrationModule = module {
+        val outputModule = when(projectConfig.inspireOutput) {
+            InspireOutput.Interactive -> interactiveModule
+            InspireOutput.Designer -> designerModule
+            InspireOutput.Evolve -> evolveModule
+        }
+        includes(outputModule)
+
         single<ProjectConfig> { projectConfig }
         single<MigConfig> { config }
         single<ProjectName> { projectName }
+        single<InspireOutput> { projectConfig.inspireOutput }
 
         single<IpsService> { IpsService(config.inspireConfig.ipsConfig) }
         single<IcmClient> { get<IpsService>() }
         single<Storage> { get<LocalStorage>() }
+        single<OkHttpClient> {
+            OkHttpClient.Builder()
+                .callTimeout(config.evolveConfig?.callTimeoutMs ?: 10_000, TimeUnit.MILLISECONDS)
+                .retryOnConnectionFailure(true)
+                .build()
+        }
 
         singleOf(::VariableRepository)
         singleOf(::DocumentObjectRepository)
@@ -59,14 +102,10 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
 
         singleOf(::LocalStorage)
 
-        singleOf(::InteractiveDocumentObjectBuilder)
-        singleOf(::DesignerDocumentObjectBuilder)
-
-        singleOf(::InteractiveDeployClient)
-        singleOf(::DesignerDeployClient)
-
         singleOf(::MetadataValidatorImpl)
         singleOf(::PostProcessImpl)
+        singleOf(::ProgressReporterImpl)
+        singleOf(::ConflictDetectorImpl)
 
         singleOf(::ReferenceValidator)
         singleOf(::StylesValidator)
@@ -93,17 +132,12 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
     val mappingRepository: MappingRepository by lazy { koin.get() }
 
     val icmClient: IcmClient by lazy { koin.get() }
-    val deployClient: DeployClient by lazy {
-        if (projectConfig.inspireOutput in listOf(InspireOutput.Interactive, InspireOutput.Evolve)) {
-            koin.get<InteractiveDeployClient>()
-        } else {
-            koin.get<DesignerDeployClient>()
-        }
-    }
+    val deployClient: DeployClient by lazy { koin.get() }
     val referenceValidator: ReferenceValidator by lazy { koin.get() }
     val stylesValidator: StylesValidator by lazy { koin.get() }
     val referenceCollector: RefCollector by lazy { koin.get() }
-    val storage: Storage by lazy { koin.get<LocalStorage>() }
+    val pathProvider: ResourcePathProvider by lazy { koin.get() }
+    val storage: Storage by lazy { koin.get() }
 
     private val ipsService: IpsService by lazy { koin.get() }
 
@@ -139,7 +173,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
                             
                             ************************************************************
                             *                                                          *
-                            * WARNING: Connected to unsupported IPS version $version *
+                            * WARNING: Connected to unsupported IPS version $version   *
                             *                                                          *
                             ************************************************************
                             """.trimIndent()
@@ -161,5 +195,12 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
         )
 
         logger.debug("Migration initialized")
+    }
+}
+
+@JvmInline
+value class ProjectName(val name: String) {
+    override fun toString(): String {
+        return name
     }
 }

@@ -10,6 +10,7 @@ import java.net.URI
 data class MigConfig(
     val dbConfig: DbConfig = DbConfig(),
     val inspireConfig: InspireConfig = InspireConfig(),
+    val evolveConfig: EvolveConfig? = null,
     val storageRoot: String? = null
 ) {
     companion object {
@@ -69,6 +70,18 @@ data class DbConfig(
 }
 
 data class InspireConfig(val ipsConfig: IpsConfig = IpsConfig())
+
+data class EvolveConfig(
+    val apiRetryDelayMs: Long = 1000L,
+    val callTimeoutMs: Long = 10_000L,
+    val contentAuthorApiKey: String,
+    val contentAuthorUrl: String,
+    val holder: String,
+    val holderType: String,
+    val publishBlockActionId: String,
+    val publishTemplateActionId: String,
+    val publishRuleActionId: String,
+)
 
 data class IpsConfig(val host: String = "localhost", val port: Int = 30354, val timeoutSeconds: Int = 120)
 

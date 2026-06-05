@@ -5,7 +5,6 @@ import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuild
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.service.deploy.DeployClient
-import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
@@ -27,20 +26,20 @@ class StylesValidatorTest {
     val paraStyleRepository = aParaStyleRepository()
 
     val ipsService = mockk<IpsService>()
-    val documentObjectBuilder = mockk<InspireDocumentObjectBuilder>()
+    val resourcePathProvider = mockk<ResourcePathProvider>()
     val deployClient = mockk<DeployClient>()
     val subject = StylesValidator(
         documentObjectRepository = documentObjectRepository,
         textStyleRepository = textStyleRepository,
         paragraphStyleRepository = paraStyleRepository,
-        documentObjectBuilder = documentObjectBuilder,
+        resourcePathProvider = resourcePathProvider,
         deployClient = deployClient,
         ipsService = ipsService
     )
 
     @BeforeEach
     fun init() {
-        every { documentObjectBuilder.getStyleDefinitionPath() } returns "somepath".toIcmPath()
+        every { resourcePathProvider.getStyleDefinitionPath() } returns "somepath".toIcmPath()
         every { ipsService.fileExists(any<IcmPath>()) } returns true
     }
 

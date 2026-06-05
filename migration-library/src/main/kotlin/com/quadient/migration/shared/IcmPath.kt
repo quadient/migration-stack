@@ -74,6 +74,20 @@ data class IcmPath private constructor(val path: String) {
         return "map://interactive/" + this.toString().removePrefix("icm://Interactive/$tenant/")
     }
 
+    fun filename(): String {
+        val lastSlash = path.lastIndexOf('/')
+        return if (lastSlash == -1) path else path.substring(lastSlash + 1)
+    }
+
+    fun parentDir(): IcmPath {
+        val lastSlash = path.lastIndexOf('/')
+        return if (lastSlash <= SCHEMA.length - 1) {
+            IcmPath(SCHEMA)
+        } else {
+            IcmPath(path.substring(0, lastSlash))
+        }
+    }
+
     fun extension(ext: String): IcmPath {
         val normalizedExt = if (ext.startsWith(".")) ext else ".$ext"
         val lastSlash = path.lastIndexOf('/')

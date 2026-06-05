@@ -1,16 +1,10 @@
 package com.quadient.migration.service.inspirebuilder
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.ArrayNode
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.repository.AttachmentRepository
@@ -21,15 +15,10 @@ import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
+import com.quadient.migration.service.IcmDataCache
+import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.getBaseTemplateFullPath
-import com.quadient.migration.service.imageExtension
-import com.quadient.migration.service.ipsclient.IpsService
-import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.AttachmentType
-import com.quadient.migration.shared.IcmPath
-import com.quadient.migration.shared.ImageType
-import com.quadient.migration.shared.orDefault
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Flow.WebEditingType.SECTION
@@ -37,9 +26,6 @@ import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.module.Layout
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 class InteractiveDocumentObjectBuilder(
     documentObjectRepository: DocumentObjectRepository,
@@ -51,7 +37,8 @@ class InteractiveDocumentObjectBuilder(
     imageRepository: ImageRepository,
     attachmentRepository: AttachmentRepository,
     projectConfig: ProjectConfig,
-    ipsService: IpsService,
+    resourcePathProvider: ResourcePathProvider,
+    icmDataCache: IcmDataCache,
 ) : InspireDocumentObjectBuilder(
     documentObjectRepository,
     textStyleRepository,
@@ -62,141 +49,18 @@ class InteractiveDocumentObjectBuilder(
     imageRepository,
     attachmentRepository,
     projectConfig,
-    ipsService,
-    InspireOutput.Interactive,
+    resourcePathProvider,
+    projectConfig.inspireOutput,
+    icmDataCache,
 ) {
-    private val lenientJson = Json { ignoreUnknownKeys = true }
     private val mainFlowId = "Def.MainFlow"
     private val snippetBuilder = InteractiveSnippetBuilder(
         mainFlowId,
         variableRepository,
         displayRuleRepository,
         projectConfig.interactiveTenant,
-        ::getDisplayRulePath
+        resourcePathProvider::getDisplayRulePath
     )
-
-    private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
-    private val baseTemplateCache = mutableMapOf<IcmPath, BaseTemplateData?>()
-    private val styleDefinitionData: StyleDefinitionData? by lazy {
-        val path = getStyleDefinitionPath()
-        if (!ipsService.fileExists(path)) {
-            logger.warn("Style definition '$path' does not exist. Style display name resolution will be skipped.")
-            return@lazy null
-        }
-        try {
-            parseStyleDefinitionData(ipsService.wfd2xml(path))
-        } catch (e: Exception) {
-            logger.warn("Failed to load style definition data from '$path'.", e)
-            null
-        }
-    }
-
-    override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): IcmPath {
-        val ext = when (type) {
-            DocumentObjectType.Snippet -> "jsd"
-            else -> "jld"
-        }
-
-        val fileName = "$nameOrId.$ext"
-
-        if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(fileName)
-        }
-
-        val tenant = projectConfig.interactiveTenant
-        val documentObjectType = type.toInteractiveFolder()
-
-        return IcmPath.root()
-            .join("Interactive")
-            .join(tenant)
-            .join(documentObjectType)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
-            .join(fileName)
-    }
-
-    override fun getImagePath(
-        id: String,
-        imageType: ImageType,
-        name: String?,
-        targetFolder: IcmPath?,
-        sourcePath: String?
-    ): IcmPath {
-        val fileName = "${name ?: id}${imageExtension(imageType, name, sourcePath)}"
-
-        if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(fileName)
-        }
-
-        val imageConfigPath = projectConfig.paths.images
-
-        return IcmPath.root()
-            .join("Interactive")
-            .join(projectConfig.interactiveTenant)
-            .join(imageConfigPath.orDefault("Resources/Images"))
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
-            .join(fileName)
-    }
-
-    override fun getDisplayRulePath(rule: DisplayRule): IcmPath {
-        val fileName = "${rule.name ?: rule.id}.jrd"
-
-        val targetFolder = rule.targetFolder?.let { IcmPath.from(it) }
-        if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(fileName)
-        }
-
-        return IcmPath.root()
-            .join("Interactive")
-            .join(projectConfig.interactiveTenant)
-            .join("Rules")
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, rule.targetFolder?.let { IcmPath.from(it) }))
-            .join(fileName)
-    }
-
-    override fun getAttachmentPath(
-        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType
-    ): IcmPath {
-        val baseAttachmentName = name ?: id
-        val attachmentName = appendExtensionIfMissing(baseAttachmentName, sourcePath)
-
-        if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(attachmentName)
-        }
-
-        val fileConfigPath = when (attachmentType) {
-            AttachmentType.Attachment -> projectConfig.paths.attachments.orDefault("Attachments")
-            AttachmentType.Document -> projectConfig.paths.documents.orDefault("Documents")
-        }
-
-        return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant).join(fileConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(attachmentName)
-    }
-
-    override fun getStyleDefinitionPath(): IcmPath {
-        val styleDefConfigPath = projectConfig.styleDefinitionPath
-
-        if (styleDefConfigPath != null && !styleDefConfigPath.isAbsolute()) {
-            throw IllegalArgumentException("The configured style definition path '${styleDefConfigPath}' is not absolute.")
-        } else if (styleDefConfigPath != null) {
-            val pathString = styleDefConfigPath.toString()
-            val base = if (pathString.contains(".")) pathString.substringBeforeLast(".") else pathString
-            return IcmPath.from("$base.jld")
-        }
-
-        return IcmPath.root()
-            .join("Interactive")
-            .join(projectConfig.interactiveTenant)
-            .join("CompanyStyles")
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder))
-            .join("${projectConfig.name}Styles.jld")
-    }
-
-    override fun getFontRootFolder(): IcmPath {
-        val fontConfigPath = projectConfig.paths.fonts
-
-        return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant)
-            .join(fontConfigPath.orDefault("Resources/Fonts"))
-    }
 
     override fun applyImageAlternateText(layout: Layout, image: WfdXmlImage, alternateText: String) {
         val variable = layout.data.addVariable()
@@ -223,7 +87,7 @@ class InteractiveDocumentObjectBuilder(
 
 
         val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
-        val currentBaseTemplateData = getOrLoadBaseTemplateData(baseTemplatePath)
+        val currentBaseTemplateData = icmDataCache.getOrLoadBaseTemplateData(baseTemplatePath)
             ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
 
         val languages = collectLanguages(documentObject)
@@ -306,7 +170,7 @@ class InteractiveDocumentObjectBuilder(
             )
         } else {
             layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)
-                .setLocation(getDocumentObjectPath(documentModel).toString())
+                .setLocation(resourcePathProvider.getDocumentObjectPath(documentModel).toString())
         }
 
         if (documentObjectRef.displayRuleRef != null) {
@@ -323,17 +187,17 @@ class InteractiveDocumentObjectBuilder(
     }
 
     override fun resolveParagraphStyleName(name: String): String =
-        styleDefinitionData?.paragraphStyleDisplayNamesToNames?.get(name) ?: name
+        icmDataCache.styleDefinitionData?.paragraphStyleDisplayNamesToNames?.get(name) ?: name
 
     override fun resolveTextStyleName(name: String): String =
-        styleDefinitionData?.textStyleDisplayNamesToNames?.get(name) ?: name
+        icmDataCache.styleDefinitionData?.textStyleDisplayNamesToNames?.get(name) ?: name
 
     override fun resolveTableStyleName(name: String): String =
-        styleDefinitionData?.tableStyleDisplayNamesToName?.get(name) ?: name
+        icmDataCache.styleDefinitionData?.tableStyleDisplayNamesToName?.get(name) ?: name
 
     private fun mapContentItemToInteractiveFlow(
         contentItem: DocumentContent,
-        baseTemplateData: BaseTemplateData,
+        baseTemplateData: IcmDataCache.BaseTemplateData,
         interactiveFlowsWithContent: MutableMap<String, MutableList<DocumentContent>>,
     ) {
         if (contentItem is Area && !contentItem.interactiveFlowName.isNullOrBlank()) {
@@ -355,93 +219,5 @@ class InteractiveDocumentObjectBuilder(
             interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(contentItem)
         }
     }
-
-    private fun getOrLoadBaseTemplateData(path: IcmPath): BaseTemplateData? {
-        if (baseTemplateCache.containsKey(path)) return baseTemplateCache[path]
-
-        if (!ipsService.fileExists(path)) {
-            baseTemplateCache[path] = null
-            return null
-        }
-
-        return try {
-            val xml = ipsService.wfd2xml(path)
-            parseBaseTemplateData(xml).also { baseTemplateCache[path] = it }
-        } catch (e: Exception) {
-            logger.warn("Failed to load base template data from '$path'.", e)
-            baseTemplateCache[path] = null
-            null
-        }
-    }
-
-    private fun parseBaseTemplateData(xml: String): BaseTemplateData {
-        val layoutXmlTree = xmlMapper.readTree(xml.trimIndent())["Layout"]["Layout"]
-        return BaseTemplateData(parseInteractiveFlowNamesToIds(layoutXmlTree))
-    }
-
-    private fun parseStyleDefinitionData(xml: String): StyleDefinitionData {
-        val layoutXmlTree = xmlMapper.readTree(xml.trimIndent())["Layout"]["Layout"]
-        return StyleDefinitionData(
-            parseStyleDisplayNamesToNames(layoutXmlTree, "TextStyle"),
-            parseStyleDisplayNamesToNames(layoutXmlTree, "ParaStyle"),
-            parseStyleDisplayNamesToNames(layoutXmlTree, "TableStyle"),
-        )
-    }
-
-    private fun parseInteractiveFlowNamesToIds(layoutXmlTree: JsonNode): Map<String, String> {
-        val pagesInteractiveFlowNode = layoutXmlTree["Pages"]?.get("InteractiveFlow") ?: return emptyMap()
-        val flowNodes = layoutXmlTree["Flow"] ?: return emptyMap()
-
-        val interactiveFlowIds = if (pagesInteractiveFlowNode is ArrayNode) {
-            pagesInteractiveFlowNode.map { it["FlowId"].textValue() }
-        } else {
-            listOf(pagesInteractiveFlowNode["FlowId"].textValue())
-        }
-
-        val result = mutableMapOf<String, String>()
-        interactiveFlowIds.forEachIndexed { i, id ->
-            val flowData = flowNodes.first { flow -> flow["Id"].textValue() == id }
-            flowData["Name"]?.textValue()?.let { result[it] = "Def.InteractiveFlow$i" }
-
-            flowData["CustomProperty"]?.textValue()?.let { raw ->
-                lenientJson.decodeFromString<FlowCustomProperty>(raw).customName?.let {
-                    result[it] = "Def.InteractiveFlow$i"
-                }
-            }
-        }
-        return result
-    }
-
-    private fun parseStyleDisplayNamesToNames(layoutXmlTree: JsonNode, nodeTag: String): Map<String, String> {
-        val styleNode = layoutXmlTree[nodeTag] ?: return emptyMap()
-        val styleNodeList = if (styleNode is ArrayNode) styleNode.toList() else listOf(styleNode)
-        val result = mutableMapOf<String, String>()
-        styleNodeList.forEach { node ->
-            val name = node["Name"]?.textValue() ?: return@forEach
-            val raw = node["CustomProperty"]?.textValue() ?: return@forEach
-            val displayName = lenientJson.decodeFromString<StyleCustomProperty>(raw).displayName ?: return@forEach
-            result.putIfAbsent(displayName, name)
-        }
-        return result
-    }
-
-    private data class BaseTemplateData(
-        val interactiveFlowNamesToIds: Map<String, String>,
-    )
-
-    private data class StyleDefinitionData(
-        val textStyleDisplayNamesToNames: Map<String, String>,
-        val paragraphStyleDisplayNamesToNames: Map<String, String>,
-        val tableStyleDisplayNamesToName: Map<String, String>,
-    )
-
-    @Serializable
-    private data class FlowCustomProperty(
-        val customName: String? = null,
-    )
-
-    @Serializable
-    private data class StyleCustomProperty(
-        @SerialName("DisplayName") val displayName: String? = null,
-    )
 }
+

@@ -24,17 +24,18 @@ import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.Storage
-import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeployKind
 import com.quadient.migration.service.deploy.utility.DeploymentInfo
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.LastStatus
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
-import com.quadient.migration.service.deploy.utility.ProgressReportItem
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
+import com.quadient.migration.service.deploy.utility.ProgressReportItem
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
+import com.quadient.migration.service.DesignerResourcePathProvider
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.MetadataPrimitive
@@ -81,11 +82,19 @@ class DeployClientTest {
     val variableStructureRepository = mockk<VariableStructureRepository>()
     val ipsService = mockk<IpsService>()
     val storage = mockk<Storage>()
+    val projectConfig = aProjectConfig(output = InspireOutput.Designer)
     val postProcess = PostProcessImpl(ipsService, documentObjectRepository, imageRepository, displayRuleRepository)
+    val resourcePathProvider = DesignerResourcePathProvider(projectConfig)
+    val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
+    val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
 
     private val subject = DesignerDeployClient(
+        projectConfig,
+        resourcePathProvider,
         metadataValidator,
         postProcess,
+        conflictDetector,
+        progressReporter,
         documentObjectRepository,
         imageRepository,
         attachmentRepository,
@@ -103,12 +112,6 @@ class DeployClientTest {
     @BeforeEach
     fun setup() {
         every { documentObjectBuilder.getProperty("projectConfig") } returns aProjectConfig()
-        every { documentObjectBuilder.getDocumentObjectPath(any()) } answers { callOriginal() }
-        every { documentObjectBuilder.getDocumentObjectPath(any(), any(), any()) } answers { callOriginal() }
-        every { documentObjectBuilder.getImagePath(any()) } answers { callOriginal() }
-        every { documentObjectBuilder.getImagePath(any(), any(), any(), any(), any()) } answers { callOriginal() }
-        every { documentObjectBuilder.getAttachmentPath(any()) } answers { callOriginal() }
-        every { documentObjectBuilder.getAttachmentPath(any(), any(), any(), any(), any()) } answers { callOriginal() }
         every { documentObjectBuilder.shouldIncludeInternalDependency(any()) } answers { callOriginal() }
     }
 

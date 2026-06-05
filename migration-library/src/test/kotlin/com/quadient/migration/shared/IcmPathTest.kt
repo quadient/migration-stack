@@ -209,4 +209,83 @@ class IcmPathTest {
 
         assertEquals(false, path1.hashCode() == path2.hashCode())
     }
+
+    @Test
+    fun `filename returns filename from absolute path`() {
+        val path = IcmPath.from("icm://Templates/BaseTemplate.wfd")
+
+        assertEquals("BaseTemplate.wfd", path.filename())
+    }
+
+    @Test
+    fun `filename returns filename from deeply nested path`() {
+        val path = IcmPath.from("icm://a/b/c/file.txt")
+
+        assertEquals("file.txt", path.filename())
+    }
+
+    @Test
+    fun `filename returns filename for file directly under schema root`() {
+        val path = IcmPath.from("icm://BaseTemplate.wfd")
+
+        assertEquals("BaseTemplate.wfd", path.filename())
+    }
+
+    @Test
+    fun `filename returns empty string for root path`() {
+        val path = IcmPath.root()
+
+        assertEquals("", path.filename())
+    }
+
+    @Test
+    fun `filename returns full path for relative path without separator`() {
+        val path = IcmPath.from("BaseTemplate.wfd")
+
+        assertEquals("BaseTemplate.wfd", path.filename())
+    }
+
+    @Test
+    fun `parentDir returns parent directory from absolute path`() {
+        val path = IcmPath.from("icm://Templates/BaseTemplate.wfd")
+
+        assertEquals(IcmPath.from("icm://Templates"), path.parentDir())
+    }
+
+    @Test
+    fun `parentDir returns root for file directly under schema root`() {
+        val path = IcmPath.from("icm://BaseTemplate.wfd")
+
+        assertEquals(IcmPath.root(), path.parentDir())
+    }
+
+    @Test
+    fun `parentDir returns intermediate directory from deeply nested path`() {
+        val path = IcmPath.from("icm://a/b/c/file.txt")
+
+        assertEquals(IcmPath.from("icm://a/b/c"), path.parentDir())
+    }
+
+    @Test
+    fun `parentDir returns root when called on root path`() {
+        val path = IcmPath.root()
+
+        assertEquals(IcmPath.root(), path.parentDir())
+    }
+
+    @Test
+    fun `parentDir returns root for relative path without directory separator`() {
+        val path = IcmPath.from("BaseTemplate.wfd")
+
+        assertEquals(IcmPath.root(), path.parentDir())
+    }
+
+    @Test
+    fun `parentDir and filename round-trip reconstruct original path`() {
+        val original = IcmPath.from("icm://Templates/Sub/BaseTemplate.wfd")
+
+        val reconstructed = original.parentDir().join(original.filename())
+
+        assertEquals(original, reconstructed)
+    }
 }

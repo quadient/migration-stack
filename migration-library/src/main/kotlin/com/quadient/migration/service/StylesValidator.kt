@@ -19,16 +19,15 @@ import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.deploy.DeployClient
-import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 
 class StylesValidator(
     private val documentObjectRepository: DocumentObjectRepository,
     private val textStyleRepository: TextStyleRepository,
     private val paragraphStyleRepository: ParagraphStyleRepository,
-    private val documentObjectBuilder: InspireDocumentObjectBuilder,
     private val deployClient: DeployClient,
     private val ipsService: IpsService,
+    private val resourcePathProvider: ResourcePathProvider,
 ) {
     private val jsonMapper = ObjectMapper()
     fun validateAll(): ValidationResult {
@@ -88,7 +87,7 @@ class StylesValidator(
             paragraphStyle.resolveParagraphStyle(neededParagraphStyleIds, missingParagraphStyleIds)
         }
 
-        val styleDefPath = documentObjectBuilder.getStyleDefinitionPath()
+        val styleDefPath = resourcePathProvider.getStyleDefinitionPath()
 
         val exists = try {
             ipsService.fileExists(styleDefPath)
@@ -101,7 +100,7 @@ class StylesValidator(
         }
 
         val xmlString = try {
-            ipsService.wfd2xml(documentObjectBuilder.getStyleDefinitionPath())
+            ipsService.wfd2xml(resourcePathProvider.getStyleDefinitionPath())
         } catch (ex: Exception) {
             throw RuntimeException("wfd2xml failed, cannot validate.", ex)
         }

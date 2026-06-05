@@ -20,6 +20,7 @@ exposed = "1.3.0"
 kotlinx-serialization = "1.11.0"
 ktoml = "0.7.1"
 mockk = "1.14.9"
+okhttp = "5.3.0"
 
 # app
 koin-ktor = "4.2.1"
@@ -77,6 +78,7 @@ exposed-json = { module = "org.jetbrains.exposed:exposed-json", version.ref = "e
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 ktoml-core = { module = "com.akuleshov7:ktoml-core", version.ref = "ktoml" }
 ktoml-file = { module = "com.akuleshov7:ktoml-file", version.ref = "ktoml" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 

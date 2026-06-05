@@ -2,7 +2,7 @@
 
 package com.quadient.migration.service.deploy
 
-import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.repository.StatusTrackingRepository
@@ -18,14 +18,15 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
-import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
-import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTracker
-import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
+import com.quadient.migration.service.ResourcePathProvider
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
+import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
+import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
@@ -39,8 +40,12 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class DesignerDeployClient(
+    private val projectConfig: ProjectConfig,
+    private val resourcePathProvider: ResourcePathProvider,
     metadataValidator: MetadataValidatorImpl,
     postProcess: PostProcessImpl,
+    conflictDetector: ConflictDetectorImpl,
+    progressReporter: ProgressReporterImpl,
     documentObjectRepository: DocumentObjectRepository,
     imageRepository: ImageRepository,
     attachmentRepository: AttachmentRepository,
@@ -50,12 +55,16 @@ class DesignerDeployClient(
     displayRuleRepository: DisplayRuleRepository,
     variableRepository: VariableRepository,
     variableStructureRepository: VariableStructureRepository,
-    documentObjectBuilder: DesignerDocumentObjectBuilder,
+    documentObjectBuilder: InspireDocumentObjectBuilder,
     ipsService: IpsService,
     storage: Storage,
 ) : DeployClient(
+    projectConfig,
     metadataValidator,
     postProcess,
+    conflictDetector,
+    progressReporter,
+    resourcePathProvider,
     documentObjectRepository,
     imageRepository,
     attachmentRepository,
@@ -67,9 +76,12 @@ class DesignerDeployClient(
     variableStructureRepository,
     documentObjectBuilder,
     ipsService,
-    storage,
-    InspireOutput.Designer,
+    storage
 ) {
+    init {
+        addPostProcessor(postProcess::metadataPostProcessor)
+    }
+
     override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
         return documentObject.type != DocumentObjectType.Page && documentObject.internal != true
     }
@@ -101,7 +113,7 @@ class DesignerDeployClient(
         deployImagesAndAttachments(documentObjects, tracker, uploadImage, uploadAttachment)
 
         for (it in documentObjects) {
-            val targetPath = documentObjectBuilder.getDocumentObjectPath(it)
+            val targetPath = resourcePathProvider.getDocumentObjectPath(it)
 
             if (!shouldDeployObject(it.id, ResourceType.DocumentObject, targetPath, tracker.deploymentResult)) {
                 logger.info("Skipping deployment of '${it.id}' as it is not marked for deployment.")
@@ -188,7 +200,7 @@ class DesignerDeployClient(
 
         val textStyles = textStyleRepository.listAll().filter { it.targetId == null }
         val paragraphStyles = paragraphStyleRepository.listAll().filter { it.targetId == null }
-        val outputPath = documentObjectBuilder.getStyleDefinitionPath()
+        val outputPath = resourcePathProvider.getStyleDefinitionPath()
         val xml2wfdResult =
             ipsService.xml2wfd(documentObjectBuilder.buildStyles(textStyles, paragraphStyles), outputPath)
 
@@ -202,7 +214,7 @@ class DesignerDeployClient(
                         timestamp = deploymentTimestamp,
                         resourceType = ResourceType.TextStyle,
                         icmPath = outputPath,
-                        output = output
+                        output = projectConfig.inspireOutput
                     )
                 }
                 paragraphStyles.forEach {
@@ -212,7 +224,7 @@ class DesignerDeployClient(
                         timestamp = deploymentTimestamp,
                         resourceType = ResourceType.ParagraphStyle,
                         icmPath = outputPath,
-                        output = output
+                        output = projectConfig.inspireOutput
                     )
                 }
             }
@@ -226,7 +238,7 @@ class DesignerDeployClient(
                         deploymentTimestamp,
                         ResourceType.TextStyle,
                         outputPath,
-                        output,
+                        projectConfig.inspireOutput,
                         xml2wfdResult.message
                     )
                 }
@@ -237,7 +249,7 @@ class DesignerDeployClient(
                         deploymentTimestamp,
                         ResourceType.ParagraphStyle,
                         outputPath,
-                        output,
+                        projectConfig.inspireOutput,
                         xml2wfdResult.message
                     )
                 }

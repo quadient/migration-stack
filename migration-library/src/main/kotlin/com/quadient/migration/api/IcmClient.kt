@@ -9,7 +9,7 @@ import java.io.IOException
 interface IcmClient {
     /**
      * Uploads a file to the connected ICM
-     * @param path Path to the file. Must start with "icm://"
+     * @param path Path to the file.
      * @param data ByteArray of the content
      * @throws IllegalArgumentException if the path does not start with "icm://"
      * @throws IpsClientException if failure occurs when working with IPS
@@ -19,7 +19,7 @@ interface IcmClient {
 
     /**
      * Uploads a file to the connected ICM
-     * @param path Path to the file. Must start with "icm://"
+     * @param path Path to the file.
      * @param data ByteArray of the content
      * @throws IllegalArgumentException if the path does not start with "icm://"
      * @throws IpsClientException if failure occurs when working with IPS
@@ -29,7 +29,7 @@ interface IcmClient {
 
     /**
      * Downloads a file from the connected ICM
-     * @param path Path to the file. Must start with "icm://"
+     * @param path Path to the file.
      * @return ByteArray containing the file content
      * @throws IllegalArgumentException if the path does not start with "icm://"
      * @throws IpsClientException if failure occurs when working with IPS

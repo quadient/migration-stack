@@ -2,7 +2,6 @@
 
 package com.quadient.migration.service.deploy
 
-import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
@@ -29,16 +28,17 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
-import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeploymentError
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
-import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTracker
 import com.quadient.migration.service.getBaseTemplateFullPath
-import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
+import com.quadient.migration.service.ResourcePathProvider
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
+import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
+import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTarget
@@ -53,9 +53,13 @@ import org.jetbrains.exposed.v1.json.extract
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-class InteractiveDeployClient(
+open class InteractiveDeployClient(
+    private val projectConfig: ProjectConfig,
+    private val resourcePathProvider: ResourcePathProvider,
     metadataValidator: MetadataValidatorImpl,
     postProcess: PostProcessImpl,
+    conflictDetector: ConflictDetectorImpl,
+    progressReporter: ProgressReporterImpl,
     documentObjectRepository: DocumentObjectRepository,
     imageRepository: ImageRepository,
     attachmentRepository: AttachmentRepository,
@@ -65,13 +69,16 @@ class InteractiveDeployClient(
     displayRuleRepository: DisplayRuleRepository,
     variableRepository: VariableRepository,
     variableStructureRepository: VariableStructureRepository,
-    documentObjectBuilder: InteractiveDocumentObjectBuilder,
+    documentObjectBuilder: InspireDocumentObjectBuilder,
     ipsService: IpsService,
     storage: Storage,
-    private val projectConfig: ProjectConfig,
 ) : DeployClient(
+    projectConfig,
     metadataValidator,
     postProcess,
+    conflictDetector,
+    progressReporter,
+    resourcePathProvider,
     documentObjectRepository,
     imageRepository,
     attachmentRepository,
@@ -84,9 +91,9 @@ class InteractiveDeployClient(
     documentObjectBuilder,
     ipsService,
     storage,
-    InspireOutput.Interactive,
 ) {
     init {
+        addPostProcessor(postProcess::metadataPostProcessor)
         addPostProcessor { deploymentResult ->
             val approvalResult = ipsService.setProductionApprovalState(deploymentResult.deployed.map { it.targetPath })
             if (approvalResult == OperationResult.Success) {
@@ -95,6 +102,29 @@ class InteractiveDeployClient(
                 logger.error("Failed to set production approval state to document objects.")
             }
         }
+    }
+
+    override fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult {
+        val runCommandType = obj.type.toRunCommandType()
+        return ipsService.deployJld(
+            baseTemplate = getBaseTemplateFullPath(projectConfig, obj.baseTemplate),
+            type = runCommandType,
+            moduleName = "DocumentLayout",
+            xmlContent = wfdXml,
+            outputPath = targetPath
+        )
+    }
+
+    override fun uploadImage(img: Image, targetPath: IcmPath, data: ByteArray): OperationResult {
+        return ipsService.tryUpload(targetPath, data)
+    }
+
+    override fun uploadAttachment(att: Attachment, targetPath: IcmPath, data: ByteArray): OperationResult {
+        return ipsService.tryUpload(targetPath, data)
+    }
+
+    override fun uploadDisplayRule(rule: DisplayRule, targetPath: IcmPath, data: ByteArray): OperationResult {
+        return ipsService.tryUpload(targetPath, data)
     }
 
     override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
@@ -162,7 +192,7 @@ class InteractiveDeployClient(
 
         for (r in rules) {
             val rule = r.resolveTarget(displayRuleRepository::findOrFail)
-            val targetPath = documentObjectBuilder.getDisplayRulePath(rule)
+            val targetPath = resourcePathProvider.getDisplayRulePath(rule)
 
             if (!shouldDeployObject(rule.id, ResourceType.DisplayRule, targetPath, tracker.deploymentResult)) {
                 logger.info("Skipping deployment of '${rule.id}' as it is not marked for deployment.")
@@ -213,30 +243,6 @@ class InteractiveDeployClient(
         }
     }
 
-    override fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult {
-        val runCommandType = obj.type.toRunCommandType()
-        return ipsService.deployJld(
-            baseTemplate = getBaseTemplateFullPath(projectConfig, obj.baseTemplate),
-            type = runCommandType,
-            moduleName = "DocumentLayout",
-            xmlContent = wfdXml,
-            outputPath = targetPath
-        )
-
-    }
-
-    override fun uploadImage(img: Image, targetPath: IcmPath, data: ByteArray): OperationResult {
-        return ipsService.tryUpload(targetPath, data)
-    }
-
-    override fun uploadAttachment(att: Attachment, targetPath: IcmPath, data: ByteArray): OperationResult {
-        return ipsService.tryUpload(targetPath, data)
-    }
-
-    override fun uploadDisplayRule(rule: DisplayRule, targetPath: IcmPath, data: ByteArray): OperationResult {
-        return ipsService.tryUpload(targetPath, data)
-    }
-
     override fun deployDocumentObjectsInternal(
         documentObjects: List<DocumentObject>,
         tracker: ResultTracker,
@@ -249,7 +255,7 @@ class InteractiveDeployClient(
         deployDisplayRules(documentObjects, tracker, uploadDisplayRule)
 
         for (it in documentObjects) {
-            val targetPath = documentObjectBuilder.getDocumentObjectPath(it)
+            val targetPath = resourcePathProvider.getDocumentObjectPath(it)
 
             if (!shouldDeployObject(it.id, ResourceType.DocumentObject, targetPath, tracker.deploymentResult)) {
                 logger.info("Skipping deployment of '${it.id}' as it is not marked for deployment.")
@@ -290,7 +296,7 @@ class InteractiveDeployClient(
         val deploymentId = Uuid.random()
         val deploymentTimestamp = Clock.System.now()
 
-        val outputPathJld = documentObjectBuilder.getStyleDefinitionPath()
+        val outputPathJld = resourcePathProvider.getStyleDefinitionPath()
         val outputPathWfd = outputPathJld.extension(".wfd")
 
         val xml2wfdResult = ipsService.xml2wfd(
@@ -333,7 +339,7 @@ class InteractiveDeployClient(
                         timestamp = deploymentTimestamp,
                         resourceType = ResourceType.TextStyle,
                         icmPath = outputPathWfd,
-                        output = output
+                        output = projectConfig.inspireOutput
                     )
                 }
                 paragraphStyles.forEach {
@@ -343,7 +349,7 @@ class InteractiveDeployClient(
                         timestamp = deploymentTimestamp,
                         resourceType = ResourceType.ParagraphStyle,
                         icmPath = outputPathWfd,
-                        output = output
+                        output = projectConfig.inspireOutput
                     )
                 }
             }
@@ -357,7 +363,7 @@ class InteractiveDeployClient(
                         deploymentTimestamp,
                         ResourceType.TextStyle,
                         outputPathWfd,
-                        output,
+                        projectConfig.inspireOutput,
                         ""
                     )
                 }
@@ -368,7 +374,7 @@ class InteractiveDeployClient(
                         deploymentTimestamp,
                         ResourceType.ParagraphStyle,
                         outputPathWfd,
-                        output,
+                        projectConfig.inspireOutput,
                         ""
                     )
                 }

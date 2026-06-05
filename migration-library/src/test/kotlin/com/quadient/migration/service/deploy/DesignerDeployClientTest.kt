@@ -28,18 +28,19 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.service.Storage
-import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeploymentError
 import com.quadient.migration.service.deploy.utility.DeploymentInfo
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidator
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.deploy.utility.ValidationResult
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
+import com.quadient.migration.service.DesignerResourcePathProvider
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
@@ -53,6 +54,7 @@ import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aActiveStatus
 import com.quadient.migration.tools.aDeployedStatus
 import com.quadient.migration.tools.aErrorStatus
+import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.computeIfPresentOrPut
 import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDocObj
@@ -98,10 +100,18 @@ class DesignerDeployClientTest {
     val documentObjectBuilder = mockk<DesignerDocumentObjectBuilder>()
     val ipsService = mockk<IpsService>()
     val storage = mockk<Storage>()
+    val projectConfig = aProjectConfig(output = InspireOutput.Designer)
+    val resourcePathProvider = mockk<DesignerResourcePathProvider>()
+    val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
+    val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
 
     private val subject = DesignerDeployClient(
+        projectConfig,
+        resourcePathProvider,
         metadataValidator,
         postProcess,
+        conflictDetector,
+        progressReporter,
         documentObjectRepository,
         imageRepository,
         attachmentRepository,
@@ -151,7 +161,7 @@ class DesignerDeployClientTest {
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, externalBlock)
-        every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
+        every { resourcePathProvider.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
         every { ipsService.fileExists(any<IcmPath>()) } returns false
 
         // when
@@ -396,7 +406,7 @@ class DesignerDeployClientTest {
         every { documentObjectBuilder.buildDocumentObject(block) } throws IllegalStateException("Inner block not found")
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
-        every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
+        every { resourcePathProvider.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
         every { ipsService.fileExists(any<IcmPath>()) } returns false
         every { statusTrackingRepository.error("B_1", any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("B_1")
 
@@ -425,7 +435,7 @@ class DesignerDeployClientTest {
         val sourcePath = image.sourcePath
         val imagePath = "icm://${image.nameOrId()}".toIcmPath()
 
-        every { documentObjectBuilder.getImagePath(image) } returns imagePath
+        every { resourcePathProvider.getImagePath(image) } returns imagePath
         every { imageRepository.find(image.id) } returns image
         if (!sourcePath.isNullOrBlank()) {
             val byteArray = ByteArray(10)
@@ -447,7 +457,7 @@ class DesignerDeployClientTest {
         val sourcePath = attachment.sourcePath
         val attachmentPath = "icm://${attachment.nameOrId()}".toIcmPath()
 
-        every { documentObjectBuilder.getAttachmentPath(attachment) } returns attachmentPath
+        every { resourcePathProvider.getAttachmentPath(attachment) } returns attachmentPath
         every { attachmentRepository.find(attachment.id) } returns attachment
         if (!sourcePath.isNullOrBlank()) {
             val byteArray = ByteArray(10)
@@ -474,7 +484,7 @@ class DesignerDeployClientTest {
             val outputPath = "icm://${documentObject.nameOrId()}".toIcmPath()
 
             every { documentObjectBuilder.buildDocumentObject(documentObject) } returns xml
-            every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns outputPath
+            every { resourcePathProvider.getDocumentObjectPath(documentObject) } returns outputPath
             every { ipsService.xml2wfd(xml, outputPath) } returns OperationResult.Success
         }
         return documentObject
@@ -496,8 +506,8 @@ class DesignerDeployClientTest {
             val b1 = DocumentObjectBuilder("B_1", Block).build().mock().active()
             val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
             every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(t1, b1, b2)
-            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path".toIcmPath()
-            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b1) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b2) } returns "icm://same/path".toIcmPath()
 
             val result = subject.validateConflicts()
 
@@ -510,7 +520,7 @@ class DesignerDeployClientTest {
             val t1 = DocumentObjectBuilder("T_1", Template).build().mock().active()
             val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://path1").active()
             val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
-            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://path1".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b2) } returns "icm://path1".toIcmPath()
             every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(t1, b1, b2)
 
             val result = subject.validateConflicts()
@@ -537,7 +547,7 @@ class DesignerDeployClientTest {
         fun `validateConflicts detects collision even when existing resource is not to be currently deployed`() {
             val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://same/path")
             val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
-            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b2) } returns "icm://same/path".toIcmPath()
             every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1, b2)
 
             val result = subject.validateConflicts()
@@ -551,7 +561,7 @@ class DesignerDeployClientTest {
         fun `validateConflicts ignores previously deployed resources from other outputs`() {
             val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://same/path", InspireOutput.Interactive)
             val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
-            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b2) } returns "icm://same/path".toIcmPath()
             every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1, b2)
 
             val result = subject.validateConflicts()
@@ -564,7 +574,7 @@ class DesignerDeployClientTest {
             val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://designer-path")
                 .deployed("icm://interactive-path", InspireOutput.Interactive)
             val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
-            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://designer-path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b2) } returns "icm://designer-path".toIcmPath()
             every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1, b2)
 
             val result = subject.validateConflicts()
@@ -578,7 +588,7 @@ class DesignerDeployClientTest {
         fun `validateConflicts flags when previously deployed path has extra owners`() {
             val b1 = DocumentObjectBuilder("B_1", Block).build().mock().active()
             DocumentObjectBuilder("B_2", Block).build().mock().deployed("icm://same/path1")
-            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path1".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b1) } returns "icm://same/path1".toIcmPath()
             every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1)
 
             val result = subject.validateConflicts()
@@ -592,8 +602,8 @@ class DesignerDeployClientTest {
         fun `validateConflicts flags when current batch is superset of previous owners`() {
             val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://same/path").active()
             val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
-            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path".toIcmPath()
-            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b1) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b2) } returns "icm://same/path".toIcmPath()
             every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1, b2)
 
             val result = subject.validateConflicts()
@@ -608,7 +618,7 @@ class DesignerDeployClientTest {
             DocumentObjectBuilder("B_1", Block).build().active().deployed("icm://path1")
             DocumentObjectBuilder("B_MISSING", Block).build().active().deployed("icm://path1")
             val b2 = DocumentObjectBuilder("B_2", Block).build().mock().active()
-            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://path1".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b2) } returns "icm://path1".toIcmPath()
             every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b2)
             every { documentObjectRepository.findOrFail("B_MISSING") } throws IllegalArgumentException("not found")
 
@@ -621,7 +631,7 @@ class DesignerDeployClientTest {
         @Test
         fun `validateConflicts does not flag same resource deploying to the same path again`() {
             val b1 = DocumentObjectBuilder("B_1", Block).build().mock().deployed("icm://same/path").active()
-            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b1) } returns "icm://same/path".toIcmPath()
             every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1)
 
             val result = subject.validateConflicts()
@@ -635,9 +645,9 @@ class DesignerDeployClientTest {
             val a1 = AttachmentBuilder("A_1").sourcePath("test").build().mock().active()
             val b1 = DocumentObjectBuilder("B_1", Block).imageRef(i1).attachmentRef(a1).build().mock().active()
 
-            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path".toIcmPath()
-            every { documentObjectBuilder.getImagePath(i1) } returns "icm://same/path".toIcmPath()
-            every { documentObjectBuilder.getAttachmentPath(a1) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b1) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getImagePath(i1) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getAttachmentPath(a1) } returns "icm://same/path".toIcmPath()
             every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1)
 
             val result = subject.validateConflicts()
@@ -657,7 +667,7 @@ class DesignerDeployClientTest {
         fun `validateConflicts detects cross resource with previously deployed`() {
             ImageBuilder("I_1").sourcePath("test").build().mock().deployed("icm://image")
             val b1 = DocumentObjectBuilder("B_1", Block).build().mock().active()
-            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://image".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b1) } returns "icm://image".toIcmPath()
             every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(b1)
 
             val result = subject.validateConflicts()
@@ -678,9 +688,9 @@ class DesignerDeployClientTest {
             val b3 = DocumentObjectBuilder("B_3", Block).build().mock().active()
 
             every { spy.getDocumentObjectsToDeploy(listOf("B_1", "B_2")) } returns listOf(b1, b2)
-            every { documentObjectBuilder.getDocumentObjectPath(b1) } returns "icm://same/path".toIcmPath()
-            every { documentObjectBuilder.getDocumentObjectPath(b2) } returns "icm://same/path".toIcmPath()
-            every { documentObjectBuilder.getDocumentObjectPath(b3) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b1) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b2) } returns "icm://same/path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(b3) } returns "icm://same/path".toIcmPath()
 
             val result = spy.validateConflicts(listOf("B_1", "B_2"))
 
@@ -758,7 +768,7 @@ class DesignerDeployClientTest {
             every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns  aDeployedStatus("id")
             every { statusTrackingRepository.error(any(), any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
             every { statusTrackingRepository.active(any(), any()) } returns aActiveStatus("id")
-            every { documentObjectBuilder.getDocumentObjectPath(any()) } returns "icm://path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(any()) } returns "icm://path".toIcmPath()
             every { imageRepository.find(any()) } returns null
         }
 
@@ -802,7 +812,7 @@ class DesignerDeployClientTest {
             givenObjectIsActive("D_3")
             givenObjectIsDeployed("I_3")
             every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Success
-            every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
+            every { resourcePathProvider.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
             every { ipsService.fileExists(any<IcmPath>()) } returns false
 
 
@@ -825,7 +835,7 @@ class DesignerDeployClientTest {
             givenObjectIsActive("I_1")
             aImage("I_1").mock(success = false)
             every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Failure("oops")
-            every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
+            every { resourcePathProvider.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
             every { ipsService.fileExists(any<IcmPath>()) } returns false
 
             // when
@@ -865,7 +875,7 @@ class DesignerDeployClientTest {
             // given
             val docObjects = listOf(aDocObj("D_1", metadata = mapOf("other" to listOf(MetadataPrimitive.Str("value")))))
             givenObjectIsActive("D_1")
-            every { documentObjectBuilder.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
+            every { resourcePathProvider.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
             every { ipsService.fileExists(any<IcmPath>()) } returns false
             every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Success
 
@@ -890,7 +900,7 @@ class DesignerDeployClientTest {
 
             val definitionPathWfd = "icm://defaultFolder/CompanyStyles.wfd"
 
-            every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPathWfd.toIcmPath()
+            every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPathWfd.toIcmPath()
 
             // when
             subject.deployStyles()
@@ -912,7 +922,7 @@ class DesignerDeployClientTest {
 
             val definitionPath = "icm://defaultFolder/CompanyStyles.wfd"
 
-            every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPath.toIcmPath()
+            every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPath.toIcmPath()
 
             // when
             subject.deployStyles()

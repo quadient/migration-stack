@@ -27,7 +27,6 @@ import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.Error
 import com.quadient.migration.service.Storage
-import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeploymentError
 import com.quadient.migration.service.deploy.utility.DeploymentInfo
 import com.quadient.migration.service.deploy.utility.DeploymentResult
@@ -35,10 +34,12 @@ import com.quadient.migration.service.deploy.utility.DeploymentWarning
 import com.quadient.migration.service.deploy.utility.MetadataValidator
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
+import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
+import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTargetDir
@@ -101,10 +102,17 @@ class InteractiveDeployClientTest {
     )
     val tenant = config.interactiveTenant
     val postProcess = PostProcessImpl(ipsService, documentObjectRepository, imageRepository, displayRuleRepository)
+    val resourcePathProvider = mockk<InteractiveResourcePathProvider>()
+    val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, config.inspireOutput)
+    val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, config.inspireOutput)
 
     private val subject = InteractiveDeployClient(
+        config,
+        resourcePathProvider,
         metadataValidator,
         postProcess,
+        conflictDetector,
+        progressReporter,
         documentObjectRepository,
         imageRepository,
         attachmentRepository,
@@ -117,7 +125,6 @@ class InteractiveDeployClientTest {
         documentObjectBuilder,
         ipsService,
         storage,
-        config
     )
 
     @BeforeEach
@@ -460,7 +467,7 @@ class InteractiveDeployClientTest {
             "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld"
         val definitionPathWfd = definitionPathJld.replace(".jld", ".wfd")
 
-        every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
+        every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
 
         // when
         subject.deployStyles()
@@ -490,7 +497,7 @@ class InteractiveDeployClientTest {
             "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld"
         val definitionPathWfd = definitionPathJld.replace(".jld", ".wfd")
 
-        every { documentObjectBuilder.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
+        every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
 
         // when
         subject.deployStyles()
@@ -921,7 +928,7 @@ class InteractiveDeployClientTest {
         val interactiveFolder = documentObject.type.toInteractiveFolder()
 
         val dir = resolveTargetDir(config.defaultTargetFolder, documentObject.targetFolder?.let { IcmPath.from(it) })
-        every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns "icm://Interactive/$tenant/$interactiveFolder/$dir/${documentObject.nameOrId()}.jld".toIcmPath()
+        every { resourcePathProvider.getDocumentObjectPath(documentObject) } returns "icm://Interactive/$tenant/$interactiveFolder/$dir/${documentObject.nameOrId()}.jld".toIcmPath()
         every { documentObjectRepository.find(documentObject.id) } returns documentObject
 
         return documentObject
@@ -931,7 +938,7 @@ class InteractiveDeployClientTest {
         val image = this
         val sourcePath = image.sourcePath
         val dir = resolveTargetDir(config.defaultTargetFolder)
-        every { documentObjectBuilder.getImagePath(image) } returns "icm://Interactive/$tenant/Resources/Images/$dir/${image.sourcePath}".toIcmPath()
+        every { resourcePathProvider.getImagePath(image) } returns "icm://Interactive/$tenant/Resources/Images/$dir/${image.sourcePath}".toIcmPath()
 
         every { imageRepository.find(image.id) } returns if (success) {
             image
@@ -948,7 +955,7 @@ class InteractiveDeployClientTest {
     private fun DisplayRule.mock(success: Boolean = true): DisplayRule {
         val displayRule = this
         val dir = resolveTargetDir(config.defaultTargetFolder)
-        every { documentObjectBuilder.getDisplayRulePath(displayRule) } returns IcmPath.from("icm://Interactive/$tenant/Rules/$dir/${displayRule.nameOrId()}.jrd")
+        every { resourcePathProvider.getDisplayRulePath(displayRule) } returns IcmPath.from("icm://Interactive/$tenant/Rules/$dir/${displayRule.nameOrId()}.jrd")
 
         every { displayRuleRepository.find(displayRule.id) } returns if (success) {
             displayRule
@@ -967,7 +974,7 @@ class InteractiveDeployClientTest {
         val attachment = this
         val sourcePath = attachment.sourcePath
         val dir = resolveTargetDir(config.defaultTargetFolder)
-        every { documentObjectBuilder.getAttachmentPath(attachment) } returns "icm://Interactive/$tenant/Resources/Attachments/$dir/${attachment.sourcePath}".toIcmPath()
+        every { resourcePathProvider.getAttachmentPath(attachment) } returns "icm://Interactive/$tenant/Resources/Attachments/$dir/${attachment.sourcePath}".toIcmPath()
 
         every { attachmentRepository.find(attachment.id) } returns if (success) {
             attachment
@@ -1002,7 +1009,7 @@ class InteractiveDeployClientTest {
             val outputPath = "icm://${documentObject.nameOrId()}"
 
             every { documentObjectBuilder.buildDocumentObject(documentObject) } returns xml
-            every { documentObjectBuilder.getDocumentObjectPath(documentObject) } returns outputPath.toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(documentObject) } returns outputPath.toIcmPath()
         }
         return documentObject
     }
@@ -1023,7 +1030,7 @@ class InteractiveDeployClientTest {
                 )
             } returns aErrorStatus("id")
             every { statusTrackingRepository.active(any(), any()) } returns aActiveStatus("id")
-            every { documentObjectBuilder.getDocumentObjectPath(any()) } returns "icm://path".toIcmPath()
+            every { resourcePathProvider.getDocumentObjectPath(any()) } returns "icm://path".toIcmPath()
             every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
             every { ipsService.tryUpload(any<IcmPath>(), any()) } returns OperationResult.Success
             every { ipsService.deployJld(any(), any(), any(), any(), any<IcmPath>()) } returns OperationResult.Success

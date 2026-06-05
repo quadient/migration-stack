@@ -77,6 +77,12 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     }
 
     fun deployJld(
+        baseTemplate: IcmPath, type: String, moduleName: String, xmlContent: String, outputPath: String
+    ): OperationResult {
+        return deployJld(baseTemplate.toString(), type, moduleName, xmlContent, outputPath)
+    }
+
+    fun deployJld(
         baseTemplate: IcmPath, type: String, moduleName: String, xmlContent: String, outputPath: IcmPath
     ): OperationResult {
         return deployJld(baseTemplate.toString(), type, moduleName, xmlContent, outputPath.toString())
@@ -344,8 +350,6 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     }
 
     override fun upload(path: String, data: ByteArray) {
-        require(path.startsWith("icm://")) { "Expected path to start with icm:// but got '$path" }
-
         client.upload(path, data).throwIfNotOk()
     }
 
@@ -354,8 +358,6 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     }
 
     override fun download(path: String): ByteArray {
-        require(path.startsWith("icm://")) { "Expected path to start with icm:// but got '$path" }
-
         return client.download(path).throwIfNotOk().customData
     }
 
@@ -371,7 +373,6 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     }
 
     override fun fileExists(path: String): Boolean {
-        require(path.startsWith("icm://")) { "Expected path to start with icm:// but got '$path" }
         return filesExist(listOf(path)).first()
     }
 
@@ -380,7 +381,6 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     }
 
     override fun filesExist(paths: List<String>): List<Boolean> {
-        require(paths.all { it.startsWith("icm://") }) { "Expected all paths to start with icm:// but got '$paths" }
         val pathsLocation = "memory://${UUID.randomUUID()}"
         val resultLocation = "memory://${UUID.randomUUID()}"
         val json = """{"paths":[${paths.joinToString(",") { it.surroundWith("\"") }}]}"""
@@ -417,7 +417,6 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     }
 
     override fun delete(path: String): Boolean {
-        require(path.startsWith("icm://")) { "Expected path to start with icm:// but got '$path" }
         return delete(listOf(path)).first()
     }
 
@@ -426,7 +425,6 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     }
 
     override fun delete(paths: List<String>): List<Boolean> {
-        require(paths.all { it.startsWith("icm://") }) { "Expected all paths to start with icm:// but got '$paths" }
         val pathsLocation = "memory://${UUID.randomUUID()}"
         val resultLocation = "memory://${UUID.randomUUID()}"
         val json = """{"paths":[${paths.joinToString(",") { it.surroundWith("\"") }}]}"""
