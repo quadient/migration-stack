@@ -78,6 +78,7 @@
             min-width: 0;
             border-left: 1px solid var(--line);
             padding-left: 24px;
+            padding-right: 16px;
             max-height: calc(100vh - 100px);
             overflow-y: auto;
         }
@@ -100,7 +101,8 @@
 
         /* Matrix */
         .matrix-wrap {
-            overflow-x: auto;
+            overflow: auto;
+            max-height: 60vh;
         }
 
         .matrix-wrap table {
@@ -117,6 +119,26 @@
         .matrix-wrap th {
             background: var(--bg);
             font-weight: 600;
+        }
+
+        /* Freeze top header row */
+        .matrix-wrap thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        /* Freeze left row-header column */
+        .matrix-wrap tbody th {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* Freeze corner cell (top-left) */
+        .matrix-wrap thead th:first-child {
+            left: 0;
+            z-index: 3;
         }
 
         .matrix-wrap td {
@@ -583,6 +605,20 @@ const similarityBtn = /** @type {HTMLButtonElement} */ (document.getElementById(
 const similarityPane = /** @type {HTMLElement} */ (document.getElementById("similarity-pane"));
 
 /**
+ * @param {() => void} fn
+ * @param {number} ms
+ * @returns {() => void}
+ */
+function debounce(fn, ms) {
+    /** @type {ReturnType<typeof setTimeout>|undefined} */
+    let timer;
+    return () => { clearTimeout(timer); timer = setTimeout(fn, ms); };
+}
+
+const scheduleRender = debounce(() => { if (currentData) render(currentData); }, 150);
+const scheduleRefreshCards = debounce(refreshOpenPageGroups, 80);
+
+/**
  * Parses one RFC-4180 CSV line into an array of field strings.
  * @param {string} line
  * @returns {string[]}
@@ -805,19 +841,19 @@ document.getElementById("similarity-close").addEventListener("click", () => {
 document.getElementById("card-size").addEventListener("input", (e) => {
     settings.canvasW = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
     /** @type {HTMLOutputElement} */ (document.getElementById("card-size-out")).value = String(settings.canvasW);
-    refreshOpenPageGroups();
+    scheduleRefreshCards();
 });
 
 document.getElementById("threshold").addEventListener("input", (e) => {
     settings.groupThreshold = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
     /** @type {HTMLOutputElement} */ (document.getElementById("threshold-out")).value = settings.groupThreshold.toFixed(2);
-    if (currentData) render(currentData);
+    scheduleRender();
 });
 
 document.getElementById("proximity-gap").addEventListener("input", (e) => {
     settings.proximityGap = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
     /** @type {HTMLOutputElement} */ (document.getElementById("proximity-gap-out")).value = settings.proximityGap.toFixed(1);
-    if (currentData) render(currentData);
+    scheduleRender();
 });
 
 document.getElementById("group-strategy").addEventListener("change", (e) => {
@@ -1082,38 +1118,28 @@ function buildMatrixTable(wrap, labels, colHeaders, matrix) {
         return;
     }
 
-    const table = document.createElement("table");
-    const headerRow = table.createTHead().insertRow();
-    headerRow.appendChild(document.createElement("th"));
+    let html = "<table><thead><tr><th></th>";
     colHeaders.forEach((col, j) => {
-        const th = document.createElement("th");
-        th.title = labels[j] ?? "";
-        th.textContent = col;
-        headerRow.appendChild(th);
+        html += `<th title="${htmlEsc(labels[j] ?? "")}">${htmlEsc(col)}</th>`;
     });
+    html += "</tr></thead><tbody>";
 
-    const body = table.createTBody();
     labels.forEach((label, i) => {
-        const row = body.insertRow();
-        const headerCell = document.createElement("th");
-        headerCell.textContent = (label ?? "").slice(0, 42);
-        row.appendChild(headerCell);
+        html += `<tr><th>${htmlEsc((label ?? "").slice(0, 42))}</th>`;
         matrix[i].forEach((score, j) => {
-            const cell = row.insertCell();
             if (i === j) {
-                cell.textContent = "\u2014";
-                cell.style.background = "#e8e8e8";
+                html += `<td style="background:#e8e8e8">\u2014</td>`;
             } else {
-                cell.textContent = score.toFixed(2);
                 const g = Math.round(200 * score), r = Math.round(255 * (1 - score));
-                cell.style.background = `rgb(${r},${g},80)`;
-                if (score >= settings.groupThreshold) cell.style.fontWeight = "700";
+                const fw = score >= settings.groupThreshold ? "font-weight:700;" : "";
+                html += `<td style="background:rgb(${r},${g},80);${fw}">${score.toFixed(2)}</td>`;
             }
         });
+        html += "</tr>";
     });
 
-    wrap.innerHTML = "";
-    wrap.appendChild(table);
+    html += "</tbody></table>";
+    wrap.innerHTML = html;
 }
 
 /**
@@ -1343,7 +1369,20 @@ function pageOrderByGroup(indices) {
 }
 
 /**
- * Returns a short prefix for a template within a group (e.g. "2a" or "3").
+ * @param {number} index
+ * @returns {string}
+ */
+function indexToLetters(index) {
+    let result = "";
+    let n = index;
+    do {
+        result = String.fromCharCode(97 + (n % 26)) + result;
+        n = Math.floor(n / 26) - 1;
+    } while (n >= 0);
+    return result;
+}
+
+/**
  * @param {number} groupIndex
  * @param {TemplateGroup} group
  * @param {number} templateIndex - index within the group's templateIds
@@ -1351,7 +1390,7 @@ function pageOrderByGroup(indices) {
  */
 function templateGroupPrefix(groupIndex, group, templateIndex) {
     const num = groupIndex + 1;
-    const letter = group.templateIds.length > 1 ? String.fromCharCode(97 + templateIndex) : "";
+    const letter = group.templateIds.length > 1 ? indexToLetters(templateIndex) : "";
     return `${num}${letter}`;
 }
 
