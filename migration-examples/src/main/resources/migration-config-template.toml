@@ -10,3 +10,14 @@ password = "password"
 [inspireConfig.ipsConfig]
 host = "localhost"
 port = 30354
+
+# [evolveConfig]
+# apiRetryDelayMs = 1000 # Optional
+# callTimeoutMs = 10_000 # Optional
+# contentAuthorApiKey = "<api key>"
+# contentAuthorUrl = "https://<company URL>/authoring/api/system/v1"
+# holder = "<user email>"
+# holderType = "userName" # userName | userGroup
+# publishBlockActionId = "A_block_scenario_senior_template_designer_publish"
+# publishTemplateActionId = "A_template_scenario_senior_template_designer_publish"
+# publishRuleActionId = "A_rule_scenario_senior_template_designer_publish"
