@@ -79,7 +79,7 @@ class EvolveDeployClient(
     }
 
     private val evolveConfig by lazy {
-        requireNotNull(migConfig.evolveConfig) {
+        requireNotNull(migConfig.inspireConfig.evolveConfig) {
             "migrationConfig.evolveConfig must be set to use Evolve inspireOutput"
         }
     }

@@ -10,7 +10,6 @@ import java.net.URI
 data class MigConfig(
     val dbConfig: DbConfig = DbConfig(),
     val inspireConfig: InspireConfig = InspireConfig(),
-    val evolveConfig: EvolveConfig? = null,
     val storageRoot: String? = null
 ) {
     companion object {
@@ -69,7 +68,10 @@ data class DbConfig(
     fun connectionString() = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"
 }
 
-data class InspireConfig(val ipsConfig: IpsConfig = IpsConfig())
+data class InspireConfig(
+    val ipsConfig: IpsConfig = IpsConfig(),
+    val evolveConfig: EvolveConfig? = null,
+)
 
 data class EvolveConfig(
     val apiRetryDelayMs: Long = 1000L,

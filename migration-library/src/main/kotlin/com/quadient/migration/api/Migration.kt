@@ -84,7 +84,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
         single<Storage> { get<LocalStorage>() }
         single<OkHttpClient> {
             OkHttpClient.Builder()
-                .callTimeout(config.evolveConfig?.callTimeoutMs ?: 10_000, TimeUnit.MILLISECONDS)
+                .callTimeout(config.inspireConfig.evolveConfig?.callTimeoutMs ?: 10_000, TimeUnit.MILLISECONDS)
                 .retryOnConnectionFailure(true)
                 .build()
         }

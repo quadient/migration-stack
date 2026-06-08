@@ -19,7 +19,7 @@ private val logger = LoggerFactory.getLogger(CaApiClient::class.java)
 
 class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHttpClient) {
     private val evolveConfig by lazy {
-        requireNotNull(migConfig.evolveConfig) {
+        requireNotNull(migConfig.inspireConfig.evolveConfig) {
             "migrationConfig.evolveConfig must be set to use Evolve inspireOutput"
         }
     }
