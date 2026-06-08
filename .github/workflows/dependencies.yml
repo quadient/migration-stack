@@ -9,7 +9,7 @@ jobs:
   dependencies:
     timeout-minutes: 30
 
-    name: Dependency check ${{ matrix.project }}
+    name: Dependency check
     runs-on: ubuntu-latest
 
     env:
@@ -21,26 +21,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Dependency check migration-library
-        working-directory: ./migration-library
+      - name: Dependency check
         run: |
-          ./gradlew dependencyCheckAnalyze --debug
+          log() {
+            printf "$(date --rfc-3339=ns) \e[0;34mINFO\033[0m %s\n" "$1"
+          }
 
-          curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
+          log "Running dependency check for migration-library"
+          (cd migration-library && ./gradlew dependencyCheckAnalyze)
+          log "Uploading report for migration-library"
+          curl -X POST --insecure -F "upload=@./migration-library/build/reports/dependency-check-report.xml" \
             "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=migration-library&versionName=$VERSION"
 
-      - name: Dependency check migration-examples
-        working-directory: ./migration-examples
-        run: |
-          ./gradlew dependencyCheckAnalyze --debug
-
-          curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
+          log "Running dependency check for migration-examples"
+          (cd migration-examples && ./gradlew dependencyCheckAnalyze)
+          log "Uploading report for migration-examples"
+          curl -X POST --insecure -F "upload=@./migration-examples/build/reports/dependency-check-report.xml" \
             "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=migration-examples&versionName=$VERSION"
 
-      - name: Dependency check wfd-xml
-        working-directory: ./wfd-xml
-        run: |
-          ./gradlew dependencyCheckAggregate --debug
-
-          curl -X POST --insecure -F "upload=@./build/reports/dependency-check-report.xml" \
+          log "Running dependency check for wfd-xml"
+          (cd wfd-xml && ./gradlew dependencyCheckAggregate)
+          log "Uploading report for wfd-xml"
+          curl -X POST --insecure -F "upload=@./wfd-xml/build/reports/dependency-check-report.xml" \
             "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=wfd-xml&versionName=$VERSION"
+
+          log "Running dependency check for migration-app"
+          (cd migration-app && ./gradlew dependencyCheckAnalyze)
+          log "Uploading report for migration-app"
+          curl -X POST --insecure -F "upload=@./migration-app/build/reports/dependency-check-report.xml" \
+            "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=migration-app&versionName=$VERSION"
+

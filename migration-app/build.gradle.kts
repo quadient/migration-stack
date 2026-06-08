@@ -4,6 +4,26 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.owasp.dependencycheck)
+}
+
+dependencyCheck {
+    format = "XML"
+    nvd {
+        datafeedUrl = "https://osquality-api.quadient.group/scan/api/v2/nvdcache"
+        datafeedUser = "migration"
+        datafeedPassword = System.getenv("NVD_PW")
+    }
+    analyzers {
+        ossIndex {
+            enabled = false
+        }
+    }
+    skipConfigurations = listOf(
+        "kotlinKlibCommonizerClasspath",
+        "kotlinCompilerClasspath",
+        "kotlinBuildToolsApiClasspath",
+    )
 }
 
 group = "com.quadient.migration"
