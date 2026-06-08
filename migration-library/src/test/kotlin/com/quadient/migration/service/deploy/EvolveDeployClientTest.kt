@@ -1,6 +1,7 @@
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.EvolveConfig
+import com.quadient.migration.api.InspireConfig
 import com.quadient.migration.api.MigConfig
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
@@ -67,7 +68,7 @@ class EvolveDeployClientTest {
         publishRuleActionId = "publishRule",
     )
 
-    val migConfig = MigConfig(evolveConfig = evolveConfig)
+    val migConfig = MigConfig(inspireConfig = InspireConfig(evolveConfig = evolveConfig))
 
     val projectConfig = aProjectConfig(
         baseTemplatePath = "icm://Interactive/tenant/BaseTemplates/templ.wfd",

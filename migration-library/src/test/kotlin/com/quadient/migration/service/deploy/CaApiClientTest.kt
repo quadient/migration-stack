@@ -1,6 +1,7 @@
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.EvolveConfig
+import com.quadient.migration.api.InspireConfig
 import com.quadient.migration.api.MigConfig
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.tools.shouldBeEqualTo
@@ -34,7 +35,7 @@ class CaApiClientTest {
         publishTemplateActionId = "template-action",
         publishRuleActionId = "rule-action",
     )
-    private val migConfig = MigConfig(evolveConfig = evolveConfig)
+    private val migConfig = MigConfig(inspireConfig = InspireConfig(evolveConfig = evolveConfig))
     private val subject = CaApiClient(migConfig, httpClient)
 
     private val requestSlot = slot<Request>()
