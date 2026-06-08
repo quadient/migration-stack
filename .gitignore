@@ -5,6 +5,7 @@ build/
 !**/src/test/**/build/
 lib
 .pgdata
+*/.kotlin/
 
 ### IntelliJ IDEA ###
 .idea
