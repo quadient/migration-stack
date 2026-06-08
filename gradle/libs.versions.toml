@@ -9,7 +9,7 @@ jackson = "2.21.3"
 junit-jupiter = "6.1.0"
 testcontainers = "2.0.5"
 mockito = "5.23.0"
-groovy = "4.0.23"
+groovy = "5.0.6"
 kotlinx-datetime = "0.6.2"
 owasp-dependencycheck = "12.2.2"
 
@@ -25,7 +25,6 @@ okhttp = "5.3.0"
 # app
 koin-ktor = "4.2.1"
 ktor = "3.5.0"
-groovy-all = "6.0.0-alpha-1"
 stately = "2.1.0"
 
 spring-security-crypto = "7.0.5"
@@ -96,7 +95,7 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 ktor-serialization-jackson = { module = "io.ktor:ktor-serialization-jackson", version.ref = "ktor" }
 ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
 
-groovy-all = { module = "org.apache.groovy:groovy-all", version.ref = "groovy-all" }
+groovy-all = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
 stately-concurrent-collections = { module = "co.touchlab:stately-concurrent-collections", version.ref = "stately" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 
