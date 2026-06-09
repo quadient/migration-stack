@@ -1423,6 +1423,16 @@ abstract class InspireDocumentObjectBuilder(
         flowName: String?,
         languages: List<String>,
     ): Flow {
+        if (languages.size <= 1 && languages.firstOrNull() == projectConfig.defaultLanguage) {
+            val singleCase = model.cases.lastOrNull()
+            if (singleCase != null) {
+                return buildDocumentContentAsSingleFlow(layout, variableStructure, singleCase.content, flowName, null, languages)
+            }
+            return layout.addFlow().setType(Flow.Type.SIMPLE).also { flow ->
+                flowName?.let { flow.setName(it) }
+            }
+        }
+
         val languageFlow = layout.addFlow().setType(Flow.Type.SELECT_BY_LANGUAGE)
         flowName?.let { languageFlow.setName(it) }
 
