@@ -64,6 +64,7 @@ import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import kotlin.collections.last
 
 class InspireDocumentObjectBuilderTest {
@@ -680,6 +681,30 @@ class InspireDocumentObjectBuilderTest {
         val lockedIds = lockedWebNodes.map { it.textValue() }
         lockedIds.contains(outerRepeatedRowSetId).shouldBeEqualTo(true)
         lockedIds.contains(innerRepeatedRowSetId).shouldBeEqualTo(true)
+    }
+
+    @Test
+    fun `buildDocumentObject throws when table has no body rows`() {
+        // given
+        val block = mockObj(DocumentObjectBuilder("B_1", Block).table { }.build())
+
+        // when / then
+        val ex = assertThrows<IllegalStateException> { subject.buildDocumentObject(block) }
+        ex.message.shouldBeEqualTo("Table has no body rows. At least one body row is required.")
+    }
+
+    @Test
+    fun `buildDocumentObject throws when table has header rows but no body rows`() {
+        // given
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block).table {
+                addHeaderRow { addCell { string("Header") } }
+            }.build()
+        )
+
+        // when / then
+        val ex = assertThrows<IllegalStateException> { subject.buildDocumentObject(block) }
+        ex.message.shouldBeEqualTo("Table has no body rows. At least one body row is required.")
     }
 
     @Test

@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Fixed
 
 - SelectByLanguage with a single case matching the default language is flattened into a Simple flow
+- Deploying a table with no body rows now fails with a descriptive error
 
 ## [17.0.24] - 2026-06-04
 

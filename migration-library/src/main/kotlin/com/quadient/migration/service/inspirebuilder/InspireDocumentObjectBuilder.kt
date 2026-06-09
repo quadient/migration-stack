@@ -1294,6 +1294,10 @@ abstract class InspireDocumentObjectBuilder(
     fun buildTable(
         layout: Layout, variableStructure: VariableStructure, model: Table, languages: List<String>
     ): WfdXmlTable {
+        if (model.rows.isEmpty()) {
+            error("Table has no body rows. At least one body row is required.")
+        }
+
         val table = layout.addTable().setDisplayAsImage(false)
 
         if (model.tableStyleName != null) {
