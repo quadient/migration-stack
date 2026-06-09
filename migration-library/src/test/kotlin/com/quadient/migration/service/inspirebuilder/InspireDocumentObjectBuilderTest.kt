@@ -2,6 +2,7 @@ package com.quadient.migration.service.inspirebuilder
 
 import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
@@ -1128,6 +1129,86 @@ class InspireDocumentObjectBuilderTest {
         barcode["ConvertString"].textValue().shouldBeEqualTo("QR-456")
     }
 
+    @Test
+    fun `single-language SelectByLanguage is flattened when language matches defaultLanguage`() {
+        // given
+        val subject = aSubject(aProjectConfig(defaultLanguage = "en", output = InspireOutput.Designer))
+        val block = mockObj(
+            DocumentObjectBuilder("obj", Block)
+                .selectByLanguage {
+                    case {
+                        language("en")
+                        paragraph { string("english only") }
+                    }
+                }
+                .build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val flow = getFlowAreaContentFlow(result)
+        flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("english only")
+        flow["Type"].textValue().shouldBeEqualTo("Simple")
+        result["Flow"].filter { it["Type"]?.textValue() == "Language" }.size.shouldBeEqualTo(0)
+    }
+
+    @Test
+    fun `single-language SelectByLanguage keeps Language flow when language differs from defaultLanguage`() {
+        // given
+        val subject = aSubject(aProjectConfig(defaultLanguage = "fr", output = InspireOutput.Designer))
+        val block = mockObj(
+            DocumentObjectBuilder("obj", Block)
+                .selectByLanguage {
+                    case {
+                        language("en")
+                        paragraph { string("english only") }
+                    }
+                }
+                .build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val flow = getFlowAreaContentFlow(result)
+        flow["Type"].textValue().shouldBeEqualTo("Language")
+        flow["Condition"]["Value"].textValue().shouldBeEqualTo("en")
+        flow["Default"].textValue().shouldNotBeNull()
+    }
+
+    @Test
+    fun `multi-language SelectByLanguage emits a Language flow`() {
+        // given
+        val block = mockObj(
+            DocumentObjectBuilder("obj", Block)
+                .selectByLanguage {
+                    case {
+                        language("en")
+                        paragraph { string("english") }
+                    }
+                    case {
+                        language("de")
+                        paragraph { string("german") }
+                    }
+                }
+                .build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val flow = getFlowAreaContentFlow(result)
+        flow["Type"].textValue().shouldBeEqualTo("Language")
+        flow["Condition"].size().shouldBeEqualTo(2)
+        flow["Condition"][0]["Value"].textValue().shouldBeEqualTo("en")
+        flow["Condition"][1]["Value"].textValue().shouldBeEqualTo("de")
+        flow["Default"].textValue().shouldNotBeNull()
+    }
+
     private fun DisplayRule.toScript(): String {
         return definition?.toScript(
             layout = LayoutImpl(),
@@ -1179,4 +1260,18 @@ class InspireDocumentObjectBuilderTest {
         every { imageRepository.find(image.id) } returns image
         return image
     }
+
+    private fun aSubject(config: ProjectConfig) = DesignerDocumentObjectBuilder(
+        documentObjectRepository,
+        textStyleRepository,
+        paragraphStyleRepository,
+        variableRepository,
+        variableStructureRepository,
+        displayRuleRepository,
+        imageRepository,
+        attachmentRepository,
+        resourcePathProvider,
+        config,
+        icmDataCache,
+    )
 }
