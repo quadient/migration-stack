@@ -422,9 +422,9 @@ class DesignerDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject correctly sets table style name`() {
         val block = DocumentObjectBuilder("T1", Block)
-            .table { tableStyleName("testTableStyle1") }
-            .table { tableStyleName("testTableStyle1") }
-            .table { tableStyleName("testTableStyle2") }
+            .table { tableStyleName("testTableStyle1").addRow { addCell { string("table1") } } }
+            .table { tableStyleName("testTableStyle1").addRow { addCell { string("table2") } } }
+            .table { tableStyleName("testTableStyle2").addRow { addCell { string("table3") } } }
             .build()
 
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
