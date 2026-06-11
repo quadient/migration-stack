@@ -338,19 +338,11 @@ class DesignerDocumentObjectBuilder(
         pathObject.setLineWidth(model.lineWidth.toMeters())
 
         if (model.fill != null) {
-            val color = getColorByRGB(layout, model.fill.red(), model.fill.green(), model.fill.blue())
-                ?: layout.addColor().setRGB(model.fill.red(), model.fill.green(), model.fill.blue())
-            val fillStyle = getFillStyleByColor(layout, color)
-                ?: layout.addFillStyle().setColor(color)
-            pathObject.setFillStyle(fillStyle)
+            pathObject.setFillStyle(model.fill.resolve(layout))
         }
 
         if (model.lineFill != null) {
-            val color = getColorByRGB(layout, model.lineFill.red(), model.lineFill.green(), model.lineFill.blue())
-                ?: layout.addColor().setRGB(model.lineFill.red(), model.lineFill.green(), model.lineFill.blue())
-            val fillStyle = getFillStyleByColor(layout, color)
-                ?: layout.addFillStyle().setColor(color)
-            pathObject.setLineFillStyle(fillStyle)
+            pathObject.setLineFillStyle(model.lineFill.resolve(layout))
         }
     }
 

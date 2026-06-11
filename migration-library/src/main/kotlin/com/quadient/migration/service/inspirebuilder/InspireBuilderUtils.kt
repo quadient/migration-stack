@@ -1,5 +1,7 @@
 package com.quadient.migration.service.inspirebuilder
 
+import com.quadient.migration.shared.Color
+import com.quadient.wfdxml.api.layoutnodes.FillStyle
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Font
 import com.quadient.wfdxml.api.layoutnodes.Image
@@ -112,6 +114,14 @@ fun getColorByRGB(layout: Layout, r: Int, g: Int, b: Int): com.quadient.wfdxml.a
         val colorRgb = color.colorRgb
         colorRgb.red == targetRed && colorRgb.green == targetGreen && colorRgb.blue == targetBlue
     } as? com.quadient.wfdxml.api.layoutnodes.Color
+}
+
+fun Color.resolve(layout: Layout): FillStyle? {
+    val layoutColor = getColorByRGB(layout, this.red(), this.green(), this.blue())
+        ?: layout.addColor().setName("Color R${this.red()} G${this.green()} B${this.blue()}")
+            .setRGB(this.red(), this.green(), this.blue())
+
+    return getFillStyleByColor(layout, layoutColor) ?: layout.addFillStyle().setColor(layoutColor)
 }
 
 fun getFillStyleByColor(layout: Layout, color: com.quadient.wfdxml.api.layoutnodes.Color): com.quadient.wfdxml.api.layoutnodes.FillStyle? {

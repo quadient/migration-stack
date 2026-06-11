@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - SelectByLanguage with a single case matching the default language is flattened into a Simple flow
 - Deploying a table with no body rows now fails with a descriptive error
+- Issues with very old mapping db records not being upgraded correctly
+- An extra space in alignRightParagraphStyle in import script
+- Deduplicated colors and set name for each color
 
 ## [17.0.24] - 2026-06-04
 

@@ -6,9 +6,7 @@ import com.quadient.migration.api.dto.migrationmodel.QrCode
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.repository.VariableRepository
-import com.quadient.migration.shared.Color
 import com.quadient.wfdxml.api.layoutnodes.BarcodeFactory
-import com.quadient.wfdxml.api.layoutnodes.FillStyle
 import com.quadient.wfdxml.api.layoutnodes.data.Variable
 import com.quadient.wfdxml.api.module.Layout
 
@@ -78,13 +76,6 @@ fun Barcode.buildContent(
     }
 
     return barcode
-}
-
-private fun Color.resolve(layout: Layout): FillStyle? {
-    val layoutColor = getColorByRGB(layout, this.red(), this.green(), this.blue())
-        ?: layout.addColor().setRGB(this.red(), this.green(), this.blue())
-
-    return getFillStyleByColor(layout, layoutColor) ?: layout.addFillStyle().setColor(layoutColor)
 }
 
 private fun VariableRef.resolve(layout: Layout, variableRepository: VariableRepository, variableStructure: VariableStructure): Variable {

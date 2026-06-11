@@ -190,7 +190,7 @@ def compactParagraphStyle = new ParagraphStyleBuilder("compactParagraphStyle")
         }
         .build()
 
-def alignRightParagraphStyle = new ParagraphStyleBuilder("alignRightParagraphStyle ")
+def alignRightParagraphStyle = new ParagraphStyleBuilder("alignRightParagraphStyle")
     .definition {
         it.alignment(Alignment.Right)
     }

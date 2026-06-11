@@ -510,13 +510,7 @@ abstract class InspireDocumentObjectBuilder(
             SuperOrSubscript.None -> textStyle.setSubScript(false).setSuperScript(false)
         }
 
-        definition.foregroundColor?.let { colorModel ->
-            val layoutColor = getColorByRGB(layout, colorModel.red(), colorModel.green(), colorModel.blue())
-                ?: layout.addColor().setRGB(colorModel.red(), colorModel.green(), colorModel.blue())
-            val fillStyle = getFillStyleByColor(layout, layoutColor)
-                ?: layout.addFillStyle().setColor(layoutColor)
-            textStyle.setFillStyle(fillStyle)
-        }
+        definition.foregroundColor?.let { colorModel -> textStyle.setFillStyle(colorModel.resolve(layout)) }
     }
 
     fun buildParagraphStyles(layout: Layout, paragraphStyleModels: List<ParagraphStyle>) {
@@ -999,13 +993,7 @@ abstract class InspireDocumentObjectBuilder(
         )
 
         if (border.fill != null) {
-            borderStyle.setFill(
-                layout.addFillStyle().setColor(
-                    layout.addColor().setRGB(
-                        border.fill.red(), border.fill.green(), border.fill.blue()
-                    )
-                )
-            )
+            borderStyle.setFill(border.fill.resolve(layout))
         }
 
         val toSelect = listOfNotNull(
@@ -1022,51 +1010,23 @@ abstract class InspireDocumentObjectBuilder(
         val borderLines = borderStyle.select(*toSelect)
 
         if (border.leftLine != null) {
-            val fillStyle = layout.addFillStyle().setColor(
-                layout.addColor().setRGB(
-                    border.leftLine.color.red(),
-                    border.leftLine.color.green(),
-                    border.leftLine.color.blue()
-                )
-            )
             borderLines.setLineWidth(BorderStyle.LinesAndCorners.LEFT_LINE, border.leftLine.width.toMeters())
-            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.LEFT_LINE, fillStyle)
+            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.LEFT_LINE, border.leftLine.color.resolve(layout))
         }
 
         if (border.rightLine != null) {
-            val fillStyle = layout.addFillStyle().setColor(
-                layout.addColor().setRGB(
-                    border.rightLine.color.red(),
-                    border.rightLine.color.green(),
-                    border.rightLine.color.blue()
-                )
-            )
             borderLines.setLineWidth(BorderStyle.LinesAndCorners.RIGHT_LINE, border.rightLine.width.toMeters())
-            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.RIGHT_LINE, fillStyle)
+            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.RIGHT_LINE, border.rightLine.color.resolve(layout))
         }
 
         if (border.topLine != null) {
-            val fillStyle = layout.addFillStyle().setColor(
-                layout.addColor().setRGB(
-                    border.topLine.color.red(),
-                    border.topLine.color.green(),
-                    border.topLine.color.blue()
-                )
-            )
             borderLines.setLineWidth(BorderStyle.LinesAndCorners.TOP_LINE, border.topLine.width.toMeters())
-            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.TOP_LINE, fillStyle)
+            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.TOP_LINE, border.topLine.color.resolve(layout))
         }
 
         if (border.bottomLine != null) {
-            val fillStyle = layout.addFillStyle().setColor(
-                layout.addColor().setRGB(
-                    border.bottomLine.color.red(),
-                    border.bottomLine.color.green(),
-                    border.bottomLine.color.blue()
-                )
-            )
             borderLines.setLineWidth(BorderStyle.LinesAndCorners.BOTTOM_LINE, border.bottomLine.width.toMeters())
-            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.BOTTOM_LINE, fillStyle)
+            borderLines.setLineFillStyle(BorderStyle.LinesAndCorners.BOTTOM_LINE, border.bottomLine.color.resolve(layout))
         }
     }
 

@@ -166,7 +166,7 @@ sealed class MappingItemEntity {
             var lineSpacing: LineSpacing?,
             var keepWithNextParagraph: Boolean?,
             var tabs: TabsEntity?,
-            var pdfTaggingRule: ParagraphPdfTaggingRule?
+            var pdfTaggingRule: ParagraphPdfTaggingRule? = null,
         )
 
         fun apply(item: ParagraphStyleModel): ParagraphStyleModel {
@@ -215,7 +215,7 @@ sealed class MappingItemEntity {
     data class VariableStructure(
         override var name: String?,
         val mappings: MutableMap<String, VariablePathData>?,
-        val languageVariable: VariableEntityRef?,
+        val languageVariable: VariableEntityRef? = null,
     ) : MappingItemEntity() {
         fun apply(item: VariableStructureModel): VariableStructureModel {
             return item.copy(
