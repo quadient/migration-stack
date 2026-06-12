@@ -66,6 +66,6 @@ static String buildRow(String docObjId, String docObjName, DocumentTable docTabl
     builder.append(Csv.serialize(buildContentPreview(table)) + ",")
     builder.append(Csv.serialize(table.pdfTaggingRule) + ",")
     builder.append(Csv.serialize(table.pdfAlternateText) + ",")
-    builder.append(Csv.serialize("Keep"))  // TODO d.svitak - it needs to be persisted in TableEntity and handled here as well
+    builder.append(Csv.serialize(table.action))
     return builder.toString()
 }

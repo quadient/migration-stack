@@ -11,6 +11,7 @@ import com.quadient.migration.shared.QrCodeErrorCorrectionLevel
 import com.quadient.migration.shared.QrCodeSize
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.TableAlignment
+import com.quadient.migration.shared.TableAction
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -43,6 +44,7 @@ data class TableEntity(
     val border: BorderOptions? = null,
     val alignment: TableAlignment = TableAlignment.Left,
     val tableStyleName: String? = null,
+    val action: TableAction = TableAction.Keep,
 ) : DocumentContentEntity, TextContentEntity {
     @Serializable(with = TableRowEntitySerializer::class)
     sealed interface TableRow

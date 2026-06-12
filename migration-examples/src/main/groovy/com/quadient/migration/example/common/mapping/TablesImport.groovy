@@ -63,7 +63,7 @@ static void run(Migration migration, Path path) {
         def documentTables = collectDocumentTables(docObj.content)
         def docTable = documentTables.find { it.location.containerIndex == containerIndex && it.location.tableIndex == tableIndex }
         if (!docTable) {
-            log.error("Table mapping for '${docObjId}' at containerIndex=${containerIndex}, tableIndex=${tableIndex}: table not found. Skipping row.")
+            log.error("Table mapping for '${docObjId}' at [${containerIndex}, ${tableIndex}]: table not found. Skipping row.")
             continue
         }
 

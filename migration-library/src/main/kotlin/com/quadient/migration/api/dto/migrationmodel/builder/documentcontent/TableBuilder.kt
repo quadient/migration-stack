@@ -15,6 +15,7 @@ import com.quadient.migration.shared.CellOverflow
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.TableAction
 import com.quadient.migration.shared.TableAlignment
 import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.shared.VariableRefPath
@@ -38,6 +39,7 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
     override var border: BorderOptions? = null
     private var alignment: TableAlignment = TableAlignment.Left
     private var tableStyleName: String? = null
+    private var action: TableAction = TableAction.Keep
 
     fun pdfTaggingRule(rule: TablePdfTaggingRule) = apply { this.pdfTaggingRule = rule }
     fun pdfAlternateText(text: String?) = apply { this.pdfAlternateText = text }
@@ -45,6 +47,7 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
     fun maxWidth(size: Size) = apply { this.maxWidth = size }
     fun percentWidth(percent: Double) = apply { this.percentWidth = percent }
     fun alignment(alignment: TableAlignment) = apply { this.alignment = alignment }
+    fun action(action: TableAction) = apply { this.action = action }
 
     /**
      * Add a column width to the table. Column widths are added in the order they are defined.
@@ -115,6 +118,7 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
             border = border,
             alignment = alignment,
             tableStyleName = tableStyleName,
+            action = action,
         )
     }
 
