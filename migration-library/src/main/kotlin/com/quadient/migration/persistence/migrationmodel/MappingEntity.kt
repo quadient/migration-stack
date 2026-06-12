@@ -2,7 +2,10 @@ package com.quadient.migration.persistence.migrationmodel
 
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.persistence.table.MappingTable
+import com.quadient.migration.service.collectDocumentTables
+import com.quadient.migration.service.computeFingerprint
 import com.quadient.migration.shared.*
+import org.slf4j.LoggerFactory
 import com.quadient.migration.shared.LineSpacing.Additional
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -19,6 +22,7 @@ import com.quadient.migration.api.dto.migrationmodel.Variable as VariableModel
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure as VariableStructureModel
 import com.quadient.migration.api.dto.migrationmodel.Area as AreaModel
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule as DisplayRuleModel
+import com.quadient.migration.api.dto.migrationmodel.Table as TableModel
 
 class MappingEntity(id: EntityID<CompositeID>) : CompositeEntity(id) {
     companion object : CompositeEntityClass<MappingEntity>(MappingTable)
@@ -50,6 +54,7 @@ sealed class MappingItemEntity {
             is Variable -> this.apply(entity as VariableModel)
             is VariableStructure -> this.apply(entity as VariableStructureModel)
             is DisplayRule -> this.apply(entity as DisplayRuleModel)
+            is Table -> this.apply(entity as DocumentObjectModel)
         }
     }
 
@@ -288,6 +293,69 @@ sealed class MappingItemEntity {
         }
     }
 
+    @Serializable
+    data class Table(
+        override val name: String? = null,
+        val tables: List<TableEntry> = emptyList(),
+    ) : MappingItemEntity() {
+
+        @Serializable
+        data class TableEntry(
+            val containerIndex: Int?,
+            val tableIndex: Int,
+            val action: TableAction,
+            val pdfTaggingRule: TablePdfTaggingRule?,
+            val pdfAlternateText: String?,
+            val fingerprint: String,
+        )
+
+        fun apply(item: DocumentObjectModel): DocumentObjectModel {
+            if (tables.isEmpty()) return item
+
+            val documentTables = collectDocumentTables(item.content)
+            val updatedTables = mutableMapOf<Pair<Int?, Int>, TableModel>()
+
+            tables.forEach { entry ->
+                val docTable = documentTables.find {
+                    it.location.containerIndex == entry.containerIndex && it.location.tableIndex == entry.tableIndex
+                }
+
+                if (docTable == null) {
+                    logger.error(
+                        "Table mapping for '${item.id}' at [${entry.containerIndex}, ${entry.tableIndex}]: table not found at expected path. Skipping."
+                    )
+                    return@forEach
+                }
+
+                val currentFingerprint = computeFingerprint(docTable.table)
+                if (currentFingerprint != entry.fingerprint) {
+                    logger.error(
+                        "Table mapping for '${item.id}' at [${entry.containerIndex}, ${entry.tableIndex}]: fingerprint mismatch. Stored: '${entry.fingerprint}', current: '$currentFingerprint'. Content may have changed since last export. Skipping."
+                    )
+                    return@forEach
+                }
+
+                if (entry.action == TableAction.Flatten) {
+                    logger.warn(
+                        "Table mapping for '${item.id}' at [${entry.containerIndex}, ${entry.tableIndex}]: Flatten action is not yet implemented. Skipping flatten."
+                    )
+                }
+
+                updatedTables[Pair(entry.containerIndex, entry.tableIndex)] = docTable.table.copy(
+                    pdfTaggingRule = entry.pdfTaggingRule ?: TablePdfTaggingRule.Default,
+                    pdfAlternateText = entry.pdfAlternateText,
+                )
+            }
+
+            if (updatedTables.isEmpty()) return item
+            return item.copy(content = applyTableUpdates(item.content, updatedTables))
+        }
+
+        companion object {
+            private val logger = LoggerFactory.getLogger(Table::class.java)
+        }
+    }
+
     fun toDto(): MappingItem {
         return when (this) {
             is DocumentObject -> {
@@ -393,6 +461,76 @@ sealed class MappingItemEntity {
                 targetFolder = this.targetFolder,
                 baseTemplate = this.baseTemplate,
             )
+
+            is Table -> MappingItem.Table(
+                name = this.name,
+                tables = this.tables.map { entry ->
+                    MappingItem.Table.TableEntry(
+                        containerIndex = entry.containerIndex,
+                        tableIndex = entry.tableIndex,
+                        action = entry.action,
+                        pdfTaggingRule = entry.pdfTaggingRule,
+                        pdfAlternateText = entry.pdfAlternateText,
+                        fingerprint = entry.fingerprint,
+                    )
+                },
+            )
+        }
+    }
+}
+
+private fun applyTableUpdates(
+    content: List<DocumentContent>,
+    updates: Map<Pair<Int?, Int>, TableModel>,
+): List<DocumentContent> {
+    if (updates.isEmpty()) return content
+
+    var topLevelTableIdx = 0
+    return content.mapIndexed { contentIdx, item ->
+        when (item) {
+            is TableModel -> (updates[Pair(null, topLevelTableIdx++)] ?: item) as DocumentContent
+            is AreaModel -> {
+                var tableIdx = 0
+                item.copy(content = item.content.map {
+                    if (it is TableModel) (updates[Pair(contentIdx, tableIdx++)] ?: it) as DocumentContent
+                    else it
+                })
+            }
+
+            is RepeatedContent -> {
+                var tableIdx = 0
+                item.copy(content = item.content.map {
+                    if (it is TableModel) (updates[Pair(contentIdx, tableIdx++)] ?: it) as DocumentContent
+                    else it
+                })
+            }
+
+            is FirstMatch -> {
+                var tableIdx = 0
+                val updatedCases = item.cases.map {
+                    it.copy(content = it.content.map { fmItem ->
+                        if (fmItem is TableModel) (updates[Pair(contentIdx, tableIdx++)] ?: fmItem) as DocumentContent
+                        else fmItem
+                    })
+                }
+                val updatedDefault = item.default.map {
+                    if (it is TableModel) (updates[Pair(contentIdx, tableIdx++)] ?: it) as DocumentContent
+                    else it
+                }
+                item.copy(cases = updatedCases, default = updatedDefault)
+            }
+
+            is SelectByLanguage -> {
+                var tableIdx = 0
+                item.copy(cases = item.cases.map { case ->
+                    case.copy(content = case.content.map {
+                        if (it is TableModel) (updates[Pair(contentIdx, tableIdx++)] ?: it) as DocumentContent
+                        else it
+                    })
+                })
+            }
+
+            else -> item
         }
     }
 }
