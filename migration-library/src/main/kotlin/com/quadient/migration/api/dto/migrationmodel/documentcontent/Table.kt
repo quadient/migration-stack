@@ -7,6 +7,7 @@ import com.quadient.migration.shared.CellHeight
 import com.quadient.migration.shared.CellOverflow
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.TableAction
 import com.quadient.migration.shared.TableAlignment
 import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.shared.VariableRefPath
@@ -29,6 +30,7 @@ data class Table(
     val border: BorderOptions? = null,
     val alignment: TableAlignment = TableAlignment.Left,
     val tableStyleName: String? = null,
+    val action: TableAction = TableAction.Keep,
 ) : DocumentContent, TextContent, RefValidatable {
     override fun collectRefs(): List<Ref> {
         return (rows + header + firstHeader + footer + lastFooter).flatMap { it.collectRefs() }
@@ -50,6 +52,7 @@ data class Table(
             border = table.border,
             alignment = table.alignment,
             tableStyleName = table.tableStyleName,
+            action = table.action,
         )
     }
 
@@ -69,6 +72,7 @@ data class Table(
             border = border,
             alignment = alignment,
             tableStyleName = tableStyleName,
+            action = action,
         )
     }
 

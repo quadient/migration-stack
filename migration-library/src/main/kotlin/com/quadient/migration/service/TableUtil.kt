@@ -103,7 +103,7 @@ fun buildContentPreview(table: Table): String {
     val colCount = table.columnWidths.size
     val bodyRowCount = table.rows.count { it is Table.Row }
     val repeatedVariable = repeatedVariable(table)
-    val firstRowPreview = extractFirstRowPreview(table)
+    val firstRowPreview = extractFirstRowPreview(table, " | ")
 
     return buildString {
         append("${colCount}cols")
@@ -117,12 +117,12 @@ fun buildContentPreview(table: Table): String {
 private fun repeatedVariable(table: Table): String? = table.rows.filterIsInstance<Table.RepeatedRow>()
     .firstOrNull()?.variable?.let { if (it is VariableRefPath) it.variableId else it.toString() }
 
-private fun extractFirstRowPreview(table: Table): String? {
+private fun extractFirstRowPreview(table: Table, separator: String = "|"): String? {
     val firstRow =
         (table.firstHeader.firstOrNull() ?: table.header.firstOrNull() ?: table.rows.filterIsInstance<Table.Row>()
             .firstOrNull()) as? Table.Row ?: return null
 
-    return firstRow.cells.joinToString(" | ") { cell -> extractCellText(cell).take(30) }.take(100)
+    return firstRow.cells.joinToString(separator) { cell -> extractCellText(cell).take(30) }.take(100)
 }
 
 private fun extractCellText(cell: Table.Cell): String =

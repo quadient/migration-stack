@@ -344,6 +344,7 @@ sealed class MappingItemEntity {
                 updatedTables[Pair(entry.containerIndex, entry.tableIndex)] = docTable.table.copy(
                     pdfTaggingRule = entry.pdfTaggingRule ?: TablePdfTaggingRule.Default,
                     pdfAlternateText = entry.pdfAlternateText,
+                    action = entry.action,
                 )
             }
 

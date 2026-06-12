@@ -12,6 +12,7 @@ import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.CellHeight
 import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.TableAction
 import com.quadient.migration.shared.TableAlignment
 
 object Dsl {
@@ -31,7 +32,8 @@ object Dsl {
             maxWidth = maxWidth,
             percentWidth = percentWidth,
             border = border,
-            alignment = alignment
+            alignment = alignment,
+            action = action,
         )
     }
 }
@@ -58,6 +60,7 @@ class TableDsl {
     var percentWidth: Double? = null
     var border: BorderOptions? = null
     var alignment: TableAlignment = TableAlignment.Left
+    var action: TableAction = TableAction.Keep
 
     fun pdfTaggingRule(rule: TablePdfTaggingRule) = apply { this.pdfTaggingRule = rule }
     fun pdfAlternateText(text: String?) = apply { this.pdfAlternateText = text }
@@ -65,6 +68,7 @@ class TableDsl {
     fun maxWidth(size: Size) = apply { this.maxWidth = size }
     fun percentWidth(percent: Double) = apply { this.percentWidth = percent }
     fun alignment(alignment: TableAlignment) = apply { this.alignment = alignment }
+    fun action(action: TableAction) = apply { this.action = action }
 
     /**
      * Add a row to the table. Rows are added in the order they are defined.

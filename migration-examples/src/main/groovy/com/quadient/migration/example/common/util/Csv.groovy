@@ -98,6 +98,8 @@ static String serialize(Object obj, Size.Unit unitOverride) {
         case Uuid: return obj.toString()
         case Instant: return obj.toString()
         case Double: return obj.toString()
+        case Integer: return obj.toString()
+        case Long: return obj.toString()
         case Color: return obj.toHex()
         case IcmPath: return obj.toString()
         case Size: return unitOverride != null ? obj.toString(unitOverride) : obj.toString()
