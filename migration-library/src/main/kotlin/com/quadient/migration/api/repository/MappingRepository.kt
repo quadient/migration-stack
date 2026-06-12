@@ -56,6 +56,7 @@ class MappingRepository(
         applyAllVariableMappings()
         applyAllVariableStructureMappings()
         applyAllDisplayRuleMappings()
+        applyAllTableMappings()
     }
 
     fun upsert(id: String, mapping: MappingItem): Mapping {
@@ -185,6 +186,27 @@ class MappingRepository(
 
     fun applyAllDisplayRuleMappings() {
         applyAllResourceMappings<DisplayRule, MappingItemEntity.DisplayRule>(displayRuleRepository, DisplayRuleTable)
+    }
+
+    fun getTableMapping(id: String): MappingItem.Table {
+        return (internalRepository.find<MappingItemEntity.Table>(id) ?: MappingItemEntity.Table(
+            name = null, tables = emptyList()
+        )).toDto() as MappingItem.Table
+    }
+
+    fun applyTableMapping(id: String) {
+        val mapping = internalRepository.find<MappingItemEntity.Table>(id)
+        val obj = documentObjectRepository.find(id)
+
+        if (mapping == null || obj == null) {
+            return
+        }
+
+        documentObjectRepository.upsert(mapping.apply(obj))
+    }
+
+    fun applyAllTableMappings() {
+        applyAllResourceMappings<DocumentObject, MappingItemEntity.Table>(documentObjectRepository, DocumentObjectTable)
     }
 
     fun getTextStyleMapping(id: String): MappingItem.TextStyle {
