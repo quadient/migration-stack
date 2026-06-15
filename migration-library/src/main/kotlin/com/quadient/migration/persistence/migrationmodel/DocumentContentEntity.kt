@@ -45,6 +45,7 @@ data class TableEntity(
     val alignment: TableAlignment = TableAlignment.Left,
     val tableStyleName: String? = null,
     val action: TableAction = TableAction.Keep,
+    val name: String? = null,
 ) : DocumentContentEntity, TextContentEntity {
     @Serializable(with = TableRowEntitySerializer::class)
     sealed interface TableRow

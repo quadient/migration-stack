@@ -40,6 +40,7 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
     private var alignment: TableAlignment = TableAlignment.Left
     private var tableStyleName: String? = null
     private var action: TableAction = TableAction.Keep
+    private var name: String? = null
 
     fun pdfTaggingRule(rule: TablePdfTaggingRule) = apply { this.pdfTaggingRule = rule }
     fun pdfAlternateText(text: String?) = apply { this.pdfAlternateText = text }
@@ -48,6 +49,7 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
     fun percentWidth(percent: Double) = apply { this.percentWidth = percent }
     fun alignment(alignment: TableAlignment) = apply { this.alignment = alignment }
     fun action(action: TableAction) = apply { this.action = action }
+    fun name(name: String?) = apply { this.name = name }
 
     /**
      * Add a column width to the table. Column widths are added in the order they are defined.
@@ -119,6 +121,7 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
             alignment = alignment,
             tableStyleName = tableStyleName,
             action = action,
+            name = name,
         )
     }
 

@@ -1320,6 +1320,7 @@ abstract class InspireDocumentObjectBuilder(
             TablePdfTaggingRule.Artifact -> table.setTablePdfTaggingRule(WfdXmlTable.TablePdfTaggingRule.ARTIFACT)
         }
         table.setTablePdfAlternateText(model.pdfAlternateText)
+        model.name?.let { table.setDisplayName(it) }
 
         return table
     }

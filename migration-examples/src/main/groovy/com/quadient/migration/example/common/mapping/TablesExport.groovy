@@ -34,10 +34,9 @@ static void run(Migration migration, Path path) {
         def headers = [
             Mapping.displayHeader("documentObjectId", false),
             Mapping.displayHeader("documentObjectName", true),
-            Mapping.displayHeader("containerIndex", false),
-            Mapping.displayHeader("containerType", true),
-            Mapping.displayHeader("tableIndex", false),
+            Mapping.displayHeader("contentPath", false),
             Mapping.displayHeader("contentPreview", true),
+            Mapping.displayHeader("tableName", false),
             Mapping.displayHeader("pdfTaggingRule", false),
             Mapping.displayHeader("pdfAlternateText", false),
             Mapping.displayHeader("action", false),
@@ -54,16 +53,15 @@ static void run(Migration migration, Path path) {
 }
 
 static String buildRow(String docObjId, String docObjName, DocumentTable docTable) {
-    def location = docTable.location
+    def contentPath = docTable.contentPath
     def table = docTable.table
 
     def builder = new StringBuilder()
     builder.append(Csv.serialize(docObjId) + ",")
     builder.append(Csv.serialize(docObjName) + ",")
-    builder.append(Csv.serialize(location.containerIndex) + ",")
-    builder.append(Csv.serialize(location.containerType) + ",")
-    builder.append(Csv.serialize(location.tableIndex) + ",")
+    builder.append(Csv.serialize(contentPath) + ",")
     builder.append(Csv.serialize(buildContentPreview(table)) + ",")
+    builder.append(Csv.serialize(table.name) + ",")
     builder.append(Csv.serialize(table.pdfTaggingRule) + ",")
     builder.append(Csv.serialize(table.pdfAlternateText) + ",")
     builder.append(Csv.serialize(table.action))

@@ -31,6 +31,7 @@ data class Table(
     val alignment: TableAlignment = TableAlignment.Left,
     val tableStyleName: String? = null,
     val action: TableAction = TableAction.Keep,
+    val name: String? = null,
 ) : DocumentContent, TextContent, RefValidatable {
     override fun collectRefs(): List<Ref> {
         return (rows + header + firstHeader + footer + lastFooter).flatMap { it.collectRefs() }
@@ -53,6 +54,7 @@ data class Table(
             alignment = table.alignment,
             tableStyleName = table.tableStyleName,
             action = table.action,
+            name = table.name,
         )
     }
 
@@ -73,6 +75,7 @@ data class Table(
             alignment = alignment,
             tableStyleName = tableStyleName,
             action = action,
+            name = name,
         )
     }
 

@@ -42,9 +42,8 @@ static void run(Migration migration, Path path) {
         def docObjId = Csv.deserialize(values.get("documentObjectId"), String.class)
         if (!docObjId) continue
 
-        def containerIndexStr = Csv.deserialize(values.get("containerIndex"), String.class)
-        def containerIndex = containerIndexStr ? containerIndexStr.toInteger() : null
-        def tableIndex = Csv.deserialize(values.get("tableIndex"), String.class).toInteger()
+        def contentPath = Csv.deserialize(values.get("contentPath"), String.class)
+        if (!contentPath) continue
 
         def actionStr = Csv.deserialize(values.get("action"), String.class)
         def action = actionStr ? Csv.deserialize(actionStr, TableAction.class) : TableAction.Keep
@@ -53,6 +52,7 @@ static void run(Migration migration, Path path) {
         def pdfTaggingRule = pdfTaggingRuleStr ? Csv.deserialize(pdfTaggingRuleStr, TablePdfTaggingRule.class) : null
 
         def pdfAlternateText = Csv.deserialize(values.get("pdfAlternateText"), String.class)
+        def tableName = Csv.deserialize(values.get("tableName"), String.class)
 
         def docObj = migration.documentObjectRepository.find(docObjId)
         if (!docObj) {
@@ -61,21 +61,21 @@ static void run(Migration migration, Path path) {
         }
 
         def documentTables = collectDocumentTables(docObj.content)
-        def docTable = documentTables.find { it.location.containerIndex == containerIndex && it.location.tableIndex == tableIndex }
+        def docTable = documentTables.find { it.contentPath == contentPath }
         if (!docTable) {
-            log.error("Table mapping for '${docObjId}' at [${containerIndex}, ${tableIndex}]: table not found. Skipping row.")
+            log.error("Table mapping for '${docObjId}' at [${contentPath}]: table not found. Skipping row.")
             continue
         }
 
         def fingerprint = computeFingerprint(docTable.table)
 
         def entry = new MappingItem.Table.TableEntry(
-            containerIndex,
-            tableIndex,
+            contentPath,
             action,
             pdfTaggingRule,
             pdfAlternateText,
-            fingerprint
+            fingerprint,
+            tableName
         )
 
         tablesByDocObjId.computeIfAbsent(docObjId) { [] }.add(entry)
