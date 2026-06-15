@@ -3,6 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.persistence.migrationmodel.SelectByLanguageEntity
 
 data class SelectByLanguage(val cases: List<Case>) : DocumentContent, RefValidatable {
+    val pathName: String get() = "selectByLanguage"
     override fun collectRefs(): List<Ref> {
         return cases.flatMap { it.collectRefs() }
     }

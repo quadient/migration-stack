@@ -33,6 +33,7 @@ data class Table(
     val action: TableAction = TableAction.Keep,
     val name: String? = null,
 ) : DocumentContent, TextContent, RefValidatable {
+    val pathName: String get() = "table"
     override fun collectRefs(): List<Ref> {
         return (rows + header + firstHeader + footer + lastFooter).flatMap { it.collectRefs() }
     }

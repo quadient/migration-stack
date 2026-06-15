@@ -333,12 +333,6 @@ sealed class MappingItemEntity {
                     return@forEach
                 }
 
-                if (entry.action == TableAction.Flatten) {
-                    logger.warn(
-                        "Table mapping for '${item.id}' at [${entry.contentPath}]: Flatten action is not yet implemented. Skipping flatten."
-                    )
-                }
-
                 updatedTables[entry.contentPath] = docTable.table.copy(
                     pdfTaggingRule = entry.pdfTaggingRule ?: TablePdfTaggingRule.Default,
                     pdfAlternateText = entry.pdfAlternateText,
@@ -485,47 +479,39 @@ private fun applyTableUpdates(
 ): List<DocumentContent> {
     if (updates.isEmpty()) return content
 
-    val typeCounters = mutableMapOf<String, Int>()
+    val locations = mutableMapOf<String, Int>()
 
     return content.map { item ->
         when (item) {
             is TableModel -> {
-                val idx = typeCounters.getOrDefault("table", 0).also { typeCounters["table"] = it + 1 }
-                (updates["table:$idx"] ?: item) as DocumentContent
+                val tableLocation = locations.next(item.pathName)
+                (updates[tableLocation] ?: item) as DocumentContent
             }
             is AreaModel -> {
-                val idx = typeCounters.getOrDefault("area", 0).also { typeCounters["area"] = it + 1 }
-                item.copy(content = applyTableUpdatesInContainer(item.content, "area:$idx", updates))
+                val parentLocation = locations.next(item.pathName)
+                val tableLocations = mutableMapOf<String, Int>()
+                item.copy(content = item.content.map { it.applyTableUpdate(parentLocation, tableLocations, updates) })
             }
             is RepeatedContent -> {
-                val idx = typeCounters.getOrDefault("repeatedContent", 0).also { typeCounters["repeatedContent"] = it + 1 }
-                item.copy(content = applyTableUpdatesInContainer(item.content, "repeatedContent:$idx", updates))
+                val parentLocation = locations.next(item.pathName)
+                val tableLocations = mutableMapOf<String, Int>()
+                item.copy(content = item.content.map { it.applyTableUpdate(parentLocation, tableLocations, updates) })
             }
             is FirstMatch -> {
-                val idx = typeCounters.getOrDefault("firstMatch", 0).also { typeCounters["firstMatch"] = it + 1 }
-                val prefix = "firstMatch:$idx"
-                var tableIdx = 0
-                val updatedCases = item.cases.map { case ->
-                    case.copy(content = case.content.map { fmItem ->
-                        if (fmItem is TableModel) (updates["$prefix/table:${tableIdx++}"] ?: fmItem) as DocumentContent
-                        else fmItem
-                    })
-                }
-                val updatedDefault = item.default.map {
-                    if (it is TableModel) (updates["$prefix/table:${tableIdx++}"] ?: it) as DocumentContent
-                    else it
-                }
-                item.copy(cases = updatedCases, default = updatedDefault)
+                val parentLocation = locations.next(item.pathName)
+                val tableLocations = mutableMapOf<String, Int>()
+                item.copy(
+                    cases = item.cases.map { case ->
+                        case.copy(content = case.content.map { it.applyTableUpdate(parentLocation, tableLocations, updates) })
+                    },
+                    default = item.default.map { it.applyTableUpdate(parentLocation, tableLocations, updates) }
+                )
             }
             is SelectByLanguage -> {
-                val idx = typeCounters.getOrDefault("selectByLanguage", 0).also { typeCounters["selectByLanguage"] = it + 1 }
-                val prefix = "selectByLanguage:$idx"
-                var tableIdx = 0
+                val parentLocation = locations.next(item.pathName)
+                val tableLocations = mutableMapOf<String, Int>()
                 item.copy(cases = item.cases.map { case ->
-                    case.copy(content = case.content.map {
-                        if (it is TableModel) (updates["$prefix/table:${tableIdx++}"] ?: it) as DocumentContent
-                        else it
-                    })
+                    case.copy(content = case.content.map { it.applyTableUpdate(parentLocation, tableLocations, updates) })
                 })
             }
             else -> item
@@ -533,14 +519,17 @@ private fun applyTableUpdates(
     }
 }
 
-private fun applyTableUpdatesInContainer(
-    content: List<DocumentContent>,
-    prefix: String,
+private fun DocumentContent.applyTableUpdate(
+    parentLocation: String,
+    tableLocations: MutableMap<String, Int>,
     updates: Map<String, TableModel>,
-): List<DocumentContent> {
-    var tableIdx = 0
-    return content.map { item ->
-        if (item is TableModel) (updates["$prefix/table:${tableIdx++}"] ?: item) as DocumentContent
-        else item
-    }
+): DocumentContent {
+    if (this !is TableModel) return this
+    val tablePart = tableLocations.next(pathName)
+    return (updates[listOf(parentLocation, tablePart).joinToString("/")] ?: this) as DocumentContent
+}
+
+private fun MutableMap<String, Int>.next(name: String): String {
+    val idx = getOrDefault(name, 0).also { this[name] = it + 1 }
+    return "$name:$idx"
 }
