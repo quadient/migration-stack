@@ -11,78 +11,46 @@ import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.shared.VariableRefPath
 
-data class TableLocation(val containerIndex: Int?, val containerType: String?, val tableIndex: Int)
-
-data class DocumentTable(val location: TableLocation, val table: Table)
+data class DocumentTable(val contentPath: String, val table: Table)
 
 fun collectDocumentTables(content: List<DocumentContent>): List<DocumentTable> {
     val result = mutableListOf<DocumentTable>()
+    val typeCounters = mutableMapOf<String, Int>()
 
-    var topLevelTableIdx = 0
-    content.forEachIndexed { contentIdx, item ->
+    content.forEach { item ->
         when (item) {
-            is Table -> result.add(
-                DocumentTable(TableLocation(null, null, topLevelTableIdx++), item)
-            )
-
+            is Table -> {
+                val idx = typeCounters.getOrDefault("table", 0).also { typeCounters["table"] = it + 1 }
+                result.add(DocumentTable("table:$idx", item))
+            }
             is Area -> {
-                var tableIdx = 0
-                item.content.forEach { areaItem ->
-                    if (areaItem is Table) {
-                        result.add(
-                            DocumentTable(
-                                TableLocation(contentIdx, item::class.simpleName, tableIdx++), areaItem
-                            )
-                        )
-                    }
-                }
+                val idx = typeCounters.getOrDefault("area", 0).also { typeCounters["area"] = it + 1 }
+                collectContainerTables(item.content, "area:$idx", result)
             }
-
             is RepeatedContent -> {
-                var tableIdx = 0
-                item.content.forEach { rcItem ->
-                    if (rcItem is Table) {
-                        result.add(
-                            DocumentTable(
-                                TableLocation(contentIdx, item::class.simpleName, tableIdx++), rcItem
-                            )
-                        )
-                    }
-                }
+                val idx = typeCounters.getOrDefault("repeatedContent", 0).also { typeCounters["repeatedContent"] = it + 1 }
+                collectContainerTables(item.content, "repeatedContent:$idx", result)
             }
-
             is FirstMatch -> {
-                var tableIdx = 0
-                val allContent = item.cases.flatMap { it.content } + item.default
-                allContent.forEach { fmItem ->
-                    if (fmItem is Table) {
-                        result.add(
-                            DocumentTable(
-                                TableLocation(contentIdx, item::class.simpleName, tableIdx++), fmItem
-                            )
-                        )
-                    }
-                }
+                val idx = typeCounters.getOrDefault("firstMatch", 0).also { typeCounters["firstMatch"] = it + 1 }
+                collectContainerTables(item.cases.flatMap { it.content } + item.default, "firstMatch:$idx", result)
             }
-
             is SelectByLanguage -> {
-                var tableIdx = 0
-                item.cases.flatMap { it.content }.forEach { sblItem ->
-                    if (sblItem is Table) {
-                        result.add(
-                            DocumentTable(
-                                TableLocation(contentIdx, item::class.simpleName, tableIdx++), sblItem
-                            )
-                        )
-                    }
-                }
+                val idx = typeCounters.getOrDefault("selectByLanguage", 0).also { typeCounters["selectByLanguage"] = it + 1 }
+                collectContainerTables(item.cases.flatMap { it.content }, "selectByLanguage:$idx", result)
             }
-
             else -> {}
         }
     }
 
     return result
+}
+
+private fun collectContainerTables(content: List<DocumentContent>, containerPath: String, result: MutableList<DocumentTable>) {
+    var tableIdx = 0
+    content.forEach { item ->
+        if (item is Table) result.add(DocumentTable("$containerPath/table:${tableIdx++}", item))
+    }
 }
 
 fun computeFingerprint(table: Table): String {
@@ -93,6 +61,7 @@ fun computeFingerprint(table: Table): String {
 
     return buildString {
         append("${colCount}cols")
+        if (table.name != null) append("|name:${table.name}")
         if (altText != null) append("|altText:$altText")
         if (repeatedVariable != null) append("|repeatedBy:$repeatedVariable")
         if (firstRowPreview != null) append("|$firstRowPreview")
@@ -106,9 +75,9 @@ fun buildContentPreview(table: Table): String {
     val firstRowPreview = extractFirstRowPreview(table, " | ")
 
     return buildString {
-        append("${colCount}cols")
+        append("$colCount cols")
         if (repeatedVariable != null) append(" | repeatedBy: $repeatedVariable")
-        else append(" | $bodyRowCount rows")
+        else append(" | $bodyRowCount body rows")
         if (table.firstHeader.isNotEmpty()) append(" | firstHeader: $firstRowPreview")
         else if (firstRowPreview != null) append(" | row0: $firstRowPreview")
     }

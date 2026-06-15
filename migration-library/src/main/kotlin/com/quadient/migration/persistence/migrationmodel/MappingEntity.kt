@@ -301,28 +301,26 @@ sealed class MappingItemEntity {
 
         @Serializable
         data class TableEntry(
-            val containerIndex: Int?,
-            val tableIndex: Int,
+            val contentPath: String,
             val action: TableAction,
             val pdfTaggingRule: TablePdfTaggingRule?,
             val pdfAlternateText: String?,
             val fingerprint: String,
+            val tableName: String?,
         )
 
         fun apply(item: DocumentObjectModel): DocumentObjectModel {
             if (tables.isEmpty()) return item
 
             val documentTables = collectDocumentTables(item.content)
-            val updatedTables = mutableMapOf<Pair<Int?, Int>, TableModel>()
+            val updatedTables = mutableMapOf<String, TableModel>()
 
             tables.forEach { entry ->
-                val docTable = documentTables.find {
-                    it.location.containerIndex == entry.containerIndex && it.location.tableIndex == entry.tableIndex
-                }
+                val docTable = documentTables.find { it.contentPath == entry.contentPath }
 
                 if (docTable == null) {
                     logger.error(
-                        "Table mapping for '${item.id}' at [${entry.containerIndex}, ${entry.tableIndex}]: table not found at expected path. Skipping."
+                        "Table mapping for '${item.id}' at [${entry.contentPath}]: table not found at expected path. Skipping."
                     )
                     return@forEach
                 }
@@ -330,21 +328,22 @@ sealed class MappingItemEntity {
                 val currentFingerprint = computeFingerprint(docTable.table)
                 if (currentFingerprint != entry.fingerprint) {
                     logger.error(
-                        "Table mapping for '${item.id}' at [${entry.containerIndex}, ${entry.tableIndex}]: fingerprint mismatch. Stored: '${entry.fingerprint}', current: '$currentFingerprint'. Content may have changed since last export. Skipping."
+                        "Table mapping for '${item.id}' at [${entry.contentPath}]: fingerprint mismatch. Stored: '${entry.fingerprint}', current: '$currentFingerprint'. Content may have changed since last export. Skipping."
                     )
                     return@forEach
                 }
 
                 if (entry.action == TableAction.Flatten) {
                     logger.warn(
-                        "Table mapping for '${item.id}' at [${entry.containerIndex}, ${entry.tableIndex}]: Flatten action is not yet implemented. Skipping flatten."
+                        "Table mapping for '${item.id}' at [${entry.contentPath}]: Flatten action is not yet implemented. Skipping flatten."
                     )
                 }
 
-                updatedTables[Pair(entry.containerIndex, entry.tableIndex)] = docTable.table.copy(
+                updatedTables[entry.contentPath] = docTable.table.copy(
                     pdfTaggingRule = entry.pdfTaggingRule ?: TablePdfTaggingRule.Default,
                     pdfAlternateText = entry.pdfAlternateText,
                     action = entry.action,
+                    name = entry.tableName,
                 )
             }
 
@@ -467,12 +466,12 @@ sealed class MappingItemEntity {
                 name = this.name,
                 tables = this.tables.map { entry ->
                     MappingItem.Table.TableEntry(
-                        containerIndex = entry.containerIndex,
-                        tableIndex = entry.tableIndex,
+                        contentPath = entry.contentPath,
                         action = entry.action,
                         pdfTaggingRule = entry.pdfTaggingRule,
                         pdfAlternateText = entry.pdfAlternateText,
                         fingerprint = entry.fingerprint,
+                        tableName = entry.tableName,
                     )
                 },
             )
@@ -482,56 +481,66 @@ sealed class MappingItemEntity {
 
 private fun applyTableUpdates(
     content: List<DocumentContent>,
-    updates: Map<Pair<Int?, Int>, TableModel>,
+    updates: Map<String, TableModel>,
 ): List<DocumentContent> {
     if (updates.isEmpty()) return content
 
-    var topLevelTableIdx = 0
-    return content.mapIndexed { contentIdx, item ->
+    val typeCounters = mutableMapOf<String, Int>()
+
+    return content.map { item ->
         when (item) {
-            is TableModel -> (updates[Pair(null, topLevelTableIdx++)] ?: item) as DocumentContent
+            is TableModel -> {
+                val idx = typeCounters.getOrDefault("table", 0).also { typeCounters["table"] = it + 1 }
+                (updates["table:$idx"] ?: item) as DocumentContent
+            }
             is AreaModel -> {
-                var tableIdx = 0
-                item.copy(content = item.content.map {
-                    if (it is TableModel) (updates[Pair(contentIdx, tableIdx++)] ?: it) as DocumentContent
-                    else it
-                })
+                val idx = typeCounters.getOrDefault("area", 0).also { typeCounters["area"] = it + 1 }
+                item.copy(content = applyTableUpdatesInContainer(item.content, "area:$idx", updates))
             }
-
             is RepeatedContent -> {
-                var tableIdx = 0
-                item.copy(content = item.content.map {
-                    if (it is TableModel) (updates[Pair(contentIdx, tableIdx++)] ?: it) as DocumentContent
-                    else it
-                })
+                val idx = typeCounters.getOrDefault("repeatedContent", 0).also { typeCounters["repeatedContent"] = it + 1 }
+                item.copy(content = applyTableUpdatesInContainer(item.content, "repeatedContent:$idx", updates))
             }
-
             is FirstMatch -> {
+                val idx = typeCounters.getOrDefault("firstMatch", 0).also { typeCounters["firstMatch"] = it + 1 }
+                val prefix = "firstMatch:$idx"
                 var tableIdx = 0
-                val updatedCases = item.cases.map {
-                    it.copy(content = it.content.map { fmItem ->
-                        if (fmItem is TableModel) (updates[Pair(contentIdx, tableIdx++)] ?: fmItem) as DocumentContent
+                val updatedCases = item.cases.map { case ->
+                    case.copy(content = case.content.map { fmItem ->
+                        if (fmItem is TableModel) (updates["$prefix/table:${tableIdx++}"] ?: fmItem) as DocumentContent
                         else fmItem
                     })
                 }
                 val updatedDefault = item.default.map {
-                    if (it is TableModel) (updates[Pair(contentIdx, tableIdx++)] ?: it) as DocumentContent
+                    if (it is TableModel) (updates["$prefix/table:${tableIdx++}"] ?: it) as DocumentContent
                     else it
                 }
                 item.copy(cases = updatedCases, default = updatedDefault)
             }
-
             is SelectByLanguage -> {
+                val idx = typeCounters.getOrDefault("selectByLanguage", 0).also { typeCounters["selectByLanguage"] = it + 1 }
+                val prefix = "selectByLanguage:$idx"
                 var tableIdx = 0
                 item.copy(cases = item.cases.map { case ->
                     case.copy(content = case.content.map {
-                        if (it is TableModel) (updates[Pair(contentIdx, tableIdx++)] ?: it) as DocumentContent
+                        if (it is TableModel) (updates["$prefix/table:${tableIdx++}"] ?: it) as DocumentContent
                         else it
                     })
                 })
             }
-
             else -> item
         }
+    }
+}
+
+private fun applyTableUpdatesInContainer(
+    content: List<DocumentContent>,
+    prefix: String,
+    updates: Map<String, TableModel>,
+): List<DocumentContent> {
+    var tableIdx = 0
+    return content.map { item ->
+        if (item is TableModel) (updates["$prefix/table:${tableIdx++}"] ?: item) as DocumentContent
+        else item
     }
 }

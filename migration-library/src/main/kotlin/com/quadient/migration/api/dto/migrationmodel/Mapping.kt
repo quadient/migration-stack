@@ -108,12 +108,12 @@ sealed class MappingItem {
         val tables: List<TableEntry> = emptyList(),
     ) : MappingItem() {
         data class TableEntry(
-            val containerIndex: Int?,
-            val tableIndex: Int,
+            val contentPath: String,
             val action: TableAction,
             val pdfTaggingRule: TablePdfTaggingRule?,
             val pdfAlternateText: String?,
             val fingerprint: String,
+            val tableName: String?,
         )
     }
 
@@ -228,12 +228,12 @@ sealed class MappingItem {
                 name = this.name,
                 tables = this.tables.map { entry ->
                     MappingItemEntity.Table.TableEntry(
-                        containerIndex = entry.containerIndex,
-                        tableIndex = entry.tableIndex,
+                        contentPath = entry.contentPath,
                         action = entry.action,
                         pdfTaggingRule = entry.pdfTaggingRule,
                         pdfAlternateText = entry.pdfAlternateText,
                         fingerprint = entry.fingerprint,
+                        tableName = entry.tableName,
                     )
                 },
             )
