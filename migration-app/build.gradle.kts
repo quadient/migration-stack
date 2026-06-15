@@ -27,7 +27,7 @@ dependencyCheck {
 }
 
 group = "com.quadient.migration"
-version = "17.0.24"
+version = "17.0.25"
 
 application {
     mainClass = "io.ktor.server.netty.EngineMain"

@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.25] - 2026-06-15
+
+### Added
+
 - Added initial support for direct deployment to Evolve
 - Allow mapping variables to system variables (e.g. PageCounter) via variable structure paths and names
 
@@ -388,7 +396,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.24...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.25...HEAD
+[17.0.25]: https://github.com/quadient/migration-stack/compare/v17.0.24...v17.0.25
 [17.0.24]: https://github.com/quadient/migration-stack/compare/v17.0.23...v17.0.24
 [17.0.23]: https://github.com/quadient/migration-stack/compare/v17.0.22...v17.0.23
 [17.0.22]: https://github.com/quadient/migration-stack/compare/v17.0.21...v17.0.22
