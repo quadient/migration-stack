@@ -8,6 +8,7 @@ data class RepeatedContent(
     val variablePath: VariablePath,
     val content: List<DocumentContent>,
 ) : DocumentContent, RefValidatable {
+    val pathName: String get() = "repeatedContent"
 
     override fun collectRefs(): List<Ref> {
         val contentRefs = content.flatMap {

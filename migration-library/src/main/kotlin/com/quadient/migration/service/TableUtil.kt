@@ -15,42 +15,34 @@ data class DocumentTable(val contentPath: String, val table: Table)
 
 fun collectDocumentTables(content: List<DocumentContent>): List<DocumentTable> {
     val result = mutableListOf<DocumentTable>()
-    val typeCounters = mutableMapOf<String, Int>()
+    val locations = mutableMapOf<String, Int>()
 
     content.forEach { item ->
-        when (item) {
-            is Table -> {
-                val idx = typeCounters.getOrDefault("table", 0).also { typeCounters["table"] = it + 1 }
-                result.add(DocumentTable("table:$idx", item))
+        val (pathPart, children) = when (item) {
+            is Table -> locations.next(item.pathName) to null
+            is Area -> locations.next(item.pathName) to item.content
+            is RepeatedContent -> locations.next(item.pathName) to item.content
+            is FirstMatch -> locations.next(item.pathName) to (item.cases.flatMap { it.content } + item.default)
+            is SelectByLanguage -> locations.next(item.pathName) to item.cases.flatMap { it.content }
+            else -> return@forEach
+        }
+        if (children == null) {
+            result.add(DocumentTable(pathPart, item as Table))
+        } else {
+            val containerLocations = mutableMapOf<String, Int>()
+            children.filterIsInstance<Table>().forEach { table ->
+                val tablePath = containerLocations.next(table.pathName)
+                result.add(DocumentTable(listOf(pathPart, tablePath).joinToString("/"), table))
             }
-            is Area -> {
-                val idx = typeCounters.getOrDefault("area", 0).also { typeCounters["area"] = it + 1 }
-                collectContainerTables(item.content, "area:$idx", result)
-            }
-            is RepeatedContent -> {
-                val idx = typeCounters.getOrDefault("repeatedContent", 0).also { typeCounters["repeatedContent"] = it + 1 }
-                collectContainerTables(item.content, "repeatedContent:$idx", result)
-            }
-            is FirstMatch -> {
-                val idx = typeCounters.getOrDefault("firstMatch", 0).also { typeCounters["firstMatch"] = it + 1 }
-                collectContainerTables(item.cases.flatMap { it.content } + item.default, "firstMatch:$idx", result)
-            }
-            is SelectByLanguage -> {
-                val idx = typeCounters.getOrDefault("selectByLanguage", 0).also { typeCounters["selectByLanguage"] = it + 1 }
-                collectContainerTables(item.cases.flatMap { it.content }, "selectByLanguage:$idx", result)
-            }
-            else -> {}
         }
     }
 
     return result
 }
 
-private fun collectContainerTables(content: List<DocumentContent>, containerPath: String, result: MutableList<DocumentTable>) {
-    var tableIdx = 0
-    content.forEach { item ->
-        if (item is Table) result.add(DocumentTable("$containerPath/table:${tableIdx++}", item))
-    }
+private fun MutableMap<String, Int>.next(name: String): String {
+    val idx = getOrDefault(name, 0).also { this[name] = it + 1 }
+    return "$name:$idx"
 }
 
 fun computeFingerprint(table: Table): String {
