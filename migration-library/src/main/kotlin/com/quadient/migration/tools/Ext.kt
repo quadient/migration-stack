@@ -69,3 +69,24 @@ fun caseInsensitiveSetOf(vararg elements: String): Set<String> {
     return set
 }
 
+inline fun <reified T, reified V> Iterable<*>.partitionByType(): Pair<List<T>, List<V>> {
+    val first = mutableListOf<T>()
+    val second = mutableListOf<V>()
+    for (item in this) {
+        when (item) {
+            is T -> first.add(item)
+            is V -> second.add(item)
+            else -> {
+                val message = if (item != null) {
+                    "Item of type ${item::class} is neither ${T::class} nor ${V::class}"
+                } else {
+                    "Item is null, expected type ${T::class} or ${V::class}"
+                }
+
+                throw IllegalStateException(message)
+            }
+        }
+    }
+
+    return first to second
+}

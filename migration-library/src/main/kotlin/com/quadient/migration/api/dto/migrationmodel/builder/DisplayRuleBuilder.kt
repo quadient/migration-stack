@@ -5,6 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasBaseTemplate
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasCategorization
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasInternal
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasMetadata
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSubject
@@ -19,7 +20,7 @@ import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
 import com.quadient.migration.shared.LiteralOrFunctionCall
-import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.MetadataEntry
 
 class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBuilder>(id),
     HasInternal<DisplayRuleBuilder>,
@@ -27,11 +28,12 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
     HasSubject<DisplayRuleBuilder>,
     HasVariableStructureRef<DisplayRuleBuilder>,
     HasMetadata<DisplayRuleBuilder>,
+    HasCategorization<DisplayRuleBuilder>,
     HasBaseTemplate<DisplayRuleBuilder>
 {
     override var subject: String? = null
     override var internal = true
-    override var metadata: MutableMap<String, List<MetadataPrimitive>> = mutableMapOf()
+    override var metadata: MutableList<MetadataEntry> = mutableListOf()
     override var variableStructureRef: VariableStructureRef? = null
     override var baseTemplate: String? = null
     override var targetFolder: String? = null

@@ -1,7 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.shared.DisplayRuleDefinition
-import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.MetadataEntry
 import kotlin.time.Instant
 
 data class DisplayRule @JvmOverloads constructor(
@@ -14,7 +14,7 @@ data class DisplayRule @JvmOverloads constructor(
     override var lastUpdated: Instant? = null,
     var targetId: DisplayRuleRef? = null,
     var internal: Boolean = true,
-    val metadata: Map<String, List<MetadataPrimitive>> = emptyMap(),
+    val metadata: List<MetadataEntry> = emptyList(),
     val subject: String? = null,
     val targetFolder: String? = null,
     val baseTemplate: String? = null,

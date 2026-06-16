@@ -28,7 +28,7 @@ class CaApiClientTest {
     private val evolveConfig = EvolveConfig(
         apiRetryDelayMs = 0,
         contentAuthorApiKey = "test-api-key",
-        contentAuthorUrl = "https://ca.example.com",
+        companyUrl = "https://ca.example.com",
         holder = "testHolder",
         holderType = "testHolderType",
         publishBlockActionId = "block-action",
@@ -63,7 +63,7 @@ class CaApiClientTest {
             )
 
             result.shouldBeOfInstance<HttpResult.Success<*, *>>()
-            requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.contentAuthorUrl}/resources")
+            requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.companyUrl}/authoring/api/system/v1/resources")
             requestSlot.captured.method.shouldBeEqualTo("POST")
             requestSlot.captured.header("Authorization").shouldBeEqualTo("Bearer ${evolveConfig.contentAuthorApiKey}")
             multipartPartValueString("name").shouldBeEqualTo("file.jpg")
@@ -111,7 +111,7 @@ class CaApiClientTest {
             val success = result as HttpResult.Success
             success.response.draft.guid.shouldBeEqualTo("draft-guid")
             success.response.result.valid.shouldBeEqualTo(true)
-            requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.contentAuthorUrl}/templateDraft/createFromJson")
+            requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.companyUrl}/authoring/api/system/v1/templateDraft/createFromJson")
             requestSlot.captured.method.shouldBeEqualTo("POST")
             multipartPartNames(requestSlot.captured).containsAll(listOf("name", "baseTemplatePath", "holder", "holderType", "jsonData", "state")).shouldBeEqualTo(true)
             multipartPartValueString("name").shouldBeEqualTo("MyTemplate")
@@ -158,7 +158,7 @@ class CaApiClientTest {
             val success = result as HttpResult.Success
             success.response.draft.guid.shouldBeEqualTo("block-guid")
             success.response.result.contentMigrationResult?.result.shouldBeEqualTo(ContentMigrationResultStatus.Warning)
-            requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.contentAuthorUrl}/blockDraft/createFromJson")
+            requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.companyUrl}/authoring/api/system/v1/blockDraft/createFromJson")
             requestSlot.captured.method.shouldBeEqualTo("POST")
             multipartPartValueString("name").shouldBeEqualTo("MyBlock")
             multipartPartValueString("state").shouldBeEqualTo("S_block_scenario_assigned")
@@ -203,7 +203,7 @@ class CaApiClientTest {
             val success = result as HttpResult.Success
             success.response.guid.shouldBeEqualTo("rule-guid")
             success.response.path.shouldBeEqualTo("/Rules/MyRule.jrd")
-            requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.contentAuthorUrl}/ruleDraft/createFromJson")
+            requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.companyUrl}/authoring/api/system/v1/ruleDraft/createFromJson")
             requestSlot.captured.method.shouldBeEqualTo("POST")
             multipartPartNames(requestSlot.captured).containsAll(listOf("name", "baseTemplatePath", "holder", "holderType", "jsonData", "state")).shouldBeEqualTo(true)
             multipartPartValueString("name").shouldBeEqualTo("MyRule")
@@ -243,7 +243,7 @@ class CaApiClientTest {
 
             result.shouldBeOfInstance<HttpResult.Success<*, *>>()
             (result as HttpResult.Success).response.shouldBeEqualTo(Unit)
-            requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.contentAuthorUrl}/approvalProcesses/executeAction")
+            requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.companyUrl}/authoring/api/system/v1/approvalProcesses/executeAction")
             requestSlot.captured.method.shouldBeEqualTo("POST")
             requestSlot.captured.header("Authorization").shouldBeEqualTo("Bearer ${evolveConfig.contentAuthorApiKey}")
             val contentType = requestSlot.captured.body?.contentType()

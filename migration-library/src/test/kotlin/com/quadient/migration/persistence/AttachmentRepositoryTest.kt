@@ -30,6 +30,7 @@ class AttachmentRepositoryTest {
             .attachmentType(AttachmentType.Attachment)
             .skip("reason", "placeholder")
             .targetImageId("imageId")
+            .metadata("metaKey") { string("metaValue") }
             .build()
 
         repo.upsert(dto)
@@ -50,6 +51,7 @@ class AttachmentRepositoryTest {
             .sourcePath("path/to/attachment1.pdf")
             .attachmentType(AttachmentType.Attachment)
             .skip("reason1", "placeholder1")
+            .metadata("metaKey1") { string("metaValue1") }
             .build()
 
         val attachment2 = AttachmentBuilder("attachment2")
@@ -59,6 +61,7 @@ class AttachmentRepositoryTest {
             .sourcePath("path/to/attachment2.doc")
             .attachmentType(AttachmentType.Attachment)
             .skip("reason2", "placeholder2")
+            .metadata("metaKey2") { string("metaValue2") }
             .build()
 
         // when

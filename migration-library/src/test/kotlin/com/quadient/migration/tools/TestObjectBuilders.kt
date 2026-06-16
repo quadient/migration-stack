@@ -42,16 +42,8 @@ import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.data.StatusEvent
-import com.quadient.migration.persistence.table.AttachmentTable
-import com.quadient.migration.persistence.table.DisplayRuleTable
-import com.quadient.migration.persistence.table.DocumentObjectTable
-import com.quadient.migration.persistence.table.ImageTable
-import com.quadient.migration.persistence.table.ParagraphStyleTable
 import com.quadient.migration.persistence.table.StatusTrackingEntity
 import com.quadient.migration.persistence.table.StatusTrackingTable
-import com.quadient.migration.persistence.table.TextStyleTable
-import com.quadient.migration.persistence.table.VariableStructureTable
-import com.quadient.migration.persistence.table.VariableTable
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BorderOptions
@@ -62,7 +54,6 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
-import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
@@ -101,7 +92,7 @@ fun aBlockDto(
         customFields = CustomFieldMap(customFields),
         created = Clock.System.now(),
         lastUpdated = Clock.System.now(),
-        metadata = emptyMap(),
+        metadata = emptyList(),
         skip = SkipOptions(false, null, null),
         subject = null,
         baseTemplate = baseTemplate,
@@ -129,7 +120,7 @@ fun aImageDto(
         created = Clock.System.now(),
         lastUpdated = Clock.System.now(),
         options = null,
-        metadata = emptyMap(),
+        metadata = emptyList(),
         skip = SkipOptions(false, null, null),
         alternateText = null,
     )
@@ -161,7 +152,7 @@ fun aBlockModel(
         displayRuleRef = null,
         baseTemplate = baseTemplate,
         options = options,
-        metadata = emptyMap<String, List<MetadataPrimitive>>(),
+        metadata = emptyList(),
         skip = SkipOptions(false, null, null),
         subject = null,
     )

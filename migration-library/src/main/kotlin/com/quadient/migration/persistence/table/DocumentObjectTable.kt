@@ -10,7 +10,7 @@ import com.quadient.migration.persistence.migrationmodel.DocumentContentEntity
 import com.quadient.migration.persistence.migrationmodel.PdfMetadataEntity
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -26,7 +26,7 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
     val baseTemplate = varchar("base_template", 255).nullable()
     val documentObjectOptions = jsonb<DocumentObjectOptions>("options", Json).nullable()
     val pdfMetadata = jsonb<PdfMetadataEntity>("pdf_metadata", Json).nullable()
-    val metadata = jsonb<Map<String, List<MetadataPrimitive>>>("metadata", Json)
+    val metadata = jsonb<List<MetadataEntry>>("metadata", Json)
     val skip = jsonb<SkipOptions>("skip", Json)
     val subject = varchar("subject", 255).nullable()
 

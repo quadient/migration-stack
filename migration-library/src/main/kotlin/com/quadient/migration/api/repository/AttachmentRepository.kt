@@ -8,6 +8,7 @@ import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.AttachmentTable
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.AttachmentType
+import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.tools.concat
 import kotlin.time.toJavaInstant
 import kotlinx.serialization.json.Json
@@ -32,6 +33,7 @@ class AttachmentRepository(projectName: ProjectName, private val statusTrackingR
             lastUpdated = row[AttachmentTable.created],
             sourcePath = row[AttachmentTable.sourcePath],
             targetFolder = row[AttachmentTable.targetFolder],
+            metadata = row[AttachmentTable.metadata],
             attachmentType = AttachmentType.valueOf(row[AttachmentTable.attachmentType]),
             skip = row[AttachmentTable.skip],
             targetImageId = row[AttachmentTable.targetImageId],
@@ -68,6 +70,7 @@ class AttachmentRepository(projectName: ProjectName, private val statusTrackingR
                 it[AttachmentTable.targetFolder] = dto.targetFolder
                 it[AttachmentTable.attachmentType] = dto.attachmentType.name
                 it[AttachmentTable.skip] = dto.skip
+                it[AttachmentTable.metadata] = dto.metadata
                 it[AttachmentTable.targetImageId] = dto.targetImageId
             }.first()
         }
@@ -78,7 +81,7 @@ class AttachmentRepository(projectName: ProjectName, private val statusTrackingR
 
         val columns = listOf(
             "id", "project_name", "name", "origin_locations", "custom_fields",
-            "created", "last_updated", "source_path", "target_folder", "attachment_type", "skip", "target_image_id"
+            "created", "last_updated", "source_path", "target_folder", "attachment_type", "skip", "metadata", "target_image_id"
         )
         val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
@@ -104,6 +107,7 @@ class AttachmentRepository(projectName: ProjectName, private val statusTrackingR
                 stmt.setString(index++, dto.targetFolder)
                 stmt.setString(index++, dto.attachmentType.name)
                 stmt.setObject(index++, Json.encodeToString(dto.skip), Types.OTHER)
+                stmt.setObject(index++, Json.encodeToString<List<MetadataEntry>>(dto.metadata), Types.OTHER)
                 stmt.setString(index++, dto.targetImageId)
             }
 

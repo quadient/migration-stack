@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalUuidApi::class)
+
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.EvolveConfig
@@ -17,27 +19,37 @@ import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.deploy.utility.DeploymentInfo
+import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
+import com.quadient.migration.service.deploy.utility.PostProcessor
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
+import com.quadient.migration.service.ipsclient.Version
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aProjectConfig
+import com.quadient.migration.tools.shouldBeEmpty
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfInstance
+import com.quadient.migration.tools.shouldBeOfSize
 import com.quadient.migration.tools.shouldStartWith
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class EvolveDeployClientTest {
     val metadataValidator = MetadataValidatorImpl()
@@ -60,7 +72,7 @@ class EvolveDeployClientTest {
     val evolveConfig = EvolveConfig(
         apiRetryDelayMs = 0L,
         contentAuthorApiKey = "test-api-key",
-        contentAuthorUrl = "http://localhost:8080",
+        companyUrl = "http://localhost:8080",
         holder = "testHolder",
         holderType = "testHolderType",
         publishBlockActionId = "publishBlock",
@@ -461,5 +473,267 @@ class EvolveDeployClientTest {
 
         result.shouldBeOfInstance<OperationResult.Failure>()
         (result as OperationResult.Failure).message.shouldBeEqualTo("network failure")
+    }
+
+    @Nested
+    inner class CategorizationPostProcessorTest {
+        val realPostProcess = PostProcessImpl(
+            ipsService = ipsService,
+            documentObjectRepository = documentObjectRepository,
+            imageRepository = imageRepository,
+            attachmentRepository = attachmentRepository,
+            displayRuleRepository = displayRuleRepository,
+            textStyleRepository = textStyleRepository,
+            paragraphStyleRepository = paragraphStyleRepository,
+        )
+
+        private val innerSubject = EvolveDeployClient(
+            projectConfig,
+            migConfig,
+            caClient,
+            resourcePathProvider,
+            MetadataValidatorImpl(),
+            realPostProcess,
+            conflictDetector,
+            progressReporter,
+            documentObjectRepository,
+            imageRepository,
+            attachmentRepository,
+            statusTrackingRepository,
+            textStyleRepository,
+            paragraphStyleRepository,
+            displayRuleRepository,
+            variableRepository,
+            variableStructureRepository,
+            documentObjectBuilder,
+            ipsService,
+            storage,
+        )
+
+        private val categorizationPostProcessor: PostProcessor = innerSubject.clearPostProcessors().single()
+
+        private fun aDeploymentResult(vararg infos: DeploymentInfo) = DeploymentResult(
+            deploymentId = Uuid.random(),
+            deployed = infos.toMutableList(),
+        )
+
+        @Test
+        fun `post processor does nothing when targetVersion is null`() {
+            every { caClient.targetVersion } returns null
+
+            val result = aDeploymentResult(
+                DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://path/doc1.jld".toIcmPath())
+            )
+            categorizationPostProcessor(result)
+
+            verify(exactly = 0) { caClient.setCategorization(any()) }
+            result.warnings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `post processor does nothing when targetVersion is less than 26_6_0_0`() {
+            every { caClient.targetVersion } returns Version(26, 5, 9, 9)
+
+            val result = aDeploymentResult(
+                DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://path/doc1.jld".toIcmPath())
+            )
+            categorizationPostProcessor(result)
+
+            verify(exactly = 0) { caClient.setCategorization(any()) }
+            result.warnings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `post processor does nothing when deployed DocumentObject has no categorization metadata`() {
+            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+            val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template).build()
+            every { documentObjectRepository.find("doc1") } returns doc
+
+            val result = aDeploymentResult(
+                DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://path/doc1.jld".toIcmPath())
+            )
+            categorizationPostProcessor(result)
+
+            verify(exactly = 0) { caClient.setCategorization(any()) }
+        }
+
+        @Test
+        fun `post processor calls setCategorization for DocumentObject with categorization`() {
+            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+            val targetPath = "icm://Interactive/tenant/defaultFolder/doc1.jld".toIcmPath()
+            val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template)
+                .categorization("MyCat") { string("fieldA", "value1") }
+                .build()
+            every { documentObjectRepository.find("doc1") } returns doc
+            every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
+
+            val result = aDeploymentResult(DeploymentInfo("doc1", ResourceType.DocumentObject, targetPath))
+            categorizationPostProcessor(result)
+
+            verify {
+                caClient.setCategorization(
+                    CategorizationUpdateDto(
+                        path = targetPath.toString(),
+                        categorizations = listOf(
+                            CategorizationDto("MyCat", null, listOf(CategorizationFieldDto("fieldA", listOf("value1"))))
+                        )
+                    )
+                )
+            }
+        }
+
+        @Test
+        fun `post processor calls setCategorization for Image with categorization`() {
+            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+            val targetPath = "icm://path/img1.jpg".toIcmPath()
+            val img = ImageBuilder("img1")
+                .categorization("ImgCat") { string("color", "red") }
+                .build()
+            every { imageRepository.find("img1") } returns img
+            every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
+
+            val result = aDeploymentResult(DeploymentInfo("img1", ResourceType.Image, targetPath))
+            categorizationPostProcessor(result)
+
+            verify {
+                caClient.setCategorization(
+                    CategorizationUpdateDto(
+                        path = targetPath.toString(),
+                        categorizations = listOf(
+                            CategorizationDto("ImgCat", null, listOf(CategorizationFieldDto("color", listOf("red"))))
+                        )
+                    )
+                )
+            }
+        }
+
+        @Test
+        fun `post processor calls setCategorization for Attachment with categorization`() {
+            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+            val targetPath = "icm://path/att1.pdf".toIcmPath()
+            val att = AttachmentBuilder("att1")
+                .categorization("AttCat") { bool("active", true) }
+                .build()
+            every { attachmentRepository.find("att1") } returns att
+            every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
+
+            val result = aDeploymentResult(DeploymentInfo("att1", ResourceType.Attachment, targetPath))
+            categorizationPostProcessor(result)
+
+            verify {
+                caClient.setCategorization(
+                    CategorizationUpdateDto(
+                        path = targetPath.toString(),
+                        categorizations = listOf(
+                            CategorizationDto("AttCat", null, listOf(CategorizationFieldDto("active", listOf("true"))))
+                        )
+                    )
+                )
+            }
+        }
+
+        @Test
+        fun `post processor calls setCategorization for DisplayRule with categorization`() {
+            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+            val targetPath = "icm://path/rule1.jrd".toIcmPath()
+            val rule = DisplayRuleBuilder("rule1")
+                .categorization("RuleCat") { string("type", "discount") }
+                .build()
+            every { displayRuleRepository.find("rule1") } returns rule
+            every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
+
+            val result = aDeploymentResult(DeploymentInfo("rule1", ResourceType.DisplayRule, targetPath))
+            categorizationPostProcessor(result)
+
+            verify {
+                caClient.setCategorization(
+                    CategorizationUpdateDto(
+                        path = targetPath.toString(),
+                        categorizations = listOf(
+                            CategorizationDto("RuleCat", null, listOf(CategorizationFieldDto("type", listOf("discount"))))
+                        )
+                    )
+                )
+            }
+        }
+
+        @Test
+        fun `post processor skips TextStyle and ParagraphStyle resources`() {
+            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+
+            val result = aDeploymentResult(
+                DeploymentInfo("ts1", ResourceType.TextStyle, "icm://path/ts1".toIcmPath()),
+                DeploymentInfo("ps1", ResourceType.ParagraphStyle, "icm://path/ps1".toIcmPath()),
+            )
+            categorizationPostProcessor(result)
+
+            verify(exactly = 0) { caClient.setCategorization(any()) }
+            result.warnings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `post processor adds warning and skips setCategorization when repository returns null`() {
+            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+            every { documentObjectRepository.find("doc1") } returns null
+
+            val result = aDeploymentResult(
+                DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://path/doc1.jld".toIcmPath())
+            )
+            categorizationPostProcessor(result)
+
+            verify(exactly = 0) { caClient.setCategorization(any()) }
+            result.warnings.shouldBeOfSize(1)
+        }
+
+        @Test
+        fun `post processor calls setCategorization once per deployed item with categorization`() {
+            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+            val path1 = "icm://path/doc1.jld".toIcmPath()
+            val path2 = "icm://path/doc2.jld".toIcmPath()
+            val doc1 = DocumentObjectBuilder("doc1", DocumentObjectType.Template)
+                .categorization("Cat") { string("key", "val1") }
+                .build()
+            val doc2 = DocumentObjectBuilder("doc2", DocumentObjectType.Template)
+                .categorization("Cat") { string("key", "val2") }
+                .build()
+            every { documentObjectRepository.find("doc1") } returns doc1
+            every { documentObjectRepository.find("doc2") } returns doc2
+            every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
+
+            val result = aDeploymentResult(
+                DeploymentInfo("doc1", ResourceType.DocumentObject, path1),
+                DeploymentInfo("doc2", ResourceType.DocumentObject, path2),
+            )
+            categorizationPostProcessor(result)
+
+            verify(exactly = 2) { caClient.setCategorization(any()) }
+        }
+
+        @Test
+        fun `post processor handles multiple categorizations on the same object`() {
+            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+            val targetPath = "icm://path/doc1.jld".toIcmPath()
+            val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template)
+                .categorization("CatA") { string("fieldA", "valueA") }
+                .categorization("CatB") { string("fieldB", "valueB") }
+                .build()
+            every { documentObjectRepository.find("doc1") } returns doc
+            every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
+
+            val result = aDeploymentResult(DeploymentInfo("doc1", ResourceType.DocumentObject, targetPath))
+            categorizationPostProcessor(result)
+
+            verify {
+                caClient.setCategorization(
+                    CategorizationUpdateDto(
+                        path = targetPath.toString(),
+                        categorizations = listOf(
+                            CategorizationDto("CatA", null, listOf(CategorizationFieldDto("fieldA", listOf("valueA")))),
+                            CategorizationDto("CatB", null, listOf(CategorizationFieldDto("fieldB", listOf("valueB")))),
+                        )
+                    )
+                )
+            }
+        }
     }
 }

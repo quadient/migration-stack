@@ -77,7 +77,7 @@ data class EvolveConfig(
     val apiRetryDelayMs: Long = 1000L,
     val callTimeoutMs: Long = 10_000L,
     val contentAuthorApiKey: String,
-    val contentAuthorUrl: String,
+    val companyUrl: String,
     val holder: String,
     val holderType: String,
     val publishBlockActionId: String,

@@ -1,23 +1,25 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasCategorization
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasMetadata
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSkip
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSourcePath
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTargetFolder
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
-import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
 
 class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id),
     HasTargetFolder<ImageBuilder>,
     HasMetadata<ImageBuilder>,
+    HasCategorization<ImageBuilder>,
     HasSkip<ImageBuilder>,
     HasSourcePath<ImageBuilder>
 {
     override var targetFolder: String? = null
-    override var metadata: MutableMap<String, List<MetadataPrimitive>> = mutableMapOf()
+    override var metadata: MutableList<MetadataEntry> = mutableListOf()
     override var skip = false
     override var placeholder: String? = null
     override var reason: String? = null

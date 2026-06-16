@@ -1,6 +1,7 @@
 package com.quadient.migration.persistence.table
 
 import com.quadient.migration.shared.AttachmentType
+import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.json.jsonb
@@ -11,4 +12,5 @@ object AttachmentTable : MigrationObjectTable("attachment") {
     val attachmentType = varchar("attachment_type", 50).default(AttachmentType.Attachment.name)
     val skip = jsonb<SkipOptions>("skip", Json)
     val targetImageId = varchar("target_image_id", 255).nullable()
+    val metadata = jsonb<List<MetadataEntry>>("metadata", Json)
 }

@@ -1,6 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.shared.AttachmentType
+import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
 import kotlin.time.Instant
 
@@ -11,6 +12,7 @@ data class Attachment @JvmOverloads constructor(
     override var customFields: CustomFieldMap,
     var sourcePath: String?,
     var targetFolder: String?,
+    val metadata: List<MetadataEntry> = emptyList(),
     var attachmentType: AttachmentType,
     val skip: SkipOptions,
     var targetImageId: String? = null,

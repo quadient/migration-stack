@@ -47,6 +47,7 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.Block
 import com.quadient.migration.shared.DocumentObjectType.Template
 import com.quadient.migration.shared.IcmFileMetadata
+import com.quadient.migration.shared.IcmMetadata
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.SkipOptions
@@ -852,7 +853,7 @@ class DesignerDeployClientTest {
             var count = 0
             for (key in MetadataValidator.DISALLOWED_METADATA) {
                 // given
-                val docObjects = listOf(aDocObj("D_1", metadata = mapOf(key to listOf(MetadataPrimitive.Str("value")))))
+                val docObjects = listOf(aDocObj("D_1", metadata = listOf(IcmMetadata(key, listOf(MetadataPrimitive.Str("value"))))))
                 givenObjectIsActive("D_1")
 
                 // when
@@ -873,7 +874,7 @@ class DesignerDeployClientTest {
         @Test
         fun `deployDocumentObjects allows other metadata`() {
             // given
-            val docObjects = listOf(aDocObj("D_1", metadata = mapOf("other" to listOf(MetadataPrimitive.Str("value")))))
+            val docObjects = listOf(aDocObj("D_1", metadata = listOf(IcmMetadata("other", listOf(MetadataPrimitive.Str("value"))))))
             givenObjectIsActive("D_1")
             every { resourcePathProvider.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
             every { ipsService.fileExists(any<IcmPath>()) } returns false

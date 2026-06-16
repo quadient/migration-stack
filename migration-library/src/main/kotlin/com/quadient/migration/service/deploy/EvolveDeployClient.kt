@@ -22,9 +22,11 @@ import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
+import com.quadient.migration.service.ipsclient.Version
 import com.quadient.migration.service.resolveTargetDir
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
@@ -73,14 +75,60 @@ class EvolveDeployClient(
     storage,
 ) {
     init {
-        // Clear existing postprocessors for Interactive output, there are
-        // currently no postprocessors needed for evolve
+        // Clear existing postprocessors for Interactive output, since
+        // they are not valid for Evolve output
         clearPostProcessors()
+
+        addPostProcessor { result ->
+            val targetVersion = caClient.targetVersion
+            if (targetVersion == null) {
+                logger.error("Failed to retrieve target CA version, skipping categorization")
+                return@addPostProcessor
+            }
+
+            if (targetVersion < Version(26, 6, 0, 0)) {
+                logger.warn("Target CA version $targetVersion does not support categorization API, skipping categorization for deployed objects")
+                return@addPostProcessor
+            }
+
+            val allowedTypes = listOf(
+                ResourceType.DocumentObject,
+                ResourceType.Image,
+                ResourceType.Attachment,
+                ResourceType.DisplayRule
+            ).toTypedArray()
+
+            val categorizations = postProcess.prepareData("metadata", result, *allowedTypes) { info, obj ->
+                val metadata = when (obj) {
+                    is DocumentObject -> obj.metadata
+                    is Image -> obj.metadata
+                    is DisplayRule -> obj.metadata
+                    is Attachment -> obj.metadata
+                    else -> emptyList()
+                }.filterIsInstance<com.quadient.migration.shared.Categorization>()
+
+                if (metadata.isEmpty()) {
+                    null
+                } else {
+                    info to metadata
+                }
+            }
+
+            for ((info, categorization) in categorizations) {
+                caClient.setCategorization(
+                    CategorizationUpdateDto(info.targetPath.toString(), categorization.map {
+                        CategorizationDto(it.name, null, it.fields.map { field ->
+                            CategorizationFieldDto(field.key, field.value.map { value -> value.serialize() })
+                        })
+                    })
+                )
+            }
+        }
     }
 
     private val evolveConfig by lazy {
         requireNotNull(migConfig.inspireConfig.evolveConfig) {
-            "migrationConfig.evolveConfig must be set to use Evolve inspireOutput"
+            "migrationConfig.inspireConfig.evolveConfig must be set to use Evolve inspireOutput"
         }
     }
 

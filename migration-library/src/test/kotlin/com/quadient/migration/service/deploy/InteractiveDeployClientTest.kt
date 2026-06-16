@@ -13,7 +13,10 @@ import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
@@ -36,6 +39,7 @@ import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
+import com.quadient.migration.service.deploy.utility.PostProcessor
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
@@ -49,7 +53,10 @@ import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
+import com.quadient.migration.shared.IcmFileMetadata
+import com.quadient.migration.shared.IcmMetadata
 import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.MetadataValue
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aActiveStatus
@@ -66,6 +73,8 @@ import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.model.aTemplate
 import com.quadient.migration.tools.model.aText
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldBeEmpty
+import com.quadient.migration.tools.shouldBeOfSize
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -101,7 +110,7 @@ class InteractiveDeployClientTest {
         baseTemplatePath = "icm://Interactive/tenant/BaseTemplates/templ.wfd"
     )
     val tenant = config.interactiveTenant
-    val postProcess = PostProcessImpl(ipsService, documentObjectRepository, imageRepository, displayRuleRepository)
+    val postProcess = PostProcessImpl(ipsService, documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, textStyleRepository, paragraphStyleRepository)
     val resourcePathProvider = mockk<InteractiveResourcePathProvider>()
     val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, config.inspireOutput)
     val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, config.inspireOutput)
@@ -1137,7 +1146,7 @@ class InteractiveDeployClientTest {
             var count = 0
             for (key in MetadataValidator.DISALLOWED_METADATA) {
                 // given
-                val docObjects = listOf(aDocObj("D_1", metadata = mapOf(key to listOf(MetadataPrimitive.Str("value")))))
+                val docObjects = listOf(aDocObj("D_1", metadata = listOf(IcmMetadata(key, listOf(MetadataPrimitive.Str("value"))))))
                 givenObjectIsActive("D_1")
 
                 // when
@@ -1158,7 +1167,7 @@ class InteractiveDeployClientTest {
         @Test
         fun `deployDocumentObjects allows other metadata`() {
             // given
-            val docObjects = listOf(aDocObj("D_1", metadata = mapOf("other" to listOf(MetadataPrimitive.Str("value")))))
+            val docObjects = listOf(aDocObj("D_1", metadata = listOf(IcmMetadata("other", listOf(MetadataPrimitive.Str("value"))))))
             givenObjectIsActive("D_1")
 
             // when
@@ -1176,7 +1185,7 @@ class InteractiveDeployClientTest {
                 val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))))
                 givenObjectIsActive("D_1")
                 givenObjectIsActive("I_1")
-                aImage("I_1", metadata = mapOf(key to listOf(MetadataPrimitive.Str("value")))).mock()
+                aImage("I_1", metadata = listOf(IcmMetadata(key, listOf(MetadataPrimitive.Str("value"))))).mock()
 
                 // when
                 val result = subject.runDeploy(docObjects)
@@ -1199,7 +1208,7 @@ class InteractiveDeployClientTest {
             val docObjects = listOf(aDocObj("D_1", content = listOf(ImageRef("I_1"))))
             givenObjectIsActive("D_1")
             givenObjectIsActive("I_1")
-            aImage("I_1", metadata = mapOf("other" to listOf(MetadataPrimitive.Str("value")))).mock()
+            aImage("I_1", metadata = listOf(IcmMetadata("other", listOf(MetadataPrimitive.Str("value"))))).mock()
 
             // when
             val result = subject.runDeploy(docObjects)
@@ -1316,6 +1325,224 @@ class InteractiveDeployClientTest {
             subject::uploadAttachment,
             subject::uploadDisplayRule
         )
+    }
+
+    @Nested
+    inner class MetadataPostProcessorTest {
+        private val metadataPostProcessor: PostProcessor = subject.clearPostProcessors().first()
+
+        private fun aDeploymentResult(vararg infos: DeploymentInfo) = DeploymentResult(
+            deploymentId = Uuid.random(),
+            deployed = infos.toMutableList(),
+        )
+
+        @Test
+        fun `post processor calls writeMetadata with empty list when deployed objects have no metadata`() {
+            val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template).build()
+            every { documentObjectRepository.find("doc1") } returns doc
+
+            val result = aDeploymentResult(DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://path/doc1.jld".toIcmPath()))
+            metadataPostProcessor(result)
+
+            verify { ipsService.writeMetadata(emptyList()) }
+        }
+
+        @Test
+        fun `post processor writes metadata for DocumentObject with IcmMetadata`() {
+            val targetPath = "icm://path/doc1.jld".toIcmPath()
+            val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template)
+                .metadata("myKey") { string("value1") }
+                .build()
+            every { documentObjectRepository.find("doc1") } returns doc
+
+            val result = aDeploymentResult(DeploymentInfo("doc1", ResourceType.DocumentObject, targetPath))
+            metadataPostProcessor(result)
+
+            verify {
+                ipsService.writeMetadata(listOf(
+                    IcmFileMetadata(targetPath.toString(), mapOf(
+                        "myKey" to MetadataValue(listOf(MetadataPrimitive.Str("value1")))
+                    ))
+                ))
+            }
+        }
+
+        @Test
+        fun `post processor writes metadata for Image with IcmMetadata`() {
+            val targetPath = "icm://path/img1.jpg".toIcmPath()
+            val img = ImageBuilder("img1")
+                .metadata("Subject") { string("landscape") }
+                .build()
+            every { imageRepository.find("img1") } returns img
+
+            val result = aDeploymentResult(DeploymentInfo("img1", ResourceType.Image, targetPath))
+            metadataPostProcessor(result)
+
+            verify {
+                ipsService.writeMetadata(listOf(
+                    IcmFileMetadata(targetPath.toString(), mapOf(
+                        "Subject" to MetadataValue(listOf(MetadataPrimitive.Str("landscape")))
+                    ))
+                ))
+            }
+        }
+
+        @Test
+        fun `post processor writes metadata for Attachment with IcmMetadata`() {
+            val targetPath = "icm://path/att1.pdf".toIcmPath()
+            val att = AttachmentBuilder("att1")
+                .metadata("Category") { string("report") }
+                .build()
+            every { attachmentRepository.find("att1") } returns att
+
+            val result = aDeploymentResult(DeploymentInfo("att1", ResourceType.Attachment, targetPath))
+            metadataPostProcessor(result)
+
+            verify {
+                ipsService.writeMetadata(listOf(
+                    IcmFileMetadata(targetPath.toString(), mapOf(
+                        "Category" to MetadataValue(listOf(MetadataPrimitive.Str("report")))
+                    ))
+                ))
+            }
+        }
+
+        @Test
+        fun `post processor writes metadata for DisplayRule with IcmMetadata`() {
+            val targetPath = "icm://path/rule1.jrd".toIcmPath()
+            val rule = DisplayRuleBuilder("rule1")
+                .metadata("other") { string("value") }
+                .build()
+            every { displayRuleRepository.find("rule1") } returns rule
+
+            val result = aDeploymentResult(DeploymentInfo("rule1", ResourceType.DisplayRule, targetPath))
+            metadataPostProcessor(result)
+
+            verify {
+                ipsService.writeMetadata(listOf(
+                    IcmFileMetadata(targetPath.toString(), mapOf(
+                        "other" to MetadataValue(listOf(MetadataPrimitive.Str("value")))
+                    ))
+                ))
+            }
+        }
+
+        @Test
+        fun `post processor skips TextStyle and ParagraphStyle resources`() {
+            val result = aDeploymentResult(
+                DeploymentInfo("ts1", ResourceType.TextStyle, "icm://path/ts1".toIcmPath()),
+                DeploymentInfo("ps1", ResourceType.ParagraphStyle, "icm://path/ps1".toIcmPath()),
+            )
+            metadataPostProcessor(result)
+
+            verify { ipsService.writeMetadata(emptyList()) }
+            result.warnings.shouldBeEmpty()
+        }
+
+        @Test
+        fun `post processor adds warning and skips metadata when repository returns null`() {
+            every { documentObjectRepository.find("doc1") } returns null
+
+            val result = aDeploymentResult(DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://path/doc1.jld".toIcmPath()))
+            metadataPostProcessor(result)
+
+            verify { ipsService.writeMetadata(emptyList()) }
+            result.warnings.shouldBeOfSize(1)
+        }
+
+        @Test
+        fun `post processor writes categorization as prefixed metadata fields`() {
+            val targetPath = "icm://path/doc1.jld".toIcmPath()
+            val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template)
+                .categorization("MyCat") { string("fieldA", "valueA") }
+                .build()
+            every { documentObjectRepository.find("doc1") } returns doc
+
+            val result = aDeploymentResult(DeploymentInfo("doc1", ResourceType.DocumentObject, targetPath))
+            metadataPostProcessor(result)
+
+            verify {
+                ipsService.writeMetadata(listOf(
+                    IcmFileMetadata(targetPath.toString(), mapOf(
+                        "MyCat_fieldA" to MetadataValue(listOf(MetadataPrimitive.Str("valueA"))),
+                        "Assigned Categorizations" to MetadataValue(listOf(MetadataPrimitive.Str("MyCat")))
+                    ))
+                ))
+            }
+        }
+
+        @Test
+        fun `post processor includes all categorization names in Assigned Categorizations`() {
+            val targetPath = "icm://path/doc1.jld".toIcmPath()
+            val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template)
+                .categorization("CatA") { string("field1", "v1") }
+                .categorization("CatB") { string("field2", "v2") }
+                .build()
+            every { documentObjectRepository.find("doc1") } returns doc
+
+            val result = aDeploymentResult(DeploymentInfo("doc1", ResourceType.DocumentObject, targetPath))
+            metadataPostProcessor(result)
+
+            verify {
+                ipsService.writeMetadata(listOf(
+                    IcmFileMetadata(targetPath.toString(), mapOf(
+                        "CatA_field1" to MetadataValue(listOf(MetadataPrimitive.Str("v1"))),
+                        "CatB_field2" to MetadataValue(listOf(MetadataPrimitive.Str("v2"))),
+                        "Assigned Categorizations" to MetadataValue(listOf(MetadataPrimitive.Str("CatA"), MetadataPrimitive.Str("CatB")))
+                    ))
+                ))
+            }
+        }
+
+        @Test
+        fun `post processor combines IcmMetadata and categorization in single writeMetadata call`() {
+            val targetPath = "icm://path/doc1.jld".toIcmPath()
+            val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template)
+                .metadata("myKey") { string("myValue") }
+                .categorization("MyCat") { string("field1", "val1") }
+                .build()
+            every { documentObjectRepository.find("doc1") } returns doc
+
+            val result = aDeploymentResult(DeploymentInfo("doc1", ResourceType.DocumentObject, targetPath))
+            metadataPostProcessor(result)
+
+            verify {
+                ipsService.writeMetadata(listOf(
+                    IcmFileMetadata(targetPath.toString(), mapOf(
+                        "myKey" to MetadataValue(listOf(MetadataPrimitive.Str("myValue"))),
+                        "MyCat_field1" to MetadataValue(listOf(MetadataPrimitive.Str("val1"))),
+                        "Assigned Categorizations" to MetadataValue(listOf(MetadataPrimitive.Str("MyCat")))
+                    ))
+                ))
+            }
+        }
+
+        @Test
+        fun `post processor writes metadata for all deployed items in a single writeMetadata call`() {
+            val path1 = "icm://path/doc1.jld".toIcmPath()
+            val path2 = "icm://path/img1.jpg".toIcmPath()
+            val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template)
+                .metadata("key1") { string("val1") }
+                .build()
+            val img = ImageBuilder("img1")
+                .metadata("Subject") { string("portrait") }
+                .build()
+            every { documentObjectRepository.find("doc1") } returns doc
+            every { imageRepository.find("img1") } returns img
+
+            val result = aDeploymentResult(
+                DeploymentInfo("doc1", ResourceType.DocumentObject, path1),
+                DeploymentInfo("img1", ResourceType.Image, path2),
+            )
+            metadataPostProcessor(result)
+
+            verify {
+                ipsService.writeMetadata(listOf(
+                    IcmFileMetadata(path1.toString(), mapOf("key1" to MetadataValue(listOf(MetadataPrimitive.Str("val1"))))),
+                    IcmFileMetadata(path2.toString(), mapOf("Subject" to MetadataValue(listOf(MetadataPrimitive.Str("portrait")))))
+                ))
+            }
+        }
     }
 
 }

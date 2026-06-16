@@ -11,13 +11,10 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.Paragraph.Text
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Table
-import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.api.dto.migrationmodel.TextContent
 import com.quadient.migration.api.dto.migrationmodel.TextStyleDefinition
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
@@ -26,7 +23,6 @@ import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
-import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
@@ -41,17 +37,14 @@ import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
-import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.LiteralOrFunctionCall
-import com.quadient.migration.shared.MetadataPrimitive
-import com.quadient.migration.shared.ParagraphPdfTaggingRule
+import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.VariablePathData
 import kotlin.time.Instant
-import kotlin.collections.emptyMap
 
 fun aDocObj(
     id: String,
@@ -64,7 +57,7 @@ fun aDocObj(
     displayRuleRef: String? = null,
     baseTemplate: String? = null,
     VariableStructureRef: String? = null,
-    metadata: Map<String, List<MetadataPrimitive>> = emptyMap(),
+    metadata: List<MetadataEntry> = emptyList(),
 ): DocumentObject {
     return DocumentObject(
         id = id,
@@ -100,7 +93,7 @@ fun aBlock(
     type: DocumentObjectType = DocumentObjectType.Block,
     displayRuleRef: DisplayRuleRef? = null,
     baseTemplate: String? = null,
-    metadata : Map<String, List<MetadataPrimitive>> = emptyMap(),
+    metadata : List<MetadataEntry> = emptyList(),
     skip: SkipOptions = SkipOptions(false, null, null),
 ): DocumentObject {
     return DocumentObject(
@@ -149,7 +142,7 @@ fun aTemplate(
         lastUpdated = null,
         baseTemplate = baseTemplate,
         options = null,
-        metadata = emptyMap(),
+        metadata = emptyList(),
         skip = SkipOptions(false, null, null),
         subject = null,
     )
@@ -324,7 +317,7 @@ fun aImage(
     customFields: MutableMap<String, String> = mutableMapOf(),
     options: ImageOptions? = null,
     targetFolder: String? = null,
-    metadata : Map<String, List<MetadataPrimitive>> = emptyMap(),
+    metadata : List<MetadataEntry> = emptyList(),
     skip : SkipOptions = SkipOptions(false, null, null),
     alternateText: String? = null,
 ): Image {

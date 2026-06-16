@@ -1,12 +1,12 @@
 package com.quadient.migration.api.dto.migrationmodel.builder.components
 
 import com.quadient.migration.api.dto.migrationmodel.builder.MetadataBuilder
-import com.quadient.migration.shared.MetadataPrimitive
-import kotlin.collections.set
+import com.quadient.migration.shared.IcmMetadata
+import com.quadient.migration.shared.MetadataEntry
 
 @Suppress("UNCHECKED_CAST")
 interface HasMetadata<T> {
-    var metadata: MutableMap<String, List<MetadataPrimitive>>
+    var metadata: MutableList<MetadataEntry>
 
     /**
      * Add metadata to the object.
@@ -18,7 +18,7 @@ interface HasMetadata<T> {
     fun metadata(key: String, block: MetadataBuilder.() -> Unit) = apply {
         val result = MetadataBuilder().apply(block).build()
         if (result.isNotEmpty()) {
-            metadata[key] = result
+            metadata.add(IcmMetadata(key, result))
         }
     } as T
 }

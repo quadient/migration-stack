@@ -38,6 +38,7 @@ import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuild
 import com.quadient.migration.service.DesignerResourcePathProvider
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.IcmFileMetadata
+import com.quadient.migration.shared.IcmMetadata
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.MetadataValue
 import com.quadient.migration.shared.toIcmPath
@@ -67,7 +68,6 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-
 class DeployClientTest {
     val metadataValidator = MetadataValidatorImpl()
     val documentObjectRepository = mockk<DocumentObjectRepository>()
@@ -83,7 +83,7 @@ class DeployClientTest {
     val ipsService = mockk<IpsService>()
     val storage = mockk<Storage>()
     val projectConfig = aProjectConfig(output = InspireOutput.Designer)
-    val postProcess = PostProcessImpl(ipsService, documentObjectRepository, imageRepository, displayRuleRepository)
+    val postProcess = PostProcessImpl(ipsService, documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, textStyleRepository, paragraphStyleRepository)
     val resourcePathProvider = DesignerResourcePathProvider(projectConfig)
     val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
     val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
@@ -117,10 +117,10 @@ class DeployClientTest {
 
     @Test
     fun `write metadata post processor`() {
-        val doc1 = aBlock(id = "doc1", metadata = mapOf("docMeta" to listOf(MetadataPrimitive.Str("v1"))))
-        val doc2 = aBlock(id = "doc2", metadata = mapOf("docMeta" to listOf(MetadataPrimitive.Str("v2"))))
-        val img1 = aImage(id = "img2", metadata = mapOf("imgMeta" to listOf(MetadataPrimitive.Str("v3"))))
-        val img2 = aImage(id = "img2", metadata = mapOf("imgMeta" to listOf(MetadataPrimitive.Str("v4"))))
+        val doc1 = aBlock(id = "doc1", metadata = listOf(IcmMetadata("docMeta", listOf(MetadataPrimitive.Str("v1")))))
+        val doc2 = aBlock(id = "doc2", metadata = listOf(IcmMetadata("docMeta", listOf(MetadataPrimitive.Str("v2")))))
+        val img1 = aImage(id = "img2", metadata = listOf(IcmMetadata("imgMeta", listOf(MetadataPrimitive.Str("v3")))))
+        val img2 = aImage(id = "img2", metadata = listOf(IcmMetadata("imgMeta", listOf(MetadataPrimitive.Str("v4")))))
 
         every { documentObjectRepository.find("doc1") } returns doc1
         every { documentObjectRepository.find("doc2") } returns doc2

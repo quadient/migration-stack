@@ -35,6 +35,12 @@ data class IcmFileMetadata(val path: String, val metadata: Map<String, MetadataV
 }
 
 @Serializable
+sealed interface MetadataEntry
+@Serializable
+@SerialName("IcmMetadata")
+data class IcmMetadata(val key: String, val value: List<MetadataPrimitive>) : MetadataEntry
+
+@Serializable
 data class MetadataValue(val values: List<MetadataPrimitive>, val system: Boolean = false)
 
 fun Map<String, List<MetadataPrimitive>>.toMetadata(system: Boolean = false): Map<String, MetadataValue> {

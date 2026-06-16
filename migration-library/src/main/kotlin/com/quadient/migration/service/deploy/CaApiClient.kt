@@ -1,6 +1,7 @@
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.MigConfig
+import com.quadient.migration.service.ipsclient.Version
 import com.quadient.migration.shared.IcmPath
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -14,8 +15,11 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.slf4j.LoggerFactory
+import java.io.InputStream
 
 private val logger = LoggerFactory.getLogger(CaApiClient::class.java)
+
+const val BASE_API_PATH = "/authoring/api/system/v1"
 
 class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHttpClient) {
     private val evolveConfig by lazy {
@@ -23,8 +27,33 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
             "migrationConfig.evolveConfig must be set to use Evolve inspireOutput"
         }
     }
-    private val baseUrl by lazy { evolveConfig.contentAuthorUrl.removeSuffix("/") }
+    private val baseUrl by lazy { evolveConfig.companyUrl.removeSuffix("/") }
     private val json = Json { ignoreUnknownKeys = true }
+    val targetVersion by lazy { getCloudVersion() }
+
+    fun getCloudVersion(): Version? {
+        logger.debug("Getting cloud version from {}", baseUrl)
+        return when (val result = Request.Builder().url(baseUrl).get().readStringRetrying()) {
+            is HttpResult.Success -> {
+                val version = result.response.substringAfter("<!-- version:").substringBefore("-->")
+                when (val ver = Version.parse(version.trim())) {
+                    is Version.ParseResult.Success -> ver.version
+                    is Version.ParseResult.Failure -> {
+                        logger.error("Failed to parse version from response: {}", ver.reason)
+                        null
+                    }
+                }
+            }
+            is HttpResult.Failure -> {
+                logger.error("Failed to get cloud version: {}", result.error)
+                null
+            }
+            is HttpResult.Exception -> {
+                logger.error("Exception while getting cloud version: {}", result.cause.toString())
+                null
+            }
+        }
+    }
 
     fun uploadResource(
         path: IcmPath,
@@ -105,6 +134,14 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
             .executeRetrying()
     }
 
+    fun setCategorization(request: CategorizationUpdateDto): HttpResult<Unit, ApiBadRequestException> {
+        logger.debug("Setting categorization for {}", request.path)
+        val body = json.encodeToString(request)
+        return createRequest("/contentManagement/categorization")
+            .put(body.toRequestBody("application/json".toMediaType()))
+            .executeRetrying()
+    }
+
     fun executeAction(actionId: String, guid: String, objectType: ObjectType): HttpResult<Unit, ApiBadRequestException> {
         val body = json.encodeToString(ExecuteActionRequest(actionId = actionId, guid = guid, objectType = objectType.toString()))
 
@@ -126,15 +163,39 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
         return this.post(builder.build())
     }
 
+    private fun Request.Builder.readStringRetrying(
+        maxRetries: Int = 3,
+        delayMs: Long = evolveConfig.apiRetryDelayMs,
+    ): HttpResult<String, String> {
+        return httpClient.newCall(this.build())
+            .executeRetrying(
+                maxRetries = maxRetries,
+                delayMs = delayMs,
+                successDecoder = { it.reader().readText() },
+                failureDecoder = { it }
+            )
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
     private inline fun <reified T, reified E> Request.Builder.executeRetrying(
         maxRetries: Int = 3,
         delayMs: Long = evolveConfig.apiRetryDelayMs
     ): HttpResult<T, E> {
-        return httpClient.newCall(this.build()).executeRetrying(maxRetries, delayMs)
+        return httpClient.newCall(this.build())
+            .executeRetrying(
+                maxRetries = maxRetries,
+                delayMs = delayMs,
+                successDecoder = { if (T::class == Unit::class) Unit as T else json.decodeFromStream<T>(it) },
+                failureDecoder = { json.decodeFromString<E>(it)}
+            )
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
-    private inline fun <reified T, reified E> Call.executeRetrying(maxRetries: Int = 3, delayMs: Long): HttpResult<T, E> {
+    private fun <T, E> Call.executeRetrying(
+        maxRetries: Int = 3,
+        delayMs: Long,
+        successDecoder: (InputStream) -> T,
+        failureDecoder: (String) -> E,
+    ): HttpResult<T, E> {
         var lastError: HttpResult<T, E>? = null
         repeat(maxRetries) { attempt ->
             val call = if (attempt == 0) this else this.clone()
@@ -142,17 +203,13 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
                 logger.debug("Executing request ({}/{}) {}", attempt + 1, maxRetries, call.request())
                 call.execute().use { response ->
                     if (response.isSuccessful) {
-                        return if (T::class == Unit::class) {
-                            HttpResult.Success(Unit as T)
-                        } else {
-                            HttpResult.Success(json.decodeFromStream<T>(response.body.byteStream()))
-                        }
+                        return HttpResult.Success(successDecoder(response.body.byteStream()))
                     }
 
                     try {
                         val body = response.body.string()
                         logger.error("Attempt {}/{} failed: {} {} - {}", attempt + 1, maxRetries, response.code, response.message, body)
-                        val jsonBody = json.decodeFromString<E>(body)
+                        val jsonBody = failureDecoder(body)
                         lastError = HttpResult.Failure(jsonBody)
                         if (!response.code.isRetryable()) return HttpResult.Failure(jsonBody)
                     } catch (e: Exception) {
@@ -173,7 +230,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
     private fun Int.isRetryable() = this in 500..599 || this == 429
 
     private fun createRequest(url: String): Request.Builder {
-        return Request.Builder().url("$baseUrl$url").header("Authorization", "Bearer ${evolveConfig.contentAuthorApiKey}")
+        return Request.Builder().url("$baseUrl$BASE_API_PATH$url").header("Authorization", "Bearer ${evolveConfig.contentAuthorApiKey}")
     }
 }
 
@@ -246,3 +303,23 @@ data class ExecuteActionRequest(
     val userOrGroupName: String? = null,
     val operationsData: Map<String, Map<String, String>>? = null,
 )
+
+@Serializable
+data class CategorizationUpdateDto(
+    val path: String,
+    val categorizations: List<CategorizationDto> = emptyList(),
+)
+
+@Serializable
+data class CategorizationDto(
+    val name: String,
+    val displayName: String? = null,
+    val fields: List<CategorizationFieldDto> = emptyList(),
+)
+
+@Serializable
+data class CategorizationFieldDto(
+    val name: String,
+    val values: List<String> = emptyList(),
+)
+

@@ -6,6 +6,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.PdfMetadata
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasBaseTemplate
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasCategorization
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasDisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasDocumentObjectOptions
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasInternal
@@ -17,7 +18,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTarge
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasVariableStructureRef
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
 
 class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
@@ -30,6 +31,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     HasSubject<DocumentObjectBuilder>,
     HasDocumentObjectOptions<DocumentObjectBuilder>,
     HasMetadata<DocumentObjectBuilder>,
+    HasCategorization<DocumentObjectBuilder>,
     HasPdfMetadata<DocumentObjectBuilder>,
     HasSkip<DocumentObjectBuilder>,
     HasAreaContent<DocumentObjectBuilder>,
@@ -44,7 +46,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     override var baseTemplate: String? = null
     override var subject: String? = null
     override var options: DocumentObjectOptions? = null
-    override var metadata: MutableMap<String, List<MetadataPrimitive>> = mutableMapOf()
+    override var metadata: MutableList<MetadataEntry> = mutableListOf()
     override var pdfMetadata: PdfMetadata? = null
     override var skip = false
     override var placeholder: String? = null

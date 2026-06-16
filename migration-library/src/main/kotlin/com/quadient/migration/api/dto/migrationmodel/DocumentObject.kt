@@ -2,7 +2,7 @@ package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
 import kotlin.time.Instant
 
@@ -12,7 +12,7 @@ data class DocumentObject(
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
     var type: DocumentObjectType,
-    var content: List<DocumentContent> = mutableListOf(),
+    var content: List<DocumentContent> = emptyList(),
     var internal: Boolean? = false,
     var targetFolder: String? = null,
     var displayRuleRef: DisplayRuleRef? = null,
@@ -22,7 +22,7 @@ data class DocumentObject(
     var pdfMetadata: PdfMetadata? = null,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
-    val metadata: Map<String, List<MetadataPrimitive>>,
+    val metadata: List<MetadataEntry> = emptyList(),
     val skip: SkipOptions,
     val subject: String?,
 ) : MigrationObject, RefValidatable {

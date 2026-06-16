@@ -3,6 +3,7 @@ package com.quadient.migration.service.deploy.utility
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.shared.IcmMetadata
 import com.quadient.migration.tools.caseInsensitiveSetOf
 
 interface MetadataValidator {
@@ -49,15 +50,15 @@ interface MetadataValidator {
     }
 
     fun DocumentObject.getInvalidMetadataKeys(): Set<String> {
-        return this.metadata.keys.asSequence().filter { key -> DISALLOWED_METADATA.contains(key) }.toSet()
+        return this.metadata.asSequence().filterIsInstance<IcmMetadata>().map { it.key }.filter { key -> DISALLOWED_METADATA.contains(key) }.toSet()
     }
 
     fun Image.getInvalidMetadataKeys(): Set<String> {
-        return this.metadata.keys.asSequence().filter { key -> IMAGE_DISALLOWED_METADATA.contains(key) }.toSet()
+        return this.metadata.asSequence().filterIsInstance<IcmMetadata>().map { it.key }.filter { key -> IMAGE_DISALLOWED_METADATA.contains(key) }.toSet()
     }
 
     fun DisplayRule.getInvalidMetadataKeys(): Set<String> {
-        return this.metadata.keys.asSequence().filter { key -> DISALLOWED_METADATA.contains(key) }.toSet()
+        return this.metadata.asSequence().filterIsInstance<IcmMetadata>().map { it.key }.filter { key -> DISALLOWED_METADATA.contains(key) }.toSet()
     }
 }
 
