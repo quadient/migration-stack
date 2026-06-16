@@ -217,7 +217,7 @@ class ImagesMappingImportTest {
     }
 
     static void givenExistingImage(Migration mig, String id, String name, String targetFolder, String sourcePath, ImageType imageType) {
-        def image = new Image(id, name, [], new CustomFieldMap([:]), sourcePath, null, imageType, targetFolder, [:], new SkipOptions(false, null, null), null, null)
+        def image = new Image(id, name, [], new CustomFieldMap([:]), sourcePath, null, imageType, targetFolder, [], new SkipOptions(false, null, null), null, null)
         when(mig.imageRepository.find(id)).thenReturn(image)
     }
 

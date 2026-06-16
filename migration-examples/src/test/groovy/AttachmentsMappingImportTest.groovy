@@ -46,7 +46,7 @@ class AttachmentsMappingImportTest {
     }
 
     static void givenExistingAttachment(Migration mig, String id, String name, String targetFolder, String sourcePath, AttachmentType attachmentType) {
-        def attachment = new Attachment(id, name, [], new CustomFieldMap([:]), sourcePath, targetFolder, attachmentType, new SkipOptions(false, null, null), null)
+        def attachment = new Attachment(id, name, [], new CustomFieldMap([:]), sourcePath, targetFolder, [], attachmentType, new SkipOptions(false, null, null), null)
         when(mig.attachmentRepository.find(id)).thenReturn(attachment)
     }
 

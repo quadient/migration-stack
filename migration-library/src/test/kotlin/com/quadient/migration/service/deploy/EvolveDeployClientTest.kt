@@ -141,6 +141,7 @@ class EvolveDeployClientTest {
         val targetPath = "icm://path/to/img1.jpg".toIcmPath()
         val data = byteArrayOf(1, 2, 3)
         every { caClient.uploadResource(targetPath, data) } returns HttpResult.Success(Unit)
+        every { ipsService.tryUpload(targetPath, data) } returns OperationResult.Success
 
         val result = subject.uploadImage(image, targetPath, data)
 
@@ -155,6 +156,7 @@ class EvolveDeployClientTest {
         val data = byteArrayOf(1, 2, 3)
         val error = ApiBadRequestException(status = 400, title = "Bad Request", detail = "Invalid image")
         every { caClient.uploadResource(targetPath, data) } returns HttpResult.Failure(error)
+        every { ipsService.tryUpload(targetPath, data) } returns OperationResult.Success
 
         val result = subject.uploadImage(image, targetPath, data)
 
@@ -168,6 +170,7 @@ class EvolveDeployClientTest {
         val targetPath = "icm://path/to/img1.jpg".toIcmPath()
         val data = byteArrayOf(1, 2, 3)
         every { caClient.uploadResource(targetPath, data) } returns HttpResult.Exception(RuntimeException("connection refused"))
+        every { ipsService.tryUpload(targetPath, data) } returns OperationResult.Success
 
         val result = subject.uploadImage(image, targetPath, data)
 

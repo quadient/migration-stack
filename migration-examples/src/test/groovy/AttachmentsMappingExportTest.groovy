@@ -24,11 +24,11 @@ class AttachmentsMappingExportTest {
         def migration = Utils.mockMigration()
 
         when(migration.attachmentRepository.listAll()).thenReturn([
-                new Attachment("empty", null, [], new CustomFieldMap([:]), null, null, AttachmentType.Document, emptySkipOptions(), null),
-                new Attachment("full", "full", ["foo", "bar"], new CustomFieldMap([:]), "sourcePath", "targetDir", AttachmentType.Document, new SkipOptions(true, "placeholder", "reason"), null),
-                new Attachment("with-target-image", "with-target", [], new CustomFieldMap([:]), null, null, AttachmentType.Attachment, emptySkipOptions(), "img456"),
-                new Attachment("overridden empty", null, [], new CustomFieldMap([:]), null, null, AttachmentType.Document, emptySkipOptions(), null),
-                new Attachment("overridden full", "full", ["foo", "bar"], new CustomFieldMap(["originalName": "originalFull"]), "sourcePath", "targetDir", AttachmentType.Attachment, emptySkipOptions(), null),
+                new Attachment("empty", null, [], new CustomFieldMap([:]), null, null, [], AttachmentType.Document, emptySkipOptions(), null),
+                new Attachment("full", "full", ["foo", "bar"], new CustomFieldMap([:]), "sourcePath", "targetDir", [], AttachmentType.Document, new SkipOptions(true, "placeholder", "reason"), null),
+                new Attachment("with-target-image", "with-target", [], new CustomFieldMap([:]), null, null, [], AttachmentType.Attachment, emptySkipOptions(), "img456"),
+                new Attachment("overridden empty", null, [], new CustomFieldMap([:]), null, null, [], AttachmentType.Document, emptySkipOptions(), null),
+                new Attachment("overridden full", "full", ["foo", "bar"], new CustomFieldMap(["originalName": "originalFull"]), "sourcePath", "targetDir", [], AttachmentType.Attachment, emptySkipOptions(), null),
         ])
 
         when(migration.statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any())).thenReturn(new Active())

@@ -24,11 +24,11 @@ class DisplayRulesMappingExportTest {
         def migration = Utils.mockMigration()
 
         when(migration.displayRuleRepository.listAll()).thenReturn([
-            new DisplayRule("empty", null, [], new CustomFieldMap([:]), null, null, null, null, true, [:], null, null, null, null),
-            new DisplayRule("full", "full", ["foo", "bar"], new CustomFieldMap([:]), null, null, null, new DisplayRuleRef("targetId1"), false, [:], null, "targetFolder1", "baseTemplate1", new VariableStructureRef("varStruct1")),
-            new DisplayRule("with-variable-structure", "with-var-struct", [], new CustomFieldMap([:]), null, null, null, null, true, [:], null, null, null, new VariableStructureRef("varStruct2")),
-            new DisplayRule("overridden empty", null, [], new CustomFieldMap([:]), null, null, null, null, true, [:], null, null, null, null),
-            new DisplayRule("overridden full", "full", ["foo", "bar"], new CustomFieldMap(["originalName": "originalFull"]), null, null, null, new DisplayRuleRef("targetId2"), false, [:], null, "targetFolder2", "baseTemplate2", null),
+            new DisplayRule("empty", null, [], new CustomFieldMap([:]), null, null, null, null, true, [], null, null, null, null),
+            new DisplayRule("full", "full", ["foo", "bar"], new CustomFieldMap([:]), null, null, null, new DisplayRuleRef("targetId1"), false, [], null, "targetFolder1", "baseTemplate1", new VariableStructureRef("varStruct1")),
+            new DisplayRule("with-variable-structure", "with-var-struct", [], new CustomFieldMap([:]), null, null, null, null, true, [], null, null, null, new VariableStructureRef("varStruct2")),
+            new DisplayRule("overridden empty", null, [], new CustomFieldMap([:]), null, null, null, null, true, [], null, null, null, null),
+            new DisplayRule("overridden full", "full", ["foo", "bar"], new CustomFieldMap(["originalName": "originalFull"]), null, null, null, new DisplayRuleRef("targetId2"), false, [], null, "targetFolder2", "baseTemplate2", null),
         ])
 
         when(migration.statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any())).thenReturn(new Active())
