@@ -199,6 +199,10 @@ class EvolveDeployClient(
     }
 
     override fun uploadImage(img: Image, targetPath: IcmPath, data: ByteArray): OperationResult {
+        when (val result = ipsService.tryUpload(targetPath, data)) {
+            is OperationResult.Success -> {}
+            is OperationResult.Failure -> return result
+        }
         return caClient.uploadResource(targetPath, data).toOperationResult()
     }
 
