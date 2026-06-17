@@ -1,12 +1,13 @@
 package com.quadient.migration.persistence.upgrade
 
+import com.quadient.migration.Postgres.Companion.POSTGRES_CONTAINER
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 import java.sql.Connection
 import java.sql.DriverManager
 
@@ -18,7 +19,7 @@ class V12MigrationTest {
 
     @Test
     fun `V12 migration correctly splits style definitions and mappings`() {
-        PostgreSQLContainer("postgres:16-alpine").use { postgres ->
+        PostgreSQLContainer(POSTGRES_CONTAINER).use { postgres ->
             // given
             postgres.start()
 
@@ -205,7 +206,7 @@ class V12MigrationTest {
         )
     }
 
-    private fun connection(postgres: PostgreSQLContainer<*>) =
+    private fun connection(postgres: PostgreSQLContainer) =
         DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password)
 
     private fun assertJsonEquals(expected: String, actual: String, message: String = "") =

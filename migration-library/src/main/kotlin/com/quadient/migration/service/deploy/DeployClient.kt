@@ -276,7 +276,7 @@ sealed class DeployClient(
             return
         }
 
-        logger.debug("Deployment of image '${imageModel.nameOrId()}' to '${icmImagePath}' is successful.")
+        logger.debug("Deployment of image '{}' to '{}' is successful.", imageModel.nameOrId(), icmImagePath)
         tracker.deployedImage(imageModel.id, icmImagePath)
     }
 
@@ -334,7 +334,7 @@ sealed class DeployClient(
             return
         }
 
-        logger.debug("Deployment of attachment '${attachmentModel.nameOrId()}' to '${icmFilePath}' is successful.")
+        logger.debug("Deployment of attachment '{}' to '{}' is successful.", attachmentModel.nameOrId(), icmFilePath)
         tracker.deployedAttachment(attachmentModel.id, icmFilePath)
     }
 
@@ -397,7 +397,7 @@ sealed class DeployClient(
         }
     }
 
-    fun DocumentObject.findDependencies(): List<DocumentObject> {
+    private fun DocumentObject.findDependencies(): List<DocumentObject> {
         val dependencies = mutableListOf<DocumentObject>()
         this.collectRefs().forEach { ref ->
             when (ref) {

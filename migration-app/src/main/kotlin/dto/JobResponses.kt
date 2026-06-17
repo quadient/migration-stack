@@ -1,11 +1,8 @@
-@file:OptIn(ExperimentalTime::class)
-
 package com.quadient.migration.dto
 
 import com.quadient.migration.service.Job
 import com.quadient.migration.service.JobId
 import com.quadient.migration.service.ScriptId
-import kotlin.time.ExperimentalTime
 
 data class JobResponse(
     val id: JobId,

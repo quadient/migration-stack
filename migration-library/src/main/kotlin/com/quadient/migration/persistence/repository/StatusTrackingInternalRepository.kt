@@ -96,7 +96,7 @@ class StatusTrackingInternalRepository(val projectName: String) {
             }
 
             StatusTrackingEntity.findByIdAndUpdate(id) {
-                it.statusEvents = it.statusEvents + event
+                it.statusEvents += event
             } ?: StatusTrackingEntity.new(id) {
                 this.statusEvents = listOf(event)
             }

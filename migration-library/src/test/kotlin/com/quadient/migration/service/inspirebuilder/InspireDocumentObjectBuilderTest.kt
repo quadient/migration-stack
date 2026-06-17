@@ -233,7 +233,7 @@ class InspireDocumentObjectBuilderTest {
         val contentFlow = getFlowAreaContentFlow(result)
         val placeholderFlowId = contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
         val placeholderFlow = result["Flow"].last { it["Id"].textValue() == placeholderFlowId }
-        placeholderFlow["FlowContent"]["P"]["T"][""].textValue() == "Attachment not available"
+        placeholderFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Attachment not available")
     }
 
     @Test
@@ -273,7 +273,7 @@ class InspireDocumentObjectBuilderTest {
                 .imageType(Png).targetAttachmentId(targetAttachment.id).build()
         )
         val block =
-            mockObj(DocumentObjectBuilder("B_1", DocumentObjectType.Block).string("Image: ").imageRef(image.id).build())
+            mockObj(DocumentObjectBuilder("B_1", Block).string("Image: ").imageRef(image.id).build())
 
         // when
         val result =
@@ -300,7 +300,7 @@ class InspireDocumentObjectBuilderTest {
                 .build()
         )
         val block = mockObj(
-            DocumentObjectBuilder("B_1", DocumentObjectType.Block).attachmentRef(attachment.id).build()
+            DocumentObjectBuilder("B_1", Block).attachmentRef(attachment.id).build()
         )
 
         // when
@@ -805,9 +805,8 @@ class InspireDocumentObjectBuilderTest {
         val refStyle = mockTextStyle(TextStyleBuilder("TS_ref").name("Ref Style").styleRef(targetStyle.id).build())
 
         val block = mockObj(
-            DocumentObjectBuilder(
-                "B_1", DocumentObjectType.Block
-            ).paragraph { text { string("Hello").styleRef(refStyle.id) } }.build()
+            DocumentObjectBuilder("B_1", Block)
+                .paragraph { text { string("Hello").styleRef(refStyle.id) } }.build()
         )
 
         // when
@@ -835,7 +834,7 @@ class InspireDocumentObjectBuilderTest {
         )
 
         val block = mockObj(
-            DocumentObjectBuilder("B_1", DocumentObjectType.Block).paragraph {
+            DocumentObjectBuilder("B_1", Block).paragraph {
                 text { string("Hello") }.styleRef(refStyle.id)
             }.build()
         )

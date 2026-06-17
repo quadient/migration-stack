@@ -6,8 +6,8 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
-import com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.service.deploy.utility.ResourceType
@@ -32,14 +32,14 @@ class DocumentObjectRepositoryTest {
 
     @Test
     fun `roundtrip is correct`() {
-        val table = table {
-            pdfTaggingRule(com.quadient.migration.shared.TablePdfTaggingRule.Table)
-            pdfAlternateText("Table alt text")
-            row {
+        val table = TableBuilder()
+            .pdfTaggingRule(com.quadient.migration.shared.TablePdfTaggingRule.Table)
+            .pdfAlternateText("Table alt text")
+            .addRow {
                 displayRuleRef("someref")
-                cell { }
+                addCell()
             }
-        }
+            .build()
         val dto = DocumentObjectBuilder("id", DocumentObjectType.Section)
             .customFields(mutableMapOf("f1" to "val1"))
             .originLocations(listOf("test1", "test2"))

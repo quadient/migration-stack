@@ -9,7 +9,7 @@ import org.junit.jupiter.api.extension.AfterEachCallback
 import org.junit.jupiter.api.extension.BeforeAllCallback
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.ExtensionContext
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 
@@ -17,14 +17,18 @@ import org.testcontainers.junit.jupiter.Testcontainers
 @ExtendWith(Postgres.PostgresExtension::class)
 annotation class Postgres {
 
+    companion object {
+        const val POSTGRES_CONTAINER = "postgres:16-alpine"
+    }
+
     @Testcontainers
     class PostgresExtension : BeforeAllCallback, AfterAllCallback, AfterEachCallback {
         @Container
-        private val postgres = PostgreSQLContainer("postgres:16-alpine")
+        private val postgres = PostgreSQLContainer(POSTGRES_CONTAINER)
         private lateinit var mig: Migration
 
         override fun beforeAll(p0: ExtensionContext) {
-            postgres.start();
+            postgres.start()
             mig = Migration(
                 aMigConfig(
                     dbConfig = DbConfig(

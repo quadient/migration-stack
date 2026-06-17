@@ -137,7 +137,7 @@ class InteractiveDocumentObjectBuilderTest {
             .build()
             .mock()
 
-        val block = DocumentObjectBuilder("1", DocumentObjectType.Block).paragraph {
+        val block = DocumentObjectBuilder("1", Block).paragraph {
             styleRef(paraStyle).text {
                 styleRef(textStyle).string("some text")
             }
@@ -848,10 +848,10 @@ class InteractiveDocumentObjectBuilderTest {
         val docObj = DocumentObjectBuilder("B_1", Block)
             .paragraph { string("Paragraph") }
             .string("Hello World")
-            .variable(variable1)
-            .variable(variable2)
+            .variableRef(variable1)
+            .variableRef(variable2)
             .string("Screw this World")
-            .variable(variable3)
+            .variableRef(variable3)
             .paragraph { string("Paragraph 2") }
             .string("Goodbye World")
             .build()
@@ -1363,7 +1363,7 @@ class InteractiveDocumentObjectBuilderTest {
         val docObj = DocumentObjectBuilder("B_1", Snippet)
             .paragraph { string("Paragraph") }
             .string("Hello World")
-            .variable(variable)
+            .variableRef(variable)
             .paragraph { string("Paragraph 2") }
             .string("Goodbye World")
             .build()
@@ -1387,9 +1387,9 @@ class InteractiveDocumentObjectBuilderTest {
             .mock()
         val docObj = DocumentObjectBuilder("B_1", Snippet)
             .string("Hello World")
-            .variable(variable1)
-            .variable(variable2)
-            .variable(variable3)
+            .variableRef(variable1)
+            .variableRef(variable2)
+            .variableRef(variable3)
             .string("Goodbye World")
             .build()
             .mock()
@@ -1423,14 +1423,14 @@ class InteractiveDocumentObjectBuilderTest {
         val docObj = DocumentObjectBuilder("S_1", Snippet)
             .firstMatch {
                 case {
-                    displayRule(rule1.id)
+                    displayRuleRef(rule1.id)
                     string("Hello ")
-                    variable(variable1)
+                    variableRef(variable1)
                 }
                 case {
-                    displayRule(rule2.id)
+                    displayRuleRef(rule2.id)
                     string("Goodbye ")
-                    variable(variable2)
+                    variableRef(variable2)
                 }
                 defaultString("Default text")
             }
@@ -1456,7 +1456,7 @@ class InteractiveDocumentObjectBuilderTest {
         val case1Var = result["Variable"].last { it["Id"].textValue() == case1VarId }
         case1Var["Type"].textValue().shouldBeEqualTo("Calculated")
         case1Var["VarType"].textValue().shouldBeEqualTo("String")
-        case1Var["Script"].textValue().shouldBeEqualTo($$"""return 'Hello ' + '<var name="V_1">';""")
+        case1Var["Script"].textValue().shouldBeEqualTo($"""return 'Hello ' + '<var name="V_1">';""")
 
         // second case condition script
         conditions[1]["Value"].textValue().shouldBeEqualTo("return (String('C')==String('C'));")
@@ -1467,7 +1467,7 @@ class InteractiveDocumentObjectBuilderTest {
         val case2Var = result["Variable"].last { it["Id"].textValue() == case2VarId }
         case2Var["Type"].textValue().shouldBeEqualTo("Calculated")
         case2Var["VarType"].textValue().shouldBeEqualTo("String")
-        case2Var["Script"].textValue().shouldBeEqualTo($$"""return 'Goodbye ' + '<var name="V_2">';""")
+        case2Var["Script"].textValue().shouldBeEqualTo($"""return 'Goodbye ' + '<var name="V_2">';""")
 
         // default flow
         val defaultFlowId = mainFlow["Default"].textValue()

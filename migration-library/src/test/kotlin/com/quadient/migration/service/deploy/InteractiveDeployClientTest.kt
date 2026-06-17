@@ -825,7 +825,7 @@ class InteractiveDeployClientTest {
 
     @Test
     fun `display rules are deployed correctly`() {
-        val skippedRule = DisplayRuleBuilder("skipped")
+        DisplayRuleBuilder("skipped")
             .comparison { value("a").equals().value(Function.UpperCase(Literal("", LiteralDataType.String))) }
             .internal(false)
             .build()
@@ -856,7 +856,7 @@ class InteractiveDeployClientTest {
             .internal(false)
             .build()
             .mock()
-        val targetRule = DisplayRuleBuilder("targetRule")
+        DisplayRuleBuilder("targetRule")
             .comparison { value("a").equals().value("b") }
             .internal(false)
             .build()
@@ -882,7 +882,6 @@ class InteractiveDeployClientTest {
 
         val result = subject.deployDocumentObjects()
 
-        println()
         result.warnings.shouldBeEqualTo(listOf(
             DeploymentWarning(
                 "withFunction",
@@ -1059,7 +1058,7 @@ class InteractiveDeployClientTest {
             givenObjectIsDeployed("I_3")
 
             // when
-            subject.runDeploy(docObjects)
+            runDeploy(docObjects)
 
             // then
             verify(exactly = 0) { documentObjectBuilder.buildDocumentObject(any()) }
@@ -1086,7 +1085,7 @@ class InteractiveDeployClientTest {
 
 
             // when
-            subject.runDeploy(docObjects)
+            runDeploy(docObjects)
 
             // then
             verify(exactly = 2) { documentObjectBuilder.buildDocumentObject(any()) }
@@ -1122,7 +1121,7 @@ class InteractiveDeployClientTest {
             every { ipsService.deployJld(any(), any(), any(), any(), any<IcmPath>()) } returns OperationResult.Failure("oops")
 
             // when
-            subject.runDeploy(docObjects)
+            runDeploy(docObjects)
 
             // then
             verify(exactly = 1) { documentObjectBuilder.buildDocumentObject(any()) }
@@ -1147,7 +1146,7 @@ class InteractiveDeployClientTest {
                 givenObjectIsActive("D_1")
 
                 // when
-                val result = subject.runDeploy(docObjects)
+                val result = runDeploy(docObjects)
 
                 // then
                 assertEquals(
@@ -1168,7 +1167,7 @@ class InteractiveDeployClientTest {
             givenObjectIsActive("D_1")
 
             // when
-            val result = subject.runDeploy(docObjects)
+            val result = runDeploy(docObjects)
 
             // then
             assertEquals(listOf(DeploymentInfo("D_1", ResourceType.DocumentObject, "icm://path".toIcmPath())), result.deployed)
@@ -1185,7 +1184,7 @@ class InteractiveDeployClientTest {
                 aImage("I_1", metadata = listOf(IcmMetadata(key, listOf(MetadataPrimitive.Str("value"))))).mock()
 
                 // when
-                val result = subject.runDeploy(docObjects)
+                val result = runDeploy(docObjects)
 
                 // then
                 assertEquals(
@@ -1208,7 +1207,7 @@ class InteractiveDeployClientTest {
             aImage("I_1", metadata = listOf(IcmMetadata("other", listOf(MetadataPrimitive.Str("value"))))).mock()
 
             // when
-            val result = subject.runDeploy(docObjects)
+            val result = runDeploy(docObjects)
 
             // then
             assertEquals(
@@ -1229,7 +1228,7 @@ class InteractiveDeployClientTest {
             for (key in MetadataValidator.DISALLOWED_METADATA) {
                 // given
                 val docObjects = listOf(aDocObj("D_1", content = listOf(aParagraph(displayRuleRef = DisplayRuleRef("R_1")))))
-                val rule = DisplayRuleBuilder("R_1")
+                DisplayRuleBuilder("R_1")
                     .comparison { value("a").equals().value("b") }
                     .internal(false)
                     .metadata(key) { string("value") }
@@ -1239,7 +1238,7 @@ class InteractiveDeployClientTest {
                 givenObjectIsActive("R_1")
 
                 // when
-                val result = subject.runDeploy(docObjects)
+                val result = runDeploy(docObjects)
 
                 // then
                 assertEquals(
@@ -1267,7 +1266,7 @@ class InteractiveDeployClientTest {
             givenObjectIsActive("R_1")
 
             // when
-            val result = subject.runDeploy(docObjects)
+            val result = runDeploy(docObjects)
 
             // then
             assertEquals(
@@ -1313,7 +1312,7 @@ class InteractiveDeployClientTest {
         }
     }
 
-    private fun InteractiveDeployClient.runDeploy(documentObjects: List<DocumentObject>): DeploymentResult {
+    private fun runDeploy(documentObjects: List<DocumentObject>): DeploymentResult {
         return subject.deployDocumentObjectsInternal(
             documentObjects,
             ResultTrackerImpl(statusTrackingRepository, InspireOutput.Interactive),

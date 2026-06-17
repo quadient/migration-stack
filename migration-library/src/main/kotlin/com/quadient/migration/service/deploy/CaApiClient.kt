@@ -30,7 +30,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
     private val json = Json { ignoreUnknownKeys = true }
     val targetVersion by lazy { getCloudVersion() }
 
-    fun getCloudVersion(): Version? {
+    private fun getCloudVersion(): Version? {
         logger.debug("Getting cloud version from {}", baseUrl)
         return when (val result = Request.Builder().url(baseUrl).get().readStringRetrying()) {
             is HttpResult.Success -> {

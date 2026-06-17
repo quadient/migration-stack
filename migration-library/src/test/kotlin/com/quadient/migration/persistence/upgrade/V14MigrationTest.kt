@@ -1,5 +1,6 @@
 package com.quadient.migration.persistence.upgrade
 
+import com.quadient.migration.Postgres.Companion.POSTGRES_CONTAINER
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -8,7 +9,7 @@ import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 import java.sql.Connection
 import java.sql.DriverManager
 
@@ -16,7 +17,7 @@ class V14MigrationTest {
 
     @Test
     fun `V14 migration converts metadata from map to list format`() {
-        PostgreSQLContainer("postgres:16-alpine").use { postgres ->
+        PostgreSQLContainer(POSTGRES_CONTAINER).use { postgres ->
             postgres.start()
 
             Database.connect(
@@ -144,7 +145,7 @@ class V14MigrationTest {
         return rs.getString("metadata")
     }
 
-    private fun connection(postgres: PostgreSQLContainer<*>): Connection =
+    private fun connection(postgres: PostgreSQLContainer): Connection =
         DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password)
 
     private fun assertJsonEquals(expected: String, actual: String) =
