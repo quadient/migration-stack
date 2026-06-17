@@ -43,7 +43,7 @@ class MappingEntity(id: EntityID<CompositeID>) : CompositeEntity(id) {
 sealed class MappingItemEntity {
     abstract val name: String?
 
-    fun apply(entity: MigrationObject): MigrationObject {
+    fun apply(entity: MigrationObject, onError: (String) -> Unit = {}): MigrationObject {
         return when (this) {
             is DocumentObject -> this.apply(entity as DocumentObjectModel)
             is Area -> this.apply(entity as DocumentObjectModel)
@@ -54,7 +54,7 @@ sealed class MappingItemEntity {
             is Variable -> this.apply(entity as VariableModel)
             is VariableStructure -> this.apply(entity as VariableStructureModel)
             is DisplayRule -> this.apply(entity as DisplayRuleModel)
-            is Table -> this.apply(entity as DocumentObjectModel)
+            is Table -> this.apply(entity as DocumentObjectModel, onError)
         }
     }
 
@@ -309,7 +309,10 @@ sealed class MappingItemEntity {
             val tableName: String?,
         )
 
-        fun apply(item: DocumentObjectModel): DocumentObjectModel {
+        fun apply(
+            item: DocumentObjectModel,
+            onError: (String) -> Unit = {},
+        ): DocumentObjectModel {
             if (tables.isEmpty()) return item
 
             val documentTables = collectDocumentTables(item.content)
@@ -319,17 +322,17 @@ sealed class MappingItemEntity {
                 val docTable = documentTables.find { it.contentPath == entry.contentPath }
 
                 if (docTable == null) {
-                    logger.error(
-                        "Table mapping for '${item.id}' at [${entry.contentPath}]: table not found at expected path. Skipping."
-                    )
+                    val message = "Table mapping for '${item.id}' at [${entry.contentPath}]: table not found at expected path. Skipping."
+                    logger.error(message)
+                    onError(message)
                     return@forEach
                 }
 
                 val currentFingerprint = computeFingerprint(docTable.table)
                 if (currentFingerprint != entry.fingerprint) {
-                    logger.error(
-                        "Table mapping for '${item.id}' at [${entry.contentPath}]: fingerprint mismatch. Stored: '${entry.fingerprint}', current: '$currentFingerprint'. Content may have changed since last export. Skipping."
-                    )
+                    val message = "Table mapping for '${item.id}' at [${entry.contentPath}]: fingerprint mismatch. Stored: '${entry.fingerprint}', current: '$currentFingerprint'. Content may have changed since last export. Skipping."
+                    logger.error(message)
+                    onError(message)
                     return@forEach
                 }
 

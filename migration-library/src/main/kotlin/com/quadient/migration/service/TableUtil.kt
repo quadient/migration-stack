@@ -45,26 +45,17 @@ private fun MutableMap<String, Int>.next(name: String): String {
     return "$name:$idx"
 }
 
-fun computeFingerprint(table: Table): String {
-    val colCount = table.columnWidths.size
-    val altText = table.pdfAlternateText?.take(50)
-    val repeatedVariable = repeatedVariable(table)
-    val firstRowPreview = extractFirstRowPreview(table)
-
-    return buildString {
-        append("${colCount}cols")
-        if (table.name != null) append("|name:${table.name}")
-        if (altText != null) append("|altText:$altText")
-        if (repeatedVariable != null) append("|repeatedBy:$repeatedVariable")
-        if (firstRowPreview != null) append("|$firstRowPreview")
-    }
+fun computeFingerprint(table: Table): String = buildString {
+    append("${table.columnWidths.size}cols")
+    tableRepeatedVariable(table)?.let { append("|repeatedBy:$it") }
+    tableFirstRowPreview(table)?.let { append("|$it") }
 }
 
 fun buildContentPreview(table: Table): String {
     val colCount = table.columnWidths.size
     val bodyRowCount = table.rows.count { it is Table.Row }
-    val repeatedVariable = repeatedVariable(table)
-    val firstRowPreview = extractFirstRowPreview(table, " | ")
+    val repeatedVariable = tableRepeatedVariable(table)
+    val firstRowPreview = tableFirstRowPreview(table, " | ")
 
     return buildString {
         append("$colCount cols")
@@ -75,10 +66,10 @@ fun buildContentPreview(table: Table): String {
     }
 }
 
-private fun repeatedVariable(table: Table): String? = table.rows.filterIsInstance<Table.RepeatedRow>()
+fun tableRepeatedVariable(table: Table): String? = table.rows.filterIsInstance<Table.RepeatedRow>()
     .firstOrNull()?.variable?.let { if (it is VariableRefPath) it.variableId else it.toString() }
 
-private fun extractFirstRowPreview(table: Table, separator: String = "|"): String? {
+fun tableFirstRowPreview(table: Table, separator: String = "|"): String? {
     val firstRow =
         (table.firstHeader.firstOrNull() ?: table.header.firstOrNull() ?: table.rows.filterIsInstance<Table.Row>()
             .firstOrNull()) as? Table.Row ?: return null

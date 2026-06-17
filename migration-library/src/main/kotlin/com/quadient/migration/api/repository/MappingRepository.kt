@@ -46,7 +46,7 @@ class MappingRepository(
         return transaction { internalRepository.listAll().map { it.toDto() } }
     }
 
-    fun applyAll() {
+    fun applyAll(onError: (String) -> Unit = {}) {
         applyAllDocumentObjectMappings()
         applyAllAreaMappings()
         applyAllImageMappings()
@@ -56,7 +56,7 @@ class MappingRepository(
         applyAllVariableMappings()
         applyAllVariableStructureMappings()
         applyAllDisplayRuleMappings()
-        applyAllTableMappings()
+        applyAllTableMappings(onError)
     }
 
     fun upsert(id: String, mapping: MappingItem): Mapping {
@@ -205,8 +205,8 @@ class MappingRepository(
         documentObjectRepository.upsert(mapping.apply(obj))
     }
 
-    fun applyAllTableMappings() {
-        applyAllResourceMappings<DocumentObject, MappingItemEntity.Table>(documentObjectRepository, DocumentObjectTable)
+    fun applyAllTableMappings(onError: (String) -> Unit = {}) {
+        applyAllResourceMappings<DocumentObject, MappingItemEntity.Table>(documentObjectRepository, DocumentObjectTable, onError)
     }
 
     fun getTextStyleMapping(id: String): MappingItem.TextStyle {
@@ -317,6 +317,7 @@ class MappingRepository(
     private inline fun <reified O : MigrationObject, reified T : MappingItemEntity> applyAllResourceMappings(
         repo: Repository<O>,
         table: MigrationObjectTable,
+        noinline onError: (String) -> Unit = {},
     ) {
         transaction {
             val mappings = internalRepository
@@ -326,7 +327,7 @@ class MappingRepository(
             val migObjects = repo.list(table.id inList mappings.keys).associateBy { it.id }
 
             val migObjectsToUpsert = mappings
-                .mapNotNull { (id, mapping) -> migObjects[id]?.let { mapping.apply(it) as O } }
+                .mapNotNull { (id, mapping) -> migObjects[id]?.let { mapping.apply(it, onError) as O } }
 
             val batches = migObjectsToUpsert.chunked(1000)
             batches.forEachIndexed { index, batch ->

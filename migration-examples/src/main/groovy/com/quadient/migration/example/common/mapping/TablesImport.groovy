@@ -35,6 +35,7 @@ static void run(Migration migration, Path path) {
 
     // Group table entries by documentObjectId so we upsert one MappingItem.Table per document object.
     def tablesByDocObjId = new LinkedHashMap<String, List<MappingItem.Table.TableEntry>>()
+    boolean hasErrors = false
 
     for (line in fileLines) {
         def values = Csv.getCells(line, columnNames)
@@ -57,6 +58,7 @@ static void run(Migration migration, Path path) {
         def docObj = migration.documentObjectRepository.find(docObjId)
         if (!docObj) {
             log.error("Table mapping: document object '${docObjId}' not found. Skipping row.")
+            hasErrors = true
             continue
         }
 
@@ -64,6 +66,7 @@ static void run(Migration migration, Path path) {
         def docTable = documentTables.find { it.contentPath == contentPath }
         if (!docTable) {
             log.error("Table mapping for '${docObjId}' at [${contentPath}]: table not found. Skipping row.")
+            hasErrors = true
             continue
         }
 
@@ -91,5 +94,9 @@ static void run(Migration migration, Path path) {
         migration.mappingRepository.upsertBatch(batches[i].collectEntries())
     }
 
-    migration.mappingRepository.applyAllTableMappings()
+    migration.mappingRepository.applyAllTableMappings { hasErrors = true }
+
+    if (hasErrors) {
+        System.exit(1)
+    }
 }
