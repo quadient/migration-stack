@@ -34,11 +34,6 @@ class V14MigrationTest {
                 .migrate()
 
             connection(postgres).use { conn ->
-                // Drop the metadata column from attachment to simulate the real pre-V14 state.
-                // V10 creates AttachmentTable using the current Exposed schema (which already has
-                // the metadata column), but historically it didn't exist until V14 added it.
-                conn.createStatement().use { it.execute("ALTER TABLE attachment DROP COLUMN IF EXISTS metadata") }
-
                 insertDocumentObject(conn, "doc-single-key", """{"docMeta":[{"type":"string","value":"v1"}]}""")
                 insertDocumentObject(conn, "doc-multi-key", """{"key1":[{"type":"string","value":"a"}],"key2":[{"type":"bool","value":true}]}""")
                 insertDocumentObject(conn, "doc-empty-meta", """{}""")
