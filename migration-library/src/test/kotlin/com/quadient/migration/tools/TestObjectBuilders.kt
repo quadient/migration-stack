@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package com.quadient.migration.tools
 
 import com.quadient.migration.api.DbConfig
@@ -66,7 +64,6 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 fun aBlockDto(

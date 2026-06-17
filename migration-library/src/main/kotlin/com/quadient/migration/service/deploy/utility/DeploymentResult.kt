@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package com.quadient.migration.service.deploy.utility
 
 import com.quadient.migration.api.InspireOutput
@@ -8,7 +6,6 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import kotlin.time.Clock
 import kotlin.time.Instant
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 data class DeploymentResult(

@@ -26,7 +26,7 @@ import com.quadient.migration.persistence.table.VariableStructureTable
 import com.quadient.migration.persistence.table.VariableTable
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.slf4j.LoggerFactory
+import com.quadient.migration.tools.logger
 
 class MappingRepository(
     private val projectName: ProjectName,
@@ -39,7 +39,7 @@ class MappingRepository(
     private val variableStructureRepository: VariableStructureRepository,
     private val displayRuleRepository: DisplayRuleRepository,
 ) {
-    private val logger = LoggerFactory.getLogger(this::class.java)!!
+    private val logger by logger()
     private val internalRepository = MappingInternalRepository(projectName.name)
 
     fun listAll(): List<Mapping> {

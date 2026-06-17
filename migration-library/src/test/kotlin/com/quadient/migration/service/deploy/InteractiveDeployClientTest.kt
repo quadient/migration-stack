@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.InspireOutput
@@ -88,7 +86,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class InteractiveDeployClientTest {

@@ -10,6 +10,7 @@ import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.tools.concat
+import com.quadient.migration.tools.logger
 import kotlin.time.Clock
 import kotlin.time.toJavaInstant
 import kotlinx.serialization.json.Json
@@ -27,7 +28,7 @@ import java.sql.Types
 class DocumentObjectRepository(projectName: ProjectName, private val statusTrackingRepository: StatusTrackingRepository) :
     Repository<DocumentObject>(DocumentObjectTable, projectName.name) {
 
-    val logger = org.slf4j.LoggerFactory.getLogger(DocumentObjectRepository::class.java)!!
+    val logger by logger()
 
     fun list(documentObjectFilter: DocumentObjectFilter): List<DocumentObject> {
         return list(filterByDocumentObjectFilter(documentObjectFilter))

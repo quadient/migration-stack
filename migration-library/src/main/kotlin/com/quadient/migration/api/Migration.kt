@@ -37,11 +37,11 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
-import org.slf4j.LoggerFactory
+import com.quadient.migration.tools.logger
 import java.util.concurrent.TimeUnit
 
 class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
-    private val logger = LoggerFactory.getLogger(Migration::class.java)
+    private val logger by logger()
     private val projectName = ProjectName(projectConfig.name)
 
     private val designerModule = module {

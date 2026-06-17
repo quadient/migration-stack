@@ -1,4 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.data.Active
 import com.quadient.migration.data.Deployed
@@ -12,7 +11,6 @@ import kotlin.time.Instant
 import org.jetbrains.exposed.v1.core.dao.id.CompositeID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class StatusTrackingInternalRepository(val projectName: String) {

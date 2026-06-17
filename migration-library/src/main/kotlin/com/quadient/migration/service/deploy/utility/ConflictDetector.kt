@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package com.quadient.migration.service.deploy.utility
 
 import com.quadient.migration.api.InspireOutput
@@ -21,9 +19,8 @@ import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTarget
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.tools.computeIfPresentOrPut
-import org.slf4j.LoggerFactory
+import com.quadient.migration.tools.logger
 import kotlin.collections.iterator
-import kotlin.uuid.ExperimentalUuidApi
 
 class ConflictDetectorImpl(
     private val documentObjectRepository: DocumentObjectRepository,
@@ -34,7 +31,7 @@ class ConflictDetectorImpl(
     private val resourcePathProvider: ResourcePathProvider,
     private val output: InspireOutput,
 ) : ConflictDetector {
-    private val logger = LoggerFactory.getLogger(this::class.java)
+    private val logger by logger()
 
     override fun runConflictValidation(documentObjects: List<DocumentObject>, deployFn: DeployFn): ValidationResult {
         val pathsToResourcesMap: PathToResources = mutableMapOf()

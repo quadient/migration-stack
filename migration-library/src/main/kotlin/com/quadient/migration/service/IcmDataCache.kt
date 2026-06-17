@@ -11,14 +11,14 @@ import com.quadient.migration.shared.IcmPath
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.slf4j.LoggerFactory
+import com.quadient.migration.tools.logger
 import kotlin.collections.toList
 
 abstract class IcmDataCache(
     private val ipsService: IpsService,
     private val resourcePathProvider: ResourcePathProvider
 ) {
-    private val logger = LoggerFactory.getLogger(this::class.java)!!
+    private val logger by logger()
     private val lenientJson = Json { ignoreUnknownKeys = true }
     private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
     private val baseTemplateCache = mutableMapOf<IcmPath, BaseTemplateData?>()

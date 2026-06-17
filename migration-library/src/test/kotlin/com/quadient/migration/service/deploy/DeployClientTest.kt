@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.InspireOutput
@@ -65,7 +63,6 @@ import org.junit.jupiter.api.Test
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 class DeployClientTest {

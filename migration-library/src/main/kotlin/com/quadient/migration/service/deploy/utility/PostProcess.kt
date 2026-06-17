@@ -18,7 +18,7 @@ import com.quadient.migration.shared.IcmMetadata
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.MetadataValue
 import com.quadient.migration.tools.partitionByType
-import org.slf4j.LoggerFactory
+import com.quadient.migration.tools.logger
 
 typealias PostProcessor = (DeploymentResult) -> Unit
 interface PostProcess {
@@ -38,7 +38,7 @@ class PostProcessImpl(
     private val textStyleRepository: TextStyleRepository,
     private val paragraphStyleRepository: ParagraphStyleRepository,
 ) : PostProcess {
-    private val logger = LoggerFactory.getLogger(this::class.java)!!
+    private val logger by logger()
     private var _postProcessors: MutableList<PostProcessor> = mutableListOf()
 
     override val postProcessors: List<PostProcessor>

@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package com.quadient.migration.route
 
 import com.quadient.migration.dto.toResponse
@@ -13,7 +11,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.koin.ktor.ext.inject
 import java.util.UUID
-import kotlin.uuid.ExperimentalUuidApi
 
 fun Application.jobModule() {
     val scriptJobService by inject<ScriptJobService>()

@@ -9,7 +9,7 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import kotlinx.serialization.Serializable
-import org.slf4j.LoggerFactory
+import com.quadient.migration.tools.logger
 import java.io.BufferedInputStream
 import java.io.Closeable
 import java.io.OutputStreamWriter
@@ -21,7 +21,7 @@ import kotlin.time.Duration
 class IpsClient(private val host: String, private val port: Int, private val timeout: Duration) : Closeable {
     private val _connection = lazy { IpsConnection() }
     private val connection: IpsConnection by _connection
-    private val logger = LoggerFactory.getLogger(IpsClient::class.java)!!
+    private val logger by logger()
     val version: Version?
         get() {
             if (!_connection.isInitialized()) {

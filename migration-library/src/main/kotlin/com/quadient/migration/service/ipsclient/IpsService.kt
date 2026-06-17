@@ -13,7 +13,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.slf4j.LoggerFactory
+import com.quadient.migration.tools.logger
 import java.io.Closeable
 import java.util.*
 import kotlin.text.startsWith
@@ -25,7 +25,7 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     private val _client = lazy { IpsClient(config.host, config.port, config.timeoutSeconds.seconds) }
     val client: IpsClient by _client
 
-    private val logger = LoggerFactory.getLogger(IpsService::class.java)!!
+    private val logger by logger()
     private val uploadedResources: MutableMap<String, UploadedFile> = mutableMapOf()
 
     fun xml2wfd(wfdXml: String, outputPath: IcmPath): OperationResult {

@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package com.quadient.migration.api.repository
 
 import StatusTrackingInternalRepository
@@ -13,7 +11,6 @@ import com.quadient.migration.data.StatusEvent
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.IcmPath
 import kotlin.time.Instant
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 

@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalUuidApi::class)
-
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.ProjectConfig
@@ -53,9 +51,8 @@ import com.quadient.migration.service.resolveAlias
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.toIcmPath
-import org.slf4j.LoggerFactory
+import com.quadient.migration.tools.logger
 import kotlin.collections.plus
-import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import com.quadient.migration.data.Error as StatusError
 
@@ -85,7 +82,7 @@ sealed class DeployClient(
     ProgressReporter by progressReporter,
     ConflictDetector by conflictDetector
 {
-    protected val logger = LoggerFactory.getLogger(this::class.java)!!
+    protected val logger by logger()
 
     abstract fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult
     abstract fun uploadImage(img: Image, targetPath: IcmPath, data: ByteArray): OperationResult

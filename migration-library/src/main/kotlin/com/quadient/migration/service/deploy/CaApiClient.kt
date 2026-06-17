@@ -14,14 +14,13 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.slf4j.LoggerFactory
+import com.quadient.migration.tools.logger
 import java.io.InputStream
-
-private val logger = LoggerFactory.getLogger(CaApiClient::class.java)
 
 const val BASE_API_PATH = "/authoring/api/system/v1"
 
 class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHttpClient) {
+    private val logger by logger()
     private val evolveConfig by lazy {
         requireNotNull(migConfig.inspireConfig.evolveConfig) {
             "migrationConfig.evolveConfig must be set to use Evolve inspireOutput"

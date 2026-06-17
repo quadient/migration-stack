@@ -94,7 +94,7 @@ import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeOptionality
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.SUB_TREE
 import kotlin.time.Clock
-import org.slf4j.LoggerFactory
+import com.quadient.migration.tools.logger
 import kotlin.collections.ifEmpty
 import com.quadient.migration.shared.DataType as DataTypeModel
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
@@ -129,7 +129,7 @@ abstract class InspireDocumentObjectBuilder(
     protected val output: InspireOutput,
     protected val icmDataCache: IcmDataCache,
 ) {
-    protected val logger = LoggerFactory.getLogger(this::class.java)!!
+    protected val logger by logger()
 
     abstract fun buildDocumentObject(documentObject: DocumentObject): String
 

@@ -1,5 +1,7 @@
 package com.quadient.migration.tools
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.util.*
 
 fun String.substringOrNull(range: IntRange) = try {
@@ -89,4 +91,8 @@ inline fun <reified T, reified V> Iterable<*>.partitionByType(): Pair<List<T>, L
     }
 
     return first to second
+}
+
+fun <R : Any> R.logger(): Lazy<Logger> {
+    return lazy { LoggerFactory.getLogger(this::class.java) }
 }
