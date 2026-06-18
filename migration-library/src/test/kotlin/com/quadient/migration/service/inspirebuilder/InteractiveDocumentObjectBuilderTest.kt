@@ -1,6 +1,7 @@
 package com.quadient.migration.service.inspirebuilder
 
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import tools.jackson.dataformat.xml.XmlMapper
+import tools.jackson.module.kotlin.KotlinModule
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
@@ -100,7 +101,7 @@ class InteractiveDocumentObjectBuilderTest {
 
     private val subject = aSubject(config)
 
-    private val xmlMapper = XmlMapper().also { it.findAndRegisterModules() }
+    private val xmlMapper = XmlMapper.builder().addModule(KotlinModule.Builder().build()).build()
 
     @BeforeEach
     fun setUp() {
@@ -122,7 +123,7 @@ class InteractiveDocumentObjectBuilderTest {
         // then
         val flowDefinitions = result["Flow"]
         flowDefinitions.size().shouldBeEqualTo(3)
-        flowDefinitions[2]["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("some text$${variable.name}$")
+        flowDefinitions[2]["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("some text$${variable.name}$")
     }
 
     @Test
@@ -150,9 +151,9 @@ class InteractiveDocumentObjectBuilderTest {
         val flowDefinitions = result["Flow"]
         flowDefinitions.size().shouldBeEqualTo(3)
         val paragraph = flowDefinitions[2]["FlowContent"]["P"]
-        paragraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
+        paragraph["Id"].stringValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
         val text = paragraph["T"]
-        text["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
+        text["Id"].stringValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
     }
 
     @Test
@@ -174,8 +175,8 @@ class InteractiveDocumentObjectBuilderTest {
 
         // then - style names are used as-is since resolution is unavailable
         val paragraph = result["Flow"].last()["FlowContent"]["P"]
-        paragraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
-        paragraph["T"]["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
+        paragraph["Id"].stringValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
+        paragraph["T"]["Id"].stringValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
     }
 
     @Test
@@ -214,8 +215,8 @@ class InteractiveDocumentObjectBuilderTest {
 
         // then
         val paragraph = result["Flow"].last()["FlowContent"]["P"]
-        paragraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.heading_internal")
-        paragraph["T"]["Id"].textValue().shouldBeEqualTo("TextStyles.body_internal")
+        paragraph["Id"].stringValue().shouldBeEqualTo("ParagraphStyles.heading_internal")
+        paragraph["T"]["Id"].stringValue().shouldBeEqualTo("TextStyles.body_internal")
     }
 
     @Test
@@ -232,12 +233,12 @@ class InteractiveDocumentObjectBuilderTest {
         flowDefinitions.size().shouldBeEqualTo(3)
 
         val mainFlow = flowDefinitions[1]
-        mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue().shouldBeEqualTo("SR_1")
+        mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue().shouldBeEqualTo("SR_1")
 
         val directExternalFlow = flowDefinitions[2]
-        directExternalFlow["Id"].textValue().shouldBeEqualTo("SR_1")
-        directExternalFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
-        directExternalFlow["ExternalLocation"].textValue()
+        directExternalFlow["Id"].stringValue().shouldBeEqualTo("SR_1")
+        directExternalFlow["Type"].stringValue().shouldBeEqualTo("DirectExternal")
+        directExternalFlow["ExternalLocation"].stringValue()
             .shouldBeEqualTo("icm://Interactive/${config.interactiveTenant}/Blocks/${block.nameOrId()}.jld")
     }
 
@@ -273,17 +274,17 @@ class InteractiveDocumentObjectBuilderTest {
         result["Cell"].size().shouldBeEqualTo(8)
 
         val table = result["Table"][1]
-        table["DisplayAsImage"].textValue().shouldBeEqualTo("False")
+        table["DisplayAsImage"].stringValue().shouldBeEqualTo("False")
         val firstColumnWidth = table["ColumnWidths"][0]
-        firstColumnWidth["MinWidth"].textValue().shouldBeEqualTo("0.15")
-        firstColumnWidth["PercentWidth"].textValue().shouldBeEqualTo("10.0")
+        firstColumnWidth["MinWidth"].stringValue().shouldBeEqualTo("0.15")
+        firstColumnWidth["PercentWidth"].stringValue().shouldBeEqualTo("10.0")
         val secondColumnWidth = table["ColumnWidths"][1]
-        secondColumnWidth["MinWidth"].textValue().shouldBeEqualTo("0.03")
-        secondColumnWidth["PercentWidth"].textValue().shouldBeEqualTo("1.0")
+        secondColumnWidth["MinWidth"].stringValue().shouldBeEqualTo("0.03")
+        secondColumnWidth["PercentWidth"].stringValue().shouldBeEqualTo("1.0")
 
         val lastCell = result["Cell"][7]
-        lastCell["SpanLeft"].textValue().shouldBeEqualTo("True")
-        lastCell["FlowToNextPage"].textValue().shouldBeEqualTo("True")
+        lastCell["SpanLeft"].stringValue().shouldBeEqualTo("True")
+        lastCell["FlowToNextPage"].stringValue().shouldBeEqualTo("True")
 
         result["Flow"].size().shouldBeEqualTo(11)
     }
@@ -302,33 +303,33 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
-        val sectionFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
+        val sectionFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        result["Flow"].first { it["Id"].textValue() == sectionFlowRef }["Name"].textValue()
+        result["Flow"].first { it["Id"].stringValue() == sectionFlowRef }["Name"].stringValue()
             .shouldBeEqualTo(section.nameOrId())
-        val sectionFlow = result["Flow"].last { it["Id"].textValue() == sectionFlowRef }
-        sectionFlow["SectionFlow"].textValue().shouldBeEqualTo("True")
+        val sectionFlow = result["Flow"].last { it["Id"].stringValue() == sectionFlowRef }
+        sectionFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
         val sectionRefs = sectionFlow["FlowContent"]["P"]["T"]["O"]
         sectionRefs.size().shouldBeEqualTo(3)
 
-        val nestedExternalFlowRef = sectionRefs[0]["Id"].textValue()
-        result["Flow"].first { it["Id"].textValue() == nestedExternalFlowRef }["Name"].textValue()
+        val nestedExternalFlowRef = sectionRefs[0]["Id"].stringValue()
+        result["Flow"].first { it["Id"].stringValue() == nestedExternalFlowRef }["Name"].stringValue()
             .shouldBeEqualTo(externalBlock.nameOrId())
-        val nestedExternalFlow = result["Flow"].last { it["Id"].textValue() == nestedExternalFlowRef }
-        nestedExternalFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
+        val nestedExternalFlow = result["Flow"].last { it["Id"].stringValue() == nestedExternalFlowRef }
+        nestedExternalFlow["Type"].stringValue().shouldBeEqualTo("DirectExternal")
 
-        val inBetweenFlowRef = sectionRefs[1]["Id"].textValue()
-        result["Flow"].first { it["Id"].textValue() == inBetweenFlowRef }["Name"].textValue()
+        val inBetweenFlowRef = sectionRefs[1]["Id"].stringValue()
+        result["Flow"].first { it["Id"].stringValue() == inBetweenFlowRef }["Name"].stringValue()
             .shouldBeEqualTo("${section.nameOrId()} 1")
-        val inBetweenFlow = result["Flow"].last { it["Id"].textValue() == inBetweenFlowRef }
-        inBetweenFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("In between")
+        val inBetweenFlow = result["Flow"].last { it["Id"].stringValue() == inBetweenFlowRef }
+        inBetweenFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("In between")
 
-        val nestedFlowRef = sectionRefs[2]["Id"].textValue()
-        result["Flow"].first { it["Id"].textValue() == nestedFlowRef }["Name"].textValue()
+        val nestedFlowRef = sectionRefs[2]["Id"].stringValue()
+        result["Flow"].first { it["Id"].stringValue() == nestedFlowRef }["Name"].stringValue()
             .shouldBeEqualTo(block.nameOrId())
-        val nestedFlow = result["Flow"].last { it["Id"].textValue() == nestedFlowRef }
-        nestedFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Sir")
+        val nestedFlow = result["Flow"].last { it["Id"].stringValue() == nestedFlowRef }
+        nestedFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("Sir")
     }
 
     @Test
@@ -361,32 +362,32 @@ class InteractiveDocumentObjectBuilderTest {
         // then
         val variableDefinitions = result["Variable"]
         variableDefinitions.size().shouldBeEqualTo(73)
-        val longVarForward = variableDefinitions.first { it["Name"]?.textValue() == "varName1" }
+        val longVarForward = variableDefinitions.first { it["Name"]?.stringValue() == "varName1" }
 
-        longVarForward["Name"].textValue().shouldBeEqualTo(longVar.name)
-        longVarForward["ParentId"].textValue().shouldBeEqualTo("Data.Clients.Value")
-        longVarForward["Forward"]["useExisting"].textValue().shouldBeEqualTo("True")
+        longVarForward["Name"].stringValue().shouldBeEqualTo(longVar.name)
+        longVarForward["ParentId"].stringValue().shouldBeEqualTo("Data.Clients.Value")
+        longVarForward["Forward"]["useExisting"].stringValue().shouldBeEqualTo("True")
 
-        val longVarContent = variableDefinitions.last { it["Id"].textValue() == longVarForward["Id"].textValue() }
-        longVarContent["Type"].textValue().shouldBeEqualTo("Disconnected")
-        longVarContent["VarType"].textValue().shouldBeEqualTo("Int64")
-        longVarContent["Content"].textValue().shouldBeEqualTo("2025")
+        val longVarContent = variableDefinitions.last { it["Id"].stringValue() == longVarForward["Id"].stringValue() }
+        longVarContent["Type"].stringValue().shouldBeEqualTo("Disconnected")
+        longVarContent["VarType"].stringValue().shouldBeEqualTo("Int64")
+        longVarContent["Content"].stringValue().shouldBeEqualTo("2025")
 
-        val currencyVarId = variableDefinitions.first { it["Name"]?.textValue() == "Money" }["Id"].textValue()
-        variableDefinitions.last { it["Id"].textValue() == currencyVarId }["Content"].textValue()
+        val currencyVarId = variableDefinitions.first { it["Name"]?.stringValue() == "Money" }["Id"].stringValue()
+        variableDefinitions.last { it["Id"].stringValue() == currencyVarId }["Content"].stringValue()
             .shouldBeEqualTo("249.99")
 
-        val boolVarId = variableDefinitions.first { it["Name"]?.textValue() == "varName3" }["Id"].textValue()
-        variableDefinitions.last { it["Id"].textValue() == boolVarId }["Content"].textValue().shouldBeEqualTo("True")
+        val boolVarId = variableDefinitions.first { it["Name"]?.stringValue() == "varName3" }["Id"].stringValue()
+        variableDefinitions.last { it["Id"].stringValue() == boolVarId }["Content"].stringValue().shouldBeEqualTo("True")
 
-        val clientsVar = variableDefinitions.first { it["Name"]?.textValue() == "Clients" }
-        clientsVar["ParentId"].textValue().shouldBeEqualTo("Def.Data")
-        variableDefinitions.first { it["Name"]?.textValue() == "Value" }["ParentId"].textValue()
-            .shouldBeEqualTo(clientsVar["Id"].textValue())
-        variableDefinitions.first { it["Name"]?.textValue() == "Count" }["ParentId"].textValue()
-            .shouldBeEqualTo(clientsVar["Id"].textValue())
+        val clientsVar = variableDefinitions.first { it["Name"]?.stringValue() == "Clients" }
+        clientsVar["ParentId"].stringValue().shouldBeEqualTo("Def.Data")
+        variableDefinitions.first { it["Name"]?.stringValue() == "Value" }["ParentId"].stringValue()
+            .shouldBeEqualTo(clientsVar["Id"].stringValue())
+        variableDefinitions.first { it["Name"]?.stringValue() == "Count" }["ParentId"].stringValue()
+            .shouldBeEqualTo(clientsVar["Id"].stringValue())
 
-        result["Data"]["RepeatedBy"].textValue().shouldBeEqualTo("Data.Clients")
+        result["Data"]["RepeatedBy"].stringValue().shouldBeEqualTo("Data.Clients")
     }
 
     @Test
@@ -401,22 +402,22 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
-        val conditionFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
+        val conditionFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        val conditionFlow = result["Flow"].last { it["Id"].textValue() == conditionFlowRef }
-        conditionFlow["Type"].textValue().shouldBeEqualTo("Condition")
+        val conditionFlow = result["Flow"].last { it["Id"].stringValue() == conditionFlowRef }
+        conditionFlow["Type"].stringValue().shouldBeEqualTo("Condition")
         val condition = conditionFlow["Condition"]
-        val successFlowRef = condition[""].textValue()
-        val conditionVarRef = condition["VarId"].textValue()
+        val successFlowRef = condition[""].stringValue()
+        val conditionVarRef = condition["VarId"].stringValue()
 
-        val conditionVar = result["Variable"].last { it["Id"].textValue() == conditionVarRef }
-        conditionVar["VarType"].textValue().shouldBeEqualTo("Bool")
-        conditionVar["Type"].textValue().shouldBeEqualTo("Calculated")
-        conditionVar["Script"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val conditionVar = result["Variable"].last { it["Id"].stringValue() == conditionVarRef }
+        conditionVar["VarType"].stringValue().shouldBeEqualTo("Bool")
+        conditionVar["Type"].stringValue().shouldBeEqualTo("Calculated")
+        conditionVar["Script"].stringValue().shouldBeEqualTo("return (String('A')==String('B'));")
 
-        val successFlow = result["Flow"].last { it["Id"].textValue() == successFlowRef }
-        successFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
+        val successFlow = result["Flow"].last { it["Id"].stringValue() == successFlowRef }
+        successFlow["Type"].stringValue().shouldBeEqualTo("DirectExternal")
     }
 
     @Test
@@ -447,33 +448,33 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        result["Variable"].first { it["ParentId"]?.textValue() == "Data.Clients" }["Name"].textValue()
+        result["Variable"].first { it["ParentId"]?.stringValue() == "Data.Clients" }["Name"].stringValue()
             .shouldBeEqualTo("Client Name")
 
-        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
-        val topSimpleFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
+        val topSimpleFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        val topSimpleFlow = result["Flow"].last { it["Id"].textValue() == topSimpleFlowRef }
-        topSimpleFlow["Type"].textValue().shouldBeEqualTo("Simple")
+        val topSimpleFlow = result["Flow"].last { it["Id"].stringValue() == topSimpleFlowRef }
+        topSimpleFlow["Type"].stringValue().shouldBeEqualTo("Simple")
         val topFlowParagraph = topSimpleFlow["FlowContent"]["P"]
-        topFlowParagraph["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
+        topFlowParagraph["Id"].stringValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
         val topFlowText = topFlowParagraph["T"]
         Assertions.assertNull(topFlowText["Id"])
-        val conditionFlowRef = topFlowText["O"]["Id"].textValue()
+        val conditionFlowRef = topFlowText["O"]["Id"].stringValue()
 
-        val conditionFlow = result["Flow"].last { it["Id"].textValue() == conditionFlowRef }
-        conditionFlow["Type"].textValue().shouldBeEqualTo("InlCond")
+        val conditionFlow = result["Flow"].last { it["Id"].stringValue() == conditionFlowRef }
+        conditionFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
         val condition = conditionFlow["Condition"]
-        condition["Value"].textValue().shouldBeEqualTo("return (DATA.Clients.Client_Name==String('Jon'));")
-        val finalFlowRef = condition[""].textValue()
+        condition["Value"].stringValue().shouldBeEqualTo("return (DATA.Clients.Client_Name==String('Jon'));")
+        val finalFlowRef = condition[""].stringValue()
 
-        val finalFlow = result["Flow"].last { it["Id"].textValue() == finalFlowRef }
-        finalFlow["Type"].textValue().shouldBeEqualTo("Simple")
+        val finalFlow = result["Flow"].last { it["Id"].stringValue() == finalFlowRef }
+        finalFlow["Type"].stringValue().shouldBeEqualTo("Simple")
         val finalFlowPara = finalFlow["FlowContent"]["P"]
-        finalFlowPara["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
+        finalFlowPara["Id"].stringValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
         val finalFlowText = finalFlowPara["T"]
-        finalFlowText["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
-        finalFlowText[""].textValue().shouldBeEqualTo("Hello There")
+        finalFlowText["Id"].stringValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
+        finalFlowText[""].stringValue().shouldBeEqualTo("Hello There")
 
         result["Data"]["RepeatedBy"].shouldBeNull()
     }
@@ -509,41 +510,41 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
-        val topSimpleFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
+        val topSimpleFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        val topSimpleFlow = result["Flow"].last { it["Id"].textValue() == topSimpleFlowRef }
-        topSimpleFlow["Type"].textValue().shouldBeEqualTo("Simple")
+        val topSimpleFlow = result["Flow"].last { it["Id"].stringValue() == topSimpleFlowRef }
+        topSimpleFlow["Type"].stringValue().shouldBeEqualTo("Simple")
         val topFlowParagraph = topSimpleFlow["FlowContent"]["P"]
         Assertions.assertNull(topFlowParagraph["Id"])
-        val conditionFlowRef = topFlowParagraph["T"]["O"]["Id"].textValue()
+        val conditionFlowRef = topFlowParagraph["T"]["O"]["Id"].stringValue()
 
-        val conditionFlow = result["Flow"].last { it["Id"].textValue() == conditionFlowRef }
-        conditionFlow["Type"].textValue().shouldBeEqualTo("InlCond")
+        val conditionFlow = result["Flow"].last { it["Id"].stringValue() == conditionFlowRef }
+        conditionFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
         val condition = conditionFlow["Condition"]
-        condition["Value"].textValue().shouldBeEqualTo("return (DATA._1.Current._900_MailCount>=540.0);")
-        val paraFlowRef = condition[""].textValue()
+        condition["Value"].stringValue().shouldBeEqualTo("return (DATA._1.Current._900_MailCount>=540.0);")
+        val paraFlowRef = condition[""].stringValue()
 
-        val paraFlow = result["Flow"].last { it["Id"].textValue() == paraFlowRef }
+        val paraFlow = result["Flow"].last { it["Id"].stringValue() == paraFlowRef }
         val paraFlowPara = paraFlow["FlowContent"]["P"]
-        paraFlowPara["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
-        paraFlowPara["T"][0][""].textValue().shouldBeEqualTo("This is")
+        paraFlowPara["Id"].stringValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
+        paraFlowPara["T"][0][""].stringValue().shouldBeEqualTo("This is")
         val secondText = paraFlowPara["T"][1]
         Assertions.assertNull(secondText["Id"])
-        val textConditionFlowRef = secondText["O"]["Id"].textValue()
+        val textConditionFlowRef = secondText["O"]["Id"].stringValue()
 
-        val textConditionFlow = result["Flow"].last { it["Id"].textValue() == textConditionFlowRef }
-        textConditionFlow["Type"].textValue().shouldBeEqualTo("InlCond")
+        val textConditionFlow = result["Flow"].last { it["Id"].stringValue() == textConditionFlowRef }
+        textConditionFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
         val textCondition = textConditionFlow["Condition"]
-        textCondition["Value"].textValue().shouldBeEqualTo("return (String('A')!=String('B'));")
-        val textFlowRef = textCondition[""].textValue()
+        textCondition["Value"].stringValue().shouldBeEqualTo("return (String('A')!=String('B'));")
+        val textFlowRef = textCondition[""].stringValue()
 
-        val textFlow = result["Flow"].last { it["Id"].textValue() == textFlowRef }
+        val textFlow = result["Flow"].last { it["Id"].stringValue() == textFlowRef }
         val textFlowPara = textFlow["FlowContent"]["P"]
-        textFlowPara["Id"].textValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
+        textFlowPara["Id"].stringValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
         val textFlowText = textFlowPara["T"]
-        textFlowText["Id"].textValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
-        textFlowText[""].textValue().shouldBeEqualTo("Preposterous!")
+        textFlowText["Id"].stringValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
+        textFlowText[""].stringValue().shouldBeEqualTo("Preposterous!")
     }
 
     @Test
@@ -572,18 +573,18 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val conditionalRow = result["RowSet"].last { it["RowSetType"]?.textValue() == "Condition" }
+        val conditionalRow = result["RowSet"].last { it["RowSetType"]?.stringValue() == "Condition" }
         val rowCondition = conditionalRow["RowSetCondition"][0]
-        val subRowRef = rowCondition["SubRowId"].textValue()
-        val conditionVarRef = rowCondition["VariableId"].textValue()
+        val subRowRef = rowCondition["SubRowId"].stringValue()
+        val conditionVarRef = rowCondition["VariableId"].stringValue()
 
-        val conditionVar = result["Variable"].last { it["Id"].textValue() == conditionVarRef }
-        conditionVar["Type"].textValue().shouldBeEqualTo("Calculated")
-        conditionVar["VarType"].textValue().shouldBeEqualTo("Bool")
-        conditionVar["Script"].textValue().shouldBeEqualTo("return (true==false);")
+        val conditionVar = result["Variable"].last { it["Id"].stringValue() == conditionVarRef }
+        conditionVar["Type"].stringValue().shouldBeEqualTo("Calculated")
+        conditionVar["VarType"].stringValue().shouldBeEqualTo("Bool")
+        conditionVar["Script"].stringValue().shouldBeEqualTo("return (true==false);")
 
-        val subRow = result["RowSet"].last { it["Id"].textValue() == subRowRef }
-        subRow["RowSetType"].textValue().shouldBeEqualTo("Row")
+        val subRow = result["RowSet"].last { it["Id"].stringValue() == subRowRef }
+        subRow["RowSetType"].stringValue().shouldBeEqualTo("Row")
     }
 
     @Test
@@ -631,8 +632,8 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val conditionVariable = result["Variable"].last { it["Type"]?.textValue() == "Calculated" }
-        conditionVariable["Script"].textValue()
+        val conditionVariable = result["Variable"].last { it["Type"]?.stringValue() == "Calculated" }
+        conditionVariable["Script"].stringValue()
             .shouldBeEqualTo("return not (String('DollarsInBank>=25000.0')==String('unmapped'));")
     }
 
@@ -658,10 +659,10 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
-        val blockFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
+        val blockFlowRef = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        val sectionFlow = result["Flow"].last { it["Id"].textValue() == blockFlowRef }
+        val sectionFlow = result["Flow"].last { it["Id"].stringValue() == blockFlowRef }
         val sectionTextContent = sectionFlow["FlowContent"]["P"]["T"]
         sectionTextContent[""].size().shouldBeEqualTo(2)
         sectionTextContent["O"].size().shouldBeEqualTo(2)
@@ -678,14 +679,14 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        result["Image"].first()["Name"].textValue().shouldBeEqualTo("Image_Dog")
+        result["Image"].first()["Name"].stringValue().shouldBeEqualTo("Image_Dog")
         val imageContent = result["Image"].last()
-        imageContent["ImageLocation"].textValue()
+        imageContent["ImageLocation"].stringValue()
             .shouldBeEqualTo("VCSLocation,icm://Interactive/${config.interactiveTenant}/Resources/Images/${image.name}.jpg")
-        imageContent["UseResizeWidth"].textValue().shouldBeEqualTo("True")
-        imageContent["UseResizeHeight"].textValue().shouldBeEqualTo("True")
-        imageContent["ResizeImageWidth"].textValue().shouldBeEqualTo(image.options?.resizeWidth?.toMeters().toString())
-        imageContent["ResizeImageHeight"].textValue()
+        imageContent["UseResizeWidth"].stringValue().shouldBeEqualTo("True")
+        imageContent["UseResizeHeight"].stringValue().shouldBeEqualTo("True")
+        imageContent["ResizeImageWidth"].stringValue().shouldBeEqualTo(image.options?.resizeWidth?.toMeters().toString())
+        imageContent["ResizeImageHeight"].stringValue()
             .shouldBeEqualTo(image.options?.resizeHeight?.toMeters().toString())
     }
 
@@ -701,26 +702,26 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        result["Image"].first()["Name"].textValue().shouldBeEqualTo("Image_Dog")
+        result["Image"].first()["Name"].stringValue().shouldBeEqualTo("Image_Dog")
         val imageContent = result["Image"].last()
-        val varId = imageContent["AlternativeTextVar"].textValue()
+        val varId = imageContent["AlternativeTextVar"].stringValue()
         varId.shouldNotBeNull()
 
         val tagging = imageContent["PDFAdvanced"]["Tagging"]
-        tagging["AlternateTextType"].textValue().shouldBeEqualTo("2")
-        tagging["AlternateTextNodeId"].textValue().shouldBeEqualTo(varId)
-        tagging["AlternateText"].textValue().shouldBeEqualTo("")
-        tagging["Rule"].textValue().shouldBeEqualTo("Figure")
+        tagging["AlternateTextType"].stringValue().shouldBeEqualTo("2")
+        tagging["AlternateTextNodeId"].stringValue().shouldBeEqualTo(varId)
+        tagging["AlternateText"].stringValue().shouldBeEqualTo("")
+        tagging["Rule"].stringValue().shouldBeEqualTo("Figure")
 
-        val varData = result["Variable"].first { it["Id"].textValue() == varId }
-        varData["Name"].textValue().shouldBeEqualTo("Alternate text variable for Image_Dog")
-        varData["CustomProperty"].textValue().shouldBeEqualTo("{\"ValueWrapperVariable\":true}")
+        val varData = result["Variable"].first { it["Id"].stringValue() == varId }
+        varData["Name"].stringValue().shouldBeEqualTo("Alternate text variable for Image_Dog")
+        varData["CustomProperty"].stringValue().shouldBeEqualTo("{\"ValueWrapperVariable\":true}")
 
-        val varContent = result["Variable"].last { it["Id"].textValue() == varId }
-        varContent["Type"].textValue().shouldBeEqualTo("Calculated")
-        varContent["Script"].textValue().shouldBeEqualTo("return 'A cute dog picture';")
+        val varContent = result["Variable"].last { it["Id"].stringValue() == varId }
+        varContent["Type"].stringValue().shouldBeEqualTo("Calculated")
+        varContent["Script"].stringValue().shouldBeEqualTo("return 'A cute dog picture';")
 
-        result["Root"]["LockedWebNodes"]["LockedWebNode"].textValue().shouldBeEqualTo(varId)
+        result["Root"]["LockedWebNodes"]["LockedWebNode"].stringValue().shouldBeEqualTo(varId)
     }
 
     @Test
@@ -736,7 +737,7 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        result["Image"].filter { it["Name"]?.textValue() == image.nameOrId() }.size.shouldBeEqualTo(1)
+        result["Image"].filter { it["Name"]?.stringValue() == image.nameOrId() }.size.shouldBeEqualTo(1)
     }
 
     @Test
@@ -755,11 +756,11 @@ class InteractiveDocumentObjectBuilderTest {
 
         // then
         assert(result["Image"] == null)
-        val blockFlow = result["Flow"].last { it["Id"].textValue() != "Def.MainFlow" }
+        val blockFlow = result["Flow"].last { it["Id"].stringValue() != "Def.MainFlow" }
         val paragraphs = blockFlow["FlowContent"]["P"]
         paragraphs.size().shouldBeEqualTo(2)
-        paragraphs[0]["T"][""].textValue().shouldBeEqualTo("Cat placeholder")
-        paragraphs[1]["T"][""].textValue().shouldBeEqualTo("Dog placeholder")
+        paragraphs[0]["T"][""].stringValue().shouldBeEqualTo("Cat placeholder")
+        paragraphs[1]["T"][""].stringValue().shouldBeEqualTo("Dog placeholder")
     }
 
     @Test
@@ -783,30 +784,30 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
         val contentFlow =
-            result["Flow"].last { it["Id"].textValue() == mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
+            result["Flow"].last { it["Id"].stringValue() == mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue() }
         val contentFlowText = contentFlow["FlowContent"]["P"]["T"]
 
-        contentFlowText[""][0].textValue().shouldBeEqualTo("Hello, ")
-        contentFlowText[""][1].textValue().shouldBeEqualTo(", how are you?")
+        contentFlowText[""][0].stringValue().shouldBeEqualTo("Hello, ")
+        contentFlowText[""][1].stringValue().shouldBeEqualTo(", how are you?")
 
-        val firstMatch = result["Flow"].last { it["Id"].textValue() == contentFlowText["O"]["Id"].textValue() }
-        firstMatch["Type"].textValue().shouldBeEqualTo("InlCond")
-        firstMatch["Default"].textValue().shouldBeEqualTo("")
+        val firstMatch = result["Flow"].last { it["Id"].stringValue() == contentFlowText["O"]["Id"].stringValue() }
+        firstMatch["Type"].stringValue().shouldBeEqualTo("InlCond")
+        firstMatch["Default"].stringValue().shouldBeEqualTo("")
         val conditions = firstMatch["Condition"]
         conditions.size().shouldBeEqualTo(2)
 
-        conditions[0]["Value"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
-        val firstConditionFlowId = conditions[0][""].textValue()
+        conditions[0]["Value"].stringValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val firstConditionFlowId = conditions[0][""].stringValue()
 
-        result["Flow"].last { it["Id"].textValue() == firstConditionFlowId }["FlowContent"]["P"]["T"][""].textValue()
+        result["Flow"].last { it["Id"].stringValue() == firstConditionFlowId }["FlowContent"]["P"]["T"][""].stringValue()
             .shouldBeEqualTo("Mike")
 
-        conditions[1]["Value"].textValue().shouldBeEqualTo("return (String('C')==String('C'));")
-        val secondConditionFlowId = conditions[1][""].textValue()
+        conditions[1]["Value"].stringValue().shouldBeEqualTo("return (String('C')==String('C'));")
+        val secondConditionFlowId = conditions[1][""].stringValue()
 
-        result["Flow"].last { it["Id"].textValue() == secondConditionFlowId }["FlowContent"]["P"]["T"][""].textValue()
+        result["Flow"].last { it["Id"].stringValue() == secondConditionFlowId }["FlowContent"]["P"]["T"][""].stringValue()
             .shouldBeEqualTo("Jon")
     }
 
@@ -822,14 +823,14 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
-        val condFlowId = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
+        val condFlowId = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        val condFlow = result["Flow"].last { it["Id"].textValue() == condFlowId }
-        condFlow["Type"].textValue().shouldBeEqualTo("Condition")
+        val condFlow = result["Flow"].last { it["Id"].stringValue() == condFlowId }
+        condFlow["Type"].stringValue().shouldBeEqualTo("Condition")
 
-        val innerFlow = result["Flow"].last { it["Id"].textValue() == condFlow["Condition"][""].textValue() }
-        innerFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text")
+        val innerFlow = result["Flow"].last { it["Id"].stringValue() == condFlow["Condition"][""].stringValue() }
+        innerFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("Text")
     }
 
     @Test
@@ -859,21 +860,21 @@ class InteractiveDocumentObjectBuilderTest {
 
         val result = subject.buildDocumentObject(docObj).let { xmlMapper.readTree(it.trimIndent()) }
 
-        val flowId = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
-        val flow = result["Flow"].last { it["Id"].textValue() == flowId }
+        val flowId = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        val flow = result["Flow"].last { it["Id"].stringValue() == flowId }
 
         val contents = flow["FlowContent"]["P"].toList()
-        contents[0]["T"][""].textValue().shouldBeEqualTo("Paragraph")
-        contents[1]["T"].toList()[0][""].textValue().shouldBeEqualTo("Hello World")
-        val v1 = contents[1]["T"].toList()[1]["O"]["Id"].textValue()
-        val v2 = contents[1]["T"].toList()[2]["O"]["Id"].textValue()
-        contents[1]["T"].toList()[3][""].textValue().shouldBeEqualTo("Screw this World")
-        val v3 = contents[1]["T"].toList()[4]["O"]["Id"].textValue()
-        contents[2]["T"][""].textValue().shouldBeEqualTo("Goodbye World")
+        contents[0]["T"][""].stringValue().shouldBeEqualTo("Paragraph")
+        contents[1]["T"].toList()[0][""].stringValue().shouldBeEqualTo("Hello World")
+        val v1 = contents[1]["T"].toList()[1]["O"]["Id"].stringValue()
+        val v2 = contents[1]["T"].toList()[2]["O"]["Id"].stringValue()
+        contents[1]["T"].toList()[3][""].stringValue().shouldBeEqualTo("Screw this World")
+        val v3 = contents[1]["T"].toList()[4]["O"]["Id"].stringValue()
+        contents[2]["T"][""].stringValue().shouldBeEqualTo("Goodbye World")
 
-        result["Variable"].first { it["Id"].textValue() == v1 }["Name"].textValue().shouldBeEqualTo("V_1")
-        result["Variable"].first { it["Id"].textValue() == v2 }["Name"].textValue().shouldBeEqualTo("V_2")
-        result["Variable"].first { it["Id"].textValue() == v3 }["Name"].textValue().shouldBeEqualTo("V_3")
+        result["Variable"].first { it["Id"].stringValue() == v1 }["Name"].stringValue().shouldBeEqualTo("V_1")
+        result["Variable"].first { it["Id"].stringValue() == v2 }["Name"].stringValue().shouldBeEqualTo("V_2")
+        result["Variable"].first { it["Id"].stringValue() == v3 }["Name"].stringValue().shouldBeEqualTo("V_3")
     }
 
     @Test
@@ -888,13 +889,13 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
         val condFlow =
-            result["Flow"].last { it["Id"].textValue() == mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
-        condFlow["Type"].textValue().shouldBeEqualTo("Condition")
+            result["Flow"].last { it["Id"].stringValue() == mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue() }
+        condFlow["Type"].stringValue().shouldBeEqualTo("Condition")
 
-        val sectionFlow = result["Flow"].last { it["Id"].textValue() == condFlow["Condition"][""].textValue() }
-        sectionFlow["SectionFlow"].textValue().shouldBeEqualTo("True")
+        val sectionFlow = result["Flow"].last { it["Id"].stringValue() == condFlow["Condition"][""].stringValue() }
+        sectionFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
         val sectionFlowRefs = sectionFlow["FlowContent"]["P"]["T"]["O"]
         sectionFlowRefs.size().shouldBeEqualTo(2)
     }
@@ -958,26 +959,26 @@ class InteractiveDocumentObjectBuilderTest {
         // when
         val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
 
-        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
-        val mainFlowContentFlowId = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
-        val mainFlowContentFlow = result["Flow"].last { it["Id"].textValue() == mainFlowContentFlowId }
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
+        val mainFlowContentFlowId = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        val mainFlowContentFlow = result["Flow"].last { it["Id"].stringValue() == mainFlowContentFlowId }
         val mainFlowParagraphs = mainFlowContentFlow["FlowContent"]["P"]
         mainFlowParagraphs.size().shouldBeEqualTo(3)
-        mainFlowParagraphs[0]["T"][""].textValue().shouldBeEqualTo("main flow text 1")
-        mainFlowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("main flow text 2")
-        mainFlowParagraphs[2]["T"][""].textValue().shouldBeEqualTo("main flow text 3")
-        result["Flow"].first { it["Id"].textValue() == mainFlowContentFlowId }["Name"].textValue()
+        mainFlowParagraphs[0]["T"][""].stringValue().shouldBeEqualTo("main flow text 1")
+        mainFlowParagraphs[1]["T"][""].stringValue().shouldBeEqualTo("main flow text 2")
+        mainFlowParagraphs[2]["T"][""].stringValue().shouldBeEqualTo("main flow text 3")
+        result["Flow"].first { it["Id"].stringValue() == mainFlowContentFlowId }["Name"].stringValue()
             .shouldBeEqualTo("T_1")
 
-        val interactiveFlow = result["Flow"].first { it["Id"].textValue() == "Def.InteractiveFlow1" }
-        val interactiveFlowContentFlowId = interactiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
-        val interactiveFlowContentFlow = result["Flow"].last { it["Id"].textValue() == interactiveFlowContentFlowId }
+        val interactiveFlow = result["Flow"].first { it["Id"].stringValue() == "Def.InteractiveFlow1" }
+        val interactiveFlowContentFlowId = interactiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        val interactiveFlowContentFlow = result["Flow"].last { it["Id"].stringValue() == interactiveFlowContentFlowId }
         val interactiveFlowParagraphs = interactiveFlowContentFlow["FlowContent"]["P"]
         interactiveFlowParagraphs.size().shouldBeEqualTo(3)
-        interactiveFlowParagraphs[0]["T"][""].textValue().shouldBeEqualTo("interactive flow text 1")
-        interactiveFlowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("interactive flow text 2")
-        interactiveFlowParagraphs[2]["T"][""].textValue().shouldBeEqualTo("interactive flow text 3")
-        result["Flow"].first { it["Id"].textValue() == interactiveFlowContentFlowId }["Name"].textValue()
+        interactiveFlowParagraphs[0]["T"][""].stringValue().shouldBeEqualTo("interactive flow text 1")
+        interactiveFlowParagraphs[1]["T"][""].stringValue().shouldBeEqualTo("interactive flow text 2")
+        interactiveFlowParagraphs[2]["T"][""].stringValue().shouldBeEqualTo("interactive flow text 3")
+        result["Flow"].first { it["Id"].stringValue() == interactiveFlowContentFlowId }["Name"].stringValue()
             .shouldBeEqualTo("T_1_Flow BT 1")
     }
 
@@ -1004,37 +1005,37 @@ class InteractiveDocumentObjectBuilderTest {
 
         // then
         val cellNode = result["Cell"].last()
-        val cellFlow = result["Flow"].last { it["Id"].textValue() == cellNode["FlowId"].textValue() }
-        cellFlow["Type"].textValue().shouldBeEqualTo("Simple")
-        cellFlow["SectionFlow"].textValue().shouldBeEqualTo("True")
-        cellFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
+        val cellFlow = result["Flow"].last { it["Id"].stringValue() == cellNode["FlowId"].stringValue() }
+        cellFlow["Type"].stringValue().shouldBeEqualTo("Simple")
+        cellFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
+        cellFlow["WebEditingType"].stringValue().shouldBeEqualTo("Section")
 
-        val inlineCondFlowId = cellFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
-        val inlineCondFlow = result["Flow"].last { it["Id"].textValue() == inlineCondFlowId }
-        inlineCondFlow["Type"].textValue().shouldBeEqualTo("InlCond")
+        val inlineCondFlowId = cellFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        val inlineCondFlow = result["Flow"].last { it["Id"].stringValue() == inlineCondFlowId }
+        inlineCondFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
 
         val conditions = inlineCondFlow["Condition"]
         conditions.size().shouldBeEqualTo(2)
 
-        val firstCaseFlowId = conditions[0][""].textValue()
-        val firstCase = result["Flow"].last { it["Id"].textValue() == firstCaseFlowId }
+        val firstCaseFlowId = conditions[0][""].stringValue()
+        val firstCase = result["Flow"].last { it["Id"].stringValue() == firstCaseFlowId }
 
         val firstCaseFlow =
-            result["Flow"].last { it["Id"].textValue() == firstCase["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
-        firstCaseFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("first case")
+            result["Flow"].last { it["Id"].stringValue() == firstCase["FlowContent"]["P"]["T"]["O"]["Id"].stringValue() }
+        firstCaseFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("first case")
 
-        val secondCaseFlowId = conditions[1][""].textValue()
-        val secondCase = result["Flow"].last { it["Id"].textValue() == secondCaseFlowId }
+        val secondCaseFlowId = conditions[1][""].stringValue()
+        val secondCase = result["Flow"].last { it["Id"].stringValue() == secondCaseFlowId }
 
         val secondCaseFlow =
-            result["Flow"].last { it["Id"].textValue() == secondCase["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
-        secondCaseFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("second case")
+            result["Flow"].last { it["Id"].stringValue() == secondCase["FlowContent"]["P"]["T"]["O"]["Id"].stringValue() }
+        secondCaseFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("second case")
 
-        val default = result["Flow"].last { it["Id"].textValue() == inlineCondFlow["Default"].textValue() }
+        val default = result["Flow"].last { it["Id"].stringValue() == inlineCondFlow["Default"].stringValue() }
 
         val defaultFlow =
-            result["Flow"].last { it["Id"].textValue() == default["FlowContent"]["P"]["T"]["O"]["Id"].textValue() }
-        defaultFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("default case")
+            result["Flow"].last { it["Id"].stringValue() == default["FlowContent"]["P"]["T"]["O"]["Id"].stringValue() }
+        defaultFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("default case")
     }
 
     @Test
@@ -1052,14 +1053,14 @@ class InteractiveDocumentObjectBuilderTest {
 
         // then
         val cellNode = result["Cell"].last()
-        val cellFlow = result["Flow"].last { it["Id"].textValue() == cellNode["FlowId"].textValue() }
-        cellFlow["Type"].textValue().shouldBeEqualTo("Simple")
-        cellFlow["SectionFlow"].textValue().shouldBeEqualTo("True")
-        cellFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
+        val cellFlow = result["Flow"].last { it["Id"].stringValue() == cellNode["FlowId"].stringValue() }
+        cellFlow["Type"].stringValue().shouldBeEqualTo("Simple")
+        cellFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
+        cellFlow["WebEditingType"].stringValue().shouldBeEqualTo("Section")
 
-        val condFlowId = cellFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
-        val condFlow = result["Flow"].last { it["Id"].textValue() == condFlowId }
-        condFlow["Type"].textValue().shouldBeEqualTo("Condition")
+        val condFlowId = cellFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        val condFlow = result["Flow"].last { it["Id"].stringValue() == condFlowId }
+        condFlow["Type"].stringValue().shouldBeEqualTo("Condition")
     }
 
     @Test
@@ -1078,9 +1079,9 @@ class InteractiveDocumentObjectBuilderTest {
         textStyleDefinitions.size().shouldBeEqualTo(3)
 
         val textStyle = textStyleDefinitions[2]
-        textStyle["Bold"].textValue().shouldBeEqualTo("True")
-        textStyle["Italic"].textValue().shouldBeEqualTo("False")
-        textStyle["Underline"].textValue().shouldBeEqualTo("True")
+        textStyle["Bold"].stringValue().shouldBeEqualTo("True")
+        textStyle["Italic"].stringValue().shouldBeEqualTo("False")
+        textStyle["Underline"].stringValue().shouldBeEqualTo("True")
     }
 
     @Test
@@ -1101,15 +1102,15 @@ class InteractiveDocumentObjectBuilderTest {
         textStyleDefinitions.size().shouldBeEqualTo(3)
 
         val textStyle = textStyleDefinitions[2]
-        textStyle["Bold"].textValue().shouldBeEqualTo("True")
-        textStyle["Italic"].textValue().shouldBeEqualTo("False")
-        textStyle["Underline"].textValue().shouldBeEqualTo("True")
+        textStyle["Bold"].stringValue().shouldBeEqualTo("True")
+        textStyle["Italic"].stringValue().shouldBeEqualTo("False")
+        textStyle["Underline"].stringValue().shouldBeEqualTo("True")
 
         val paraStyleDefinitions = xmlMapper.readTree(result.trimIndent())["ParaStyle"]
         paraStyleDefinitions .size().shouldBeEqualTo(3)
 
         val paraStyle = paraStyleDefinitions[2]
-        paraStyle ["LeftIndent"].textValue().shouldBeEqualTo("0.01")
+        paraStyle ["LeftIndent"].stringValue().shouldBeEqualTo("0.01")
     }
 
     @Test
@@ -1130,7 +1131,7 @@ class InteractiveDocumentObjectBuilderTest {
         textStyleDefinitions.size().shouldBeEqualTo(3)
 
         val textStyle = textStyleDefinitions[2]
-        textStyle["FontSize"].textValue().shouldBeEqualTo(expectedValue.toString())
+        textStyle["FontSize"].stringValue().shouldBeEqualTo(expectedValue.toString())
     }
 
     @Test
@@ -1142,19 +1143,19 @@ class InteractiveDocumentObjectBuilderTest {
 
         // then
         val layout = xmlMapper.readTree(result.trimIndent())["Layout"]
-        layout["Name"].textValue().shouldBeEqualTo("DocumentLayout")
+        layout["Name"].stringValue().shouldBeEqualTo("DocumentLayout")
 
         val root = layout["Layout"]["Root"]
-        root["AllowRuntimeModifications"].textValue().shouldBeEqualTo("True")
+        root["AllowRuntimeModifications"].stringValue().shouldBeEqualTo("True")
 
         val page = layout["Layout"]["Page"]
         page.size().shouldBeEqualTo(2)
-        page[0]["Name"].textValue().shouldBeEqualTo("Page 1")
+        page[0]["Name"].stringValue().shouldBeEqualTo("Page 1")
 
         val pages = layout["Layout"]["Pages"]
-        pages["Id"].textValue().shouldBeEqualTo("Def.Pages")
-        pages["SelectionType"].textValue().shouldBeEqualTo("Simple")
-        pages["MainFlow"].textValue().shouldBeEqualTo("SR_2")
+        pages["Id"].stringValue().shouldBeEqualTo("Def.Pages")
+        pages["SelectionType"].stringValue().shouldBeEqualTo("Simple")
+        pages["MainFlow"].stringValue().shouldBeEqualTo("SR_2")
 
     }
 
@@ -1183,15 +1184,15 @@ class InteractiveDocumentObjectBuilderTest {
         textStyleDefinitions.size().shouldBeEqualTo(3)
 
         val textStyle = textStyleDefinitions[2]
-        textStyle["LeftIndent"].textValue().shouldBeEqualTo("0.0075")
-        textStyle["RightIndent"].textValue().shouldBeEqualTo("0.005")
-        textStyle["TabulatorProperties"]["Default"].textValue().shouldBeEqualTo("0.03")
-        textStyle["TabulatorProperties"]["Tabulator"]["Pos"].textValue().shouldBeEqualTo("0.025")
-        textStyle["SpaceBefore"].textValue().shouldBeEqualTo("0.004")
-        textStyle["SpaceAfter"].textValue().shouldBeEqualTo("0.006")
-        textStyle["FirstLineLeftIndent"].textValue().shouldBeEqualTo("0.0155")
-        textStyle["LineSpacing"].textValue().shouldBeEqualTo("0.015")
-        textStyle["LineSpacingType"].textValue().shouldBeEqualTo("Exact")
+        textStyle["LeftIndent"].stringValue().shouldBeEqualTo("0.0075")
+        textStyle["RightIndent"].stringValue().shouldBeEqualTo("0.005")
+        textStyle["TabulatorProperties"]["Default"].stringValue().shouldBeEqualTo("0.03")
+        textStyle["TabulatorProperties"]["Tabulator"]["Pos"].stringValue().shouldBeEqualTo("0.025")
+        textStyle["SpaceBefore"].stringValue().shouldBeEqualTo("0.004")
+        textStyle["SpaceAfter"].stringValue().shouldBeEqualTo("0.006")
+        textStyle["FirstLineLeftIndent"].stringValue().shouldBeEqualTo("0.0155")
+        textStyle["LineSpacing"].stringValue().shouldBeEqualTo("0.015")
+        textStyle["LineSpacingType"].stringValue().shouldBeEqualTo("Exact")
     }
 
     @Test
@@ -1213,30 +1214,30 @@ class InteractiveDocumentObjectBuilderTest {
         val layout = xmlMapper.readTree(result.trimIndent())["Layout"]["Layout"]
         val fonts = layout["Font"]
 
-        val arialFont = fonts.last { it["Id"].textValue() == "Def.Font" }
+        val arialFont = fonts.last { it["Id"].stringValue() == "Def.Font" }
         val arialSubFonts = arialFont["SubFont"]
         arialSubFonts.size().shouldBeEqualTo(2)
-        val arialRegular = arialSubFonts.first { it["Name"].textValue() == "Regular" }
-        arialRegular["FontLocation"].textValue()
+        val arialRegular = arialSubFonts.first { it["Name"].stringValue() == "Regular" }
+        arialRegular["FontLocation"].stringValue()
             .shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/arial.ttf")
-        val arialBold = arialSubFonts.first { it["Name"].textValue() == "Bold" }
-        arialBold["FontLocation"].textValue()
+        val arialBold = arialSubFonts.first { it["Name"].stringValue() == "Bold" }
+        arialBold["FontLocation"].stringValue()
             .shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/arialbd.ttf")
 
-        val tahomaId = fonts.first { it["Name"].textValue() == "Tahoma" }["Id"].textValue()
-        val tahomaFont = fonts.last { it["Id"].textValue() == tahomaId }
-        tahomaFont["FontName"].textValue().shouldBeEqualTo("Tahoma")
-        tahomaFont["SubFont"]["Name"].textValue().shouldBeEqualTo("Italic")
-        tahomaFont["SubFont"]["Italic"].textValue().shouldBeEqualTo("True")
-        tahomaFont["SubFont"]["Bold"].textValue().shouldBeEqualTo("False")
-        tahomaFont["SubFont"]["FontLocation"].textValue()
+        val tahomaId = fonts.first { it["Name"].stringValue() == "Tahoma" }["Id"].stringValue()
+        val tahomaFont = fonts.last { it["Id"].stringValue() == tahomaId }
+        tahomaFont["FontName"].stringValue().shouldBeEqualTo("Tahoma")
+        tahomaFont["SubFont"]["Name"].stringValue().shouldBeEqualTo("Italic")
+        tahomaFont["SubFont"]["Italic"].stringValue().shouldBeEqualTo("True")
+        tahomaFont["SubFont"]["Bold"].stringValue().shouldBeEqualTo("False")
+        tahomaFont["SubFont"]["FontLocation"].stringValue()
             .shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/Tahoma/tahoma.ttf")
 
-        val unknownId = fonts.first { it["Name"].textValue() == "Unknown" }["Id"].textValue()
-        val unknownFont = fonts.last { it["Id"].textValue() == unknownId }
+        val unknownId = fonts.first { it["Name"].stringValue() == "Unknown" }["Id"].stringValue()
+        val unknownFont = fonts.last { it["Id"].stringValue() == unknownId }
         unknownFont["SubFont"].shouldBeNull()
 
-        layout["TextStyle"].last { it["FontId"]?.textValue() == tahomaId }["SubFont"].textValue()
+        layout["TextStyle"].last { it["FontId"]?.stringValue() == tahomaId }["SubFont"].stringValue()
             .shouldBeEqualTo("Italic")
     }
 
@@ -1264,7 +1265,7 @@ class InteractiveDocumentObjectBuilderTest {
         // then
         verify(exactly = 1) { variableStructureRepository.findOrFail(variableStructureB.id) }
         verify(exactly = 0) { variableStructureRepository.findOrFail(variableStructureA.id) }
-        result["Variable"].first { it["Name"].textValue() == variable.nameOrId() }["ParentId"].textValue()
+        result["Variable"].first { it["Name"].stringValue() == variable.nameOrId() }["ParentId"].stringValue()
             .shouldBeEqualTo("Data.Clients.Value")
     }
 
@@ -1293,23 +1294,23 @@ class InteractiveDocumentObjectBuilderTest {
 
         // then
         val flowDefinitions = result["Flow"]
-        val languageFlows = flowDefinitions.filter { it["Type"]?.textValue() == "Language" }
+        val languageFlows = flowDefinitions.filter { it["Type"]?.stringValue() == "Language" }
         languageFlows.size.shouldBeEqualTo(2)
 
         val firstLanguageFlow = languageFlows[0]
-        val firstSubFlows = firstLanguageFlow["Condition"].associate { it["Value"]?.textValue() to it[""].textValue() }
+        val firstSubFlows = firstLanguageFlow["Condition"].associate { it["Value"]?.stringValue() to it[""].stringValue() }
         firstSubFlows.count().shouldBeEqualTo(5)
-        flowDefinitions.last { it["Id"]?.textValue() == firstSubFlows["en"] }["FlowContent"]["P"]["T"][""].textValue()
+        flowDefinitions.last { it["Id"]?.stringValue() == firstSubFlows["en"] }["FlowContent"]["P"]["T"][""].stringValue()
             .shouldBeEqualTo("en")
-        flowDefinitions.last { it["Id"]?.textValue() == firstSubFlows["de"] }["FlowContent"]["P"]["T"][""].textValue()
+        flowDefinitions.last { it["Id"]?.stringValue() == firstSubFlows["de"] }["FlowContent"]["P"]["T"][""].stringValue()
             .shouldBeEqualTo("de")
-        flowDefinitions.last { it["Id"]?.textValue() == firstSubFlows["es"] }["FlowContent"]["P"]["T"][""].textValue()
+        flowDefinitions.last { it["Id"]?.stringValue() == firstSubFlows["es"] }["FlowContent"]["P"]["T"][""].stringValue()
             .shouldBeEqualTo("es")
 
-        flowDefinitions.last { it["Id"]?.textValue() == firstSubFlows["ru"] }["FlowContent"]["P"].shouldBeNull()
-        flowDefinitions.last { it["Id"]?.textValue() == firstSubFlows["fi"] }["FlowContent"]["P"].shouldBeNull()
+        flowDefinitions.last { it["Id"]?.stringValue() == firstSubFlows["ru"] }["FlowContent"]["P"].shouldBeNull()
+        flowDefinitions.last { it["Id"]?.stringValue() == firstSubFlows["fi"] }["FlowContent"]["P"].shouldBeNull()
 
-        val defaultFlowId = firstLanguageFlow["Default"].textValue()
+        val defaultFlowId = firstLanguageFlow["Default"].stringValue()
         defaultFlowId.shouldNotBeEmpty()
         for (subflowId in firstSubFlows.values) {
             defaultFlowId.shouldNotBeEqualTo(subflowId)
@@ -1317,11 +1318,11 @@ class InteractiveDocumentObjectBuilderTest {
 
         val secondLanguageFlow = languageFlows[1]
         val secondSubFlows =
-            secondLanguageFlow["Condition"].associate { it["Value"]?.textValue() to it[""].textValue() }
+            secondLanguageFlow["Condition"].associate { it["Value"]?.stringValue() to it[""].stringValue() }
         secondSubFlows.count().shouldBeEqualTo(5)
-        flowDefinitions.last { it["Id"]?.textValue() == secondSubFlows["fi"] }["FlowContent"]["P"]["T"][""].textValue()
+        flowDefinitions.last { it["Id"]?.stringValue() == secondSubFlows["fi"] }["FlowContent"]["P"]["T"][""].stringValue()
             .shouldBeEqualTo("fi")
-        flowDefinitions.last { it["Id"]?.textValue() == secondSubFlows["en"] }["FlowContent"]["P"].shouldBeNull()
+        flowDefinitions.last { it["Id"]?.stringValue() == secondSubFlows["en"] }["FlowContent"]["P"].shouldBeNull()
     }
 
     @Test
@@ -1342,16 +1343,16 @@ class InteractiveDocumentObjectBuilderTest {
 
         // then
         val flowDefinitions = result["Flow"]
-        val languageFlow = flowDefinitions.find { it["Type"]?.textValue() == "Language" }!!
-        val subFlows = languageFlow["Condition"].associate { it["Value"]?.textValue() to it[""].textValue() }
+        val languageFlow = flowDefinitions.find { it["Type"]?.stringValue() == "Language" }!!
+        val subFlows = languageFlow["Condition"].associate { it["Value"]?.stringValue() to it[""].stringValue() }
         subFlows.count().shouldBeEqualTo(2)
-        val defaultFlowId = languageFlow["Default"].asText()
+        val defaultFlowId = languageFlow["Default"].asString()
         defaultFlowId.shouldBeEqualTo(subFlows["en_us"])
 
         val enContent =
-            flowDefinitions.findLast { it["Id"]?.textValue() == subFlows["en_us"] }!!["FlowContent"]["P"]["T"][""].textValue()
+            flowDefinitions.findLast { it["Id"]?.stringValue() == subFlows["en_us"] }!!["FlowContent"]["P"]["T"][""].stringValue()
         val deContent =
-            flowDefinitions.findLast { it["Id"]?.textValue() == subFlows["de"] }!!["FlowContent"]["P"]["T"][""].textValue()
+            flowDefinitions.findLast { it["Id"]?.stringValue() == subFlows["de"] }!!["FlowContent"]["P"]["T"][""].stringValue()
 
         enContent.shouldBeEqualTo("en_us")
         deContent.shouldBeEqualTo("de")
@@ -1397,14 +1398,14 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(docObj).let { xmlMapper.readTree(it.trimIndent()) }
 
         val mainFlow = result["Flow"]
-        mainFlow["Id"].textValue().shouldBeEqualTo("Def.MainFlow")
-        mainFlow["Type"].textValue().shouldBeEqualTo("OverflowableVariableFormatted")
+        mainFlow["Id"].stringValue().shouldBeEqualTo("Def.MainFlow")
+        mainFlow["Type"].stringValue().shouldBeEqualTo("OverflowableVariableFormatted")
 
-        val varId = mainFlow["Variable"].textValue()
-        val varObj = result["Variable"].last { it["Id"].textValue() == varId }
-        varObj["Type"].textValue().shouldBeEqualTo("Calculated")
-        varObj["VarType"].textValue().shouldBeEqualTo("String")
-        varObj["Script"].textValue().shouldBeEqualTo($$"""return 'Hello World' + '<var name="V_1">' + '' + '<var name="V_2">' + '$V_3$' + 'Goodbye World';""")
+        val varId = mainFlow["Variable"].stringValue()
+        val varObj = result["Variable"].last { it["Id"].stringValue() == varId }
+        varObj["Type"].stringValue().shouldBeEqualTo("Calculated")
+        varObj["VarType"].stringValue().shouldBeEqualTo("String")
+        varObj["Script"].stringValue().shouldBeEqualTo($$"""return 'Hello World' + '<var name="V_1">' + '' + '<var name="V_2">' + '$V_3$' + 'Goodbye World';""")
     }
 
     @Test
@@ -1440,44 +1441,44 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(docObj).let { xmlMapper.readTree(it.trimIndent()) }
 
         // main flow should be SelectByInlineCondition
-        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
-        mainFlow["Type"].textValue().shouldBeEqualTo("InlCond")
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
+        mainFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
 
         // should have two conditions
         val conditions = mainFlow["Condition"]
         conditions.size().shouldBeEqualTo(2)
 
         // first case condition script
-        conditions[0]["Value"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
-        val case1FlowId = conditions[0][""].textValue()
-        val case1Flow = result["Flow"].last { it["Id"].textValue() == case1FlowId }
-        case1Flow["Type"].textValue().shouldBeEqualTo("OverflowableVariableFormatted")
-        val case1VarId = case1Flow["Variable"].textValue()
-        val case1Var = result["Variable"].last { it["Id"].textValue() == case1VarId }
-        case1Var["Type"].textValue().shouldBeEqualTo("Calculated")
-        case1Var["VarType"].textValue().shouldBeEqualTo("String")
-        case1Var["Script"].textValue().shouldBeEqualTo($"""return 'Hello ' + '<var name="V_1">';""")
+        conditions[0]["Value"].stringValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val case1FlowId = conditions[0][""].stringValue()
+        val case1Flow = result["Flow"].last { it["Id"].stringValue() == case1FlowId }
+        case1Flow["Type"].stringValue().shouldBeEqualTo("OverflowableVariableFormatted")
+        val case1VarId = case1Flow["Variable"].stringValue()
+        val case1Var = result["Variable"].last { it["Id"].stringValue() == case1VarId }
+        case1Var["Type"].stringValue().shouldBeEqualTo("Calculated")
+        case1Var["VarType"].stringValue().shouldBeEqualTo("String")
+        case1Var["Script"].stringValue().shouldBeEqualTo($"""return 'Hello ' + '<var name="V_1">';""")
 
         // second case condition script
-        conditions[1]["Value"].textValue().shouldBeEqualTo("return (String('C')==String('C'));")
-        val case2FlowId = conditions[1][""].textValue()
-        val case2Flow = result["Flow"].last { it["Id"].textValue() == case2FlowId }
-        case2Flow["Type"].textValue().shouldBeEqualTo("OverflowableVariableFormatted")
-        val case2VarId = case2Flow["Variable"].textValue()
-        val case2Var = result["Variable"].last { it["Id"].textValue() == case2VarId }
-        case2Var["Type"].textValue().shouldBeEqualTo("Calculated")
-        case2Var["VarType"].textValue().shouldBeEqualTo("String")
-        case2Var["Script"].textValue().shouldBeEqualTo($"""return 'Goodbye ' + '<var name="V_2">';""")
+        conditions[1]["Value"].stringValue().shouldBeEqualTo("return (String('C')==String('C'));")
+        val case2FlowId = conditions[1][""].stringValue()
+        val case2Flow = result["Flow"].last { it["Id"].stringValue() == case2FlowId }
+        case2Flow["Type"].stringValue().shouldBeEqualTo("OverflowableVariableFormatted")
+        val case2VarId = case2Flow["Variable"].stringValue()
+        val case2Var = result["Variable"].last { it["Id"].stringValue() == case2VarId }
+        case2Var["Type"].stringValue().shouldBeEqualTo("Calculated")
+        case2Var["VarType"].stringValue().shouldBeEqualTo("String")
+        case2Var["Script"].stringValue().shouldBeEqualTo($"""return 'Goodbye ' + '<var name="V_2">';""")
 
         // default flow
-        val defaultFlowId = mainFlow["Default"].textValue()
-        val defaultFlow = result["Flow"].last { it["Id"].textValue() == defaultFlowId }
-        defaultFlow["Type"].textValue().shouldBeEqualTo("OverflowableVariableFormatted")
-        val defaultVarId = defaultFlow["Variable"].textValue()
-        val defaultVar = result["Variable"].last { it["Id"].textValue() == defaultVarId }
-        defaultVar["Type"].textValue().shouldBeEqualTo("Calculated")
-        defaultVar["VarType"].textValue().shouldBeEqualTo("String")
-        defaultVar["Script"].textValue().shouldBeEqualTo("return 'Default text';")
+        val defaultFlowId = mainFlow["Default"].stringValue()
+        val defaultFlow = result["Flow"].last { it["Id"].stringValue() == defaultFlowId }
+        defaultFlow["Type"].stringValue().shouldBeEqualTo("OverflowableVariableFormatted")
+        val defaultVarId = defaultFlow["Variable"].stringValue()
+        val defaultVar = result["Variable"].last { it["Id"].stringValue() == defaultVarId }
+        defaultVar["Type"].stringValue().shouldBeEqualTo("Calculated")
+        defaultVar["VarType"].stringValue().shouldBeEqualTo("String")
+        defaultVar["Script"].stringValue().shouldBeEqualTo("return 'Default text';")
     }
 
     @Test
@@ -1490,7 +1491,7 @@ class InteractiveDocumentObjectBuilderTest {
 
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
-        val tables = result["Table"].filter { it["TableStyleId"]?.textValue() != null }.map { it["TableStyleId"].textValue() }
+        val tables = result["Table"].filter { it["TableStyleId"]?.stringValue() != null }.map { it["TableStyleId"].stringValue() }
         tables.shouldBeOfSize(3)
         tables.toSet().shouldBeEqualTo(setOf("Others.testTableStyle1", "Others.testTableStyle2"))
     }
@@ -1527,7 +1528,7 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val tables = result["Table"].filter { it["TableStyleId"]?.textValue() != null }.map { it["TableStyleId"].textValue() }
+        val tables = result["Table"].filter { it["TableStyleId"]?.stringValue() != null }.map { it["TableStyleId"].stringValue() }
         tables.shouldBeOfSize(3)
         tables.toSet().shouldBeEqualTo(setOf("Others.first_internal", "Others.second_internal"))
     }
@@ -1549,16 +1550,16 @@ class InteractiveDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val mainFlow = result["Flow"].first { it["Id"].textValue() == "Def.MainFlow" }
-        val contentFlowId = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
+        val contentFlowId = mainFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        val contentFlow = result["Flow"].last { it["Id"].textValue() == contentFlowId }
-        val variableId = contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val contentFlow = result["Flow"].last { it["Id"].stringValue() == contentFlowId }
+        val variableId = contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        val variableData = result["Variable"].first { it["Id"].textValue() == variableId }
-        variableData["Name"].textValue().shouldBeEqualTo("PageCounter")
-        variableData["ParentId"].textValue().shouldBeEqualTo("Def.SystemVariables")
-        variableData["Forward"]["useExisting"].textValue().shouldBeEqualTo("True")
+        val variableData = result["Variable"].first { it["Id"].stringValue() == variableId }
+        variableData["Name"].stringValue().shouldBeEqualTo("PageCounter")
+        variableData["ParentId"].stringValue().shouldBeEqualTo("Def.SystemVariables")
+        variableData["Forward"]["useExisting"].stringValue().shouldBeEqualTo("True")
     }
 
     private fun DocumentObject.mock(): DocumentObject {

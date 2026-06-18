@@ -1,13 +1,13 @@
 package com.quadient.migration.shared
 
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.DeserializationContext
-import com.fasterxml.jackson.databind.JsonDeserializer
-import com.fasterxml.jackson.databind.JsonSerializer
-import com.fasterxml.jackson.databind.SerializerProvider
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.fasterxml.jackson.databind.annotation.JsonSerialize
+import tools.jackson.core.JsonGenerator
+import tools.jackson.core.JsonParser
+import tools.jackson.databind.DeserializationContext
+import tools.jackson.databind.ValueDeserializer
+import tools.jackson.databind.ValueSerializer
+import tools.jackson.databind.SerializationContext
+import tools.jackson.databind.annotation.JsonDeserialize
+import tools.jackson.databind.annotation.JsonSerialize
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -123,13 +123,13 @@ data class IcmPath private constructor(val path: String) {
         return path.hashCode()
     }
 
-    object JacksonSerializer : JsonSerializer<IcmPath>() {
-        override fun serialize(value: IcmPath, gen: JsonGenerator, serializers: SerializerProvider) {
+    object JacksonSerializer : ValueSerializer<IcmPath>() {
+        override fun serialize(value: IcmPath, gen: JsonGenerator, serializers: SerializationContext) {
             gen.writeString(value.toString())
         }
     }
 
-    object JacksonDeserializer : JsonDeserializer<IcmPath>() {
+    object JacksonDeserializer : ValueDeserializer<IcmPath>() {
         override fun deserialize(p: JsonParser, ctxt: DeserializationContext): IcmPath {
             return from(p.valueAsString)
         }

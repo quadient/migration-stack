@@ -1,10 +1,10 @@
 package com.quadient.migration.persistence.upgrade
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.ArrayNode
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.flywaydb.core.api.migration.BaseJavaMigration
 import org.flywaydb.core.api.migration.Context
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.ArrayNode
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.sql.Connection
 
 class V14__document_object_metadata_format_upgrade : BaseJavaMigration() {
@@ -58,7 +58,7 @@ class V14__document_object_metadata_format_upgrade : BaseJavaMigration() {
             val obj = mapper.createObjectNode()
             obj.put("type", "IcmMetadata")
             obj.put("key", entry.key)
-            obj.set<JsonNode>("value", entry.value)
+            obj.set("value", entry.value)
             newArray.add(obj)
         }
         return newArray

@@ -5,12 +5,12 @@
 //! ---
 package com.quadient.migration.example.common.report
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.example.common.util.PathUtil
 import groovy.transform.EqualsAndHashCode
 import groovy.transform.Field
+import tools.jackson.databind.ObjectMapper
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 

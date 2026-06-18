@@ -1,10 +1,10 @@
 package com.quadient.migration.persistence.upgrade
 
-import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.quadient.migration.shared.SkipOptions
 import org.flywaydb.core.api.migration.BaseJavaMigration
 import org.flywaydb.core.api.migration.Context
+import tools.jackson.databind.node.ObjectNode
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.sql.Connection
 
 class V6__skip_upgrade : BaseJavaMigration() {

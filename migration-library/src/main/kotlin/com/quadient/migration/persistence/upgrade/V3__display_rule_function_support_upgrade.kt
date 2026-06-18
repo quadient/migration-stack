@@ -1,11 +1,11 @@
 package com.quadient.migration.persistence.upgrade
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.ObjectNode
 import org.flywaydb.core.api.migration.BaseJavaMigration
 import org.flywaydb.core.api.migration.Context
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.ObjectNode
+import tools.jackson.module.kotlin.jacksonObjectMapper
 import java.sql.Connection
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 
 class V3__display_rule_function_support_upgrade : BaseJavaMigration() {
     private val mapper = jacksonObjectMapper()
@@ -40,7 +40,7 @@ class V3__display_rule_function_support_upgrade : BaseJavaMigration() {
 
     private fun transformGroup(def: JsonNode) {
         for (item in def.get("items")) {
-            val type = item.get("type").asText()
+            val type = item.get("type").asString()
             when (type) {
                 "com.quadient.migration.shared.Binary" -> {
                     val left = item.get("left") as ObjectNode

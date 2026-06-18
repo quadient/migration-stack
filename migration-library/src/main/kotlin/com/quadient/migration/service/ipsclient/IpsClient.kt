@@ -1,13 +1,13 @@
 package com.quadient.migration.service.ipsclient
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlText
-import com.fasterxml.jackson.module.kotlin.readValue
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.fasterxml.jackson.annotation.JsonRootName
+import tools.jackson.dataformat.xml.XmlMapper
+import tools.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper
+import tools.jackson.dataformat.xml.annotation.JacksonXmlProperty
+import tools.jackson.dataformat.xml.annotation.JacksonXmlText
+import tools.jackson.module.kotlin.KotlinModule
+import tools.jackson.module.kotlin.readValue
 import kotlinx.serialization.Serializable
 import com.quadient.migration.tools.logger
 import java.io.BufferedInputStream
@@ -31,7 +31,7 @@ class IpsClient(private val host: String, private val port: Int, private val tim
             return connection.version
         }
 
-    private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
+    private val xmlMapper by lazy { XmlMapper.builder().addModule(KotlinModule.Builder().build()).build() }
 
     fun ackJob(jobId: JobId): IpsResult<Unit, Unit, Unit> {
         val command = "ackj $jobId"
@@ -386,7 +386,7 @@ class IpsClient(private val host: String, private val port: Int, private val tim
     }
 }
 
-@JacksonXmlRootElement(localName = "Output")
+@JsonRootName("Output")
 class Output {
     @JacksonXmlProperty(localName = "Values")
     var values: Values? = null

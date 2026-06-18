@@ -3,9 +3,9 @@ package com.quadient.migration.persistence.upgrade
 import org.flywaydb.core.api.migration.BaseJavaMigration
 import org.flywaydb.core.api.migration.Context
 import java.sql.Connection
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import com.quadient.migration.shared.VariablePathData
+import tools.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.readValue
 
 class V2__variable_structure_upgrade : BaseJavaMigration() {
     private val mapper = jacksonObjectMapper()

@@ -1,11 +1,12 @@
 package com.quadient.migration.shared
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializerProvider
-import com.fasterxml.jackson.databind.annotation.JsonSerialize
-import com.fasterxml.jackson.databind.ser.std.StdSerializer
+import tools.jackson.core.JsonGenerator
+import tools.jackson.databind.MapperFeature
+import tools.jackson.databind.SerializationContext
+import tools.jackson.databind.annotation.JsonSerialize
+import tools.jackson.databind.json.JsonMapper
+import tools.jackson.databind.ser.std.StdSerializer
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.Variable
@@ -39,7 +40,8 @@ class Jrd(@field:JsonProperty("InteractivePlusJsonDefinition") val interactivePl
             findVar: (String) -> Variable
         ): String {
             val result = Jrd(JrdDefinition.fromDisplayRule(rule, projectConfig, variableStructure, findVar))
-            return ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(result)
+            return JsonMapper.builder().disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY).build()
+                .writerWithDefaultPrettyPrinter().writeValueAsString(result)
         }
     }
 }
@@ -260,7 +262,7 @@ value class Str(val value: String) : Value
 value class Float(val value: Double) : Value
 
 class ValueSerializer : StdSerializer<Value>(Value::class.java) {
-    override fun serialize(value: Value, gen: JsonGenerator, provider: SerializerProvider) {
+    override fun serialize(value: Value, gen: JsonGenerator, provider: SerializationContext) {
         when (value) {
             is Bool -> gen.writeBoolean(value.value)
             is Str -> gen.writeString(value.value)

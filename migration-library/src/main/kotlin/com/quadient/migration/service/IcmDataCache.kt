@@ -1,9 +1,5 @@
 package com.quadient.migration.service
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.ArrayNode
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.quadient.migration.service.inspirebuilder.FontKey
 import com.quadient.migration.service.inspirebuilder.fontDataStringToMap
 import com.quadient.migration.service.ipsclient.IpsService
@@ -13,6 +9,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import com.quadient.migration.tools.logger
 import kotlin.collections.toList
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.node.ArrayNode
+import tools.jackson.dataformat.xml.XmlMapper
+import tools.jackson.module.kotlin.KotlinModule
 
 abstract class IcmDataCache(
     private val ipsService: IpsService,
@@ -20,7 +20,7 @@ abstract class IcmDataCache(
 ) {
     private val logger by logger()
     private val lenientJson = Json { ignoreUnknownKeys = true }
-    private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
+    private val xmlMapper by lazy { XmlMapper.builder().addModule(KotlinModule.Builder().build()).build() }
     private val baseTemplateCache = mutableMapOf<IcmPath, BaseTemplateData?>()
     private val wfd2XmlCache = mutableMapOf<IcmPath, String>()
 
@@ -73,8 +73,8 @@ abstract class IcmDataCache(
         val styleNodeList = if (styleNode is ArrayNode) styleNode.toList() else listOf(styleNode)
         val result = mutableMapOf<String, String>()
         styleNodeList.forEach { node ->
-            val name = node["Name"]?.textValue() ?: return@forEach
-            val raw = node["CustomProperty"]?.textValue() ?: return@forEach
+            val name = node["Name"]?.stringValue() ?: return@forEach
+            val raw = node["CustomProperty"]?.stringValue() ?: return@forEach
             val displayName = lenientJson.decodeFromString<StyleCustomProperty>(raw).displayName ?: return@forEach
             result.putIfAbsent(displayName, name)
         }
@@ -108,18 +108,18 @@ abstract class IcmDataCache(
         val pagesInteractiveFlowNode = layoutXmlTree["Pages"]?.get("InteractiveFlow") ?: return emptyMap()
         val flowNodes = layoutXmlTree["Flow"] ?: return emptyMap()
 
-        val interactiveFlowIds = if (pagesInteractiveFlowNode is ArrayNode) {
-            pagesInteractiveFlowNode.map { it["FlowId"].textValue() }
+        val interactiveFlowIds: List<String> = if (pagesInteractiveFlowNode is ArrayNode) {
+            pagesInteractiveFlowNode.toList().map { it["FlowId"].asString() }
         } else {
-            listOf(pagesInteractiveFlowNode["FlowId"].textValue())
+            listOf(pagesInteractiveFlowNode["FlowId"].asString())
         }
 
         val result = mutableMapOf<String, String>()
         interactiveFlowIds.forEachIndexed { i, id ->
-            val flowData = flowNodes.first { flow -> flow["Id"].textValue() == id }
-            flowData["Name"]?.textValue()?.let { result[it] = "Def.InteractiveFlow$i" }
+            val flowData = flowNodes.first { flow -> flow["Id"].asString() == id }
+            flowData["Name"]?.stringValue()?.let { result[it] = "Def.InteractiveFlow$i" }
 
-            flowData["CustomProperty"]?.textValue()?.let { raw ->
+            flowData["CustomProperty"]?.stringValue()?.let { raw ->
                 lenientJson.decodeFromString<FlowCustomProperty>(raw).customName?.let {
                     result[it] = "Def.InteractiveFlow$i"
                 }

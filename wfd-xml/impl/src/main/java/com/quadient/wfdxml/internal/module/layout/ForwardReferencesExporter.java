@@ -1,11 +1,11 @@
 package com.quadient.wfdxml.internal.module.layout;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.internal.DefaultNodeType;
 import com.quadient.wfdxml.internal.NodeImpl;
 import com.quadient.wfdxml.internal.Tree;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.HashSet;
 import java.util.Map;

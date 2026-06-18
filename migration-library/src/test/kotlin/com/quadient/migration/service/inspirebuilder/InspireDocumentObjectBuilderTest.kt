@@ -1,6 +1,7 @@
 package com.quadient.migration.service.inspirebuilder
 
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import tools.jackson.dataformat.xml.XmlMapper
+import tools.jackson.module.kotlin.KotlinModule
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
@@ -81,7 +82,7 @@ class InspireDocumentObjectBuilderTest {
     private val resourcePathProvider = DesignerResourcePathProvider(config)
     private val icmDataCache = DesignerIcmDataCache(ipsService, resourcePathProvider)
 
-    private val xmlMapper = XmlMapper().also { it.findAndRegisterModules() }
+    private val xmlMapper = XmlMapper.builder().addModule(KotlinModule.Builder().build()).build()
 
     private var subject = DesignerDocumentObjectBuilder(
         documentObjectRepository,
@@ -120,10 +121,10 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val paraStyles = result["Layout"]["Layout"]["ParaStyle"]
-        val paraStyleId = paraStyles.first { it["Name"]?.textValue() == paragraphStyle.name }["Id"].textValue()
-        val paraStyleContent = paraStyles.last { it["Id"].textValue() == paraStyleId }
+        val paraStyleId = paraStyles.first { it["Name"]?.stringValue() == paragraphStyle.name }["Id"].stringValue()
+        val paraStyleContent = paraStyles.last { it["Id"].stringValue() == paraStyleId }
 
-        paraStyleContent["PDFAdvanced"]["Tagging"]["Rule"].textValue().shouldBeEqualTo("P")
+        paraStyleContent["PDFAdvanced"]["Tagging"]["Rule"].stringValue().shouldBeEqualTo("P")
     }
 
     @Test
@@ -137,17 +138,17 @@ class InspireDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val hyperlinkStyleId = result["TextStyle"].first { it["Name"]?.textValue() == "text_url_1" }["Id"].textValue()
-        val hyperlinkStyleContent = result["TextStyle"].last { it["Id"].textValue() == hyperlinkStyleId }
+        val hyperlinkStyleId = result["TextStyle"].first { it["Name"]?.stringValue() == "text_url_1" }["Id"].stringValue()
+        val hyperlinkStyleContent = result["TextStyle"].last { it["Id"].stringValue() == hyperlinkStyleId }
 
-        val urlVarId = hyperlinkStyleContent["URLLink"].textValue()
-        hyperlinkStyleContent["URLAlternateText"].textValue().shouldBeEqualTo("Link to example website")
+        val urlVarId = hyperlinkStyleContent["URLLink"].stringValue()
+        hyperlinkStyleContent["URLAlternateText"].stringValue().shouldBeEqualTo("Link to example website")
 
-        result["Variable"].first { it["Name"].textValue() == "text_url_1" }
-        val urlVariableContent = result["Variable"].last { it["Id"].textValue() == urlVarId }
-        urlVariableContent["Type"].textValue().shouldBeEqualTo("Constant")
-        urlVariableContent["VarType"].textValue().shouldBeEqualTo("String")
-        urlVariableContent["Content"].textValue().shouldBeEqualTo("https://www.example.com")
+        result["Variable"].first { it["Name"].stringValue() == "text_url_1" }
+        val urlVariableContent = result["Variable"].last { it["Id"].stringValue() == urlVarId }
+        urlVariableContent["Type"].stringValue().shouldBeEqualTo("Constant")
+        urlVariableContent["VarType"].stringValue().shouldBeEqualTo("String")
+        urlVariableContent["Content"].stringValue().shouldBeEqualTo("https://www.example.com")
     }
 
     @Test
@@ -183,17 +184,17 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val hyperlinkStyleId =
-            result["TextStyle"].first { it["Name"]?.textValue() == "${textStyle.name}_url_1" }["Id"].textValue()
-        val hyperlinkStyleContent = result["TextStyle"].last { it["Id"].textValue() == hyperlinkStyleId }
+            result["TextStyle"].first { it["Name"]?.stringValue() == "${textStyle.name}_url_1" }["Id"].stringValue()
+        val hyperlinkStyleContent = result["TextStyle"].last { it["Id"].stringValue() == hyperlinkStyleId }
 
-        hyperlinkStyleContent["Type"].textValue().shouldBeEqualTo("Delta")
-        hyperlinkStyleContent["AncestorId"].textValue().shouldBeEqualTo("Def.TextStyleHyperlink")
+        hyperlinkStyleContent["Type"].stringValue().shouldBeEqualTo("Delta")
+        hyperlinkStyleContent["AncestorId"].stringValue().shouldBeEqualTo("Def.TextStyleHyperlink")
         val inheritFlags = hyperlinkStyleContent["InheritFlag"]
 
         inheritFlags.size().shouldBeEqualTo(TextStyleInheritFlag.entries.size - 2)
 
-        assert(inheritFlags.none { it.textValue() == "Underline" })
-        assert(inheritFlags.none { it.textValue() == "FillStyle" })
+        assert(inheritFlags.none { it.stringValue() == "Underline" })
+        assert(inheritFlags.none { it.stringValue() == "FillStyle" })
     }
 
     @Test
@@ -210,12 +211,12 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val contentFlow = getFlowAreaContentFlow(result)
-        contentFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("See attached: ")
-        val attachmentFlowId = contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        contentFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("See attached: ")
+        val attachmentFlowId = contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        val attachmentFlow = result["Flow"].last { it["Id"].textValue() == attachmentFlowId }
-        attachmentFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
-        attachmentFlow["ExternalLocation"].textValue().shouldBeEqualTo("icm://document.pdf")
+        val attachmentFlow = result["Flow"].last { it["Id"].stringValue() == attachmentFlowId }
+        attachmentFlow["Type"].stringValue().shouldBeEqualTo("DirectExternal")
+        attachmentFlow["ExternalLocation"].stringValue().shouldBeEqualTo("icm://document.pdf")
     }
 
     @Test
@@ -231,9 +232,9 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val contentFlow = getFlowAreaContentFlow(result)
-        val placeholderFlowId = contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
-        val placeholderFlow = result["Flow"].last { it["Id"].textValue() == placeholderFlowId }
-        placeholderFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Attachment not available")
+        val placeholderFlowId = contentFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        val placeholderFlow = result["Flow"].last { it["Id"].stringValue() == placeholderFlowId }
+        placeholderFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("Attachment not available")
     }
 
     @Test
@@ -259,7 +260,7 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val flow = getFlowAreaContentFlow(result)
-        flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text  more text")
+        flow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("Text  more text")
     }
 
     @Test
@@ -280,13 +281,13 @@ class InspireDocumentObjectBuilderTest {
             subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val flowId = result["FlowArea"].last()["FlowId"].textValue()
-        val flowAreaFlow = result["Flow"].last { it["Id"].textValue() == flowId }
+        val flowId = result["FlowArea"].last()["FlowId"].stringValue()
+        val flowAreaFlow = result["Flow"].last { it["Id"].stringValue() == flowId }
         val refIds = flowAreaFlow["FlowContent"]["P"]["T"]["O"]
-        val attachmentFlow = result["Flow"].last { it["Id"].textValue() == refIds[1]["Id"].textValue() }
+        val attachmentFlow = result["Flow"].last { it["Id"].stringValue() == refIds[1]["Id"].stringValue() }
 
-        attachmentFlow["Type"].textValue().shouldBeEqualTo("DirectExternal")
-        attachmentFlow["ExternalLocation"].textValue().shouldBeEqualTo("icm://resolved.pdf")
+        attachmentFlow["Type"].stringValue().shouldBeEqualTo("DirectExternal")
+        attachmentFlow["ExternalLocation"].stringValue().shouldBeEqualTo("icm://resolved.pdf")
     }
 
     @Test
@@ -308,9 +309,9 @@ class InspireDocumentObjectBuilderTest {
             subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val imageId = result["ImageObject"].last()["ImageId"].textValue()
-        val image = result["Image"].last { it["Id"].textValue() == imageId }
-        image["ImageLocation"].textValue().shouldBeEqualTo("VCSLocation,icm://resolved.png")
+        val imageId = result["ImageObject"].last()["ImageId"].stringValue()
+        val image = result["Image"].last { it["Id"].stringValue() == imageId }
+        image["ImageLocation"].stringValue().shouldBeEqualTo("VCSLocation,icm://resolved.png")
     }
 
     @Test
@@ -330,7 +331,7 @@ class InspireDocumentObjectBuilderTest {
         // when
         val result =
             subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
-        val allSheetNameVariableIds = result["Pages"]["SheetNameVariableId"].map { it.textValue() }
+        val allSheetNameVariableIds = result["Pages"]["SheetNameVariableId"].toList().map { it.stringValue() ?: "" }
 
         // then
         allSheetNameVariableIds.count { it.isBlank() }.shouldBeEqualTo(37)
@@ -339,11 +340,11 @@ class InspireDocumentObjectBuilderTest {
         pdfSheetNameVariableIds.size.shouldBeEqualTo(5)
 
         val variableNames =
-            pdfSheetNameVariableIds.map { varId -> result["Variable"].first { it["Id"].textValue() == varId }["Name"].textValue() }
+            pdfSheetNameVariableIds.map { varId -> result["Variable"].first { it["Id"].stringValue() == varId }["Name"].stringValue() }
         variableNames.shouldBeEqualTo(listOf("TaggingTitle", "TaggingAuthor", "TaggingSubject", "TaggingKeywords", "TaggingProduce"))
 
         val variableScripts =
-            pdfSheetNameVariableIds.map { varId -> result["Variable"].last { it["Id"].textValue() == varId }["Script"].textValue() }
+            pdfSheetNameVariableIds.map { varId -> result["Variable"].last { it["Id"].stringValue() == varId }["Script"].stringValue() }
         variableScripts.shouldBeEqualTo(
             listOf(
                 "return 'Test Title';",
@@ -382,11 +383,11 @@ class InspireDocumentObjectBuilderTest {
             subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val allSheetNameVariableIds = result["Pages"]["SheetNameVariableId"].map { it.textValue() }
+        val allSheetNameVariableIds = result["Pages"]["SheetNameVariableId"].toList().map { it.stringValue() ?: "" }
         allSheetNameVariableIds.size.shouldBeEqualTo(39)
         val pdfAuthorSheetName = allSheetNameVariableIds[38]
 
-        val variableScript = result["Variable"].last { it["Id"].textValue() == pdfAuthorSheetName }["Script"].textValue()
+        val variableScript = result["Variable"].last { it["Id"].stringValue() == pdfAuthorSheetName }["Script"].stringValue()
         variableScript.shouldBeEqualTo("return 'Jon ' + DATA.Clients.Current.Middle_Name.toString() + ' Doe ' + '\$noStruct$';")
     }
 
@@ -409,8 +410,8 @@ class InspireDocumentObjectBuilderTest {
             subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val variableData = result["Variable"].first { it["Name"].textValue() == "Name" }
-        variableData["ParentId"].textValue().shouldBeEqualTo("Data.Clients.Value")
+        val variableData = result["Variable"].first { it["Name"].stringValue() == "Name" }
+        variableData["ParentId"].stringValue().shouldBeEqualTo("Data.Clients.Value")
     }
 
     @Test
@@ -443,8 +444,8 @@ class InspireDocumentObjectBuilderTest {
             subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then — script should reference DATA.Clients.Current.Address.City
-        val authorVariableId = result["Pages"]["SheetNameVariableId"].last().textValue()
-        val variableScript = result["Variable"].last { it["Id"].textValue() == authorVariableId }["Script"].textValue()
+        val authorVariableId = result["Pages"]["SheetNameVariableId"].last().stringValue()
+        val variableScript = result["Variable"].last { it["Id"].stringValue() == authorVariableId }["Script"].stringValue()
         variableScript.shouldBeEqualTo("return DATA.Clients.Current.Address.City.toString();")
     }
 
@@ -472,34 +473,34 @@ class InspireDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val repeatedRowSetId = result["Table"].last()["RowSetId"].textValue()
-        val repeatedRowSet = result["RowSet"].last { it["Id"].textValue() == repeatedRowSetId }
+        val repeatedRowSetId = result["Table"].last()["RowSetId"].stringValue()
+        val repeatedRowSet = result["RowSet"].last { it["Id"].stringValue() == repeatedRowSetId }
 
-        repeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
-        val arrayVarId = repeatedRowSet["VariableId"].textValue()
-        val arrayVar = result["Variable"].last { it["Id"].textValue() == arrayVarId }
-        arrayVar["Type"].textValue().shouldBeEqualTo("DataVariable")
-        arrayVar["VarType"].textValue().shouldBeEqualTo("Array")
+        repeatedRowSet["RowSetType"].stringValue().shouldBeEqualTo("Repeated")
+        val arrayVarId = repeatedRowSet["VariableId"].stringValue()
+        val arrayVar = result["Variable"].last { it["Id"].stringValue() == arrayVarId }
+        arrayVar["Type"].stringValue().shouldBeEqualTo("DataVariable")
+        arrayVar["VarType"].stringValue().shouldBeEqualTo("Array")
 
-        val multipleRowId = repeatedRowSet["SubRowId"].textValue()
-        val multipleRow = result["RowSet"].last { it["Id"].textValue() == multipleRowId }
-        multipleRow["RowSetType"].textValue().shouldBeEqualTo("RowSet")
-        val secondRowId = multipleRow["SubRowId"][1].textValue()
+        val multipleRowId = repeatedRowSet["SubRowId"].stringValue()
+        val multipleRow = result["RowSet"].last { it["Id"].stringValue() == multipleRowId }
+        multipleRow["RowSetType"].stringValue().shouldBeEqualTo("RowSet")
+        val secondRowId = multipleRow["SubRowId"][1].stringValue()
 
-        val secondRow = result["RowSet"].last { it["Id"].textValue() == secondRowId }
-        secondRow["RowSetType"].textValue().shouldBeEqualTo("Row")
+        val secondRow = result["RowSet"].last { it["Id"].stringValue() == secondRowId }
+        secondRow["RowSetType"].stringValue().shouldBeEqualTo("Row")
 
-        val secondCellId = secondRow["SubRowId"][1].textValue()
-        val secondCell = result["Cell"].last { it["Id"].textValue() == secondCellId }
+        val secondCellId = secondRow["SubRowId"][1].stringValue()
+        val secondCell = result["Cell"].last { it["Id"].stringValue() == secondCellId }
 
-        val secondCellFlow = result["Flow"].last { it["Id"].textValue() == secondCell["FlowId"].textValue() }
-        val variableId = secondCellFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val secondCellFlow = result["Flow"].last { it["Id"].stringValue() == secondCell["FlowId"].stringValue() }
+        val variableId = secondCellFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        val variable = result["Variable"].first { it["Id"].textValue() == variableId }
-        variable["Name"].textValue().shouldBeEqualTo("Job Name")
-        variable["ParentId"].textValue().shouldBeEqualTo("Data.Clients.Value")
+        val variable = result["Variable"].first { it["Id"].stringValue() == variableId }
+        variable["Name"].stringValue().shouldBeEqualTo("Job Name")
+        variable["ParentId"].stringValue().shouldBeEqualTo("Data.Clients.Value")
 
-        result["Root"]["LockedWebNodes"]["LockedWebNode"].textValue().shouldBeEqualTo(repeatedRowSetId)
+        result["Root"]["LockedWebNodes"]["LockedWebNode"].stringValue().shouldBeEqualTo(repeatedRowSetId)
     }
 
     @Test
@@ -534,30 +535,30 @@ class InspireDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val tableRowSetId = result["Table"].last()["RowSetId"].textValue()
-        val conditionRowSet = result["RowSet"].last { it["Id"].textValue() == tableRowSetId }
-        conditionRowSet["RowSetType"].textValue().shouldBeEqualTo("InlCond")
-        conditionRowSet["RowSetCondition"][0]["Condition"].textValue()
+        val tableRowSetId = result["Table"].last()["RowSetId"].stringValue()
+        val conditionRowSet = result["RowSet"].last { it["Id"].stringValue() == tableRowSetId }
+        conditionRowSet["RowSetType"].stringValue().shouldBeEqualTo("InlCond")
+        conditionRowSet["RowSetCondition"][0]["Condition"].stringValue()
             .shouldBeEqualTo("return (String('A')==String('B'));")
 
         val repeatedRowSet = result["RowSet"].last {
-            it["Id"].textValue() == conditionRowSet["RowSetCondition"][0]["SubRowId"].textValue()
+            it["Id"].stringValue() == conditionRowSet["RowSetCondition"][0]["SubRowId"].stringValue()
         }
-        repeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
-        val arrayVarId = repeatedRowSet["VariableId"].textValue()
-        val arrayVar = result["Variable"].last { it["Id"].textValue() == arrayVarId }
-        arrayVar["Type"].textValue().shouldBeEqualTo("DataVariable")
-        arrayVar["VarType"].textValue().shouldBeEqualTo("Array")
+        repeatedRowSet["RowSetType"].stringValue().shouldBeEqualTo("Repeated")
+        val arrayVarId = repeatedRowSet["VariableId"].stringValue()
+        val arrayVar = result["Variable"].last { it["Id"].stringValue() == arrayVarId }
+        arrayVar["Type"].stringValue().shouldBeEqualTo("DataVariable")
+        arrayVar["VarType"].stringValue().shouldBeEqualTo("Array")
 
-        val innerRow = result["RowSet"].last { it["Id"].textValue() == repeatedRowSet["SubRowId"].textValue() }
-        innerRow["RowSetType"].textValue().shouldBeEqualTo("Row")
+        val innerRow = result["RowSet"].last { it["Id"].stringValue() == repeatedRowSet["SubRowId"].stringValue() }
+        innerRow["RowSetType"].stringValue().shouldBeEqualTo("Row")
 
-        val secondCell = result["Cell"].last { it["Id"].textValue() == innerRow["SubRowId"][1].textValue() }
-        val secondCellFlow = result["Flow"].last { it["Id"].textValue() == secondCell["FlowId"].textValue() }
-        val variableId = secondCellFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
-        val variable = result["Variable"].first { it["Id"].textValue() == variableId }
-        variable["Name"].textValue().shouldBeEqualTo("Client Name")
-        variable["ParentId"].textValue().shouldBeEqualTo("Data.Clients.Value")
+        val secondCell = result["Cell"].last { it["Id"].stringValue() == innerRow["SubRowId"][1].stringValue() }
+        val secondCellFlow = result["Flow"].last { it["Id"].stringValue() == secondCell["FlowId"].stringValue() }
+        val variableId = secondCellFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        val variable = result["Variable"].first { it["Id"].stringValue() == variableId }
+        variable["Name"].stringValue().shouldBeEqualTo("Client Name")
+        variable["ParentId"].stringValue().shouldBeEqualTo("Data.Clients.Value")
     }
 
     @Test
@@ -576,15 +577,15 @@ class InspireDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val tableRowSetId = result["Table"].last()["RowSetId"].textValue()
-        val tableRowSet = result["RowSet"].last { it["Id"].textValue() == tableRowSetId }
-        tableRowSet["RowSetType"].textValue().shouldBeEqualTo("Row")
+        val tableRowSetId = result["Table"].last()["RowSetId"].stringValue()
+        val tableRowSet = result["RowSet"].last { it["Id"].stringValue() == tableRowSetId }
+        tableRowSet["RowSetType"].stringValue().shouldBeEqualTo("Row")
 
-        val cell = result["Cell"].last { it["Id"].textValue() == tableRowSet["SubRowId"].textValue() }
-        val flow = result["Flow"].last { it["Id"].textValue() == cell["FlowId"].textValue() }
+        val cell = result["Cell"].last { it["Id"].stringValue() == tableRowSet["SubRowId"].stringValue() }
+        val flow = result["Flow"].last { it["Id"].stringValue() == cell["FlowId"].stringValue() }
         // first paragraph = warning, second paragraph = original "Name"
-        flow["FlowContent"]["P"][0]["T"][""].textValue().shouldBeEqualTo($$"<repeated row by unmapped $Clients$>")
-        flow["FlowContent"]["P"][1]["T"][""].textValue().shouldBeEqualTo("Name")
+        flow["FlowContent"]["P"][0]["T"][""].stringValue().shouldBeEqualTo($$"<repeated row by unmapped $Clients$>")
+        flow["FlowContent"]["P"][1]["T"][""].stringValue().shouldBeEqualTo("Name")
     }
 
     @Test
@@ -606,22 +607,22 @@ class InspireDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val tableRowSetId = result["Table"].last()["RowSetId"].textValue()
-        val multipleRowSet = result["RowSet"].last { it["Id"].textValue() == tableRowSetId }
-        multipleRowSet["RowSetType"].textValue().shouldBeEqualTo("RowSet")
+        val tableRowSetId = result["Table"].last()["RowSetId"].stringValue()
+        val multipleRowSet = result["RowSet"].last { it["Id"].stringValue() == tableRowSetId }
+        multipleRowSet["RowSetType"].stringValue().shouldBeEqualTo("RowSet")
 
-        val firstSingleRow = result["RowSet"].last { it["Id"].textValue() == multipleRowSet["SubRowId"][0].textValue() }
-        val firstCell = result["Cell"].last { it["Id"].textValue() == firstSingleRow["SubRowId"].textValue() }
-        val firstFlow = result["Flow"].last { it["Id"].textValue() == firstCell["FlowId"].textValue() }
-        firstFlow["FlowContent"]["P"][0]["T"][""].textValue()
+        val firstSingleRow = result["RowSet"].last { it["Id"].stringValue() == multipleRowSet["SubRowId"][0].stringValue() }
+        val firstCell = result["Cell"].last { it["Id"].stringValue() == firstSingleRow["SubRowId"].stringValue() }
+        val firstFlow = result["Flow"].last { it["Id"].stringValue() == firstCell["FlowId"].stringValue() }
+        firstFlow["FlowContent"]["P"][0]["T"][""].stringValue()
             .shouldBeEqualTo($$"<repeated row by unmapped $Data.Clients.Value$>")
-        firstFlow["FlowContent"]["P"][1]["T"][""].textValue().shouldBeEqualTo($$"$surname$")
+        firstFlow["FlowContent"]["P"][1]["T"][""].stringValue().shouldBeEqualTo($$"$surname$")
 
         val secondSingleRow =
-            result["RowSet"].last { it["Id"].textValue() == multipleRowSet["SubRowId"][1].textValue() }
-        val secondCell = result["Cell"].last { it["Id"].textValue() == secondSingleRow["SubRowId"].textValue() }
-        val secondFlow = result["Flow"].last { it["Id"].textValue() == secondCell["FlowId"].textValue() }
-        secondFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Second")
+            result["RowSet"].last { it["Id"].stringValue() == multipleRowSet["SubRowId"][1].stringValue() }
+        val secondCell = result["Cell"].last { it["Id"].stringValue() == secondSingleRow["SubRowId"].stringValue() }
+        val secondFlow = result["Flow"].last { it["Id"].stringValue() == secondCell["FlowId"].stringValue() }
+        secondFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("Second")
     }
 
     @Test
@@ -652,33 +653,33 @@ class InspireDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then — outer repeated rowset driven by Data.Clients.Value
-        val outerRepeatedRowSetId = result["Table"].last()["RowSetId"].textValue()
-        val outerRepeatedRowSet = result["RowSet"].last { it["Id"].textValue() == outerRepeatedRowSetId }
-        outerRepeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
-        val outerArrayVar = result["Variable"].last { it["Id"].textValue() == outerRepeatedRowSet["VariableId"].textValue() }
-        outerArrayVar["VarType"].textValue().shouldBeEqualTo("Array")
+        val outerRepeatedRowSetId = result["Table"].last()["RowSetId"].stringValue()
+        val outerRepeatedRowSet = result["RowSet"].last { it["Id"].stringValue() == outerRepeatedRowSetId }
+        outerRepeatedRowSet["RowSetType"].stringValue().shouldBeEqualTo("Repeated")
+        val outerArrayVar = result["Variable"].last { it["Id"].stringValue() == outerRepeatedRowSet["VariableId"].stringValue() }
+        outerArrayVar["VarType"].stringValue().shouldBeEqualTo("Array")
 
         // then — inner repeated rowset is nested directly inside the outer
-        val innerRepeatedRowSetId = outerRepeatedRowSet["SubRowId"].textValue()
-        val innerRepeatedRowSet = result["RowSet"].last { it["Id"].textValue() == innerRepeatedRowSetId }
-        innerRepeatedRowSet["RowSetType"].textValue().shouldBeEqualTo("Repeated")
-        val innerArrayVar = result["Variable"].last { it["Id"].textValue() == innerRepeatedRowSet["VariableId"].textValue() }
-        innerArrayVar["VarType"].textValue().shouldBeEqualTo("Array")
+        val innerRepeatedRowSetId = outerRepeatedRowSet["SubRowId"].stringValue()
+        val innerRepeatedRowSet = result["RowSet"].last { it["Id"].stringValue() == innerRepeatedRowSetId }
+        innerRepeatedRowSet["RowSetType"].stringValue().shouldBeEqualTo("Repeated")
+        val innerArrayVar = result["Variable"].last { it["Id"].stringValue() == innerRepeatedRowSet["VariableId"].stringValue() }
+        innerArrayVar["VarType"].stringValue().shouldBeEqualTo("Array")
 
         // then — single row is nested inside the inner repeated rowset
-        val singleRowId = innerRepeatedRowSet["SubRowId"].textValue()
-        val singleRow = result["RowSet"].last { it["Id"].textValue() == singleRowId }
-        singleRow["RowSetType"].textValue().shouldBeEqualTo("Row")
+        val singleRowId = innerRepeatedRowSet["SubRowId"].stringValue()
+        val singleRow = result["RowSet"].last { it["Id"].stringValue() == singleRowId }
+        singleRow["RowSetType"].stringValue().shouldBeEqualTo("Row")
 
-        val secondCellId = singleRow["SubRowId"][1].textValue()
-        val secondCell = result["Cell"].last { it["Id"].textValue() == secondCellId }
-        val secondCellFlow = result["Flow"].last { it["Id"].textValue() == secondCell["FlowId"].textValue() }
-        val variableId = secondCellFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
-        val variable = result["Variable"].first { it["Id"].textValue() == variableId }
-        variable["Name"].textValue().shouldBeEqualTo("Item Name")
+        val secondCellId = singleRow["SubRowId"][1].stringValue()
+        val secondCell = result["Cell"].last { it["Id"].stringValue() == secondCellId }
+        val secondCellFlow = result["Flow"].last { it["Id"].stringValue() == secondCell["FlowId"].stringValue() }
+        val variableId = secondCellFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        val variable = result["Variable"].first { it["Id"].stringValue() == variableId }
+        variable["Name"].stringValue().shouldBeEqualTo("Item Name")
 
         val lockedWebNodes = result["Root"]["LockedWebNodes"]["LockedWebNode"]
-        val lockedIds = lockedWebNodes.map { it.textValue() }
+        val lockedIds = lockedWebNodes.toList().map { it.stringValue() }
         lockedIds.contains(outerRepeatedRowSetId).shouldBeEqualTo(true)
         lockedIds.contains(innerRepeatedRowSetId).shouldBeEqualTo(true)
     }
@@ -729,15 +730,15 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val repeatedFlow = getFlowAreaContentFlow(result)
-        val arrayVarId = repeatedFlow["Variable"].textValue()
-        val arrayVar = result["Variable"].last { it["Id"].textValue() == arrayVarId }
-        arrayVar["Type"].textValue().shouldBeEqualTo("DataVariable")
-        arrayVar["VarType"].textValue().shouldBeEqualTo("Array")
-        repeatedFlow["SectionFlow"].textValue().shouldBeEqualTo("False")
+        val arrayVarId = repeatedFlow["Variable"].stringValue()
+        val arrayVar = result["Variable"].last { it["Id"].stringValue() == arrayVarId }
+        arrayVar["Type"].stringValue().shouldBeEqualTo("DataVariable")
+        arrayVar["VarType"].stringValue().shouldBeEqualTo("Array")
+        repeatedFlow["SectionFlow"].stringValue().shouldBeEqualTo("False")
 
-        val nameVarId = repeatedFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
-        val nameVarNode = result["Variable"].first { it["Id"].textValue() == nameVarId }
-        nameVarNode["Name"].textValue().shouldBeEqualTo("Real Name")
+        val nameVarId = repeatedFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        val nameVarNode = result["Variable"].first { it["Id"].stringValue() == nameVarId }
+        nameVarNode["Name"].stringValue().shouldBeEqualTo("Real Name")
     }
 
     @Test
@@ -762,10 +763,10 @@ class InspireDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val repeatedFlow = result["Flow"].last { it["Type"]?.textValue() == "Repeated" }
-        val arrayVar = result["Variable"].first { it["Id"].textValue() == repeatedFlow["Variable"].textValue() }
-        arrayVar["Name"].textValue().shouldBeEqualTo("Clients")
-        repeatedFlow["SectionFlow"].textValue().shouldBeEqualTo("True")
+        val repeatedFlow = result["Flow"].last { it["Type"]?.stringValue() == "Repeated" }
+        val arrayVar = result["Variable"].first { it["Id"].stringValue() == repeatedFlow["Variable"].stringValue() }
+        arrayVar["Name"].stringValue().shouldBeEqualTo("Clients")
+        repeatedFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
 
         val repeatedFlowRefs = repeatedFlow["FlowContent"]["P"]["T"]["O"]
         repeatedFlowRefs.size().shouldBeEqualTo(2)
@@ -789,11 +790,11 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val repeatedFallbackFlow = getFlowAreaContentFlow(result)
-        repeatedFallbackFlow["Type"].textValue().shouldBeEqualTo("Simple")
-        repeatedFallbackFlow["SectionFlow"].textValue().shouldBeEqualTo("False")
-        repeatedFallbackFlow["FlowContent"]["P"][0]["T"][""].textValue()
+        repeatedFallbackFlow["Type"].stringValue().shouldBeEqualTo("Simple")
+        repeatedFallbackFlow["SectionFlow"].stringValue().shouldBeEqualTo("False")
+        repeatedFallbackFlow["FlowContent"]["P"][0]["T"][""].stringValue()
             .shouldBeEqualTo($$"<repeated content by unmapped $Clients$>")
-        repeatedFallbackFlow["FlowContent"]["P"][1]["T"][""].textValue().shouldBeEqualTo("Some content")
+        repeatedFallbackFlow["FlowContent"]["P"][1]["T"][""].stringValue().shouldBeEqualTo("Some content")
     }
 
     @Test
@@ -814,13 +815,13 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val contentFlow = getFlowAreaContentFlow(result)
-        val textNodePath = contentFlow["FlowContent"]["P"]["T"]["Id"].textValue()
+        val textNodePath = contentFlow["FlowContent"]["P"]["T"]["Id"].stringValue()
         textNodePath.shouldBeEqualTo("TextStyles.${targetStyle.name}")
 
-        val textStyleId = result["TextStyle"].first { it["Name"]?.textValue() == targetStyle.name }["Id"].textValue()
-        val textStyleContent = result["TextStyle"].last { it["Id"].textValue() == textStyleId }
-        textStyleContent["FontId"].textValue().shouldBeEqualTo("Def.Font")
-        textStyleContent["Bold"].textValue().shouldBeEqualTo("True")
+        val textStyleId = result["TextStyle"].first { it["Name"]?.stringValue() == targetStyle.name }["Id"].stringValue()
+        val textStyleContent = result["TextStyle"].last { it["Id"].stringValue() == textStyleId }
+        textStyleContent["FontId"].stringValue().shouldBeEqualTo("Def.Font")
+        textStyleContent["Bold"].stringValue().shouldBeEqualTo("True")
     }
 
     @Test
@@ -845,12 +846,12 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val contentFlow = getFlowAreaContentFlow(result)
-        val paraNodePath = contentFlow["FlowContent"]["P"]["Id"].textValue()
+        val paraNodePath = contentFlow["FlowContent"]["P"]["Id"].stringValue()
         paraNodePath.shouldBeEqualTo("ParagraphStyles.${targetStyle.name}")
 
-        val paraStyleId = result["ParaStyle"].first { it["Name"]?.textValue() == targetStyle.name }["Id"].textValue()
-        val paraStyleContent = result["ParaStyle"].last { it["Id"].textValue() == paraStyleId }
-        paraStyleContent["HAlign"].textValue().shouldBeEqualTo("Center")
+        val paraStyleId = result["ParaStyle"].first { it["Name"]?.stringValue() == targetStyle.name }["Id"].stringValue()
+        val paraStyleContent = result["ParaStyle"].last { it["Id"].stringValue() == paraStyleId }
+        paraStyleContent["HAlign"].stringValue().shouldBeEqualTo("Center")
     }
 
     @Test
@@ -931,14 +932,14 @@ class InspireDocumentObjectBuilderTest {
         // then
         val section = result["Section"].last()
         section["Column"].size().shouldBeEqualTo(2)
-        section["Column"][0]["GutterWidth"].textValue().shouldBeEqualTo("0.0")
-        section["BalancingType"].textValue().shouldBeEqualTo("FirstColumnBiggest")
-        section["AutoFinish"].textValue().shouldBeEqualTo("True")
+        section["Column"][0]["GutterWidth"].stringValue().shouldBeEqualTo("0.0")
+        section["BalancingType"].stringValue().shouldBeEqualTo("FirstColumnBiggest")
+        section["AutoFinish"].stringValue().shouldBeEqualTo("True")
 
         val flow = getFlowAreaContentFlow(result)
         val flowText = flow["FlowContent"]["P"]["T"]
-        flowText["O"]["Id"].textValue().shouldBeEqualTo(section["Id"].textValue())
-        flowText[""].textValue().shouldBeEqualTo("Column content")
+        flowText["O"]["Id"].stringValue().shouldBeEqualTo(section["Id"].stringValue())
+        flowText[""].stringValue().shouldBeEqualTo("Column content")
     }
 
     @Test
@@ -959,16 +960,16 @@ class InspireDocumentObjectBuilderTest {
         // then
         val section = result["Section"].last()
         section["Column"].size().shouldBeEqualTo(3)
-        section["Column"][0]["GutterWidth"].textValue().shouldBeEqualTo("0.015")
-        section["BalancingType"].textValue().shouldBeEqualTo("Balanced")
-        section["AutoFinish"].textValue().shouldBeEqualTo("False")
+        section["Column"][0]["GutterWidth"].stringValue().shouldBeEqualTo("0.015")
+        section["BalancingType"].stringValue().shouldBeEqualTo("Balanced")
+        section["AutoFinish"].stringValue().shouldBeEqualTo("False")
 
         val flow = getFlowAreaContentFlow(result)
         val flowParagraphs = flow["FlowContent"]["P"]
         flowParagraphs[0]["T"]["O"].shouldBeNull()
-        flowParagraphs[0]["T"][""].textValue().shouldBeEqualTo("before column")
-        flowParagraphs[1]["T"]["O"]["Id"].textValue().shouldBeEqualTo(section["Id"].textValue())
-        flowParagraphs[1]["T"][""].textValue().shouldBeEqualTo("column content")
+        flowParagraphs[0]["T"][""].stringValue().shouldBeEqualTo("before column")
+        flowParagraphs[1]["T"]["O"]["Id"].stringValue().shouldBeEqualTo(section["Id"].stringValue())
+        flowParagraphs[1]["T"][""].stringValue().shouldBeEqualTo("column content")
     }
 
     @Test
@@ -987,14 +988,14 @@ class InspireDocumentObjectBuilderTest {
         val flow = getFlowAreaContentFlow(result)
         val flowTexts = flow["FlowContent"]["P"]["T"]
         val firstFlowText = flowTexts[0]
-        val sectionId = firstFlowText["O"]["Id"].textValue()
-        firstFlowText[""].textValue().shouldBeEqualTo("First value")
+        val sectionId = firstFlowText["O"]["Id"].stringValue()
+        firstFlowText[""].stringValue().shouldBeEqualTo("First value")
 
         val secondFlowText = flowTexts[1]
         secondFlowText["O"].shouldBeNull()
-        secondFlowText[""].textValue().shouldBeEqualTo($$"$Var 1$")
+        secondFlowText[""].stringValue().shouldBeEqualTo($$"$Var 1$")
 
-        val section = result["Section"].last { it["Id"].textValue() == sectionId }
+        val section = result["Section"].last { it["Id"].stringValue() == sectionId }
         section["Column"].size().shouldBeEqualTo(3)
     }
 
@@ -1032,25 +1033,25 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val barcode = result["Barcode"].last()
-        barcode["Pos"]["X"].textValue().shouldBeEqualTo("0.02")
-        barcode["Pos"]["Y"].textValue().shouldBeEqualTo("0.03")
-        barcode["Size"]["X"].textValue().shouldBeEqualTo("0.029")
-        barcode["Size"]["Y"].textValue().shouldBeEqualTo("0.029")
-        barcode["BarcodeName"].textValue().shouldBeEqualTo("QR")
-        barcode["ConvertString"].textValue().shouldBeEqualTo("012345")
-        barcode["ShowDataTextProcessed"].textValue().shouldBeEqualTo("True")
+        barcode["Pos"]["X"].stringValue().shouldBeEqualTo("0.02")
+        barcode["Pos"]["Y"].stringValue().shouldBeEqualTo("0.03")
+        barcode["Size"]["X"].stringValue().shouldBeEqualTo("0.029")
+        barcode["Size"]["Y"].stringValue().shouldBeEqualTo("0.029")
+        barcode["BarcodeName"].stringValue().shouldBeEqualTo("QR")
+        barcode["ConvertString"].stringValue().shouldBeEqualTo("012345")
+        barcode["ShowDataTextProcessed"].stringValue().shouldBeEqualTo("True")
         barcode["FillStyleId"].shouldNotBeNull()
         barcode["FillBackgroungStyleId"].shouldNotBeNull()
-        val variableId = barcode["VariableId"].textValue()
-        val variable = result["Variable"].first { it["Id"].textValue() == variableId }
-        variable["Name"].textValue().shouldBeEqualTo("BarcodeData")
+        val variableId = barcode["VariableId"].stringValue()
+        val variable = result["Variable"].first { it["Id"].stringValue() == variableId }
+        variable["Name"].stringValue().shouldBeEqualTo("BarcodeData")
 
         val barcodeGenerator = barcode["BarcodeGenerator"]
-        barcodeGenerator["Type"].textValue().shouldBeEqualTo("QRBarcodeGenerator")
-        barcodeGenerator["ModulWidth"].textValue().shouldBeEqualTo("0.001")
-        barcodeGenerator["WhiteSpace"].textValue().shouldBeEqualTo("0.003")
-        barcodeGenerator["ErrorLevel"].textValue().shouldBeEqualTo("72")
-        barcodeGenerator["PredefinedBarcodeSize"].textValue().shouldBeEqualTo("45")
+        barcodeGenerator["Type"].stringValue().shouldBeEqualTo("QRBarcodeGenerator")
+        barcodeGenerator["ModulWidth"].stringValue().shouldBeEqualTo("0.001")
+        barcodeGenerator["WhiteSpace"].stringValue().shouldBeEqualTo("0.003")
+        barcodeGenerator["ErrorLevel"].stringValue().shouldBeEqualTo("72")
+        barcodeGenerator["PredefinedBarcodeSize"].stringValue().shouldBeEqualTo("45")
     }
 
     @Test
@@ -1086,28 +1087,28 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val barcode = result["Barcode"].last()
-        barcode["BarcodeName"].textValue().shouldBeEqualTo("Code 39")
-        barcode["ConvertString"].textValue().shouldBeEqualTo("ABC123")
-        barcode["Pos"]["X"].textValue().shouldBeEqualTo("0.01")
-        barcode["Pos"]["Y"].textValue().shouldBeEqualTo("0.01")
-        barcode["Size"]["X"].textValue().shouldBeEqualTo("0.05")
-        barcode["Size"]["Y"].textValue().shouldBeEqualTo("0.02")
+        barcode["BarcodeName"].stringValue().shouldBeEqualTo("Code 39")
+        barcode["ConvertString"].stringValue().shouldBeEqualTo("ABC123")
+        barcode["Pos"]["X"].stringValue().shouldBeEqualTo("0.01")
+        barcode["Pos"]["Y"].stringValue().shouldBeEqualTo("0.01")
+        barcode["Size"]["X"].stringValue().shouldBeEqualTo("0.05")
+        barcode["Size"]["Y"].stringValue().shouldBeEqualTo("0.02")
         barcode["FillStyleId"].shouldNotBeNull()
         barcode["FillBackgroungStyleId"].shouldNotBeNull()
 
         val barcodeGenerator = barcode["BarcodeGenerator"]
-        barcodeGenerator["Type"].textValue().shouldBeEqualTo("Code39BarcodeGenerator")
-        barcodeGenerator["Ratio"].textValue().shouldBeEqualTo("3.5")
-        barcodeGenerator["Height"].textValue().shouldBeEqualTo("0.015")
-        barcodeGenerator["ModulSize"].textValue().shouldBeEqualTo("0.001")
-        barcodeGenerator["WhiteSpace"].textValue().shouldBeEqualTo("5.0")
-        barcodeGenerator["UseControlSum"].textValue().shouldBeEqualTo("True")
-        barcodeGenerator["InterCharacterSpaceRatio"].textValue().shouldBeEqualTo("2.0")
-        barcodeGenerator["UseDirectMetric"].textValue().shouldBeEqualTo("True")
-        barcodeGenerator["ModuleBlackSize0"].textValue().shouldBeEqualTo("0.002")
-        barcodeGenerator["ModuleBlackSize1"].textValue().shouldBeEqualTo("0.003")
-        barcodeGenerator["ModuleSpaceSize0"].textValue().shouldBeEqualTo("0.004")
-        barcodeGenerator["ModuleSpaceSize1"].textValue().shouldBeEqualTo("0.005")
+        barcodeGenerator["Type"].stringValue().shouldBeEqualTo("Code39BarcodeGenerator")
+        barcodeGenerator["Ratio"].stringValue().shouldBeEqualTo("3.5")
+        barcodeGenerator["Height"].stringValue().shouldBeEqualTo("0.015")
+        barcodeGenerator["ModulSize"].stringValue().shouldBeEqualTo("0.001")
+        barcodeGenerator["WhiteSpace"].stringValue().shouldBeEqualTo("5.0")
+        barcodeGenerator["UseControlSum"].stringValue().shouldBeEqualTo("True")
+        barcodeGenerator["InterCharacterSpaceRatio"].stringValue().shouldBeEqualTo("2.0")
+        barcodeGenerator["UseDirectMetric"].stringValue().shouldBeEqualTo("True")
+        barcodeGenerator["ModuleBlackSize0"].stringValue().shouldBeEqualTo("0.002")
+        barcodeGenerator["ModuleBlackSize1"].stringValue().shouldBeEqualTo("0.003")
+        barcodeGenerator["ModuleSpaceSize0"].stringValue().shouldBeEqualTo("0.004")
+        barcodeGenerator["ModuleSpaceSize1"].stringValue().shouldBeEqualTo("0.005")
     }
 
     @Test
@@ -1131,8 +1132,8 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val barcode = result["Barcode"].last()
-        barcode["BarcodeName"].textValue().shouldBeEqualTo("QR")
-        barcode["ConvertString"].textValue().shouldBeEqualTo("QR-123")
+        barcode["BarcodeName"].stringValue().shouldBeEqualTo("QR")
+        barcode["ConvertString"].stringValue().shouldBeEqualTo("QR-123")
     }
 
     @Test
@@ -1149,8 +1150,8 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val barcode = result["Barcode"].last()
-        barcode["BarcodeName"].textValue().shouldBeEqualTo("QR")
-        barcode["ConvertString"].textValue().shouldBeEqualTo("QR-456")
+        barcode["BarcodeName"].stringValue().shouldBeEqualTo("QR")
+        barcode["ConvertString"].stringValue().shouldBeEqualTo("QR-456")
     }
 
     @Test
@@ -1173,9 +1174,9 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val flow = getFlowAreaContentFlow(result)
-        flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("english only")
-        flow["Type"].textValue().shouldBeEqualTo("Simple")
-        result["Flow"].filter { it["Type"]?.textValue() == "Language" }.size.shouldBeEqualTo(0)
+        flow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("english only")
+        flow["Type"].stringValue().shouldBeEqualTo("Simple")
+        result["Flow"].filter { it["Type"]?.stringValue() == "Language" }.size.shouldBeEqualTo(0)
     }
 
     @Test
@@ -1198,9 +1199,9 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val flow = getFlowAreaContentFlow(result)
-        flow["Type"].textValue().shouldBeEqualTo("Language")
-        flow["Condition"]["Value"].textValue().shouldBeEqualTo("en")
-        flow["Default"].textValue().shouldNotBeNull()
+        flow["Type"].stringValue().shouldBeEqualTo("Language")
+        flow["Condition"]["Value"].stringValue().shouldBeEqualTo("en")
+        flow["Default"].stringValue().shouldNotBeNull()
     }
 
     @Test
@@ -1226,11 +1227,11 @@ class InspireDocumentObjectBuilderTest {
 
         // then
         val flow = getFlowAreaContentFlow(result)
-        flow["Type"].textValue().shouldBeEqualTo("Language")
+        flow["Type"].stringValue().shouldBeEqualTo("Language")
         flow["Condition"].size().shouldBeEqualTo(2)
-        flow["Condition"][0]["Value"].textValue().shouldBeEqualTo("en")
-        flow["Condition"][1]["Value"].textValue().shouldBeEqualTo("de")
-        flow["Default"].textValue().shouldNotBeNull()
+        flow["Condition"][0]["Value"].stringValue().shouldBeEqualTo("en")
+        flow["Condition"][1]["Value"].stringValue().shouldBeEqualTo("de")
+        flow["Default"].stringValue().shouldNotBeNull()
     }
 
     private fun DisplayRule.toScript(): String {

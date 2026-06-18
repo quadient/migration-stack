@@ -1,7 +1,7 @@
 package com.quadient.migration.service.ipsclient
 
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import tools.jackson.dataformat.xml.XmlMapper
+import tools.jackson.module.kotlin.KotlinModule
 import com.quadient.migration.api.IcmClient
 import com.quadient.migration.api.IpsConfig
 import com.quadient.migration.shared.IcmFileMetadata
@@ -20,7 +20,7 @@ import kotlin.text.startsWith
 import kotlin.time.Duration.Companion.seconds
 
 class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
-    private val xmlMapper by lazy { XmlMapper().registerKotlinModule() }
+    private val xmlMapper by lazy { XmlMapper.builder().addModule(KotlinModule.Builder().build()).build() }
 
     private val _client = lazy { IpsClient(config.host, config.port, config.timeoutSeconds.seconds) }
     val client: IpsClient by _client
@@ -204,7 +204,7 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
 
         val resultXml = client.download(resultLocation).throwIfNotOk()
         val resultXmlTree = xmlMapper.readTree(String(resultXml.customData))
-        return resultXmlTree["fontData"].textValue()
+        return resultXmlTree["fontData"].stringValue()
     }
 
     fun runWfd(wfdPath: String, args: List<String>): OperationResult {

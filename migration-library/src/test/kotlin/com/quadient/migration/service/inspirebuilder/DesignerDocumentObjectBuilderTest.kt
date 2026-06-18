@@ -1,7 +1,8 @@
 package com.quadient.migration.service.inspirebuilder
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
+import tools.jackson.databind.JsonNode
+import tools.jackson.dataformat.xml.XmlMapper
+import tools.jackson.module.kotlin.KotlinModule
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
@@ -93,7 +94,7 @@ class DesignerDocumentObjectBuilderTest {
 
     private val subject = aSubject(config)
 
-    private val xmlMapper = XmlMapper().also { it.findAndRegisterModules() }
+    private val xmlMapper = XmlMapper.builder().addModule(KotlinModule.Builder().build()).build()
 
     @BeforeEach
     fun setUp() {
@@ -134,41 +135,41 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         result["Page"].size().shouldBeEqualTo(4)
-        val pageId = result["Page"].first { it["Name"].textValue() == page.nameOrId() }["Id"].textValue()
-        val pageData = result["Page"].last { it["Id"].textValue() == pageId }
-        pageData["Width"].textValue().shouldBeEqualTo("0.2")
-        pageData["Height"].textValue().shouldBeEqualTo("0.25")
+        val pageId = result["Page"].first { it["Name"].stringValue() == page.nameOrId() }["Id"].stringValue()
+        val pageData = result["Page"].last { it["Id"].stringValue() == pageId }
+        pageData["Width"].stringValue().shouldBeEqualTo("0.2")
+        pageData["Height"].stringValue().shouldBeEqualTo("0.25")
 
-        val virtualPageId = result["Page"].first { it["Name"].textValue() == "Virtual Page" }["Id"].textValue()
+        val virtualPageId = result["Page"].first { it["Name"].stringValue() == "Virtual Page" }["Id"].stringValue()
 
-        val pageFlowAreaId = result["FlowArea"].first { it["ParentId"].textValue() == pageId }["Id"].textValue()
-        val pageFlowArea = result["FlowArea"].last { it["Id"].textValue() == pageFlowAreaId }
-        pageFlowArea["Pos"]["X"].textValue().shouldBeEqualTo("0.02")
-        pageFlowArea["Pos"]["Y"].textValue().shouldBeEqualTo("0.025")
-        pageFlowArea["Size"]["X"].textValue().shouldBeEqualTo("0.16")
-        pageFlowArea["Size"]["Y"].textValue().shouldBeEqualTo("0.1")
-        val flowId = pageFlowArea["FlowId"].textValue()
+        val pageFlowAreaId = result["FlowArea"].first { it["ParentId"].stringValue() == pageId }["Id"].stringValue()
+        val pageFlowArea = result["FlowArea"].last { it["Id"].stringValue() == pageFlowAreaId }
+        pageFlowArea["Pos"]["X"].stringValue().shouldBeEqualTo("0.02")
+        pageFlowArea["Pos"]["Y"].stringValue().shouldBeEqualTo("0.025")
+        pageFlowArea["Size"]["X"].stringValue().shouldBeEqualTo("0.16")
+        pageFlowArea["Size"]["Y"].stringValue().shouldBeEqualTo("0.1")
+        val flowId = pageFlowArea["FlowId"].stringValue()
         val contentFlowId = getFlowAreaContentFlowId(result, flowId)
-        result["Flow"].first { it["Id"].textValue() == contentFlowId }["Name"].textValue().shouldBeEqualTo(block.nameOrId())
-        result["Flow"].last { it["Id"].textValue() == contentFlowId }["FlowContent"]["P"]["T"][""].textValue()
+        result["Flow"].first { it["Id"].stringValue() == contentFlowId }["Name"].stringValue().shouldBeEqualTo(block.nameOrId())
+        result["Flow"].last { it["Id"].stringValue() == contentFlowId }["FlowContent"]["P"]["T"][""].stringValue()
             .shouldBeEqualTo("Hello there!")
 
         val virtualPageFlowAreaId =
-            result["FlowArea"].first { it["ParentId"].textValue() == virtualPageId }["Id"].textValue()
-        val virtualPageFlowArea = result["FlowArea"].last { it["Id"].textValue() == virtualPageFlowAreaId }
-        virtualPageFlowArea["Pos"]["X"].textValue().shouldBeEqualTo("0.015")
-        virtualPageFlowArea["Pos"]["Y"].textValue().shouldBeEqualTo("0.015")
-        virtualPageFlowArea["Size"]["X"].textValue().shouldBeEqualTo("0.18")
-        virtualPageFlowArea["Size"]["Y"].textValue().shouldBeEqualTo("0.267")
-        val virtualFlowId = virtualPageFlowArea["FlowId"].textValue()
+            result["FlowArea"].first { it["ParentId"].stringValue() == virtualPageId }["Id"].stringValue()
+        val virtualPageFlowArea = result["FlowArea"].last { it["Id"].stringValue() == virtualPageFlowAreaId }
+        virtualPageFlowArea["Pos"]["X"].stringValue().shouldBeEqualTo("0.015")
+        virtualPageFlowArea["Pos"]["Y"].stringValue().shouldBeEqualTo("0.015")
+        virtualPageFlowArea["Size"]["X"].stringValue().shouldBeEqualTo("0.18")
+        virtualPageFlowArea["Size"]["Y"].stringValue().shouldBeEqualTo("0.267")
+        val virtualFlowId = virtualPageFlowArea["FlowId"].stringValue()
         val virtualContentFlowId = getFlowAreaContentFlowId(result, virtualFlowId)
-        result["Flow"].first { it["Id"].textValue() == virtualContentFlowId }["Name"].textValue()
+        result["Flow"].first { it["Id"].stringValue() == virtualContentFlowId }["Name"].stringValue()
             .shouldBeEqualTo(standaloneBlock.nameOrId())
-        result["Flow"].last { it["Id"].textValue() == virtualContentFlowId }["ExternalLocation"].textValue()
+        result["Flow"].last { it["Id"].stringValue() == virtualContentFlowId }["ExternalLocation"].stringValue()
             .shouldBeEqualTo("icm://${config.defaultTargetFolder}/${standaloneBlock.nameOrId()}.wfd")
 
-        result["Root"]["AllowRuntimeModifications"].textValue().shouldBeEqualTo("True")
-        result["Pages"]["MainFlow"].textValue().shouldBeEqualTo(flowId)
+        result["Root"]["AllowRuntimeModifications"].stringValue().shouldBeEqualTo("True")
+        result["Pages"]["MainFlow"].stringValue().shouldBeEqualTo(flowId)
     }
 
     @Test
@@ -193,14 +194,14 @@ class DesignerDocumentObjectBuilderTest {
         // then
         result["Image"].shouldBeEqualTo(null)
         val flowArea = result["FlowArea"].last()
-        flowArea["Pos"]["X"].textValue().shouldBeEqualTo("0.06")
-        flowArea["Pos"]["Y"].textValue().shouldBeEqualTo("0.06")
-        flowArea["Size"]["X"].textValue().shouldBeEqualTo("0.1")
-        flowArea["Size"]["Y"].textValue().shouldBeEqualTo("0.1")
-        val flowId = flowArea["FlowId"].textValue()
+        flowArea["Pos"]["X"].stringValue().shouldBeEqualTo("0.06")
+        flowArea["Pos"]["Y"].stringValue().shouldBeEqualTo("0.06")
+        flowArea["Size"]["X"].stringValue().shouldBeEqualTo("0.1")
+        flowArea["Size"]["Y"].stringValue().shouldBeEqualTo("0.1")
+        val flowId = flowArea["FlowId"].stringValue()
 
-        val flow = result["Flow"].last { it["Id"].textValue() == flowId }
-        flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("img placeholder")
+        val flow = result["Flow"].last { it["Id"].stringValue() == flowId }
+        flow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("img placeholder")
     }
 
     @Test
@@ -223,14 +224,14 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         val imageObject = result["ImageObject"].last()
-        imageObject["Pos"]["X"].textValue().shouldBeEqualTo("0.06")
-        imageObject["Pos"]["Y"].textValue().shouldBeEqualTo("0.12")
-        imageObject["Size"]["X"].textValue().shouldBeEqualTo("0.2")
-        imageObject["Size"]["Y"].textValue().shouldBeEqualTo("0.1")
-        val imageId = imageObject["ImageId"].textValue()
+        imageObject["Pos"]["X"].stringValue().shouldBeEqualTo("0.06")
+        imageObject["Pos"]["Y"].stringValue().shouldBeEqualTo("0.12")
+        imageObject["Size"]["X"].stringValue().shouldBeEqualTo("0.2")
+        imageObject["Size"]["Y"].stringValue().shouldBeEqualTo("0.1")
+        val imageId = imageObject["ImageId"].stringValue()
 
-        val image = result["Image"].last { it["Id"].textValue() == imageId }
-        image["ImageLocation"].textValue()
+        val image = result["Image"].last { it["Id"].stringValue() == imageId }
+        image["ImageLocation"].stringValue()
             .shouldBeEqualTo("VCSLocation,icm://${config.defaultTargetFolder}/${Image.nameOrId()}.jpg")
     }
 
@@ -255,10 +256,10 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         val imageObject = result["ImageObject"].last()
-        val imageId = imageObject["ImageId"].textValue()
+        val imageId = imageObject["ImageId"].stringValue()
 
-        val image = result["Image"].last { it["Id"].textValue() == imageId }
-        image["PDFAdvanced"]["Tagging"]["AlternateText"].textValue().shouldBeEqualTo("Description of the image")
+        val image = result["Image"].last { it["Id"].stringValue() == imageId }
+        image["PDFAdvanced"]["Tagging"]["AlternateText"].stringValue().shouldBeEqualTo("Description of the image")
     }
 
     @Test
@@ -287,38 +288,38 @@ class DesignerDocumentObjectBuilderTest {
         val result = xmlMapper.readTree(xml.trimIndent())["Layout"]["Layout"]
 
         // then
-        result["PathObject"].first()["Name"].textValue().shouldBeEqualTo("shape-1")
+        result["PathObject"].first()["Name"].stringValue().shouldBeEqualTo("shape-1")
 
         val resultShape = result["PathObject"].last()
-        resultShape["Pos"]["X"].textValue().shouldBeEqualTo("0.02")
-        resultShape["Pos"]["Y"].textValue().shouldBeEqualTo("0.03")
-        resultShape["Size"]["X"].textValue().shouldBeEqualTo("0.04")
-        resultShape["Size"]["Y"].textValue().shouldBeEqualTo("0.05")
-        resultShape["LineWidth"].textValue().toDouble().shouldBeEqualTo(0.0007)
-        val fillColor = result.getColorForFillStyle(resultShape["FillStyleId"].textValue())
-        fillColor["RGB"].textValue().shouldBeEqualTo("1.0,0.0,0.0")
-        val lineColor = result.getColorForFillStyle(resultShape["OutlineStyleId"].textValue())
-        lineColor["RGB"].textValue().shouldBeEqualTo("0.0,1.0,0.0")
+        resultShape["Pos"]["X"].stringValue().shouldBeEqualTo("0.02")
+        resultShape["Pos"]["Y"].stringValue().shouldBeEqualTo("0.03")
+        resultShape["Size"]["X"].stringValue().shouldBeEqualTo("0.04")
+        resultShape["Size"]["Y"].stringValue().shouldBeEqualTo("0.05")
+        resultShape["LineWidth"].stringValue().toDouble().shouldBeEqualTo(0.0007)
+        val fillColor = result.getColorForFillStyle(resultShape["FillStyleId"].stringValue())
+        fillColor["RGB"].stringValue().shouldBeEqualTo("1.0,0.0,0.0")
+        val lineColor = result.getColorForFillStyle(resultShape["OutlineStyleId"].stringValue())
+        lineColor["RGB"].stringValue().shouldBeEqualTo("0.0,1.0,0.0")
 
         val path = resultShape["Path"].toList()
         val first = path[1]
-        first["X"].textValue().shouldBeEqualTo("0.001")
-        first["Y"].textValue().shouldBeEqualTo("0.002")
+        first["X"].stringValue().shouldBeEqualTo("0.001")
+        first["Y"].stringValue().shouldBeEqualTo("0.002")
         val second = path[2]
-        second["X"].textValue().shouldBeEqualTo("0.003")
-        second["Y"].textValue().shouldBeEqualTo("0.004")
+        second["X"].stringValue().shouldBeEqualTo("0.003")
+        second["Y"].stringValue().shouldBeEqualTo("0.004")
         val third = path[3]
-        third["X"].textValue().shouldBeEqualTo("0.007")
-        third["Y"].textValue().shouldBeEqualTo("0.008")
-        third["X1"].textValue().shouldBeEqualTo("0.005")
-        third["Y1"].textValue().shouldBeEqualTo("0.006")
+        third["X"].stringValue().shouldBeEqualTo("0.007")
+        third["Y"].stringValue().shouldBeEqualTo("0.008")
+        third["X1"].stringValue().shouldBeEqualTo("0.005")
+        third["Y1"].stringValue().shouldBeEqualTo("0.006")
         val fourth = path[4]
-        fourth["X"].textValue().shouldBeEqualTo("0.013")
-        fourth["Y"].textValue().shouldBeEqualTo("0.014")
-        fourth["X1"].textValue().shouldBeEqualTo("0.011")
-        fourth["Y1"].textValue().shouldBeEqualTo("0.012")
-        fourth["X2"].textValue().shouldBeEqualTo("0.009")
-        fourth["Y2"].textValue().shouldBeEqualTo("0.01")
+        fourth["X"].stringValue().shouldBeEqualTo("0.013")
+        fourth["Y"].stringValue().shouldBeEqualTo("0.014")
+        fourth["X1"].stringValue().shouldBeEqualTo("0.011")
+        fourth["Y1"].stringValue().shouldBeEqualTo("0.012")
+        fourth["X2"].stringValue().shouldBeEqualTo("0.009")
+        fourth["Y2"].stringValue().shouldBeEqualTo("0.01")
     }
 
     @Test
@@ -338,11 +339,11 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         val contentFlow = getFlowAreaContentFlow(result)
-        contentFlow["Type"].textValue().shouldBeEqualTo("InlCond")
+        contentFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
         val condition = contentFlow["Condition"]
-        condition["Value"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
-        val successFlowId = condition[""].textValue()
-        result["Flow"].first { it["Id"].textValue() == successFlowId }["Name"].textValue()
+        condition["Value"].stringValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val successFlowId = condition[""].stringValue()
+        result["Flow"].first { it["Id"].stringValue() == successFlowId }["Name"].stringValue()
             .shouldBeEqualTo(block.nameOrId())
     }
 
@@ -388,17 +389,17 @@ class DesignerDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val rowSetId = result["Table"].last()["RowSetId"].textValue()
-        val rowIds = result["RowSet"].last { it["Id"].textValue() == rowSetId }["SubRowId"]
+        val rowSetId = result["Table"].last()["RowSetId"].stringValue()
+        val rowIds = result["RowSet"].last { it["Id"].stringValue() == rowSetId }["SubRowId"]
         rowIds.size().shouldBeEqualTo(2)
 
-        val secondRow = result["RowSet"].last { it["Id"].textValue() == rowIds[1].textValue() }
-        secondRow["RowSetType"].textValue().shouldBeEqualTo("InlCond")
-        secondRow["RowSetCondition"][0]["Condition"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val secondRow = result["RowSet"].last { it["Id"].stringValue() == rowIds[1].stringValue() }
+        secondRow["RowSetType"].stringValue().shouldBeEqualTo("InlCond")
+        secondRow["RowSetCondition"][0]["Condition"].stringValue().shouldBeEqualTo("return (String('A')==String('B'));")
         val pdfAdvanced = result["Table"].last()["PDFAdvanced"]
         pdfAdvanced.shouldNotBeNull()
-        pdfAdvanced["Tagging"]["Rule"].textValue().shouldBeEqualTo("Table")
-        pdfAdvanced["Tagging"]["AlternateText"].textValue().shouldBeEqualTo("Table alt text")
+        pdfAdvanced["Tagging"]["Rule"].stringValue().shouldBeEqualTo("Table")
+        pdfAdvanced["Tagging"]["AlternateText"].stringValue().shouldBeEqualTo("Table alt text")
     }
 
     @Test
@@ -416,7 +417,7 @@ class DesignerDocumentObjectBuilderTest {
             subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        result["Flow"].filter { it["Name"]?.textValue() == block.nameOrId() }.size.shouldBeEqualTo(1)
+        result["Flow"].filter { it["Name"]?.stringValue() == block.nameOrId() }.size.shouldBeEqualTo(1)
     }
 
     @Test
@@ -429,9 +430,9 @@ class DesignerDocumentObjectBuilderTest {
 
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
-        val tableStyles = result["TableStyle"].filter { it["Name"]?.textValue() != null }.map { it["Name"].textValue() }.toSet()
+        val tableStyles = result["TableStyle"].filter { it["Name"]?.stringValue() != null }.map { it["Name"].stringValue() }.toSet()
         tableStyles.shouldBeEqualTo(setOf("testTableStyle1", "testTableStyle2"))
-        val tables = result["Table"].filter { it["TableStyleId"]?.textValue() != null }.map { it["TableStyleId"].textValue() }
+        val tables = result["Table"].filter { it["TableStyleId"]?.stringValue() != null }.map { it["TableStyleId"].stringValue() }
         tables.shouldBeOfSize(3)
         tables.toSet().shouldBeEqualTo(setOf("Others.testTableStyle1", "Others.testTableStyle2"))
     }
@@ -447,9 +448,9 @@ class DesignerDocumentObjectBuilderTest {
 
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
-        result["Table"].last()["MinWidth"].textValue().toDouble().shouldBeEqualTo(0.111)
-        result["Table"].last()["MaxWidth"].textValue().toDouble().shouldBeEqualTo(0.222)
-        result["Table"].last()["PercentWidth"].textValue().toDouble().shouldBeEqualTo(66.6)
+        result["Table"].last()["MinWidth"].stringValue().toDouble().shouldBeEqualTo(0.111)
+        result["Table"].last()["MaxWidth"].stringValue().toDouble().shouldBeEqualTo(0.222)
+        result["Table"].last()["PercentWidth"].stringValue().toDouble().shouldBeEqualTo(66.6)
     }
 
     @Test
@@ -459,7 +460,7 @@ class DesignerDocumentObjectBuilderTest {
 
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
-        result["Table"].last()["TableAlignment"].textValue().shouldBeEqualTo("Center")
+        result["Table"].last()["TableAlignment"].stringValue().shouldBeEqualTo("Center")
     }
 
     @Test
@@ -479,19 +480,19 @@ class DesignerDocumentObjectBuilderTest {
 
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
-        val borderId = result["Table"].last()["BorderId"].textValue()
-        val borderStyle = result["BorderStyle"]?.last { it["Id"]?.textValue() == borderId }
-        val fillStyleId = borderStyle?.get("FillStyleId")?.textValue()
-        val fillStyle = result["FillStyle"]?.last { it["Id"]?.textValue() == fillStyleId }
-        val colorId = fillStyle?.get("ColorId")?.textValue()
-        val color = result["Color"]?.last { it["Id"]?.textValue() == colorId }
+        val borderId = result["Table"].last()["BorderId"].stringValue()
+        val borderStyle = result["BorderStyle"]?.last { it["Id"]?.stringValue() == borderId }
+        val fillStyleId = borderStyle?.get("FillStyleId")?.stringValue()
+        val fillStyle = result["FillStyle"]?.last { it["Id"]?.stringValue() == fillStyleId }
+        val colorId = fillStyle?.get("ColorId")?.stringValue()
+        val color = result["Color"]?.last { it["Id"]?.stringValue() == colorId }
 
-        color?.get("RGB")?.textValue().shouldBeEqualTo("0.5019607843137255,0.5019607843137255,0.5019607843137255")
+        color?.get("RGB")?.stringValue().shouldBeEqualTo("0.5019607843137255,0.5019607843137255,0.5019607843137255")
 
-        borderStyle?.get("Margin")["UpperLeft"]["Y"]?.textValue().shouldBeEqualTo("0.001")
-        borderStyle?.get("Margin")["LowerRight"]["Y"]?.textValue().shouldBeEqualTo("0.002")
-        borderStyle?.get("Margin")["UpperLeft"]["X"]?.textValue().shouldBeEqualTo("0.003")
-        borderStyle?.get("Margin")["LowerRight"]["X"]?.textValue().shouldBeEqualTo("0.004")
+        borderStyle?.get("Margin")["UpperLeft"]["Y"]?.stringValue().shouldBeEqualTo("0.001")
+        borderStyle?.get("Margin")["LowerRight"]["Y"]?.stringValue().shouldBeEqualTo("0.002")
+        borderStyle?.get("Margin")["UpperLeft"]["X"]?.stringValue().shouldBeEqualTo("0.003")
+        borderStyle?.get("Margin")["LowerRight"]["X"]?.stringValue().shouldBeEqualTo("0.004")
 
         result.assertLine(borderId, "LeftLine", expectedColor = Color(255, 0, 0), expectedWidth = 5.0E-4)
         result.assertLine(borderId, "RightLine", expectedColor = Color(0, 255, 0), expectedWidth = 3.0E-4)
@@ -520,19 +521,19 @@ class DesignerDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val borderId = result["Cell"].last()["BorderId"].textValue()
-        val borderStyle = result["BorderStyle"]?.last { it["Id"]?.textValue() == borderId }
-        val fillStyleId = borderStyle?.get("FillStyleId")?.textValue()
-        val fillStyle = result["FillStyle"]?.last { it["Id"]?.textValue() == fillStyleId }
-        val colorId = fillStyle?.get("ColorId")?.textValue()
-        val color = result["Color"]?.last { it["Id"]?.textValue() == colorId }
+        val borderId = result["Cell"].last()["BorderId"].stringValue()
+        val borderStyle = result["BorderStyle"]?.last { it["Id"]?.stringValue() == borderId }
+        val fillStyleId = borderStyle?.get("FillStyleId")?.stringValue()
+        val fillStyle = result["FillStyle"]?.last { it["Id"]?.stringValue() == fillStyleId }
+        val colorId = fillStyle?.get("ColorId")?.stringValue()
+        val color = result["Color"]?.last { it["Id"]?.stringValue() == colorId }
 
-        color?.get("RGB")?.textValue().shouldBeEqualTo("0.5019607843137255,0.5019607843137255,0.5019607843137255")
+        color?.get("RGB")?.stringValue().shouldBeEqualTo("0.5019607843137255,0.5019607843137255,0.5019607843137255")
 
-        borderStyle?.get("Margin")["UpperLeft"]["Y"]?.textValue().shouldBeEqualTo("0.001")
-        borderStyle?.get("Margin")["LowerRight"]["Y"]?.textValue().shouldBeEqualTo("0.002")
-        borderStyle?.get("Margin")["UpperLeft"]["X"]?.textValue().shouldBeEqualTo("0.003")
-        borderStyle?.get("Margin")["LowerRight"]["X"]?.textValue().shouldBeEqualTo("0.004")
+        borderStyle?.get("Margin")["UpperLeft"]["Y"]?.stringValue().shouldBeEqualTo("0.001")
+        borderStyle?.get("Margin")["LowerRight"]["Y"]?.stringValue().shouldBeEqualTo("0.002")
+        borderStyle?.get("Margin")["UpperLeft"]["X"]?.stringValue().shouldBeEqualTo("0.003")
+        borderStyle?.get("Margin")["LowerRight"]["X"]?.stringValue().shouldBeEqualTo("0.004")
 
         result.assertLine(borderId, "LeftLine", expectedColor = Color(255, 0, 0), expectedWidth = 5.0E-4)
         result.assertLine(borderId, "RightLine", expectedColor = Color(0, 255, 0), expectedWidth = 3.0E-4)
@@ -562,42 +563,42 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         val tableNode = result["Table"].last()
-        val rowSetId = tableNode["RowSetId"].textValue()
-        val rowSet = result["RowSet"].last { it["Id"].textValue() == rowSetId }
+        val rowSetId = tableNode["RowSetId"].stringValue()
+        val rowSet = result["RowSet"].last { it["Id"].stringValue() == rowSetId }
         val subRowIds = rowSet["SubRowId"]
         subRowIds.size().shouldBeEqualTo(5) // first header, header, body, footer, last footer
 
-        result.assertRowContent(subRowIds[0].textValue(), "FirstHeader")
-        result.assertRowContent(subRowIds[1].textValue(), "Header")
-        result.assertRowContent(subRowIds[2].textValue(), "Body")
-        result.assertRowContent(subRowIds[3].textValue(), "Footer")
-        result.assertRowContent(subRowIds[4].textValue(), "LastFooter")
+        result.assertRowContent(subRowIds[0].stringValue(), "FirstHeader")
+        result.assertRowContent(subRowIds[1].stringValue(), "Header")
+        result.assertRowContent(subRowIds[2].stringValue(), "Body")
+        result.assertRowContent(subRowIds[3].stringValue(), "Footer")
+        result.assertRowContent(subRowIds[4].stringValue(), "LastFooter")
     }
 
-    private fun com.fasterxml.jackson.databind.JsonNode.assertRowContent(rowSetId: String, expectedText: String) {
-        val rowSet = this["RowSet"].last { it["Id"].textValue() == rowSetId }
-        val cell = this["Cell"].last { it["Id"].textValue() == rowSet["SubRowId"].textValue() }
-        val flowId = cell["FlowId"].textValue()
-        val flow = this["Flow"].last { it["Id"].textValue() == flowId }
-        flow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo(expectedText)
+    private fun JsonNode.assertRowContent(rowSetId: String, expectedText: String) {
+        val rowSet = this["RowSet"].last { it["Id"].stringValue() == rowSetId }
+        val cell = this["Cell"].last { it["Id"].stringValue() == rowSet["SubRowId"].stringValue() }
+        val flowId = cell["FlowId"].stringValue()
+        val flow = this["Flow"].last { it["Id"].stringValue() == flowId }
+        flow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo(expectedText)
     }
 
-    private fun com.fasterxml.jackson.databind.JsonNode?.assertLine(borderStyleId: String, line: String, expectedColor: Color, expectedWidth: Double) {
-        val borderStyle = this?.get("BorderStyle")?.last { it["Id"]?.textValue() == borderStyleId }
+    private fun JsonNode?.assertLine(borderStyleId: String, line: String, expectedColor: Color, expectedWidth: Double) {
+        val borderStyle = this?.get("BorderStyle")?.last { it["Id"]?.stringValue() == borderStyleId }
 
-        val lineFillStyleId = borderStyle?.get(line)?.get("FillStyle")?.textValue()
-        val lineFillStyle = this?.get("FillStyle")?.last { it["Id"]?.textValue() == lineFillStyleId }
-        val lineColorId = lineFillStyle?.get("ColorId")?.textValue()
-        val lineColor = this?.get("Color")?.last { it["Id"]?.textValue() == lineColorId }
-        lineColor?.get("RGB")?.textValue().shouldBeEqualTo("${expectedColor.red.toDouble() / 255.0},${expectedColor.green.toDouble() / 255.0},${expectedColor.blue.toDouble() / 255.0}")
+        val lineFillStyleId = borderStyle?.get(line)?.get("FillStyle")?.stringValue()
+        val lineFillStyle = this?.get("FillStyle")?.last { it["Id"]?.stringValue() == lineFillStyleId }
+        val lineColorId = lineFillStyle?.get("ColorId")?.stringValue()
+        val lineColor = this?.get("Color")?.last { it["Id"]?.stringValue() == lineColorId }
+        lineColor?.get("RGB")?.stringValue().shouldBeEqualTo("${expectedColor.red.toDouble() / 255.0},${expectedColor.green.toDouble() / 255.0},${expectedColor.blue.toDouble() / 255.0}")
 
-        borderStyle?.get(line)["LineWidth"]?.textValue()?.toDouble().shouldBeEqualTo(expectedWidth)
+        borderStyle?.get(line)["LineWidth"]?.stringValue()?.toDouble().shouldBeEqualTo(expectedWidth)
     }
 
     private fun JsonNode.getColorForFillStyle(fillStyleId: String): JsonNode {
-        val fillStyle = this["FillStyle"].last { it["Id"]?.textValue() == fillStyleId }
-        val colorId = fillStyle["ColorId"].textValue()
-        return this["Color"].last { it["Id"]?.textValue() == colorId }
+        val fillStyle = this["FillStyle"].last { it["Id"]?.stringValue() == fillStyleId }
+        val colorId = fillStyle["ColorId"].stringValue()
+        return this["Color"].last { it["Id"]?.stringValue() == colorId }
     }
 
     @Test
@@ -618,16 +619,16 @@ class DesignerDocumentObjectBuilderTest {
             subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val areaFlowId = result["FlowArea"].last()["FlowId"].textValue()
-        result["Flow"].first { it["Id"].textValue() == areaFlowId }["Name"].textValue()
+        val areaFlowId = result["FlowArea"].last()["FlowId"].stringValue()
+        result["Flow"].first { it["Id"].stringValue() == areaFlowId }["Name"].stringValue()
             .shouldBeEqualTo(block.nameOrId())
-        val areaFlowRefs = result["Flow"].last { it["Id"].textValue() == areaFlowId }["FlowContent"]["P"]["T"]["O"]
+        val areaFlowRefs = result["Flow"].last { it["Id"].stringValue() == areaFlowId }["FlowContent"]["P"]["T"]["O"]
 
-        result["Flow"].first { it["Id"].textValue() == areaFlowRefs[0]["Id"].textValue() }["Name"].textValue()
+        result["Flow"].first { it["Id"].stringValue() == areaFlowRefs[0]["Id"].stringValue() }["Name"].stringValue()
             .shouldBeEqualTo("${block.nameOrId()} 1")
-        result["Flow"].first { it["Id"].textValue() == areaFlowRefs[1]["Id"].textValue() }["Name"].textValue()
+        result["Flow"].first { it["Id"].stringValue() == areaFlowRefs[1]["Id"].stringValue() }["Name"].stringValue()
             .shouldBeEqualTo(innerBlock.nameOrId())
-        result["Flow"].first { it["Id"].textValue() == areaFlowRefs[2]["Id"].textValue() }["Name"].textValue()
+        result["Flow"].first { it["Id"].stringValue() == areaFlowRefs[2]["Id"].stringValue() }["Name"].stringValue()
             .shouldBeEqualTo("${block.nameOrId()} 2")
     }
 
@@ -650,15 +651,15 @@ class DesignerDocumentObjectBuilderTest {
         val result =
             subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
-        val mainFlowId = result["Pages"]["MainFlow"].textValue()
-        val mainFlow = result["Flow"].last { it["Id"].textValue() == mainFlowId }
-        val subFlow1Id = mainFlow["FlowContent"]["P"]["T"]["O"][0]["Id"].textValue()
-        val subFlow1 = result["Flow"].last { it["Id"].textValue() == subFlow1Id }
-        val subFlow2Id = mainFlow["FlowContent"]["P"]["T"]["O"][1]["Id"].textValue()
-        val subFlow2 = result["Flow"].last { it["Id"].textValue() == subFlow2Id }
+        val mainFlowId = result["Pages"]["MainFlow"].stringValue()
+        val mainFlow = result["Flow"].last { it["Id"].stringValue() == mainFlowId }
+        val subFlow1Id = mainFlow["FlowContent"]["P"]["T"]["O"][0]["Id"].stringValue()
+        val subFlow1 = result["Flow"].last { it["Id"].stringValue() == subFlow1Id }
+        val subFlow2Id = mainFlow["FlowContent"]["P"]["T"]["O"][1]["Id"].stringValue()
+        val subFlow2 = result["Flow"].last { it["Id"].stringValue() == subFlow2Id }
 
-        subFlow2["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("snippet text")
-        subFlow1["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Bye")
+        subFlow2["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("snippet text")
+        subFlow1["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("Bye")
     }
 
     @Test
@@ -702,19 +703,19 @@ class DesignerDocumentObjectBuilderTest {
             subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val variableData = result["Variable"].single { it["Name"]?.textValue() == variable.nameOrId() }
-        variableData["ParentId"].textValue().shouldBeEqualTo("Data.Records.Value")
-        val variableId = variableData["Id"].textValue()
+        val variableData = result["Variable"].single { it["Name"]?.stringValue() == variable.nameOrId() }
+        variableData["ParentId"].stringValue().shouldBeEqualTo("Data.Records.Value")
+        val variableId = variableData["Id"].stringValue()
 
-        val firstBlockId = result["Flow"].first { it["Name"].textValue() == block1.nameOrId() }["Id"].textValue()
-        val firstBlockContent = result["Flow"].last { it["Id"].textValue() == firstBlockId }["FlowContent"]["P"]["T"]
-        firstBlockContent[""].textValue().shouldBeEqualTo("First usage: ")
-        firstBlockContent["O"]["Id"].textValue().shouldBeEqualTo(variableId)
+        val firstBlockId = result["Flow"].first { it["Name"].stringValue() == block1.nameOrId() }["Id"].stringValue()
+        val firstBlockContent = result["Flow"].last { it["Id"].stringValue() == firstBlockId }["FlowContent"]["P"]["T"]
+        firstBlockContent[""].stringValue().shouldBeEqualTo("First usage: ")
+        firstBlockContent["O"]["Id"].stringValue().shouldBeEqualTo(variableId)
 
-        val secondBlockId = result["Flow"].first { it["Name"].textValue() == block2.nameOrId() }["Id"].textValue()
-        val secondBlockContent = result["Flow"].last { it["Id"].textValue() == secondBlockId }["FlowContent"]["P"]["T"]
-        secondBlockContent[""].textValue().shouldBeEqualTo("Second usage: ")
-        secondBlockContent["O"]["Id"].textValue().shouldBeEqualTo(variableId)
+        val secondBlockId = result["Flow"].first { it["Name"].stringValue() == block2.nameOrId() }["Id"].stringValue()
+        val secondBlockContent = result["Flow"].last { it["Id"].stringValue() == secondBlockId }["FlowContent"]["P"]["T"]
+        secondBlockContent[""].stringValue().shouldBeEqualTo("Second usage: ")
+        secondBlockContent["O"]["Id"].stringValue().shouldBeEqualTo(variableId)
     }
 
     @Test
@@ -750,37 +751,37 @@ class DesignerDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val conditionFlow = result["Flow"].last { it["Type"]?.textValue() == "InlCond" }
+        val conditionFlow = result["Flow"].last { it["Type"]?.stringValue() == "InlCond" }
         val conditions = conditionFlow["Condition"]
         conditions.size().shouldBeEqualTo(2)
 
-        conditions[0]["Value"].textValue().shouldBeEqualTo("return (String('A')==String('B'));")
-        val firstConditionFlowId = conditions[0][""].textValue()
+        conditions[0]["Value"].stringValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val firstConditionFlowId = conditions[0][""].stringValue()
 
-        val firstConditionFlow = result["Flow"].last { it["Id"].textValue() == firstConditionFlowId }
-        firstConditionFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
-        val firstConditionContentFlowId = firstConditionFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val firstConditionFlow = result["Flow"].last { it["Id"].stringValue() == firstConditionFlowId }
+        firstConditionFlow["WebEditingType"].stringValue().shouldBeEqualTo("Section")
+        val firstConditionContentFlowId = firstConditionFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        result["Flow"].last { it["Id"].textValue() == firstConditionContentFlowId }["ExternalLocation"].textValue()
+        result["Flow"].last { it["Id"].stringValue() == firstConditionContentFlowId }["ExternalLocation"].stringValue()
             .shouldBeEqualTo("icm://${config.defaultTargetFolder}/${flow1.nameOrId()}.wfd")
 
-        conditions[1]["Value"].textValue().shouldBeEqualTo("return (String('C')==String('C'));")
-        val secondConditionFlowId = conditions[1][""].textValue()
+        conditions[1]["Value"].stringValue().shouldBeEqualTo("return (String('C')==String('C'));")
+        val secondConditionFlowId = conditions[1][""].stringValue()
 
-        val secondConditionFlow = result["Flow"].last { it["Id"].textValue() == secondConditionFlowId }
-        secondConditionFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
-        val secondConditionContentFlowId = secondConditionFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val secondConditionFlow = result["Flow"].last { it["Id"].stringValue() == secondConditionFlowId }
+        secondConditionFlow["WebEditingType"].stringValue().shouldBeEqualTo("Section")
+        val secondConditionContentFlowId = secondConditionFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        result["Flow"].last { it["Id"].textValue() == secondConditionContentFlowId }["FlowContent"]["P"]["T"][""].textValue()
+        result["Flow"].last { it["Id"].stringValue() == secondConditionContentFlowId }["FlowContent"]["P"]["T"][""].stringValue()
             .shouldBeEqualTo("flow 2 content")
 
-        val defaultFlowId = conditionFlow["Default"].textValue()
+        val defaultFlowId = conditionFlow["Default"].stringValue()
 
-        val defaultFlow = result["Flow"].last { it["Id"].textValue() == defaultFlowId }
-        defaultFlow["WebEditingType"].textValue().shouldBeEqualTo("Section")
-        val defaultContentFlowId = defaultFlow["FlowContent"]["P"]["T"]["O"]["Id"].textValue()
+        val defaultFlow = result["Flow"].last { it["Id"].stringValue() == defaultFlowId }
+        defaultFlow["WebEditingType"].stringValue().shouldBeEqualTo("Section")
+        val defaultContentFlowId = defaultFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
 
-        result["Flow"].last { it["Id"].textValue() == defaultContentFlowId }["FlowContent"]["P"]["T"][""].textValue()
+        result["Flow"].last { it["Id"].stringValue() == defaultContentFlowId }["FlowContent"]["P"]["T"][""].stringValue()
             .shouldBeEqualTo("I am default")
     }
 
@@ -810,13 +811,13 @@ class DesignerDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val conditionFlow = result["Flow"].last { it["Type"]?.textValue() == "InlCond" }
+        val conditionFlow = result["Flow"].last { it["Type"]?.stringValue() == "InlCond" }
         val conditions = conditionFlow["Condition"]
         conditions.size().shouldBeEqualTo(2)
 
-        val caseFlow = result["Flow"].last { it["Id"].textValue() == conditions[0][""].textValue() }
-        caseFlow["SectionFlow"]?.textValue().shouldBeEqualTo("False")
-        caseFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("case 1 content")
+        val caseFlow = result["Flow"].last { it["Id"].stringValue() == conditions[0][""].stringValue() }
+        caseFlow["SectionFlow"]?.stringValue().shouldBeEqualTo("False")
+        caseFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("case 1 content")
     }
 
     @Test
@@ -832,8 +833,8 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         val contentFlow = getFlowAreaContentFlow(result)
-        contentFlow["Type"].textValue().shouldBeEqualTo("InlCond")
-        result["Flow"].last { it["Id"].textValue() == contentFlow["Condition"][""].textValue() }["FlowContent"]["P"]["T"][""].textValue()
+        contentFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
+        result["Flow"].last { it["Id"].stringValue() == contentFlow["Condition"][""].stringValue() }["FlowContent"]["P"]["T"][""].stringValue()
             .shouldBeEqualTo("Text")
     }
 
@@ -878,12 +879,12 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         result["Property"].size().shouldBeEqualTo(3)
-        result["Property"].first { it["Name"].textValue() == "PreviewTypes" }["Value"].textValue()
+        result["Property"].first { it["Name"].stringValue() == "PreviewTypes" }["Value"].stringValue()
             .shouldBeEqualTo("HtmlPreview\nPagePreview\nSMSPreview")
         result["DataInput"].shouldNotBeNull()
         val layout = result["Layout"]["Layout"]
         val contentFlow = getFlowAreaContentFlow(layout)
-        contentFlow["FlowContent"]["P"]["T"][""].textValue().shouldBeEqualTo("Text")
+        contentFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("Text")
     }
 
     @Test
@@ -958,12 +959,12 @@ class DesignerDocumentObjectBuilderTest {
         verify(exactly = 1) { variableStructureRepository.findOrFail(variableStructureA.id) }
         verify(exactly = 0) { variableStructureRepository.findOrFail(variableStructureB.id) }
 
-        result["Variable"].first { it["Name"].textValue() == variable.nameOrId() }["ParentId"].textValue()
+        result["Variable"].first { it["Name"].stringValue() == variable.nameOrId() }["ParentId"].stringValue()
             .shouldBeEqualTo("Data.Records.Value")
 
-        val flow = result["Flow"].first { it["Type"]?.textValue() == "Simple" }
-        flow["FlowContent"]["P"]["T"][""][0].textValue().shouldBeEqualTo("Text")
-        flow["FlowContent"]["P"]["T"][""][1].textValue().shouldBeEqualTo("\$No Path Variable\$")
+        val flow = result["Flow"].first { it["Type"]?.stringValue() == "Simple" }
+        flow["FlowContent"]["P"]["T"][""][0].stringValue().shouldBeEqualTo("Text")
+        flow["FlowContent"]["P"]["T"][""][1].stringValue().shouldBeEqualTo("\$No Path Variable\$")
     }
 
     @Test
@@ -988,12 +989,12 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         val barcode = result["Barcode"].last()
-        barcode["Pos"]["X"].textValue().shouldBeEqualTo("0.02")
-        barcode["Pos"]["Y"].textValue().shouldBeEqualTo("0.03")
-        barcode["Size"]["X"].textValue().shouldBeEqualTo("0.029")
-        barcode["Size"]["Y"].textValue().shouldBeEqualTo("0.029")
-        barcode["BarcodeName"].textValue().shouldBeEqualTo("QR")
-        barcode["ConvertString"].textValue().shouldBeEqualTo("012345")
+        barcode["Pos"]["X"].stringValue().shouldBeEqualTo("0.02")
+        barcode["Pos"]["Y"].stringValue().shouldBeEqualTo("0.03")
+        barcode["Size"]["X"].stringValue().shouldBeEqualTo("0.029")
+        barcode["Size"]["Y"].stringValue().shouldBeEqualTo("0.029")
+        barcode["BarcodeName"].stringValue().shouldBeEqualTo("QR")
+        barcode["ConvertString"].stringValue().shouldBeEqualTo("012345")
     }
 
     @Test
@@ -1015,10 +1016,10 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         val barcode = result["Barcode"].last()
-        barcode["BarcodeName"].textValue().shouldBeEqualTo("Code 39")
-        barcode["ConvertString"].textValue().shouldBeEqualTo("ABC123")
-        barcode["Pos"]["X"].textValue().shouldBeEqualTo("0.01")
-        barcode["Pos"]["Y"].textValue().shouldBeEqualTo("0.01")
+        barcode["BarcodeName"].stringValue().shouldBeEqualTo("Code 39")
+        barcode["ConvertString"].stringValue().shouldBeEqualTo("ABC123")
+        barcode["Pos"]["X"].stringValue().shouldBeEqualTo("0.01")
+        barcode["Pos"]["Y"].stringValue().shouldBeEqualTo("0.01")
     }
 
     @Test
@@ -1050,11 +1051,11 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         val barcode = result["Barcode"].last()
-        barcode["BarcodeName"].textValue().shouldBeEqualTo("QR")
-        val variableId = barcode["VariableId"].textValue()
+        barcode["BarcodeName"].stringValue().shouldBeEqualTo("QR")
+        val variableId = barcode["VariableId"].stringValue()
         variableId.shouldNotBeEmpty()
-        val variable = result["Variable"].first { it["Id"].textValue() == variableId }
-        variable["Name"].textValue().shouldBeEqualTo("BarcodeData")
+        val variable = result["Variable"].first { it["Id"].stringValue() == variableId }
+        variable["Name"].stringValue().shouldBeEqualTo("BarcodeData")
     }
 
     @Test
@@ -1077,7 +1078,7 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         result["Barcode"].shouldNotBeNull()
-        result["Barcode"].last()["BarcodeName"].textValue().shouldBeEqualTo("QR")
+        result["Barcode"].last()["BarcodeName"].stringValue().shouldBeEqualTo("QR")
         result["FlowArea"].shouldNotBeNull()
     }
 
@@ -1176,9 +1177,9 @@ class DesignerDocumentObjectBuilderTest {
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
 
         // then
-        val languageVarId = result["Layout"]["Layout"]["Data"]["LanguageVariable"].textValue()
+        val languageVarId = result["Layout"]["Layout"]["Data"]["LanguageVariable"].stringValue()
         languageVarId.shouldNotBeEmpty()
-        val langVarData = result["Layout"]["Layout"]["Variable"].find { it["Id"]?.textValue() == languageVarId }
-        langVarData!!["Id"].textValue().shouldBeEqualTo(languageVarId)
+        val langVarData = result["Layout"]["Layout"]["Variable"].find { it["Id"]?.stringValue() == languageVarId }
+        langVarData!!["Id"].stringValue().shouldBeEqualTo(languageVarId)
     }
 }

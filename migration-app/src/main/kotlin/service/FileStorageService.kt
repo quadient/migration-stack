@@ -1,9 +1,8 @@
 package com.quadient.migration.service
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.kotlin.readValue
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import tools.jackson.databind.json.JsonMapper
+import tools.jackson.module.kotlin.KotlinModule
+import tools.jackson.module.kotlin.readValue
 import com.quadient.migration.getAppDataDir
 import com.quadient.migration.getModulesDataDir
 import com.quadient.migration.log
@@ -14,7 +13,7 @@ import java.nio.file.Path
 import kotlin.io.path.Path
 
 class FileStorageService(val config: ApplicationConfig) {
-    val objectMapper = ObjectMapper().registerModule(JavaTimeModule()).registerKotlinModule()
+    val objectMapper = JsonMapper.builder().addModule(KotlinModule.Builder().build()).build()
 
     inline fun <reified T> readAppJson(vararg subpaths: String): T? {
         return loadAppFile(*subpaths)?.let { objectMapper.readValue<T>(it.reader().readText()) }

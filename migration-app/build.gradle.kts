@@ -60,7 +60,6 @@ dependencies {
 
     implementation(libs.jackson.databind)
     implementation(libs.jackson.module.kotlin)
-    implementation(libs.jackson.datatype.jsr310)
 
     // Update only after ktor migrates to kotlinx-serialization 1.9.0
     implementation(libs.kotlinx.datetime)

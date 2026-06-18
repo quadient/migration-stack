@@ -1,6 +1,5 @@
 package com.quadient.migration
 
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.quadient.migration.api.Migration
 import com.quadient.migration.dto.StatisticsResponse
 import com.quadient.migration.route.jobModule
@@ -8,7 +7,6 @@ import com.quadient.migration.route.rootModule
 import com.quadient.migration.route.scriptsModule
 import com.quadient.migration.service.Settings
 import com.quadient.migration.service.SettingsService
-import com.quadient.migration.shared.DocumentObjectType
 import io.ktor.serialization.jackson.*
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
@@ -26,9 +24,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     install(ContentNegotiation) {
-        jackson {
-            this.registerModule(JavaTimeModule())
-        }
+        jackson()
     }
     install(Koin) {
         slf4jLogger()

@@ -1,9 +1,8 @@
 package com.quadient.migration.api
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.dataformat.toml.TomlFactory
-import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import tools.jackson.module.kotlin.KotlinModule
 import com.quadient.migration.shared.IcmPath
+import tools.jackson.dataformat.toml.TomlMapper
 import java.io.File
 import java.net.URI
 
@@ -13,7 +12,7 @@ data class MigConfig(
     val storageRoot: String? = null
 ) {
     companion object {
-        val objectMapper = ObjectMapper(TomlFactory()).registerKotlinModule()
+        val objectMapper = TomlMapper.builder().addModule(KotlinModule.Builder().build()).build()
 
         @JvmStatic
         fun fromString(input: String): MigConfig = objectMapper.readValue(input, MigConfig::class.java)
@@ -45,7 +44,7 @@ data class ProjectConfig(
     val context: Map<String, Any> = emptyMap(),
 ) {
     companion object {
-        val objectMapper = ObjectMapper(TomlFactory()).registerKotlinModule()
+        val objectMapper = TomlMapper.builder().addModule(KotlinModule.Builder().build()).build()
 
         @JvmStatic
         fun fromString(input: String): ProjectConfig = objectMapper.readValue(input, ProjectConfig::class.java)

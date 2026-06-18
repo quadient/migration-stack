@@ -1,9 +1,5 @@
 package com.quadient.migration.service
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ArrayNode
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
@@ -20,6 +16,10 @@ import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.service.deploy.DeployClient
 import com.quadient.migration.service.ipsclient.IpsService
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.databind.node.ArrayNode
+import tools.jackson.dataformat.xml.XmlMapper
 
 class StylesValidator(
     private val documentObjectRepository: DocumentObjectRepository,
@@ -127,9 +127,9 @@ class StylesValidator(
         val nodes = if (styleNodes is ArrayNode) styleNodes.toList() else listOf(styleNodes)
         val result = mutableSetOf<String>()
         nodes.forEach { node ->
-            node["Name"]?.asText()?.let { result.add(it) }
-            node["CustomProperty"]?.asText()?.let { raw ->
-                jsonMapper.readTree(raw)["DisplayName"]?.asText()?.let { result.add(it) }
+            node["Name"]?.asString()?.let { result.add(it) }
+            node["CustomProperty"]?.asString()?.let { raw ->
+                jsonMapper.readTree(raw)["DisplayName"]?.asString()?.let { result.add(it) }
             }
         }
         return result
