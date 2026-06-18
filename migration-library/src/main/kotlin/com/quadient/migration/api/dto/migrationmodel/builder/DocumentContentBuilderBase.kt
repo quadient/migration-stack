@@ -16,6 +16,7 @@ import com.quadient.migration.api.dto.migrationmodel.Shape
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder.TextBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.BarcodeBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.Code39BarcodeBuilder
@@ -78,8 +79,8 @@ interface HasParagraphContent<T> {
     } as T
 }
 
-interface HasTableContent<T> {
-    val content: MutableList<DocumentContent>
+interface HasTableContent<C, T> {
+    val content: MutableList<C>
 
     /**
      * Adds a table to the content using a builder function.
@@ -87,12 +88,12 @@ interface HasTableContent<T> {
      * @return This builder instance for method chaining.
      */
     fun table(builder: TableBuilder.() -> Unit): T = apply {
-        this.content.add(TableBuilder().apply(builder).build())
+        this.content.add(TableBuilder().apply(builder).build() as C)
     } as T
 }
 
-interface HasImageRefContent<T> {
-    val content: MutableList<DocumentContent>
+interface HasImageRefContent<C, T> {
+    val content: MutableList<C>
 
     /**
      * Adds an image reference to the content.
@@ -100,7 +101,7 @@ interface HasImageRefContent<T> {
      * @return This builder instance for method chaining.
      */
     fun imageRef(imageId: String): T = apply {
-        this.content.add(ImageRef(imageId))
+        this.content.add(ImageRef(imageId) as C)
     } as T
 
     /**
@@ -109,12 +110,21 @@ interface HasImageRefContent<T> {
      * @return This builder instance for method chaining.
      */
     fun imageRef(image: Image): T = apply {
-        this.content.add(ImageRef(image.id))
+        this.content.add(ImageRef(image.id) as C)
     } as T
+
+    /**
+     * Adds an image reference to the content.
+     * @param ref The image reference to add.
+     * @return The current instance of [TextBuilder] for method chaining.
+     */
+    fun imageRef(ref: ImageRef) = apply {
+        content.add(ref as C)
+    }
 }
 
-interface HasAttachmentRefContent<T> {
-    val content: MutableList<DocumentContent>
+interface HasAttachmentRefContent<C, T> {
+    val content: MutableList<C>
 
     /**
      * Adds an attachment reference to the content.
@@ -122,7 +132,7 @@ interface HasAttachmentRefContent<T> {
      * @return This builder instance for method chaining.
      */
     fun attachmentRef(attachmentId: String): T = apply {
-        this.content.add(AttachmentRef(attachmentId))
+        this.content.add(AttachmentRef(attachmentId) as C)
     } as T
 
     /**
@@ -131,12 +141,21 @@ interface HasAttachmentRefContent<T> {
      * @return This builder instance for method chaining.
      */
     fun attachmentRef(attachment: Attachment): T = apply {
-        this.content.add(AttachmentRef(attachment.id))
+        this.content.add(AttachmentRef(attachment.id) as C)
     } as T
+
+    /**
+     * Adds an attachment reference to the content.
+     * @param ref The attachment reference to add.
+     * @return The current instance of [TextBuilder] for method chaining.
+     */
+    fun attachmentRef(ref: AttachmentRef) = apply {
+        content.add(ref as C)
+    }
 }
 
-interface HasDocumentObjectRefContent<T> {
-    val content: MutableList<DocumentContent>
+interface HasDocumentObjectRefContent<C, T> {
+    val content: MutableList<C>
 
     /**
      * Adds a document object reference to the content.
@@ -144,7 +163,7 @@ interface HasDocumentObjectRefContent<T> {
      * @return This builder instance for method chaining.
      */
     fun documentObjectRef(documentObjectId: String): T = apply {
-        this.content.add(DocumentObjectRef(documentObjectId, null))
+        this.content.add(DocumentObjectRef(documentObjectId, null) as C)
     } as T
 
     /**
@@ -153,8 +172,17 @@ interface HasDocumentObjectRefContent<T> {
      * @return This builder instance for method chaining.
      */
     fun documentObjectRef(documentObject: DocumentObject): T = apply {
-        this.content.add(DocumentObjectRef(documentObject.id, null))
+        this.content.add(DocumentObjectRef(documentObject.id, null) as C)
     } as T
+
+    /**
+     * Adds a document object reference to the content.
+     * @param ref The attachment reference to add.
+     * @return The current builder instance for method chaining.
+     */
+    fun documentObjectRef(ref: DocumentObjectRef) = apply {
+        content.add(ref as C)
+    }
 
     /**
      * Adds a conditional document object reference to the content.
@@ -163,7 +191,7 @@ interface HasDocumentObjectRefContent<T> {
      * @return This builder instance for method chaining.
      */
     fun documentObjectRef(documentObjectId: String, displayRuleId: String): T = apply {
-        this.content.add(DocumentObjectRef(documentObjectId, DisplayRuleRef(displayRuleId)))
+        this.content.add(DocumentObjectRef(documentObjectId, DisplayRuleRef(displayRuleId)) as C)
     } as T
 
     /**
@@ -173,12 +201,12 @@ interface HasDocumentObjectRefContent<T> {
      * @return This builder instance for method chaining.
      */
     fun documentObjectRef(documentObject: DocumentObject, displayRule: DisplayRule): T = apply {
-        this.content.add(DocumentObjectRef(documentObject.id, DisplayRuleRef(displayRule.id)))
+        this.content.add(DocumentObjectRef(documentObject.id, DisplayRuleRef(displayRule.id)) as C)
     } as T
 }
 
-interface HasFirstMatchContent<T> {
-    val content: MutableList<DocumentContent>
+interface HasFirstMatchContent<C, T> {
+    val content: MutableList<C>
 
     /**
      * Adds a first match block to the content using a builder function.
@@ -186,7 +214,7 @@ interface HasFirstMatchContent<T> {
      * @return This builder instance for method chaining.
      */
     fun firstMatch(builder: FirstMatchBuilder.() -> Unit): T = apply {
-        this.content.add(FirstMatchBuilder().apply(builder).build())
+        this.content.add(FirstMatchBuilder().apply(builder).build() as C)
     } as T
 }
 
@@ -294,8 +322,8 @@ interface HasRepeatedContent<T> {
         repeatedContent(VariableRefPath(variable.id), builder)
 }
 
-interface HasColumnLayoutContent<T> {
-    val content: MutableList<DocumentContent>
+interface HasColumnLayoutContent<C, T> {
+    val content: MutableList<C>
 
     /**
      * Defines a column layout modifier that affects sibling content within the current block.
@@ -303,7 +331,7 @@ interface HasColumnLayoutContent<T> {
      * @return This builder instance for method chaining.
      */
     fun columnLayout(builder: ColumnLayoutBuilder.() -> Unit = {}): T = apply {
-        this.content.add(ColumnLayoutBuilder().apply(builder).build())
+        this.content.add(ColumnLayoutBuilder().apply(builder).build() as C)
     } as T
 }
 
@@ -396,15 +424,15 @@ interface HasCode39BarcodeContent<C, T> {
  */
 interface DocumentContentBuilderBase<T> : HasGenericContent<DocumentContent, T>,
     HasParagraphContent<T>,
-    HasTableContent<T>,
-    HasImageRefContent<T>,
-    HasAttachmentRefContent<T>,
-    HasDocumentObjectRefContent<T>,
-    HasFirstMatchContent<T>,
+    HasTableContent<DocumentContent, T>,
+    HasImageRefContent<DocumentContent, T>,
+    HasAttachmentRefContent<DocumentContent, T>,
+    HasDocumentObjectRefContent<DocumentContent, T>,
+    HasFirstMatchContent<DocumentContent, T>,
     HasSelectByLanguageContent<T>,
     HasStringContent<DocumentContent, T>,
     HasVariableRefContent<DocumentContent, T>,
     HasRepeatedContent<T>,
-    HasColumnLayoutContent<T>,
+    HasColumnLayoutContent<DocumentContent, T>,
     HasBarcodeContent<DocumentContent, T>
 

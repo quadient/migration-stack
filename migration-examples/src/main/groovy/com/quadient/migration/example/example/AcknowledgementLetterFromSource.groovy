@@ -8,9 +8,6 @@
 package com.quadient.migration.example.example
 
 import com.quadient.migration.api.Migration
-import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
-import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
@@ -134,28 +131,28 @@ migration.paragraphStyleRepository.upsert(normalParagraphStyle)
 def addressFlow = new DocumentObjectBuilder("addressFlow", DocumentObjectType.Block)
     .internal(true)
     .paragraph {
-        it.styleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle)
         it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent(new VariableRef(policyHolderNameVar.id))
+            it.styleRef(normalStyle)
+            it.variableRef(policyHolderNameVar)
         }
     }
     .paragraph {
-        it.styleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle)
         it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent(new VariableRef(streetVar.id))
+            it.styleRef(normalStyle)
+            it.variableRef(streetVar)
         }
     }
     .paragraph {
-        it.styleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle)
         it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent(new VariableRef(cityVar.id))
-            it.appendContent(", ")
-            it.appendContent(new VariableRef(stateVar.id))
-            it.appendContent(" ")
-            it.appendContent(new VariableRef(zipcodeVar.id))
+            it.styleRef(normalStyle)
+            it.variableRef(cityVar)
+            it.string(", ")
+            it.variableRef(stateVar)
+            it.string(" ")
+            it.variableRef(zipcodeVar)
         }
     }
     .build()
@@ -163,176 +160,176 @@ migration.documentObjectRepository.upsert(addressFlow)
 
 // def infoTable = new DocumentObjectBuilder("infoTable", DocumentObjectType.Block)
 //     .internal(true)
-//     .content([table {
-//         it.row {
-//             it.cell { it.paragraph { it.text {
-//                 it.styleRef = new TextStyleRef(normalStyle.id)
-//                 it.content("Policy holder name")
+//     .table {
+//         it.addRow {
+//             it.addCell { it.paragraph { it.text {
+//                 it.styleRef(normalStyle)
+//                 it.string("Policy holder name")
 //             } } }
-//             it.cell { it.paragraph { it.text {
-//                 it.styleRef = new TextStyleRef(normalStyle.id)
-//                 it.content(new VariableRef(policyHolderNameVar.id))
-//             } } }
-//         }
-//         it.row {
-//             it.cell { it.paragraph { it.text {
-//                 it.styleRef = new TextStyleRef(normalStyle.id)
-//                 it.content("Date of loss")
-//             } } }
-//             it.cell { it.paragraph { it.text {
-//                 it.styleRef = new TextStyleRef(normalStyle.id)
-//                 it.content(new VariableRef(dateOfLossVar.id))
+//             it.addCell { it.paragraph { it.text {
+//                 it.styleRef(normalStyle)
+//                 it.variableRef(policyHolderNameVar)
 //             } } }
 //         }
-//         it.row {
-//             it.cell { it.paragraph { it.text {
-//                 it.styleRef = new TextStyleRef(normalStyle.id)
-//                 it.content("Date of notification")
+//         it.addRow {
+//             it.addCell { it.paragraph { it.text {
+//                 it.styleRef(normalStyle)
+//                 it.string("Date of loss")
 //             } } }
-//             it.cell { it.paragraph { it.text {
-//                 it.styleRef = new TextStyleRef(normalStyle.id)
-//                 it.content(new VariableRef(notificationDateVar.id))
-//             } } }
-//         }
-//         it.row {
-//             it.cell { it.paragraph { it.text {
-//                 it.styleRef = new TextStyleRef(normalStyle.id)
-//                 it.content("Claim number")
-//             } } }
-//             it.cell { it.paragraph { it.text {
-//                 it.styleRef = new TextStyleRef(normalStyle.id)
-//                 it.content(new VariableRef(claimNumberVar.id))
+//             it.addCell { it.paragraph { it.text {
+//                 it.styleRef(normalStyle)
+//                 it.variableRef(dateOfLossVar)
 //             } } }
 //         }
-//     }])
+//         it.addRow {
+//             it.addCell { it.paragraph { it.text {
+//                 it.styleRef(normalStyle)
+//                 it.string("Date of notification")
+//             } } }
+//             it.addCell { it.paragraph { it.text {
+//                 it.styleRef(normalStyle)
+//                 it.variableRef(notificationDateVar)
+//             } } }
+//         }
+//         it.addRow {
+//             it.addCell { it.paragraph { it.text {
+//                 it.styleRef(normalStyle)
+//                 it.string("Claim number")
+//             } } }
+//             it.addCell { it.paragraph { it.text {
+//                 it.styleRef(normalStyle)
+//                 it.variableRef(claimNumberVar)
+//             } } }
+//         }
+//     }
 //     .build()
 // migration.documentObjectRepository.upsert(infoTable)
 
 def mainFlow = new DocumentObjectBuilder("mainFlow", DocumentObjectType.Block)
     .internal(true)
     .paragraph {
-        it.styleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle)
         it.text {
-            it.styleRef = new TextStyleRef(boldStyle.id)
-            it.appendContent("Subject: Acknowledgement of Notification of Loss – Policy No. ")
-                .appendContent(new VariableRef(policyNumberVar.id))
+            it.styleRef(boldStyle)
+            it.string("Subject: Acknowledgement of Notification of Loss – Policy No. ")
+            it.variableRef(policyNumberVar)
         }
     }
     .paragraph {
-        it.styleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle)
         it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent("Dear ")
+            it.styleRef(normalStyle)
+            it.string("Dear ")
         }
         it.text {
-            it.styleRef = new TextStyleRef(boldStyle.id)
-            it.appendContent(new VariableRef(policyHolderNameVar.id))
+            it.styleRef(boldStyle)
+            it.variableRef(policyHolderNameVar)
         }
         it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent(",")
-        }
-    }
-    .paragraph {
-        it.styleRef(justifyLeftParagraphStyle.id)
-        it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent("We acknowledge receipt of your notification of loss dated ")
-        }
-        it.text {
-            it.styleRef = new TextStyleRef(boldStyle.id)
-            it.appendContent(new VariableRef(notificationDateVar.id))
-        }
-        it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent(" regarding the incident that occurred on ")
-        }
-        it.text {
-            it.styleRef = new TextStyleRef(boldStyle.id)
-            it.appendContent(new VariableRef(dateOfLossVar.id))
-        }
-        it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent(", under your policy number ")
-        }
-        it.text {
-            it.styleRef = new TextStyleRef(boldStyle.id)
-            it.appendContent(new VariableRef(policyNumberVar.id))
-        }
-        it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent(".")
+            it.styleRef(normalStyle)
+            it.string(",")
         }
     }
     .paragraph {
-        it.styleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle)
         it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent("We understand the circumstances described in your letter and appreciate you bringing this matter to our attention promptly. Your claim has been registered under the reference number ")
+            it.styleRef(normalStyle)
+            it.string("We acknowledge receipt of your notification of loss dated ")
         }
         it.text {
-            it.styleRef = new TextStyleRef(boldStyle.id)
-            it.appendContent(new VariableRef(claimNumberVar.id))
+            it.styleRef(boldStyle)
+            it.variableRef(notificationDateVar)
         }
         it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent(".")
-        }
-    }
-//     .paragraph {
-//         it.styleRef(justifyLeftParagraphStyle.id)
-//         it.text {
-//             it.documentObjectRef(infoTable.id)
-//         }
-//     }
-    .paragraph {
-        it.styleRef(justifyLeftParagraphStyle.id)
-        it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent("Our claims department has initiated the review process, and a claims representative will be assigned to your case shortly. You will be contacted within [e.g., 3–5 business days] to discuss the next steps and any additional documentation that may be required to process your claim.")
-        }
-    }
-    .paragraph {
-        it.styleRef(justifyLeftParagraphStyle.id)
-        it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent("In the meantime, if you have any urgent questions or need assistance, please feel free to contact our claims support team via email at ")
+            it.styleRef(normalStyle)
+            it.string(" regarding the incident that occurred on ")
         }
         it.text {
-            it.styleRef = new TextStyleRef(boldStyle.id)
-            it.appendContent(new VariableRef(claimsOfficerEmailShortVar.id))
+            it.styleRef(boldStyle)
+            it.variableRef(dateOfLossVar)
         }
         it.text {
-            it.styleRef = new TextStyleRef(boldStyle.id)
-            it.appendContent("@vital.com.")
+            it.styleRef(normalStyle)
+            it.string(", under your policy number ")
+        }
+        it.text {
+            it.styleRef(boldStyle)
+            it.variableRef(policyNumberVar)
+        }
+        it.text {
+            it.styleRef(normalStyle)
+            it.string(".")
         }
     }
     .paragraph {
-        it.styleRef(justifyLeftParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle)
         it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent("We appreciate your cooperation and look forward to resolving your claim efficiently.")
+            it.styleRef(normalStyle)
+            it.string("We understand the circumstances described in your letter and appreciate you bringing this matter to our attention promptly. Your claim has been registered under the reference number ")
+        }
+        it.text {
+            it.styleRef(boldStyle)
+            it.variableRef(claimNumberVar)
+        }
+        it.text {
+            it.styleRef(normalStyle)
+            it.string(".")
+        }
+    }
+//    .paragraph {
+//        it.styleRef(justifyLeftParagraphStyle)
+//        it.text {
+//            it.documentObjectRef(infoTable)
+//        }
+//    }
+    .paragraph {
+        it.styleRef(justifyLeftParagraphStyle)
+        it.text {
+            it.styleRef(normalStyle)
+            it.string("Our claims department has initiated the review process, and a claims representative will be assigned to your case shortly. You will be contacted within [e.g., 3–5 business days] to discuss the next steps and any additional documentation that may be required to process your claim.")
         }
     }
     .paragraph {
-        it.styleRef(normalParagraphStyle.id)
+        it.styleRef(justifyLeftParagraphStyle)
         it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent("Sincerely,")
-            it.appendContent("\n")
-            it.appendContent(new ImageRef(signatureImage.id))
-            it.appendContent("\n")
+            it.styleRef(normalStyle)
+            it.string("In the meantime, if you have any urgent questions or need assistance, please feel free to contact our claims support team via email at ")
         }
         it.text {
-            it.styleRef = new TextStyleRef(boldStyle.id)
-            it.appendContent(new VariableRef(claimsOfficerVar.id))
-            it.appendContent("\n")
+            it.styleRef(boldStyle)
+            it.variableRef(claimsOfficerEmailShortVar)
         }
         it.text {
-            it.styleRef = new TextStyleRef(normalStyle.id)
-            it.appendContent("Claims Officer")
-            it.appendContent("\n")
-            it.appendContent("Vital Insurance")
+            it.styleRef(boldStyle)
+            it.string("@vital.com.")
+        }
+    }
+    .paragraph {
+        it.styleRef(justifyLeftParagraphStyle)
+        it.text {
+            it.styleRef(normalStyle)
+            it.string("We appreciate your cooperation and look forward to resolving your claim efficiently.")
+        }
+    }
+    .paragraph {
+        it.styleRef(normalParagraphStyle)
+        it.text {
+            it.styleRef(normalStyle)
+            it.string("Sincerely,")
+            it.string("\n")
+            it.imageRef(signatureImage)
+            it.string("\n")
+        }
+        it.text {
+            it.styleRef(boldStyle)
+            it.variableRef(claimsOfficerVar)
+            it.string("\n")
+        }
+        it.text {
+            it.styleRef(normalStyle)
+            it.string("Claims Officer")
+            it.string("\n")
+            it.string("Vital Insurance")
         }
     }
     .build()
@@ -347,7 +344,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.width(Size.ofMillimeters(210))
             it.height(Size.ofMillimeters(28))
         }
-            .imageRef(headerImage.id)
+            .imageRef(headerImage)
     }
     .area {
         it.position {
@@ -356,7 +353,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.width(Size.ofMillimeters(80))
             it.height(Size.ofMillimeters(30))
         }
-            .documentObjectRef(addressFlow.id)
+            .documentObjectRef(addressFlow)
     }
     .area {
         it.position {
@@ -365,13 +362,13 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
             it.width(Size.ofMillimeters(160))
             it.height(Size.ofMillimeters(190))
         }
-            .documentObjectRef(mainFlow.id)
+            .documentObjectRef(mainFlow)
     }
     .build()
 migration.documentObjectRepository.upsert(page)
 
 def template = new DocumentObjectBuilder("AcknowledgementLetterFromSource", DocumentObjectType.Template)
-    .documentObjectRef(page.id)
+    .documentObjectRef(page)
     .build()
 migration.documentObjectRepository.upsert(template)
 

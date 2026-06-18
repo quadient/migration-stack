@@ -129,19 +129,19 @@ class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
     class TextBuilder :
         HasDisplayRuleRef<TextBuilder>,
         HasTextStyleRef<TextBuilder>,
-        HasBarcodeContent<TextContent, TextBuilder>
+        HasBarcodeContent<TextContent, TextBuilder>,
+        HasGenericContent<TextContent, TextBuilder>,
+        HasDocumentObjectRefContent<TextContent, TextBuilder>,
+        HasFirstMatchContent<TextContent, TextBuilder>,
+        HasVariableRefContent<TextContent, TextBuilder>,
+        HasImageRefContent<TextContent, TextBuilder>,
+        HasAttachmentRefContent<TextContent, TextBuilder>,
+        HasTableContent<TextContent, TextBuilder>,
+        HasColumnLayoutContent<TextContent, TextBuilder>
     {
         override var styleRef: TextStyleRef? = null
         override var displayRuleRef: DisplayRuleRef? = null
         override var content: MutableList<TextContent> = mutableListOf()
-
-
-        /**
-         * Replaces all content with a single [TextContent] item.
-         * @param content A [TextContent] instance to set as the content.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun content(content: TextContent) = apply { this.content = mutableListOf(content) }
 
         /**
          * Replaces all content with a string.
@@ -151,20 +151,6 @@ class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
          */
         @Deprecated("Use string() to append string content", ReplaceWith("string(content)"))
         fun content(content: String) = apply { this.content = mutableListOf(StringValue(content)) }
-
-        /**
-         * Appends a [TextContent] to the existing content.
-         * @param content The [TextContent] to append.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun appendContent(content: TextContent) = apply { this.content.add(content) }
-
-        /**
-         * Replaces all content with a list of [TextContent].
-         * @param content A list of [TextContent] to set as the content.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun content(content: List<TextContent>) = apply { this.content = content.toMutableList() }
 
         /**
          * Appends a string to the existing content (creates a StringValue).
@@ -181,107 +167,6 @@ class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
          */
         @Deprecated("Use string() instead", ReplaceWith("string(content)"))
         fun appendContent(content: String) = apply { this.content.add(StringValue(content)) }
-
-        /**
-         * Adds a document object reference to the text content.
-         * @param documentObjectId The ID of the document object to reference.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun documentObjectRef(documentObjectId: String) = apply {
-            content.add(DocumentObjectRef(documentObjectId, null))
-        }
-
-        /**
-         * Adds a conditional document object reference with a display rule to the text content.
-         * @param documentObjectId The ID of the document object to reference.
-         * @param displayRuleId The ID of the display rule to apply.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun documentObjectRef(documentObjectId: String, displayRuleId: String) = apply {
-            content.add(DocumentObjectRef(documentObjectId, DisplayRuleRef(displayRuleId)))
-        }
-
-        /**
-         * Adds a document object reference to the content.
-         * @param documentObject The [DocumentObject] to reference.
-         * @return This builder instance for method chaining.
-         */
-        fun documentObjectRef(documentObject: DocumentObject) = apply {
-            this.content.add(DocumentObjectRef(documentObject.id, null))
-        }
-
-        /**
-         * Adds first match block to the text content.
-         * @param builder A builder function to configure the [FirstMatchBuilder].
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun firstMatch(builder: FirstMatchBuilder.() -> Unit) = apply {
-            val firstMatchBuilder = FirstMatchBuilder().apply(builder)
-            content.add(firstMatchBuilder.build())
-        }
-
-        /**
-         * Adds a variable reference to the text content.
-         * @param variableId The ID of the variable to reference.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun variableRef(variableId: String) = apply {
-            content.add(VariableRef(variableId))
-        }
-
-        /**
-         * Adds a variable reference to the text content.
-         * @param ref The variable reference to add.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun variableRef(ref: VariableRef) = apply {
-            content.add(ref)
-        }
-
-        /**
-         * Adds a variable reference to the text content.
-         * @param variable The [Variable] object to reference.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun variableRef(variable: Variable) = apply {
-            content.add(VariableRef(variable.id))
-        }
-
-        /**
-         * Adds an image reference to the text content.
-         * @param imageId The ID of the image to reference.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun imageRef(imageId: String) = apply {
-            content.add(ImageRef(imageId))
-        }
-
-        /**
-         * Adds an image reference to the text content.
-         * @param ref The image reference to add.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun imageRef(ref: ImageRef) = apply {
-            content.add(ref)
-        }
-
-        /**
-         * Adds an attachment reference to the text content.
-         * @param attachmentId The ID of the attachment to reference.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun attachmentRef(attachmentId: String) = apply {
-            content.add(AttachmentRef(attachmentId))
-        }
-
-        /**
-         * Adds an attachment reference to the text content.
-         * @param ref The attachment reference to add.
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun attachmentRef(ref: AttachmentRef) = apply {
-            content.add(ref)
-        }
 
         /**
          * Adds an inline hyperlink to the text content.
@@ -301,24 +186,6 @@ class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
          */
         fun hyperlink(hyperlink: Hyperlink) = apply {
             content.add(hyperlink)
-        }
-
-        /**
-         * Adds a table to the text content.
-         * @param builder A builder function to configure the [TableBuilder].
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun table(builder: TableBuilder.() -> Unit) = apply {
-            content.add(TableBuilder().apply(builder).build())
-        }
-
-        /**
-         * Defines a column layout modifier that affects sibling content within the current paragraph.
-         * @param builder A builder function to configure the [ColumnLayoutBuilder].
-         * @return The current instance of [TextBuilder] for method chaining.
-         */
-        fun columnLayout(builder: ColumnLayoutBuilder.() -> Unit = {}) = apply {
-            content.add(ColumnLayoutBuilder().apply(builder).build())
         }
     }
 }
