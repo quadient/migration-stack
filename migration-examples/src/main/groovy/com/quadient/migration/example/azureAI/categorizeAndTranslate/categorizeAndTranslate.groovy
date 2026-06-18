@@ -21,12 +21,17 @@ import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 import groovy.json.JsonSlurper
+import groovy.transform.Field
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import static com.quadient.migration.api.dto.migrationmodel.builder.Dsl.table
 
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
+
 
 void documentsCategorize(List jsons, migration){
-    println("Starting categorization and translation of documents...")
+    log.info "Starting categorization and translation of documents..."
 
     //Create default style
     TextStyleBuilder textStyleBuilder = new TextStyleBuilder("normal")
@@ -50,7 +55,7 @@ void documentsCategorize(List jsons, migration){
 }
 
 void documentCategorize(File jsonContent, migration){
-    println("Starting: " + jsonContent.name)
+    log.info "Starting: " + jsonContent.name
     String templateName = jsonContent.name.replace(".json", "")
     def jsonSlurper = new JsonSlurper()
 
@@ -96,16 +101,18 @@ void documentCategorize(File jsonContent, migration){
     //println(content)
 
     //Print all content out of sections
-    println("\n------OUT OF SECTIONS------")
+    log.info "\n------OUT OF SECTIONS------"
     for(int j = 0; j < parser.paragraphs.size(); j++){
         if(!parser.paragraphsOutOfSections.contains(j+1)){
-            println(parser.paragraphs.get(j).get("content"))
+            log.info parser.paragraphs.get(j).get("content").toString()
         }
     }
 }
 
 //Document parser logic
 class DocumentParser {
+    private static final Logger log = LoggerFactory.getLogger(DocumentParser.class)
+
     List indexes
     List paragraphsOutOfSections
     int index
@@ -470,7 +477,7 @@ class DocumentParser {
             migration.documentObjectRepository.upsert(paragraphBuilder.build())*/
         }
         else {
-            println("|OUT OF OUR KNOWLEDGE|")
+            log.info "|OUT OF OUR KNOWLEDGE|"
         }
 
         return name;

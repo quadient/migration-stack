@@ -7,6 +7,9 @@
 package com.quadient.migration.example.azureAI
 
 import com.quadient.migration.api.Migration
+import groovy.transform.Field
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -16,6 +19,7 @@ import com.quadient.migration.example.azureAI.categorizeAndTranslate.categorizeA
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 Migration migration = initMigration(this.binding)
 
 def inputFolder = new File(migration.projectConfig.inputDataPath)
@@ -35,7 +39,7 @@ if (!outputFolder.exists()) {
 List jsons = new ArrayList()
 
 inputFolder.eachFileMatch(~/(?i).*\.pdf/) { File pdfFile ->
-    println("Processing file: " + pdfFile.name)
+    log.info "Processing file: " + pdfFile.name
     String base64 = ""
     byte[] fileBytes = pdfFile.bytes
     base64 = Base64.encoder.encodeToString(fileBytes)
@@ -43,18 +47,18 @@ inputFolder.eachFileMatch(~/(?i).*\.pdf/) { File pdfFile ->
 
     File outputFile = new File(outputFolder, pdfFile.name.replaceAll(/\.pdf$/, ".json"))
     if(outputFile.exists()){
-        println("JSON for this document already exists, skipping: " + pdfFile.name)
+        log.info "JSON for this document already exists, skipping: " + pdfFile.name
     } else {
         HttpRequest request = HttpRequest.newBuilder(new URI(endpoint))
                 .POST(HttpRequest.BodyPublishers.ofString(json))
                 .setHeader("Ocp-Apim-Subscription-Key", key)
                 .setHeader("Ocp-Apim-Subscription-Region", region)
-                .build();
+                .build()
         HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() > 204) {
-            println "WARNING: HTTP Response status code " + response.statusCode();
+            log.info "WARNING: HTTP Response status code " + response.statusCode();
         }
-        println(response.headers().map().get("operation-location"))
+        log.info response.headers().map().get("operation-location").toString()
         sleep(10000) // wait for the operation to complete, adjust as needed
 
         def urlResponse = response.headers().map().get("operation-location")
@@ -62,7 +66,7 @@ inputFolder.eachFileMatch(~/(?i).*\.pdf/) { File pdfFile ->
         HttpResponse<String> responseFromAzure
         def statusCode = 0
         while(statusCode != 200){
-            println "Waiting for Azure response..."
+            log.info "Waiting for Azure response..."
             HttpRequest requestFromAzure = HttpRequest.newBuilder(new URI(urlResponse[0]))
                     .GET()
                     .setHeader("Ocp-Apim-Subscription-Key", key)
@@ -71,18 +75,18 @@ inputFolder.eachFileMatch(~/(?i).*\.pdf/) { File pdfFile ->
             responseFromAzure = HttpClient.newHttpClient().send(requestFromAzure, HttpResponse.BodyHandlers.ofString());
 
             if (responseFromAzure.statusCode() > 200) {
-                println "WARNING: HTTP Response status code " + responseFromAzure.statusCode();
+                log.info "WARNING: HTTP Response status code " + responseFromAzure.statusCode();
                 sleep(10000)
             } else {
                 statusCode = 200
             }
         }
 
-        println responseFromAzure.toString()
+        log.info responseFromAzure.toString()
         outputFile.text = responseFromAzure.body()
     }
 
-    println "JSON from Azure saved:  ${outputFile.name}"
+    log.info "JSON from Azure saved:  ${outputFile.name}"
 
     jsons.add(outputFile)
 }

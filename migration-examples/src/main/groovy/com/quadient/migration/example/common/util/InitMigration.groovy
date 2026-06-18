@@ -70,7 +70,7 @@ static Migration initMigration(Binding binding) {
             defaultVariableStructure,
             defaultLanguage,
             fileProjectConfig.context)
-    log.info("Preparing to start migration script with $projectConfig.")
+    log.info "Preparing to start migration script with $projectConfig."
 
     return new Migration(migConfig, projectConfig)
 }

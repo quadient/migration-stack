@@ -88,13 +88,13 @@ static void run(Migration migration, Path imagesFilePath) {
 
         mappings[id] = existingMapping
         if (total > 1000 && mappings.size() % 1000 == 0) {
-            log.info("Processed ${mappings.size()}/${total} mappings")
+            log.info "Processed ${mappings.size()}/${total} mappings"
         }
     }
 
     def batches = mappings.entrySet().collate(1000)
     for (int i = 0; i < batches.size(); i++) {
-        log.info("Upserting mappings batch ${i + 1}/${batches.size()} (${batches[i].size()} items)")
+        log.info "Upserting mappings batch ${i + 1}/${batches.size()} (${batches[i].size()} items)"
         migration.mappingRepository.upsertBatch(batches[i].collectEntries())
     }
     migration.mappingRepository.applyAllImageMappings()
