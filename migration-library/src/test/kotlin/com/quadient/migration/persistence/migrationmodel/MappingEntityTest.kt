@@ -2,19 +2,26 @@ package com.quadient.migration.persistence.migrationmodel
 
 import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.Table as TableModel
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
+import com.quadient.migration.service.computeFingerprint
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.DocumentObjectType.Block
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.SuperOrSubscript
+import com.quadient.migration.shared.TableAction
+import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.shared.points
 import com.quadient.migration.tools.aBlockDto
@@ -65,7 +72,7 @@ class MappingEntityTest {
                 internal = false,
                 baseTemplate = "new base",
                 targetFolder = "new folder",
-                type = DocumentObjectType.Block,
+                type = Block,
                 variableStructureRef = "new structure",
                 skip = SkipOptions(true, "ph", "reason"),
             )
@@ -85,7 +92,7 @@ class MappingEntityTest {
             assertEquals(result.internal, false)
             assertEquals(result.baseTemplate, "new base")
             assertEquals(result.targetFolder, "new folder")
-            assertEquals(result.type, DocumentObjectType.Block)
+            assertEquals(result.type, Block)
             assertEquals(result.variableStructureRef?.id, "new structure")
             assertEquals(result.skip.skipped, true)
             assertEquals(result.skip.placeholder, "ph")
@@ -378,6 +385,111 @@ class MappingEntityTest {
 
             assertEquals(resultVar.name, "new name")
             assertEquals(resultVar.dataType, DataType.Double)
+        }
+    }
+
+    @Nested
+    inner class TableTest {
+        @Test
+        fun `matching fingerprint applies all table properties`() {
+            val docObj = DocumentObjectBuilder("doc1", Block).table { }.build()
+            val mapping = MappingItemEntity.Table(tables = listOf(
+                MappingItemEntity.Table.TableEntry(
+                    contentPath = "table:0",
+                    action = TableAction.Flatten,
+                    pdfTaggingRule = TablePdfTaggingRule.Table,
+                    pdfAlternateText = "New alt text",
+                    fingerprint = computeFingerprint(docObj.content[0] as TableModel),
+                    tableName = "Renamed Table",
+                )
+            ))
+            val errors = mutableListOf<String>()
+
+            val result = mapping.apply(docObj) { errors.add(it) }
+            val resultTable = result.content[0] as TableModel
+
+            resultTable.name.shouldBeEqualTo("Renamed Table")
+            resultTable.pdfTaggingRule.shouldBeEqualTo(TablePdfTaggingRule.Table)
+            resultTable.pdfAlternateText.shouldBeEqualTo("New alt text")
+            resultTable.action.shouldBeEqualTo(TableAction.Flatten)
+            errors.shouldBeEqualTo(emptyList())
+        }
+
+        @Test
+        fun `fingerprint mismatch skips entry and calls onError`() {
+            val docObj = DocumentObjectBuilder("doc1", Block).table { }.build()
+            val mapping = MappingItemEntity.Table(tables = listOf(
+                MappingItemEntity.Table.TableEntry(
+                    contentPath = "table:0",
+                    action = TableAction.Flatten,
+                    pdfTaggingRule = null,
+                    pdfAlternateText = null,
+                    fingerprint = "wrong-fingerprint",
+                    tableName = null,
+                )
+            ))
+            val errors = mutableListOf<String>()
+
+            mapping.apply(docObj) { errors.add(it) }
+
+            errors.size.shouldBeEqualTo(1)
+            errors[0].shouldBeEqualTo("Table mapping for 'doc1' at [table:0]: fingerprint mismatch. Stored: 'wrong-fingerprint', current: '0cols'. Content may have changed since last export. Skipping.")
+        }
+
+        @Test
+        fun `missing content path skips entry and calls onError`() {
+            val docObj = DocumentObjectBuilder("doc1", Block).table { }.build()
+            val mapping = MappingItemEntity.Table(tables = listOf(
+                MappingItemEntity.Table.TableEntry(
+                    contentPath = "table:99",
+                    action = TableAction.Keep,
+                    pdfTaggingRule = null,
+                    pdfAlternateText = null,
+                    fingerprint = "any",
+                    tableName = null,
+                )
+            ))
+            val errors = mutableListOf<String>()
+
+            mapping.apply(docObj) { errors.add(it) }
+
+            errors.size.shouldBeEqualTo(1)
+            errors[0].shouldBeEqualTo("Table mapping for 'doc1' at [table:99]: table not found at expected path. Skipping.")
+        }
+
+        @Test
+        fun `successfully applies matching entry and reports error for mismatched entry`() {
+            val tableOne = TableBuilder().build()
+            val tableTwo = TableBuilder().action(TableAction.Keep).build()
+            val docObj = DocumentObjectBuilder("doc1", Block).appendContent(tableOne).appendContent(tableTwo).build()
+            val mapping = MappingItemEntity.Table(tables = listOf(
+                MappingItemEntity.Table.TableEntry(
+                    contentPath = "table:0",
+                    action = TableAction.Flatten,
+                    pdfTaggingRule = null,
+                    pdfAlternateText = null,
+                    fingerprint = computeFingerprint(tableOne),
+                    tableName = "Renamed",
+                ),
+                MappingItemEntity.Table.TableEntry(
+                    contentPath = "table:1",
+                    action = TableAction.Flatten,
+                    pdfTaggingRule = null,
+                    pdfAlternateText = null,
+                    fingerprint = "wrong-fingerprint",
+                    tableName = null,
+                ),
+            ))
+            val errors = mutableListOf<String>()
+
+            val result = mapping.apply(docObj) { errors.add(it) }
+
+            val tables = result.content.filterIsInstance<TableModel>()
+            tables[0].name.shouldBeEqualTo("Renamed")
+            tables[0].action.shouldBeEqualTo(TableAction.Flatten)
+            tables[1].action.shouldBeEqualTo(TableAction.Keep)
+            errors.size.shouldBeEqualTo(1)
+            errors[0].shouldBeEqualTo("Table mapping for 'doc1' at [table:1]: fingerprint mismatch. Stored: 'wrong-fingerprint', current: '0cols'. Content may have changed since last export. Skipping.")
         }
     }
 }
