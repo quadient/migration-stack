@@ -9,6 +9,7 @@ import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
 import com.quadient.migration.shared.VariableRefPath
 
 data class DocumentTable(val contentPath: String, val table: Table)
@@ -78,7 +79,14 @@ fun tableFirstRowPreview(table: Table, separator: String = "|"): String? {
 }
 
 private fun extractCellText(cell: Table.Cell): String =
-    cell.content.asSequence().filterIsInstance<Paragraph>().flatMap { it.content }.flatMap { it.content }
+    cell.content.asSequence()
+        .flatMap { item ->
+            when (item) {
+                is Paragraph -> item.content.asSequence().flatMap { it.content.asSequence() }
+                is VariableStringContent -> sequenceOf(item)
+                else -> emptySequence()
+            }
+        }
         .joinToString("") { textContent ->
             when (textContent) {
                 is StringValue -> textContent.value
