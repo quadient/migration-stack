@@ -73,12 +73,18 @@ abstract class IcmDataCache(
         val styleNodeList = if (styleNode is ArrayNode) styleNode.toList() else listOf(styleNode)
         val result = mutableMapOf<String, String>()
         styleNodeList.forEach { node ->
-            val name = node["Name"]?.stringValue() ?: return@forEach
-            val raw = node["CustomProperty"]?.stringValue() ?: return@forEach
+            val name = node["Name"]?.xmlText() ?: return@forEach
+            val raw = node["CustomProperty"]?.xmlText() ?: return@forEach
             val displayName = lenientJson.decodeFromString<StyleCustomProperty>(raw).displayName ?: return@forEach
             result.putIfAbsent(displayName, name)
         }
         return result
+    }
+
+    private fun JsonNode.xmlText(): String? = when {
+        isString -> asString()
+        isObject -> get("")?.takeIf { it.isString }?.asString()
+        else -> null
     }
 
     fun getOrLoadBaseTemplateData(path: IcmPath): BaseTemplateData? {

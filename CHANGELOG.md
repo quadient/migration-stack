@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Fix missing image errors when deploying to Evolve
 - Fixed database migrations creating latest table state in the first stage instead of building incrementally
 - Cleaned up AcknowledgementLetterFromSource example
+- Fixed handling of styles containing spaces sometimes causing deployment errors
 
 ## [17.0.25] - 2026-06-15
 

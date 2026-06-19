@@ -127,12 +127,18 @@ class StylesValidator(
         val nodes = if (styleNodes is ArrayNode) styleNodes.toList() else listOf(styleNodes)
         val result = mutableSetOf<String>()
         nodes.forEach { node ->
-            node["Name"]?.asString()?.let { result.add(it) }
-            node["CustomProperty"]?.asString()?.let { raw ->
+            node["Name"]?.xmlText()?.let { result.add(it) }
+            node["CustomProperty"]?.xmlText()?.let { raw ->
                 jsonMapper.readTree(raw)["DisplayName"]?.asString()?.let { result.add(it) }
             }
         }
         return result
+    }
+
+    private fun JsonNode.xmlText(): String? = when {
+        isString -> asString()
+        isObject -> get("")?.takeIf { it.isString }?.asString()
+        else -> null
     }
 
     private fun resolveDocumentObjects(objects: List<DocumentObject>): List<DocumentObject> {
