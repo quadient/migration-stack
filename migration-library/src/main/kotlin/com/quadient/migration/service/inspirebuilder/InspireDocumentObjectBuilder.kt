@@ -58,6 +58,7 @@ import com.quadient.migration.shared.LiteralOrFunctionCall
 import com.quadient.migration.shared.ParagraphPdfTaggingRule as ParagraphPdfTaggingRuleModel
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.TabType
+import com.quadient.migration.shared.TableAction
 import com.quadient.migration.shared.TableAlignment
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
@@ -713,7 +714,14 @@ abstract class InspireDocumentObjectBuilder(
                     val text = flow.addParagraph().addText()
                     columnLayout?.let { text.appendSection(buildWfdXmlSection(it, layout)) }
                     columnLayout = null
-                    text.appendTable(buildTable(layout, variableStructure, model, languages))
+                    when (model.action) {
+                        TableAction.Keep -> text.appendTable(buildTable(layout, variableStructure, model, languages))
+                        TableAction.Flatten -> text.appendFlow(
+                            buildDocumentContentAsSingleFlow(
+                                layout, variableStructure, flattenTable(model), model.name, null, languages
+                            )
+                        )
+                    }
                 }
                 is ImageRef -> {
                     val text = flow.addParagraph().addText()
@@ -845,7 +853,21 @@ abstract class InspireDocumentObjectBuilder(
                     
                     is StringValue -> currentText.appendText(textContent.value)
                     is VariableRef -> currentText.appendVariable(textContent, layout, variableStructure)
-                    is Table -> currentText.appendTable(buildTable(layout, variableStructure, textContent, languages))
+                    is Table -> when (textContent.action) {
+                        TableAction.Keep -> currentText.appendTable(
+                            buildTable(layout, variableStructure, textContent, languages)
+                        )
+
+                        TableAction.Flatten -> currentText.appendFlow(
+                            buildDocumentContentAsSingleFlow(
+                                layout = layout,
+                                variableStructure = variableStructure,
+                                content = flattenTable(textContent),
+                                flowName = textContent.name,
+                                languages = languages
+                            )
+                        )
+                    }
                     is DocumentObjectRef -> buildDocumentObjectRefOrPlaceholder(
                         layout, variableStructure, textContent, languages
                     )?.also { flow ->
@@ -1250,6 +1272,54 @@ abstract class InspireDocumentObjectBuilder(
         val parts = normalized.split(".")
         return parts.last() to (if (parts.size > 1) "Data.${parts.dropLast(1).joinToString(".")}" else "Data")
     }
+
+    private fun flattenTable(table: Table): List<DocumentContent> =
+        (table.firstHeader + table.header + table.rows + table.footer + table.lastFooter).flatMap { flattenRow(it) }
+
+    private fun flattenRow(row: TableRow): List<DocumentContent> = when (row) {
+        is Table.Row -> {
+            val nonEmptyCells = row.cells.filter { !isCellEmpty(it) }
+            if (nonEmptyCells.isEmpty()) emptyList() else {
+
+            // Each cell's first paragraph participates in the row-level merge; cells
+            // are side-by-side (same visual line), so their Text runs are combined into
+            // one Paragraph. Any additional paragraphs within a cell become overflow.
+            val mergedTexts = nonEmptyCells.flatMap { cell ->
+                when {
+                    cell.content.filterIsInstance<Paragraph>().isNotEmpty() ->
+                        cell.content.filterIsInstance<Paragraph>().first().content
+
+                    cell.content.filterIsInstance<VariableStringContent>().isNotEmpty() ->
+                        listOf(Paragraph.Text(cell.content.filterIsInstance<VariableStringContent>(), null, null))
+
+                    else -> emptyList()
+                }
+            }
+            val firstParagraphStyleRef = nonEmptyCells
+                .flatMap { it.content.filterIsInstance<Paragraph>() }
+                .firstOrNull()?.styleRef
+            val mergedParagraph = Paragraph(mergedTexts, firstParagraphStyleRef, row.displayRuleRef)
+
+            val overflowContent = nonEmptyCells.flatMap { cell ->
+                cell.content.filterIsInstance<Paragraph>().drop(1)
+            }
+
+            listOf(mergedParagraph) + overflowContent
+            }
+        }
+        is Table.RepeatedRow -> listOf(RepeatedContent(row.variable, row.rows.flatMap { flattenRow(it) }))
+    }
+
+    private fun isCellEmpty(cell: Table.Cell): Boolean =
+        cell.content.isEmpty() || cell.content.all { content ->
+            when (content) {
+                is Paragraph -> content.content.all { text ->
+                    text.content.all { it is StringValue && it.value.isBlank() }
+                }
+                is StringValue -> content.value.isBlank()
+                else -> false
+            }
+        }
 
     fun buildTable(
         layout: Layout, variableStructure: VariableStructure, model: Table, languages: List<String>
