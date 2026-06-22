@@ -103,10 +103,15 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     builder.append(Csv.serialize(area.position.width) + ",")
     builder.append(Csv.serialize(area.position.height) + ",")
 
-    def documentObjectIdsToNames = getDocumentObjectIdsToNames(migration, area.content)
-    def imageIdsToNames = getImageIdsToNames(migration, area.content)
+    builder.append(Csv.serialize(buildContentPreview(migration, area.content)))
+    return builder.toString()
+}
 
-    builder.append(Csv.serialize(area.content.collect {
+static String buildContentPreview(Migration migration, List<DocumentContent> content) {
+    def documentObjectIdsToNames = getDocumentObjectIdsToNames(migration, content)
+    def imageIdsToNames = getImageIdsToNames(migration, content)
+
+    def previewParts = content.collect {
         switch (it) {
             case DocumentObjectRef:
                 def name = documentObjectIdsToNames.get(it.id)
@@ -117,8 +122,13 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
             default:
                 return it.toString()
         }
-    }.join(";").replace(",", " ")))
-    return builder.toString()
+    }
+
+    if (previewParts.size() > 3) {
+        previewParts = previewParts.take(3) + ("(+${previewParts.size() - 3} more)" as String)
+    }
+
+    return previewParts.join(";").replace(",", " ")
 }
 
 static HashMap<String, String> getDocumentObjectIdsToNames(Migration migration, List<DocumentContent> content) {

@@ -1,6 +1,7 @@
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.example.common.mapping.AreasExport
@@ -76,10 +77,43 @@ class AreasExportTest {
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
 
-    static Area createArea(String flowName, Boolean flowToNextPage = false) {
+    @Test
+    void exportTruncatesAreaContentPreviewAfterThreeParts() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        when(migration.mappingRepository.getAreaMapping(any())).thenReturn(new MappingItem.Area(null, [:], [:]))
+        when((migration.documentObjectRepository as DocumentObjectRepository).list(any()))
+                .thenReturn([new DocumentObjectBuilder("page with preview", DocumentObjectType.Page)
+                                     .content([createArea("test flow",
+                                             false,
+                                             [new DocumentObjectRef("doc-1"),
+                                              new ImageRef("img-1"),
+                                              new DocumentObjectRef("doc-2"),
+                                              new ImageRef("img-2"),
+                                              new DocumentObjectRef("doc-3")] as List<DocumentContent>)])
+                                     .build()])
+        when(migration.documentObjectRepository.find("doc-1")).thenReturn(new DocumentObjectBuilder("doc-1", DocumentObjectType.Block).name("Block One").build())
+        when(migration.documentObjectRepository.find("doc-2")).thenReturn(new DocumentObjectBuilder("doc-2", DocumentObjectType.Block).name("Block Two").build())
+        when(migration.documentObjectRepository.find("doc-3")).thenReturn(new DocumentObjectBuilder("doc-3", DocumentObjectType.Block).name("Block Three").build())
+        when(migration.imageRepository.find("img-1")).thenReturn(new ImageBuilder("img-1").name("Image One").build())
+        when(migration.imageRepository.find("img-2")).thenReturn(new ImageBuilder("img-2").name("Image Two").build())
+
+        AreasExport.run(migration, mappingFile)
+
+        def expected = """\
+            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),contentPreview (read-only)
+            ,,page with preview,,,,test flow,false,0mm,0mm,0mm,0mm,DocObjRef(Block One);ImageRef(Image One);DocObjRef(Block Two);(+2 more)
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+    }
+
+    static Area createArea(String flowName, Boolean flowToNextPage = false, List<DocumentContent> content = null) {
         def areaBuilder = new AreaBuilder()
                 .position(new Position(Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0)))
                 .flowToNextPage(flowToNextPage)
+
+        if (content != null) {
+            areaBuilder.content(content)
+        }
 
         if (flowName != null) {
             areaBuilder.interactiveFlowName(flowName)
