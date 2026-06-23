@@ -13,7 +13,9 @@ import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.shared.VariableRefPath
 
 /** Sealed type representing either a single table row or a group of rows repeated by an array variable. */
-sealed interface TableRow : RefValidatable
+sealed interface TableRow : RefValidatable {
+    val displayRuleRef: DisplayRuleRef?
+}
 
 data class Table(
     val rows: List<TableRow>,
@@ -80,7 +82,7 @@ data class Table(
         )
     }
 
-    data class Row(val cells: List<Cell>, val displayRuleRef: DisplayRuleRef? = null) : TableRow {
+    data class Row(val cells: List<Cell>, override val displayRuleRef: DisplayRuleRef? = null) : TableRow {
         override fun collectRefs(): List<Ref> {
             return cells.flatMap { it.collectRefs() } + listOfNotNull(displayRuleRef)
         }
@@ -101,7 +103,7 @@ data class Table(
     data class RepeatedRow(
         val rows: List<TableRow>,
         val variable: VariablePath,
-        val displayRuleRef: DisplayRuleRef? = null,
+        override val displayRuleRef: DisplayRuleRef? = null,
     ) : TableRow {
         override fun collectRefs(): List<Ref> {
             val rowRefs = rows.flatMap { it.collectRefs() }
