@@ -75,7 +75,7 @@ fun tableFirstRowPreview(table: Table, separator: String = "|"): String? {
         (table.firstHeader.firstOrNull() ?: table.header.firstOrNull() ?: table.rows.filterIsInstance<Table.Row>()
             .firstOrNull()) as? Table.Row ?: return null
 
-    return firstRow.cells.joinToString(separator) { cell -> extractCellText(cell).take(30) }.take(100)
+    return firstRow.cells.joinToString(separator) { cell -> extractCellText(cell).replace('\r', ' ').replace('\n', ' ').take(30) }.take(100)
 }
 
 private fun extractCellText(cell: Table.Cell): String =
