@@ -46,7 +46,9 @@ class MappingRepository(
         return transaction { internalRepository.listAll().map { it.toDto() } }
     }
 
-    fun applyAll(onError: (String) -> Unit = {}) {
+    fun applyAll() = applyAll {}
+
+    fun applyAll(onError: (String) -> Unit) {
         applyAllDocumentObjectMappings()
         applyAllAreaMappings()
         applyAllImageMappings()
@@ -205,7 +207,9 @@ class MappingRepository(
         documentObjectRepository.upsert(mapping.apply(obj))
     }
 
-    fun applyAllTableMappings(onError: (String) -> Unit = {}) {
+    fun applyAllTableMappings() = applyAllTableMappings {}
+
+    fun applyAllTableMappings(onError: (String) -> Unit) {
         applyAllResourceMappings<DocumentObject, MappingItemEntity.Table>(documentObjectRepository, DocumentObjectTable, onError)
     }
 
