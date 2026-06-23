@@ -309,7 +309,15 @@ abstract class InspireDocumentObjectBuilder(
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
             when (val contentPart = mutableContent[idx]) {
-                is Table, is Paragraph, is ImageRef, is VariableStringContent, is ColumnLayout, is Barcode -> {
+                is Table -> if (contentPart.action == TableAction.Flatten) {
+                    flowModels.add(FlattenedTableFlow(contentPart))
+                } else {
+                    val flowParts = gatherFlowParts(mutableContent, idx)
+                    idx += flowParts.size - 1
+                    flowModels.add(Composite(flowParts))
+                }
+
+                is Paragraph, is ImageRef, is VariableStringContent, is ColumnLayout, is Barcode -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
                     flowModels.add(Composite(flowParts))
@@ -355,6 +363,10 @@ abstract class InspireDocumentObjectBuilder(
                 is RepeatedContentFlow -> buildRepeatedContent(
                     it.model, layout, variableStructure, nextName(), languages
                 )
+
+                is FlattenedTableFlow -> flattenTable(
+                    layout, variableStructure, it.table, it.table.name ?: nextName(), languages
+                )
             }
         }
     }
@@ -366,6 +378,7 @@ abstract class InspireDocumentObjectBuilder(
         data class FirstMatchFlow(val model: FirstMatch, val isInline: Boolean) : FlowModel
         data class SelectByLanguageFlow(val model: SelectByLanguage) : FlowModel
         data class RepeatedContentFlow(val model: RepeatedContent) : FlowModel
+        data class FlattenedTableFlow(val table: Table) : FlowModel
     }
 
     protected fun List<Flow>.toSingleFlow(
@@ -714,14 +727,7 @@ abstract class InspireDocumentObjectBuilder(
                     val text = flow.addParagraph().addText()
                     columnLayout?.let { text.appendSection(buildWfdXmlSection(it, layout)) }
                     columnLayout = null
-                    when (model.action) {
-                        TableAction.Keep -> text.appendTable(buildTable(layout, variableStructure, model, languages))
-                        TableAction.Flatten -> text.appendFlow(
-                            buildDocumentContentAsSingleFlow(
-                                layout, variableStructure, flattenTable(model), model.name, null, languages
-                            )
-                        )
-                    }
+                    text.appendTable(buildTable(layout, variableStructure, model, languages))
                 }
                 is ImageRef -> {
                     val text = flow.addParagraph().addText()
@@ -781,7 +787,7 @@ abstract class InspireDocumentObjectBuilder(
 
         do {
             val contentPart = content[index]
-            if (contentPart is Table || contentPart is Paragraph || contentPart is ImageRef || contentPart is VariableStringContent || contentPart is ColumnLayout || contentPart is Barcode) {
+            if ((contentPart is Table && contentPart.action != TableAction.Flatten) || contentPart is Paragraph || contentPart is ImageRef || contentPart is VariableStringContent || contentPart is ColumnLayout || contentPart is Barcode) {
                 flowParts.add(contentPart)
                 index++
             } else {
@@ -855,17 +861,13 @@ abstract class InspireDocumentObjectBuilder(
                     is VariableRef -> currentText.appendVariable(textContent, layout, variableStructure)
                     is Table -> when (textContent.action) {
                         TableAction.Keep -> currentText.appendTable(
-                            buildTable(layout, variableStructure, textContent, languages)
+                            buildTable(
+                                layout, variableStructure, textContent, languages
+                            )
                         )
 
                         TableAction.Flatten -> currentText.appendFlow(
-                            buildDocumentContentAsSingleFlow(
-                                layout = layout,
-                                variableStructure = variableStructure,
-                                content = flattenTable(textContent),
-                                flowName = textContent.name,
-                                languages = languages
-                            )
+                            flattenTable(layout, variableStructure, textContent, textContent.name, languages)
                         )
                     }
                     is DocumentObjectRef -> buildDocumentObjectRefOrPlaceholder(
@@ -1273,53 +1275,59 @@ abstract class InspireDocumentObjectBuilder(
         return parts.last() to (if (parts.size > 1) "Data.${parts.dropLast(1).joinToString(".")}" else "Data")
     }
 
-    private fun flattenTable(table: Table): List<DocumentContent> =
-        (table.firstHeader + table.header + table.rows + table.footer + table.lastFooter).flatMap { flattenRow(it) }
-
-    private fun flattenRow(row: TableRow): List<DocumentContent> = when (row) {
-        is Table.Row -> {
-            val nonEmptyCells = row.cells.filter { !isCellEmpty(it) }
-            if (nonEmptyCells.isEmpty()) emptyList() else {
-
-            // Each cell's first paragraph participates in the row-level merge; cells
-            // are side-by-side (same visual line), so their Text runs are combined into
-            // one Paragraph. Any additional paragraphs within a cell become overflow.
-            val mergedTexts = nonEmptyCells.flatMap { cell ->
-                when {
-                    cell.content.filterIsInstance<Paragraph>().isNotEmpty() ->
-                        cell.content.filterIsInstance<Paragraph>().first().content
-
-                    cell.content.filterIsInstance<VariableStringContent>().isNotEmpty() ->
-                        listOf(Paragraph.Text(cell.content.filterIsInstance<VariableStringContent>(), null, null))
-
-                    else -> emptyList()
-                }
-            }
-            val firstParagraphStyleRef = nonEmptyCells
-                .flatMap { it.content.filterIsInstance<Paragraph>() }
-                .firstOrNull()?.styleRef
-            val mergedParagraph = Paragraph(mergedTexts, firstParagraphStyleRef, row.displayRuleRef)
-
-            val overflowContent = nonEmptyCells.flatMap { cell ->
-                cell.content.filterIsInstance<Paragraph>().drop(1)
-            }
-
-            listOf(mergedParagraph) + overflowContent
-            }
-        }
-        is Table.RepeatedRow -> listOf(RepeatedContent(row.variable, row.rows.flatMap { flattenRow(it) }))
+    private fun flattenTable(
+        layout: Layout,
+        variableStructure: VariableStructure,
+        table: Table,
+        flowName: String? = null,
+        languages: List<String>
+    ): Flow {
+        return (table.firstHeader + table.header + table.rows + table.footer + table.lastFooter).mapNotNull {
+            buildFlattenedRow(layout, variableStructure, it, languages)
+        }.toSingleFlow(layout, variableStructure, flowName)
     }
 
-    private fun isCellEmpty(cell: Table.Cell): Boolean =
-        cell.content.isEmpty() || cell.content.all { content ->
+    private fun buildFlattenedRow(
+        layout: Layout, variableStructure: VariableStructure, row: TableRow, languages: List<String>
+    ): Flow? {
+        val flows = when (row) {
+            is Table.Row -> {
+                val cellContents = row.cells.filter { !isCellEmpty(it) }.flatMap { it.content }
+                if (cellContents.isEmpty()) null
+                else buildDocumentContentAsFlows(layout, variableStructure, cellContents, languages = languages)
+            }
+
+            is Table.RepeatedRow -> {
+                val innerContent = row.rows.flatMap { collectFlattenedRowContent(it) }
+                listOf(
+                    buildRepeatedContent(
+                        RepeatedContent(row.variable, innerContent), layout, variableStructure, null, languages
+                    )
+                )
+            }
+        }
+        return flows?.toSingleFlow(layout, variableStructure, displayRuleRef = row.displayRuleRef)
+    }
+
+    private fun collectFlattenedRowContent(row: TableRow): List<DocumentContent> = when (row) {
+        is Table.Row -> row.cells.filter { !isCellEmpty(it) }.flatMap { it.content }
+        is Table.RepeatedRow -> listOf(
+            RepeatedContent(row.variable, row.rows.flatMap { collectFlattenedRowContent(it) })
+        )
+    }
+
+    private fun isCellEmpty(cell: Table.Cell): Boolean {
+        return cell.content.isEmpty() || cell.content.all { content ->
             when (content) {
                 is Paragraph -> content.content.all { text ->
                     text.content.all { it is StringValue && it.value.isBlank() }
                 }
+
                 is StringValue -> content.value.isBlank()
                 else -> false
             }
         }
+    }
 
     fun buildTable(
         layout: Layout, variableStructure: VariableStructure, model: Table, languages: List<String>
