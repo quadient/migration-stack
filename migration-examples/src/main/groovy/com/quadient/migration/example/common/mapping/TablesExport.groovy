@@ -29,6 +29,7 @@ static void run(Migration migration, Path path) {
     tablesFile.createParentDirectories()
 
     def documentObjects = (migration.documentObjectRepository as DocumentObjectRepository).listAll()
+            .sort { it.name ?: it.id }
 
     tablesFile.withWriter { writer ->
         def headers = [
