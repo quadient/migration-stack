@@ -17,6 +17,7 @@ import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
@@ -52,6 +53,7 @@ import com.quadient.migration.shared.QrCodeErrorCorrectionLevel
 import com.quadient.migration.shared.QrCodeSize
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
+import com.quadient.migration.shared.TableAction
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.getFlowAreaContentFlow
@@ -1234,6 +1236,145 @@ class InspireDocumentObjectBuilderTest {
         flow["Default"].stringValue().shouldNotBeNull()
     }
 
+    @Test
+    fun `buildDocumentObject flattens table with various rows to flows`() {
+        // given
+        val labelVar = mockVar(VariableBuilder("labelVar").name("Label Name").dataType(DataType.String).build())
+        val variableStructure = mockVarStructure(
+            VariableStructureBuilder("VS_1").addVariable(labelVar.id, "Data.Labels.Value", "Label Value").build()
+        )
+        val rowDisplayRule = mockRule(DisplayRuleBuilder("R_1").comparison { value("A").equals().value("B") }.build())
+
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block).table {
+                action(TableAction.Flatten)
+                addFirstHeaderRow {
+                    addCell { paragraph { text { string("Col1 First Header") } } }
+                    addCell { string("Col2 First Header") }
+                }
+                addHeaderRow {
+                    addCell { paragraph { text { string("Col1 Header") } } }
+                    addCell { paragraph { text { string("Col2 Header") } } }
+                }
+                addRow {
+                    displayRuleRef(rowDisplayRule)
+                    addCell { paragraph { text { string("Name:") } } }
+                    addCell { paragraph { text { variableRef(labelVar.id) } } }
+                }
+                addRow {
+                    addCell { paragraph { text { string("Total") } } }
+                    addCell { paragraph { text { string("N/A") } } }
+                }
+            }.variableStructureRef(variableStructure.id).build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result.path("Table").isMissingNode.shouldBeEqualTo(true)
+
+        val flowId = result["FlowArea"].last()["FlowId"].stringValue()
+        val sectionFlow = result["Flow"].last { it["Id"].stringValue() == flowId }
+        sectionFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
+        val rowFlowRefs = sectionFlow["FlowContent"]["P"]["T"]["O"]
+        rowFlowRefs.size().shouldBeEqualTo(4)
+
+        val firstHeaderFlow = result["Flow"].last { it["Id"].stringValue() == rowFlowRefs[0]["Id"].stringValue() }
+        firstHeaderFlow["FlowContent"]["P"][0]["T"][""].stringValue().shouldBeEqualTo("Col1 First Header")
+        firstHeaderFlow["FlowContent"]["P"][1]["T"][""].stringValue().shouldBeEqualTo("Col2 First Header")
+
+        val headerFlow = result["Flow"].last { it["Id"].stringValue() == rowFlowRefs[1]["Id"].stringValue() }
+        headerFlow["FlowContent"]["P"][0]["T"][""].stringValue().shouldBeEqualTo("Col1 Header")
+        headerFlow["FlowContent"]["P"][1]["T"][""].stringValue().shouldBeEqualTo("Col2 Header")
+
+        val condFlow = result["Flow"].last { it["Id"].stringValue() == rowFlowRefs[2]["Id"].stringValue() }
+        condFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
+        condFlow["Condition"]["Value"].stringValue().shouldBeEqualTo("return (String('A')==String('B'));")
+        val condSuccessFlowId = condFlow["Condition"][""].stringValue()
+        val condSuccessFlow = result["Flow"].last { it["Id"].stringValue() == condSuccessFlowId }
+        condSuccessFlow["FlowContent"]["P"][0]["T"][""].stringValue().shouldBeEqualTo("Name:")
+        val labelVarId = condSuccessFlow["FlowContent"]["P"][1]["T"]["O"]["Id"].stringValue()
+        val labelVarNode = result["Variable"].first { it["Id"].stringValue() == labelVarId }
+        labelVarNode["Name"].stringValue().shouldBeEqualTo("Label Value")
+
+        val bodyRow2Flow = result["Flow"].last { it["Id"].stringValue() == rowFlowRefs[3]["Id"].stringValue() }
+        bodyRow2Flow["FlowContent"]["P"][0]["T"][""].stringValue().shouldBeEqualTo("Total")
+        bodyRow2Flow["FlowContent"]["P"][1]["T"][""].stringValue().shouldBeEqualTo("N/A")
+    }
+
+    @Test
+    fun `buildDocumentObject flattens table with header, repeated body row wrapped in display rule, and footer to flows`() {
+        // given
+        val ordersVar = mockVar(VariableBuilder("ordersVar").name("Orders").dataType(DataType.Array).build())
+        val itemNameVar = mockVar(VariableBuilder("itemNameVar").name("Item Name").dataType(DataType.String).build())
+        val variableStructure = mockVarStructure(
+            VariableStructureBuilder("VS_1")
+                .addVariable(ordersVar.id, "Data")
+                .addVariable(itemNameVar.id, VariableRef(ordersVar.id), "Item")
+                .build()
+        )
+        val repeatDisplayRule =
+            mockRule(DisplayRuleBuilder("R_1").comparison { value("X").equals().value("Y") }.build())
+
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block).table {
+                action(TableAction.Flatten)
+                addHeaderRow {
+                    addCell { paragraph { text { string("Item #") } } }
+                    addCell { paragraph { text { string("Amount") } } }
+                }
+                addRepeatedRow(VariableRef(ordersVar.id)) {
+                    displayRuleRef(repeatDisplayRule)
+                    addRow {
+                        addCell { paragraph { text { string("Order:") } } }
+                        addCell { paragraph { text { variableRef(itemNameVar.id) } } }
+                    }
+                }
+                addRow {
+                    addCell { paragraph { text { string("Summary") } } }
+                    addCell { paragraph { text { string("Done") } } }
+                }
+            }.variableStructureRef(variableStructure.id).build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result.path("Table").isMissingNode.shouldBeEqualTo(true)
+
+        val flowId = result["FlowArea"].last()["FlowId"].stringValue()
+        val sectionFlow = result["Flow"].last { it["Id"].stringValue() == flowId }
+        sectionFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
+        val rowFlowRefs = sectionFlow["FlowContent"]["P"]["T"]["O"]
+        rowFlowRefs.size().shouldBeEqualTo(3)
+
+        val headerFlow = result["Flow"].last { it["Id"].stringValue() == rowFlowRefs[0]["Id"].stringValue() }
+        headerFlow["FlowContent"]["P"][0]["T"][""].stringValue().shouldBeEqualTo("Item #")
+        headerFlow["FlowContent"]["P"][1]["T"][""].stringValue().shouldBeEqualTo("Amount")
+
+        val footerFlow = result["Flow"].last { it["Id"].stringValue() == rowFlowRefs[2]["Id"].stringValue() }
+        footerFlow["FlowContent"]["P"][0]["T"][""].stringValue().shouldBeEqualTo("Summary")
+        footerFlow["FlowContent"]["P"][1]["T"][""].stringValue().shouldBeEqualTo("Done")
+
+        val condFlow = result["Flow"].last { it["Id"].stringValue() == rowFlowRefs[1]["Id"].stringValue() }
+        condFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
+        condFlow["Condition"]["Value"].stringValue().shouldBeEqualTo("return (String('X')==String('Y'));")
+
+        val repeatedFlowId = condFlow["Condition"][""].stringValue()
+        val repeatedFlow = result["Flow"].last { it["Id"].stringValue() == repeatedFlowId }
+        repeatedFlow["Type"].stringValue().shouldBeEqualTo("Repeated")
+        val arrayVarId = repeatedFlow["Variable"].stringValue()
+        val arrayVarNode = result["Variable"].last { it["Id"].stringValue() == arrayVarId }
+        arrayVarNode["VarType"].stringValue().shouldBeEqualTo("Array")
+
+        repeatedFlow["FlowContent"]["P"][0]["T"][""].stringValue().shouldBeEqualTo("Order:")
+        val itemVarId = repeatedFlow["FlowContent"]["P"][1]["T"]["O"]["Id"].stringValue()
+        val itemVarNode = result["Variable"].first { it["Id"].stringValue() == itemVarId }
+        itemVarNode["Name"].stringValue().shouldBeEqualTo("Item")
+    }
+
     private fun DisplayRule.toScript(): String {
         return definition?.toScript(
             layout = LayoutImpl(),
@@ -1278,6 +1419,11 @@ class InspireDocumentObjectBuilderTest {
         val currentAllStyles = paragraphStyleRepository.listAll()
         every { paragraphStyleRepository.listAll() } returns currentAllStyles + paragraphStyle
         return paragraphStyle
+    }
+
+    private fun mockRule(displayRule: DisplayRule): DisplayRule {
+        every { displayRuleRepository.findOrFail(displayRule.id) } returns displayRule
+        return displayRule
     }
 
     private fun mockImage(image: com.quadient.migration.api.dto.migrationmodel.Image): com.quadient.migration.api.dto.migrationmodel.Image {
