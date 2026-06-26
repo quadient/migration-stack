@@ -46,7 +46,9 @@ class MappingRepository(
         return transaction { internalRepository.listAll().map { it.toDto() } }
     }
 
-    fun applyAll() {
+    fun applyAll() = applyAll {}
+
+    fun applyAll(onError: (String) -> Unit) {
         applyAllDocumentObjectMappings()
         applyAllAreaMappings()
         applyAllImageMappings()
@@ -56,6 +58,7 @@ class MappingRepository(
         applyAllVariableMappings()
         applyAllVariableStructureMappings()
         applyAllDisplayRuleMappings()
+        applyAllTableMappings(onError)
     }
 
     fun upsert(id: String, mapping: MappingItem): Mapping {
@@ -187,6 +190,31 @@ class MappingRepository(
         applyAllResourceMappings<DisplayRule, MappingItemEntity.DisplayRule>(displayRuleRepository, DisplayRuleTable)
     }
 
+    fun getTableMapping(id: String): MappingItem.Table {
+        return (internalRepository.find<MappingItemEntity.Table>(id) ?: MappingItemEntity.Table(
+            name = null, tables = emptyList()
+        )).toDto() as MappingItem.Table
+    }
+
+    fun applyTableMapping(id: String) = applyTableMapping(id) {}
+
+    fun applyTableMapping(id: String, onError: (String) -> Unit) {
+        val mapping = internalRepository.find<MappingItemEntity.Table>(id)
+        val obj = documentObjectRepository.find(id)
+
+        if (mapping == null || obj == null) {
+            return
+        }
+
+        documentObjectRepository.upsert(mapping.apply(obj, onError))
+    }
+
+    fun applyAllTableMappings() = applyAllTableMappings {}
+
+    fun applyAllTableMappings(onError: (String) -> Unit) {
+        applyAllResourceMappings<DocumentObject, MappingItemEntity.Table>(documentObjectRepository, DocumentObjectTable, onError)
+    }
+
     fun getTextStyleMapping(id: String): MappingItem.TextStyle {
         return (internalRepository.find<MappingItemEntity.TextStyle>(id) ?: MappingItemEntity.TextStyle(
             name = null,
@@ -295,6 +323,7 @@ class MappingRepository(
     private inline fun <reified O : MigrationObject, reified T : MappingItemEntity> applyAllResourceMappings(
         repo: Repository<O>,
         table: MigrationObjectTable,
+        noinline onError: (String) -> Unit = {},
     ) {
         transaction {
             val mappings = internalRepository
@@ -304,7 +333,7 @@ class MappingRepository(
             val migObjects = repo.list(table.id inList mappings.keys).associateBy { it.id }
 
             val migObjectsToUpsert = mappings
-                .mapNotNull { (id, mapping) -> migObjects[id]?.let { mapping.apply(it) as O } }
+                .mapNotNull { (id, mapping) -> migObjects[id]?.let { mapping.apply(it, onError) as O } }
 
             val batches = migObjectsToUpsert.chunked(1000)
             batches.forEachIndexed { index, batch ->

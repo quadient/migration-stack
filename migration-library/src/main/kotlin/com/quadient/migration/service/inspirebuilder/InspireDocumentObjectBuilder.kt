@@ -58,6 +58,7 @@ import com.quadient.migration.shared.LiteralOrFunctionCall
 import com.quadient.migration.shared.ParagraphPdfTaggingRule as ParagraphPdfTaggingRuleModel
 import com.quadient.migration.shared.SuperOrSubscript
 import com.quadient.migration.shared.TabType
+import com.quadient.migration.shared.TableAction
 import com.quadient.migration.shared.TableAlignment
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
@@ -308,7 +309,15 @@ abstract class InspireDocumentObjectBuilder(
         val flowModels = mutableListOf<FlowModel>()
         while (idx < mutableContent.size) {
             when (val contentPart = mutableContent[idx]) {
-                is Table, is Paragraph, is ImageRef, is VariableStringContent, is ColumnLayout, is Barcode -> {
+                is Table -> if (contentPart.action == TableAction.Flatten) {
+                    flowModels.add(FlattenedTableFlow(contentPart))
+                } else {
+                    val flowParts = gatherFlowParts(mutableContent, idx)
+                    idx += flowParts.size - 1
+                    flowModels.add(Composite(flowParts))
+                }
+
+                is Paragraph, is ImageRef, is VariableStringContent, is ColumnLayout, is Barcode -> {
                     val flowParts = gatherFlowParts(mutableContent, idx)
                     idx += flowParts.size - 1
                     flowModels.add(Composite(flowParts))
@@ -354,6 +363,10 @@ abstract class InspireDocumentObjectBuilder(
                 is RepeatedContentFlow -> buildRepeatedContent(
                     it.model, layout, variableStructure, nextName(), languages
                 )
+
+                is FlattenedTableFlow -> flattenTable(
+                    layout, variableStructure, it.table, it.table.name ?: nextName(), languages
+                )
             }
         }
     }
@@ -365,6 +378,7 @@ abstract class InspireDocumentObjectBuilder(
         data class FirstMatchFlow(val model: FirstMatch, val isInline: Boolean) : FlowModel
         data class SelectByLanguageFlow(val model: SelectByLanguage) : FlowModel
         data class RepeatedContentFlow(val model: RepeatedContent) : FlowModel
+        data class FlattenedTableFlow(val table: Table) : FlowModel
     }
 
     protected fun List<Flow>.toSingleFlow(
@@ -773,7 +787,7 @@ abstract class InspireDocumentObjectBuilder(
 
         do {
             val contentPart = content[index]
-            if (contentPart is Table || contentPart is Paragraph || contentPart is ImageRef || contentPart is VariableStringContent || contentPart is ColumnLayout || contentPart is Barcode) {
+            if ((contentPart is Table && contentPart.action != TableAction.Flatten) || contentPart is Paragraph || contentPart is ImageRef || contentPart is VariableStringContent || contentPart is ColumnLayout || contentPart is Barcode) {
                 flowParts.add(contentPart)
                 index++
             } else {
@@ -845,7 +859,17 @@ abstract class InspireDocumentObjectBuilder(
                     
                     is StringValue -> currentText.appendText(textContent.value)
                     is VariableRef -> currentText.appendVariable(textContent, layout, variableStructure)
-                    is Table -> currentText.appendTable(buildTable(layout, variableStructure, textContent, languages))
+                    is Table -> when (textContent.action) {
+                        TableAction.Keep -> currentText.appendTable(
+                            buildTable(
+                                layout, variableStructure, textContent, languages
+                            )
+                        )
+
+                        TableAction.Flatten -> currentText.appendFlow(
+                            flattenTable(layout, variableStructure, textContent, textContent.name, languages)
+                        )
+                    }
                     is DocumentObjectRef -> buildDocumentObjectRefOrPlaceholder(
                         layout, variableStructure, textContent, languages
                     )?.also { flow ->
@@ -1167,27 +1191,36 @@ abstract class InspireDocumentObjectBuilder(
         flowName: String?,
         languages: List<String>,
     ): Flow {
-        val (varName, varPath) = resolveVariableNameAndPath(model.variablePath, variableStructure)
+        resolveVariableNameAndPath(model.variablePath, variableStructure)
             ?: return buildUnmappedRepeatedContentFallback(model, layout, variableStructure, languages)
-        val arrayVariable = getVariable(layout.data as DataImpl, varName, varPath)
-            ?: return buildUnmappedRepeatedContentFallback(model, layout, variableStructure, languages)
+        val innerFlows = buildDocumentContentAsFlows(layout, variableStructure, model.content, languages = languages)
+        return assembleRepeatedFlow(model.variablePath, innerFlows, layout, variableStructure, flowName)
+            ?: buildUnmappedRepeatedContentFallback(model, layout, variableStructure, languages)
+    }
+
+    private fun assembleRepeatedFlow(
+        variablePath: VariablePath,
+        innerFlows: List<Flow>,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        flowName: String? = null,
+    ): Flow? {
+        val (varName, varPath) = resolveVariableNameAndPath(variablePath, variableStructure) ?: return null
+        val arrayVariable = getVariable(layout.data as DataImpl, varName, varPath) ?: return null
         require(arrayVariable.nodeOptionality == NodeOptionality.ARRAY) {
             "Variable '$varName' at '$varPath' used in repeated content is not an Array variable"
         }
 
-        val innerFlows = buildDocumentContentAsFlows(layout, variableStructure, model.content, languages = languages)
         return if (innerFlows.size == 1 && innerFlows[0].type == Flow.Type.SIMPLE) {
-            val repeatedFlow = innerFlows[0].setType(Flow.Type.REPEATED).setVariable(arrayVariable)
-            flowName?.let { repeatedFlow.setName(it) }
-            repeatedFlow
+            innerFlows[0].setType(Flow.Type.REPEATED).setVariable(arrayVariable)
+                .also { flowName?.let { name -> it.setName(name) } }
         } else {
-            val repeatedFlow =
-                layout.addFlow().setType(Flow.Type.REPEATED).setVariable(arrayVariable).setSectionFlow(true)
-                    .setWebEditingType(SECTION)
-            flowName?.let { repeatedFlow.setName(it) }
-            val repeatedFlowText = repeatedFlow.addParagraph().addText()
-            innerFlows.forEach { repeatedFlowText.appendFlow(it) }
-            repeatedFlow
+            layout.addFlow().setType(Flow.Type.REPEATED).setVariable(arrayVariable).setSectionFlow(true)
+                .setWebEditingType(SECTION).also { repeatedFlow ->
+                    flowName?.let { repeatedFlow.setName(it) }
+                    val text = repeatedFlow.addParagraph().addText()
+                    innerFlows.forEach { text.appendFlow(it) }
+                }
         }
     }
 
@@ -1249,6 +1282,65 @@ abstract class InspireDocumentObjectBuilder(
         if (normalized.isBlank()) return null
         val parts = normalized.split(".")
         return parts.last() to (if (parts.size > 1) "Data.${parts.dropLast(1).joinToString(".")}" else "Data")
+    }
+
+    private fun flattenTable(
+        layout: Layout,
+        variableStructure: VariableStructure,
+        table: Table,
+        flowName: String? = null,
+        languages: List<String>
+    ): Flow {
+        val allRows = table.firstHeader + table.header + table.rows + table.footer + table.lastFooter
+        require(allRows.isNotEmpty()) { "Flattened table has no rows. At least one row is required." }
+        return allRows.mapNotNull {
+            buildFlattenedRow(layout, variableStructure, it, languages)
+        }.toSingleFlow(layout, variableStructure, flowName)
+    }
+
+    private fun buildFlattenedRow(
+        layout: Layout, variableStructure: VariableStructure, row: TableRow, languages: List<String>
+    ): Flow? {
+        val flows = when (row) {
+            is Table.Row -> {
+                val cellContents = row.cells.filter { !isCellEmpty(it) }.flatMap { it.content }
+                if (cellContents.isEmpty()) null
+                else buildDocumentContentAsFlows(layout, variableStructure, cellContents, languages = languages)
+            }
+
+            is Table.RepeatedRow -> {
+                val innerFlows = row.rows.mapNotNull { buildFlattenedRow(layout, variableStructure, it, languages) }
+                val repeatedFlow = assembleRepeatedFlow(row.variable, innerFlows, layout, variableStructure)
+                    ?: buildUnmappedRepeatedContentFallback(
+                        RepeatedContent(row.variable, row.rows.flatMap { collectFlattenedRowContent(it) }),
+                        layout,
+                        variableStructure,
+                        languages
+                    )
+                listOf(repeatedFlow)
+            }
+        }
+        return flows?.toSingleFlow(layout, variableStructure, displayRuleRef = row.displayRuleRef)
+    }
+
+    private fun collectFlattenedRowContent(row: TableRow): List<DocumentContent> = when (row) {
+        is Table.Row -> row.cells.filter { !isCellEmpty(it) }.flatMap { it.content }
+        is Table.RepeatedRow -> listOf(
+            RepeatedContent(row.variable, row.rows.flatMap { collectFlattenedRowContent(it) })
+        )
+    }
+
+    private fun isCellEmpty(cell: Table.Cell): Boolean {
+        return cell.content.isEmpty() || cell.content.all { content ->
+            when (content) {
+                is Paragraph -> content.content.all { text ->
+                    text.content.all { it is StringValue && it.value.isBlank() }
+                }
+
+                is StringValue -> content.value.isBlank()
+                else -> false
+            }
+        }
     }
 
     fun buildTable(
@@ -1320,6 +1412,7 @@ abstract class InspireDocumentObjectBuilder(
             TablePdfTaggingRule.Artifact -> table.setTablePdfTaggingRule(WfdXmlTable.TablePdfTaggingRule.ARTIFACT)
         }
         table.setTablePdfAlternateText(model.pdfAlternateText)
+        model.name?.let { table.setDisplayName(it) }
 
         return table
     }

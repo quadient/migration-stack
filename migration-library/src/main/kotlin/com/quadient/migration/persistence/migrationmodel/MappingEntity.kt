@@ -2,7 +2,10 @@ package com.quadient.migration.persistence.migrationmodel
 
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.persistence.table.MappingTable
+import com.quadient.migration.service.collectDocumentTables
+import com.quadient.migration.service.computeFingerprint
 import com.quadient.migration.shared.*
+import org.slf4j.LoggerFactory
 import com.quadient.migration.shared.LineSpacing.Additional
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -19,6 +22,7 @@ import com.quadient.migration.api.dto.migrationmodel.Variable as VariableModel
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure as VariableStructureModel
 import com.quadient.migration.api.dto.migrationmodel.Area as AreaModel
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule as DisplayRuleModel
+import com.quadient.migration.api.dto.migrationmodel.Table as TableModel
 
 class MappingEntity(id: EntityID<CompositeID>) : CompositeEntity(id) {
     companion object : CompositeEntityClass<MappingEntity>(MappingTable)
@@ -39,7 +43,7 @@ class MappingEntity(id: EntityID<CompositeID>) : CompositeEntity(id) {
 sealed class MappingItemEntity {
     abstract val name: String?
 
-    fun apply(entity: MigrationObject): MigrationObject {
+    fun apply(entity: MigrationObject, onError: (String) -> Unit = {}): MigrationObject {
         return when (this) {
             is DocumentObject -> this.apply(entity as DocumentObjectModel)
             is Area -> this.apply(entity as DocumentObjectModel)
@@ -50,6 +54,7 @@ sealed class MappingItemEntity {
             is Variable -> this.apply(entity as VariableModel)
             is VariableStructure -> this.apply(entity as VariableStructureModel)
             is DisplayRule -> this.apply(entity as DisplayRuleModel)
+            is Table -> this.apply(entity as DocumentObjectModel, onError)
         }
     }
 
@@ -288,6 +293,66 @@ sealed class MappingItemEntity {
         }
     }
 
+    @Serializable
+    data class Table(
+        override val name: String? = null,
+        val tables: List<TableEntry> = emptyList(),
+    ) : MappingItemEntity() {
+
+        @Serializable
+        data class TableEntry(
+            val contentPath: String,
+            val action: TableAction,
+            val pdfTaggingRule: TablePdfTaggingRule?,
+            val pdfAlternateText: String?,
+            val fingerprint: String,
+            val tableName: String?,
+        )
+
+        fun apply(
+            item: DocumentObjectModel,
+            onError: (String) -> Unit = {},
+        ): DocumentObjectModel {
+            if (tables.isEmpty()) return item
+
+            val documentTables = collectDocumentTables(item.content)
+            val updatedTables = mutableMapOf<String, TableModel>()
+
+            tables.forEach { entry ->
+                val docTable = documentTables.find { it.contentPath == entry.contentPath }
+
+                if (docTable == null) {
+                    val message = "Table mapping for '${item.id}' at [${entry.contentPath}]: table not found at expected path. Skipping."
+                    logger.error(message)
+                    onError(message)
+                    return@forEach
+                }
+
+                val currentFingerprint = computeFingerprint(docTable.table)
+                if (currentFingerprint != entry.fingerprint) {
+                    val message = "Table mapping for '${item.id}' at [${entry.contentPath}]: fingerprint mismatch. Stored: '${entry.fingerprint}', current: '$currentFingerprint'. Content may have changed since last export. Skipping."
+                    logger.error(message)
+                    onError(message)
+                    return@forEach
+                }
+
+                updatedTables[entry.contentPath] = docTable.table.copy(
+                    pdfTaggingRule = entry.pdfTaggingRule ?: TablePdfTaggingRule.Default,
+                    pdfAlternateText = entry.pdfAlternateText,
+                    action = entry.action,
+                    name = entry.tableName,
+                )
+            }
+
+            if (updatedTables.isEmpty()) return item
+            return item.copy(content = applyTableUpdates(item.content, updatedTables))
+        }
+
+        companion object {
+            private val logger = LoggerFactory.getLogger(Table::class.java)
+        }
+    }
+
     fun toDto(): MappingItem {
         return when (this) {
             is DocumentObject -> {
@@ -393,6 +458,81 @@ sealed class MappingItemEntity {
                 targetFolder = this.targetFolder,
                 baseTemplate = this.baseTemplate,
             )
+
+            is Table -> MappingItem.Table(
+                name = this.name,
+                tables = this.tables.map { entry ->
+                    MappingItem.Table.TableEntry(
+                        contentPath = entry.contentPath,
+                        action = entry.action,
+                        pdfTaggingRule = entry.pdfTaggingRule,
+                        pdfAlternateText = entry.pdfAlternateText,
+                        fingerprint = entry.fingerprint,
+                        tableName = entry.tableName,
+                    )
+                },
+            )
         }
     }
+}
+
+private fun applyTableUpdates(
+    content: List<DocumentContent>,
+    updates: Map<String, TableModel>,
+): List<DocumentContent> {
+    if (updates.isEmpty()) return content
+
+    val locations = mutableMapOf<String, Int>()
+
+    return content.map { item ->
+        when (item) {
+            is TableModel -> {
+                val tableLocation = locations.next(item.pathName)
+                (updates[tableLocation] ?: item) as DocumentContent
+            }
+            is AreaModel -> {
+                val parentLocation = locations.next(item.pathName)
+                val tableLocations = mutableMapOf<String, Int>()
+                item.copy(content = item.content.map { it.applyTableUpdate(parentLocation, tableLocations, updates) })
+            }
+            is RepeatedContent -> {
+                val parentLocation = locations.next(item.pathName)
+                val tableLocations = mutableMapOf<String, Int>()
+                item.copy(content = item.content.map { it.applyTableUpdate(parentLocation, tableLocations, updates) })
+            }
+            is FirstMatch -> {
+                val parentLocation = locations.next(item.pathName)
+                val tableLocations = mutableMapOf<String, Int>()
+                item.copy(
+                    cases = item.cases.map { case ->
+                        case.copy(content = case.content.map { it.applyTableUpdate(parentLocation, tableLocations, updates) })
+                    },
+                    default = item.default.map { it.applyTableUpdate(parentLocation, tableLocations, updates) }
+                )
+            }
+            is SelectByLanguage -> {
+                val parentLocation = locations.next(item.pathName)
+                val tableLocations = mutableMapOf<String, Int>()
+                item.copy(cases = item.cases.map { case ->
+                    case.copy(content = case.content.map { it.applyTableUpdate(parentLocation, tableLocations, updates) })
+                })
+            }
+            else -> item
+        }
+    }
+}
+
+private fun DocumentContent.applyTableUpdate(
+    parentLocation: String,
+    tableLocations: MutableMap<String, Int>,
+    updates: Map<String, TableModel>,
+): DocumentContent {
+    if (this !is TableModel) return this
+    val tablePart = tableLocations.next(pathName)
+    return (updates[listOf(parentLocation, tablePart).joinToString("/")] ?: this) as DocumentContent
+}
+
+private fun MutableMap<String, Int>.next(name: String): String {
+    val idx = getOrDefault(name, 0).also { this[name] = it + 1 }
+    return "$name:$idx"
 }

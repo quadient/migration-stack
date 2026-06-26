@@ -3,6 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.persistence.migrationmodel.MappingItemEntity
 import com.quadient.migration.persistence.migrationmodel.VariableEntityRef
 import com.quadient.migration.shared.*
+import com.quadient.migration.shared.TablePdfTaggingRule
 
 data class Mapping(val id: String, val mapping: MappingItem)
 
@@ -101,6 +102,20 @@ sealed class MappingItem {
         var variableStructureRef: String?,
         var internal: Boolean?,
     ) : MappingItem()
+
+    data class Table(
+        override var name: String? = null,
+        val tables: List<TableEntry> = emptyList(),
+    ) : MappingItem() {
+        data class TableEntry(
+            val contentPath: String,
+            val action: TableAction,
+            val pdfTaggingRule: TablePdfTaggingRule?,
+            val pdfAlternateText: String?,
+            val fingerprint: String,
+            val tableName: String?,
+        )
+    }
 
     fun toDb(): MappingItemEntity {
         return when (this) {
@@ -207,6 +222,20 @@ sealed class MappingItem {
                 variableStructureRef = this.variableStructureRef,
                 targetFolder = this.targetFolder,
                 baseTemplate = this.baseTemplate,
+            )
+
+            is MappingItem.Table -> MappingItemEntity.Table(
+                name = this.name,
+                tables = this.tables.map { entry ->
+                    MappingItemEntity.Table.TableEntry(
+                        contentPath = entry.contentPath,
+                        action = entry.action,
+                        pdfTaggingRule = entry.pdfTaggingRule,
+                        pdfAlternateText = entry.pdfAlternateText,
+                        fingerprint = entry.fingerprint,
+                        tableName = entry.tableName,
+                    )
+                },
             )
         }
     }

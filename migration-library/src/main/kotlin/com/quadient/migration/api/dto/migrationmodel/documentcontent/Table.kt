@@ -7,12 +7,15 @@ import com.quadient.migration.shared.CellHeight
 import com.quadient.migration.shared.CellOverflow
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.TableAction
 import com.quadient.migration.shared.TableAlignment
 import com.quadient.migration.shared.TablePdfTaggingRule
 import com.quadient.migration.shared.VariableRefPath
 
 /** Sealed type representing either a single table row or a group of rows repeated by an array variable. */
-sealed interface TableRow : RefValidatable
+sealed interface TableRow : RefValidatable {
+    val displayRuleRef: DisplayRuleRef?
+}
 
 data class Table(
     val rows: List<TableRow>,
@@ -29,7 +32,10 @@ data class Table(
     val border: BorderOptions? = null,
     val alignment: TableAlignment = TableAlignment.Left,
     val tableStyleName: String? = null,
+    val action: TableAction = TableAction.Keep,
+    val name: String? = null,
 ) : DocumentContent, TextContent, RefValidatable {
+    val pathName: String get() = "table"
     override fun collectRefs(): List<Ref> {
         return (rows + header + firstHeader + footer + lastFooter).flatMap { it.collectRefs() }
     }
@@ -50,6 +56,8 @@ data class Table(
             border = table.border,
             alignment = table.alignment,
             tableStyleName = table.tableStyleName,
+            action = table.action,
+            name = table.name,
         )
     }
 
@@ -69,10 +77,12 @@ data class Table(
             border = border,
             alignment = alignment,
             tableStyleName = tableStyleName,
+            action = action,
+            name = name,
         )
     }
 
-    data class Row(val cells: List<Cell>, val displayRuleRef: DisplayRuleRef? = null) : TableRow {
+    data class Row(val cells: List<Cell>, override val displayRuleRef: DisplayRuleRef? = null) : TableRow {
         override fun collectRefs(): List<Ref> {
             return cells.flatMap { it.collectRefs() } + listOfNotNull(displayRuleRef)
         }
@@ -93,7 +103,7 @@ data class Table(
     data class RepeatedRow(
         val rows: List<TableRow>,
         val variable: VariablePath,
-        val displayRuleRef: DisplayRuleRef? = null,
+        override val displayRuleRef: DisplayRuleRef? = null,
     ) : TableRow {
         override fun collectRefs(): List<Ref> {
             val rowRefs = rows.flatMap { it.collectRefs() }

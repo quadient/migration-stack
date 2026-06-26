@@ -9,4 +9,8 @@ package com.quadient.migration.example.common.mapping
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 def migration = initMigration(this.binding)
-migration.mappingRepository.applyAll()
+def hasErrors = false
+migration.mappingRepository.applyAll { hasErrors = true }
+if (hasErrors) {
+    System.exit(1)
+}

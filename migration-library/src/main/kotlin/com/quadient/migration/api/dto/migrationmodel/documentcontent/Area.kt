@@ -5,6 +5,7 @@ import com.quadient.migration.shared.Position
 
 data class Area(var content: List<DocumentContent>, var position: Position?, var interactiveFlowName: String?, var flowToNextPage: Boolean = false) :
     DocumentContent, RefValidatable {
+    val pathName: String get() = "area"
     
     constructor(content: List<DocumentContent>, position: Position?, interactiveFlowName: String?) : this(content, position, interactiveFlowName, false)
     override fun collectRefs(): List<Ref> {
