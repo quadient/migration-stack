@@ -1375,6 +1375,64 @@ class InspireDocumentObjectBuilderTest {
         itemVarNode["Name"].stringValue().shouldBeEqualTo("Item")
     }
 
+    @Test
+    fun `buildDocumentObject flattens table with nested repeated rows each having a display rule`() {
+        // given
+        val ordersVar = mockVar(VariableBuilder("ordersVar").name("Orders").dataType(DataType.Array).build())
+        val itemsVar = mockVar(VariableBuilder("itemsVar").name("Items").dataType(DataType.Array).build())
+        val itemNameVar = mockVar(VariableBuilder("itemName").dataType(DataType.String).build())
+
+        val variableStructure = mockVarStructure(
+            VariableStructureBuilder("VS_nested").addVariable(ordersVar.id, "Data").addVariable(itemsVar.id, ordersVar)
+                .addVariable(itemNameVar.id, itemsVar).build()
+        )
+
+        val outerRule = mockRule(DisplayRuleBuilder("R_outer").comparison { value("P").equals().value("P") }.build())
+        val innerRule = mockRule(DisplayRuleBuilder("R_inner").comparison { value("Q").equals().value("Q") }.build())
+
+        val block = mockObj(
+            DocumentObjectBuilder("B_nested", Block).table {
+                action(TableAction.Flatten)
+                addRepeatedRow(ordersVar) {
+                    displayRuleRef(outerRule)
+                    addRepeatedRow(itemsVar) {
+                        displayRuleRef(innerRule)
+                        addRow {
+                            addCell { paragraph { text { string("Product") } } }
+                            addCell { paragraph { text { variableRef(itemNameVar) } } }
+                        }
+                    }
+                }
+            }.variableStructureRef(variableStructure.id).build()
+        )
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result.path("Table").isMissingNode.shouldBeEqualTo(true)
+
+        val outerCondFlow = getFlowAreaContentFlow(result)
+        outerCondFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
+        outerCondFlow["Condition"]["Value"].stringValue().shouldBeEqualTo("return (String('P')==String('P'));")
+
+        val ordersRepeatedFlow = result["Flow"].last { it["Id"].stringValue() == outerCondFlow["Condition"][""].stringValue() }
+        ordersRepeatedFlow["Type"].stringValue().shouldBeEqualTo("Repeated")
+        ordersRepeatedFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
+
+        val innerCondFlowId = ordersRepeatedFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        val innerCondFlow = result["Flow"].last { it["Id"].stringValue() == innerCondFlowId }
+        innerCondFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
+        innerCondFlow["Condition"]["Value"].stringValue().shouldBeEqualTo("return (String('Q')==String('Q'));")
+
+        val itemsRepeatedFlow = result["Flow"].last { it["Id"].stringValue() == innerCondFlow["Condition"][""].stringValue() }
+        itemsRepeatedFlow["Type"].stringValue().shouldBeEqualTo("Repeated")
+        itemsRepeatedFlow["FlowContent"]["P"][0]["T"][""].stringValue().shouldBeEqualTo("Product")
+        val varId = itemsRepeatedFlow["FlowContent"]["P"][1]["T"]["O"]["Id"].stringValue()
+        val varNode = result["Variable"].first { it["Id"].stringValue() == varId }
+        varNode["Name"].stringValue().shouldBeEqualTo("itemName")
+    }
+
     private fun DisplayRule.toScript(): String {
         return definition?.toScript(
             layout = LayoutImpl(),

@@ -1191,27 +1191,36 @@ abstract class InspireDocumentObjectBuilder(
         flowName: String?,
         languages: List<String>,
     ): Flow {
-        val (varName, varPath) = resolveVariableNameAndPath(model.variablePath, variableStructure)
+        resolveVariableNameAndPath(model.variablePath, variableStructure)
             ?: return buildUnmappedRepeatedContentFallback(model, layout, variableStructure, languages)
-        val arrayVariable = getVariable(layout.data as DataImpl, varName, varPath)
-            ?: return buildUnmappedRepeatedContentFallback(model, layout, variableStructure, languages)
+        val innerFlows = buildDocumentContentAsFlows(layout, variableStructure, model.content, languages = languages)
+        return assembleRepeatedFlow(model.variablePath, innerFlows, layout, variableStructure, flowName)
+            ?: buildUnmappedRepeatedContentFallback(model, layout, variableStructure, languages)
+    }
+
+    private fun assembleRepeatedFlow(
+        variablePath: VariablePath,
+        innerFlows: List<Flow>,
+        layout: Layout,
+        variableStructure: VariableStructure,
+        flowName: String? = null,
+    ): Flow? {
+        val (varName, varPath) = resolveVariableNameAndPath(variablePath, variableStructure) ?: return null
+        val arrayVariable = getVariable(layout.data as DataImpl, varName, varPath) ?: return null
         require(arrayVariable.nodeOptionality == NodeOptionality.ARRAY) {
             "Variable '$varName' at '$varPath' used in repeated content is not an Array variable"
         }
 
-        val innerFlows = buildDocumentContentAsFlows(layout, variableStructure, model.content, languages = languages)
         return if (innerFlows.size == 1 && innerFlows[0].type == Flow.Type.SIMPLE) {
-            val repeatedFlow = innerFlows[0].setType(Flow.Type.REPEATED).setVariable(arrayVariable)
-            flowName?.let { repeatedFlow.setName(it) }
-            repeatedFlow
+            innerFlows[0].setType(Flow.Type.REPEATED).setVariable(arrayVariable)
+                .also { flowName?.let { name -> it.setName(name) } }
         } else {
-            val repeatedFlow =
-                layout.addFlow().setType(Flow.Type.REPEATED).setVariable(arrayVariable).setSectionFlow(true)
-                    .setWebEditingType(SECTION)
-            flowName?.let { repeatedFlow.setName(it) }
-            val repeatedFlowText = repeatedFlow.addParagraph().addText()
-            innerFlows.forEach { repeatedFlowText.appendFlow(it) }
-            repeatedFlow
+            layout.addFlow().setType(Flow.Type.REPEATED).setVariable(arrayVariable).setSectionFlow(true)
+                .setWebEditingType(SECTION).also { repeatedFlow ->
+                    flowName?.let { repeatedFlow.setName(it) }
+                    val text = repeatedFlow.addParagraph().addText()
+                    innerFlows.forEach { text.appendFlow(it) }
+                }
         }
     }
 
@@ -1282,7 +1291,9 @@ abstract class InspireDocumentObjectBuilder(
         flowName: String? = null,
         languages: List<String>
     ): Flow {
-        return (table.firstHeader + table.header + table.rows + table.footer + table.lastFooter).mapNotNull {
+        val allRows = table.firstHeader + table.header + table.rows + table.footer + table.lastFooter
+        require(allRows.isNotEmpty()) { "Flattened table has no rows. At least one row is required." }
+        return allRows.mapNotNull {
             buildFlattenedRow(layout, variableStructure, it, languages)
         }.toSingleFlow(layout, variableStructure, flowName)
     }
@@ -1298,12 +1309,15 @@ abstract class InspireDocumentObjectBuilder(
             }
 
             is Table.RepeatedRow -> {
-                val innerContent = row.rows.flatMap { collectFlattenedRowContent(it) }
-                listOf(
-                    buildRepeatedContent(
-                        RepeatedContent(row.variable, innerContent), layout, variableStructure, null, languages
+                val innerFlows = row.rows.mapNotNull { buildFlattenedRow(layout, variableStructure, it, languages) }
+                val repeatedFlow = assembleRepeatedFlow(row.variable, innerFlows, layout, variableStructure)
+                    ?: buildUnmappedRepeatedContentFallback(
+                        RepeatedContent(row.variable, row.rows.flatMap { collectFlattenedRowContent(it) }),
+                        layout,
+                        variableStructure,
+                        languages
                     )
-                )
+                listOf(repeatedFlow)
             }
         }
         return flows?.toSingleFlow(layout, variableStructure, displayRuleRef = row.displayRuleRef)

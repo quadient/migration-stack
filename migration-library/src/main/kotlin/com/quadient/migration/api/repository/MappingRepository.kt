@@ -196,7 +196,9 @@ class MappingRepository(
         )).toDto() as MappingItem.Table
     }
 
-    fun applyTableMapping(id: String) {
+    fun applyTableMapping(id: String) = applyTableMapping(id) {}
+
+    fun applyTableMapping(id: String, onError: (String) -> Unit) {
         val mapping = internalRepository.find<MappingItemEntity.Table>(id)
         val obj = documentObjectRepository.find(id)
 
@@ -204,7 +206,7 @@ class MappingRepository(
             return
         }
 
-        documentObjectRepository.upsert(mapping.apply(obj))
+        documentObjectRepository.upsert(mapping.apply(obj, onError))
     }
 
     fun applyAllTableMappings() = applyAllTableMappings {}
