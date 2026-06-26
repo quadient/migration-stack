@@ -29,7 +29,7 @@ class TablesMappingImportTest {
         when(migration.documentObjectRepository.find("doc1")).thenReturn(new DocumentObjectBuilder("doc1", DocumentObjectType.Block).content([table10, table11]).build())
         when(migration.documentObjectRepository.find("doc2")).thenReturn(new DocumentObjectBuilder("doc2", DocumentObjectType.Block).content([table20]).build())
         def input = """\
-            documentObjectId,contentPath,action,pdfTaggingRule,pdfAlternateText,tableName
+            documentObjectId,tableId,action,pdfTaggingRule,pdfAlternateText,tableName
             doc1,table:0,Keep,Table,Alt text,TableOne
             doc1,table:1,,,,
             doc2,table:0,Flatten,Table,Alt,TableTwo

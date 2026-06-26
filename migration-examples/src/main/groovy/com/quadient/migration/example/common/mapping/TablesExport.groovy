@@ -35,7 +35,7 @@ static void run(Migration migration, Path path) {
         def headers = [
             Mapping.displayHeader("documentObjectId", false),
             Mapping.displayHeader("documentObjectName", true),
-            Mapping.displayHeader("contentPath", false),
+            Mapping.displayHeader("tableId", false),
             Mapping.displayHeader("contentPreview", true),
             Mapping.displayHeader("tableName", false),
             Mapping.displayHeader("pdfTaggingRule", false),
