@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 
 - Added support for categorization metadata for both evolve and flex targets
+- Table mapping with possibility to mark table for flattening during deployment
 
 ### Changed
 
