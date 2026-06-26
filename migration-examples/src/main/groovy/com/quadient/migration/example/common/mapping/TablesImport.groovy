@@ -43,7 +43,7 @@ static void run(Migration migration, Path path) {
         def docObjId = Csv.deserialize(values.get("documentObjectId"), String.class)
         if (!docObjId) continue
 
-        def contentPath = Csv.deserialize(values.get("contentPath"), String.class)
+        def contentPath = Csv.deserialize(values.get("tableId"), String.class)
         if (!contentPath) continue
 
         def actionStr = Csv.deserialize(values.get("action"), String.class)
