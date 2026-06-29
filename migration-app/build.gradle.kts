@@ -23,6 +23,7 @@ dependencyCheck {
         "kotlinKlibCommonizerClasspath",
         "kotlinCompilerClasspath",
         "kotlinBuildToolsApiClasspath",
+        "kotlinAbiValidationCompatClasspath",
     )
 }
 
