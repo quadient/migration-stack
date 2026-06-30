@@ -1293,23 +1293,23 @@ abstract class InspireDocumentObjectBuilder(
     ): Flow {
         val allRows = table.firstHeader + table.header + table.rows + table.footer + table.lastFooter
         require(allRows.isNotEmpty()) { "Flattened table has no rows. At least one row is required." }
-        return allRows.mapNotNull {
+        return allRows.map {
             buildFlattenedRow(layout, variableStructure, it, languages)
         }.toSingleFlow(layout, variableStructure, flowName)
     }
 
     private fun buildFlattenedRow(
         layout: Layout, variableStructure: VariableStructure, row: TableRow, languages: List<String>
-    ): Flow? {
+    ): Flow {
         val flows = when (row) {
             is Table.Row -> {
                 val cellContents = row.cells.filter { !isCellEmpty(it) }.flatMap { it.content }
-                if (cellContents.isEmpty()) null
+                if (cellContents.isEmpty()) listOf(layout.addFlow().setType(Flow.Type.SIMPLE))
                 else buildDocumentContentAsFlows(layout, variableStructure, cellContents, languages = languages)
             }
 
             is Table.RepeatedRow -> {
-                val innerFlows = row.rows.mapNotNull { buildFlattenedRow(layout, variableStructure, it, languages) }
+                val innerFlows = row.rows.map { buildFlattenedRow(layout, variableStructure, it, languages) }
                 val repeatedFlow = assembleRepeatedFlow(row.variable, innerFlows, layout, variableStructure)
                     ?: buildUnmappedRepeatedContentFallback(
                         RepeatedContent(row.variable, row.rows.flatMap { collectFlattenedRowContent(it) }),
@@ -1320,7 +1320,7 @@ abstract class InspireDocumentObjectBuilder(
                 listOf(repeatedFlow)
             }
         }
-        return flows?.toSingleFlow(layout, variableStructure, displayRuleRef = row.displayRuleRef)
+        return flows.toSingleFlow(layout, variableStructure, displayRuleRef = row.displayRuleRef)
     }
 
     private fun collectFlattenedRowContent(row: TableRow): List<DocumentContent> = when (row) {

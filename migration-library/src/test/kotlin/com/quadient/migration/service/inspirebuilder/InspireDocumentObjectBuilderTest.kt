@@ -1244,6 +1244,7 @@ class InspireDocumentObjectBuilderTest {
             VariableStructureBuilder("VS_1").addVariable(labelVar.id, "Data.Labels.Value", "Label Value").build()
         )
         val rowDisplayRule = mockRule(DisplayRuleBuilder("R_1").comparison { value("A").equals().value("B") }.build())
+        val emptyRowDisplayRule = mockRule(DisplayRuleBuilder("R_2").comparison { value("C").equals().value("D") }.build())
 
         val block = mockObj(
             DocumentObjectBuilder("B_1", Block).table {
@@ -1265,6 +1266,15 @@ class InspireDocumentObjectBuilderTest {
                     addCell { paragraph { text { string("Total") } } }
                     addCell { paragraph { text { string("N/A") } } }
                 }
+                addRow {
+                    addCell { }
+                    addCell { }
+                }
+                addRow {
+                    displayRuleRef(emptyRowDisplayRule)
+                    addCell { }
+                    addCell { }
+                }
             }.variableStructureRef(variableStructure.id).build()
         )
 
@@ -1278,7 +1288,7 @@ class InspireDocumentObjectBuilderTest {
         val sectionFlow = result["Flow"].last { it["Id"].stringValue() == flowId }
         sectionFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
         val rowFlowRefs = sectionFlow["FlowContent"]["P"]["T"]["O"]
-        rowFlowRefs.size().shouldBeEqualTo(4)
+        rowFlowRefs.size().shouldBeEqualTo(6)
 
         val firstHeaderFlow = result["Flow"].last { it["Id"].stringValue() == rowFlowRefs[0]["Id"].stringValue() }
         firstHeaderFlow["FlowContent"]["P"][0]["T"][""].stringValue().shouldBeEqualTo("Col1 First Header")
@@ -1301,6 +1311,16 @@ class InspireDocumentObjectBuilderTest {
         val bodyRow2Flow = result["Flow"].last { it["Id"].stringValue() == rowFlowRefs[3]["Id"].stringValue() }
         bodyRow2Flow["FlowContent"]["P"][0]["T"][""].stringValue().shouldBeEqualTo("Total")
         bodyRow2Flow["FlowContent"]["P"][1]["T"][""].stringValue().shouldBeEqualTo("N/A")
+
+        val emptyRowFlow = result["Flow"].last { it["Id"].stringValue() == rowFlowRefs[4]["Id"].stringValue() }
+        emptyRowFlow["FlowContent"].path("P").isMissingNode.shouldBeEqualTo(true)
+
+        val emptyCondFlow = result["Flow"].last { it["Id"].stringValue() == rowFlowRefs[5]["Id"].stringValue() }
+        emptyCondFlow["Type"].stringValue().shouldBeEqualTo("InlCond")
+        emptyCondFlow["Condition"]["Value"].stringValue().shouldBeEqualTo("return (String('C')==String('D'));")
+        val emptyCondSuccessFlowId = emptyCondFlow["Condition"][""].stringValue()
+        val emptyCondSuccessFlow = result["Flow"].last { it["Id"].stringValue() == emptyCondSuccessFlowId }
+        emptyCondSuccessFlow["FlowContent"].path("P").isMissingNode.shouldBeEqualTo(true)
     }
 
     @Test
