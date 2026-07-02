@@ -207,8 +207,9 @@ abstract class InspireDocumentObjectBuilder(
     protected open fun wrapSuccessFlowInConditionFlow(
         layout: Layout, variableStructure: VariableStructure, rule: DisplayRule, successFlow: Flow
     ): Flow {
-        return layout.addFlow().setType(Flow.Type.SELECT_BY_CONDITION).addLineForSelectByCondition(
-            layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
+        val conditionFlow = layout.addFlow().setType(Flow.Type.SELECT_BY_CONDITION)
+        return conditionFlow.addLineForSelectByCondition(
+            conditionFlow.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
                 .setScript(rule.toScript(
                     layout,
                     variableStructure,
@@ -229,20 +230,20 @@ abstract class InspireDocumentObjectBuilder(
         innerRowSet: GeneralRowSet? = null,
     ): GeneralRowSet {
         val successRow = innerRowSet ?: layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
-        return layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION)
-            .addLineForSelectByCondition(
-                layout.data.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
-                    .setScript(rule.toScript(
-                        layout,
-                        variableStructure,
-                        variableRepository::findOrFail,
-                        displayRuleRepository::findOrFail,
-                        resourcePathProvider::getDisplayRulePath,
-                        output,
-                        projectConfig.interactiveTenant
-                    )),
-                successRow
-            )
+        val conditionRowSet = layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION)
+        return conditionRowSet.addLineForSelectByCondition(
+            conditionRowSet.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
+                .setScript(rule.toScript(
+                    layout,
+                    variableStructure,
+                    variableRepository::findOrFail,
+                    displayRuleRepository::findOrFail,
+                    resourcePathProvider::getDisplayRulePath,
+                    output,
+                    projectConfig.interactiveTenant
+                )),
+            successRow
+        )
     }
 
     protected fun wrapRowSetInConditionIfNeeded(

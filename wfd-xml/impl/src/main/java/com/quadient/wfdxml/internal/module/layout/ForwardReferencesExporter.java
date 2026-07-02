@@ -2,6 +2,7 @@ package com.quadient.wfdxml.internal.module.layout;
 
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.internal.DefaultNodeType;
+import com.quadient.wfdxml.internal.HasLocalNodes;
 import com.quadient.wfdxml.internal.NodeImpl;
 import com.quadient.wfdxml.internal.Tree;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
@@ -51,10 +52,15 @@ public class ForwardReferencesExporter {
             if (child instanceof Tree) {
                 exportTree((Tree) child, useExistingVariables);
             }
+            if (child instanceof HasLocalNodes holder && !holder.getLocalNodes().isEmpty()) {
+                for (NodeImpl localNode : holder.getLocalNodes()) {
+                    writeForwardReferenceToExporter(localNode, child, useExistingVariables);
+                }
+            }
         }
     }
 
-    private void writeForwardReferenceToExporter(NodeImpl node, Tree parent, Boolean useExistingVariables) {
+    private void writeForwardReferenceToExporter(NodeImpl node, NodeImpl parent, Boolean useExistingVariables) {
         exporter.beginElement(node.getXmlElementName()).addElementWithIface("Id", node).addElementWithStringData("Name", node.getName()).addElementWithStringData("Comment", node.getComment());
 
         if (node instanceof Variable variable && variable.getExistingParentId() != null) {
