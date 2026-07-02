@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Cleaned up AcknowledgementLetterFromSource example
 - Fixed handling of styles containing spaces sometimes causing deployment errors
 - Truncating content preview in area mapping for better readability
+- Potential condition variable name collision solved by better naming and positioning under the condition flow/rowset
 
 ## [17.0.25] - 2026-06-15
 
