@@ -2,12 +2,17 @@ package com.quadient.wfdxml.internal.layoutnodes;
 
 import com.quadient.wfdxml.api.layoutnodes.Flow;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
+import com.quadient.wfdxml.internal.HasLocalNodes;
 import com.quadient.wfdxml.internal.NodeImpl;
+import com.quadient.wfdxml.internal.layoutnodes.data.LAVariableIface.VariableType;
+import com.quadient.wfdxml.internal.layoutnodes.data.VariableImpl;
+import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType;
 import com.quadient.wfdxml.internal.layoutnodes.flow.ParagraphImpl;
 import com.quadient.wfdxml.internal.layoutnodes.support.FlowContent;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static com.quadient.wfdxml.internal.layoutnodes.FlowImpl.Type.CONDITION;
@@ -28,8 +33,9 @@ import static com.quadient.wfdxml.internal.layoutnodes.FlowImpl.Type.STRING;
 import static com.quadient.wfdxml.internal.layoutnodes.FlowImpl.Type.TEXT;
 import static com.quadient.wfdxml.internal.layoutnodes.FlowImpl.Type.VARIABLE_FORMATTED;
 
-public class FlowImpl extends NodeImpl<Flow> implements Flow {
+public class FlowImpl extends NodeImpl<Flow> implements Flow, HasLocalNodes {
     private final List<FlowCondition> flowConditions = new ArrayList<>();
+    private final List<NodeImpl> localNodes = new ArrayList<>();
     private Type type = SIMPLE;
     private Variable variable;
     private boolean sectionFlow = false;
@@ -290,6 +296,18 @@ public class FlowImpl extends NodeImpl<Flow> implements Flow {
     public FlowImpl setVariable(Variable variable) {
         this.variable = variable;
         return this;
+    }
+
+    @Override
+    public VariableImpl addVariable() {
+        VariableImpl var = new VariableImpl().setType(VariableType.CONSTANT).setNodeType(NodeType.STRING);
+        localNodes.add(var);
+        return var;
+    }
+
+    @Override
+    public List<NodeImpl> getLocalNodes() {
+        return Collections.unmodifiableList(localNodes);
     }
 
     enum Type {

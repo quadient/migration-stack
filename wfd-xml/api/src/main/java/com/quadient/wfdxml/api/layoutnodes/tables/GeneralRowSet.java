@@ -4,6 +4,8 @@ import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 
 public interface GeneralRowSet extends RowSet {
 
+    Variable addVariable();
+
     GeneralRowSet setType(RowSet.Type rowSetType);
 
     GeneralRowSet addCell(Cell cell);

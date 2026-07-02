@@ -8,6 +8,8 @@ public interface Flow extends Node<Flow> {
 
     Paragraph addParagraph();
 
+    Variable addVariable();
+
     boolean isSectionFlow();
 
     Flow setSectionFlow(boolean sectionFlow);

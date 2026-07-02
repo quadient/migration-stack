@@ -6,10 +6,15 @@ import com.quadient.wfdxml.api.layoutnodes.tables.Cell;
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet;
 import com.quadient.wfdxml.api.layoutnodes.tables.HeaderFooterRowSet;
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet;
+import com.quadient.wfdxml.internal.HasLocalNodes;
 import com.quadient.wfdxml.internal.NodeImpl;
+import com.quadient.wfdxml.internal.layoutnodes.data.LAVariableIface.VariableType;
+import com.quadient.wfdxml.internal.layoutnodes.data.VariableImpl;
+import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static com.quadient.wfdxml.internal.layoutnodes.tables.RowSetImpl.Type.HEADER_FOOTER;
@@ -22,8 +27,9 @@ import static com.quadient.wfdxml.internal.layoutnodes.tables.RowSetImpl.Type.SW
 import static com.quadient.wfdxml.internal.layoutnodes.tables.RowSetImpl.Type.SWITCH_INT;
 import static com.quadient.wfdxml.internal.layoutnodes.tables.RowSetImpl.Type.SWITCH_RANGE;
 
-public class RowSetImpl extends NodeImpl<RowSet> implements GeneralRowSet, HeaderFooterRowSet {
+public class RowSetImpl extends NodeImpl<RowSet> implements GeneralRowSet, HeaderFooterRowSet, HasLocalNodes {
     private final List<Node> subRows = new ArrayList<>();
+    private final List<NodeImpl> localNodes = new ArrayList<>();
     private final List<RowSetCondition> rowSetConditions = new ArrayList<>();
     private Variable variable;
     private Type rowSetType = ROW;
@@ -160,6 +166,18 @@ public class RowSetImpl extends NodeImpl<RowSet> implements GeneralRowSet, Heade
 
     public Variable getVariable() {
         return variable;
+    }
+
+    @Override
+    public VariableImpl addVariable() {
+        VariableImpl var = new VariableImpl().setType(VariableType.CONSTANT).setNodeType(NodeType.STRING);
+        localNodes.add(var);
+        return var;
+    }
+
+    @Override
+    public List<NodeImpl> getLocalNodes() {
+        return Collections.unmodifiableList(localNodes);
     }
 
     @Override

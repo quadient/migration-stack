@@ -411,6 +411,10 @@ class InteractiveDocumentObjectBuilderTest {
         val successFlowRef = condition[""].stringValue()
         val conditionVarRef = condition["VarId"].stringValue()
 
+        val conditionVarForwardRef = result["Variable"].first { it["Id"].stringValue() == conditionVarRef }
+        conditionVarForwardRef["ParentId"].stringValue().shouldBeEqualTo(conditionFlowRef)
+        conditionVarForwardRef["Name"].stringValue().shouldBeEqualTo("cond_R_1")
+
         val conditionVar = result["Variable"].last { it["Id"].stringValue() == conditionVarRef }
         conditionVar["VarType"].stringValue().shouldBeEqualTo("Bool")
         conditionVar["Type"].stringValue().shouldBeEqualTo("Calculated")
@@ -574,9 +578,14 @@ class InteractiveDocumentObjectBuilderTest {
 
         // then
         val conditionalRow = result["RowSet"].last { it["RowSetType"]?.stringValue() == "Condition" }
+        val conditionalRowId = conditionalRow["Id"].stringValue()
         val rowCondition = conditionalRow["RowSetCondition"][0]
         val subRowRef = rowCondition["SubRowId"].stringValue()
         val conditionVarRef = rowCondition["VariableId"].stringValue()
+
+        val conditionVarForwardRef = result["Variable"].first { it["Id"].stringValue() == conditionVarRef }
+        conditionVarForwardRef["ParentId"].stringValue().shouldBeEqualTo(conditionalRowId)
+        conditionVarForwardRef["Name"].stringValue().shouldBeEqualTo("cond_R_1")
 
         val conditionVar = result["Variable"].last { it["Id"].stringValue() == conditionVarRef }
         conditionVar["Type"].stringValue().shouldBeEqualTo("Calculated")
