@@ -209,7 +209,9 @@ abstract class InspireDocumentObjectBuilder(
     ): Flow {
         val conditionFlow = layout.addFlow().setType(Flow.Type.SELECT_BY_CONDITION)
         return conditionFlow.addLineForSelectByCondition(
-            conditionFlow.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
+            conditionFlow.addVariable()
+                .setName(conditionVariableName(rule))
+                .setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
                 .setScript(rule.toScript(
                     layout,
                     variableStructure,
@@ -232,7 +234,9 @@ abstract class InspireDocumentObjectBuilder(
         val successRow = innerRowSet ?: layout.addRowSet().setType(RowSet.Type.SINGLE_ROW)
         val conditionRowSet = layout.addRowSet().setType(RowSet.Type.SELECT_BY_CONDITION)
         return conditionRowSet.addLineForSelectByCondition(
-            conditionRowSet.addVariable().setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
+            conditionRowSet.addVariable()
+                .setName(conditionVariableName(rule))
+                .setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
                 .setScript(rule.toScript(
                     layout,
                     variableStructure,
@@ -245,6 +249,9 @@ abstract class InspireDocumentObjectBuilder(
             successRow
         )
     }
+
+    private fun conditionVariableName(rule: DisplayRule): String =
+        "cond_${rule.nameOrId()}"
 
     protected fun wrapRowSetInConditionIfNeeded(
         layout: Layout,
