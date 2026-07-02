@@ -312,4 +312,16 @@ class FlowImplTest extends Specification {
                              <SectionFlow>True</SectionFlow>
                              """)
     }
+
+    def "addVariable adds variable to localNodes"() {
+        given:
+        FlowImpl flow = new FlowImpl().setType(SELECT_BY_CONDITION)
+
+        when:
+        def variable = flow.addVariable().setName("cond_MyRule")
+
+        then:
+        assert flow.localNodes.size() == 1
+        assert flow.localNodes[0].is(variable)
+    }
 }

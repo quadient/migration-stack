@@ -336,4 +336,16 @@ class RowSetImplTest extends Specification {
                         <TreatDefaultAsError>True</TreatDefaultAsError>
                         """)
     }
+
+    def "addVariable adds variable to localNodes"() {
+        given:
+        RowSetImpl rowSet = new RowSetImpl().setType(SELECT_BY_CONDITION)
+
+        when:
+        def variable = rowSet.addVariable().setName("cond_MyRule")
+
+        then:
+        assert rowSet.localNodes.size() == 1
+        assert rowSet.localNodes[0].is(variable)
+    }
 }

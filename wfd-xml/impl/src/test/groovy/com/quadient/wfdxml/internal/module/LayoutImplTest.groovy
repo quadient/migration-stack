@@ -8,6 +8,7 @@ import com.quadient.wfdxml.api.layoutnodes.TextStyle
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.layoutnodes.tables.Cell
+import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.Table
 import com.quadient.wfdxml.api.module.Layout
@@ -207,5 +208,43 @@ class LayoutImplTest extends Specification {
 
         then:
         assert result.contains("<ParentId>Def.FlowGroup</ParentId><CustomProperty>{&quot;ValueWrapperVariable&quot;:true,&quot;Version&quot;:2,&quot;DisplayName&quot;:&quot;Flow with multiple properties&quot;}</CustomProperty>")
+    }
+
+    def "local variable of a condition flow is exported with flow as parentId"() {
+        given:
+        Layout layout = new LayoutImpl()
+        def condFlow = layout.addFlow()
+                .setType(Flow.Type.SELECT_BY_CONDITION)
+                .setName("CondFlow")
+                .setId("CondFlowId")
+        condFlow.addVariable().setName("cond_MyRule").setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
+
+        when:
+        layout.exportLayoutDelta(exporter)
+        String result = exporter.buildString()
+
+        then:
+        assert result.contains("<Name>cond_MyRule</Name>")
+        assert result.contains("<Type>Calculated</Type>")
+        assert result.contains("<ParentId>CondFlowId</ParentId>")
+    }
+
+    def "local variable of a condition rowset is exported with rowset as parentId"() {
+        given:
+        Layout layout = new LayoutImpl()
+        def condRowSet = layout.addRowSet()
+                .setType(RowSet.Type.SELECT_BY_CONDITION)
+                .setName("CondRowSet")
+                .setId("CondRowSetId") as GeneralRowSet
+        condRowSet.addVariable().setName("cond_MyRule").setKind(VariableKind.CALCULATED).setDataType(DataType.BOOL)
+
+        when:
+        layout.exportLayoutDelta(exporter)
+        String result = exporter.buildString()
+
+        then:
+        assert result.contains("<Name>cond_MyRule</Name>")
+        assert result.contains("<Type>Calculated</Type>")
+        assert result.contains("<ParentId>CondRowSetId</ParentId>")
     }
 }

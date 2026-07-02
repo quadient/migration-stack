@@ -9,6 +9,7 @@ import com.quadient.wfdxml.api.layoutnodes.tables.HeaderFooterRowSet;
 import com.quadient.wfdxml.api.module.Layout;
 import com.quadient.wfdxml.internal.DefaultNodeType;
 import com.quadient.wfdxml.internal.Group;
+import com.quadient.wfdxml.internal.HasLocalNodes;
 import com.quadient.wfdxml.internal.NodeImpl;
 import com.quadient.wfdxml.internal.Tree;
 import com.quadient.wfdxml.internal.layoutnodes.*;
@@ -374,7 +375,14 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
             if (child instanceof Tree) {
                 exportTree((Tree) child, exporter);
             }
-
+            if (child instanceof HasLocalNodes holder && !holder.getLocalNodes().isEmpty()) {
+                for (NodeImpl localNode : holder.getLocalNodes()) {
+                    exporter.beginElement(localNode.getXmlElementName());
+                    exporter.addElementWithIface("Id", localNode);
+                    localNode.export(exporter);
+                    exporter.endElement();
+                }
+            }
         }
     }
 
