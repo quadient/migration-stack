@@ -22,12 +22,12 @@ import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
-import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.ipsclient.Version
 import com.quadient.migration.service.resolveTargetDir
+import com.quadient.migration.shared.Categorization
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.toIcmPath
@@ -75,56 +75,12 @@ class EvolveDeployClient(
     storage,
 ) {
     init {
-        // Clear existing postprocessors for Interactive output, since
+        // Clear existing postprocessors for Interactive output since
         // they are not valid for Evolve output
         clearPostProcessors()
-
-        addPostProcessor { result ->
-            val targetVersion = caClient.targetVersion
-            if (targetVersion == null) {
-                logger.error("Failed to retrieve target CA version, skipping categorization")
-                return@addPostProcessor
-            }
-
-            if (targetVersion < Version(26, 6, 0, 0)) {
-                logger.warn("Target CA version $targetVersion does not support categorization API, skipping categorization for deployed objects")
-                return@addPostProcessor
-            }
-
-            val allowedTypes = listOf(
-                ResourceType.DocumentObject,
-                ResourceType.Image,
-                ResourceType.Attachment,
-                ResourceType.DisplayRule
-            ).toTypedArray()
-
-            val categorizations = postProcess.prepareData("metadata", result, *allowedTypes) { info, obj ->
-                val metadata = when (obj) {
-                    is DocumentObject -> obj.metadata
-                    is Image -> obj.metadata
-                    is DisplayRule -> obj.metadata
-                    is Attachment -> obj.metadata
-                    else -> emptyList()
-                }.filterIsInstance<com.quadient.migration.shared.Categorization>()
-
-                if (metadata.isEmpty()) {
-                    null
-                } else {
-                    info to metadata
-                }
-            }
-
-            for ((info, categorization) in categorizations) {
-                caClient.setCategorization(
-                    CategorizationUpdateDto(info.targetPath.toString(), categorization.map {
-                        CategorizationDto(it.name, null, it.fields.map { field ->
-                            CategorizationFieldDto(field.key, field.value.map { value -> value.serialize() })
-                        })
-                    })
-                )
-            }
-        }
     }
+
+    private val canCategorize by lazy { canCategorize() }
 
     private val evolveConfig by lazy {
         requireNotNull(migConfig.inspireConfig.evolveConfig) {
@@ -167,15 +123,25 @@ class EvolveDeployClient(
                         baseTemplatePath,
                         jld
                     )
+
                     if (result !is HttpResult.Success) {
                         return result.toOperationResult()
                     }
 
-                    caClient.executeAction(
+                    val publishResult = caClient.executeAction(
                         evolveConfig.publishTemplateActionId,
                         result.response.draft.guid,
                         ObjectType.TemplateDraft,
-                    ).toOperationResult()
+                    )
+                    if (publishResult !is HttpResult.Success) {
+                        return publishResult.toOperationResult()
+                    }
+
+                    if (canCategorize) {
+                        obj.metadata.filterIsInstance<Categorization>().executeHttp(targetPath)
+                    } else {
+                        publishResult
+                    }.toOperationResult()
                 }
 
                 DocumentObjectType.Snippet -> OperationResult.Failure("Snippets are not currently supported in Evolve output")
@@ -184,11 +150,21 @@ class EvolveDeployClient(
                     if (result !is HttpResult.Success) {
                         return result.toOperationResult()
                     }
-                    caClient.executeAction(
+                    val publishResult = caClient.executeAction(
                         evolveConfig.publishBlockActionId,
                         result.response.draft.guid,
                         ObjectType.BlockDraft,
-                    ).toOperationResult()
+                    )
+
+                    if (publishResult !is HttpResult.Success) {
+                        return publishResult.toOperationResult()
+                    }
+
+                    if (canCategorize) {
+                        obj.metadata.filterIsInstance<Categorization>().executeHttp(targetPath)
+                    } else {
+                        publishResult
+                    }.toOperationResult()
                 }
             }
         } finally {
@@ -203,11 +179,30 @@ class EvolveDeployClient(
             is OperationResult.Success -> {}
             is OperationResult.Failure -> return result
         }
-        return caClient.uploadResource(targetPath, data).toOperationResult()
+
+        val result = caClient.uploadResource(targetPath, data)
+        if (result !is HttpResult.Success) {
+            return result.toOperationResult()
+        }
+
+        return if (canCategorize) {
+            img.metadata.filterIsInstance<Categorization>().executeHttp(targetPath)
+        } else {
+            result
+        }.toOperationResult()
     }
 
     override fun uploadAttachment(att: Attachment, targetPath: IcmPath, data: ByteArray): OperationResult {
-        return caClient.uploadResource(targetPath, data).toOperationResult()
+        val result = caClient.uploadResource(targetPath, data)
+        if (result !is HttpResult.Success) {
+            return result.toOperationResult()
+        }
+
+        return if (canCategorize) {
+            att.metadata.filterIsInstance<Categorization>().executeHttp(targetPath)
+        } else {
+            result
+        }.toOperationResult()
     }
 
     override fun uploadDisplayRule(rule: DisplayRule, targetPath: IcmPath, data: ByteArray): OperationResult {
@@ -221,11 +216,20 @@ class EvolveDeployClient(
         val result =  caClient.createRuleDraft(rule.nameOrId(), resolvedFolder, baseTemplatePath, data)
         if (result !is HttpResult.Success) return result.toOperationResult()
 
-        return caClient.executeAction(
+        val publishResult = caClient.executeAction(
             evolveConfig.publishRuleActionId,
             result.response.guid,
             ObjectType.RuleDraft,
-        ).toOperationResult()
+        )
+        if (publishResult !is HttpResult.Success) {
+            return publishResult.toOperationResult()
+        }
+
+        return if (canCategorize) {
+            rule.metadata.filterIsInstance<Categorization>().executeHttp(targetPath)
+        } else {
+            publishResult
+        }.toOperationResult()
     }
 
     override fun deployStyles() {
@@ -236,5 +240,34 @@ class EvolveDeployClient(
         is HttpResult.Success -> OperationResult.Success
         is HttpResult.Failure -> OperationResult.Failure("CA API error ${error.status}: ${error.title} - ${error.detail}")
         is HttpResult.Exception -> OperationResult.Failure(cause.message ?: cause.toString())
+    }
+
+    private fun canCategorize(): Boolean {
+        val targetVersion = caClient.targetVersion
+        if (targetVersion == null) {
+            logger.error("Failed to retrieve target CA version, skipping categorization")
+            return false
+        }
+
+        if (targetVersion < Version(26, 6, 0, 0)) {
+            logger.warn("Target CA version $targetVersion does not support categorization API, skipping categorization for deployed objects")
+            return false
+        }
+
+        return true
+    }
+
+    private fun List<Categorization>.executeHttp(targetPath: IcmPath): HttpResult<Unit, ApiBadRequestException> {
+        if (this.isEmpty()) {
+            return HttpResult.Success(Unit)
+        }
+
+        return caClient.setCategorization(
+            CategorizationUpdateDto(targetPath.toString(), this.map {
+                CategorizationDto(it.name, it.name, it.fields.map { field ->
+                    CategorizationFieldDto(field.key, field.value.map { value -> value.serialize() })
+                })
+            })
+        )
     }
 }
