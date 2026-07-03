@@ -34,10 +34,8 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aProjectConfig
-import com.quadient.migration.tools.shouldBeEmpty
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfInstance
-import com.quadient.migration.tools.shouldBeOfSize
 import com.quadient.migration.tools.shouldStartWith
 import io.mockk.every
 import io.mockk.mockk
@@ -46,7 +44,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import kotlin.uuid.Uuid
 
 class EvolveDeployClientTest {
     val metadataValidator = MetadataValidatorImpl()
@@ -125,6 +122,7 @@ class EvolveDeployClientTest {
         every { ipsService.deployJld(any<IcmPath>(), any<String>(), any<String>(), any<String>(), any<String>()) } returns OperationResult.Success
         every { ipsService.download(any<String>()) } returns jld
         every { ipsService.delete(any<String>()) } returns true
+        every { caClient.targetVersion } returns null
     }
 
     @Test
@@ -476,99 +474,72 @@ class EvolveDeployClientTest {
     }
 
     @Nested
-    inner class CategorizationPostProcessorTest {
-        val realPostProcess = PostProcessImpl(
-            ipsService = ipsService,
-            documentObjectRepository = documentObjectRepository,
-            imageRepository = imageRepository,
-            attachmentRepository = attachmentRepository,
-            displayRuleRepository = displayRuleRepository,
-            textStyleRepository = textStyleRepository,
-            paragraphStyleRepository = paragraphStyleRepository,
-        )
+    inner class CategorizationTest {
 
-        private val innerSubject = EvolveDeployClient(
-            projectConfig,
-            migConfig,
-            caClient,
-            resourcePathProvider,
-            MetadataValidatorImpl(),
-            realPostProcess,
-            conflictDetector,
-            progressReporter,
-            documentObjectRepository,
-            imageRepository,
-            attachmentRepository,
-            statusTrackingRepository,
-            textStyleRepository,
-            paragraphStyleRepository,
-            displayRuleRepository,
-            variableRepository,
-            variableStructureRepository,
-            documentObjectBuilder,
-            ipsService,
-            storage,
-        )
-
-        private val categorizationPostProcessor: PostProcessor = innerSubject.clearPostProcessors().single()
-
-        private fun aDeploymentResult(vararg infos: DeploymentInfo) = DeploymentResult(
-            deploymentId = Uuid.random(),
-            deployed = infos.toMutableList(),
-        )
+        @BeforeEach
+        fun setup() {
+            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+        }
 
         @Test
-        fun `post processor does nothing when targetVersion is null`() {
+        fun `categorization is skipped when targetVersion is null`() {
             every { caClient.targetVersion } returns null
+            val img = ImageBuilder("img1").categorization("Cat") { string("key", "val") }.build()
+            val targetPath = "icm://path/img1.jpg".toIcmPath()
+            val data = byteArrayOf(1, 2, 3)
+            every { ipsService.tryUpload(targetPath, data) } returns OperationResult.Success
+            every { caClient.uploadResource(targetPath, data) } returns HttpResult.Success(Unit)
 
-            val result = aDeploymentResult(
-                DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://path/doc1.jld".toIcmPath())
-            )
-            categorizationPostProcessor(result)
+            subject.uploadImage(img, targetPath, data)
 
             verify(exactly = 0) { caClient.setCategorization(any()) }
-            result.warnings.shouldBeEmpty()
         }
 
         @Test
-        fun `post processor does nothing when targetVersion is less than 26_6_0_0`() {
+        fun `categorization is skipped when targetVersion is less than 26_6_0_0`() {
             every { caClient.targetVersion } returns Version(26, 5, 9, 9)
+            val img = ImageBuilder("img1").categorization("Cat") { string("key", "val") }.build()
+            val targetPath = "icm://path/img1.jpg".toIcmPath()
+            val data = byteArrayOf(1, 2, 3)
+            every { ipsService.tryUpload(targetPath, data) } returns OperationResult.Success
+            every { caClient.uploadResource(targetPath, data) } returns HttpResult.Success(Unit)
 
-            val result = aDeploymentResult(
-                DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://path/doc1.jld".toIcmPath())
-            )
-            categorizationPostProcessor(result)
+            subject.uploadImage(img, targetPath, data)
 
             verify(exactly = 0) { caClient.setCategorization(any()) }
-            result.warnings.shouldBeEmpty()
         }
 
         @Test
-        fun `post processor does nothing when deployed DocumentObject has no categorization metadata`() {
-            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+        fun `categorization is skipped when DocumentObject has no categorization metadata`() {
             val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template).build()
-            every { documentObjectRepository.find("doc1") } returns doc
-
-            val result = aDeploymentResult(
-                DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://path/doc1.jld".toIcmPath())
+            val targetPath = "icm://path/doc1.jld".toIcmPath()
+            val draftResult = DraftJsonIpsResult(
+                draft = CreateDraftResult(guid = draftGuid, url = "http://example.com"),
+                result = CreateIcmObjectResult(valid = true)
             )
-            categorizationPostProcessor(result)
+            every { caClient.createTemplateDraft(any(), any(), any(), any()) } returns HttpResult.Success(draftResult)
+            every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Success(Unit)
+
+            subject.uploadDocumentObject(doc, targetPath, "<xml/>")
 
             verify(exactly = 0) { caClient.setCategorization(any()) }
         }
 
         @Test
-        fun `post processor calls setCategorization for DocumentObject with categorization`() {
-            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+        fun `setCategorization is called for DocumentObject with categorization`() {
             val targetPath = "icm://Interactive/tenant/defaultFolder/doc1.jld".toIcmPath()
             val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template)
                 .categorization("MyCat") { string("fieldA", "value1") }
                 .build()
-            every { documentObjectRepository.find("doc1") } returns doc
+            val draftResult = DraftJsonIpsResult(
+                draft = CreateDraftResult(guid = draftGuid, url = "http://example.com"),
+                result = CreateIcmObjectResult(valid = true)
+            )
+            every { caClient.createTemplateDraft(any(), any(), any(), any()) } returns HttpResult.Success(draftResult)
+            every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Success(Unit)
             every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
 
-            val result = aDeploymentResult(DeploymentInfo("doc1", ResourceType.DocumentObject, targetPath))
-            categorizationPostProcessor(result)
+            subject.uploadDocumentObject(doc, targetPath, "<xml/>")
 
             verify {
                 caClient.setCategorization(
@@ -583,17 +554,17 @@ class EvolveDeployClientTest {
         }
 
         @Test
-        fun `post processor calls setCategorization for Image with categorization`() {
-            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+        fun `setCategorization is called for Image with categorization`() {
             val targetPath = "icm://path/img1.jpg".toIcmPath()
             val img = ImageBuilder("img1")
                 .categorization("ImgCat") { string("color", "red") }
                 .build()
-            every { imageRepository.find("img1") } returns img
+            val data = byteArrayOf(1, 2, 3)
+            every { ipsService.tryUpload(targetPath, data) } returns OperationResult.Success
+            every { caClient.uploadResource(targetPath, data) } returns HttpResult.Success(Unit)
             every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
 
-            val result = aDeploymentResult(DeploymentInfo("img1", ResourceType.Image, targetPath))
-            categorizationPostProcessor(result)
+            subject.uploadImage(img, targetPath, data)
 
             verify {
                 caClient.setCategorization(
@@ -608,17 +579,16 @@ class EvolveDeployClientTest {
         }
 
         @Test
-        fun `post processor calls setCategorization for Attachment with categorization`() {
-            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+        fun `setCategorization is called for Attachment with categorization`() {
             val targetPath = "icm://path/att1.pdf".toIcmPath()
             val att = AttachmentBuilder("att1")
                 .categorization("AttCat") { bool("active", true) }
                 .build()
-            every { attachmentRepository.find("att1") } returns att
+            val data = byteArrayOf(4, 5, 6)
+            every { caClient.uploadResource(targetPath, data) } returns HttpResult.Success(Unit)
             every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
 
-            val result = aDeploymentResult(DeploymentInfo("att1", ResourceType.Attachment, targetPath))
-            categorizationPostProcessor(result)
+            subject.uploadAttachment(att, targetPath, data)
 
             verify {
                 caClient.setCategorization(
@@ -633,17 +603,17 @@ class EvolveDeployClientTest {
         }
 
         @Test
-        fun `post processor calls setCategorization for DisplayRule with categorization`() {
-            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+        fun `setCategorization is called for DisplayRule with categorization`() {
             val targetPath = "icm://path/rule1.jrd".toIcmPath()
             val rule = DisplayRuleBuilder("rule1")
                 .categorization("RuleCat") { string("type", "discount") }
                 .build()
-            every { displayRuleRepository.find("rule1") } returns rule
+            val data = byteArrayOf(10, 20, 30)
+            every { caClient.createRuleDraft(any(), any(), any(), any()) } returns HttpResult.Success(CreateDraftWithVFFResult(guid = ruleGuid, url = "http://example.com/rule"))
+            every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Success(Unit)
             every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
 
-            val result = aDeploymentResult(DeploymentInfo("rule1", ResourceType.DisplayRule, targetPath))
-            categorizationPostProcessor(result)
+            subject.uploadDisplayRule(rule, targetPath, data)
 
             verify {
                 caClient.setCategorization(
@@ -658,36 +628,36 @@ class EvolveDeployClientTest {
         }
 
         @Test
-        fun `post processor skips TextStyle and ParagraphStyle resources`() {
-            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+        fun `categorization is skipped for resources without categorization metadata`() {
+            val img = ImageBuilder("img1").build()
+            val targetPath = "icm://path/img1.jpg".toIcmPath()
+            val data = byteArrayOf(1, 2, 3)
+            every { ipsService.tryUpload(targetPath, data) } returns OperationResult.Success
+            every { caClient.uploadResource(targetPath, data) } returns HttpResult.Success(Unit)
 
-            val result = aDeploymentResult(
-                DeploymentInfo("ts1", ResourceType.TextStyle, "icm://path/ts1".toIcmPath()),
-                DeploymentInfo("ps1", ResourceType.ParagraphStyle, "icm://path/ps1".toIcmPath()),
-            )
-            categorizationPostProcessor(result)
+            subject.uploadImage(img, targetPath, data)
 
             verify(exactly = 0) { caClient.setCategorization(any()) }
-            result.warnings.shouldBeEmpty()
         }
 
         @Test
-        fun `post processor adds warning and skips setCategorization when repository returns null`() {
-            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
-            every { documentObjectRepository.find("doc1") } returns null
-
-            val result = aDeploymentResult(
-                DeploymentInfo("doc1", ResourceType.DocumentObject, "icm://path/doc1.jld".toIcmPath())
+        fun `categorization is skipped when DocumentObject has no categorization metadata and upload succeeds`() {
+            val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template).build()
+            val targetPath = "icm://path/doc1.jld".toIcmPath()
+            val draftResult = DraftJsonIpsResult(
+                draft = CreateDraftResult(guid = draftGuid, url = "http://example.com"),
+                result = CreateIcmObjectResult(valid = true)
             )
-            categorizationPostProcessor(result)
+            every { caClient.createTemplateDraft(any(), any(), any(), any()) } returns HttpResult.Success(draftResult)
+            every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Success(Unit)
+
+            subject.uploadDocumentObject(doc, targetPath, "<xml/>")
 
             verify(exactly = 0) { caClient.setCategorization(any()) }
-            result.warnings.shouldBeOfSize(1)
         }
 
         @Test
-        fun `post processor calls setCategorization once per deployed item with categorization`() {
-            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+        fun `setCategorization is called once per uploaded item with categorization`() {
             val path1 = "icm://path/doc1.jld".toIcmPath()
             val path2 = "icm://path/doc2.jld".toIcmPath()
             val doc1 = DocumentObjectBuilder("doc1", DocumentObjectType.Template)
@@ -696,32 +666,36 @@ class EvolveDeployClientTest {
             val doc2 = DocumentObjectBuilder("doc2", DocumentObjectType.Template)
                 .categorization("Cat") { string("key", "val2") }
                 .build()
-            every { documentObjectRepository.find("doc1") } returns doc1
-            every { documentObjectRepository.find("doc2") } returns doc2
+            val draftResult = DraftJsonIpsResult(
+                draft = CreateDraftResult(guid = draftGuid, url = "http://example.com"),
+                result = CreateIcmObjectResult(valid = true)
+            )
+            every { caClient.createTemplateDraft(any(), any(), any(), any()) } returns HttpResult.Success(draftResult)
+            every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Success(Unit)
             every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
 
-            val result = aDeploymentResult(
-                DeploymentInfo("doc1", ResourceType.DocumentObject, path1),
-                DeploymentInfo("doc2", ResourceType.DocumentObject, path2),
-            )
-            categorizationPostProcessor(result)
+            subject.uploadDocumentObject(doc1, path1, "<xml/>")
+            subject.uploadDocumentObject(doc2, path2, "<xml/>")
 
             verify(exactly = 2) { caClient.setCategorization(any()) }
         }
 
         @Test
-        fun `post processor handles multiple categorizations on the same object`() {
-            every { caClient.targetVersion } returns Version(26, 6, 0, 0)
+        fun `setCategorization is called with all categorizations for the same object`() {
             val targetPath = "icm://path/doc1.jld".toIcmPath()
             val doc = DocumentObjectBuilder("doc1", DocumentObjectType.Template)
                 .categorization("CatA") { string("fieldA", "valueA") }
                 .categorization("CatB") { string("fieldB", "valueB") }
                 .build()
-            every { documentObjectRepository.find("doc1") } returns doc
+            val draftResult = DraftJsonIpsResult(
+                draft = CreateDraftResult(guid = draftGuid, url = "http://example.com"),
+                result = CreateIcmObjectResult(valid = true)
+            )
+            every { caClient.createTemplateDraft(any(), any(), any(), any()) } returns HttpResult.Success(draftResult)
+            every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Success(Unit)
             every { caClient.setCategorization(any()) } returns HttpResult.Success(Unit)
 
-            val result = aDeploymentResult(DeploymentInfo("doc1", ResourceType.DocumentObject, targetPath))
-            categorizationPostProcessor(result)
+            subject.uploadDocumentObject(doc, targetPath, "<xml/>")
 
             verify {
                 caClient.setCategorization(

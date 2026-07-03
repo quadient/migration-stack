@@ -264,7 +264,7 @@ class EvolveDeployClient(
 
         return caClient.setCategorization(
             CategorizationUpdateDto(targetPath.toString(), this.map {
-                CategorizationDto(it.name, it.name, it.fields.map { field ->
+                CategorizationDto(it.name, null, it.fields.map { field ->
                     CategorizationFieldDto(field.key, field.value.map { value -> value.serialize() })
                 })
             })
