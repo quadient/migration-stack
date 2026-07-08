@@ -28,7 +28,10 @@ import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilde
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmFileMetadata
+import com.quadient.migration.shared.IcmMetadata
 import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.MetadataValue
 import kotlin.time.Clock
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -76,7 +79,36 @@ class DesignerDeployClient(
     storage
 ) {
     init {
-        addPostProcessor(postProcess::metadataPostProcessor)
+        addPostProcessor { deploymentResult ->
+            val allowedTypes = listOf(
+                ResourceType.DocumentObject,
+                ResourceType.Image,
+                ResourceType.Attachment,
+                ResourceType.DisplayRule
+            ).toTypedArray()
+            val meta = postProcess.prepareData("metadata", deploymentResult, *allowedTypes) { info, obj ->
+                val metadata = when (obj) {
+                    is DocumentObject -> obj.metadata
+                    is Image -> obj.metadata
+                    is DisplayRule -> obj.metadata
+                    is Attachment -> obj.metadata
+                    else -> emptyList()
+                }
+
+                val result = metadata
+                    .filterIsInstance<IcmMetadata>()
+                    .associate { it.key to MetadataValue(it.value) }
+                if (result.isEmpty()) {
+                    null
+                } else {
+                    IcmFileMetadata(path = info.targetPath.toString(), metadata = result)
+                }
+            }.toList()
+
+            logger.debug("Writing metadata for ${meta.size} deployed document objects.")
+            ipsService.writeMetadata(meta)
+            logger.debug("Finished writing metadata for deployed document objects.")
+        }
     }
 
     override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {

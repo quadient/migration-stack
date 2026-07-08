@@ -44,10 +44,6 @@ class PostProcessImpl(
     override val postProcessors: List<PostProcessor>
         get() = _postProcessors.toList()
 
-    init {
-        addPostProcessor(::metadataPostProcessor)
-    }
-
     override fun addPostProcessor(processor: PostProcessor) {
         _postProcessors.add(processor)
     }
@@ -90,47 +86,5 @@ class PostProcessImpl(
 
                 info to obj
             }.mapNotNull { (info, obj) -> transform(info, obj) }
-    }
-
-    fun metadataPostProcessor(deploymentResult: DeploymentResult) {
-        val allowedTypes = listOf(
-            ResourceType.DocumentObject,
-            ResourceType.Image,
-            ResourceType.Attachment,
-            ResourceType.DisplayRule
-        ).toTypedArray()
-        val meta = prepareData("metadata", deploymentResult, *allowedTypes) { info, obj ->
-            val metadata = when (obj) {
-                is DocumentObject -> obj.metadata
-                is Image -> obj.metadata
-                is DisplayRule -> obj.metadata
-                is Attachment -> obj.metadata
-                else -> emptyList()
-            }
-
-            val (icmMetadata, categorizations) = metadata.partitionByType<IcmMetadata, Categorization>()
-            val assignedCategorizations = categorizations.map { it.name }
-
-            val cats = categorizations.flatMap { cat ->
-                cat.fields.map { field ->
-                    "${cat.name}_${field.key}" to MetadataValue(field.value.map { it.toMetadataPrimitive() })
-                }
-            }.toMap().toMutableMap()
-
-            if (assignedCategorizations.isNotEmpty()) {
-                cats["Assigned Categorizations"] = MetadataValue(assignedCategorizations.map(MetadataPrimitive::Str))
-            }
-
-            val result = icmMetadata.associate { it.key to MetadataValue(it.value) } + cats
-            if (result.isEmpty()) {
-                null
-            } else {
-                IcmFileMetadata(path = info.targetPath.toString(), metadata = result)
-            }
-        }.toList()
-
-        logger.debug("Writing metadata for ${meta.size} deployed document objects.")
-        ipsService.writeMetadata(meta)
-        logger.debug("Finished writing metadata for deployed document objects.")
     }
 }

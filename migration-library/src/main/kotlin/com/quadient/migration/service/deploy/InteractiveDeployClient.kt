@@ -40,14 +40,21 @@ import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilde
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTarget
+import com.quadient.migration.shared.Categorization
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.Jrd
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.IcmFileMetadata
+import com.quadient.migration.shared.IcmMetadata
+import com.quadient.migration.shared.MetadataPrimitive
+import com.quadient.migration.shared.MetadataValue
+import com.quadient.migration.tools.partitionByType
 import kotlin.time.Clock
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.json.extract
+import kotlin.collections.plus
 import kotlin.uuid.Uuid
 
 open class InteractiveDeployClient(
@@ -90,7 +97,48 @@ open class InteractiveDeployClient(
     storage,
 ) {
     init {
-        addPostProcessor(postProcess::metadataPostProcessor)
+        addPostProcessor { deploymentResult ->
+            val allowedTypes = listOf(
+                ResourceType.DocumentObject,
+                ResourceType.Image,
+                ResourceType.Attachment,
+                ResourceType.DisplayRule
+            ).toTypedArray()
+            val meta = postProcess.prepareData("metadata", deploymentResult, *allowedTypes) { info, obj ->
+                val metadata = when (obj) {
+                    is DocumentObject -> obj.metadata
+                    is Image -> obj.metadata
+                    is DisplayRule -> obj.metadata
+                    is Attachment -> obj.metadata
+                    else -> emptyList()
+                }
+
+                val (icmMetadata, categorizations) = metadata.partitionByType<IcmMetadata, Categorization>()
+                val assignedCategorizations = categorizations.map { it.name }
+
+                val cats = categorizations.flatMap { cat ->
+                    cat.fields.map { field ->
+                        "${cat.name}_${field.key}" to MetadataValue(field.value.map { it.toMetadataPrimitive() })
+                    }
+                }.toMap().toMutableMap()
+
+                if (assignedCategorizations.isNotEmpty()) {
+                    cats["Assigned Categorizations"] = MetadataValue(assignedCategorizations.map(MetadataPrimitive::Str))
+                }
+
+                val result = icmMetadata.associate { it.key to MetadataValue(it.value) } + cats
+                if (result.isEmpty()) {
+                    null
+                } else {
+                    IcmFileMetadata(path = info.targetPath.toString(), metadata = result)
+                }
+            }.toList()
+
+            logger.debug("Writing metadata for ${meta.size} deployed document objects.")
+            ipsService.writeMetadata(meta)
+            logger.debug("Finished writing metadata for deployed document objects.")
+        }
+
         addPostProcessor { deploymentResult ->
             val approvalResult = ipsService.setProductionApprovalState(deploymentResult.deployed.map { it.targetPath })
             if (approvalResult == OperationResult.Success) {

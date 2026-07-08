@@ -17,14 +17,10 @@ import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.Storage
-import com.quadient.migration.service.deploy.utility.DeploymentInfo
-import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
-import com.quadient.migration.service.deploy.utility.PostProcessor
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
-import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.ipsclient.IpsService
