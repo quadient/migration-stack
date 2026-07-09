@@ -1,5 +1,7 @@
 package com.quadient.wfdxml.internal.module.layout;
 
+import com.quadient.wfdxml.api.layoutnodes.Color;
+import com.quadient.wfdxml.api.layoutnodes.FillStyle;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.internal.DefaultNodeType;
 import com.quadient.wfdxml.internal.HasLocalNodes;
@@ -39,28 +41,28 @@ public class ForwardReferencesExporter {
         exportTree(layout, false);
     }
 
-    public void exportForwardReferences(Boolean useExistingVariables) {
-        exportTree(layout, useExistingVariables);
+    public void exportForwardReferences(Boolean useExisting) {
+        exportTree(layout, useExisting);
     }
 
-    private void exportTree(Tree tree, Boolean useExistingVariables) {
+    private void exportTree(Tree tree, Boolean useExisting) {
         for (Object c : tree.children) {
             NodeImpl child = (NodeImpl) c;
             if (!rootDefNodes.contains(child) && child.getId() == null) {
-                writeForwardReferenceToExporter(child, tree, useExistingVariables);
+                writeForwardReferenceToExporter(child, tree, useExisting);
             }
             if (child instanceof Tree) {
-                exportTree((Tree) child, useExistingVariables);
+                exportTree((Tree) child, useExisting);
             }
             if (child instanceof HasLocalNodes holder && !holder.getLocalNodes().isEmpty()) {
                 for (NodeImpl localNode : holder.getLocalNodes()) {
-                    writeForwardReferenceToExporter(localNode, child, useExistingVariables);
+                    writeForwardReferenceToExporter(localNode, child, useExisting);
                 }
             }
         }
     }
 
-    private void writeForwardReferenceToExporter(NodeImpl node, NodeImpl parent, Boolean useExistingVariables) {
+    private void writeForwardReferenceToExporter(NodeImpl node, NodeImpl parent, Boolean useExisting) {
         exporter.beginElement(node.getXmlElementName()).addElementWithIface("Id", node).addElementWithStringData("Name", node.getName()).addElementWithStringData("Comment", node.getComment());
 
         if (node instanceof Variable variable && variable.getExistingParentId() != null) {
@@ -84,7 +86,7 @@ public class ForwardReferencesExporter {
         }
 
         var forwardElement = exporter.beginElement("Forward");
-        if (node instanceof Variable && useExistingVariables) {
+        if ((node instanceof Variable || node instanceof Color || node instanceof FillStyle) && useExisting) {
             forwardElement.addBoolAttribute("useExisting", true);
         }
         forwardElement.endElement();
