@@ -1,9 +1,10 @@
 package com.quadient.migration.service.inspirebuilder
 
-import com.quadient.wfdxml.WfdXmlBuilder
+import com.quadient.migration.shared.Color
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
 import com.quadient.migration.tools.shouldNotBeNull
+import com.quadient.wfdxml.WfdXmlBuilder
 import org.junit.jupiter.api.Test
 
 class InspireBuilderUtilsTest {
@@ -36,75 +37,6 @@ class InspireBuilderUtilsTest {
         // then
         result.shouldNotBeNull()
         result.shouldBeEqualTo(targetStyle)
-    }
-
-    @Test
-    fun `getColorByRGB returns null for non-existent color`() {
-        // given
-        val builder = WfdXmlBuilder()
-        val layout = builder.addLayout()
-        layout.addColor().setRGB(255, 0, 0) // Red
-
-        // when
-        val result = getColorByRGB(layout, 0, 255, 0) // Looking for green
-
-        // then
-        result.shouldBeNull()
-    }
-
-    @Test
-    fun `getColorByRGB finds correct color among multiple`() {
-        // given
-        val builder = WfdXmlBuilder()
-        val layout = builder.addLayout()
-        layout.addColor().setRGB(255, 0, 0) // Red
-        val targetColor = layout.addColor().setRGB(0, 255, 0) // Green
-        layout.addColor().setRGB(0, 0, 255) // Blue
-
-        // when
-        val result = getColorByRGB(layout, 0, 255, 0)
-
-        // then
-        result.shouldNotBeNull()
-        result.shouldBeEqualTo(targetColor)
-    }
-
-    @Test
-    fun `getFillStyleByColor returns null for non-existent fill style`() {
-        // given
-        val builder = WfdXmlBuilder()
-        val layout = builder.addLayout()
-        val color1 = layout.addColor().setRGB(255, 0, 0)
-        layout.addFillStyle().setColor(color1)
-
-        val color2 = layout.addColor().setRGB(0, 255, 0)
-
-        // when
-        val result = getFillStyleByColor(layout, color2)
-
-        // then
-        result.shouldBeNull()
-    }
-
-    @Test
-    fun `getFillStyleByColor finds correct fill style among multiple`() {
-        // given
-        val builder = WfdXmlBuilder()
-        val layout = builder.addLayout()
-        val color1 = layout.addColor().setRGB(255, 0, 0)
-        val color2 = layout.addColor().setRGB(0, 255, 0)
-        val color3 = layout.addColor().setRGB(0, 0, 255)
-
-        layout.addFillStyle().setColor(color1)
-        val targetFillStyle = layout.addFillStyle().setColor(color2)
-        layout.addFillStyle().setColor(color3)
-
-        // when
-        val result = getFillStyleByColor(layout, color2)
-
-        // then
-        result.shouldNotBeNull()
-        result.shouldBeEqualTo(targetFillStyle)
     }
 
     @Test
@@ -181,5 +113,54 @@ class InspireBuilderUtilsTest {
         val result = sanitizeVariablePart("My  Special Name-1(Joe).:?!")
 
         result.shouldBeEqualTo("My__Special_Name_1_Joe_____")
+    }
+
+    @Test
+    fun `Color resolve creates color with correct name and displayName`() {
+        // given
+        val builder = WfdXmlBuilder()
+        val layout = builder.addLayout()
+        val color = Color(26, 43, 60)
+
+        // when
+        val fillStyle = color.resolve(layout)
+
+        // then
+        val layoutColor = (fillStyle as com.quadient.wfdxml.internal.layoutnodes.FillStyleImpl).color
+        layoutColor.name.shouldBeEqualTo("Color R26 G43 B60")
+        layoutColor.displayName.shouldBeEqualTo("Color R26 G43 B60")
+    }
+
+    @Test
+    fun `Color resolve creates fillStyle with correct name and displayName`() {
+        // given
+        val builder = WfdXmlBuilder()
+        val layout = builder.addLayout()
+        val color = Color(26, 43, 60)
+
+        // when
+        val fillStyle = color.resolve(layout)
+
+        // then
+        fillStyle.shouldNotBeNull()
+        fillStyle!!.name.shouldBeEqualTo("FillStyle R26 G43 B60")
+        fillStyle.displayName.shouldBeEqualTo("FillStyle R26 G43 B60")
+    }
+
+    @Test
+    fun `Color resolve reuses existing color and fillStyle`() {
+        // given
+        val builder = WfdXmlBuilder()
+        val layout = builder.addLayout()
+        val color = Color(26, 43, 60)
+
+        // when
+        val first = color.resolve(layout)
+        val second = color.resolve(layout)
+
+        // then
+        first.shouldNotBeNull()
+        second.shouldNotBeNull()
+        first.shouldBeEqualTo(second)
     }
 }

@@ -154,7 +154,7 @@ def displayRuleStateFrance = new DisplayRuleBuilder("displayRuleStateFrance")
 def normalStyle = new TextStyleBuilder("normalStyle")
         .definition {
             it.size(Size.ofPoints(10))
-            it.foregroundColor("#000000")
+            it.foregroundColor("#101010")
         }
         .build()
 
@@ -162,6 +162,7 @@ def headingStyle = new TextStyleBuilder("headingStyle")
         .definition {
             it.size(Size.ofPoints(12))
             it.bold(true)
+            it.foregroundColor(new Color(40, 40, 40))
         }
         .build()
 
@@ -246,6 +247,7 @@ def table = new TableBuilder()
             it.displayRuleRef(displayHeaderRule)
             it.addCell {
                 it.border {
+                    it.fill(Color.fromHex("#C0C0C0"))
                     it.allBorders(borderColor, borderWidth)
                     it.padding(headerPadding)
                     it.paddingLeft(Size.ofMillimeters(0))
@@ -256,6 +258,7 @@ def table = new TableBuilder()
             }
             it.addCell() {
                 it.border {
+                    it.fill(Color.fromHex("#C0C0C0"))
                     it.allBorders(borderColor, borderWidth)
                     it.padding(headerPadding)
                     it.paddingLeft(Size.ofMillimeters(0))
@@ -265,6 +268,7 @@ def table = new TableBuilder()
             }
             it.addCell {
                 it.border {
+                    it.fill(Color.fromHex("#C0C0C0"))
                     it.allBorders(borderColor, borderWidth)
                     it.padding(headerPadding)
                     it.paddingLeft(Size.ofMillimeters(0))
@@ -312,15 +316,15 @@ def table = new TableBuilder()
 
         .addLastFooterRow {
             it.addCell {
-                it.border { it.allBorders(borderColor, borderWidth) }
+                it.border { it.allBorders(borderColor, borderWidth).fill(Color.fromHex("#b3bcc9")) }
                 it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Total") } }
             }
             it.addCell {
-                it.border { it.allBorders(borderColor, borderWidth) }
+                it.border { it.allBorders(borderColor, borderWidth).fill(Color.fromHex("#b3bcc9")) }
                 it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("2 keys") } }
             }
             it.addCell {
-                it.border { it.allBorders(borderColor, borderWidth) }
+                it.border { it.allBorders(borderColor, borderWidth).fill(Color.fromHex("#b3bcc9")) }
                 it.paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("") } }
             }
         }

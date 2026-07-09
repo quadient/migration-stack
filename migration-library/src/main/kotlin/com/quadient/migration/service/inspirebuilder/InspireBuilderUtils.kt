@@ -104,7 +104,7 @@ fun getTableStyleByName(layout: Layout, styleName: String): com.quadient.wfdxml.
     return otherGroup.children.find { (it as? com.quadient.wfdxml.internal.layoutnodes.TableStyleImpl)?.name == styleName } as? com.quadient.wfdxml.api.layoutnodes.TableStyle
 }
 
-fun getColorByRGB(layout: Layout, r: Int, g: Int, b: Int): com.quadient.wfdxml.api.layoutnodes.Color? {
+private fun getColorByRGB(layout: Layout, r: Int, g: Int, b: Int): com.quadient.wfdxml.api.layoutnodes.Color? {
     val colorGroup = (layout as LayoutImpl).children.find { it.name == "Colors" } as Group
     val targetRed = r / 255.0
     val targetGreen = g / 255.0
@@ -117,19 +117,22 @@ fun getColorByRGB(layout: Layout, r: Int, g: Int, b: Int): com.quadient.wfdxml.a
 }
 
 fun Color.resolve(layout: Layout): FillStyle? {
+    val colorName = "Color R${this.red()} G${this.green()} B${this.blue()}"
     val layoutColor = getColorByRGB(layout, this.red(), this.green(), this.blue())
-        ?: layout.addColor().setName("Color R${this.red()} G${this.green()} B${this.blue()}")
+        ?: layout.addColor().setName(colorName).setDisplayName(colorName)
             .setRGB(this.red(), this.green(), this.blue())
 
-    return getFillStyleByColor(layout, layoutColor) ?: layout.addFillStyle().setColor(layoutColor)
+    val fillStyleName = "FillStyle R${this.red()} G${this.green()} B${this.blue()}"
+    return getFillStyleByColor(layout, layoutColor)
+        ?: layout.addFillStyle().setName(fillStyleName).setDisplayName(fillStyleName).setColor(layoutColor)
 }
 
-fun getFillStyleByColor(layout: Layout, color: com.quadient.wfdxml.api.layoutnodes.Color): com.quadient.wfdxml.api.layoutnodes.FillStyle? {
+private fun getFillStyleByColor(layout: Layout, color: com.quadient.wfdxml.api.layoutnodes.Color): FillStyle? {
     val fillStyleGroup = (layout as LayoutImpl).children.find { it.name == "FillStyles" } as Group
     return fillStyleGroup.children.find {
         val fillStyle = it as com.quadient.wfdxml.internal.layoutnodes.FillStyleImpl
         fillStyle.color == color
-    } as? com.quadient.wfdxml.api.layoutnodes.FillStyle
+    } as? FillStyle
 }
 
 fun getVariable(data: DataImpl, name: String, parentPath: String): VariableImpl? {
