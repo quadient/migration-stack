@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.26] - 2026-07-09
+
+### Added
+
 - Added support for categorization metadata for both evolve and flex targets
 - Table mapping with possibility to mark table for flattening during deployment
 
@@ -407,7 +415,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.25...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.26...HEAD
+[17.0.26]: https://github.com/quadient/migration-stack/compare/v17.0.25...v17.0.26
 [17.0.25]: https://github.com/quadient/migration-stack/compare/v17.0.24...v17.0.25
 [17.0.24]: https://github.com/quadient/migration-stack/compare/v17.0.23...v17.0.24
 [17.0.23]: https://github.com/quadient/migration-stack/compare/v17.0.22...v17.0.23
