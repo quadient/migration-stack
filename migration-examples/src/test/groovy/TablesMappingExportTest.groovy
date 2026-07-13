@@ -34,8 +34,8 @@ class TablesMappingExportTest {
 
         def expected = """\
             documentObjectId,documentObjectName (read-only),tableId,contentPreview (read-only),tableName,pdfTaggingRule,pdfAlternateText,action
-            doc1,My Doc,table:0,0 cols | 0 body rows,First,Default,,Keep
-            doc1,My Doc,table:1,0 cols | 0 body rows,Second,Table,Alt text,Flatten
+            doc1,My Doc,table:0,table: 0 cols | 0 body rows,First,Default,,Keep
+            doc1,My Doc,table:1,table: 0 cols | 0 body rows,Second,Table,Alt text,Flatten
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -57,8 +57,8 @@ class TablesMappingExportTest {
 
         def expected = """\
             documentObjectId,documentObjectName (read-only),tableId,contentPreview (read-only),tableName,pdfTaggingRule,pdfAlternateText,action
-            doc1,First Doc,table:0,0 cols | 0 body rows,T1,Default,,Keep
-            doc2,Second Doc,table:0,0 cols | 0 body rows,T2,Default,,Keep
+            doc1,First Doc,table:0,table: 0 cols | 0 body rows,T1,Default,,Keep
+            doc2,Second Doc,table:0,table: 0 cols | 0 body rows,T2,Default,,Keep
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

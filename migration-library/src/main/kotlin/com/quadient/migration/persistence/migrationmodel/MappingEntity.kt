@@ -3,7 +3,6 @@ package com.quadient.migration.persistence.migrationmodel
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.persistence.table.MappingTable
 import com.quadient.migration.service.collectDocumentTables
-import com.quadient.migration.service.computeFingerprint
 import com.quadient.migration.shared.*
 import org.slf4j.LoggerFactory
 import com.quadient.migration.shared.LineSpacing.Additional
@@ -328,7 +327,7 @@ sealed class MappingItemEntity {
                     return@forEach
                 }
 
-                val currentFingerprint = computeFingerprint(docTable.table)
+                val currentFingerprint = docTable.table.computeFingerprint()
                 if (currentFingerprint != entry.fingerprint) {
                     val message = "Table mapping for '${item.id}' at [${entry.contentPath}]: fingerprint mismatch. Stored: '${entry.fingerprint}', current: '$currentFingerprint'. Content may have changed since last export. Skipping."
                     logger.error(message)

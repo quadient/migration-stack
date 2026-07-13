@@ -11,6 +11,7 @@ import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
+import com.quadient.migration.service.PreviewProvider
 
 import static org.mockito.Mockito.mock
 import static org.mockito.Mockito.when
@@ -44,6 +45,9 @@ static Migration mockMigration() {
     when(migration.getVariableStructureRepository()).thenReturn(structureRepo)
     when(migration.getMappingRepository()).thenReturn(mappingRepo)
     when(migration.getDisplayRuleRepository()).thenReturn(displayRuleRepo)
+
+    def previewProvider = new PreviewProvider(docObjectRepo, imageRepo, attachmentRepo, varRepo)
+    when(migration.getPreviewProvider()).thenReturn(previewProvider)
 
     return migration
 }

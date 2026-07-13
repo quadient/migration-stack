@@ -11,7 +11,6 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import java.nio.file.Paths
 
-import static com.quadient.migration.service.TableUtilKt.computeFingerprint
 import static org.mockito.Mockito.verify
 import static org.mockito.Mockito.when
 
@@ -40,11 +39,11 @@ class TablesMappingImportTest {
 
         verify(migration.mappingRepository).upsertBatch([
             "doc1": new MappingItem.Table(null, [
-                new MappingItem.Table.TableEntry("table:0", TableAction.Keep, TablePdfTaggingRule.Table, "Alt text", computeFingerprint(table10), "TableOne"),
-                new MappingItem.Table.TableEntry("table:1", TableAction.Keep, null, null, computeFingerprint(table11), null)
+                new MappingItem.Table.TableEntry("table:0", TableAction.Keep, TablePdfTaggingRule.Table, "Alt text", table10.computeFingerprint(), "TableOne"),
+                new MappingItem.Table.TableEntry("table:1", TableAction.Keep, null, null, table11.computeFingerprint(), null)
             ]),
             "doc2": new MappingItem.Table(null, [
-                new MappingItem.Table.TableEntry("table:0", TableAction.Flatten, TablePdfTaggingRule.Table, "Alt", computeFingerprint(table20), "TableTwo")
+                new MappingItem.Table.TableEntry("table:0", TableAction.Flatten, TablePdfTaggingRule.Table, "Alt", table20.computeFingerprint(), "TableTwo")
             ])
         ])
     }

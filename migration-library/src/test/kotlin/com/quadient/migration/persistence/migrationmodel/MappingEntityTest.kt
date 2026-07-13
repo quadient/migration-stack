@@ -9,7 +9,6 @@ import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuild
 import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
-import com.quadient.migration.service.computeFingerprint
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
@@ -399,7 +398,7 @@ class MappingEntityTest {
                     action = TableAction.Flatten,
                     pdfTaggingRule = TablePdfTaggingRule.Table,
                     pdfAlternateText = "New alt text",
-                    fingerprint = computeFingerprint(docObj.content[0] as TableModel),
+                    fingerprint = (docObj.content[0] as TableModel).computeFingerprint(),
                     tableName = "Renamed Table",
                 )
             ))
@@ -433,7 +432,7 @@ class MappingEntityTest {
             mapping.apply(docObj) { errors.add(it) }
 
             errors.size.shouldBeEqualTo(1)
-            errors[0].shouldBeEqualTo("Table mapping for 'doc1' at [table:0]: fingerprint mismatch. Stored: 'wrong-fingerprint', current: '0cols'. Content may have changed since last export. Skipping.")
+            errors[0].shouldBeEqualTo("Table mapping for 'doc1' at [table:0]: fingerprint mismatch. Stored: 'wrong-fingerprint', current: '0cols|0rows'. Content may have changed since last export. Skipping.")
         }
 
         @Test
@@ -468,7 +467,7 @@ class MappingEntityTest {
                     action = TableAction.Flatten,
                     pdfTaggingRule = null,
                     pdfAlternateText = null,
-                    fingerprint = computeFingerprint(tableOne),
+                    fingerprint = tableOne.computeFingerprint(),
                     tableName = "Renamed",
                 ),
                 MappingItemEntity.Table.TableEntry(
@@ -489,7 +488,7 @@ class MappingEntityTest {
             tables[0].action.shouldBeEqualTo(TableAction.Flatten)
             tables[1].action.shouldBeEqualTo(TableAction.Keep)
             errors.size.shouldBeEqualTo(1)
-            errors[0].shouldBeEqualTo("Table mapping for 'doc1' at [table:1]: fingerprint mismatch. Stored: 'wrong-fingerprint', current: '0cols'. Content may have changed since last export. Skipping.")
+            errors[0].shouldBeEqualTo("Table mapping for 'doc1' at [table:1]: fingerprint mismatch. Stored: 'wrong-fingerprint', current: '0cols|0rows'. Content may have changed since last export. Skipping.")
         }
     }
 }

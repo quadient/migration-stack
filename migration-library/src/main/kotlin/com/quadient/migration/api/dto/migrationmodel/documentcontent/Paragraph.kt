@@ -8,6 +8,17 @@ data class Paragraph(
     val styleRef: ParagraphStyleRef?,
     val displayRuleRef: DisplayRuleRef?
 ) : DocumentContent, RefValidatable {
+    override val pathName = "par"
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String {
+        val preview = content.flatMap { it.content }.joinToString("") {
+            when (it) {
+                is DocumentContent -> it.toPreview(nameResolver)
+                is Hyperlink -> it.displayText ?: it.url
+            }
+        }.replace('\r', ' ').replace('\n', ' ').take(50)
+        return "$pathName: $preview"
+    }
+
     override fun collectRefs(): List<Ref> {
         return content.flatMap { it.collectRefs() } + listOfNotNull(styleRef, displayRuleRef)
     }

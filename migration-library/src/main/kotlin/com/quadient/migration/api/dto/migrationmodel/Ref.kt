@@ -49,6 +49,10 @@ sealed interface TextContent {
 
 data class DocumentObjectRef(override val id: String, val displayRuleRef: DisplayRuleRef? = null) : Ref(id),
     DocumentContent, TextContent, RefValidatable {
+    override val pathName = "docRef"
+
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String =
+        "$pathName: ${nameResolver(this) ?: id}"
 
     constructor(id: String) : this(id, null)
 
@@ -65,6 +69,9 @@ data class DocumentObjectRef(override val id: String, val displayRuleRef: Displa
 }
 
 data class VariableRef(override val id: String) : Ref(id), VariableStringContent, RefValidatable {
+    override val pathName = "varRef"
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String =
+        "$${nameResolver(this) ?: id}$"
     override fun collectRefs(): List<Ref> = listOf(this)
 
     companion object {
@@ -104,6 +111,10 @@ sealed class ResourceRef(override val id: String) : Ref(id), DocumentContent, Te
 }
 
 data class ImageRef(override val id: String) : ResourceRef(id) {
+    override val pathName = "imageRef"
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String =
+        "imageRef: ${nameResolver(this) ?: id}"
+
     companion object {
         fun fromDb(entity: ImageEntityRef) = ImageRef(entity.id)
     }
@@ -112,6 +123,10 @@ data class ImageRef(override val id: String) : ResourceRef(id) {
 }
 
 data class AttachmentRef(override val id: String) : ResourceRef(id) {
+    override val pathName = "attachRef"
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String =
+        "$pathName: ${nameResolver(this) ?: id}"
+
     companion object {
         fun fromDb(entity: AttachmentEntityRef) = AttachmentRef(entity.id)
     }
@@ -124,6 +139,10 @@ data class VariableStructureRef(override val id: String) : Ref(id) {
 }
 
 data class StringValue(val value: String) : VariableStringContent {
+    override val pathName = "str"
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String =
+        value.replace('\r', ' ').replace('\n', ' ').take(30)
+
     companion object {
         fun fromDb(entity: StringEntity) = StringValue(entity.value)
     }

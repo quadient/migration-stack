@@ -11,6 +11,9 @@ data class ColumnLayout(
     val balancingType: ColumnBalancingType? = null,
     val applyTo: ColumnApplyTo? = null,
 ) : DocumentContent, TextContent {
+    override val pathName = "columnLayout"
+
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String = "$pathName: $numberOfColumns cols"
 
     companion object {
         fun fromDb(entity: ColumnLayoutEntity): ColumnLayout = ColumnLayout(

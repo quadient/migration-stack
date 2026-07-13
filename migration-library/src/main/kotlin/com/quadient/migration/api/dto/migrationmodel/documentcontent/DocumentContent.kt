@@ -16,6 +16,10 @@ import com.quadient.migration.persistence.migrationmodel.RepeatedContentEntity
 import com.quadient.migration.persistence.migrationmodel.VariableStringContentEntity
 
 sealed interface DocumentContent {
+    val pathName: String
+    fun toPreview(nameResolver: (DocumentContent) -> String?): String
+    fun toPreview(): String = toPreview { null }
+
     companion object {
         fun fromDbContent(entity: DocumentContentEntity): DocumentContent = when (entity) {
             is TableEntity -> Table.fromDb(entity)

@@ -1,6 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.persistence.migrationmodel.RepeatedContentEntity
+import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.VariableRefPath
 
@@ -8,7 +9,15 @@ data class RepeatedContent(
     val variablePath: VariablePath,
     val content: List<DocumentContent>,
 ) : DocumentContent, RefValidatable {
-    val pathName: String get() = "repeatedContent"
+    override val pathName = "repeatedContent"
+
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String {
+        val variable = when (variablePath) {
+            is VariableRefPath -> VariableRef(variablePath.variableId).toPreview(nameResolver)
+            is LiteralPath -> variablePath.path
+        }
+        return "$pathName: $variable | ${content.size} items"
+    }
 
     override fun collectRefs(): List<Ref> {
         val contentRefs = content.flatMap {
