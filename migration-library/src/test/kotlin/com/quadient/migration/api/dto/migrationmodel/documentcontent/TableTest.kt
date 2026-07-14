@@ -41,4 +41,47 @@ class TableTest {
         richTable.toPreview(nameResolver)
             .shouldBeEqualTo($$"table: 2 cols | repeatedBy: $Item Variable$ | firstHeader: Alpha | Beta")
     }
+
+    @Test
+    fun `toPreview and fingerprint shows first row with mixed string and variable ref content`() {
+        val table = TableBuilder()
+            .addColumnWidth(10.millimeters(), 50.0)
+            .addColumnWidth(10.millimeters(), 50.0)
+            .addRow {
+                addCell {
+                    string("Hello ")
+                    variableRef("name")
+                }
+                addCell { string("static text") }
+            }
+            .build()
+
+        table.toPreview().shouldBeEqualTo($$"table: 2 cols | 1 body rows | row0: Hello $name$ | static text")
+        table.computeFingerprint().shouldBeEqualTo($$"2cols|1rows|Hello $name$|static text")
+    }
+
+    @Test
+    fun `toPreview and fingerprint handles imageRef, selectByLanguage and paragraph content types in cells`() {
+        val table = TableBuilder()
+            .addColumnWidth(10.millimeters(), 33.0)
+            .addColumnWidth(10.millimeters(), 33.0)
+            .addColumnWidth(10.millimeters(), 34.0)
+            .addRow {
+                addCell { imageRef("photo1") }
+                addCell {
+                    selectByLanguage {
+                        case { language("en").string("Hello") }
+                        case { language("de").string("Hallo") }
+                    }
+                }
+                addCell {
+                    paragraph { string("caption text") }
+                }
+            }
+            .build()
+
+        table.toPreview()
+            .shouldBeEqualTo("table: 3 cols | 1 body rows | row0: imageRef: photo1 | selectByLanguage: 2 cases | par: caption text")
+        table.computeFingerprint().shouldBeEqualTo("3cols|1rows|imageRef: photo1|selectByLanguage: 2 cases|par: caption text")
+    }
 }
