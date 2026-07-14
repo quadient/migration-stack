@@ -11,12 +11,13 @@ import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.DocumentTable
+import com.quadient.migration.service.PreviewProvider
 import groovy.transform.Field
 
 import java.nio.file.Path
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
-import static com.quadient.migration.service.TableUtilKt.*
+import static com.quadient.migration.service.TableUtilKt.collectDocumentTables
 
 @Field Migration migration = initMigration(this.binding)
 
@@ -47,13 +48,13 @@ static void run(Migration migration, Path path) {
         documentObjects.each { docObj ->
             def documentTables = collectDocumentTables(docObj.content)
             documentTables.each { docTable ->
-                writer.writeLine(buildRow(docObj.id, docObj.name, docTable))
+                writer.writeLine(buildRow(docObj.id, docObj.name, docTable, migration.previewProvider))
             }
         }
     }
 }
 
-static String buildRow(String docObjId, String docObjName, DocumentTable docTable) {
+static String buildRow(String docObjId, String docObjName, DocumentTable docTable, PreviewProvider previewProvider) {
     def contentPath = docTable.contentPath
     def table = docTable.table
 
@@ -61,7 +62,7 @@ static String buildRow(String docObjId, String docObjName, DocumentTable docTabl
     builder.append(Csv.serialize(docObjId) + ",")
     builder.append(Csv.serialize(docObjName) + ",")
     builder.append(Csv.serialize(contentPath) + ",")
-    builder.append(Csv.serialize(buildContentPreview(table)) + ",")
+    builder.append(Csv.serialize(previewProvider.getPreview(table)) + ",")
     builder.append(Csv.serialize(table.name) + ",")
     builder.append(Csv.serialize(table.pdfTaggingRule) + ",")
     builder.append(Csv.serialize(table.pdfAlternateText) + ",")

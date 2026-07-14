@@ -101,7 +101,7 @@ class AreasExportTest {
 
         def expected = """\
             templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),contentPreview (read-only)
-            ,,page with preview,,,,test flow,false,0mm,0mm,0mm,0mm,DocObjRef(Block One);ImageRef(Image One);DocObjRef(Block Two);(+2 more)
+            ,,page with preview,,,,test flow,false,0mm,0mm,0mm,0mm,docRef: Block One;imageRef: Image One;docRef: Block Two;(+2 more)
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

@@ -14,6 +14,11 @@ data class Shape(
     val lineFill: Color?,
     val lineWidth: Size,
     ) : DocumentContent {
+    override val pathName = "shape"
+
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String =
+        if (name != null) "$pathName: $name" else pathName
+
     companion object {
         fun fromDb(entity: ShapeEntity): Shape = Shape(
             name = entity.name,

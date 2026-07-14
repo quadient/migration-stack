@@ -103,66 +103,7 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     builder.append(Csv.serialize(area.position.width) + ",")
     builder.append(Csv.serialize(area.position.height) + ",")
 
-    builder.append(Csv.serialize(buildContentPreview(migration, area.content)))
+    builder.append(Csv.serialize(migration.previewProvider.buildDocumentContentListPreview(area.content)))
+
     return builder.toString()
-}
-
-static String buildContentPreview(Migration migration, List<DocumentContent> content) {
-    def documentObjectIdsToNames = getDocumentObjectIdsToNames(migration, content)
-    def imageIdsToNames = getImageIdsToNames(migration, content)
-
-    def previewParts = content.collect {
-        switch (it) {
-            case DocumentObjectRef:
-                def name = documentObjectIdsToNames.get(it.id)
-                return name ? "DocObjRef($name)" : "DocObjRef(${it.id})"
-            case ImageRef:
-                def name = imageIdsToNames.get(it.id)
-                return name ? "ImageRef($name)" : "ImageRef(${it.id})"
-            default:
-                return it.toString()
-        }
-    }
-
-    if (previewParts.size() > 3) {
-        previewParts = previewParts.take(3) + ("(+${previewParts.size() - 3} more)" as String)
-    }
-
-    return previewParts.join(";").replace(",", " ")
-}
-
-static HashMap<String, String> getDocumentObjectIdsToNames(Migration migration, List<DocumentContent> content) {
-    def idsToNames = new HashMap<String, String>()
-
-    def refIds = content.findAll { it instanceof DocumentObjectRef }.collect { (it as Ref).id }
-    refIds.each {
-        def documentObject = migration.documentObjectRepository.find(it)
-        if (documentObject == null) {
-            throw new IllegalStateException("Document object '$it' not found.")
-        }
-
-        if (documentObject.name != null) {
-            idsToNames[it] = documentObject.name
-        }
-    }
-
-    return idsToNames
-}
-
-static HashMap<String, String> getImageIdsToNames(Migration migration, List<DocumentContent> content) {
-    def idsToNames = new HashMap<String, String>()
-
-    def refIds = content.findAll { it instanceof ImageRef }.collect { (it as Ref).id }
-    refIds.each {
-        def image = migration.imageRepository.find(it)
-        if (image == null) {
-            throw new IllegalStateException("Image '$it' not found.")
-        }
-
-        if (image.name != null) {
-            idsToNames[it] = image.name
-        }
-    }
-
-    return idsToNames
 }

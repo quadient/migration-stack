@@ -16,6 +16,11 @@ sealed interface Barcode : DocumentContent, TextContent {
     val backgroundFill: Color?
     val variableRef: VariableRef?
 
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String {
+        val label = data?.take(30) ?: variableRef?.toPreview(nameResolver)
+        return if (label != null) "$pathName: $label" else pathName
+    }
+
     companion object {
         fun fromDb(entity: BarcodeEntity): Barcode = when (entity) {
             is QrCodeEntity -> QrCode.fromDb(entity)
@@ -37,6 +42,7 @@ data class QrCode(
     val moduleWidth: Size,
     val quiteZone: Size,
 ): Barcode {
+    override val pathName = "qrCode"
 
     companion object {
         fun fromDb(entity: QrCodeEntity): QrCode = QrCode(
@@ -83,6 +89,7 @@ data class Code39Barcode(
     val firstBarSpace: Size,
     val secondBarSpace: Size,
 ) : Barcode {
+    override val pathName = "code39Barcode"
 
     companion object {
         fun fromDb(entity: Code39BarcodeEntity): Code39Barcode = Code39Barcode(

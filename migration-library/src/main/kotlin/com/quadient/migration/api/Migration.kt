@@ -22,6 +22,7 @@ import com.quadient.migration.service.IcmDataCache
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.InteractiveIcmDataCache
 import com.quadient.migration.service.InteractiveResourcePathProvider
+import com.quadient.migration.service.PreviewProvider
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
@@ -110,6 +111,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
         singleOf(::ReferenceValidator)
         singleOf(::StylesValidator)
         singleOf(::RefCollector)
+        singleOf(::PreviewProvider)
     }
 
     private val koinApp: KoinApplication = koinApplication {
@@ -137,6 +139,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
     val stylesValidator: StylesValidator by lazy { koin.get() }
     val referenceCollector: RefCollector by lazy { koin.get() }
     val pathProvider: ResourcePathProvider by lazy { koin.get() }
+    val previewProvider: PreviewProvider by lazy { koin.get() }
     val storage: Storage by lazy { koin.get() }
 
     private val ipsService: IpsService by lazy { koin.get() }

@@ -5,6 +5,7 @@ import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.CellHeight
 import com.quadient.migration.shared.CellOverflow
+import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.TableAction
@@ -35,7 +36,47 @@ data class Table(
     val action: TableAction = TableAction.Keep,
     val name: String? = null,
 ) : DocumentContent, TextContent, RefValidatable {
-    val pathName: String get() = "table"
+    override val pathName = "table"
+
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String = buildString {
+        append("$pathName: ${columnWidths.size} cols")
+        val repeatedVar = repeatedVariablePreview(nameResolver)
+        if (repeatedVar != null) append(" | repeatedBy: $repeatedVar")
+        else append(" | ${rows.count { it is Row }} body rows")
+        firstRowPreview(" | ", nameResolver)?.let {
+            if (firstHeader.isNotEmpty()) append(" | firstHeader: $it")
+            else append(" | row0: $it")
+        }
+    }
+
+    fun computeFingerprint(): String = buildString {
+        append("${columnWidths.size}cols")
+        val singleRowCount = (header + firstHeader + rows + footer + lastFooter).count { it is Row }
+        append("|${singleRowCount}rows")
+        repeatedVariableId()?.let { append("|repeatedBy:$it") }
+        firstRowPreview()?.let { append("|$it") }
+    }
+
+    private fun repeatedRow(): RepeatedRow? = rows.filterIsInstance<RepeatedRow>().firstOrNull()
+
+    private fun repeatedVariablePreview(nameResolver: (DocumentContent) -> String?): String? =
+        repeatedRow()?.variable?.let { variable ->
+            when (variable) {
+                is VariableRefPath -> VariableRef(variable.variableId).toPreview(nameResolver)
+                is LiteralPath -> variable.path
+            }
+        }
+
+    private fun repeatedVariableId(): String? =
+        repeatedRow()?.variable?.let { if (it is VariableRefPath) it.variableId else it.toString() }
+
+    private fun firstRowPreview(separator: String = "|", nameResolver: (DocumentContent) -> String? = { null }): String? {
+        val firstRow = (firstHeader.firstOrNull() ?: rows.filterIsInstance<Row>().firstOrNull()) as? Row ?: return null
+        return firstRow.cells.joinToString(separator) { cell ->
+            cell.content.joinToString("") { it.toPreview(nameResolver) }.replace('\r', ' ').replace('\n', ' ').take(30)
+        }.take(100)
+    }
+
     override fun collectRefs(): List<Ref> {
         return (rows + header + firstHeader + footer + lastFooter).flatMap { it.collectRefs() }
     }

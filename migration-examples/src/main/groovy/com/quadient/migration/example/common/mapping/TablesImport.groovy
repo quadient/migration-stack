@@ -20,7 +20,6 @@ import java.nio.file.Path
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 import static com.quadient.migration.service.TableUtilKt.collectDocumentTables
-import static com.quadient.migration.service.TableUtilKt.computeFingerprint
 
 @Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
@@ -70,7 +69,7 @@ static void run(Migration migration, Path path) {
             continue
         }
 
-        def fingerprint = computeFingerprint(docTable.table)
+        def fingerprint = docTable.table.computeFingerprint()
 
         def entry = new MappingItem.Table.TableEntry(
             contentPath,

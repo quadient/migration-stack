@@ -3,7 +3,10 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
 
 data class FirstMatch(val cases: List<Case>, val default: List<DocumentContent>) : DocumentContent, TextContent, RefValidatable {
-    val pathName: String get() = "firstMatch"
+    override val pathName = "firstMatch"
+
+    override fun toPreview(nameResolver: (DocumentContent) -> String?): String = "$pathName: ${cases.size} cases"
+
     override fun collectRefs(): List<Ref> {
         return cases.flatMap { it.collectRefs() } + default.flatMap {
             when (it) {
