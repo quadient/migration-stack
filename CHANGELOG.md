@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+### Fixed
+
+## [17.0.27] - 2026-07-14
+
+### Added
+
+### Changed
+
 - Cleaned, standardized and extended content preview in mapping/report files
 - More robust table fingerprint used for mapping 
 
@@ -418,7 +426,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.26...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.27...HEAD
+[17.0.27]: https://github.com/quadient/migration-stack/compare/v17.0.26...v17.0.27
 [17.0.26]: https://github.com/quadient/migration-stack/compare/v17.0.25...v17.0.26
 [17.0.25]: https://github.com/quadient/migration-stack/compare/v17.0.24...v17.0.25
 [17.0.24]: https://github.com/quadient/migration-stack/compare/v17.0.23...v17.0.24
