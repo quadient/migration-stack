@@ -10,6 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+- Cleaned, standardized and extended content preview in mapping/report files
+- More robust table fingerprint used for mapping 
+
 ### Fixed
 
 ## [17.0.26] - 2026-07-09
