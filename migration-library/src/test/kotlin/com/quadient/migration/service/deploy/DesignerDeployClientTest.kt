@@ -285,6 +285,28 @@ class DesignerDeployClientTest {
     }
 
     @Test
+    fun `deploy list of document objects filters out Email and Sms type document objects`() {
+        val spy = spyk(subject)
+        every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
+            Uuid.random()
+        )
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(
+            aBlock(id = "1", type = DocumentObjectType.Email),
+            aBlock(id = "2", type = DocumentObjectType.Sms),
+            aBlock(id = "3", type = Block),
+        )
+
+        spy.deployDocumentObjects(listOf("1", "2", "3"))
+
+        verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
+        verify {
+            spy.deployDocumentObjectsInternal(match { docObjects ->
+                docObjects.size == 1 && docObjects.single().id == "3"
+            }, any(), any(), any(), any(), any())
+        }
+    }
+
+    @Test
     fun `deploy list of document objects without dependencies`() {
         val spy = spyk(subject)
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(

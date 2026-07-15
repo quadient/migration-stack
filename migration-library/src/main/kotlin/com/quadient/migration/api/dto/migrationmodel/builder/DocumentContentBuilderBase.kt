@@ -21,6 +21,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.Are
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.BarcodeBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.Code39BarcodeBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ColumnLayoutBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.GridLayoutBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ShapeBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.RepeatedContentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.QrCodeBuilder
@@ -335,6 +336,19 @@ interface HasColumnLayoutContent<C, T> {
     } as T
 }
 
+interface HasGridLayoutContent<C, T> {
+    val content: MutableList<C>
+
+    /**
+     * Adds a grid layout to the content using a builder function.
+     * @param builder A builder function to configure the [GridLayoutBuilder].
+     * @return This builder instance for method chaining.
+     */
+    fun gridLayout(builder: GridLayoutBuilder.() -> Unit): T = apply {
+        this.content.add(GridLayoutBuilder().apply(builder).build() as C)
+    } as T
+}
+
 interface HasShapeContent<T> {
     val content: MutableList<DocumentContent>
 
@@ -434,5 +448,5 @@ interface DocumentContentBuilderBase<T> : HasGenericContent<DocumentContent, T>,
     HasVariableRefContent<DocumentContent, T>,
     HasRepeatedContent<T>,
     HasColumnLayoutContent<DocumentContent, T>,
-    HasBarcodeContent<DocumentContent, T>
-
+    HasBarcodeContent<DocumentContent, T>,
+    HasGridLayoutContent<DocumentContent, T>

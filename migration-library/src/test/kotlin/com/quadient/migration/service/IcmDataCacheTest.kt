@@ -9,7 +9,93 @@ import io.mockk.mockk
 import org.junit.jupiter.api.Test
 
 class IcmDataCacheTest {
-    val input = """<?xml version="1.0" encoding="UTF-8"?>
+    val inputBaseTemplate = """<?xml version="1.0" encoding="UTF-8"?>
+<WorkFlow version="17.0.676.4">
+  <Layout>
+    <Id>Layout1</Id>
+    <Name>DocumentLayout</Name>
+    <ModulePos X="38" Y="29"/>
+    <Layout>
+      <Flow>
+        <Id>65</Id>
+        <Name>Letter Content</Name>
+        <Comment/>
+        <ParentId>Def.FlowGroup</ParentId>
+        <IndexInParent>0</IndexInParent>
+        <SecurityDescriptorId>-1</SecurityDescriptorId>
+        <Forward/>
+      </Flow>
+      <Flow>
+        <Id>66</Id>
+        <Name>Flow BT 5</Name>
+        <Comment/>
+        <ParentId>Def.FlowGroup</ParentId>
+        <IndexInParent>1</IndexInParent>
+        <SecurityDescriptorId>-1</SecurityDescriptorId>
+        <CustomProperty>{&quot;customName&quot;:&quot;Body Content&quot;}</CustomProperty>
+        <Forward/>
+      </Flow>
+      <Flow>
+        <Id>67</Id>
+        <Name>Flow BT 7</Name>
+        <Comment/>
+        <ParentId>Def.FlowGroup</ParentId>
+        <IndexInParent>2</IndexInParent>
+        <SecurityDescriptorId>-1</SecurityDescriptorId>
+        <CustomProperty>{&quot;customName&quot;:&quot;SMS Content&quot;}</CustomProperty>
+        <Forward/>
+      </Flow>
+      <Pages>
+        <Id>Def.Pages</Id>
+        <SelectionType>Simple</SelectionType>
+        <MainFlow>65</MainFlow>
+        <MainObject>63</MainObject>
+        <InteractiveFlow>
+          <FlowId>65</FlowId>
+          <FlowType>Normal</FlowType>
+        </InteractiveFlow>
+        <InteractiveFlow>
+          <FlowId>66</FlowId>
+          <FlowType>HTML</FlowType>
+        </InteractiveFlow>
+        <InteractiveFlow>
+          <FlowId>67</FlowId>
+          <FlowType>Normal</FlowType>
+        </InteractiveFlow>
+        <InteractiveMainFlow/>
+        <UseAnotherFlowAsInteractiveMainFlow>False</UseAnotherFlowAsInteractiveMainFlow>
+      </Pages>
+      <SMSRoot>
+        <Id Name="SMS">Def.SMSRoot</Id>
+        <FlowId>67</FlowId>
+      </SMSRoot>
+      <ECRoot>
+        <Id Name="EmailDesign">Def.EmailDesignRoot</Id>
+        <EmailComponetsText>69</EmailComponetsText>
+        <EmailWidth>600px</EmailWidth>
+        <FillStyleId>78</FillStyleId>
+      </ECRoot>
+      <ECPlaceHolder>
+        <Id Name="Header">Def.EmailsHeader</Id>
+        <PlaceHolderType>Header</PlaceHolderType>
+        <ContentId/>
+      </ECPlaceHolder>
+      <ECPlaceHolder>
+        <Id Name="Body">Def.EmailsBody</Id>
+        <PlaceHolderType>Body</PlaceHolderType>
+        <ContentId>66</ContentId>
+      </ECPlaceHolder>
+      <ECPlaceHolder>
+        <Id Name="Footer">Def.EmailsFooter</Id>
+        <PlaceHolderType>Footer</PlaceHolderType>
+        <ContentId/>
+      </ECPlaceHolder>
+    </Layout>
+  </Layout>
+</WorkFlow>
+""".trimIndent()
+
+    val inputStyleDefinition = """<?xml version="1.0" encoding="UTF-8"?>
 <WorkFlow version="17.0.675.9">
   <Property>
     <Name>AFPApplyMediumOrientation</Name>
@@ -1777,10 +1863,27 @@ class IcmDataCacheTest {
         <VariableId/>
         <MainFlow>39</MainFlow>
         <MainObject>37</MainObject>
+        <InteractiveFlow>
+          <FlowId>59</FlowId>
+          <FlowType>HTML</FlowType>
+        </InteractiveFlow>
+        <InteractiveFlow>
+          <FlowId>60</FlowId>
+          <FlowType>Normal</FlowType>
+        </InteractiveFlow>
         <InteractiveMainFlow/>
         <UseAnotherFlowAsInteractiveMainFlow>False</UseAnotherFlowAsInteractiveMainFlow>
         <NotificationImageElement/>
       </Pages>
+      <SMSRoot>
+        <Id Name="SMS">Def.SMSRoot</Id>
+        <FlowId>60</FlowId>
+      </SMSRoot>
+      <ECPlaceHolder>
+        <Id Name="Body">Def.EmailsBody</Id>
+        <PlaceHolderType>Body</PlaceHolderType>
+        <ContentId>59</ContentId>
+      </ECPlaceHolder>
       <Page>
         <Id>37</Id>
         <ConditionType>Condition</ConditionType>
@@ -2738,11 +2841,27 @@ class IcmDataCacheTest {
     val subject = EvolveIcmDataCache(ipsService, resourcePathProvider)
 
     @Test
+    fun `parses base template correctly`() {
+        // given
+        val path = "icm://bt.wfd".toIcmPath()
+        every { ipsService.fileExists(any<IcmPath>()) } returns true
+        every { ipsService.wfd2xml(any<IcmPath>()) } returns inputBaseTemplate
+
+        // when
+        val result = subject.getOrLoadBaseTemplateData(path)!!
+
+        // then
+        result.interactiveFlowNamesToIds.shouldBeEqualTo(mapOf("Letter Content" to "Def.InteractiveFlow0"))
+        result.emailFlowNamesToIds.shouldBeEqualTo(mapOf("Flow BT 5" to "Def.InteractiveFlow1", "Body Content" to "Def.InteractiveFlow1"))
+        result.smsFlowNamesToIds.shouldBeEqualTo(mapOf("Flow BT 7" to "Def.InteractiveFlow2", "SMS Content" to "Def.InteractiveFlow2"))
+    }
+
+    @Test
     fun `parses style definition correctly`() {
         // given
         every { resourcePathProvider.getStyleDefinitionPath() } returns "".toIcmPath()
         every { ipsService.fileExists(any<IcmPath>()) } returns true
-        every { ipsService.wfd2xml(any<IcmPath>()) } returns input
+        every { ipsService.wfd2xml(any<IcmPath>()) } returns inputStyleDefinition
 
         // when
         val result = subject.styleDefinitionData!!

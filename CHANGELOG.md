@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+- Support for multichannel templates (content/email/sms)
+
 ### Changed
 
 ### Fixed
@@ -19,7 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Changed
 
 - Cleaned, standardized and extended content preview in mapping/report files
-- More robust table fingerprint used for mapping 
+- More robust table fingerprint used for mapping
 
 ### Fixed
 

@@ -3,6 +3,12 @@ package com.quadient.wfdxml.api.module;
 import com.quadient.wfdxml.api.layoutnodes.*;
 import com.quadient.wfdxml.api.layoutnodes.data.Data;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentGrid;
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentContent;
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentPlaceHolder;
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentRoot;
+import com.quadient.wfdxml.api.layoutnodes.email.TMText;
+import com.quadient.wfdxml.api.layoutnodes.SmsRoot;
 import com.quadient.wfdxml.api.layoutnodes.tables.BorderStyle;
 import com.quadient.wfdxml.api.layoutnodes.tables.Cell;
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet;
@@ -56,6 +62,20 @@ public interface Layout extends WorkFlowModule<Layout> {
     Root addRoot();
 
     Root getRoot();
+
+    SmsRoot addSmsRoot();
+
+    SmsRoot getSmsRoot();
+
+    EmailComponentRoot addEmailComponentRoot();
+
+    EmailComponentGrid addEmailComponentGrid();
+
+    EmailComponentContent addEmailComponentContent();
+
+    EmailComponentPlaceHolder addEmailComponentPlaceHolder();
+
+    TMText addEmailTMText();
 
     Section addSection();
 }

@@ -3,14 +3,17 @@ package com.quadient.migration.persistence
 import com.quadient.migration.Postgres
 import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.shared.GridAlignment
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.GridLayoutBuilder
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
 import com.quadient.migration.service.deploy.utility.ResourceType
+import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.tools.aBlockDto
 import com.quadient.migration.tools.aCell
@@ -251,5 +254,28 @@ class DocumentObjectRepositoryTest {
 
         val updatedDto = dto.copy(lastUpdated = result.lastUpdated, created = result.created)
         result.shouldBeEqualTo(updatedDto)
+    }
+
+    @Test
+    fun `gridLayout roundtrip`() {
+        val gridLayout = GridLayoutBuilder()
+            .verticalAlignment(GridAlignment.Center)
+            .paddingTop(10.0)
+            .paddingBottom(20.0)
+            .paddingLeft(5.0)
+            .paddingRight(15.0)
+            .fill(Color(255, 0, 0))
+            .fullWidthBackground(true)
+            .displayRuleRef("gridRule")
+            .column { content { paragraph { addText().appendContent(StringValue("col1 text")) } } }
+            .column { content { paragraph { addText().appendContent(StringValue("col2 text")) } } }
+            .build()
+        val input = aBlockDto("gridblock", content = listOf(gridLayout))
+
+        repo.upsert(input)
+        val result = repo.listAll()
+
+        val updatedInput = input.copy(lastUpdated = result.first().lastUpdated, created = result.first().created)
+        result.first().shouldBeEqualTo(updatedInput)
     }
 }

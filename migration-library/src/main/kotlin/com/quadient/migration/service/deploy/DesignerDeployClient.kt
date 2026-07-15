@@ -207,10 +207,13 @@ class DesignerDeployClient(
 
         require(error.isEmpty()) { error }
 
-        val documentObjectsWithoutPages = documentObjects
-            .filter { it.type != DocumentObjectType.Page && it.type != DocumentObjectType.Snippet }
-
-        return documentObjectsWithoutPages
+        val filteredTypes = listOf(
+            DocumentObjectType.Page,
+            DocumentObjectType.Snippet,
+            DocumentObjectType.Email,
+            DocumentObjectType.Sms
+        )
+        return documentObjects.filter { it.type !in filteredTypes }
     }
 
     override fun getAllDocumentObjectsToDeploy(): List<DocumentObject> {

@@ -19,6 +19,8 @@ import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.EmailObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.SmsObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ShapeBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
@@ -1097,6 +1099,51 @@ class DesignerDocumentObjectBuilderTest {
 
         // then
         verify(exactly = 1) { ipsService.gatherFontData("icm://".toIcmPath()) }
+    }
+
+    @Test
+    fun `buildDocumentObject adds ECRoot with TMText and ECPlaceHolder with content when emailModel is not null`() {
+        // given
+        val emailDoc = EmailObjectBuilder("E_1").string("Email content").build().mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(emailDoc).build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val ecRoot = result["ECRoot"]
+        ecRoot.shouldNotBeNull()
+        ecRoot["Id"].stringValue().shouldBeEqualTo("Def.EmailDesignRoot")
+
+        result["TMText"].shouldNotBeNull()
+        ecRoot["EmailComponetsText"].stringValue().shouldNotBeEmpty()
+
+        val ecPlaceHolder = result["ECPlaceHolder"]
+        ecPlaceHolder.shouldNotBeNull()
+        ecPlaceHolder["PlaceHolderType"].stringValue().shouldBeEqualTo("Body")
+
+        val bodyFlowId = ecPlaceHolder["ContentId"].stringValue()
+        val contentFlowId = getFlowAreaContentFlowId(result, bodyFlowId)
+        result["Flow"].last { it["Id"].stringValue() == contentFlowId }["FlowContent"]["P"]["T"][""].stringValue()
+            .shouldBeEqualTo("Email content")
+    }
+
+    @Test
+    fun `buildDocumentObject adds SMSRoot with content when smsModel is not null`() {
+        // given
+        val smsDoc = SmsObjectBuilder("S_1").string("SMS content").build().mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(smsDoc).build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val smsRoot = result["SMSRoot"]
+        smsRoot.shouldNotBeNull()
+
+        val contentFlowId = smsRoot["FlowId"].stringValue()
+        result["Flow"].last { it["Id"].stringValue() == contentFlowId }["FlowContent"]["P"]["T"][""].stringValue()
+            .shouldBeEqualTo("SMS content")
     }
 
     private fun DocumentObject.mock(): DocumentObject {

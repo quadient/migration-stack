@@ -9,6 +9,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasBaseT
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasCategorization
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasDisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasDocumentObjectOptions
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasEmailOptions
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasInternal
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasMetadata
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasPdfMetadata
@@ -18,6 +19,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTarge
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasVariableStructureRef
 import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.EmailOptions
 import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
 
@@ -70,6 +72,86 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
             metadata = metadata,
             skip = SkipOptions(skipped = skip, reason = reason, placeholder = placeholder),
             subject = subject,
+        )
+    }
+}
+
+class EmailObjectBuilder(id: String) : DtoBuilderBase<DocumentObject, EmailObjectBuilder>(id),
+    HasParagraphContent<EmailObjectBuilder>,
+    HasTableContent<DocumentContent, EmailObjectBuilder>,
+    HasImageRefContent<DocumentContent, EmailObjectBuilder>,
+    HasDocumentObjectRefContent<DocumentContent, EmailObjectBuilder>,
+    HasFirstMatchContent<DocumentContent, EmailObjectBuilder>,
+    HasSelectByLanguageContent<EmailObjectBuilder>,
+    HasStringContent<DocumentContent, EmailObjectBuilder>,
+    HasVariableRefContent<DocumentContent, EmailObjectBuilder>,
+    HasRepeatedContent<EmailObjectBuilder>,
+    HasBarcodeContent<DocumentContent, EmailObjectBuilder>,
+    HasGridLayoutContent<DocumentContent, EmailObjectBuilder>,
+    HasSkip<EmailObjectBuilder>,
+    HasEmailOptions<EmailObjectBuilder>,
+    HasVariableStructureRef<EmailObjectBuilder>
+{
+    override var variableStructureRef: VariableStructureRef? = null
+    override val content: MutableList<DocumentContent> = mutableListOf()
+    override var skip = false
+    override var placeholder: String? = null
+    override var reason: String? = null
+    override var options: EmailOptions? = null
+
+    override fun build(): DocumentObject {
+        return DocumentObject(
+            id = id,
+            type = DocumentObjectType.Email,
+            name = name,
+            content = content,
+            internal = true,
+            targetFolder = null,
+            originLocations = originLocations,
+            customFields = customFields,
+            displayRuleRef = null,
+            variableStructureRef = variableStructureRef,
+            baseTemplate = null,
+            options = options,
+            pdfMetadata = null,
+            metadata = emptyList(),
+            skip = SkipOptions(skipped = skip, reason = reason, placeholder = placeholder),
+            subject = null,
+        )
+    }
+}
+
+class SmsObjectBuilder(id: String) : DtoBuilderBase<DocumentObject, SmsObjectBuilder>(id),
+    HasStringContent<DocumentContent, SmsObjectBuilder>,
+    HasVariableRefContent<DocumentContent, SmsObjectBuilder>,
+    HasParagraphContent<SmsObjectBuilder>,
+    HasSkip<SmsObjectBuilder>,
+    HasVariableStructureRef<SmsObjectBuilder>
+{
+    override var variableStructureRef: VariableStructureRef? = null
+    override val content: MutableList<DocumentContent> = mutableListOf()
+    override var skip = false
+    override var placeholder: String? = null
+    override var reason: String? = null
+
+    override fun build(): DocumentObject {
+        return DocumentObject(
+            id = id,
+            type = DocumentObjectType.Sms,
+            name = name,
+            content = content,
+            internal = true,
+            targetFolder = null,
+            originLocations = originLocations,
+            customFields = customFields,
+            displayRuleRef = null,
+            variableStructureRef = variableStructureRef,
+            baseTemplate = null,
+            options = null,
+            pdfMetadata = null,
+            metadata = emptyList(),
+            skip = SkipOptions(skipped = skip, reason = reason, placeholder = placeholder),
+            subject = null,
         )
     }
 }

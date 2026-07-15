@@ -13,6 +13,8 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.Barcode
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
+import com.quadient.migration.api.dto.migrationmodel.GridContent
+import com.quadient.migration.api.dto.migrationmodel.GridLayout
 import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
@@ -47,6 +49,9 @@ import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.CellAlignment
 import com.quadient.migration.shared.CellHeight
 import com.quadient.migration.shared.CellOverflow
+import com.quadient.migration.shared.GridAlignment
+import com.quadient.migration.shared.GridHorizontalAlignment
+import com.quadient.migration.shared.OnMobile
 import com.quadient.migration.shared.Function
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.IcmPath
@@ -63,6 +68,8 @@ import com.quadient.migration.shared.TableAlignment
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Font
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentGrid
+import com.quadient.migration.shared.ColumnDistribution
 import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.LocationType
 import com.quadient.wfdxml.api.layoutnodes.Pages
@@ -115,6 +122,7 @@ import com.quadient.migration.shared.VariableRefPath
 import com.quadient.migration.service.resolveTarget
 import com.quadient.migration.shared.Size
 import com.quadient.wfdxml.api.layoutnodes.Flow.WebEditingType.SECTION
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentContent
 
 abstract class InspireDocumentObjectBuilder(
     protected val documentObjectRepository: DocumentObjectRepository,
@@ -338,6 +346,7 @@ abstract class InspireDocumentObjectBuilder(
                 )
 
                 is Shape -> {}
+                is GridLayout -> flowModels.add(GridLayoutFlow(contentPart))
 
                 is RepeatedContent -> flowModels.add(RepeatedContentFlow(contentPart))
                 is FirstMatch -> flowModels.add(FirstMatchFlow(contentPart, isInline))
@@ -375,6 +384,8 @@ abstract class InspireDocumentObjectBuilder(
                 is FlattenedTableFlow -> flattenTable(
                     layout, variableStructure, it.table, it.table.name ?: nextName(), languages
                 )
+
+                is GridLayoutFlow -> buildGridLayout(layout, variableStructure, it.model, nextName(), languages)
             }
         }
     }
@@ -387,6 +398,7 @@ abstract class InspireDocumentObjectBuilder(
         data class SelectByLanguageFlow(val model: SelectByLanguage) : FlowModel
         data class RepeatedContentFlow(val model: RepeatedContent) : FlowModel
         data class FlattenedTableFlow(val table: Table) : FlowModel
+        data class GridLayoutFlow(val model: GridLayout) : FlowModel
     }
 
     protected fun List<Flow>.toSingleFlow(
@@ -706,7 +718,10 @@ abstract class InspireDocumentObjectBuilder(
         var i = 0
         while (i < documentContentModelParts.size) {
             when (val model = documentContentModelParts[i]) {
-                is ColumnLayout -> columnLayout = model
+                is ColumnLayout -> {
+                    columnLayout = model
+                    i++
+                }
                 is VariableStringContent -> {
                     val paragraph = ParagraphBuilder()
                     var y = i
@@ -730,28 +745,33 @@ abstract class InspireDocumentObjectBuilder(
                 is Paragraph -> {
                     buildParagraph(layout, variableStructure, flow, model, languages, columnLayout)
                     columnLayout = null
+                    i++
                 }
                 is Table -> {
                     val text = flow.addParagraph().addText()
                     columnLayout?.let { text.appendSection(buildWfdXmlSection(it, layout)) }
                     columnLayout = null
                     text.appendTable(buildTable(layout, variableStructure, model, languages))
+                    i++
                 }
                 is ImageRef -> {
                     val text = flow.addParagraph().addText()
                     columnLayout?.let { text.appendSection(buildWfdXmlSection(it, layout)) }
                     columnLayout = null
                     buildAndAppendImage(layout, text, model)
+                    i++
                 }
                 is Barcode -> {
                     val element = layout.addElement().setDynamicSizeByRunaround(true)
                     flow.addParagraph().addText().appendElement(element)
                     model.buildContent(variableRepository, element.barcodeFactory, layout, variableStructure, true)
+                    i++
                 }
-                else -> error("Content part type ${model::class.simpleName} is not allowed in composite flow.")
+                else -> {
+                    error("Content part type ${model::class.simpleName} is not allowed in composite flow.")
+                }
             }
 
-            i++
         }
 
         return flow
@@ -1423,6 +1443,262 @@ abstract class InspireDocumentObjectBuilder(
         model.name?.let { table.setDisplayName(it) }
 
         return table
+    }
+
+    private fun buildGridLayout(
+        layout: Layout,
+        variableStructure: VariableStructure,
+        model: GridLayout,
+        flowName: String? = null,
+        languages: List<String>,
+    ): Flow {
+        val gridWrapper = layout.addFlow().setType(Flow.Type.SIMPLE)
+        flowName?.let { gridWrapper.setName(it) }
+        val grid = layout.addEmailComponentGrid()
+        gridWrapper.addParagraph().addText().appendEmailComponentGrid(grid)
+
+        grid.setFullWidthBackground(model.fullWidthBackground)
+        grid.setDistribution(model.distribution.toWfdXml())
+        grid.setVerticalAlignment(model.verticalAlignment.toWfdXml())
+        grid.setOnMobile(model.columnStackingOnMobile.toWfdXml())
+        grid.setPaddingTop(model.paddingTop)
+        grid.setPaddingBottom(model.paddingBottom)
+        grid.setPaddingLeft(model.paddingLeft)
+        grid.setPaddingRight(model.paddingRight)
+        model.fill?.resolve(layout)?.let { grid.setFillStyle(it) }
+
+        var texts = 1
+        var images = 1
+        var externalImages = 1
+
+        for (columnModel in model.columns) {
+            val column = grid.addColumn()
+
+            for (content in columnModel.content) {
+
+                when (content) {
+                    is GridContent.Content -> {
+                        val flows = buildDocumentContentAsFlows(layout, variableStructure, content.content, null, languages)
+                        for ((index, flow) in flows.withIndex()) {
+                            val emailComponentContent = layout
+                                .addEmailComponentContent()
+                                .setDisplayName("Text Component ${texts++}")
+                                .setPaddingTop(if (index == 0) { content.paddingTop } else { 0.0 })
+                                .setPaddingBottom(if (index == flows.size - 1) { content.paddingBottom } else { 0.0 })
+                                .setPaddingLeft(content.paddingLeft)
+                                .setPaddingRight(content.paddingRight)
+                                .setContent(flow)
+                            column.addContent(emailComponentContent)
+                        }
+                    }
+                    is GridContent.Image -> {
+                        val imageModel = imageRepository.findOrFail(content.ref.id)
+
+                        when (val imagePlaceholder = getImagePlaceholder(imageModel)) {
+                            is ImagePlaceholderResult.Placeholder -> {
+                                val placeholderFlow = layout.addFlow()
+                                val emailComponentContent = layout
+                                    .addEmailComponentContent()
+                                    .setDisplayName("Text Component (Image placeholder) $images")
+                                    .setPaddingTop(content.paddingTop)
+                                    .setPaddingBottom(content.paddingBottom)
+                                    .setPaddingLeft(content.paddingLeft)
+                                    .setPaddingRight(content.paddingRight)
+                                    .setContent(placeholderFlow)
+
+                                placeholderFlow.addParagraph().addText().appendText(imagePlaceholder.value)
+                                column.addContent(emailComponentContent)
+                                images++
+                                continue
+                            }
+                            is ImagePlaceholderResult.RenderAsNormal -> {}
+                            is ImagePlaceholderResult.Skip -> continue
+                        }
+
+                        val image = getOrBuildImage(layout, imageModel, imageModel.alternateText)
+                        val emailComponentContent = layout
+                            .addEmailComponentContent()
+                            .setDisplayName("Image Component $images")
+                            .setPaddingTop(content.paddingTop)
+                            .setPaddingBottom(content.paddingBottom)
+                            .setPaddingLeft(content.paddingLeft)
+                            .setPaddingRight(content.paddingRight)
+                            .setType(EmailComponentContent.ContentType.IMAGE)
+                            .setContent(image)
+
+                        if (content.linkUrl.isNotEmpty()) {
+                            val targetUrlValue = variableStringContentToScript(
+                                if (content.openInNewWindow) {
+                                    listOf(StringValue("cx:url:blank:\\\\")) + content.linkUrl
+                                } else {
+                                    content.linkUrl
+                                },
+                                layout,
+                                variableStructure,
+                                variableRepository::findOrFail
+                            )
+                            val targetUrlVariable = getOrCreateCalculatedVariable(
+                                layout,
+                                "Image $images target url variable",
+                                targetUrlValue,
+                                isValueWrapper = false,
+                                isLockedWebNode = true,
+                            )
+                            emailComponentContent.setLinkUrl(targetUrlVariable)
+                        }
+
+                        if (content.horizontalAlignment != null) {
+                            emailComponentContent.setHorizontalAlignment(content.horizontalAlignment.toWfdXml())
+                        }
+
+                        if (content.width != null) {
+                            emailComponentContent.setHtmlWidthValue(content.width)
+                        }
+
+                        column.addContent(emailComponentContent)
+                        images++
+                    }
+                    is GridContent.ExternalImage -> {
+                        val urlValue = variableStringContentToScript(
+                            content.url,
+                            layout,
+                            variableStructure,
+                            variableRepository::findOrFail
+                        )
+                        val urlVariable = getOrCreateCalculatedVariable(
+                            layout,
+                            "External Image $externalImages url variable",
+                            urlValue,
+                            isValueWrapper = false,
+                            isLockedWebNode = false,
+                        )
+
+                        val emailComponentContent = layout
+                            .addEmailComponentContent()
+                            .setDisplayName("External Image Component $externalImages")
+                            .setPaddingTop(content.paddingTop)
+                            .setPaddingBottom(content.paddingBottom)
+                            .setPaddingLeft(content.paddingLeft)
+                            .setPaddingRight(content.paddingRight)
+                            .setType(EmailComponentContent.ContentType.EXTERNAL_IMAGE)
+                            .setContent(urlVariable)
+
+                        if (content.linkUrl.isNotEmpty()) {
+                            val targetUrlValue = variableStringContentToScript(
+                                if (content.openInNewWindow) {
+                                    listOf(StringValue("cx:url:blank:\\\\")) + content.linkUrl
+                                } else {
+                                    content.linkUrl
+                                },
+                                layout,
+                                variableStructure,
+                                variableRepository::findOrFail
+                            )
+                            val targetUrlVariable = getOrCreateCalculatedVariable(
+                                layout,
+                                "External Image $externalImages target url variable",
+                                targetUrlValue,
+                                isValueWrapper = false,
+                                isLockedWebNode = true,
+                            )
+                            emailComponentContent.setLinkUrl(targetUrlVariable)
+                        }
+
+                        if (content.alternateText != null) {
+                            val targetUrlVariable = getOrCreateCalculatedVariable(
+                                layout,
+                                "External Image $externalImages alternate text variable",
+                                variableStringContentToScript(
+                                    listOf(StringValue(content.alternateText)),
+                                    layout,
+                                    variableStructure,
+                                    variableRepository::findOrFail
+                                ),
+                                isValueWrapper = true,
+                                isLockedWebNode = true,
+                            )
+                            emailComponentContent.setAlternateTextVariable(targetUrlVariable)
+                        }
+
+                        if (content.horizontalAlignment != null) {
+                            emailComponentContent.setHorizontalAlignment(content.horizontalAlignment.toWfdXml())
+                        }
+
+                        if (content.width != null) {
+                            emailComponentContent.setHtmlWidthValue(content.width)
+                        }
+
+                        column.addContent(emailComponentContent)
+                        externalImages++
+                    }
+                }
+
+            }
+        }
+
+        return if (model.displayRuleRef != null) {
+            val displayRule = displayRuleRepository.findOrFail(model.displayRuleRef.id)
+            wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule, gridWrapper)
+        } else {
+            gridWrapper
+        }
+    }
+
+    private fun ColumnDistribution.toWfdXml() = when (this) {
+        ColumnDistribution.EvenWidth -> EmailComponentGrid.ColumnDistribution.EVEN_WIDTH
+        ColumnDistribution.TwoColumns_25_75 -> EmailComponentGrid.ColumnDistribution.TWO_COLUMNS_25_75
+        ColumnDistribution.TwoColumns_33_66 -> EmailComponentGrid.ColumnDistribution.TWO_COLUMNS_33_66
+        ColumnDistribution.TwoColumns_66_33 -> EmailComponentGrid.ColumnDistribution.TWO_COLUMNS_66_33
+        ColumnDistribution.TwoColumns_75_25 -> EmailComponentGrid.ColumnDistribution.TWO_COLUMNS_75_25
+        ColumnDistribution.ThreeColumns_25_25_50 -> EmailComponentGrid.ColumnDistribution.THREE_COLUMNS_25_25_50
+        ColumnDistribution.ThreeColumns_25_50_25 -> EmailComponentGrid.ColumnDistribution.THREE_COLUMNS_25_50_25
+        ColumnDistribution.ThreeColumns_50_25_25 -> EmailComponentGrid.ColumnDistribution.THREE_COLUMNS_50_25_25
+    }
+
+    private fun GridAlignment.toWfdXml() = when (this) {
+        GridAlignment.Top -> EmailComponentGrid.VerticalAlignment.TOP
+        GridAlignment.Center -> EmailComponentGrid.VerticalAlignment.CENTER
+        GridAlignment.Bottom -> EmailComponentGrid.VerticalAlignment.BOTTOM
+    }
+
+    private fun OnMobile.toWfdXml() = when (this) {
+        OnMobile.FromLeft -> EmailComponentGrid.OnMobile.FROM_LEFT
+        OnMobile.FromRight -> EmailComponentGrid.OnMobile.FROM_RIGHT
+        OnMobile.NoStacking -> EmailComponentGrid.OnMobile.NO_STACKING
+    }
+
+    private fun GridHorizontalAlignment.toWfdXml() = when (this) {
+        GridHorizontalAlignment.Left -> EmailComponentContent.HorizontalAlignment.LEFT
+        GridHorizontalAlignment.Center -> EmailComponentContent.HorizontalAlignment.CENTER
+        GridHorizontalAlignment.Right -> EmailComponentContent.HorizontalAlignment.RIGHT
+    }
+
+    private fun getOrCreateCalculatedVariable(
+        layout: Layout,
+        name: String,
+        value: String,
+        isValueWrapper: Boolean,
+        isLockedWebNode: Boolean
+    ): WfdXmlVariable {
+        val existing = getVariable(layout.data as DataImpl, name, "")
+        if (existing != null) {
+            return existing
+        }
+
+        val variable = layout.data.addVariable()
+            .setName(name)
+            .setKind(VariableKind.CALCULATED)
+            .setDataType(DataType.STRING)
+            .setScript(value)
+        if (isValueWrapper) {
+            variable.addCustomProperty("ValueWrapperVariable", true)
+        }
+        val layoutRoot = layout.root ?: layout.addRoot()
+        if (isLockedWebNode) {
+            layoutRoot.addLockedWebNode(variable)
+        }
+
+        return variable
     }
 
     private fun buildFirstMatch(

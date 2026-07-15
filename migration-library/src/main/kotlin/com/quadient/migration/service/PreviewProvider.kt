@@ -8,6 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
+import com.quadient.migration.api.dto.migrationmodel.GridLayout
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.QrCode
@@ -54,5 +55,6 @@ class PreviewProvider(
         is Shape -> null
         is QrCode -> null
         is Code39Barcode -> null
+        is GridLayout -> null
     }
 }

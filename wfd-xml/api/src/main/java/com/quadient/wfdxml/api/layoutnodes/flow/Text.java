@@ -1,11 +1,8 @@
 package com.quadient.wfdxml.api.layoutnodes.flow;
 
-import com.quadient.wfdxml.api.layoutnodes.Element;
-import com.quadient.wfdxml.api.layoutnodes.Flow;
-import com.quadient.wfdxml.api.layoutnodes.Image;
-import com.quadient.wfdxml.api.layoutnodes.Section;
-import com.quadient.wfdxml.api.layoutnodes.TextStyle;
+import com.quadient.wfdxml.api.layoutnodes.*;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentGrid;
 import com.quadient.wfdxml.api.layoutnodes.tables.Table;
 
 public interface Text {
@@ -27,6 +24,8 @@ public interface Text {
     Text appendElement(Element element);
 
     Text appendSection(Section section);
+
+    Text appendEmailComponentGrid(EmailComponentGrid grid);
 
     Paragraph back();
 }

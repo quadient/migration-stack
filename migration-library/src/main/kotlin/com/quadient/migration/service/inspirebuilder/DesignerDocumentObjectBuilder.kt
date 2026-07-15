@@ -15,6 +15,7 @@ import com.quadient.migration.service.IcmDataCache
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.resolveAliases
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.EmailOptions
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.PageOptions
 import com.quadient.migration.shared.ShapePath
@@ -26,6 +27,7 @@ import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.FlowArea
 import com.quadient.wfdxml.api.layoutnodes.Page
 import com.quadient.wfdxml.api.layoutnodes.Pages
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentPlaceHolder
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
@@ -91,6 +93,8 @@ class DesignerDocumentObjectBuilder(
         layout.name = "DocumentLayout"
 
         val pageModels = mutableListOf<DocumentObject>()
+        var emailModel: DocumentObject? = null
+        var smsModel: DocumentObject? = null
         val virtualPageContent = mutableListOf<DocumentContent>()
 
         val variableStructure = initVariableStructure(layout, documentObject.variableStructureRef?.id)
@@ -111,27 +115,24 @@ class DesignerDocumentObjectBuilder(
         addPdfMetadataToPages(layout, documentObject, variableStructure)
 
         documentObject.content.paragraphIfEmpty().forEach {
-            if (it is DocumentObjectRef) {
-                val documentObjectModel = documentObjectRepository.findOrFail(it.id)
-                if (documentObjectModel.type == DocumentObjectType.Page) {
-                    pageModels.add(documentObjectModel)
-                } else {
-                    virtualPageContent.add(it)
-                }
-            } else {
-                virtualPageContent.add(it)
+            val model = (it as? DocumentObjectRef)?.id?.let(documentObjectRepository::findOrFail)
+            when (model?.type) {
+                DocumentObjectType.Page -> pageModels.add(model)
+                DocumentObjectType.Email -> emailModel = model
+                DocumentObjectType.Sms -> smsModel = model
+                else -> virtualPageContent.add(it)
             }
         }
 
         pageModels.forEach {
-            if (it.skip.skipped == true && it.skip.placeholder != null) {
+            if (it.skip.skipped && it.skip.placeholder != null) {
                 val page = layout.addPage().setName("Page (skipped)").setType(Pages.PageConditionType.SIMPLE)
                 val flow = layout.addFlow().setType(Flow.Type.SIMPLE)
                 flow.addParagraph().addText().appendText("Skipped page: '${it.nameOrId()}'. Placeholder: ${it.skip.placeholder}")
                 page.addFlowArea().setPosX(defaultPosition.x.toMeters()).setPosY(defaultPosition.y.toMeters())
                     .setWidth(defaultPosition.width.toMeters()).setHeight(defaultPosition.height.toMeters())
                     .setFlow(flow)
-            } else if (it.skip.skipped != true) {
+            } else if (!it.skip.skipped) {
                 buildPage(
                     layout,
                     variableStructure,
@@ -149,6 +150,9 @@ class DesignerDocumentObjectBuilder(
                 layout, variableStructure, "Virtual Page", virtualPageContent, documentObject, null, languages
             )
         }
+
+        emailModel?.buildEmailRoot(layout, variableStructure, languages)
+        smsModel?.buildSmsRoot(layout, variableStructure, languages)
 
         val root = (layout.root ?: layout.addRoot()).setAllowRuntimeModifications(true)
         if (resolvedStyleDefinitionPath != null) {
@@ -306,6 +310,53 @@ class DesignerDocumentObjectBuilder(
                 languages
             )
         }
+    }
+
+    private fun DocumentObject.buildSmsRoot(layout: Layout, varStructure: VariableStructure, languages: List<String>) {
+        val smsRoot = layout.addSmsRoot()
+
+        val flow = buildDocumentContentAsSingleFlow(
+            layout,
+            varStructure,
+            this.content,
+            null,
+            null,
+            languages,
+            false
+        )
+
+        smsRoot.setContent(flow)
+    }
+    private fun DocumentObject.buildEmailRoot(layout: Layout, varStructure: VariableStructure, languages: List<String>) {
+        val emailRoot = layout.addEmailComponentRoot()
+        val emailBodyRootFlow = layout.addFlow().setSectionFlow(true)
+        val emailTmText = layout.addEmailTMText()
+
+        val opts = this.options as? EmailOptions
+        if (opts?.width != null) {
+            emailRoot.setWidth(opts.width)
+        }
+        if (opts?.backgroundFill != null) {
+            val fillStyle = opts.backgroundFill.resolve(layout)
+            emailRoot.setFill(fillStyle)
+        }
+
+        val flow = buildDocumentContentAsSingleFlow(
+            layout,
+            varStructure,
+            this.content,
+            null,
+            null,
+            languages,
+            false
+        )
+
+        emailRoot.setEmailComponentsText(emailTmText)
+        layout.addEmailComponentPlaceHolder()
+            .setId("Def.EmailsBody")
+            .setType(EmailComponentPlaceHolder.Type.BODY)
+            .setContent(emailBodyRootFlow)
+        emailBodyRootFlow.addParagraph().addText().appendFlow(flow)
     }
 
     private fun buildPathObject(layout: Layout, page: Page, model: Shape) {

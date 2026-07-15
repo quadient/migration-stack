@@ -1,11 +1,8 @@
 package com.quadient.wfdxml.internal.layoutnodes.flow;
 
-import com.quadient.wfdxml.api.layoutnodes.Element;
-import com.quadient.wfdxml.api.layoutnodes.Flow;
-import com.quadient.wfdxml.api.layoutnodes.Image;
-import com.quadient.wfdxml.api.layoutnodes.Section;
-import com.quadient.wfdxml.api.layoutnodes.TextStyle;
+import com.quadient.wfdxml.api.layoutnodes.*;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentGrid;
 import com.quadient.wfdxml.api.layoutnodes.flow.Text;
 import com.quadient.wfdxml.api.layoutnodes.tables.Table;
 import com.quadient.wfdxml.internal.layoutnodes.TextStyleImpl;
@@ -86,6 +83,11 @@ public class TextImpl implements Text, XmlExportable {
     @Override
     public Text appendSection(Section section) {
         return append(section);
+    }
+
+    @Override
+    public Text appendEmailComponentGrid(EmailComponentGrid grid) {
+        return append(grid);
     }
 
     private Text append(Object obj) {

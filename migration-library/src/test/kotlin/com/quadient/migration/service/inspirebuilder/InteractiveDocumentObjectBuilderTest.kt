@@ -39,15 +39,18 @@ import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BinOp.*
+import com.quadient.migration.shared.ColumnDistribution
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.*
+import com.quadient.migration.shared.GridAlignment
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
+import com.quadient.migration.shared.OnMobile
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.TabType
@@ -879,7 +882,8 @@ class InteractiveDocumentObjectBuilderTest {
         val v2 = contents[1]["T"].toList()[2]["O"]["Id"].stringValue()
         contents[1]["T"].toList()[3][""].stringValue().shouldBeEqualTo("Screw this World")
         val v3 = contents[1]["T"].toList()[4]["O"]["Id"].stringValue()
-        contents[2]["T"][""].stringValue().shouldBeEqualTo("Goodbye World")
+        contents[2]["T"][""].stringValue().shouldBeEqualTo("Paragraph 2")
+        contents[3]["T"][""].stringValue().shouldBeEqualTo("Goodbye World")
 
         result["Variable"].first { it["Id"].stringValue() == v1 }["Name"].stringValue().shouldBeEqualTo("V_1")
         result["Variable"].first { it["Id"].stringValue() == v2 }["Name"].stringValue().shouldBeEqualTo("V_2")
@@ -1570,6 +1574,80 @@ class InteractiveDocumentObjectBuilderTest {
         variableData["ParentId"].stringValue().shouldBeEqualTo("Def.SystemVariables")
         variableData["Forward"]["useExisting"].stringValue().shouldBeEqualTo("True")
     }
+
+    @Test
+    fun `build of block with grid layout with all properties set produces matching ECGrid xml`() {
+        // given
+        val block = DocumentObjectBuilder("1", Block).gridLayout {
+            distribution(ColumnDistribution.ThreeColumns_25_25_50)
+            verticalAlignment(GridAlignment.Center)
+            columnStackingOnMobile(OnMobile.NoStacking)
+            paddingTop(10.0)
+            paddingBottom(20.0)
+            paddingLeft(30.0)
+            paddingRight(40.0)
+            fullWidthBackground(true)
+            column { content { paragraph { text { string("c1") } } } }
+            column { content { paragraph { text { string("c2") } } } }
+            column { content { paragraph { text { string("c3") } } } }
+        }.build()
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val grid = ecGridContent(result)
+        grid["ColumnsCount"].stringValue().shouldBeEqualTo("3")
+        grid["FullWidthBackground"].stringValue().shouldBeEqualTo("True")
+        grid["Distribution"].stringValue().shouldBeEqualTo("25-25-50")
+        grid["VerticalAlignment"].stringValue().shouldBeEqualTo("Center")
+        grid["OnMobile"].stringValue().shouldBeEqualTo("NoStacking")
+        grid["Padding"]["Left"].stringValue().shouldBeEqualTo("30px")
+        grid["Padding"]["Top"].stringValue().shouldBeEqualTo("10px")
+        grid["Padding"]["Right"].stringValue().shouldBeEqualTo("40px")
+        grid["Padding"]["Bottom"].stringValue().shouldBeEqualTo("20px")
+
+        val columns = grid["Columns"]["Column"].toList()
+        columns.shouldBeOfSize(3)
+
+        val columnTexts = columns.map { col ->
+            val content = ecContentForGrid(result, col["Component"].stringValue())
+            val flowId = content["ContentId"].stringValue()
+            val flow = result["Flow"].toList().first { it["Id"].stringValue() == flowId && it["FlowContent"] != null }
+            flow["FlowContent"]["P"]["T"][""].stringValue()
+        }
+        columnTexts.shouldBeEqualTo(listOf("c1", "c2", "c3"))
+    }
+
+    @Test
+    fun `build of block with grid layout with displayRuleRef wraps grid flow in select-by-condition flow`() {
+        // given
+        val rule = DisplayRuleBuilder("R_GRID").comparison { value("A").equals().value("A") }.build().mock()
+        val block = DocumentObjectBuilder("1", Block).gridLayout {
+            displayRuleRef(rule.id)
+            column { content { paragraph { text { string("col text") } } } }
+        }.build()
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val gridId = ecGridContent(result)["Id"].stringValue()
+        val wrapperFlow = result["Flow"].toList().first {
+            it["FlowContent"]?.get("P")?.get("T")?.get("O")?.get("Id")?.stringValue() == gridId
+        }
+        wrapperFlow["Type"].stringValue().shouldBeEqualTo("Simple")
+
+        val wrapperFlowId = wrapperFlow["Id"].stringValue()
+        val conditionFlow = result["Flow"].toList().first { it["Type"]?.stringValue() == "Condition" }
+        conditionFlow["Condition"][""].stringValue().shouldBeEqualTo(wrapperFlowId)
+    }
+
+    private fun ecGridContent(result: tools.jackson.databind.JsonNode): tools.jackson.databind.JsonNode =
+        result["ECGrid"].toList().first { it["ColumnsCount"] != null }
+
+    private fun ecContentForGrid(result: tools.jackson.databind.JsonNode, id: String): tools.jackson.databind.JsonNode =
+        result["ECContent"].toList().first { it["Id"]?.stringValue() == id && it["ContentId"] != null }
 
     private fun DocumentObject.mock(): DocumentObject {
         val id = this.id

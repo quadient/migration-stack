@@ -4,6 +4,7 @@ import com.quadient.migration.persistence.migrationmodel.DocumentContentEntity
 import com.quadient.migration.persistence.migrationmodel.AreaEntity
 import com.quadient.migration.persistence.migrationmodel.ColumnLayoutEntity
 import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
+import com.quadient.migration.persistence.migrationmodel.GridLayoutEntity
 import com.quadient.migration.persistence.migrationmodel.ParagraphEntity
 import com.quadient.migration.persistence.migrationmodel.SelectByLanguageEntity
 import com.quadient.migration.persistence.migrationmodel.TableEntity
@@ -33,6 +34,7 @@ sealed interface DocumentContent {
             is RepeatedContentEntity -> RepeatedContent.fromDb(entity)
             is VariableStringContentEntity -> VariableStringContent.fromDb(entity)
             is ColumnLayoutEntity -> ColumnLayout.fromDb(entity)
+            is GridLayoutEntity -> GridLayout.fromDb(entity)
             is ShapeEntity -> Shape.fromDb(entity)
             is BarcodeEntity -> Barcode.fromDb(entity)
         }
@@ -54,6 +56,7 @@ fun List<DocumentContent>.toDb(): List<DocumentContentEntity> {
             is ColumnLayout -> it.toDb()
             is Shape -> it.toDb()
             is Barcode -> it.toDb()
+            is GridLayout -> it.toDb()
         }
     }
 }

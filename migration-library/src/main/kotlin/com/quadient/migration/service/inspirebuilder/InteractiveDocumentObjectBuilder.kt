@@ -26,6 +26,7 @@ import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.module.Layout
+import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
 
 class InteractiveDocumentObjectBuilder(
     documentObjectRepository: DocumentObjectRepository,
@@ -62,9 +63,15 @@ class InteractiveDocumentObjectBuilder(
         resourcePathProvider::getDisplayRulePath
     )
 
+
     override fun applyImageAlternateText(layout: Layout, image: WfdXmlImage, alternateText: String) {
+        val name = "Alternate text variable for ${image.name}"
+        val existing = getVariable(layout.data as DataImpl, name, "")
+        if (existing != null) {
+            return
+        }
         val variable = layout.data.addVariable()
-            .setName("Alternate text variable for ${image.name}")
+            .setName(name)
             .setKind(VariableKind.CALCULATED)
             .setDataType(DataType.STRING)
             .setScript("return ${toScriptStringLiteral(alternateText)};")
@@ -103,17 +110,45 @@ class InteractiveDocumentObjectBuilder(
                 layout,
                 variableStructure
             )
+            DocumentObjectType.Email, DocumentObjectType.Sms -> {
+                throw IllegalStateException("Email and SMS document objects cannot be external")
+            }
 
             else -> {
                 documentObject.content.paragraphIfEmpty().forEach { documentContentPart ->
                     if (documentContentPart is DocumentObjectRef) {
                         val referencedModel = documentObjectRepository.findOrFail(documentContentPart.id)
-                        if (referencedModel.type == DocumentObjectType.Page && referencedModel.internal == true) {
-                            referencedModel.content.paragraphIfEmpty().forEach { pageContentPart ->
-                                mapContentItemToInteractiveFlow(pageContentPart, currentBaseTemplateData, interactiveFlowsWithContent)
+                        when (referencedModel.type) {
+                            DocumentObjectType.Page if referencedModel.internal == true -> {
+                                for (pageContentPart in referencedModel.content.paragraphIfEmpty()) {
+                                    mapContentItemToInteractiveFlow(
+                                        pageContentPart,
+                                        currentBaseTemplateData,
+                                        interactiveFlowsWithContent,
+                                    )
+                                }
                             }
-                        } else {
-                            interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(documentContentPart)
+                            DocumentObjectType.Email -> {
+                                val bodyFlow = currentBaseTemplateData.emailFlowNamesToIds["Body Content"]
+                                    ?: throw IllegalStateException("Base template '$baseTemplatePath' does not contain email interactive flow.")
+                                for (pageContentPart in referencedModel.content.paragraphIfEmpty()) {
+                                    interactiveFlowsWithContent
+                                        .getOrPut(bodyFlow) { mutableListOf() }
+                                        .add(pageContentPart)
+                                }
+                            }
+                            DocumentObjectType.Sms -> {
+                                val bodyFlow = currentBaseTemplateData.smsFlowNamesToIds["SMS Content"]
+                                    ?: throw IllegalStateException("Base template '$baseTemplatePath' does not contain SMS interactive flow.")
+                                for (pageContentPart in referencedModel.content.paragraphIfEmpty()) {
+                                    interactiveFlowsWithContent
+                                        .getOrPut(bodyFlow) { mutableListOf() }
+                                        .add(pageContentPart)
+                                }
+                            }
+                            else -> {
+                                interactiveFlowsWithContent.getOrPut(mainFlowId) { mutableListOf() }.add(documentContentPart)
+                            }
                         }
                     } else {
                         mapContentItemToInteractiveFlow(documentContentPart, currentBaseTemplateData, interactiveFlowsWithContent)

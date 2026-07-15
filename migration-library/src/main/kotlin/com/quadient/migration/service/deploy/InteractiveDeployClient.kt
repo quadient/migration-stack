@@ -216,7 +216,8 @@ open class InteractiveDeployClient(
         }
         require(error.isEmpty()) { error }
 
-        return documentObjects
+        val filteredTypes = listOf(DocumentObjectType.Email, DocumentObjectType.Sms)
+        return documentObjects.filter { it.type !in filteredTypes }
     }
 
     private fun deployDisplayRules(

@@ -1,13 +1,7 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
-import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ColumnLayoutBuilder
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
-import com.quadient.migration.api.dto.migrationmodel.Variable
-import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Hyperlink
-import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef

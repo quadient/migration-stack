@@ -2,8 +2,14 @@ package com.quadient.wfdxml.internal.module.layout;
 
 import com.quadient.wfdxml.api.layoutnodes.Element;
 import com.quadient.wfdxml.api.layoutnodes.Root;
+import com.quadient.wfdxml.api.layoutnodes.SmsRoot;
 import com.quadient.wfdxml.api.layoutnodes.TextStyle;
 import com.quadient.wfdxml.api.layoutnodes.data.Variable;
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentContent;
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentGrid;
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentPlaceHolder;
+import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentRoot;
+import com.quadient.wfdxml.api.layoutnodes.email.TMText;
 import com.quadient.wfdxml.api.layoutnodes.tables.BorderStyle;
 import com.quadient.wfdxml.api.layoutnodes.tables.HeaderFooterRowSet;
 import com.quadient.wfdxml.api.module.Layout;
@@ -14,6 +20,11 @@ import com.quadient.wfdxml.internal.NodeImpl;
 import com.quadient.wfdxml.internal.Tree;
 import com.quadient.wfdxml.internal.layoutnodes.*;
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl;
+import com.quadient.wfdxml.internal.layoutnodes.email.EmailComponentGridImpl;
+import com.quadient.wfdxml.internal.layoutnodes.email.EmailComponentContentImpl;
+import com.quadient.wfdxml.internal.layoutnodes.email.EmailComponentPlaceHolderImpl;
+import com.quadient.wfdxml.internal.layoutnodes.email.EmailComponentRootImpl;
+import com.quadient.wfdxml.internal.layoutnodes.email.TMTextImpl;
 import com.quadient.wfdxml.internal.layoutnodes.tables.CellImpl;
 import com.quadient.wfdxml.internal.layoutnodes.tables.RowSetImpl;
 import com.quadient.wfdxml.internal.layoutnodes.tables.TableImpl;
@@ -31,10 +42,12 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
     private final Map<DefaultNodeType, DefNode> defNodes = new HashMap<>();
     private final Map<String, NodeImpl> defObject = new HashMap<>();
     private RootImpl root;
+    private SmsRootImpl smsRoot;
+    private EmailComponentRootImpl emailRoot;
     private DataImpl data;
     private PagesImpl pages;
 
-    private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images", "TextStyles", "Colors", "FillStyles", "BorderStyles", "Pages", "Others", "FlowObjects");
+    private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images", "TextStyles", "Colors", "FillStyles", "BorderStyles", "Pages", "Others", "FlowObjects", "EmailComponents");
     private final List<String> styleLayoutDeltaAllowedGroups = List.of("TextStyles", "FillStyles", "ParagraphStyles", "Colors", "Fonts");
 
     public LayoutImpl() {
@@ -85,6 +98,8 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
         Group defFormControl = createObjectGroup("FormControls", "Def.FormControlGroup", DN_FORMCONTROL_GROUP);
         Group defFrameStyles = createObjectGroup("FrameStyles", "Def.FrameStyleGroup", DN_FRAMESTYLES_GROUP);
         Group defOthers = createObjectGroup("Others", "Def.OthersGroup", DN_OTHERS_GROUP);
+        Group defEmailComponents = createObjectGroup("EmailComponents", "Def.EmailComponentsGroup", DN_EMAIL_COMPONENTS_GROUP);
+        Group defTextGroup = createObjectGroup("Texts", "Def.TextsGroup", DN_TEXT_GROUP);
 
         createPages();
         createData();
@@ -197,6 +212,51 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
     }
 
     @Override
+    public SmsRoot addSmsRoot() {
+        smsRoot = new SmsRootImpl();
+        return smsRoot;
+    }
+
+    @Override
+    public SmsRoot getSmsRoot() {
+        return smsRoot;
+    }
+
+    @Override
+    public EmailComponentRoot addEmailComponentRoot() {
+        emailRoot = new EmailComponentRootImpl();
+        return emailRoot;
+    }
+
+    @Override
+    public EmailComponentGrid addEmailComponentGrid() {
+        EmailComponentGridImpl grid = new EmailComponentGridImpl();
+        addNodeToDefGroup(DN_EMAIL_COMPONENTS_GROUP, grid);
+        return grid;
+    }
+
+    @Override
+    public EmailComponentContent addEmailComponentContent() {
+        EmailComponentContentImpl content = new EmailComponentContentImpl();
+        addNodeToDefGroup(DN_EMAIL_COMPONENTS_GROUP, content);
+        return content;
+    }
+
+    @Override
+    public EmailComponentPlaceHolder addEmailComponentPlaceHolder() {
+        EmailComponentPlaceHolderImpl placeHolder = new EmailComponentPlaceHolderImpl();
+        addNodeToDefGroup(DN_EMAIL_COMPONENTS_GROUP, placeHolder);
+        return placeHolder;
+    }
+
+    @Override
+    public TMText addEmailTMText() {
+        TMTextImpl content = new TMTextImpl();
+        addNodeToDefGroup(DN_TEXT_GROUP, content);
+        return content;
+    }
+
+    @Override
     public ParagraphStyleImpl addBulletParagraph(TextStyle textStyle, String bullet) {
         return addParagraphStyle().setBulletsNumberingFlow(addBulletFlow(textStyle, bullet));
     }
@@ -300,6 +360,14 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
             exporter.beginElement("Root");
             root.export(exporter);
             exporter.endElement();
+        }
+
+        if (emailRoot != null) {
+            emailRoot.export(exporter);
+        }
+
+        if (smsRoot != null) {
+            smsRoot.export(exporter);
         }
 
         exportNodes(exporter);

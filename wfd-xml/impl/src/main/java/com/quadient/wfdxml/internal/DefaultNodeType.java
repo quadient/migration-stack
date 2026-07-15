@@ -26,6 +26,7 @@ public enum DefaultNodeType {
     DN_TABLE_GROUP(15),
     DN_ROWSET_GROUP(16),
     DN_CELL_GROUP(17),
+    DN_TEXT_GROUP(18),
 
     DN_LINESTYLE_GROUP(20),
     DN_OTHERS_GROUP(22),
@@ -33,6 +34,7 @@ public enum DefaultNodeType {
 
     DN_FORMCONTROL_GROUP(29),
     DN_FRAMESTYLES_GROUP(33),
+    DN_EMAIL_COMPONENTS_GROUP(34),
 
     DN_PAGES(36),
     DN_DATA(37),
