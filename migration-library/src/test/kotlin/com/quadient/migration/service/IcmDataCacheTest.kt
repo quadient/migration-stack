@@ -2851,9 +2851,15 @@ class IcmDataCacheTest {
         val result = subject.getOrLoadBaseTemplateData(path)!!
 
         // then
-        result.interactiveFlowNamesToIds.shouldBeEqualTo(mapOf("Letter Content" to "Def.InteractiveFlow0"))
-        result.emailFlowNamesToIds.shouldBeEqualTo(mapOf("Flow BT 5" to "Def.InteractiveFlow1", "Body Content" to "Def.InteractiveFlow1"))
-        result.smsFlowNamesToIds.shouldBeEqualTo(mapOf("Flow BT 7" to "Def.InteractiveFlow2", "SMS Content" to "Def.InteractiveFlow2"))
+        result.interactiveFlowNamesToIds.shouldBeEqualTo(mapOf(
+            "Letter Content" to "Def.InteractiveFlow0",
+            "Flow BT 5" to "Def.InteractiveFlow1",
+            "Body Content" to "Def.InteractiveFlow1",
+            "Flow BT 7" to "Def.InteractiveFlow2",
+            "SMS Content" to "Def.InteractiveFlow2",
+        ))
+        result.emailFlowId.shouldBeEqualTo("Def.InteractiveFlow1")
+        result.smsFlowId.shouldBeEqualTo("Def.InteractiveFlow2")
     }
 
     @Test

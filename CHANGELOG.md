@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+**Breaking** `PageOptions` were moved from `com.quadient.migration.shared` to the
+`com.quadient.migration.api.dto.migrationmodel` package, you will need to adjust imports in your code to reflect the new
+path.
+
+
 ### Fixed
 
 ## [17.0.27] - 2026-07-14

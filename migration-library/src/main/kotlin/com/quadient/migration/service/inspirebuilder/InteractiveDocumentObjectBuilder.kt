@@ -100,9 +100,11 @@ class InteractiveDocumentObjectBuilder(
         val languages = collectLanguages(documentObject)
         val variableStructure = initVariableStructure(layout, documentObject.variableStructureRef?.id)
 
-        addPdfMetadataToPages(layout, documentObject, variableStructure)
+        layout.addPdfMetadataToPages(documentObject, variableStructure)
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContent>>()
+        var usedSmsModel: DocumentObject? = null
+        var usedEmailModel: DocumentObject? = null
         when (documentObject.type) {
             DocumentObjectType.Snippet -> return snippetBuilder.buildSnippet(
                 documentObject,
@@ -129,8 +131,9 @@ class InteractiveDocumentObjectBuilder(
                                 }
                             }
                             DocumentObjectType.Email -> {
-                                val bodyFlow = currentBaseTemplateData.emailFlowNamesToIds["Body Content"]
+                                val bodyFlow = currentBaseTemplateData.emailFlowId
                                     ?: throw IllegalStateException("Base template '$baseTemplatePath' does not contain email interactive flow.")
+                                usedEmailModel = referencedModel
                                 for (pageContentPart in referencedModel.content.paragraphIfEmpty()) {
                                     interactiveFlowsWithContent
                                         .getOrPut(bodyFlow) { mutableListOf() }
@@ -138,8 +141,9 @@ class InteractiveDocumentObjectBuilder(
                                 }
                             }
                             DocumentObjectType.Sms -> {
-                                val bodyFlow = currentBaseTemplateData.smsFlowNamesToIds["SMS Content"]
+                                val bodyFlow = currentBaseTemplateData.smsFlowId
                                     ?: throw IllegalStateException("Base template '$baseTemplatePath' does not contain SMS interactive flow.")
+                                usedSmsModel = referencedModel
                                 for (pageContentPart in referencedModel.content.paragraphIfEmpty()) {
                                     interactiveFlowsWithContent
                                         .getOrPut(bodyFlow) { mutableListOf() }
@@ -158,6 +162,14 @@ class InteractiveDocumentObjectBuilder(
         }
 
         val hasMultipleFlows = interactiveFlowsWithContent.size > 1
+
+        if (usedSmsModel != null) {
+            layout.addSmsNumberToPages(usedSmsModel, variableStructure)
+        }
+
+        if (usedEmailModel != null) {
+            layout.addEmailMetadataToPages(usedEmailModel, variableStructure)
+        }
 
         interactiveFlowsWithContent.forEach {
             val interactiveFlowText =

@@ -11,9 +11,11 @@ import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.EmailObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.SmsObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.SnippetBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
@@ -30,7 +32,7 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
-import com.quadient.migration.shared.PageOptions
+import com.quadient.migration.api.dto.migrationmodel.PageOptions
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.QrCodeErrorCorrectionLevel
 import com.quadient.migration.shared.QrCodeSize
@@ -407,7 +409,7 @@ def address = new DocumentObjectBuilder("address", DocumentObjectType.Block)
 // Footer of the document containing a signature.
 def signature = new DocumentObjectBuilder("signature", DocumentObjectType.Block)
         .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Sincerely,") } }
-        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("John Smith") } }
+        .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("John Migration") } }
         .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("CEO of Lorem ipsum") } }
         .variableStructureRef(variableStructure)
         .build()
@@ -650,6 +652,81 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         .variableStructureRef(variableStructure)
         .build()
 
+def sms = new SmsObjectBuilder("sms")
+    .options { it.numberTo("123456789") }
+    .string("Hello, ").variableRef(nameVariable).string(".")
+    .string(" Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")
+    .build()
+
+def email = new EmailObjectBuilder("email")
+    .options {
+        it.width(600.0)
+        it.backgroundFill("#ffffff")
+        it.from("john@migration.com")
+        it.fromName("John Migration")
+        it.subject { it.string("Hello, ").variableRef(nameVariable.id) }
+        it.to("john.doe@example.com")
+    }
+    .gridLayout {
+        it.column {
+            it.image {
+                it.imageRef(logo.id)
+            }
+        }
+    }
+    .gridLayout {
+        it.column {
+            it.content {
+                it.string("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")
+            }
+        }
+        it.column {
+            it.content {
+                it.table {
+                    it.border {
+                        it.allBorders(borderColor, borderWidth)
+                    }
+                    it.addRow {
+                        it.addCell {
+                            it.border {
+                                it.allBorders(borderColor, borderWidth)
+                            }
+                            it.string("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.")
+                        }
+                        it.addCell {
+                            it.border {
+                                it.allBorders(borderColor, borderWidth)
+                            }
+                            it.string("Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")
+                        }
+                    }
+                    it.addRow {
+                        it.addCell {
+                            it.border {
+                                it.allBorders(borderColor, borderWidth)
+                            }
+                            it.string("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.")
+                        }
+                        it.addCell {
+                            it.border {
+                                it.allBorders(borderColor, borderWidth)
+                            }
+                            it.string("Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    .build()
+
+def templateEmailSms = new DocumentObjectBuilder("templateEmailSms", DocumentObjectType.Template)
+    .documentObjectRef(sms)
+    .documentObjectRef(email)
+    .baseTemplate("vcs://Interactive/StandardPackage/BaseTemplates/ResponsiveEmailBaseTemplate.wfd")
+    .variableStructureRef(variableStructure)
+    .build()
+
 def template = new DocumentObjectBuilder("template", DocumentObjectType.Template)
         .documentObjectRef(page)
         .subject("Document example template")
@@ -664,7 +741,7 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
         .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, snippet, fmSnippet]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, snippet, fmSnippet, sms, email, templateEmailSms]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {

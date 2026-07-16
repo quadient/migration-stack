@@ -3,6 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel.builder.documentcontent
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.GridContent
+import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
@@ -216,25 +217,46 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
                 GridContent.Content(content, paddingTop, paddingBottom, paddingLeft, paddingRight)
         }
 
-        class ImageBuilder : HasDoublePadding<ImageBuilder> {
-            internal var ref: ImageRef? = null
-            var horizontalAlignment: GridHorizontalAlignment? = null
-            var width: Double? = null
-            internal var linkUrl: List<VariableStringContent> = emptyList()
-            var openInNewWindow: Boolean = false
+        class ImageBuilder :
+            HasDoublePadding<ImageBuilder>,
+            HasGridHorizontalAlignment<ImageBuilder>,
+            HasGridImageWidth<ImageBuilder>,
+            HasGridLinkUrl<ImageBuilder> {
+            private var ref: ImageRef? = null
+            override var horizontalAlignment: GridHorizontalAlignment? = null
+            override var width: Double? = null
+            override var linkUrl: List<VariableStringContent> = emptyList()
+            override var openInNewWindow: Boolean = false
             override var paddingTop: Double = 0.0
             override var paddingBottom: Double = 0.0
             override var paddingLeft: Double = 0.0
             override var paddingRight: Double = 0.0
 
+            /**
+             * Sets the image reference by image ID.
+             * @param imageId The ID of the image to reference.
+             * @return This builder instance for method chaining.
+             */
             fun imageRef(imageId: String) = apply { ref = ImageRef(imageId) }
-            fun horizontalAlignment(horizontalAlignment: GridHorizontalAlignment) = apply { this.horizontalAlignment = horizontalAlignment }
-            fun width(width: Double) = apply { this.width = width }
-            fun linkUrl(linkUrl: String) = apply { this.linkUrl = listOf(StringValue(linkUrl)) }
-            fun linkUrl(linkUrl: List<VariableStringContent>) = apply { this.linkUrl = linkUrl }
-            fun linkUrl(builder: VariableStringContentBuilder.() -> Unit) = apply { this.linkUrl = VariableStringContentBuilder().apply(builder).build() }
-            fun openInNewWindow(openInNewWindow: Boolean) = apply { this.openInNewWindow = openInNewWindow }
 
+            /**
+             * Sets the image reference from an [Image] object.
+             * @param image The [Image] whose ID is used as the reference.
+             * @return This builder instance for method chaining.
+             */
+            fun imageRef(image: Image) = apply { ref = ImageRef(image.id) }
+
+            /**
+             * Sets the image reference directly.
+             * @param ref The [ImageRef] to use.
+             * @return This builder instance for method chaining.
+             */
+            fun imageRef(ref: ImageRef) = apply { this.ref = ref }
+
+            /**
+             * Builds the [GridContent.Image] instance, or null if no image reference was set.
+             * @return The constructed [GridContent.Image], or null if [imageRef] was not called.
+             */
             fun build(): GridContent.Image? = ref?.let {
                 GridContent.Image(
                     it,
@@ -250,31 +272,118 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
             }
         }
 
-        class ExternalImageBuilder : HasDoublePadding<ExternalImageBuilder> {
-            internal var url: List<VariableStringContent> = emptyList()
-            var horizontalAlignment: GridHorizontalAlignment? = null
-            var width: Double? = null
-            var alternateText: String? = null
-            internal var linkUrl: List<VariableStringContent> = emptyList()
-            var openInNewWindow: Boolean = false
+        class ExternalImageBuilder :
+            HasDoublePadding<ExternalImageBuilder>,
+            HasGridHorizontalAlignment<ExternalImageBuilder>,
+            HasGridImageWidth<ExternalImageBuilder>,
+            HasGridLinkUrl<ExternalImageBuilder> {
+            private var url: List<VariableStringContent> = emptyList()
+            override var horizontalAlignment: GridHorizontalAlignment? = null
+            override var width: Double? = null
+            private var alternateText: String? = null
+            override var linkUrl: List<VariableStringContent> = emptyList()
+            override var openInNewWindow: Boolean = false
             override var paddingTop: Double = 0.0
             override var paddingBottom: Double = 0.0
             override var paddingLeft: Double = 0.0
             override var paddingRight: Double = 0.0
 
+            /**
+             * Sets the image source URL as a plain string.
+             * @param url The URL of the external image.
+             * @return This builder instance for method chaining.
+             */
             fun url(url: String) = apply { this.url = listOf(StringValue(url)) }
-            fun url(url: List<VariableStringContent>) = apply { this.url = url }
-            fun url(builder: VariableStringContentBuilder.() -> Unit) = apply { this.url = VariableStringContentBuilder().apply(builder).build() }
-            fun linkUrl(linkUrl: String) = apply { this.linkUrl = listOf(StringValue(linkUrl)) }
-            fun linkUrl(linkUrl: List<VariableStringContent>) = apply { this.linkUrl = linkUrl }
-            fun linkUrl(builder: VariableStringContentBuilder.() -> Unit) = apply { this.linkUrl = VariableStringContentBuilder().apply(builder).build() }
-            fun horizontalAlignment(horizontalAlignment: GridHorizontalAlignment) = apply { this.horizontalAlignment = horizontalAlignment }
-            fun width(width: Double) = apply { this.width = width }
-            fun alternateText(alternateText: String) = apply { this.alternateText = alternateText }
-            fun openInNewWindow(openInNewWindow: Boolean) = apply { this.openInNewWindow = openInNewWindow }
 
+            /**
+             * Sets the image source URL as a list of variable string content.
+             * @param url The list of [VariableStringContent] composing the URL.
+             * @return This builder instance for method chaining.
+             */
+            fun url(url: List<VariableStringContent>) = apply { this.url = url }
+
+            /**
+             * Sets the image source URL using a builder function.
+             * @param builder A builder function to configure the [VariableStringContentBuilder].
+             * @return This builder instance for method chaining.
+             */
+            fun url(builder: VariableStringContentBuilder.() -> Unit) = apply { this.url = VariableStringContentBuilder().apply(builder).build() }
+
+            /**
+             * Sets the alternate text for the image for accessibility purposes.
+             * @param alternateText The alternate text string.
+             * @return This builder instance for method chaining.
+             */
+            fun alternateText(alternateText: String) = apply { this.alternateText = alternateText }
+
+            /**
+             * Builds the [GridContent.ExternalImage] instance.
+             * @return The constructed [GridContent.ExternalImage] instance.
+             */
             fun build(): GridContent.ExternalImage =
                 GridContent.ExternalImage(url, horizontalAlignment, width, alternateText, linkUrl, openInNewWindow, paddingTop, paddingBottom, paddingLeft, paddingRight)
         }
     }
 }
+
+@Suppress("UNCHECKED_CAST")
+interface HasGridHorizontalAlignment<T> {
+    var horizontalAlignment: GridHorizontalAlignment?
+
+    /**
+     * Sets the horizontal alignment of the image within the column.
+     * @param horizontalAlignment The [GridHorizontalAlignment] to apply.
+     * @return This builder instance for method chaining.
+     */
+    fun horizontalAlignment(horizontalAlignment: GridHorizontalAlignment) =
+        apply { this.horizontalAlignment = horizontalAlignment } as T
+}
+
+@Suppress("UNCHECKED_CAST")
+interface HasGridImageWidth<T> {
+    var width: Double?
+
+    /**
+     * Sets the display width of the image in pixels.
+     * @param width The width in pixels.
+     * @return This builder instance for method chaining.
+     */
+    fun width(width: Double) = apply { this.width = width } as T
+}
+
+@Suppress("UNCHECKED_CAST")
+interface HasGridLinkUrl<T> {
+    var linkUrl: List<VariableStringContent>
+    var openInNewWindow: Boolean
+
+    /**
+     * Sets the hyperlink URL for the image as a plain string.
+     * @param linkUrl The URL string to use as the link.
+     * @return This builder instance for method chaining.
+     */
+    fun linkUrl(linkUrl: String) = apply { this.linkUrl = listOf(StringValue(linkUrl)) } as T
+
+    /**
+     * Sets the hyperlink URL for the image as a list of variable string content.
+     * @param linkUrl The list of [VariableStringContent] composing the URL.
+     * @return This builder instance for method chaining.
+     */
+    fun linkUrl(linkUrl: List<VariableStringContent>) = apply { this.linkUrl = linkUrl } as T
+
+    /**
+     * Sets the hyperlink URL for the image using a builder function.
+     * @param builder A builder function to configure the [VariableStringContentBuilder].
+     * @return This builder instance for method chaining.
+     */
+    fun linkUrl(builder: VariableStringContentBuilder.() -> Unit) =
+        apply { this.linkUrl = VariableStringContentBuilder().apply(builder).build() } as T
+
+    /**
+     * Sets whether the link should open in a new window.
+     * Defaults to false if not set.
+     * @param openInNewWindow Whether to open the link in a new browser window.
+     * @return This builder instance for method chaining.
+     */
+    fun openInNewWindow(openInNewWindow: Boolean) = apply { this.openInNewWindow = openInNewWindow } as T
+}
+

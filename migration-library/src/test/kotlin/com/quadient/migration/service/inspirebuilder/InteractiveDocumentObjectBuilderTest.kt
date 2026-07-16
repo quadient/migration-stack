@@ -18,9 +18,11 @@ import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.EmailObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.SmsObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
@@ -1648,6 +1650,250 @@ class InteractiveDocumentObjectBuilderTest {
 
     private fun ecContentForGrid(result: tools.jackson.databind.JsonNode, id: String): tools.jackson.databind.JsonNode =
         result["ECContent"].toList().first { it["Id"]?.stringValue() == id && it["ContentId"] != null }
+
+    @Test
+    fun `build template with email model reference maps content to email interactive flow`() {
+        // given
+        val emailDoc = EmailObjectBuilder("E_1").string("Email content").build().mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(emailDoc).build()
+
+        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null)) } returns """
+            <Workflow>
+                <Layout>
+                    <Layout>
+                        <Flow>
+                            <Id>65</Id>
+                            <Name>Letter Content</Name>
+                        </Flow>
+                        <Flow>
+                            <Id>66</Id>
+                            <Name>Body Content</Name>
+                            <CustomProperty>{"customName":"Body Content"}</CustomProperty>
+                        </Flow>
+                        <Pages>
+                            <InteractiveFlow>
+                                <FlowId>65</FlowId>
+                                <FlowType>Normal</FlowType>
+                            </InteractiveFlow>
+                            <InteractiveFlow>
+                                <FlowId>66</FlowId>
+                                <FlowType>HTML</FlowType>
+                            </InteractiveFlow>
+                        </Pages>
+                        <ECPlaceHolder>
+                            <Id Name="Header">Def.EmailsHeader</Id>
+                            <PlaceHolderType>Header</PlaceHolderType>
+                            <ContentId/>
+                        </ECPlaceHolder>
+                        <ECPlaceHolder>
+                            <Id Name="Body">Def.EmailsBody</Id>
+                            <PlaceHolderType>Body</PlaceHolderType>
+                            <ContentId>66</ContentId>
+                        </ECPlaceHolder>
+                        <ECPlaceHolder>
+                            <Id Name="Footer">Def.EmailsFooter</Id>
+                            <PlaceHolderType>Footer</PlaceHolderType>
+                            <ContentId/>
+                        </ECPlaceHolder>
+                    </Layout>
+                </Layout>
+            </Workflow>
+        """.trimIndent()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val emailInteractiveFlow = result["Flow"].first { it["Id"].stringValue() == "Def.InteractiveFlow1" }
+        val emailFlowContentId = emailInteractiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        result["Flow"].last { it["Id"].stringValue() == emailFlowContentId }["FlowContent"]["P"]["T"][""].stringValue()
+            .shouldBeEqualTo("Email content")
+    }
+
+    @Test
+    fun `build template with sms model reference maps content to sms interactive flow`() {
+        // given
+        val smsDoc = SmsObjectBuilder("S_1").string("SMS content").build().mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(smsDoc).build()
+
+        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null)) } returns """
+            <Workflow>
+                <Layout>
+                    <Layout>
+                        <Flow>
+                            <Id>65</Id>
+                            <Name>Letter Content</Name>
+                        </Flow>
+                        <Flow>
+                            <Id>67</Id>
+                            <Name>SMS Content</Name>
+                            <CustomProperty>{"customName":"SMS Content"}</CustomProperty>
+                        </Flow>
+                        <Pages>
+                            <InteractiveFlow>
+                                <FlowId>65</FlowId>
+                                <FlowType>Normal</FlowType>
+                            </InteractiveFlow>
+                            <InteractiveFlow>
+                                <FlowId>67</FlowId>
+                                <FlowType>Normal</FlowType>
+                            </InteractiveFlow>
+                        </Pages>
+                        <SMSRoot>
+                            <Id Name="SMS">Def.SMSRoot</Id>
+                            <FlowId>67</FlowId>
+                        </SMSRoot>
+                    </Layout>
+                </Layout>
+            </Workflow>
+        """.trimIndent()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val smsInteractiveFlow = result["Flow"].first { it["Id"].stringValue() == "Def.InteractiveFlow1" }
+        val smsFlowContentId = smsInteractiveFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        result["Flow"].last { it["Id"].stringValue() == smsFlowContentId }["FlowContent"]["P"]["T"][""].stringValue()
+            .shouldBeEqualTo("SMS content")
+    }
+
+    @Test
+    fun `build template with email model and options creates email sheet name variables`() {
+        // given
+        val emailDoc = EmailObjectBuilder("E_1")
+            .string("Email content")
+            .options {
+                from("sender@example.com")
+                fromName("Sender Name")
+                subject("Test Subject")
+                to("recipient@example.com")
+            }
+            .build().mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(emailDoc).build()
+
+        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null)) } returns """
+            <Workflow>
+                <Layout>
+                    <Layout>
+                        <Flow>
+                            <Id>65</Id>
+                            <Name>Letter Content</Name>
+                        </Flow>
+                        <Flow>
+                            <Id>66</Id>
+                            <Name>Body Content</Name>
+                            <CustomProperty>{"customName":"Body Content"}</CustomProperty>
+                        </Flow>
+                        <Pages>
+                            <InteractiveFlow>
+                                <FlowId>65</FlowId>
+                                <FlowType>Normal</FlowType>
+                            </InteractiveFlow>
+                            <InteractiveFlow>
+                                <FlowId>66</FlowId>
+                                <FlowType>HTML</FlowType>
+                            </InteractiveFlow>
+                        </Pages>
+                        <ECPlaceHolder>
+                            <Id Name="Header">Def.EmailsHeader</Id>
+                            <PlaceHolderType>Header</PlaceHolderType>
+                            <ContentId/>
+                        </ECPlaceHolder>
+                        <ECPlaceHolder>
+                            <Id Name="Body">Def.EmailsBody</Id>
+                            <PlaceHolderType>Body</PlaceHolderType>
+                            <ContentId>66</ContentId>
+                        </ECPlaceHolder>
+                        <ECPlaceHolder>
+                            <Id Name="Footer">Def.EmailsFooter</Id>
+                            <PlaceHolderType>Footer</PlaceHolderType>
+                            <ContentId/>
+                        </ECPlaceHolder>
+                    </Layout>
+                </Layout>
+            </Workflow>
+        """.trimIndent()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val allSheetNameVariableIds = result["Pages"]["SheetNameVariableId"].toList().map { it.stringValue() ?: "" }
+        val emailSheetNameVariableIds = allSheetNameVariableIds.filter { it.isNotBlank() }
+        emailSheetNameVariableIds.size.shouldBeEqualTo(4)
+
+        val variableNames = emailSheetNameVariableIds.map { varId ->
+            result["Variable"].first { it["Id"].stringValue() == varId }["Name"].stringValue()
+        }
+        variableNames.shouldBeEqualTo(listOf("EmailFromName", "EmailFrom", "EmailTo", "EmailSubject"))
+
+        val variableScripts = emailSheetNameVariableIds.map { varId ->
+            result["Variable"].last { it["Id"].stringValue() == varId }["Script"].stringValue()
+        }
+        variableScripts.shouldBeEqualTo(listOf(
+            "return 'Sender Name';",
+            "return 'sender@example.com';",
+            "return 'recipient@example.com';",
+            "return 'Test Subject';",
+        ))
+    }
+
+    @Test
+    fun `build template with sms model and options creates sms sheet name variable`() {
+        // given
+        val smsDoc = SmsObjectBuilder("S_1")
+            .string("SMS content")
+            .options { numberTo("+1234567890") }
+            .build().mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(smsDoc).build()
+
+        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null)) } returns """
+            <Workflow>
+                <Layout>
+                    <Layout>
+                        <Flow>
+                            <Id>65</Id>
+                            <Name>Letter Content</Name>
+                        </Flow>
+                        <Flow>
+                            <Id>67</Id>
+                            <Name>SMS Content</Name>
+                            <CustomProperty>{"customName":"SMS Content"}</CustomProperty>
+                        </Flow>
+                        <Pages>
+                            <InteractiveFlow>
+                                <FlowId>65</FlowId>
+                                <FlowType>Normal</FlowType>
+                            </InteractiveFlow>
+                            <InteractiveFlow>
+                                <FlowId>67</FlowId>
+                                <FlowType>Normal</FlowType>
+                            </InteractiveFlow>
+                        </Pages>
+                        <SMSRoot>
+                            <Id Name="SMS">Def.SMSRoot</Id>
+                            <FlowId>67</FlowId>
+                        </SMSRoot>
+                    </Layout>
+                </Layout>
+            </Workflow>
+        """.trimIndent()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val allSheetNameVariableIds = result["Pages"]["SheetNameVariableId"].toList().map { it.stringValue() ?: "" }
+        val smsSheetNameVariableIds = allSheetNameVariableIds.filter { it.isNotBlank() }
+        smsSheetNameVariableIds.size.shouldBeEqualTo(1)
+
+        val variableId = smsSheetNameVariableIds.first()
+        result["Variable"].first { it["Id"].stringValue() == variableId }["Name"].stringValue()
+            .shouldBeEqualTo("NumberTo")
+        result["Variable"].last { it["Id"].stringValue() == variableId }["Script"].stringValue()
+            .shouldBeEqualTo("return '+1234567890';")
+    }
 
     private fun DocumentObject.mock(): DocumentObject {
         val id = this.id

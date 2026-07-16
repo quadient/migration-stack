@@ -3,6 +3,7 @@ package com.quadient.wfdxml.internal.layoutnodes
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.SheetNameType
+import groovy.xml.XmlParser
 import com.quadient.wfdxml.internal.layoutnodes.data.VariableImpl
 import com.quadient.wfdxml.internal.xml.export.XmlExporter
 import com.quadient.wfdxml.utils.AssertXml
@@ -201,6 +202,57 @@ class PagesImplTest extends Specification {
         def xml = exporter.buildString()
         (xml =~ /<SheetNameVariableId>[^<]+<\/SheetNameVariableId>/).count == 2
         (xml =~ /<SheetNameVariableId><\/SheetNameVariableId>/).count == 39
+    }
+
+    def "export Pages with sheet names - SMS"() {
+        given:
+        VariableImpl var79 = new VariableImpl()
+        String id79 = exporter.idRegister.getOrCreateId(var79)
+
+        PagesImpl pages = new PagesImpl()
+                .addSheetName(SheetNameType.SMS_NUMBER_TO, var79)
+
+        when:
+        pages.export(exporter)
+
+        then:
+        def xml = exporter.buildString()
+        List<Node> sheetIds = new XmlParser().parseText("<root>$xml</root>")['SheetNameVariableId'] as List<Node>
+        sheetIds.size() == 80
+        sheetIds[79].text() == id79
+        (0..78).every { sheetIds[it as int].text() == "" }
+    }
+
+    def "export Pages with sheet names - all email fields"() {
+        given:
+        VariableImpl var47 = new VariableImpl()
+        VariableImpl var48 = new VariableImpl()
+        VariableImpl var50 = new VariableImpl()
+        VariableImpl var57 = new VariableImpl()
+
+        String id47 = exporter.idRegister.getOrCreateId(var47)
+        String id48 = exporter.idRegister.getOrCreateId(var48)
+        String id50 = exporter.idRegister.getOrCreateId(var50)
+        String id57 = exporter.idRegister.getOrCreateId(var57)
+
+        PagesImpl pages = new PagesImpl()
+                .addSheetName(SheetNameType.EMAIL_FROM_NAME, var47)
+                .addSheetName(SheetNameType.EMAIL_FROM, var48)
+                .addSheetName(SheetNameType.EMAIL_TO, var50)
+                .addSheetName(SheetNameType.EMAIL_SUBJECT, var57)
+
+        when:
+        pages.export(exporter)
+
+        then:
+        def xml = exporter.buildString()
+        List<Node> sheetIds = new XmlParser().parseText("<root>$xml</root>")['SheetNameVariableId'] as List<Node>
+        sheetIds.size() == 58
+        sheetIds[47].text() == id47
+        sheetIds[48].text() == id48
+        sheetIds[50].text() == id50
+        sheetIds[57].text() == id57
+        (0..56).findAll { !(it in [47, 48, 50, 57]) }.every { sheetIds[it as int].text() == "" }
     }
 
     def "export Pages without sheet names - should not add SheetNameVariableId"() {

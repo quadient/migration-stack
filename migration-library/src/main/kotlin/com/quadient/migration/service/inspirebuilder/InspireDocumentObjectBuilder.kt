@@ -12,6 +12,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.Barcode
+import com.quadient.migration.api.dto.migrationmodel.Code39Barcode
 import com.quadient.migration.api.dto.migrationmodel.FirstMatch
 import com.quadient.migration.api.dto.migrationmodel.GridContent
 import com.quadient.migration.api.dto.migrationmodel.GridLayout
@@ -120,7 +121,10 @@ import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariableRefPath
 import com.quadient.migration.service.resolveTarget
+import com.quadient.migration.api.dto.migrationmodel.EmailOptions
+import com.quadient.migration.api.dto.migrationmodel.QrCode
 import com.quadient.migration.shared.Size
+import com.quadient.migration.api.dto.migrationmodel.SmsOptions
 import com.quadient.wfdxml.api.layoutnodes.Flow.WebEditingType.SECTION
 import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentContent
 
@@ -197,12 +201,37 @@ abstract class InspireDocumentObjectBuilder(
                                     }
                                 }
 
-                                else -> {}
+                                is Code39Barcode -> {}
+                                is QrCode -> {}
+                                is ColumnLayout -> {}
+                                is Hyperlink -> {}
+                                is AttachmentRef -> {}
+                                is ImageRef -> {}
+                                is StringValue -> {}
+                                is VariableRef -> {}
                             }
                         }
                     }
 
-                    else -> {}
+                    is GridLayout -> {
+                        item.columns.forEach { column ->
+                            column.content.forEach { content ->
+                                when (content) {
+                                    is GridContent.Content -> collectLanguagesFromContent(content.content)
+                                    is GridContent.ExternalImage -> {}
+                                    is GridContent.Image -> {}
+                                }
+                            }
+                        }
+                    }
+
+                    is Code39Barcode -> {}
+                    is QrCode -> {}
+                    is AttachmentRef -> {}
+                    is ImageRef -> {}
+                    is Shape -> {}
+                    is StringValue -> {}
+                    is VariableRef -> {}
                 }
             }
         }
@@ -1833,31 +1862,41 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    protected fun addPdfMetadataToPages(
-        layout: Layout, documentObject: DocumentObject, variableStructure: VariableStructure
-    ) {
+    protected fun Layout.addEmailMetadataToPages(documentObject: DocumentObject, variableStructure: VariableStructure) {
+        val emailOptions = documentObject.options as? EmailOptions ?: return
+        this.addSheetNameVariable(variableStructure, SheetNameType.EMAIL_FROM, "EmailFrom", emailOptions.from)
+        this.addSheetNameVariable(variableStructure, SheetNameType.EMAIL_FROM_NAME, "EmailFromName", emailOptions.fromName)
+        this.addSheetNameVariable(variableStructure, SheetNameType.EMAIL_SUBJECT, "EmailSubject", emailOptions.subject)
+        this.addSheetNameVariable(variableStructure, SheetNameType.EMAIL_TO, "EmailTo", emailOptions.to)
+    }
+
+    protected fun Layout.addSmsNumberToPages(documentObject: DocumentObject, variableStructure: VariableStructure) {
+        val smsOptions = documentObject.options as? SmsOptions ?: return
+        this.addSheetNameVariable(variableStructure, SheetNameType.SMS_NUMBER_TO, "NumberTo", smsOptions.numberTo)
+    }
+
+    protected fun Layout.addPdfMetadataToPages(documentObject: DocumentObject, variableStructure: VariableStructure) {
         val pdfMetadata = documentObject.pdfMetadata ?: return
+        this.addSheetNameVariable(variableStructure, SheetNameType.PDF_TITLE, "TaggingTitle", pdfMetadata.title)
+        this.addSheetNameVariable(variableStructure, SheetNameType.PDF_AUTHOR, "TaggingAuthor", pdfMetadata.author)
+        this.addSheetNameVariable(variableStructure, SheetNameType.PDF_SUBJECT, "TaggingSubject", pdfMetadata.subject)
+        this.addSheetNameVariable(variableStructure, SheetNameType.PDF_KEYWORDS, "TaggingKeywords", pdfMetadata.keywords)
+        this.addSheetNameVariable(variableStructure, SheetNameType.PDF_PRODUCER, "TaggingProduce", pdfMetadata.producer)
+    }
 
-        val metadataMap = mapOf(
-            SheetNameType.PDF_TITLE to Pair("TaggingTitle", pdfMetadata.title),
-            SheetNameType.PDF_AUTHOR to Pair("TaggingAuthor", pdfMetadata.author),
-            SheetNameType.PDF_SUBJECT to Pair("TaggingSubject", pdfMetadata.subject),
-            SheetNameType.PDF_KEYWORDS to Pair("TaggingKeywords", pdfMetadata.keywords),
-            SheetNameType.PDF_PRODUCER to Pair("TaggingProduce", pdfMetadata.producer)
-        )
-
-        metadataMap.forEach { (type, data) ->
-            val (variableName, value) = data
-            if (!value.isNullOrEmpty()) {
-                val variable =
-                    layout.data.addVariable().setName(variableName).setKind(VariableKind.CALCULATED).setScript(
-                        variableStringContentToScript(
-                            value, layout, variableStructure, variableRepository::findOrFail
-                        )
-                    )
-                layout.pages.addSheetName(type, variable)
-            }
-        }
+    private fun Layout.addSheetNameVariable(
+        variableStructure: VariableStructure,
+        type: SheetNameType,
+        variableName: String,
+        value: List<VariableStringContent>?,
+    ) {
+        if (value.isNullOrEmpty()) return
+        val variable = this.data
+            .addVariable()
+            .setName(variableName)
+            .setKind(VariableKind.CALCULATED)
+            .setScript(variableStringContentToScript(value, this, variableStructure, variableRepository::findOrFail))
+        this.pages.addSheetName(type, variable)
     }
 
     sealed interface ScriptResult {

@@ -16,7 +16,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSkip
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSubject
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTargetFolder
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasVariableStructureRef
-import com.quadient.migration.shared.DocumentObjectOptions
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions

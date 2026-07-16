@@ -4,11 +4,12 @@ import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectOptions
 import com.quadient.migration.api.dto.migrationmodel.PdfMetadata
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.persistence.migrationmodel.DocumentContentEntity
 import com.quadient.migration.persistence.migrationmodel.PdfMetadataEntity
-import com.quadient.migration.shared.DocumentObjectOptions
+import com.quadient.migration.persistence.migrationmodel.DocumentObjectOptionsEntity
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
@@ -24,7 +25,7 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
     val displayRuleRef = varchar("display_rule_ref", 255).nullable()
     val variableStructureRef = varchar("variable_structure_ref", 255).nullable()
     val baseTemplate = varchar("base_template", 255).nullable()
-    val documentObjectOptions = jsonb<DocumentObjectOptions>("options", Json).nullable()
+    val documentObjectOptions = jsonb<DocumentObjectOptionsEntity>("options", Json).nullable()
     val pdfMetadata = jsonb<PdfMetadataEntity>("pdf_metadata", Json).nullable()
     val metadata = jsonb<List<MetadataEntry>>("metadata", Json)
     val skip = jsonb<SkipOptions>("skip", Json)
@@ -45,7 +46,7 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
             displayRuleRef = result[displayRuleRef]?.let { DisplayRuleRef(it) },
             variableStructureRef = result[variableStructureRef]?.let { VariableStructureRef(it) },
             baseTemplate = result[baseTemplate],
-            options = result[documentObjectOptions],
+            options = result[documentObjectOptions]?.let(DocumentObjectOptions::fromDb),
             pdfMetadata = result[pdfMetadata]?.let(PdfMetadata::fromDb),
             metadata = result[metadata],
             skip = result[skip],

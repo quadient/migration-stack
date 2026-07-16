@@ -18,7 +18,7 @@ import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.ImageType
-import com.quadient.migration.shared.PageOptions
+import com.quadient.migration.api.dto.migrationmodel.PageOptions
 import com.quadient.migration.shared.Size
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration

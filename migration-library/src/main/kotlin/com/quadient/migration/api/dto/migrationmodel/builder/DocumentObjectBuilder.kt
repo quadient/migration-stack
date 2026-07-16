@@ -10,6 +10,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasCateg
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasDisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasDocumentObjectOptions
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasEmailOptions
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSmsOptions
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasInternal
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasMetadata
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasPdfMetadata
@@ -17,11 +18,12 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSkip
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSubject
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTargetFolder
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasVariableStructureRef
-import com.quadient.migration.shared.DocumentObjectOptions
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.EmailOptions
+import com.quadient.migration.api.dto.migrationmodel.EmailOptions
 import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
+import com.quadient.migration.api.dto.migrationmodel.SmsOptions
 
 class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     DtoBuilderBase<DocumentObject, DocumentObjectBuilder>(id), DocumentContentBuilderBase<DocumentObjectBuilder>,
@@ -126,6 +128,7 @@ class SmsObjectBuilder(id: String) : DtoBuilderBase<DocumentObject, SmsObjectBui
     HasVariableRefContent<DocumentContent, SmsObjectBuilder>,
     HasParagraphContent<SmsObjectBuilder>,
     HasSkip<SmsObjectBuilder>,
+    HasSmsOptions<SmsObjectBuilder>,
     HasVariableStructureRef<SmsObjectBuilder>
 {
     override var variableStructureRef: VariableStructureRef? = null
@@ -133,6 +136,7 @@ class SmsObjectBuilder(id: String) : DtoBuilderBase<DocumentObject, SmsObjectBui
     override var skip = false
     override var placeholder: String? = null
     override var reason: String? = null
+    override var options: SmsOptions? = null
 
     override fun build(): DocumentObject {
         return DocumentObject(
@@ -147,7 +151,7 @@ class SmsObjectBuilder(id: String) : DtoBuilderBase<DocumentObject, SmsObjectBui
             displayRuleRef = null,
             variableStructureRef = variableStructureRef,
             baseTemplate = null,
-            options = null,
+            options = options,
             pdfMetadata = null,
             metadata = emptyList(),
             skip = SkipOptions(skipped = skip, reason = reason, placeholder = placeholder),

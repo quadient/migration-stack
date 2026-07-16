@@ -1,6 +1,5 @@
 package com.quadient.migration.api.dto.migrationmodel
 
-import com.quadient.migration.shared.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
