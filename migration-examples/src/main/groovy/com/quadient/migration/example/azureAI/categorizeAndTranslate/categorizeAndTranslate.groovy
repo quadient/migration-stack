@@ -17,7 +17,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleDefinition
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
-import com.quadient.migration.shared.PageOptions
+import com.quadient.migration.api.dto.migrationmodel.PageOptions
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 import groovy.json.JsonSlurper

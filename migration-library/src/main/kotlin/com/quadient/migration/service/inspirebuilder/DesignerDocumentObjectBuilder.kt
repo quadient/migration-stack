@@ -15,9 +15,9 @@ import com.quadient.migration.service.IcmDataCache
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.resolveAliases
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.EmailOptions
+import com.quadient.migration.api.dto.migrationmodel.EmailOptions
 import com.quadient.migration.shared.IcmPath
-import com.quadient.migration.shared.PageOptions
+import com.quadient.migration.api.dto.migrationmodel.PageOptions
 import com.quadient.migration.shared.ShapePath
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.millimeters
@@ -112,7 +112,7 @@ class DesignerDocumentObjectBuilder(
             layout.data.setLanguageVariable(variable)
         }
 
-        addPdfMetadataToPages(layout, documentObject, variableStructure)
+        layout.addPdfMetadataToPages(documentObject, variableStructure)
 
         documentObject.content.paragraphIfEmpty().forEach {
             val model = (it as? DocumentObjectRef)?.id?.let(documentObjectRepository::findOrFail)
@@ -313,6 +313,7 @@ class DesignerDocumentObjectBuilder(
     }
 
     private fun DocumentObject.buildSmsRoot(layout: Layout, varStructure: VariableStructure, languages: List<String>) {
+        layout.addSmsNumberToPages(this, varStructure)
         val smsRoot = layout.addSmsRoot()
 
         val flow = buildDocumentContentAsSingleFlow(
@@ -328,6 +329,7 @@ class DesignerDocumentObjectBuilder(
         smsRoot.setContent(flow)
     }
     private fun DocumentObject.buildEmailRoot(layout: Layout, varStructure: VariableStructure, languages: List<String>) {
+        layout.addEmailMetadataToPages(this, varStructure)
         val emailRoot = layout.addEmailComponentRoot()
         val emailBodyRootFlow = layout.addFlow().setSectionFlow(true)
         val emailTmText = layout.addEmailTMText()

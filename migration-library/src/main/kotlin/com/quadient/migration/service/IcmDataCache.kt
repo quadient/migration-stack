@@ -108,9 +108,9 @@ abstract class IcmDataCache(
     private fun parseBaseTemplateData(xml: String): BaseTemplateData {
         val layoutXmlTree = xmlMapper.readTree(xml.trimIndent())["Layout"]["Layout"]
         val pagesInteractiveFlowNode = layoutXmlTree["Pages"]?.get("InteractiveFlow")
-            ?: return BaseTemplateData(emptyMap(), emptyMap(), emptyMap())
+            ?: return BaseTemplateData(emptyMap(), null, null)
         val flowNodes = layoutXmlTree["Flow"]
-            ?: return BaseTemplateData(emptyMap(), emptyMap(), emptyMap())
+            ?: return BaseTemplateData(emptyMap(), null, null)
 
         val interactiveFlowIds: List<String> = if (pagesInteractiveFlowNode is ArrayNode) {
             pagesInteractiveFlowNode.toList().map { it["FlowId"].asString() }
@@ -123,29 +123,28 @@ abstract class IcmDataCache(
         val smsRootFlowId = layoutXmlTree["SMSRoot"]?.get("FlowId")?.stringValue()
 
         val interactiveFlowNamesToIds = mutableMapOf<String, String>()
-        val emailFlowNamesToIds = mutableMapOf<String, String>()
-        val smsFlowNamesToIds = mutableMapOf<String, String>()
+        var smsFlowId: String? = null
+        var emailFlowId: String? = null
 
         interactiveFlowIds.forEachIndexed { i, id ->
-            val targetMap = when {
-                emailBodyRootFlowId != null && id == emailBodyRootFlowId -> emailFlowNamesToIds
-                smsRootFlowId != null && id == smsRootFlowId -> smsFlowNamesToIds
-                else -> interactiveFlowNamesToIds
+            when {
+                emailBodyRootFlowId != null && id == emailBodyRootFlowId -> emailFlowId = "Def.InteractiveFlow$i"
+                smsRootFlowId != null && id == smsRootFlowId -> smsFlowId = "Def.InteractiveFlow$i"
             }
             val flowData = flowNodes.first { flow -> flow["Id"].asString() == id }
-            flowData["Name"]?.stringValue()?.let { targetMap[it] = "Def.InteractiveFlow$i" }
+            flowData["Name"]?.stringValue()?.let { interactiveFlowNamesToIds[it] = "Def.InteractiveFlow$i" }
 
             flowData["CustomProperty"]?.stringValue()?.let { raw ->
                 lenientJson.decodeFromString<FlowCustomProperty>(raw).customName?.let {
-                    targetMap[it] = "Def.InteractiveFlow$i"
+                    interactiveFlowNamesToIds[it] = "Def.InteractiveFlow$i"
                 }
             }
         }
 
         return BaseTemplateData(
             interactiveFlowNamesToIds = interactiveFlowNamesToIds,
-            emailFlowNamesToIds = emailFlowNamesToIds,
-            smsFlowNamesToIds = smsFlowNamesToIds,
+            emailFlowId = emailFlowId,
+            smsFlowId = smsFlowId,
         )
     }
 
@@ -157,8 +156,8 @@ abstract class IcmDataCache(
 
     data class BaseTemplateData(
         val interactiveFlowNamesToIds: Map<String, String>,
-        val emailFlowNamesToIds: Map<String, String>,
-        val smsFlowNamesToIds: Map<String, String>,
+        val emailFlowId: String?,
+        val smsFlowId: String?,
     )
 
     @Serializable

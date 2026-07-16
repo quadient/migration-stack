@@ -165,6 +165,18 @@ class Stats {
                 case ColumnLayout -> this.columnLayoutsCount++
                 case StringValue -> this.collectTextContent([content])
                 case VariableRef -> this.collectTextContent([content])
+                case GridLayout -> {
+                    for (column in content.columns) {
+                        for (columnContent in column.content) {
+                            switch (columnContent) {
+                                case GridContent.Content -> this.collectContent(columnContent.content)
+                                case GridContent.Image -> this.usedImages.add(columnContent.ref.id)
+                                case GridContent.ExternalImage -> {}
+
+                            }
+                        }
+                    }
+                }
                 case Shape -> this.shapesCount++
                 case Barcode -> this.barcodesCount++
                 default -> throw new IllegalStateException("Unknown content type: ${content.class.name}")

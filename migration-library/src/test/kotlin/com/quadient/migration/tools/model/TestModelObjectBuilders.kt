@@ -30,7 +30,7 @@ import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.DisplayRuleDefinition
-import com.quadient.migration.shared.DocumentObjectOptions
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.GroupOp

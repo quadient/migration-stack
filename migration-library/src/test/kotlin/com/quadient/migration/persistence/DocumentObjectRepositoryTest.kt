@@ -7,7 +7,9 @@ import com.quadient.migration.shared.GridAlignment
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.EmailObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.SmsObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.GridLayoutBuilder
 import com.quadient.migration.api.repository.StatusTrackingRepository
@@ -248,6 +250,43 @@ class DocumentObjectRepositoryTest {
             keywords("test, metadata, pdf")
             producer { variableRef("companyName").string(" Migration").build() }
         }.build()
+
+        repo.upsert(dto)
+        val result = repo.find(dto.id)!!
+
+        val updatedDto = dto.copy(lastUpdated = result.lastUpdated, created = result.created)
+        result.shouldBeEqualTo(updatedDto)
+    }
+
+    @Test
+    fun `emailOptions roundtrip with all fields`() {
+        val dto = EmailObjectBuilder("email1")
+            .options {
+                width(600.0)
+                backgroundFill("#ffffff")
+                from("sender@example.com")
+                fromName("Sender Name")
+                subject("Test Subject")
+                to("recipient@example.com")
+            }
+            .string("Email body")
+            .build()
+
+        repo.upsert(dto)
+        val result = repo.find(dto.id)!!
+
+        val updatedDto = dto.copy(lastUpdated = result.lastUpdated, created = result.created)
+        result.shouldBeEqualTo(updatedDto)
+    }
+
+    @Test
+    fun `smsOptions roundtrip with all fields`() {
+        val dto = SmsObjectBuilder("sms1")
+            .options {
+                numberTo("+1234567890")
+            }
+            .string("SMS body")
+            .build()
 
         repo.upsert(dto)
         val result = repo.find(dto.id)!!

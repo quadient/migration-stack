@@ -47,7 +47,7 @@ import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.BorderOptions
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
-import com.quadient.migration.shared.DocumentObjectOptions
+import com.quadient.migration.api.dto.migrationmodel.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType

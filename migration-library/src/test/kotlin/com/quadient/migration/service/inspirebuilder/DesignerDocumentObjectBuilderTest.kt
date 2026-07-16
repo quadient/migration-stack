@@ -42,7 +42,7 @@ import com.quadient.migration.shared.DocumentObjectType.*
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.Literal
 import com.quadient.migration.shared.LiteralDataType
-import com.quadient.migration.shared.PageOptions
+import com.quadient.migration.api.dto.migrationmodel.PageOptions
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
@@ -1144,6 +1144,92 @@ class DesignerDocumentObjectBuilderTest {
         val contentFlowId = smsRoot["FlowId"].stringValue()
         result["Flow"].last { it["Id"].stringValue() == contentFlowId }["FlowContent"]["P"]["T"][""].stringValue()
             .shouldBeEqualTo("SMS content")
+    }
+
+    @Test
+    fun `buildDocumentObject sets email width and bg fill on ECRoot when email options has width`() {
+        // given
+        val emailDoc = EmailObjectBuilder("E_1")
+            .string("Email content")
+            .options {
+                width(600.0)
+                backgroundFill("#ff0000")
+            }
+            .build().mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(emailDoc).build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["ECRoot"]["EmailWidth"].stringValue().shouldBeEqualTo("600px")
+        result["ECRoot"]["FillStyleId"].stringValue().shouldNotBeEmpty()
+    }
+
+    @Test
+    fun `buildDocumentObject creates email sheet name variables when email options has metadata`() {
+        // given
+        val emailDoc = EmailObjectBuilder("E_1")
+            .string("Email content")
+            .options {
+                from("sender@example.com")
+                fromName("Sender Name")
+                subject("Test Subject")
+                to("recipient@example.com")
+            }
+            .build().mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(emailDoc).build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val emailSheetNameVariableIds = result["Pages"]["SheetNameVariableId"]
+            .toList()
+            .map { it.stringValue() ?: "" }
+            .filter { it.isNotBlank() }
+        emailSheetNameVariableIds.size.shouldBeEqualTo(4)
+
+        val variableNames = emailSheetNameVariableIds.map { varId ->
+            result["Variable"].first { it["Id"].stringValue() == varId }["Name"].stringValue()
+        }
+        variableNames.shouldBeEqualTo(listOf("EmailFromName", "EmailFrom", "EmailTo", "EmailSubject"))
+
+        val variableScripts = emailSheetNameVariableIds.map { varId ->
+            result["Variable"].last { it["Id"].stringValue() == varId }["Script"].stringValue()
+        }
+        variableScripts.shouldBeEqualTo(listOf(
+            "return 'Sender Name';",
+            "return 'sender@example.com';",
+            "return 'recipient@example.com';",
+            "return 'Test Subject';",
+        ))
+    }
+
+    @Test
+    fun `buildDocumentObject creates sms sheet name variable when sms options has numberTo`() {
+        // given
+        val smsDoc = SmsObjectBuilder("S_1")
+            .string("SMS content")
+            .options { numberTo("+1234567890") }
+            .build().mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(smsDoc).build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val smsSheetNameVariableIds = result["Pages"]["SheetNameVariableId"]
+            .toList()
+            .map { it.stringValue() ?: "" }
+            .filter { it.isNotBlank() }
+        smsSheetNameVariableIds.size.shouldBeEqualTo(1)
+
+        val variableId = smsSheetNameVariableIds.first()
+        result["Variable"].first { it["Id"].stringValue() == variableId }["Name"].stringValue()
+            .shouldBeEqualTo("NumberTo")
+        result["Variable"].last { it["Id"].stringValue() == variableId }["Script"].stringValue()
+            .shouldBeEqualTo("return '+1234567890';")
     }
 
     private fun DocumentObject.mock(): DocumentObject {

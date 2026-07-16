@@ -8,7 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.toDb
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.shared.PageOptions
+import com.quadient.migration.api.dto.migrationmodel.PageOptions
 import com.quadient.migration.tools.concat
 import com.quadient.migration.tools.logger
 import kotlin.time.Clock
@@ -86,7 +86,7 @@ class DocumentObjectRepository(projectName: ProjectName, private val statusTrack
                 stmt.setString(index++, dto.displayRuleRef?.id)
                 stmt.setString(index++, dto.variableStructureRef?.id)
                 stmt.setString(index++, dto.baseTemplate)
-                stmt.setObject(index++, dto.options?.let { Json.encodeToString(it) }, Types.OTHER)
+                stmt.setObject(index++, dto.options?.let { Json.encodeToString(it.toDb()) }, Types.OTHER)
                 stmt.setObject(index++, dto.pdfMetadata?.let { Json.encodeToString(it.toDb()) }, Types.OTHER)
                 stmt.setObject(index++, dto.metadata.let { Json.encodeToString(it) }, Types.OTHER)
                 stmt.setObject(index++, Json.encodeToString(dto.skip), Types.OTHER)
@@ -129,7 +129,7 @@ class DocumentObjectRepository(projectName: ProjectName, private val statusTrack
                 it[DocumentObjectTable.displayRuleRef] = dto.displayRuleRef?.id
                 it[DocumentObjectTable.variableStructureRef] = dto.variableStructureRef?.id
                 it[DocumentObjectTable.baseTemplate] = dto.baseTemplate
-                it[DocumentObjectTable.documentObjectOptions] = dto.options
+                it[DocumentObjectTable.documentObjectOptions] = dto.options?.toDb()
                 it[DocumentObjectTable.pdfMetadata] = dto.pdfMetadata?.toDb()
                 it[DocumentObjectTable.metadata] = dto.metadata
                 it[DocumentObjectTable.skip] = dto.skip
