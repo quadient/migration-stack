@@ -34,11 +34,11 @@ import okhttp3.OkHttpClient
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.koin.core.KoinApplication
-import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 import com.quadient.migration.tools.logger
+import org.koin.plugin.module.dsl.single
 import java.util.concurrent.TimeUnit
 
 class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
@@ -46,25 +46,25 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
     private val projectName = ProjectName(projectConfig.name)
 
     private val designerModule = module {
-        singleOf(::DesignerDeployClient) bind DeployClient::class
-        singleOf(::DesignerResourcePathProvider) bind ResourcePathProvider::class
-        singleOf(::DesignerIcmDataCache) bind IcmDataCache::class
-        singleOf(::DesignerDocumentObjectBuilder) bind InspireDocumentObjectBuilder::class
+        single<DesignerDeployClient>() bind DeployClient::class
+        single<DesignerResourcePathProvider>() bind ResourcePathProvider::class
+        single<DesignerIcmDataCache>() bind IcmDataCache::class
+        single<DesignerDocumentObjectBuilder>() bind InspireDocumentObjectBuilder::class
     }
 
     private val evolveModule = module {
-        singleOf(::EvolveDeployClient) bind DeployClient::class
-        singleOf(::EvolveResourcePathProvider) bind ResourcePathProvider::class
-        singleOf(::EvolveIcmDataCache) bind IcmDataCache::class
-        singleOf(::InteractiveDocumentObjectBuilder) bind InspireDocumentObjectBuilder::class
-        singleOf(::CaApiClient)
+        single<EvolveDeployClient>() bind DeployClient::class
+        single<EvolveResourcePathProvider>() bind ResourcePathProvider::class
+        single<EvolveIcmDataCache>() bind IcmDataCache::class
+        single<InteractiveDocumentObjectBuilder>() bind InspireDocumentObjectBuilder::class
+        single<CaApiClient>()
     }
 
     private val interactiveModule = module {
-        singleOf(::InteractiveDeployClient) bind DeployClient::class
-        singleOf(::InteractiveResourcePathProvider) bind ResourcePathProvider::class
-        singleOf(::InteractiveIcmDataCache) bind IcmDataCache::class
-        singleOf(::InteractiveDocumentObjectBuilder) bind InspireDocumentObjectBuilder::class
+        single<InteractiveDeployClient>() bind DeployClient::class
+        single<InteractiveResourcePathProvider>() bind ResourcePathProvider::class
+        single<InteractiveIcmDataCache>() bind IcmDataCache::class
+        single<InteractiveDocumentObjectBuilder>() bind InspireDocumentObjectBuilder::class
     }
 
     private val migrationModule = module {
@@ -90,29 +90,29 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
                 .build()
         }
 
-        singleOf(::VariableRepository)
-        singleOf(::DocumentObjectRepository)
-        singleOf(::TextStyleRepository)
-        singleOf(::ParagraphStyleRepository)
-        singleOf(::VariableStructureRepository)
-        singleOf(::DisplayRuleRepository)
-        singleOf(::BaseTemplateRepository)
-        singleOf(::ImageRepository)
-        singleOf(::AttachmentRepository)
-        singleOf(::StatusTrackingRepository)
-        singleOf(::MappingRepository)
+        single<VariableRepository>()
+        single<DocumentObjectRepository>()
+        single<TextStyleRepository>()
+        single<ParagraphStyleRepository>()
+        single<VariableStructureRepository>()
+        single<DisplayRuleRepository>()
+        single<BaseTemplateRepository>()
+        single<ImageRepository>()
+        single<AttachmentRepository>()
+        single<StatusTrackingRepository>()
+        single<MappingRepository>()
 
-        singleOf(::LocalStorage)
+        single<LocalStorage>()
 
-        singleOf(::MetadataValidatorImpl)
-        singleOf(::PostProcessImpl)
-        singleOf(::ProgressReporterImpl)
-        singleOf(::ConflictDetectorImpl)
+        single<MetadataValidatorImpl>()
+        single<PostProcessImpl>()
+        single<ProgressReporterImpl>()
+        single<ConflictDetectorImpl>()
 
-        singleOf(::ReferenceValidator)
-        singleOf(::StylesValidator)
-        singleOf(::RefCollector)
-        singleOf(::PreviewProvider)
+        single<ReferenceValidator>()
+        single<StylesValidator>()
+        single<RefCollector>()
+        single<PreviewProvider>()
     }
 
     private val koinApp: KoinApplication = koinApplication {
