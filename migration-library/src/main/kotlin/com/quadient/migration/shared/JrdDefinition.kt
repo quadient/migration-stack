@@ -20,6 +20,7 @@ import com.quadient.migration.service.inspirebuilder.removeDataFromVariablePath
 import com.quadient.migration.service.inspirebuilder.toScript
 import com.quadient.migration.service.inspirebuilder.resolve
 import com.quadient.migration.service.inspirebuilder.variableToScript
+import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.shared.BinOp.Equals
 import com.quadient.migration.shared.BinOp.EqualsCaseInsensitive
 import com.quadient.migration.shared.BinOp.GreaterOrEqualThan
@@ -91,7 +92,7 @@ data class JrdDefinition(
                 variable
             }
 
-            val baseTemplate = IcmPath.from(rule.baseTemplate ?: projectConfig.baseTemplatePath)
+            val baseTemplate = getBaseTemplateFullPath(projectConfig, rule.baseTemplate)
                 .toMapInteractive(projectConfig.interactiveTenant)
 
             val ruleDef = requireNotNull(rule.definition) { "Display rule '${rule.id}' cannot be deployed because it has missing definition" }

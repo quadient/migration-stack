@@ -1979,8 +1979,8 @@ function svgDim(mm, scale) {
  */
 function areaLabel(preview) {
     if (!preview) return "";
-    const m = preview.match(/\(([^)]+)\)$/);
-    return m ? m[1] : preview.slice(0, 40);
+    const firstChunk = preview.split(";")[0];
+    return firstChunk.slice(0, 40);
 }
 
 /**

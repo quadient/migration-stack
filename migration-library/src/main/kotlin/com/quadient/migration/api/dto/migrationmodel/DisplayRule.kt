@@ -17,10 +17,12 @@ data class DisplayRule @JvmOverloads constructor(
     val metadata: List<MetadataEntry> = emptyList(),
     val subject: String? = null,
     val targetFolder: String? = null,
-    val baseTemplate: String? = null,
+    val baseTemplate: BaseTemplateLocation? = null,
     val variableStructureRef: VariableStructureRef? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): List<Ref> {
-        return (definition?.collectRefs() ?: emptyList()) + listOfNotNull(variableStructureRef, targetId)
+        val baseTemplateRef = baseTemplate as? BaseTemplateRef
+
+        return (definition?.collectRefs() ?: emptyList()) + listOfNotNull(variableStructureRef, targetId, baseTemplateRef)
     }
 }

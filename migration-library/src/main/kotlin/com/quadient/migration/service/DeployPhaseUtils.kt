@@ -3,10 +3,13 @@ package com.quadient.migration.service
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
+import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.api.dto.migrationmodel.ResourceRef
 import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.shared.IcmPath
@@ -59,9 +62,16 @@ fun resolveTargetDir(defaultTargetFolder: IcmPath? = null, specificTargetFolder:
     }
 }
 
-fun getBaseTemplateFullPath(config: ProjectConfig, documentObjectBaseTemplatePath: String?): IcmPath {
-    val baseTemplatePath = documentObjectBaseTemplatePath ?: config.baseTemplatePath
-    val path = baseTemplatePath.toIcmPath()
+fun getBaseTemplateFullPath(config: ProjectConfig, documentObjectBaseTemplate: BaseTemplateLocation?): IcmPath {
+    val literalPath = when (documentObjectBaseTemplate) {
+        is LiteralBaseTemplatePath -> documentObjectBaseTemplate.path
+        is BaseTemplateRef -> error(
+            "Referencing base templates by id ('${documentObjectBaseTemplate.id}') is not yet supported during deployment." // TODO d.svitak - handle
+        )
+
+        null -> config.baseTemplatePath
+    }
+    val path = literalPath.toIcmPath()
 
     if (path.isAbsolute()) return path
 

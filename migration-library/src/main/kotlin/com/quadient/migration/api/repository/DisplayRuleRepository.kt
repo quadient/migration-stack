@@ -1,11 +1,13 @@
 package com.quadient.migration.api.repository
 
 import com.quadient.migration.api.ProjectName
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.dto.migrationmodel.toDb
 import com.quadient.migration.persistence.table.DisplayRuleTable
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.deploy.utility.ResourceType
@@ -32,7 +34,7 @@ class DisplayRuleRepository(projectName: ProjectName, private val statusTracking
             lastUpdated = row[DisplayRuleTable.lastUpdated],
             created = row[DisplayRuleTable.created],
             definition = row[DisplayRuleTable.definition],
-            baseTemplate = row[DisplayRuleTable.baseTemplate],
+            baseTemplate = row[DisplayRuleTable.baseTemplate]?.let { BaseTemplateLocation.fromDb(it) },
             metadata = row[DisplayRuleTable.metadata],
             subject = row[DisplayRuleTable.subject],
             internal = row[DisplayRuleTable.internal],
@@ -85,7 +87,7 @@ class DisplayRuleRepository(projectName: ProjectName, private val statusTracking
                 stmt.setBoolean(index++, dto.internal)
                 stmt.setString(index++, dto.subject)
                 stmt.setString(index++, dto.targetFolder)
-                stmt.setString(index++, dto.baseTemplate)
+                stmt.setObject(index++, dto.baseTemplate?.let { Json.encodeToString(it.toDb()) }, Types.OTHER)
                 stmt.setString(index++, dto.variableStructureRef?.id)
                 stmt.setObject(index++, Json.encodeToString(dto.metadata), Types.OTHER)
             }
@@ -117,7 +119,7 @@ class DisplayRuleRepository(projectName: ProjectName, private val statusTracking
                 it[DisplayRuleTable.internal] = dto.internal
                 it[DisplayRuleTable.subject] = dto.subject
                 it[DisplayRuleTable.targetFolder] = dto.targetFolder
-                it[DisplayRuleTable.baseTemplate] = dto.baseTemplate
+                it[DisplayRuleTable.baseTemplate] = dto.baseTemplate?.toDb()
                 it[DisplayRuleTable.variableStructureRef] = dto.variableStructureRef?.id
                 it[DisplayRuleTable.metadata] = dto.metadata
             }.first()

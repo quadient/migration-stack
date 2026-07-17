@@ -11,6 +11,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasMetad
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSubject
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTargetFolder
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasVariableStructureRef
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
 import com.quadient.migration.shared.BinOp
 import com.quadient.migration.shared.Binary
 import com.quadient.migration.shared.BinaryOrGroup
@@ -35,7 +36,7 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
     override var internal = true
     override var metadata: MutableList<MetadataEntry> = mutableListOf()
     override var variableStructureRef: VariableStructureRef? = null
-    override var baseTemplate: String? = null
+    override var baseTemplate: BaseTemplateLocation? = null
     override var targetFolder: String? = null
     var definition: DisplayRuleDefinition? = null
     var targetId: String? = null
