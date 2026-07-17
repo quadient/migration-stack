@@ -35,6 +35,10 @@ dependencyCheck {
     )
 }
 
+koinCompiler {
+    strictSafety = true
+}
+
 buildscript {
     repositories {
         mavenCentral()
@@ -97,18 +101,16 @@ dependencies {
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
     testRuntimeOnly(libs.junit.platform.launcher)
+
+    constraints {
+        // ktor CVE fixes
+        implementation("org.springframework.security:spring-security-crypto:7.0.6")
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.21.5")
+        implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.21.5")
+    }
 }
 
 tasks.test {
     useJUnitPlatform()
-}
-
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group == "org.springframework.security" && requested.name == "spring-security-crypto") {
-            useVersion(libs.versions.spring.security.crypto.get())
-            because("CVE fix: override transitive spring-security-crypto to ${libs.versions.spring.security.crypto.get()}")
-        }
-    }
 }
 

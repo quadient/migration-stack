@@ -47,18 +47,7 @@ dependencies {
     implementation("com.quadient:migration-library")
     implementation("com.quadient:migration-examples")
 
-    implementation(libs.koin.ktor) {
-        constraints {
-            val nettyVersion = "4.2.15.Final"
-            implementation("io.netty:netty-handler:${nettyVersion}")
-            implementation("io.netty:netty-codec:${nettyVersion}")
-            implementation("io.netty:netty-codec-http2:${nettyVersion}")
-            implementation("io.netty:netty-codec-http3:${nettyVersion}")
-            implementation("io.netty:netty-transport-native-kqueue:${nettyVersion}")
-            implementation("io.netty:netty-transport-native-epoll:${nettyVersion}")
-            implementation("io.netty:netty-tcnative:${nettyVersion}")
-            implementation("io.netty:netty-tcnative-boringssl-static:${nettyVersion}")        }
-    }
+    implementation(libs.koin.ktor)
     implementation(libs.koin.logger.slf4j)
 
     implementation(libs.ktor.server.core.jvm)
@@ -84,6 +73,18 @@ dependencies {
 
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
+
+    constraints {
+        val nettyVersion = "4.2.16.Final"
+        implementation("io.netty:netty-handler:${nettyVersion}")
+        implementation("io.netty:netty-codec:${nettyVersion}")
+        implementation("io.netty:netty-codec-http2:${nettyVersion}")
+        implementation("io.netty:netty-codec-http3:${nettyVersion}")
+        implementation("io.netty:netty-transport-native-kqueue:${nettyVersion}")
+        implementation("io.netty:netty-transport-native-epoll:${nettyVersion}")
+        implementation("io.netty:netty-tcnative:${nettyVersion}")
+        implementation("io.netty:netty-tcnative-boringssl-static:${nettyVersion}")
+    }
 }
 
 // Distribution build
