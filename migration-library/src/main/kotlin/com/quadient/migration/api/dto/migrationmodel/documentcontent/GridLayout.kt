@@ -21,7 +21,7 @@ data class GridLayout(
     val fill: Color?,
     val fullWidthBackground: Boolean,
     val displayRuleRef: DisplayRuleRef?,
-) : DocumentContent {
+) : DocumentContent, RefValidatable {
     override val pathName = "grid"
 
     override fun toPreview(nameResolver: (DocumentContent) -> String?) = "$pathName: ${columns.size} cols"
@@ -55,6 +55,21 @@ data class GridLayout(
         displayRuleRef = displayRuleRef?.toDb(),
         columnStackingOnMobile = columnStackingOnMobile,
     )
+
+    override fun collectRefs(): List<Ref> {
+        return listOfNotNull(this.displayRuleRef as? Ref) + this.columns.flatMap { column ->
+            return column.content.flatMap { content ->
+                return when (content) {
+                    is GridContent.Content -> {
+                        content.content.flatMap { (it as? RefValidatable)?.collectRefs() ?: emptyList() }
+                    }
+
+                    is GridContent.Image -> listOf(content.ref)
+                    is GridContent.ExternalImage -> null
+                } ?: emptyList()
+            }
+        }
+    }
 }
 
 data class Column(val content: List<GridContent>)
