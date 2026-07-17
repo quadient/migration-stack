@@ -13,7 +13,7 @@ data class VariableStructure @JvmOverloads constructor(
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
-    override fun collectRefs(): List<Ref> {
-        return structure.keys.map { VariableRef(it) }
+    override fun collectRefs(): Set<Ref> {
+        return structure.keys.map { VariableRef(it) }.toSet()
     }
 }

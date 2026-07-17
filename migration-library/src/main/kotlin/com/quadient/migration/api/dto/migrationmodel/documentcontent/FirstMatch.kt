@@ -7,13 +7,13 @@ data class FirstMatch(val cases: List<Case>, val default: List<DocumentContent>)
 
     override fun toPreview(nameResolver: (DocumentContent) -> String?): String = "$pathName: ${cases.size} cases"
 
-    override fun collectRefs(): List<Ref> {
-        return cases.flatMap { it.collectRefs() } + default.flatMap {
+    override fun collectRefs(): Set<Ref> {
+        return (cases.flatMap { it.collectRefs() } + default.flatMap {
             when (it) {
                 is RefValidatable -> it.collectRefs()
-                else -> emptyList()
+                else -> emptySet()
             }
-        }
+        }).toSet()
     }
 
     companion object {
@@ -27,13 +27,13 @@ data class FirstMatch(val cases: List<Case>, val default: List<DocumentContent>)
     )
 
     data class Case(val displayRuleRef: DisplayRuleRef, val content: List<DocumentContent>, val name: String?) : RefValidatable {
-        override fun collectRefs(): List<Ref> {
-            return listOf(displayRuleRef) + content.flatMap {
+        override fun collectRefs(): Set<Ref> {
+            return (listOf(displayRuleRef) + content.flatMap {
                 when (it) {
                     is RefValidatable -> it.collectRefs()
-                    else -> emptyList()
+                    else -> emptySet()
                 }
-            }
+            }).toSet()
         }
 
         companion object {

@@ -10,7 +10,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class DisplayRuleDefinition(val group: Group) : RefValidatable {
-    override fun collectRefs(): List<Ref> {
+    override fun collectRefs(): Set<Ref> {
         return group.collectRefs()
     }
 
@@ -51,8 +51,8 @@ sealed class Function(val minArgs: Int, val maxArgs: Int, val args: List<Literal
         }
     }
 
-    override fun collectRefs(): List<Ref> {
-        return args.flatMap { it.collectRefs() }
+    override fun collectRefs(): Set<Ref> {
+        return args.flatMap { it.collectRefs() }.toSet()
     }
 
     abstract fun validate(): String?
@@ -80,17 +80,17 @@ sealed interface LiteralOrFunctionCall : RefValidatable
 
 @Serializable
 data class Binary(var left: LiteralOrFunctionCall, var operator: BinOp, var right: LiteralOrFunctionCall) : RefValidatable, BinaryOrGroup() {
-    override fun collectRefs(): List<Ref> {
+    override fun collectRefs(): Set<Ref> {
         return left.collectRefs() + right.collectRefs()
     }
 }
 
 @Serializable
 data class Literal(var value: String, val dataType: LiteralDataType) : RefValidatable, LiteralOrFunctionCall {
-    override fun collectRefs(): List<Ref> {
+    override fun collectRefs(): Set<Ref> {
         return when (dataType) {
-            LiteralDataType.Variable -> listOf(VariableRef(value))
-            else -> emptyList()
+            LiteralDataType.Variable -> setOf(VariableRef(value))
+            else -> emptySet()
         }
     }
 }
@@ -104,13 +104,13 @@ enum class LiteralDataType {
 data class Group(val items: List<BinaryOrGroup>, val operator: GroupOp, val negation: Boolean) : RefValidatable,
     BinaryOrGroup() {
 
-    override fun collectRefs(): List<Ref> {
+    override fun collectRefs(): Set<Ref> {
         return items.flatMap {
             when (it) {
                 is Group -> it.collectRefs()
                 is Binary -> it.collectRefs()
             }
-        }
+        }.toSet()
     }
 
     fun containsFunction(): Boolean {

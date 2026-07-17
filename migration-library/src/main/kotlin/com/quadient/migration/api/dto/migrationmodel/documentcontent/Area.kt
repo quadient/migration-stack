@@ -11,13 +11,13 @@ data class Area(var content: List<DocumentContent>, var position: Position?, var
         "$pathName: ${content.size} items"
 
     constructor(content: List<DocumentContent>, position: Position?, interactiveFlowName: String?) : this(content, position, interactiveFlowName, false)
-    override fun collectRefs(): List<Ref> {
+    override fun collectRefs(): Set<Ref> {
         return content.flatMap {
             when (it) {
                 is RefValidatable -> it.collectRefs()
-                else -> emptyList()
+                else -> emptySet()
             }
-        }
+        }.toSet()
     }
 
     companion object {

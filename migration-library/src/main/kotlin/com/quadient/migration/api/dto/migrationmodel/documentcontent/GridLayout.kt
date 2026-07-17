@@ -56,19 +56,19 @@ data class GridLayout(
         columnStackingOnMobile = columnStackingOnMobile,
     )
 
-    override fun collectRefs(): List<Ref> {
-        return listOfNotNull(this.displayRuleRef as? Ref) + this.columns.flatMap { column ->
-            return column.content.flatMap { content ->
-                return when (content) {
+    override fun collectRefs(): Set<Ref> {
+        return (listOfNotNull(this.displayRuleRef as? Ref) + this.columns.flatMap { column ->
+            column.content.flatMap { content ->
+                when (content) {
                     is GridContent.Content -> {
-                        content.content.flatMap { (it as? RefValidatable)?.collectRefs() ?: emptyList() }
+                        content.content.flatMap { (it as? RefValidatable)?.collectRefs() ?: emptySet() }
                     }
 
                     is GridContent.Image -> listOf(content.ref)
                     is GridContent.ExternalImage -> null
                 } ?: emptyList()
             }
-        }
+        }).toSet()
     }
 }
 

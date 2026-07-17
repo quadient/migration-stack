@@ -7,8 +7,8 @@ data class SelectByLanguage(val cases: List<Case>) : DocumentContent, RefValidat
 
     override fun toPreview(nameResolver: (DocumentContent) -> String?): String = "$pathName: ${cases.size} cases"
 
-    override fun collectRefs(): List<Ref> {
-        return cases.flatMap { it.collectRefs() }
+    override fun collectRefs(): Set<Ref> {
+        return cases.flatMap { it.collectRefs() }.toSet()
     }
 
     companion object {
@@ -21,13 +21,13 @@ data class SelectByLanguage(val cases: List<Case>) : DocumentContent, RefValidat
         cases = cases.map { it.toDb() })
 
     data class Case(val content: List<DocumentContent>, val language: String) : RefValidatable {
-        override fun collectRefs(): List<Ref> {
+        override fun collectRefs(): Set<Ref> {
             return content.flatMap {
                 when (it) {
                     is RefValidatable -> it.collectRefs()
                     else -> emptyList()
                 }
-            }
+            }.toSet()
         }
 
         companion object {

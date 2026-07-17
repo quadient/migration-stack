@@ -16,8 +16,8 @@ data class TextStyle @JvmOverloads constructor(
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
-    override fun collectRefs(): List<Ref> {
-        return listOfNotNull(targetId)
+    override fun collectRefs(): Set<Ref> {
+        return setOfNotNull(targetId)
     }
 }
 

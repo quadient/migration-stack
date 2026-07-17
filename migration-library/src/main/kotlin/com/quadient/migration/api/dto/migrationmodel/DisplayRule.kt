@@ -20,7 +20,7 @@ data class DisplayRule @JvmOverloads constructor(
     val baseTemplate: String? = null,
     val variableStructureRef: VariableStructureRef? = null,
 ) : MigrationObject, RefValidatable {
-    override fun collectRefs(): List<Ref> {
-        return (definition?.collectRefs() ?: emptyList()) + listOfNotNull(variableStructureRef, targetId)
+    override fun collectRefs(): Set<Ref> {
+        return (definition?.collectRefs() ?: emptySet()) + setOfNotNull(variableStructureRef, targetId)
     }
 }

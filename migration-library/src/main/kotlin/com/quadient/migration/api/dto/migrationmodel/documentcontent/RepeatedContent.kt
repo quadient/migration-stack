@@ -19,17 +19,17 @@ data class RepeatedContent(
         return "$pathName: $variable | ${content.size} items"
     }
 
-    override fun collectRefs(): List<Ref> {
+    override fun collectRefs(): Set<Ref> {
         val contentRefs = content.flatMap {
             when (it) {
                 is RefValidatable -> it.collectRefs()
-                else -> emptyList()
+                else -> emptySet()
             }
-        }
+        }.toSet()
 
         val variableRefs = when (val path = variablePath) {
-            is VariableRefPath -> listOf(VariableRef(path.variableId))
-            else -> emptyList()
+            is VariableRefPath -> setOf(VariableRef(path.variableId))
+            else -> emptySet()
         }
 
         return contentRefs + variableRefs

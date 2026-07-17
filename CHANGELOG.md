@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 `com.quadient.migration.api.dto.migrationmodel` package, you will need to adjust imports in your code to reflect the new
 path.
 - Removed usedBy from the displayRuleReport
+- `collectRefs()` on the migration objects now returns a set rather than a list to avoid duplicates
 
 
 ### Fixed
