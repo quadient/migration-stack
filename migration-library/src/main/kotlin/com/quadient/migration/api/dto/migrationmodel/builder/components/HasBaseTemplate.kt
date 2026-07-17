@@ -11,10 +11,22 @@ interface HasBaseTemplate<T> {
 
     /**
      * Override the default base template for this object.
-     * @param baseTemplate Location (literal path or base template reference) of the base template to use for this object.
+     * @param baseTemplateLocation Location (literal path or base template reference) of the base template to use for this object.
      * @return This builder instance for method chaining.
      */
-    fun baseTemplate(baseTemplate: BaseTemplateLocation?) = apply { this.baseTemplate = baseTemplate } as T
+    fun baseTemplate(baseTemplateLocation: BaseTemplateLocation?) =
+        apply { this.baseTemplate = baseTemplateLocation } as T
+
+    /**
+     * Overrides the default base template for this object with a literal ICM path.
+     * @param path Path to the base template to use for this object.
+     * @return This builder instance for method chaining.
+     */
+    @Deprecated(
+        message = "Use baseTemplatePath() for a literal path or baseTemplateRef() for a reference to a BaseTemplate migration object instead.",
+        replaceWith = ReplaceWith("baseTemplatePath(baseTemplate)"),
+    )
+    fun baseTemplate(path: String?) = apply { this.baseTemplate = path?.let { LiteralBaseTemplatePath(it) } } as T
 
     /**
      * Overrides the default base template for this object with a literal ICM path.
@@ -25,15 +37,16 @@ interface HasBaseTemplate<T> {
 
     /**
      * Overrides the default base template for this object with a reference to a [BaseTemplate] migration object.
-     * @param baseTemplateId Id of the [BaseTemplate] migration object to use for this object.
+     * @param id ID of the [BaseTemplate] migration object to use for this object.
      * @return This builder instance for method chaining.
      */
-    fun baseTemplateRef(baseTemplateId: String?) = apply { this.baseTemplate = baseTemplateId?.let { BaseTemplateRef(it) } } as T
+    fun baseTemplateRef(id: String?) = apply { this.baseTemplate = id?.let { BaseTemplateRef(it) } } as T
 
     /**
      * Overrides the default base template for this object with a reference to a [BaseTemplate] migration object.
      * @param baseTemplate The [BaseTemplate] migration object to use for this object.
      * @return This builder instance for method chaining.
      */
-    fun baseTemplateRef(baseTemplate: BaseTemplate) = apply { this.baseTemplate = BaseTemplateRef(baseTemplate.id) } as T
+    fun baseTemplateRef(baseTemplate: BaseTemplate) =
+        apply { this.baseTemplate = BaseTemplateRef(baseTemplate.id) } as T
 }

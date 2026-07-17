@@ -1,5 +1,7 @@
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
+import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.data.Active
@@ -22,169 +24,49 @@ class DisplayRulesMappingImportTest {
     File dir
 
     @Test
-    void overridesDisplayRuleName() {
+    void overridesAllMappableFields() {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def input = """\
             id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,originalName (read-only),originLocations (read-only)
             unchanged,,true,,,,,Active,,[]
-            kept,keptName,true,,,,,Active,,[]
-            overridden,someName,true,,,,,Active,,[]
+            overridden,someName,false,overriddenTemplate,overriddenFolder,overriddenId,overriddenVarStruct,Active,,[]
             """.stripIndent()
         mappingFile.toFile().write(input)
         givenExistingDisplayRule(migration, "unchanged", null, true, null, null, null, null)
         givenExistingDisplayRuleMapping(migration, "unchanged", null, null, null, null, null, null)
-        givenExistingDisplayRule(migration, "kept", "someName", true, null, null, null, null)
-        givenExistingDisplayRuleMapping(migration, "kept", "keptName", null, null, null, null, null)
-        givenExistingDisplayRule(migration, "overridden", "previousName", true, null, null, null, null)
-        givenExistingDisplayRuleMapping(migration, "overridden", "previousName", null, null, null, null, null)
+        givenExistingDisplayRule(migration, "overridden", "previousName", true, "previousId", "previousTemplate", "previousFolder", "previousVarStruct")
+        givenExistingDisplayRuleMapping(migration, "overridden", "previousName", true, "previousId", "previousTemplate", "previousFolder", "previousVarStruct")
 
         DisplayRulesImport.run(migration, mappingFile.toFile())
 
         verify(migration.mappingRepository, times(1)).upsertBatch([
             "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, true),
-            "kept"      : new MappingItem.DisplayRule("keptName", null, null, null, null, true),
-            "overridden": new MappingItem.DisplayRule("someName", null, null, null, null, true)
+            "overridden": new MappingItem.DisplayRule("someName", "overriddenFolder", "overriddenId", new LiteralBaseTemplatePath("overriddenTemplate"), "overriddenVarStruct", false)
         ])
         verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
     }
 
     @Test
-    void overridesDisplayRuleInternal() {
+    void overridesDisplayRuleBaseTemplateRef() {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def input = """\
             id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,originalName (read-only),originLocations (read-only)
-            unchanged,,false,,,,,Active,,[]
-            kept,,true,,,,,Active,,[]
-            overridden,,true,,,,,Active,,[]
+            atPrefixed,,true,@someBaseTemplateId,,,,Active,,[]
+            dollarPrefixed,,true,\$anotherBaseTemplateId,,,,Active,,[]
             """.stripIndent()
         mappingFile.toFile().write(input)
-        givenExistingDisplayRule(migration, "unchanged", null, false, null, null, null, null)
-        givenExistingDisplayRuleMapping(migration, "unchanged", null, null, null, null, null, null)
-        givenExistingDisplayRule(migration, "kept", null, true, null, null, null, null)
-        givenExistingDisplayRuleMapping(migration, "kept", null, true, null, null, null, null)
-        givenExistingDisplayRule(migration, "overridden", null, false, null, null, null, null)
-        givenExistingDisplayRuleMapping(migration, "overridden", null, false, null, null, null, null)
+        givenExistingDisplayRule(migration, "atPrefixed", null, true, null, null, null, null)
+        givenExistingDisplayRuleMapping(migration, "atPrefixed", null, null, null, null, null, null)
+        givenExistingDisplayRule(migration, "dollarPrefixed", null, true, null, null, null, null)
+        givenExistingDisplayRuleMapping(migration, "dollarPrefixed", null, null, null, null, null, null)
 
         DisplayRulesImport.run(migration, mappingFile.toFile())
 
         verify(migration.mappingRepository, times(1)).upsertBatch([
-            "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, false),
-            "kept"      : new MappingItem.DisplayRule(null, null, null, null, null, true),
-            "overridden": new MappingItem.DisplayRule(null, null, null, null, null, true)
-        ])
-        verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
-    }
-
-    @Test
-    void overridesDisplayRuleBaseTemplate() {
-        def migration = Utils.mockMigration()
-        Path mappingFile = Paths.get(dir.path, "testProject.csv")
-        def input = """\
-            id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,originalName (read-only),originLocations (read-only)
-            unchanged,,true,,,,,Active,,[]
-            kept,,true,keptTemplate,,,,Active,,[]
-            overridden,,true,overriddenTemplate,,,,Active,,[]
-            """.stripIndent()
-        mappingFile.toFile().write(input)
-        givenExistingDisplayRule(migration, "unchanged", null, true, null, null, null, null)
-        givenExistingDisplayRuleMapping(migration, "unchanged", null, null, null, null, null, null)
-        givenExistingDisplayRule(migration, "kept", null, true, null, "keptTemplate", null, null)
-        givenExistingDisplayRuleMapping(migration, "kept", null, null, null, "keptTemplate", null, null)
-        givenExistingDisplayRule(migration, "overridden", null, true, null, "previousTemplate", null, null)
-        givenExistingDisplayRuleMapping(migration, "overridden", null, null, null, "previousTemplate", null, null)
-
-        DisplayRulesImport.run(migration, mappingFile.toFile())
-
-        verify(migration.mappingRepository, times(1)).upsertBatch([
-            "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, true),
-            "kept"      : new MappingItem.DisplayRule(null, null, null, "keptTemplate", null, true),
-            "overridden": new MappingItem.DisplayRule(null, null, null, "overriddenTemplate", null, true)
-        ])
-        verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
-    }
-
-    @Test
-    void overridesDisplayRuleTargetFolder() {
-        def migration = Utils.mockMigration()
-        Path mappingFile = Paths.get(dir.path, "testProject.csv")
-        def input = """\
-            id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,originalName (read-only),originLocations (read-only)
-            unchanged,,true,,,,,Active,,[]
-            kept,,true,,keptFolder,,,Active,,[]
-            overridden,,true,,overriddenFolder,,,Active,,[]
-            """.stripIndent()
-        mappingFile.toFile().write(input)
-        givenExistingDisplayRule(migration, "unchanged", null, true, null, null, null, null)
-        givenExistingDisplayRuleMapping(migration, "unchanged", null, null, null, null, null, null)
-        givenExistingDisplayRule(migration, "kept", null, true, null, null, "keptFolder", null)
-        givenExistingDisplayRuleMapping(migration, "kept", null, null, null, null, "keptFolder", null)
-        givenExistingDisplayRule(migration, "overridden", null, true, null, null, "previousFolder", null)
-        givenExistingDisplayRuleMapping(migration, "overridden", null, null, null, null, "previousFolder", null)
-
-        DisplayRulesImport.run(migration, mappingFile.toFile())
-
-        verify(migration.mappingRepository, times(1)).upsertBatch([
-            "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, true),
-            "kept"      : new MappingItem.DisplayRule(null, "keptFolder", null, null, null, true),
-            "overridden": new MappingItem.DisplayRule(null, "overriddenFolder", null, null, null, true)
-        ])
-        verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
-    }
-
-    @Test
-    void overridesDisplayRuleTargetId() {
-        def migration = Utils.mockMigration()
-        Path mappingFile = Paths.get(dir.path, "testProject.csv")
-        def input = """\
-            id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,originalName (read-only),originLocations (read-only)
-            unchanged,,true,,,,,Active,,[]
-            kept,,true,,,keptId,,Active,,[]
-            overridden,,true,,,overriddenId,,Active,,[]
-            """.stripIndent()
-        mappingFile.toFile().write(input)
-        givenExistingDisplayRule(migration, "unchanged", null, true, null, null, null, null)
-        givenExistingDisplayRuleMapping(migration, "unchanged", null, null, null, null, null, null)
-        givenExistingDisplayRule(migration, "kept", null, true, "keptId", null, null, null)
-        givenExistingDisplayRuleMapping(migration, "kept", null, null, "keptId", null, null, null)
-        givenExistingDisplayRule(migration, "overridden", null, true, "previousId", null, null, null)
-        givenExistingDisplayRuleMapping(migration, "overridden", null, null, "previousId", null, null, null)
-
-        DisplayRulesImport.run(migration, mappingFile.toFile())
-
-        verify(migration.mappingRepository, times(1)).upsertBatch([
-            "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, true),
-            "kept"      : new MappingItem.DisplayRule(null, null, "keptId", null, null, true),
-            "overridden": new MappingItem.DisplayRule(null, null, "overriddenId", null, null, true)
-        ])
-        verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
-    }
-
-    @Test
-    void overridesDisplayRuleVariableStructureRef() {
-        def migration = Utils.mockMigration()
-        Path mappingFile = Paths.get(dir.path, "testProject.csv")
-        def input = """\
-            id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,originalName (read-only),originLocations (read-only)
-            unchanged,,true,,,,,Active,,[]
-            kept,,true,,,,keptVarStruct,Active,,[]
-            overridden,,true,,,,overriddenVarStruct,Active,,[]
-            """.stripIndent()
-        mappingFile.toFile().write(input)
-        givenExistingDisplayRule(migration, "unchanged", null, true, null, null, null, null)
-        givenExistingDisplayRuleMapping(migration, "unchanged", null, null, null, null, null, null)
-        givenExistingDisplayRule(migration, "kept", null, true, null, null, null, "keptVarStruct")
-        givenExistingDisplayRuleMapping(migration, "kept", null, null, null, null, null, "keptVarStruct")
-        givenExistingDisplayRule(migration, "overridden", null, true, null, null, null, "previousVarStruct")
-        givenExistingDisplayRuleMapping(migration, "overridden", null, null, null, null, null, "previousVarStruct")
-
-        DisplayRulesImport.run(migration, mappingFile.toFile())
-
-        verify(migration.mappingRepository, times(1)).upsertBatch([
-            "unchanged" : new MappingItem.DisplayRule(null, null, null, null, null, true),
-            "kept"      : new MappingItem.DisplayRule(null, null, null, null, "keptVarStruct", true),
-            "overridden": new MappingItem.DisplayRule(null, null, null, null, "overriddenVarStruct", true)
+            "atPrefixed"    : new MappingItem.DisplayRule(null, null, null, new BaseTemplateRef("someBaseTemplateId"), null, true),
+            "dollarPrefixed": new MappingItem.DisplayRule(null, null, null, new BaseTemplateRef("anotherBaseTemplateId"), null, true)
         ])
         verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
     }
@@ -233,7 +115,7 @@ class DisplayRulesMappingImportTest {
         DisplayRulesImport.run(migration, mappingFile.toFile())
 
         verify(migration.mappingRepository, times(1)).upsertBatch([
-            "rule1": new MappingItem.DisplayRule("myName", "myFolder", "myId", "myTemplate", "myVarStruct", false)
+            "rule1": new MappingItem.DisplayRule("myName", "myFolder", "myId", new LiteralBaseTemplatePath("myTemplate"), "myVarStruct", false)
         ])
         verify(migration.mappingRepository, times(1)).applyAllDisplayRuleMappings()
     }
@@ -264,7 +146,8 @@ class DisplayRulesMappingImportTest {
                                                 String baseTemplate,
                                                 String targetFolder,
                                                 String variableStructureRef) {
+        def baseTemplateLocation = baseTemplate ? new LiteralBaseTemplatePath(baseTemplate) : null
         when(mig.mappingRepository.getDisplayRuleMapping(id))
-                .thenReturn(new MappingItem.DisplayRule(name, targetFolder, targetId, baseTemplate, variableStructureRef, internal))
+                .thenReturn(new MappingItem.DisplayRule(name, targetFolder, targetId, baseTemplateLocation, variableStructureRef, internal))
     }
 }

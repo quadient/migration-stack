@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
@@ -56,7 +57,7 @@ static void run(Migration migration, File file) {
         def newInternal = Csv.deserialize(values.get("internal"), boolean)
         existingMapping.internal = newInternal
 
-        def newBaseTemplate = Csv.deserialize(values.get("baseTemplate"), String.class)
+        def newBaseTemplate = Csv.deserialize(values.get("baseTemplate"), BaseTemplateLocation.class)
         existingMapping.baseTemplate = newBaseTemplate
 
         def newTargetFolder = Csv.deserialize(values.get("targetFolder"), String.class)
