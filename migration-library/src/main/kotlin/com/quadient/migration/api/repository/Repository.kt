@@ -85,12 +85,12 @@ abstract class Repository<T : MigrationObject>(
         }
     }
 
-    fun findRefs(id: String): Set<Ref> {
+    fun findRefs(id: String): List<Ref> {
         val model = find(id)
         if (model != null && model is RefValidatable) {
-            return model.collectRefs()
+            return model.collectRefs().toList()
         }
-        return emptySet()
+        return emptyList()
     }
 
     fun delete(id: String) {
