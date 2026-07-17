@@ -84,6 +84,9 @@ dependencies {
         implementation("io.netty:netty-transport-native-epoll:${nettyVersion}")
         implementation("io.netty:netty-tcnative:${nettyVersion}")
         implementation("io.netty:netty-tcnative-boringssl-static:${nettyVersion}")
+        
+        implementation("com.fasterxml.jackson.core:jackson-databind:2.21.5")
+        implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.21.5")
     }
 }
 
