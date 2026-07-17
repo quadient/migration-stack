@@ -7,7 +7,6 @@ package com.quadient.migration.example.common.report
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
-import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Ref
 import com.quadient.migration.example.common.util.Csv
@@ -37,12 +36,10 @@ static void exportReport(Migration migration, List<DisplayRule> rules, Path expo
     def file =  exportFilePath.toFile()
     file.createParentDirectories()
     file.withWriter { writer ->
-        writer.writeLine("id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,usedBy,translated,translationError,source_files,originContent")
+        writer.writeLine("id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,translated,translationError,source_files,originContent")
 
         rules.each { rule ->
             def translationError = rule.customFields.get("error")
-            def usedBy = findUsages(new DisplayRuleRef(rule.id))
-            def usedByValue = usedBy.collect { it.id }.join(";")
 
             def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(rule.id,
                 ResourceType.DisplayRule,
@@ -57,7 +54,6 @@ static void exportReport(Migration migration, List<DisplayRule> rules, Path expo
             builder.append("," + Csv.serialize(rule.targetId?.id))
             builder.append("," + Csv.serialize(rule.variableStructureRef?.id))
             builder.append("," + Csv.serialize(status?.class?.simpleName))
-            builder.append("," + usedByValue)
             builder.append("," + Csv.serialize(rule.definition != null))
             builder.append("," + "\"${translationError?.replace("\n", "\\n")?.replace("\"", "\\")}\"")
             builder.append("," + rule.originLocations.join(";"))
@@ -65,10 +61,6 @@ static void exportReport(Migration migration, List<DisplayRule> rules, Path expo
             writer.writeLine(builder.toString())
         }
     }
-}
-
-static List<DocumentObject> findUsages(Ref ref) {
-    docObjWithRefsCache.findAll { it.value.refs.contains(ref) }.collect { it.value.obj }
 }
 
 class DocObjAndRefs {
