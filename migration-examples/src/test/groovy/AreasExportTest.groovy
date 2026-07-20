@@ -46,12 +46,12 @@ class AreasExportTest {
         AreasExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),contentPreview (read-only)
-            full tmpl,,full page,,,,test flow2,false,0mm,0mm,0mm,0mm,
-            full tmpl,,full page,,,,test flow3,true,0mm,0mm,0mm,0mm,
-            full tmpl,,full page,,,,,false,0mm,0mm,0mm,0mm,
-            full tmpl,,full page,,,,test flow5,false,0mm,0mm,0mm,0mm,
-            ,,unreferenced page,,,,test flow,true,0mm,0mm,0mm,0mm,
+            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
+            full tmpl,,full page,,,,test flow2,false,0mm,0mm,0mm,0mm,Standard,,
+            full tmpl,,full page,,,,test flow3,true,0mm,0mm,0mm,0mm,Standard,,
+            full tmpl,,full page,,,,,false,0mm,0mm,0mm,0mm,Standard,,
+            full tmpl,,full page,,,,test flow5,false,0mm,0mm,0mm,0mm,Standard,,
+            ,,unreferenced page,,,,test flow,true,0mm,0mm,0mm,0mm,Standard,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -69,10 +69,34 @@ class AreasExportTest {
         AreasExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),contentPreview (read-only)
-            tmpl with areas,,,,,,Address Content,false,0mm,0mm,0mm,0mm,
-            tmpl with areas,,,,,,,true,0mm,0mm,0mm,0mm,
-            tmpl with areas,,,,,,Footer,false,0mm,0mm,0mm,0mm,
+            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
+            tmpl with areas,,,,,,Address Content,false,0mm,0mm,0mm,0mm,Standard,,
+            tmpl with areas,,,,,,,true,0mm,0mm,0mm,0mm,Standard,,
+            tmpl with areas,,,,,,Footer,false,0mm,0mm,0mm,0mm,Standard,,
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+    }
+
+    @Test
+    void exportUsesPageOrTemplateBaseTemplateAsTargetId() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        when(migration.mappingRepository.getAreaMapping(any())).thenReturn(new MappingItem.Area(null, [:], [:]))
+        when((migration.documentObjectRepository as DocumentObjectRepository).list(any())).thenReturn([
+            new DocumentObjectBuilder("tmpl with base", DocumentObjectType.Template)
+                    .baseTemplateRef("G2")
+                    .documentObjectRef("page with own base")
+                    .build(),
+            new DocumentObjectBuilder("page with own base", DocumentObjectType.Page)
+                    .baseTemplateRef("G1")
+                    .content([createArea("test flow")])
+                    .build(),
+        ])
+
+        AreasExport.run(migration, mappingFile)
+
+        def expected = """\
+            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
+            tmpl with base,,page with own base,,,,test flow,false,0mm,0mm,0mm,0mm,Standard,\$G1,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -100,8 +124,8 @@ class AreasExportTest {
         AreasExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),contentPreview (read-only)
-            ,,page with preview,,,,test flow,false,0mm,0mm,0mm,0mm,docRef: Block One;imageRef: Image One;docRef: Block Two;(+2 more)
+            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
+            ,,page with preview,,,,test flow,false,0mm,0mm,0mm,0mm,Standard,,docRef: Block One;imageRef: Image One;docRef: Block Two;(+2 more)
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

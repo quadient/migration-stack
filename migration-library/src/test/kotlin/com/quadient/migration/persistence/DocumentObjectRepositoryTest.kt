@@ -57,7 +57,7 @@ class DocumentObjectRepositoryTest {
             .internal(true)
             .targetFolder("acquired")
             .displayRuleRef("someruleref")
-            .baseTemplate("someBaseTemplate")
+            .baseTemplatePath("someBaseTemplate")
             .skip("reason", "placeholder")
             .variableStructureRef("someVarStructRef")
             .subject("somesubject")
@@ -76,7 +76,7 @@ class DocumentObjectRepositoryTest {
         // given
         val block1 = DocumentObjectBuilder("block1", DocumentObjectType.Block)
             .internal(true)
-            .baseTemplate("baseTemplate1")
+            .baseTemplatePath("baseTemplate1")
             .customFields(mutableMapOf("field1" to "value1"))
             .originLocations(listOf("origin1"))
             .content(listOf(Paragraph("content1")))
@@ -91,7 +91,7 @@ class DocumentObjectRepositoryTest {
 
         val block2 = DocumentObjectBuilder("block2", DocumentObjectType.Block)
             .internal(false)
-            .baseTemplate("baseTemplate2")
+            .baseTemplatePath("baseTemplate2")
             .customFields(mutableMapOf("field2" to "value2"))
             .originLocations(listOf("origin2"))
             .content(listOf(Paragraph("content2")))

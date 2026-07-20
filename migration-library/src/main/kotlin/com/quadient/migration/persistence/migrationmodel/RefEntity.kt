@@ -4,6 +4,7 @@ import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.ShapePath
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -42,6 +43,17 @@ data class AttachmentEntityRef(val id: String) : ResourceEntityRef
 
 @Serializable
 data class VariableStructureEntityRef(val id: String) : RefEntity
+
+@Serializable
+sealed interface BaseTemplateLocationEntity
+
+@Serializable
+@SerialName("BaseTemplatePath")
+data class LiteralBaseTemplatePathEntity(val path: String) : BaseTemplateLocationEntity
+
+@Serializable
+@SerialName("BaseTemplateRef")
+data class BaseTemplateEntityRef(val id: String) : RefEntity, BaseTemplateLocationEntity
 
 @Serializable
 data class StringEntity(val value: String) : VariableStringContentEntity

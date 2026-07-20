@@ -7,6 +7,7 @@ import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -15,6 +16,11 @@ import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
+import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
+import com.quadient.migration.shared.BaseTemplateArea
+import com.quadient.migration.shared.BaseTemplatePage
+import com.quadient.migration.shared.Position
+import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.aVariable
@@ -38,6 +44,7 @@ class MappingRepositoryTest {
     val variableRepository = mockk<VariableRepository>()
     val variableStructureRepository = mockk<VariableStructureRepository>()
     val displayRuleRepository = mockk<DisplayRuleRepository>()
+    val baseTemplateRepository = mockk<BaseTemplateRepository>()
 
     private val repo = MappingRepository(
         ProjectName(projectConfig.name),
@@ -49,6 +56,7 @@ class MappingRepositoryTest {
         variableRepository,
         variableStructureRepository,
         displayRuleRepository,
+        baseTemplateRepository,
     )
 
     @Test
@@ -118,7 +126,7 @@ class MappingRepositoryTest {
                 name = "new name",
                 targetFolder = "/some/folder",
                 targetId = "target-123",
-                baseTemplate = "template-base",
+                baseTemplate = LiteralBaseTemplatePath("template-base"),
                 variableStructureRef = "ref",
                 internal = true,
             )
@@ -133,11 +141,40 @@ class MappingRepositoryTest {
                         it.name == "new name" &&
                         it.targetFolder == "/some/folder" &&
                         it.targetId?.id == "target-123" &&
-                        it.baseTemplate == "template-base" &&
+                        it.baseTemplate == LiteralBaseTemplatePath("template-base") &&
                         it.internal &&
                         it.variableStructureRef == VariableStructureRef("ref")
                 }
             )
         }
+    }
+
+    @Test
+    fun `apply base template mapping does nothing when base template does not exist`() {
+        every { baseTemplateRepository.find("baseTemplateId") } returns null
+        every { baseTemplateRepository.upsert(any()) } just runs
+        repo.upsert(
+            "baseTemplateId", MappingItem.BaseTemplate(
+                name = "New Base Template",
+                targetFolder = "icm://Interactive/Tenant/BaseTemplates/some.wfd",
+                pages = listOf(
+                    BaseTemplatePage(
+                        name = "Page1",
+                        pageWidth = Size.ofMillimeters(210.0),
+                        pageHeight = Size.ofMillimeters(297.0),
+                        areas = listOf(
+                            BaseTemplateArea(
+                                interactiveFlowName = "Flow1",
+                                position = Position(Size.ofMillimeters(1.0), Size.ofMillimeters(2.0), Size.ofMillimeters(3.0), Size.ofMillimeters(4.0)),
+                            )
+                        ),
+                    )
+                ),
+            )
+        )
+
+        repo.applyBaseTemplateMapping("baseTemplateId")
+
+        verify(exactly = 0) { baseTemplateRepository.upsert(any()) }
     }
 }

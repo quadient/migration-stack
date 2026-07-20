@@ -10,6 +10,7 @@ package com.quadient.migration.example.common.mapping
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.shared.DataType
@@ -38,6 +39,11 @@ static void run(Migration migration, Path path) {
     def total = lines.size()
     def structureId = Mapping.variableStructureIdFromFileName(path.fileName.toString(), migration.projectConfig.name)
     def structureMapping = migration.mappingRepository.getVariableStructureMapping(structureId)
+
+    def existingStructure = migration.variableStructureRepository.find(structureId)
+    if (existingStructure == null) {
+        migration.variableStructureRepository.upsert(new VariableStructureBuilder(structureId).build())
+    }
 
     def languageVariableFound = false
     def mappings = new HashMap<String, MappingItem>()
@@ -74,11 +80,7 @@ static void run(Migration migration, Path path) {
         }
     }
 
-    def batches = mappings.entrySet().collate(1000)
-    for (int i = 0; i < batches.size(); i++) {
-        log.info "Upserting mappings batch ${i + 1}/${batches.size()} (${batches[i].size()} items)"
-        migration.mappingRepository.upsertBatch(batches[i].collectEntries())
-    }
+    Mapping.upsertBatched(migration.mappingRepository, mappings, "variable mappings", log)
     migration.mappingRepository.applyAllVariableMappings()
 
     if (!languageVariableFound) {

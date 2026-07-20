@@ -9,6 +9,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
@@ -401,7 +402,7 @@ sealed class DeployClient(
         val dependencies = mutableListOf<DocumentObject>()
         this.collectRefs().forEach { ref ->
             when (ref) {
-                is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef -> {}
+                is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef, is BaseTemplateRef -> {}
                 is ImageRef -> {}
                 is AttachmentRef -> {}
                 is DocumentObjectRef -> {
@@ -421,7 +422,7 @@ sealed class DeployClient(
 
         this.collectRefs().forEach { ref ->
             when (ref) {
-                is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef -> {}
+                is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef, is BaseTemplateRef -> {}
                 is ResourceRef -> resources.add(ref)
                 is DocumentObjectRef -> {
                     val model = documentObjectRepository.find(ref.id)

@@ -2,13 +2,13 @@ package com.quadient.migration.api.repository
 
 import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.Variable
-import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.Mapping
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
@@ -16,6 +16,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.persistence.migrationmodel.MappingItemEntity
 import com.quadient.migration.persistence.repository.MappingInternalRepository
 import com.quadient.migration.persistence.table.AttachmentTable
+import com.quadient.migration.persistence.table.BaseTemplateTable
 import com.quadient.migration.persistence.table.DisplayRuleTable
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.ImageTable
@@ -38,6 +39,7 @@ class MappingRepository(
     private val variableRepository: VariableRepository,
     private val variableStructureRepository: VariableStructureRepository,
     private val displayRuleRepository: DisplayRuleRepository,
+    private val baseTemplateRepository: BaseTemplateRepository,
 ) {
     private val logger by logger()
     private val internalRepository = MappingInternalRepository(projectName.name)
@@ -59,6 +61,7 @@ class MappingRepository(
         applyAllVariableStructureMappings()
         applyAllDisplayRuleMappings()
         applyAllTableMappings(onError)
+        applyAllBaseTemplateMappings()
     }
 
     fun upsert(id: String, mapping: MappingItem): Mapping {
@@ -276,18 +279,9 @@ class MappingRepository(
 
     fun applyVariableStructureMapping(id: String) {
         val mapping = internalRepository.find<MappingItemEntity.VariableStructure>(id)
-        val structure = variableStructureRepository.find(id) ?: VariableStructure(
-            id = id,
-            name = null,
-            originLocations = emptyList(),
-            customFields = CustomFieldMap(),
-            created = kotlin.time.Clock.System.now(),
-            lastUpdated = kotlin.time.Clock.System.now(),
-            structure = mutableMapOf(),
-            languageVariable = null,
-        )
+        val structure = variableStructureRepository.find(id)
 
-        if (mapping == null) {
+        if (mapping == null || structure == null) {
             return
         }
 
@@ -314,6 +308,27 @@ class MappingRepository(
         }
 
         displayRuleRepository.upsert(mapping.apply(displayRule))
+    }
+
+    fun getBaseTemplateMapping(id: String): MappingItem.BaseTemplate {
+        return (internalRepository.find<MappingItemEntity.BaseTemplate>(id) ?: MappingItemEntity.BaseTemplate(
+            name = null, targetFolder = null, pages = emptyList()
+        )).toDto() as MappingItem.BaseTemplate
+    }
+
+    fun applyBaseTemplateMapping(id: String) {
+        val mapping = internalRepository.find<MappingItemEntity.BaseTemplate>(id)
+        val baseTemplate = baseTemplateRepository.find(id)
+
+        if (mapping == null || baseTemplate == null) {
+            return
+        }
+
+        baseTemplateRepository.upsert(mapping.apply(baseTemplate))
+    }
+
+    fun applyAllBaseTemplateMappings() {
+        applyAllResourceMappings<BaseTemplate, MappingItemEntity.BaseTemplate>(baseTemplateRepository, BaseTemplateTable)
     }
 
     fun deleteAll() {

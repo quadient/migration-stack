@@ -19,6 +19,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSubje
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTargetFolder
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasVariableStructureRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectOptions
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.api.dto.migrationmodel.EmailOptions
 import com.quadient.migration.shared.MetadataEntry
@@ -47,7 +48,7 @@ class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     override var variableStructureRef: VariableStructureRef? = null
     override var internal: Boolean = false
     override var targetFolder: String? = null
-    override var baseTemplate: String? = null
+    override var baseTemplate: BaseTemplateLocation? = null
     override var subject: String? = null
     override var options: DocumentObjectOptions? = null
     override var metadata: MutableList<MetadataEntry> = mutableListOf()

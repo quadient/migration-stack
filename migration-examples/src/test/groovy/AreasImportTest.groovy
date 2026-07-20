@@ -3,12 +3,17 @@ import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.example.common.mapping.AreasImport
+import com.quadient.migration.shared.BaseTemplateArea
+import com.quadient.migration.shared.BaseTemplatePage
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.SkipOptions
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.mockito.ArgumentCaptor
 
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -89,6 +94,99 @@ class AreasImportTest {
             "tmpl1": new MappingItem.Area(null, [0: "Updated Address", 1: "New Header", 2: "Footer"], [0: true, 1: false, 2: true])
         ])
         verify(migration.mappingRepository).applyAllAreaMappings()
+    }
+
+    @Test
+    void importSetsPageBaseTemplateFromTargetIdOnStandardRows() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+
+        when(migration.mappingRepository.getAreaMapping("page1")).thenReturn(new MappingItem.Area(null, [:], [:]))
+        when(migration.mappingRepository.getDocumentObjectMapping("page1")).thenReturn(
+            new MappingItem.DocumentObject(null, null, null, null, null, null, null)
+        )
+        when(migration.mappingRepository.getDocumentObjectMapping("tmpl1")).thenReturn(
+            new MappingItem.DocumentObject(null, null, null, null, null, null, null)
+        )
+        givenPageExists("page1", ["flow1", "flow2"], [false, false])
+
+        def input = """\
+            templateId,templateName,pageId,pageName,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
+            tmpl1,,page1,,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
+            tmpl1,,page1,,flow2,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+
+        AreasImport.run(migration, mappingFile)
+
+        verify(migration.mappingRepository).upsertBatch([
+            "page1": new MappingItem.DocumentObject(null, false, new BaseTemplateRef("G1"), null, null, null, new SkipOptions(false, null, null)),
+            "tmpl1": new MappingItem.DocumentObject(null, null, new BaseTemplateRef("G1"), null, null, null, null)
+        ])
+        verify(migration.mappingRepository).applyAllDocumentObjectMappings()
+    }
+
+    @Test
+    void importCreatesNewBaseTemplateFromBaseRows() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+
+        when(migration.mappingRepository.getAreaMapping("page1")).thenReturn(new MappingItem.Area(null, [:], [:]))
+        when(migration.mappingRepository.getDocumentObjectMapping("page1")).thenReturn(
+            new MappingItem.DocumentObject(null, null, null, null, null, null, null)
+        )
+        when(migration.mappingRepository.getDocumentObjectMapping("tmpl1")).thenReturn(
+            new MappingItem.DocumentObject(null, null, null, null, null, null, null)
+        )
+        givenPageExists("page1", ["flow1"], [false])
+        when(migration.baseTemplateRepository.find("G1")).thenReturn(null)
+        when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, []))
+
+        def input = """\
+            templateId,templateName,pageId,pageName,pageWidth,pageHeight,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
+            tmpl1,,page1,,,,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
+            G1,Base template 1,G1-P1,Page group 1,210mm,297mm,G1-P1.Area1,false,1cm,1cm,190mm,20mm,Base,,
+            G1,Base template 1,G1-P1,Page group 1,210mm,297mm,G1-P1.Area2,true,1cm,30mm,190mm,50mm,Base,,
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+
+        AreasImport.run(migration, mappingFile)
+
+        def baseTemplateCaptor = ArgumentCaptor.forClass(BaseTemplate.class)
+        verify(migration.baseTemplateRepository).upsert(baseTemplateCaptor.capture())
+        Assertions.assertEquals("G1", baseTemplateCaptor.value.id)
+
+        def created = new BaseTemplatePage("Page group 1", Size.ofMillimeters(210), Size.ofMillimeters(297), [
+            new BaseTemplateArea("G1-P1.Area1", new Position(Size.ofCentimeters(1), Size.ofCentimeters(1), Size.ofMillimeters(190), Size.ofMillimeters(20)), false),
+            new BaseTemplateArea("G1-P1.Area2", new Position(Size.ofCentimeters(1), Size.ofMillimeters(30), Size.ofMillimeters(190), Size.ofMillimeters(50)), true),
+        ])
+        verify(migration.mappingRepository).upsertBatch([
+            "G1": new MappingItem.BaseTemplate("Base template 1", null, [created])
+        ])
+        verify(migration.mappingRepository).applyAllBaseTemplateMappings()
+    }
+
+    @Test
+    void importUpdatesExistingBaseTemplateMappingButKeepsItsOtherFields() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+
+        def existing = new BaseTemplate("G1", "Old name", ["origin.wfd"], new CustomFieldMap(new HashMap<String, String>()), "target/folder", [], null, null)
+        when(migration.baseTemplateRepository.find("G1")).thenReturn(existing)
+        when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, []))
+
+        def input = """\
+            templateId,templateName,pageId,pageName,pageWidth,pageHeight,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
+            G1,,G1-P1,Page group 1,210mm,297mm,G1-P1.Area1,false,1cm,1cm,190mm,20mm,Base,,
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+
+        AreasImport.run(migration, mappingFile)
+
+        def created = new BaseTemplatePage("Page group 1", Size.ofMillimeters(210), Size.ofMillimeters(297), [
+            new BaseTemplateArea("G1-P1.Area1", new Position(Size.ofCentimeters(1), Size.ofCentimeters(1), Size.ofMillimeters(190), Size.ofMillimeters(20)), false),
+        ])
+        verify(migration.mappingRepository).upsertBatch([
+            "G1": new MappingItem.BaseTemplate("Old name", "target/folder", [created])
+        ])
+        verify(migration.mappingRepository).applyAllBaseTemplateMappings()
     }
 
     static Area createArea(String flowName, boolean flowToNextPage) {

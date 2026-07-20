@@ -5,6 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
@@ -247,6 +248,7 @@ class ProgressReporterImpl(
                 is ParagraphStyleRef -> null
                 is VariableRef -> null
                 is VariableStructureRef -> null
+                is BaseTemplateRef -> null
             }
 
             if (resource != null) {

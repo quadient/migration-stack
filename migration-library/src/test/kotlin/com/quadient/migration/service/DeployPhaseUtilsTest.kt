@@ -2,6 +2,7 @@ package com.quadient.migration.service
 
 import com.quadient.migration.service.inspirebuilder.appendExtensionIfMissing
 import com.quadient.migration.service.inspirebuilder.extractExtensionFromPath
+import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.shouldBeEqualTo
 import org.junit.jupiter.api.Test
@@ -21,14 +22,14 @@ class DeployPhaseUtilsTest {
     @Test
     fun `specific base template path is preferred over the project config one`() {
         val baseTemplatePath = "icm://Interactive/Vital/BaseTemplates/MyBaseTemplate.wfd"
-        val result = getBaseTemplateFullPath(projectConfig, baseTemplatePath).toString()
+        val result = getBaseTemplateFullPath(projectConfig, LiteralBaseTemplatePath(baseTemplatePath)).toString()
 
         result.shouldBeEqualTo(baseTemplatePath)
     }
 
     @Test
     fun `path not starting with icm is handled as relative`() {
-        val result = getBaseTemplateFullPath(projectConfig, "/projectA/AddressBT.wfd").toString()
+        val result = getBaseTemplateFullPath(projectConfig, LiteralBaseTemplatePath("/projectA/AddressBT.wfd")).toString()
 
         result.shouldBeEqualTo("icm://Interactive/${projectConfig.interactiveTenant}/BaseTemplates/projectA/AddressBT.wfd")
     }

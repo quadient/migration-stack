@@ -16,7 +16,7 @@ data class DocumentObject(
     var targetFolder: String? = null,
     var displayRuleRef: DisplayRuleRef? = null,
     var variableStructureRef: VariableStructureRef? = null,
-    var baseTemplate: String? = null,
+    var baseTemplate: BaseTemplateLocation? = null,
     var options: DocumentObjectOptions? = null,
     var pdfMetadata: PdfMetadata? = null,
     override var created: Instant? = null,
@@ -35,6 +35,8 @@ data class DocumentObject(
 
         val pdfMetadataRefs = pdfMetadata?.collectRefs().orEmpty()
 
-        return contentRefs + pdfMetadataRefs + setOfNotNull(displayRuleRef, variableStructureRef)
+        val baseTemplateRef = baseTemplate as? BaseTemplateRef
+
+        return contentRefs + pdfMetadataRefs + setOfNotNull(displayRuleRef, variableStructureRef, baseTemplateRef)
     }
 }

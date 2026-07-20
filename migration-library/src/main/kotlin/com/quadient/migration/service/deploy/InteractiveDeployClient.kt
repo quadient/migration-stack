@@ -5,6 +5,7 @@ import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
@@ -455,7 +456,7 @@ open class InteractiveDeployClient(
 
                     resources.addAll(model.getAllExternalDisplayRules())
                 }
-                is ParagraphStyleRef, is AttachmentRef, is ImageRef, is TextStyleRef, is VariableRef, is VariableStructureRef -> {}
+                is ParagraphStyleRef, is AttachmentRef, is ImageRef, is TextStyleRef, is VariableRef, is VariableStructureRef, is BaseTemplateRef -> {}
             }
         }
 

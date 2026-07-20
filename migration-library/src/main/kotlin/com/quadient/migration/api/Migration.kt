@@ -96,6 +96,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
         single<ParagraphStyleRepository>()
         single<VariableStructureRepository>()
         single<DisplayRuleRepository>()
+        single<BaseTemplateRepository>()
         single<ImageRepository>()
         single<AttachmentRepository>()
         single<StatusTrackingRepository>()
@@ -128,6 +129,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
     val paragraphStyleRepository: ParagraphStyleRepository by lazy { koin.get() }
     val variableStructureRepository: VariableStructureRepository by lazy { koin.get() }
     val displayRuleRepository: DisplayRuleRepository by lazy { koin.get() }
+    val baseTemplateRepository: BaseTemplateRepository by lazy { koin.get() }
     val imageRepository: ImageRepository by lazy { koin.get() }
     val attachmentRepository: AttachmentRepository by lazy { koin.get() }
     val statusTrackingRepository: StatusTrackingRepository by lazy { koin.get() }
@@ -164,6 +166,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
         repositories.add(paragraphStyleRepository)
         repositories.add(variableStructureRepository)
         repositories.add(displayRuleRepository)
+        repositories.add(baseTemplateRepository)
         repositories.add(imageRepository)
         repositories.add(attachmentRepository)
 

@@ -332,7 +332,7 @@ class EvolveDeployClientTest {
     @Test
     fun `uploadDocumentObject for Block uses custom baseTemplate when set on document object`() {
         val customBaseTemplate = "icm://Interactive/tenant/BaseTemplates/custom.wfd"
-        val block = DocumentObjectBuilder("B1", DocumentObjectType.Block).baseTemplate(customBaseTemplate).build()
+        val block = DocumentObjectBuilder("B1", DocumentObjectType.Block).baseTemplatePath(customBaseTemplate).build()
         val targetPath = "icm://Interactive/tenant/B1.jld".toIcmPath()
         val draftResult = DraftJsonIpsResult(
             draft = CreateDraftResult(guid = draftGuid, url = "http://example.com"),

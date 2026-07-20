@@ -21,7 +21,7 @@ class DisplayRuleRepositoryTest {
             .originLocations(listOf("test1", "test2"))
             .definition(DisplayRuleDefinition(group = Group(items = emptyList(), operator = GroupOp.Or, false)))
             .metadata("meta1") { string("val") }
-            .baseTemplate("icm://Interactive/StandardPackage/BaseTemplates/templ.wfd")
+            .baseTemplatePath("icm://Interactive/StandardPackage/BaseTemplates/templ.wfd")
             .internal(false)
             .targetFolder("targetFolder")
             .subject("Test Subject")
@@ -46,7 +46,7 @@ class DisplayRuleRepositoryTest {
             .originLocations(listOf("origin1"))
             .definition(DisplayRuleDefinition(group = Group(items = emptyList(), operator = GroupOp.And, false)))
             .metadata("meta1") { string("val") }
-            .baseTemplate("icm://Interactive/StandardPackage/BaseTemplates/templ.wfd")
+            .baseTemplatePath("icm://Interactive/StandardPackage/BaseTemplates/templ.wfd")
             .internal(false)
             .targetFolder("targetFolder")
             .subject("Test Subject")
@@ -60,7 +60,7 @@ class DisplayRuleRepositoryTest {
             .originLocations(listOf("origin2"))
             .definition(DisplayRuleDefinition(group = Group(items = emptyList(), operator = GroupOp.Or, true)))
             .metadata("meta1") { string("val") }
-            .baseTemplate("icm://Interactive/StandardPackage/BaseTemplates/templ.wfd")
+            .baseTemplatePath("icm://Interactive/StandardPackage/BaseTemplates/templ.wfd")
             .internal(false)
             .targetFolder("targetFolder")
             .subject("Test Subject")

@@ -22,6 +22,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableStructure as Variab
 import com.quadient.migration.api.dto.migrationmodel.Area as AreaModel
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule as DisplayRuleModel
 import com.quadient.migration.api.dto.migrationmodel.Table as TableModel
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplate as BaseTemplateModel
 
 class MappingEntity(id: EntityID<CompositeID>) : CompositeEntity(id) {
     companion object : CompositeEntityClass<MappingEntity>(MappingTable)
@@ -54,6 +55,7 @@ sealed class MappingItemEntity {
             is VariableStructure -> this.apply(entity as VariableStructureModel)
             is DisplayRule -> this.apply(entity as DisplayRuleModel)
             is Table -> this.apply(entity as DocumentObjectModel, onError)
+            is BaseTemplate -> this.apply(entity as BaseTemplateModel)
         }
     }
 
@@ -61,7 +63,7 @@ sealed class MappingItemEntity {
     data class DocumentObject(
         override val name: String?,
         val internal: Boolean?,
-        val baseTemplate: String?,
+        val baseTemplate: BaseTemplateLocationEntity?,
         val targetFolder: String?,
         val variableStructureRef: String?,
         @SerialName("documentObjectType") val type: DocumentObjectType?,
@@ -72,7 +74,7 @@ sealed class MappingItemEntity {
             return item.copy(
                 name = name,
                 internal = internal ?: false,
-                baseTemplate = baseTemplate,
+                baseTemplate = baseTemplate?.let { BaseTemplateLocation.fromDb(it) },
                 targetFolder = targetFolder,
                 type = type ?: item.type,
                 variableStructureRef = variableStructureRef?.let { VariableStructureRef(it) },
@@ -105,6 +107,21 @@ sealed class MappingItemEntity {
                 }
             }
             return item.copy(content = updatedContent)
+        }
+    }
+
+    @Serializable
+    data class BaseTemplate(
+        override val name: String?,
+        val targetFolder: String?,
+        val pages: List<BaseTemplatePage> = emptyList(),
+    ) : MappingItemEntity() {
+        fun apply(item: BaseTemplateModel): BaseTemplateModel {
+            return item.copy(
+                name = name,
+                targetFolder = targetFolder,
+                pages = pages,
+            )
         }
     }
 
@@ -234,7 +251,7 @@ sealed class MappingItemEntity {
         override var name: String?,
         val targetFolder: String?,
         var targetId: String?,
-        val baseTemplate: String?,
+        val baseTemplate: BaseTemplateLocationEntity?,
         val variableStructureRef: String?,
         var internal: Boolean?,
     ) : MappingItemEntity() {
@@ -242,7 +259,7 @@ sealed class MappingItemEntity {
             return item.copy(
                 name = name,
                 targetFolder = targetFolder,
-                baseTemplate = baseTemplate,
+                baseTemplate = baseTemplate?.let { BaseTemplateLocation.fromDb(it) },
                 variableStructureRef = variableStructureRef?.let { VariableStructureRef(it) },
                 targetId = targetId?.let { DisplayRuleRef(it) },
                 internal = internal ?: true
@@ -358,7 +375,7 @@ sealed class MappingItemEntity {
                 MappingItem.DocumentObject(
                     name = this.name,
                     internal = this.internal,
-                    baseTemplate = this.baseTemplate,
+                    baseTemplate = this.baseTemplate?.let { BaseTemplateLocation.fromDb(it) },
                     targetFolder = this.targetFolder,
                     type = this.type,
                     variableStructureRef = this.variableStructureRef,
@@ -367,6 +384,12 @@ sealed class MappingItemEntity {
             }
 
             is Area -> MappingItem.Area(name = this.name, areas = this.areas)
+
+            is BaseTemplate -> MappingItem.BaseTemplate(
+                name = this.name,
+                targetFolder = this.targetFolder,
+                pages = this.pages,
+            )
 
             is Image -> {
                 MappingItem.Image(
@@ -455,7 +478,7 @@ sealed class MappingItemEntity {
                 internal = this.internal,
                 variableStructureRef = this.variableStructureRef,
                 targetFolder = this.targetFolder,
-                baseTemplate = this.baseTemplate,
+                baseTemplate = this.baseTemplate?.let { BaseTemplateLocation.fromDb(it) },
             )
 
             is Table -> MappingItem.Table(
