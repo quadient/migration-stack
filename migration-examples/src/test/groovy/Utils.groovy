@@ -1,6 +1,7 @@
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.AttachmentRepository
@@ -34,6 +35,7 @@ static Migration mockMigration() {
     def textStyleRepo = mock(TextStyleRepository.class)
     def paraStyleRepo = mock(ParagraphStyleRepository.class)
     def displayRuleRepo = mock(DisplayRuleRepository.class)
+    def baseTemplateRepo = mock(BaseTemplateRepository.class)
 
     when(migration.getParagraphStyleRepository()).thenReturn(paraStyleRepo)
     when(migration.getTextStyleRepository()).thenReturn(textStyleRepo)
@@ -45,6 +47,7 @@ static Migration mockMigration() {
     when(migration.getVariableStructureRepository()).thenReturn(structureRepo)
     when(migration.getMappingRepository()).thenReturn(mappingRepo)
     when(migration.getDisplayRuleRepository()).thenReturn(displayRuleRepo)
+    when(migration.getBaseTemplateRepository()).thenReturn(baseTemplateRepo)
 
     def previewProvider = new PreviewProvider(docObjectRepo, imageRepo, attachmentRepo, varRepo)
     when(migration.getPreviewProvider()).thenReturn(previewProvider)

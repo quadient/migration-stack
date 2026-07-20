@@ -83,16 +83,11 @@ static void run(Migration migration, Path path) {
         tablesByDocObjId.computeIfAbsent(docObjId) { [] }.add(entry)
     }
 
-    def mappings = tablesByDocObjId.collectEntries { docObjId, tables ->
+    Map<String, MappingItem> mappings = tablesByDocObjId.collectEntries { docObjId, tables ->
         [docObjId, new MappingItem.Table(null, tables)]
     }
 
-    def batches = mappings.entrySet().collate(1000)
-    for (int i = 0; i < batches.size(); i++) {
-        log.info("Upserting table mappings batch ${i + 1}/${batches.size()} (${batches[i].size()} items)")
-        migration.mappingRepository.upsertBatch(batches[i].collectEntries())
-    }
-
+    Mapping.upsertBatched(migration.mappingRepository, mappings, "table mappings", log)
     migration.mappingRepository.applyAllTableMappings { hasErrors = true }
 
     if (hasErrors) {

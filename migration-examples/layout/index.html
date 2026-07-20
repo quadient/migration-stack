@@ -421,6 +421,7 @@
     </label>
     <div class="toolbar-sep"></div>
     <input type="file" id="file" accept=".csv"/>
+    <button id="save-csv" disabled title="Save the loaded CSV, optionally with edits, back to disk">Save CSV</button>
     <div class="status" id="status"></div>
 </div>
 
@@ -449,6 +450,7 @@
  * @typedef {Object} LayoutData
  * @property {PageEntry[]} pages
  * @property {TemplateEntry[]} templates
+ * @property {({pageIndex: number, areaIndex: number}|null)[]} [rowMap]
  */
 
 /**
@@ -704,7 +706,7 @@ function computeContainment(areas) {
  */
 function parseCsvToLayoutData(text) {
     const lines = text.split(/\r?\n/);
-    if (!lines.length) return { pages: [], templates: [] };
+    if (!lines.length) return { pages: [], templates: [], rowMap: [] };
 
     // Parse headers, stripping the " (read-only)" suffix added by Mapping.displayHeader
     const headers = parseCsvLine(lines[0]).map(h => {
@@ -715,12 +717,13 @@ function parseCsvToLayoutData(text) {
     /** @param {string[]} row @param {string} name @returns {string} */
     const col = (row, name) => { const idx = headers.indexOf(name); return idx >= 0 ? (row[idx] ?? '') : ''; };
 
-    // Group rows into pages; each unique page in the CSV keeps its declaration order
-    /** @type {Map<string, {meta: {pageId:string|null,pageName:string|null,templateId:string|null,templateName:string|null,pageWidth:string,pageHeight:string}, rows:string[][]}>} */
+    /** @type {Map<string, {meta: {pageId:string|null,pageName:string|null,templateId:string|null,templateName:string|null,pageWidth:string,pageHeight:string}, rows:string[][], lineIndices:number[]}>} */
     const pageMap = new Map();
     for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
         const row = parseCsvLine(lines[i]);
+        if (col(row, 'type').trim().toLowerCase() === 'base') continue;
+
         const pageId = col(row, 'pageId') || null;
         const templateId = col(row, 'templateId') || null;
         const pageKey = pageId && templateId
@@ -741,12 +744,13 @@ function parseCsvToLayoutData(text) {
                     pageHeight: col(row, 'pageHeight'),
                 },
                 rows: [],
+                lineIndices: [],
             });
         }
         pageMap.get(pageKey).rows.push(row);
+        pageMap.get(pageKey).lineIndices.push(i);
     }
 
-    // Assign templatePageIndex as the ordinal of each real page within its template (CSV order)
     /** @type {Map<string, number>} */
     const pageIndexMap = new Map();
     /** @type {Map<string, number>} */
@@ -758,28 +762,37 @@ function parseCsvToLayoutData(text) {
         tmplPageCounter.set(meta.templateId, n + 1);
     }
 
-    // Build PageEntry objects
+    // TODO d.svitak - review start
     /** @type {PageEntry[]} */
     const pages = [];
-    for (const [pageKey, { meta, rows }] of pageMap) {
-        const rawAreas = /** @type {{x:number,y:number,w:number,h:number,flowToNextPage:boolean,interactiveFlowName:string,contentPreview:string}[]} */ (
-            rows.map(row => {
-                const x = parseSizeMm(col(row, 'x'));
-                const y = parseSizeMm(col(row, 'y'));
-                const w = parseSizeMm(col(row, 'width'));
-                const h = parseSizeMm(col(row, 'height'));
-                if (x == null || y == null || w == null || h == null) return null;
-                return {
+    /** @type {({pageIndex: number, areaIndex: number}|null)[]} */
+    const rowMap = new Array(lines.length).fill(null);
+    for (const [pageKey, { meta, rows, lineIndices }] of pageMap) {
+        const rawAreasWithLine = rows.map((row, idx) => {
+            const x = parseSizeMm(col(row, 'x'));
+            const y = parseSizeMm(col(row, 'y'));
+            const w = parseSizeMm(col(row, 'width'));
+            const h = parseSizeMm(col(row, 'height'));
+            if (x == null || y == null || w == null || h == null) return null;
+            return {
+                area: {
                     x, y, w, h,
                     flowToNextPage: col(row, 'flowToNextPage') === 'true',
                     interactiveFlowName: col(row, 'interactiveFlowName') || '',
                     contentPreview: col(row, 'contentPreview') || '',
-                };
-            }).filter(a => a != null)
+                },
+                lineIndex: lineIndices[idx],
+            };
+        }).filter(a => a != null);
+        const rawAreas = /** @type {{x:number,y:number,w:number,h:number,flowToNextPage:boolean,interactiveFlowName:string,contentPreview:string}[]} */ (
+            rawAreasWithLine.map(a => a.area)
         );
 
         const containment = computeContainment(rawAreas);
         const areas = /** @type {AreaEntry[]} */ (rawAreas.map((a, idx) => ({ ...a, containedIn: containment[idx] })));
+
+        const pageIndex = pages.length;
+        rawAreasWithLine.forEach((a, areaIndex) => { rowMap[a.lineIndex] = { pageIndex, areaIndex }; });
 
         const pw = parseSizeMm(meta.pageWidth);
         const ph = parseSizeMm(meta.pageHeight);
@@ -794,8 +807,20 @@ function parseCsvToLayoutData(text) {
         }));
     }
 
-    return { pages, templates: deriveTemplates(pages) };
+    return { pages, templates: deriveTemplates(pages), rowMap };
 }
+
+// Raw CSV state kept alongside the parsed LayoutData so the file can be re-serialized
+// losslessly (including columns/rows the viewer doesn't otherwise use) for saving back to disk.
+/** @type {string[]|null} */
+let currentCsvHeaders = null;
+/** @type {string[][]|null} */
+let currentCsvRows = null;
+let currentFileName = "areas.csv";
+/** @type {({pageIndex: number, areaIndex: number}|null)[]} */
+let currentRowMap = [];
+
+const saveCsvBtn = /** @type {HTMLButtonElement} */ (document.getElementById("save-csv"));
 
 /**
  * @param {File} file
@@ -803,7 +828,22 @@ function parseCsvToLayoutData(text) {
 async function loadFile(file) {
     try {
         statusEl.textContent = "";
-        render(parseCsvToLayoutData(await file.text()));
+        const text = await file.text();
+
+        const lines = text.split(/\r?\n/);
+        if (lines.length && lines[0].trim() !== "") {
+            currentCsvHeaders = parseCsvLine(lines[0]);
+            currentCsvRows = lines.slice(1).map(parseCsvLine);
+        } else {
+            currentCsvHeaders = null;
+            currentCsvRows = null;
+        }
+        currentFileName = file.name || "areas.csv";
+        saveCsvBtn.disabled = !currentCsvHeaders;
+
+        const layoutData = parseCsvToLayoutData(text);
+        currentRowMap = layoutData.rowMap ?? [];
+        render(layoutData);
     } catch (err) {
         statusEl.textContent = "Error: " + /** @type {Error} */ (err).message;
     }
@@ -813,6 +853,181 @@ fileInput.addEventListener("change", () => {
     const [file] = /** @type {FileList} */ (fileInput.files);
     if (file) loadFile(file);
 });
+
+function normalizeHeaderName(header) {
+    const s = (header ?? "").trim();
+    return s.endsWith(" (read-only)") ? s.slice(0, -" (read-only)".length) : s;
+}
+
+function ensureCsvColumn(headers, rows, logicalName) {
+    const idx = headers.findIndex(h => normalizeHeaderName(h) === logicalName);
+    if (idx >= 0) return idx;
+    const insertIdx = headers.findIndex(h => normalizeHeaderName(h) === "contentPreview");
+    const at = insertIdx >= 0 ? insertIdx : headers.length;
+    headers.splice(at, 0, logicalName);
+    rows.forEach(row => { row.splice(at, 0, ""); });
+    return at;
+}
+
+function csvEscapeField(field) {
+    const s = field ?? "";
+    if (/[",\r\n]/.test(s)) {
+        return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+}
+
+function serializeCsv(headers, rows) {
+    const lines = [headers.map(csvEscapeField).join(",")];
+    for (const row of rows) {
+        lines.push(row.map(csvEscapeField).join(","));
+    }
+    return lines.join("\r\n") + "\r\n";
+}
+
+function computeBaseTemplateData(data, viewModel, analysis) {
+    /** @type {string[][]} */
+    const baseRows = [];
+    /** @type {Map<number, {flowNames: (string|null)[], targetId: string}>} */
+    const overridesByPageIndex = new Map();
+
+    viewModel.templateGroups.forEach((templateGroup, templateGroupIndex) => {
+        const baseTemplateId = `G${templateGroupIndex + 1}`;
+        const baseTemplateName = `Base template of ${templateGroup.templateNames.join(" / ")}`;
+
+        templateGroup.pageGroups.forEach((pageGroup, pageGroupIndex) => {
+            const basePageId = `${baseTemplateId}-P${pageGroupIndex + 1}`;
+            const basePageName = `Page group ${pageGroupIndex + 1}`;
+
+            const representativePageIndex = pageGroup.pageIndices[0];
+            const representativePage = data.pages[representativePageIndex];
+            const representativeGroups = analysis.pageProximityGroups[representativePageIndex] ?? [];
+            const pageWidthMm = representativePage.pageSize ? `${representativePage.pageSize.w}mm` : "";
+            const pageHeightMm = representativePage.pageSize ? `${representativePage.pageSize.h}mm` : "";
+
+            representativeGroups.forEach((pg, areaGroupIndex) => {
+                const flowName = `${basePageId}.Area${areaGroupIndex + 1}`;
+                const flowToNextPage = pg.areaIndices.some(ai => representativePage.areas[ai]?.flowToNextPage);
+                const contentPreview = pg.areaIndices
+                    .map(ai => representativePage.areas[ai]?.contentPreview)
+                    .filter(Boolean)
+                    .join(";");
+                baseRows.push([
+                    baseTemplateId, baseTemplateName, basePageId, basePageName,
+                    pageWidthMm, pageHeightMm,
+                    flowName, String(flowToNextPage),
+                    `${pg.position.x}mm`, `${pg.position.y}mm`, `${pg.position.w}mm`, `${pg.position.h}mm`,
+                    "Base", "", contentPreview,
+                ]);
+            });
+
+            pageGroup.pageIndices.forEach(pageIndex => {
+                const page = data.pages[pageIndex];
+                const ownGroups = pageIndex === representativePageIndex
+                    ? representativeGroups
+                    : (analysis.pageProximityGroups[pageIndex] ?? []);
+
+                /** @type {(string|null)[]} */
+                const flowNames = new Array(page.areas.length).fill(null);
+                ownGroups.forEach((pg, ordinal) => {
+                    if (ordinal >= representativeGroups.length) return;
+                    const flowName = `${basePageId}.Area${ordinal + 1}`;
+                    pg.areaIndices.forEach(ai => { flowNames[ai] = flowName; });
+                });
+                overridesByPageIndex.set(pageIndex, { flowNames, targetId: `$${baseTemplateId}` });
+            });
+        });
+    });
+
+    return { baseRows, overridesByPageIndex };
+}
+
+async function saveCsv() {
+    if (!currentCsvHeaders || !currentCsvRows) {
+        statusEl.textContent = "No CSV loaded to save.";
+        return;
+    }
+    if (!currentData || !currentViewModel || !currentAnalysis) {
+        statusEl.textContent = "No layout data loaded to save.";
+        return;
+    }
+
+    const headers = [...currentCsvHeaders];
+    const rows = currentCsvRows.map(row => [...row]);
+
+    const typeIdx = ensureCsvColumn(headers, rows, "type");
+    const targetIdIdx = ensureCsvColumn(headers, rows, "targetId");
+    const flowNameIdx = ensureCsvColumn(headers, rows, "interactiveFlowName");
+
+    const { baseRows, overridesByPageIndex } = computeBaseTemplateData(currentData, currentViewModel, currentAnalysis);
+
+    currentRowMap.forEach((entry, lineIndex) => {
+        if (!entry) return;
+        const rowIdx = lineIndex - 1;
+        const row = rows[rowIdx];
+        if (!row) return;
+
+        const override = overridesByPageIndex.get(entry.pageIndex);
+        if (!override) return;
+
+        row[targetIdIdx] = override.targetId;
+        const flowName = override.flowNames[entry.areaIndex];
+        if (flowName != null) row[flowNameIdx] = flowName;
+    });
+
+    for (let i = rows.length - 1; i >= 0; i--) {
+        if (rows[i].every(cell => cell === "")) {
+            rows.splice(i, 1);
+        } else if (!rows[i][typeIdx]) {
+            rows[i][typeIdx] = "Standard";
+        }
+    }
+
+    baseRows.forEach(baseRow => {
+        const byLogicalName = {
+            templateId: baseRow[0], templateName: baseRow[1], pageId: baseRow[2], pageName: baseRow[3],
+            pageWidth: baseRow[4], pageHeight: baseRow[5], interactiveFlowName: baseRow[6], flowToNextPage: baseRow[7],
+            x: baseRow[8], y: baseRow[9], width: baseRow[10], height: baseRow[11],
+            type: baseRow[12], targetId: baseRow[13], contentPreview: baseRow[14],
+        };
+        const row = headers.map(h => byLogicalName[normalizeHeaderName(h)] ?? "");
+        rows.push(row);
+    });
+
+    const text = serializeCsv(headers, rows);
+
+    if (typeof window.showSaveFilePicker === "function") {
+        try {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: currentFileName,
+                types: [{ description: "CSV file", accept: { "text/csv": [".csv"] } }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(text);
+            await writable.close();
+            statusEl.textContent = `Saved ${handle.name}`;
+            return;
+        } catch (err) {
+            if (/** @type {Error} */ (err).name === "AbortError") return;
+            statusEl.textContent = "Error saving file: " + /** @type {Error} */ (err).message;
+            return;
+        }
+    }
+
+    const blob = new Blob([text], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = currentFileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    statusEl.textContent = `Downloaded ${currentFileName}`;
+}
+
+saveCsvBtn.addEventListener("click", () => { saveCsv(); });
+// TODO d.svitak - review end
 
 document.body.addEventListener("dragover", e => e.preventDefault());
 document.body.addEventListener("drop", e => {

@@ -1,5 +1,9 @@
 package com.quadient.migration.example.common.util
 
+import com.quadient.migration.api.dto.migrationmodel.MappingItem
+import com.quadient.migration.api.repository.MappingRepository
+import org.slf4j.Logger
+
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -90,4 +94,12 @@ static String normalizeHeader(String displayName) {
         s = s.substring(0, s.length() - suffix.length())
     }
     return s.trim()
+}
+
+static void upsertBatched(MappingRepository mappingRepository, Map<String, MappingItem> mappings, String label, Logger log) {
+    def batches = mappings.entrySet().collate(1000)
+    for (int i = 0; i < batches.size(); i++) {
+        log.info "Upserting ${label} batch ${i + 1}/${batches.size()} (${batches[i].size()} items)"
+        mappingRepository.upsertBatch(batches[i].collectEntries())
+    }
 }

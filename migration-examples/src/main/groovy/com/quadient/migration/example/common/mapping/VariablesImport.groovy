@@ -80,11 +80,7 @@ static void run(Migration migration, Path path) {
         }
     }
 
-    def batches = mappings.entrySet().collate(1000)
-    for (int i = 0; i < batches.size(); i++) {
-        log.info "Upserting mappings batch ${i + 1}/${batches.size()} (${batches[i].size()} items)"
-        migration.mappingRepository.upsertBatch(batches[i].collectEntries())
-    }
+    Mapping.upsertBatched(migration.mappingRepository, mappings, "variable mappings", log)
     migration.mappingRepository.applyAllVariableMappings()
 
     if (!languageVariableFound) {

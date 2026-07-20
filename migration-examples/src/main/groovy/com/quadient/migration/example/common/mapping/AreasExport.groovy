@@ -50,7 +50,9 @@ static void run(Migration migration, Path path) {
             Mapping.displayHeader("y", true),
             Mapping.displayHeader("width", true),
             Mapping.displayHeader("height", true),
-            Mapping.displayHeader("contentPreview", true)
+            Mapping.displayHeader("type", false),
+            Mapping.displayHeader("targetId", false),
+            Mapping.displayHeader("contentPreview", true),
         ]
         writer.writeLine(headers.join(","))
         templates.each { template ->
@@ -101,6 +103,9 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     builder.append(Csv.serialize(area.position.y) + ",")
     builder.append(Csv.serialize(area.position.width) + ",")
     builder.append(Csv.serialize(area.position.height) + ",")
+
+    builder.append("Standard,")
+    builder.append(Csv.serialize(page?.baseTemplate ?: template?.baseTemplate) + ",")
 
     builder.append(Csv.serialize(migration.previewProvider.buildDocumentContentListPreview(area.content)))
 
