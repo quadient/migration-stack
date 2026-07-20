@@ -104,6 +104,9 @@ class AreasImportTest {
         when(migration.mappingRepository.getDocumentObjectMapping("page1")).thenReturn(
             new MappingItem.DocumentObject(null, null, null, null, null, null, null)
         )
+        when(migration.mappingRepository.getDocumentObjectMapping("tmpl1")).thenReturn(
+            new MappingItem.DocumentObject(null, null, null, null, null, null, null)
+        )
         givenPageExists("page1", ["flow1", "flow2"], [false, false])
 
         def input = """\
@@ -116,7 +119,8 @@ class AreasImportTest {
         AreasImport.run(migration, mappingFile)
 
         verify(migration.mappingRepository).upsertBatch([
-            "page1": new MappingItem.DocumentObject(null, false, new BaseTemplateRef("G1"), null, null, null, new SkipOptions(false, null, null))
+            "page1": new MappingItem.DocumentObject(null, false, new BaseTemplateRef("G1"), null, null, null, new SkipOptions(false, null, null)),
+            "tmpl1": new MappingItem.DocumentObject(null, null, new BaseTemplateRef("G1"), null, null, null, null)
         ])
         verify(migration.mappingRepository).applyAllDocumentObjectMappings()
     }
@@ -127,6 +131,9 @@ class AreasImportTest {
 
         when(migration.mappingRepository.getAreaMapping("page1")).thenReturn(new MappingItem.Area(null, [:], [:]))
         when(migration.mappingRepository.getDocumentObjectMapping("page1")).thenReturn(
+            new MappingItem.DocumentObject(null, null, null, null, null, null, null)
+        )
+        when(migration.mappingRepository.getDocumentObjectMapping("tmpl1")).thenReturn(
             new MappingItem.DocumentObject(null, null, null, null, null, null, null)
         )
         givenPageExists("page1", ["flow1"], [false])

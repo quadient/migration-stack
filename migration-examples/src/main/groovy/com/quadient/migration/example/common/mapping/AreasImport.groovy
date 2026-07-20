@@ -79,8 +79,13 @@ static void run(Migration migration, Path path) {
         areaMapping.flowToNextPage[areaIndex] = flowToNextPage ?: false
 
         def targetId = Csv.deserialize(values.get("targetId"), String.class)
-        if (targetId && !docObjectsToTargetIds.containsKey(documentObjectId)) {
-            docObjectsToTargetIds[documentObjectId] = targetId
+        if (targetId) {
+            if (pageId && !docObjectsToTargetIds.containsKey(pageId)) {
+                docObjectsToTargetIds[pageId] = targetId
+            }
+            if (templateId && !docObjectsToTargetIds.containsKey(templateId)) {
+                docObjectsToTargetIds[templateId] = targetId
+            }
         }
 
         areaIndex++
@@ -148,7 +153,7 @@ private static void applyDocumentObjectTargetIdMappings(Migration migration, Map
         mappings[documentObjectId] = mapping
     }
 
-    Mapping.upsertBatched(migration.mappingRepository, mappings, "base template reference mappings", log)
+    Mapping.upsertBatched(migration.mappingRepository, mappings, "document object base template ref mappings", log)
     migration.mappingRepository.applyAllDocumentObjectMappings()
 }
 
