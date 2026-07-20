@@ -128,7 +128,7 @@ static void collectParents(Root root, Node node, Reference parentNode) {
     }
 }
 
-static void collectChildren(Node node, List<Ref> refs) {
+static void collectChildren(Node node, Set<Ref> refs) {
     for (def child : refs) {
         def type = switch (child) {
             case DocumentObjectRef -> ChildType.DOCUMENT_OBJECT

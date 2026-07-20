@@ -22,7 +22,7 @@ data class Image @JvmOverloads constructor(
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
-    override fun collectRefs(): List<Ref> {
-        return listOfNotNull(targetAttachmentId?.let { AttachmentRef(it) })
+    override fun collectRefs(): Set<Ref> {
+        return setOfNotNull(targetAttachmentId?.let { AttachmentRef(it) })
     }
 }

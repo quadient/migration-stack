@@ -19,8 +19,8 @@ data class Paragraph(
         return "$pathName: $preview"
     }
 
-    override fun collectRefs(): List<Ref> {
-        return content.flatMap { it.collectRefs() } + listOfNotNull(styleRef, displayRuleRef)
+    override fun collectRefs(): Set<Ref> {
+        return (content.flatMap { it.collectRefs() } + listOfNotNull(styleRef, displayRuleRef)).toSet()
     }
 
     companion object {
@@ -77,13 +77,13 @@ data class Paragraph(
     )
 
     data class Text(val content: List<TextContent>, val styleRef: TextStyleRef?, val displayRuleRef: DisplayRuleRef?) : RefValidatable {
-        override fun collectRefs(): List<Ref> {
-            return content.flatMap {
+        override fun collectRefs(): Set<Ref> {
+            return (content.flatMap {
                 when (it) {
                     is RefValidatable -> it.collectRefs()
                     else -> emptyList()
                 }
-            } + listOfNotNull(styleRef, displayRuleRef)
+            } + listOfNotNull(styleRef, displayRuleRef)).toSet()
         }
 
         companion object {

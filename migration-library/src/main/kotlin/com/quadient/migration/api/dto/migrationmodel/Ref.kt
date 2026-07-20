@@ -28,8 +28,8 @@ sealed class Ref(private val _id: String) : RefValidatable {
         require(!_id.isBlank()) { "Id cannot be blank" }
     }
 
-    override fun collectRefs(): List<Ref> {
-        return listOf(this)
+    override fun collectRefs(): Set<Ref> {
+        return setOf(this)
     }
 }
 
@@ -59,8 +59,8 @@ data class DocumentObjectRef(override val id: String, val displayRuleRef: Displa
 
     constructor(id: String) : this(id, null)
 
-    override fun collectRefs(): List<Ref> {
-        return listOfNotNull(this, displayRuleRef)
+    override fun collectRefs(): Set<Ref> {
+        return setOfNotNull(this, displayRuleRef)
     }
 
     companion object {
@@ -75,7 +75,7 @@ data class VariableRef(override val id: String) : Ref(id), VariableStringContent
     override val pathName = "varRef"
     override fun toPreview(nameResolver: (DocumentContent) -> String?): String =
         "$${nameResolver(this) ?: id}$"
-    override fun collectRefs(): List<Ref> = listOf(this)
+    override fun collectRefs(): Set<Ref> = setOf(this)
 
     companion object {
         fun fromDb(entity: VariableEntityRef) = VariableRef(entity.id)
@@ -182,5 +182,5 @@ data class StringValue(val value: String) : VariableStringContent {
 
     fun toDb() = StringEntity(value)
 
-    override fun collectRefs(): List<Ref> = emptyList()
+    override fun collectRefs(): Set<Ref> = emptySet()
 }

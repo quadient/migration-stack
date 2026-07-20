@@ -25,18 +25,18 @@ data class DocumentObject(
     val skip: SkipOptions,
     val subject: String?,
 ) : MigrationObject, RefValidatable {
-    override fun collectRefs(): List<Ref> {
+    override fun collectRefs(): Set<Ref> {
         val contentRefs = content.flatMap {
             when (it) {
                 is RefValidatable -> it.collectRefs()
-                else -> emptyList()
+                else -> emptySet()
             }
-        }
+        }.toSet()
 
         val pdfMetadataRefs = pdfMetadata?.collectRefs().orEmpty()
 
         val baseTemplateRef = baseTemplate as? BaseTemplateRef
 
-        return contentRefs + pdfMetadataRefs + listOfNotNull(displayRuleRef, variableStructureRef, baseTemplateRef)
+        return contentRefs + pdfMetadataRefs + setOfNotNull(displayRuleRef, variableStructureRef, baseTemplateRef)
     }
 }

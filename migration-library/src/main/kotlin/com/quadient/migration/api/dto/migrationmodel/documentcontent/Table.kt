@@ -77,8 +77,8 @@ data class Table(
         }.take(100)
     }
 
-    override fun collectRefs(): List<Ref> {
-        return (rows + header + firstHeader + footer + lastFooter).flatMap { it.collectRefs() }
+    override fun collectRefs(): Set<Ref> {
+        return (rows + header + firstHeader + footer + lastFooter).flatMap { it.collectRefs() }.toSet()
     }
 
     companion object {
@@ -124,8 +124,8 @@ data class Table(
     }
 
     data class Row(val cells: List<Cell>, override val displayRuleRef: DisplayRuleRef? = null) : TableRow {
-        override fun collectRefs(): List<Ref> {
-            return cells.flatMap { it.collectRefs() } + listOfNotNull(displayRuleRef)
+        override fun collectRefs(): Set<Ref> {
+            return (cells.flatMap { it.collectRefs() } + listOfNotNull(displayRuleRef)).toSet()
         }
 
         fun toDb(): TableEntity.Row {
@@ -146,10 +146,10 @@ data class Table(
         val variable: VariablePath,
         override val displayRuleRef: DisplayRuleRef? = null,
     ) : TableRow {
-        override fun collectRefs(): List<Ref> {
+        override fun collectRefs(): Set<Ref> {
             val rowRefs = rows.flatMap { it.collectRefs() }
             val varRef = (variable as? VariableRefPath)?.let { VariableRef(it.variableId) }
-            return rowRefs + listOfNotNull(varRef, displayRuleRef)
+            return (rowRefs + listOfNotNull(varRef, displayRuleRef)).toSet()
         }
 
         fun toDb(): TableEntity.RepeatedRow {
@@ -180,13 +180,13 @@ data class Table(
         val alignment: CellAlignment? = null,
         val overflow: CellOverflow? = null,
     ) : RefValidatable {
-        override fun collectRefs(): List<Ref> {
+        override fun collectRefs(): Set<Ref> {
             return content.flatMap {
                 when (it) {
                     is RefValidatable -> it.collectRefs()
-                    else -> emptyList()
+                    else -> emptySet()
                 }
-            }
+            }.toSet()
         }
 
         companion object {

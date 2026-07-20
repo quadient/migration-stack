@@ -13,7 +13,7 @@ data class Variable @JvmOverloads constructor(
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
-    override fun collectRefs(): List<Ref> {
-        return emptyList()
+    override fun collectRefs(): Set<Ref> {
+        return emptySet()
     }
 }

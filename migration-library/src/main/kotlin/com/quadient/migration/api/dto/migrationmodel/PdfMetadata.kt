@@ -9,8 +9,8 @@ data class PdfMetadata(
     val keywords: List<VariableStringContent>? = null,
     val producer: List<VariableStringContent>? = null,
 ) : RefValidatable {
-    override fun collectRefs(): List<Ref> {
-        return listOfNotNull(title, author, subject, keywords, producer).flatten().flatMap { it.collectRefs() }
+    override fun collectRefs(): Set<Ref> {
+        return listOfNotNull(title, author, subject, keywords, producer).flatten().flatMap { it.collectRefs() }.toSet()
     }
 
     fun toDb(): PdfMetadataEntity = PdfMetadataEntity(
