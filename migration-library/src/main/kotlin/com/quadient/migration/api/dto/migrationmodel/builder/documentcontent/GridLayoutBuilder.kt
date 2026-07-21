@@ -19,6 +19,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.HasGridLayoutConten
 import com.quadient.migration.api.dto.migrationmodel.builder.HasImageRefContent
 import com.quadient.migration.api.dto.migrationmodel.builder.HasParagraphContent
 import com.quadient.migration.api.dto.migrationmodel.builder.HasRepeatedContent
+import com.quadient.migration.api.dto.migrationmodel.builder.HasSelectByLanguageContent
 import com.quadient.migration.api.dto.migrationmodel.builder.HasStringContent
 import com.quadient.migration.api.dto.migrationmodel.builder.HasTableContent
 import com.quadient.migration.api.dto.migrationmodel.builder.HasVariableRefContent
@@ -198,6 +199,7 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
 
         class ContentBuilder :
             HasParagraphContent<ContentBuilder>,
+            HasSelectByLanguageContent<ContentBuilder>,
             HasTableContent<DocumentContent, ContentBuilder>,
             HasImageRefContent<DocumentContent, ContentBuilder>,
             HasDocumentObjectRefContent<DocumentContent, ContentBuilder>,
