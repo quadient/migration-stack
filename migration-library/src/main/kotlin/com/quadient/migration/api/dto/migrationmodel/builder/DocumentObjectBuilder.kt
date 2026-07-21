@@ -127,6 +127,7 @@ class SmsObjectBuilder(id: String) : DtoBuilderBase<DocumentObject, SmsObjectBui
     HasStringContent<DocumentContent, SmsObjectBuilder>,
     HasVariableRefContent<DocumentContent, SmsObjectBuilder>,
     HasParagraphContent<SmsObjectBuilder>,
+    HasSelectByLanguageContent<SmsObjectBuilder>,
     HasSkip<SmsObjectBuilder>,
     HasSmsOptions<SmsObjectBuilder>,
     HasVariableStructureRef<SmsObjectBuilder>
