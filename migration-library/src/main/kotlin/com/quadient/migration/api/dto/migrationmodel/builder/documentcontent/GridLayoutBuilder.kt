@@ -146,6 +146,27 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
     fun build(): GridLayout {
         require(columns.isNotEmpty()) { "GridLayout must have at least one column" }
         require(columns.size <= 4) { "GridLayout supports at most 4 columns" }
+        val distributions = when (columns.size) {
+            1, 4 -> listOf(ColumnDistribution.EvenWidth)
+            2 -> listOf(
+                ColumnDistribution.EvenWidth,
+                ColumnDistribution.TwoColumns_25_75,
+                ColumnDistribution.TwoColumns_33_66,
+                ColumnDistribution.TwoColumns_66_33,
+                ColumnDistribution.TwoColumns_75_25
+            )
+            3 -> listOf(
+                ColumnDistribution.EvenWidth,
+                ColumnDistribution.ThreeColumns_25_25_50,
+                ColumnDistribution.ThreeColumns_25_50_25,
+                ColumnDistribution.ThreeColumns_50_25_25
+            )
+            else -> null
+        }
+        if (distributions != null) {
+            require(distribution in distributions) { "GridLayout with ${columns.size} columns must have one of the following distributions: $distributions" }
+        }
+
         return GridLayout(
             columns = columns,
             distribution = distribution,
