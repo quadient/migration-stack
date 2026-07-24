@@ -44,6 +44,8 @@ import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.deploy.utility.ValidationResult
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ResourcePathProvider
+import com.quadient.migration.service.deploy.utility.DeployOrder
+import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.readSafely
@@ -56,14 +58,13 @@ import kotlin.collections.plus
 import kotlin.uuid.Uuid
 import com.quadient.migration.data.Error as StatusError
 
-data class DocObjectWithRef(val obj: DocumentObject, val documentObjectRefs: Set<String>)
-
 sealed class DeployClient(
     private val projectConfig: ProjectConfig,
     private val metadataValidator: MetadataValidatorImpl,
     private val postProcess: PostProcessImpl,
     private val conflictDetector: ConflictDetectorImpl,
     private val progressReporter: ProgressReporterImpl,
+    private val deployOrder: DeployOrderImpl,
     private val resourcePathProvider: ResourcePathProvider,
     protected val documentObjectRepository: DocumentObjectRepository,
     protected val imageRepository: ImageRepository,
@@ -80,7 +81,8 @@ sealed class DeployClient(
 ) : MetadataValidator by metadataValidator,
     PostProcess by postProcess,
     ProgressReporter by progressReporter,
-    ConflictDetector by conflictDetector
+    ConflictDetector by conflictDetector,
+    DeployOrder by deployOrder
 {
     protected val logger by logger()
 
@@ -128,58 +130,6 @@ sealed class DeployClient(
         runPostProcessors(result)
 
         return result
-    }
-
-    fun deployOrder(documentObjects: List<DocumentObject>): List<DocumentObject> {
-        val documentObjectIds = documentObjects.map { it.id }
-
-        val deployOrder = mutableListOf<DocumentObject>()
-
-        var toCheck = documentObjects.map { obj ->
-            DocObjectWithRef(obj, obj.collectRefs().filterIsInstance<DocumentObjectRef>().map { it.id }.toSet())
-        }
-        val deployed = mutableSetOf<String>()
-
-        var lastSize = toCheck.size
-        while (deployed.size < documentObjects.size) {
-            val (canDeploy, cantDeploy) = toCheck.partition { docObj ->
-                docObj.documentObjectRefs.all {
-                    deployed.contains(it) || !documentObjectIds.contains(it)
-                }
-            }
-
-            if (cantDeploy.isEmpty()) {
-                for (item in canDeploy) {
-                    deployOrder.add(item.obj)
-                }
-                return deployOrder
-            }
-
-            if (lastSize == cantDeploy.size) {
-                logger.error(
-                    "Cannot determine deploy order. Either circular reference or some references are missing. Deployed: ${
-                        deployed.joinToString(
-                            separator = ",", prefix = "'[", postfix = "]'"
-                        )
-                    }, Can deploy: ${
-                        canDeploy.joinToString(
-                            separator = ",", prefix = "'[", postfix = "]'"
-                        )
-                    }, Cannot deploy: ${cantDeploy.joinToString(separator = ",", prefix = "'[", postfix = "]'")}"
-                )
-                throw RuntimeException("Cannot determine deploy order. Either circular reference or some references are missing.")
-            }
-
-            for (item in canDeploy) {
-                deployOrder.add(item.obj)
-                deployed.add(item.obj.id)
-            }
-
-            lastSize = cantDeploy.size
-            toCheck = cantDeploy
-        }
-
-        return deployOrder
     }
 
     protected fun deployImagesAndAttachments(

@@ -22,6 +22,8 @@ path.
 
 ### Fixed
 
+- Calculation of deploy order not accounting for transitive dependencies
+
 ## [17.0.27] - 2026-07-14
 
 ### Added

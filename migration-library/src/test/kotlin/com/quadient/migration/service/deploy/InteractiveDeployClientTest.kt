@@ -42,6 +42,7 @@ import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.InteractiveResourcePathProvider
+import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTargetDir
@@ -111,6 +112,7 @@ class InteractiveDeployClientTest {
     val resourcePathProvider = mockk<InteractiveResourcePathProvider>()
     val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, config.inspireOutput)
     val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, config.inspireOutput)
+    val deployOrder = DeployOrderImpl(documentObjectRepository)
 
     private val subject = InteractiveDeployClient(
         config,
@@ -119,6 +121,7 @@ class InteractiveDeployClientTest {
         postProcess,
         conflictDetector,
         progressReporter,
+        deployOrder,
         documentObjectRepository,
         imageRepository,
         attachmentRepository,
@@ -141,6 +144,7 @@ class InteractiveDeployClientTest {
         }
         every { ipsService.writeMetadata(any()) } just runs
         every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
+        every { documentObjectRepository.find(any()) } returns null
     }
 
     @Test
@@ -197,7 +201,7 @@ class InteractiveDeployClientTest {
             )
         )
         val template =
-            mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("block1"), aDocumentObjectRef("block2"))))
+            mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("1"), aDocumentObjectRef("2"))))
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(externalBlock, template)
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
@@ -278,9 +282,9 @@ class InteractiveDeployClientTest {
                 )
             )
         )
-        aBlock("2", skip = SkipOptions(true, null, null))
+        mockDocumentObject(aBlock("2", skip = SkipOptions(true, null, null)))
         val template =
-            mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("block1"), aDocumentObjectRef("block2"))))
+            mockDocumentObject(aTemplate("3", listOf(aDocumentObjectRef("1"), aDocumentObjectRef("2"))))
 
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block, template)
         every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
@@ -410,7 +414,7 @@ class InteractiveDeployClientTest {
         // given
         val image = aImage("Bunny").mock()
         val attachment = aAttachment("Report").mock()
-        val innerBlock = aBlock("10", listOf(ImageRef(image.id), AttachmentRef(attachment.id)), internal = true)
+        val innerBlock = mockDocumentObject(aBlock("10", listOf(ImageRef(image.id), AttachmentRef(attachment.id)), internal = true))
         val block = mockDocumentObject(
             aBlock(
                 "1", listOf(
@@ -511,55 +515,6 @@ class InteractiveDeployClientTest {
         // then
         verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd.toIcmPath())) }
         verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
-    }
-
-    @Test
-    fun `deployOrder is correct`() {
-        val list = listOf(
-            aBlockModel("a", content = listOf(aDocumentObjectRef("b"))),
-            aBlockModel("a2", content = listOf(aDocumentObjectRef("b"))),
-            aBlockModel("a3", content = listOf(aDocumentObjectRef("b"))),
-            aBlockModel("b", content = listOf(aDocumentObjectRef("c"))),
-            aBlockModel("c", content = listOf()),
-            aBlockModel("d", content = listOf(aDocumentObjectRef("f"))),
-            aBlockModel("e", content = listOf()),
-            aBlockModel("f", content = listOf()),
-        )
-
-        val result = subject.deployOrder(list)
-
-        result.map { it.id }.shouldBeEqualTo(listOf("c", "e", "f", "b", "d", "a", "a2", "a3"))
-    }
-
-    @Test
-    fun `deployOrder has missing object`() {
-        val list = listOf(
-            aBlockModel("a", content = listOf(aDocumentObjectRef("b"))),
-            aBlockModel("a2", content = listOf(aDocumentObjectRef("b"))),
-            aBlockModel("a3", content = listOf(aDocumentObjectRef("b"))),
-            aBlockModel("b", content = listOf(aDocumentObjectRef("c"))),
-            // c is missing
-            aBlockModel("d", content = listOf(aDocumentObjectRef("f"))),
-            aBlockModel("e", content = listOf()),
-            aBlockModel("f", content = listOf()),
-        )
-
-        val result = subject.deployOrder(list)
-
-        result.map { it.id }.shouldBeEqualTo(listOf("b", "e", "f", "a", "a2", "a3", "d"))
-    }
-
-    @Test
-    fun `deployOrder fails on recursive dependency`() {
-        val list = listOf(
-            aBlockModel("a", content = listOf(aDocumentObjectRef("b"))),
-            aBlockModel("b", content = listOf(aDocumentObjectRef("c"))),
-            aBlockModel("c", content = listOf(aDocumentObjectRef("b"))),
-        )
-
-        val result = assertThrows<RuntimeException> { subject.deployOrder(list) }
-
-        result.message.shouldBeEqualTo("Cannot determine deploy order. Either circular reference or some references are missing.")
     }
 
     @Test
@@ -707,6 +662,7 @@ class InteractiveDeployClientTest {
         every { documentObjectRepository.findOrFail("block1") } returns block1
         every { documentObjectRepository.findOrFail("block2") } returns block2
         every { documentObjectRepository.findOrFail("block3") } returns block3
+        every { documentObjectRepository.find("4") } returns null
 
         spy.deployDocumentObjects(listOf("template1"), false)
 
@@ -734,6 +690,7 @@ class InteractiveDeployClientTest {
             aBlock(id = "3", content = listOf(aDocumentObjectRef("6"))),
         )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns docObjects
+        every { documentObjectRepository.find("4") } returns null
 
         spy.deployDocumentObjects(toDeploy, true)
 
@@ -768,7 +725,6 @@ class InteractiveDeployClientTest {
         spy.deployDocumentObjects(toDeploy)
 
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
-        verify(exactly = 7) { documentObjectRepository.findOrFail(any()) }
         verify {
             spy.deployDocumentObjectsInternal(match { docObjects ->
                 docObjects.size == 7 && docObjects.map { it.id }.containsAll(listOf("1", "2", "3", "4", "5", "6", "7"))
@@ -799,7 +755,7 @@ class InteractiveDeployClientTest {
     @Test
     fun `deployDocumentObjects continues deployment when there is exception during document build`() {
         // given
-        val innerBlock = aDocObj("B_2")
+        val innerBlock = mockObj(aDocObj("B_2"))
         val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, listOf(aDocumentObjectRef(innerBlock.id))))
         val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
 
@@ -811,18 +767,15 @@ class InteractiveDeployClientTest {
             )
         } returns aDeployedStatus("id")
         every { documentObjectRepository.find(template.id) } returns template
-        every { documentObjectRepository.find(innerBlock.id) } throws IllegalStateException("Not found")
-        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
+        every { documentObjectBuilder.buildDocumentObject(innerBlock) } throws IllegalStateException("Not found")
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block, innerBlock)
         every {
             documentObjectBuilder.buildDocumentObject(
                 block
             )
         } throws IllegalStateException("Inner block not found")
-        every {
-            statusTrackingRepository.error(
-                "B_1", any(), any(), any(), any(), any(), any(), any()
-            )
-        } returns aErrorStatus("B_1")
+        every { statusTrackingRepository.error("B_1", any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("B_1")
+        every { statusTrackingRepository.error("B_2", any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("B_2")
 
         // when
         val result = subject.deployDocumentObjects()
@@ -835,12 +788,7 @@ class InteractiveDeployClientTest {
                 )
             )
         )
-        result.errors.shouldBeEqualTo(
-            listOf(
-                DeploymentError("B_1", "Not found"), DeploymentError("B_1", "Not found"),
-                DeploymentError("T_1", "Not found"), DeploymentError("B_1", "Inner block not found")
-            )
-        )
+        result.errors.shouldBeEqualTo(listOf(DeploymentError("B_2", "Not found"), DeploymentError("B_1", "Inner block not found")))
 
         verify(exactly = 1) { ipsService.deployJld(any<IcmPath>(), any(), any(), any(), "icm://${template.nameOrId()}".toIcmPath()) }
     }
@@ -946,7 +894,7 @@ class InteractiveDeployClientTest {
             )
         }
         val templates = List(1) {
-            mockDocumentObject(aTemplate(it.toString(), listOf(aDocumentObjectRef("block$it"))))
+            mockDocumentObject(aTemplate(it.toString(), listOf(aDocumentObjectRef("$it"))))
         }
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns blocks + templates
     }
@@ -957,6 +905,7 @@ class InteractiveDeployClientTest {
         val dir = resolveTargetDir(config.defaultTargetFolder, documentObject.targetFolder?.let { IcmPath.from(it) })
         every { resourcePathProvider.getDocumentObjectPath(documentObject) } returns "icm://Interactive/$tenant/$interactiveFolder/$dir/${documentObject.nameOrId()}.jld".toIcmPath()
         every { documentObjectRepository.find(documentObject.id) } returns documentObject
+        every { documentObjectRepository.findOrFail(documentObject.id) } returns documentObject
 
         return documentObject
     }
@@ -1030,6 +979,7 @@ class InteractiveDeployClientTest {
 
     private fun mockObj(documentObject: DocumentObject): DocumentObject {
         every { documentObjectRepository.find(documentObject.id) } returns documentObject
+        every { documentObjectRepository.findOrFail(documentObject.id) } returns documentObject
 
         if (!(documentObject.internal ?: false)) {
             val xml = "<xml>${documentObject.nameOrId()}</xml>"

@@ -39,6 +39,7 @@ import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.deploy.utility.ValidationResult
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.DesignerResourcePathProvider
+import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.shared.DocumentObjectType
@@ -102,6 +103,7 @@ class DesignerDeployClientTest {
     val resourcePathProvider = mockk<DesignerResourcePathProvider>()
     val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
     val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
+    val deployOrder = DeployOrderImpl(documentObjectRepository)
 
     private val subject = DesignerDeployClient(
         projectConfig,
@@ -110,6 +112,7 @@ class DesignerDeployClientTest {
         postProcess,
         conflictDetector,
         progressReporter,
+        deployOrder,
         documentObjectRepository,
         imageRepository,
         attachmentRepository,
@@ -131,6 +134,7 @@ class DesignerDeployClientTest {
             (documentObject.internal ?: false) || documentObject.type == DocumentObjectType.Page
         }
         every { ipsService.writeMetadata(any<List<IcmFileMetadata>>()) } just runs
+        every { documentObjectRepository.find(any()) } returns null
     }
 
     @Test
@@ -353,7 +357,6 @@ class DesignerDeployClientTest {
         spy.deployDocumentObjects(toDeploy)
 
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
-        verify(exactly = 7) { documentObjectRepository.findOrFail(any()) }
         verify {
             spy.deployDocumentObjectsInternal(match { docObjects ->
                 docObjects.size == 7 && docObjects.map { it.id }
@@ -417,18 +420,20 @@ class DesignerDeployClientTest {
     @Test
     fun `deployDocumentObjects continues deployment when there is exception during document build`() {
         // given
-        val innerBlock = aDocObj("B_2")
+        val innerBlock = aDocObj("B_2").mock()
         val block = aDocObj("B_1", Block, listOf(aDocumentObjectRef(innerBlock.id))).mock()
         val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(block.id))).mock()
 
-        every { documentObjectRepository.find(innerBlock.id) } throws IllegalStateException("Not found")
-        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
+        every { documentObjectRepository.find(innerBlock.id) } returns innerBlock
+        every { documentObjectBuilder.buildDocumentObject(innerBlock) } throws IllegalStateException("Not found")
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block, innerBlock)
         every { documentObjectBuilder.buildDocumentObject(block) } throws IllegalStateException("Inner block not found")
         every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { resourcePathProvider.getStyleDefinitionPath() } returns "icm://some/path/style.wfd".toIcmPath()
         every { ipsService.fileExists(any<IcmPath>()) } returns false
         every { statusTrackingRepository.error("B_1", any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("B_1")
+        every { statusTrackingRepository.error("B_2", any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("B_2")
 
         // when
         val result = subject.deployDocumentObjects()
@@ -443,7 +448,7 @@ class DesignerDeployClientTest {
         )
         result.errors.shouldBeEqualTo(
             listOf(
-                DeploymentError("B_1", "Not found"), DeploymentError("B_1", "Inner block not found")
+                DeploymentError("B_2", "Not found"), DeploymentError("B_1", "Inner block not found")
             )
         )
 
