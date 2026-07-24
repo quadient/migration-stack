@@ -2000,6 +2000,18 @@ fun BinOp.toScript(left: ScriptResult, right: ScriptResult): String {
         BinOp.GreaterOrEqualThan -> "$left>=$right"
         BinOp.LessThan -> "$left<$right"
         BinOp.LessOrEqualThen -> "$left<=$right"
+        BinOp.Contains -> "$left.contains($right)"
+        BinOp.ContainsCaseInsensitive -> "$left.containsCaseInsensitive($right)"
+        BinOp.NotContains -> "(not $left.contains($right))"
+        BinOp.NotContainsCaseInsensitive -> "(not $left.containsCaseInsensitive($right))"
+        BinOp.BeginsWith -> "$left.beginWith($right)"
+        BinOp.BeginsWithCaseInsensitive -> "$left.beginWithCaseInsensitive($right)"
+        BinOp.NotBeginsWith -> "(not $left.beginWith($right))"
+        BinOp.NotBeginsWithCaseInsensitive -> "(not $left.beginWithCaseInsensitive($right))"
+        BinOp.EndsWith -> "$left.endWith($right)"
+        BinOp.EndsWithCaseInsensitive -> "$left.endWithCaseInsensitive($right)"
+        BinOp.NotEndsWith -> "(not $left.endWith($right))"
+        BinOp.NotEndsWithCaseInsensitive -> "(not $left.endWithCaseInsensitive($right))"
     }
 }
 
@@ -2015,16 +2027,31 @@ fun LiteralOrFunctionCall.toScript(
 fun Function.toScript(
     layout: Layout?, variableStructure: VariableStructure, findVar: (String) -> Variable
 ): ScriptResult {
-    when (this) {
-        is Function.UpperCase -> {
-            val arg = args[0]
-            return Success("(${arg.toScript(layout, variableStructure, findVar)}).toUpperCase()")
-        }
+    val funcName = when (this) {
+        is Function.Contains -> "contains"
+        is Function.Left -> "left"
+        is Function.Right -> "right"
+        is Function.Trim -> "toWhiteSpaceTrimmed"
+        is Function.LowerCase -> "toLowerCase"
+        is Function.UpperCase -> "toUpperCase"
+    }
 
-        is Function.LowerCase -> {
-            val arg = args[0]
-            return Success("(${arg.toScript(layout, variableStructure, findVar)}).toLowerCase()")
-        }
+    var allSuccess = true
+    val subject = args[0].toScript(layout, variableStructure, findVar)
+    allSuccess = allSuccess && subject is Success
+    val rest = args.toMutableList()
+    rest.removeFirst()
+
+    val funcArgs = rest.joinToString(", ") {
+        val result = it.toScript(layout, variableStructure, findVar)
+        allSuccess = allSuccess && result is Success
+        result.toString()
+    }
+
+    return if (allSuccess) {
+        Success("(${subject}).$funcName($funcArgs)")
+    } else {
+        Failure("(${subject}).$funcName($funcArgs)")
     }
 }
 

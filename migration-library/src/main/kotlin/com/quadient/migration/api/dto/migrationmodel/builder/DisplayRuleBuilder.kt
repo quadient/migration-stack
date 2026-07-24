@@ -305,6 +305,78 @@ class BinaryExpressionBuilder {
     fun lessOrEqualThan() = apply { this.operator = BinOp.LessOrEqualThen }
 
     /**
+     * Sets the operator for this expression to [BinOp.Contains]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun contains() = apply { this.operator = BinOp.Contains }
+
+    /**
+     * Sets the operator for this expression to [BinOp.ContainsCaseInsensitive]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun containsCaseInsensitive() = apply { this.operator = BinOp.ContainsCaseInsensitive }
+
+    /**
+     * Sets the operator for this expression to [BinOp.NotContains]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun notContains() = apply { this.operator = BinOp.NotContains }
+
+    /**
+     * Sets the operator for this expression to [BinOp.NotContainsCaseInsensitive]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun notContainsCaseInsensitive() = apply { this.operator = BinOp.NotContainsCaseInsensitive }
+
+    /**
+     * Sets the operator for this expression to [BinOp.BeginsWith]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun beginsWith() = apply { this.operator = BinOp.BeginsWith }
+
+    /**
+     * Sets the operator for this expression to [BinOp.BeginsWithCaseInsensitive]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun beginsWithCaseInsensitive() = apply { this.operator = BinOp.BeginsWithCaseInsensitive }
+
+    /**
+     * Sets the operator for this expression to [BinOp.NotBeginsWith]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun notBeginsWith() = apply { this.operator = BinOp.NotBeginsWith }
+
+    /**
+     * Sets the operator for this expression to [BinOp.NotBeginsWithCaseInsensitive]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun notBeginsWithCaseInsensitive() = apply { this.operator = BinOp.NotBeginsWithCaseInsensitive }
+
+    /**
+     * Sets the operator for this expression to [BinOp.EndsWith]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun endsWith() = apply { this.operator = BinOp.EndsWith }
+
+    /**
+     * Sets the operator for this expression to [BinOp.EndsWithCaseInsensitive]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun endsWithCaseInsensitive() = apply { this.operator = BinOp.EndsWithCaseInsensitive }
+
+    /**
+     * Sets the operator for this expression to [BinOp.NotEndsWith]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun notEndsWith() = apply { this.operator = BinOp.NotEndsWith }
+
+    /**
+     * Sets the operator for this expression to [BinOp.NotEndsWithCaseInsensitive]
+     * @return The current instance of BinaryExpressionBuilder for method chaining.
+     */
+    fun notEndsWithCaseInsensitive() = apply { this.operator = BinOp.NotEndsWithCaseInsensitive }
+
+    /**
      * Builds the BinaryExpression instance with the provided left and right values,
      * and an operator.
      * @return A BinaryOrGroup instance representing the binary expression.

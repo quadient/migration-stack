@@ -20,14 +20,6 @@ import com.quadient.migration.service.inspirebuilder.removeDataFromVariablePath
 import com.quadient.migration.service.inspirebuilder.toScript
 import com.quadient.migration.service.inspirebuilder.resolve
 import com.quadient.migration.service.inspirebuilder.variableToScript
-import com.quadient.migration.shared.BinOp.Equals
-import com.quadient.migration.shared.BinOp.EqualsCaseInsensitive
-import com.quadient.migration.shared.BinOp.GreaterOrEqualThan
-import com.quadient.migration.shared.BinOp.GreaterThan
-import com.quadient.migration.shared.BinOp.LessOrEqualThen
-import com.quadient.migration.shared.BinOp.LessThan
-import com.quadient.migration.shared.BinOp.NotEquals
-import com.quadient.migration.shared.BinOp.NotEqualsCaseInsensitive
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -156,14 +148,26 @@ data class RuleComparisonDefinition(
             val (rightSuccess, right) = RuleOperand.fromLiteralOrFunctionCall(comparison.right, variableStructure, findVar)
 
             var (negation, type) = when (comparison.operator) {
-                Equals -> false to ComparisonOperator.Equals
-                NotEquals -> true to ComparisonOperator.NotEquals
-                EqualsCaseInsensitive -> false to ComparisonOperator.EqualsCaseInsensitive
-                NotEqualsCaseInsensitive -> true to ComparisonOperator.NotEqualsCaseInsensitive
-                GreaterThan -> false to ComparisonOperator.GreaterThan
-                GreaterOrEqualThan -> false to ComparisonOperator.GreaterOrEqualThan
-                LessThan -> false to ComparisonOperator.LessThan
-                LessOrEqualThen -> false to ComparisonOperator.LessOrEqualThen
+                BinOp.Equals -> false to ComparisonOperator.Equals
+                BinOp.NotEquals -> true to ComparisonOperator.NotEquals
+                BinOp.EqualsCaseInsensitive -> false to ComparisonOperator.EqualsCaseInsensitive
+                BinOp.NotEqualsCaseInsensitive -> true to ComparisonOperator.NotEqualsCaseInsensitive
+                BinOp.GreaterThan -> false to ComparisonOperator.GreaterThan
+                BinOp.GreaterOrEqualThan -> false to ComparisonOperator.GreaterOrEqualThan
+                BinOp.LessThan -> false to ComparisonOperator.LessThan
+                BinOp.LessOrEqualThen -> false to ComparisonOperator.LessOrEqualThen
+                BinOp.Contains -> false to ComparisonOperator.Contains
+                BinOp.ContainsCaseInsensitive -> false to ComparisonOperator.ContainsCaseInsensitive
+                BinOp.NotContains -> true to ComparisonOperator.Contains
+                BinOp.NotContainsCaseInsensitive -> true to ComparisonOperator.ContainsCaseInsensitive
+                BinOp.BeginsWith -> false to ComparisonOperator.BeginsWith
+                BinOp.BeginsWithCaseInsensitive -> false to ComparisonOperator.BeginsWithCaseInsensitive
+                BinOp.NotBeginsWith -> true to ComparisonOperator.BeginsWith
+                BinOp.NotBeginsWithCaseInsensitive -> true to ComparisonOperator.BeginsWithCaseInsensitive
+                BinOp.EndsWith -> false to ComparisonOperator.EndsWith
+                BinOp.EndsWithCaseInsensitive -> false to ComparisonOperator.EndsWithCaseInsensitive
+                BinOp.NotEndsWith -> true to ComparisonOperator.EndsWith
+                BinOp.NotEndsWithCaseInsensitive -> true to ComparisonOperator.EndsWithCaseInsensitive
             }
 
             return if (leftSuccess && rightSuccess) {
@@ -307,7 +311,25 @@ enum class ComparisonOperator {
     LessThan,
 
     @JsonProperty("lessequal")
-    LessOrEqualThen
+    LessOrEqualThen,
+
+    @JsonProperty("contains")
+    Contains,
+
+    @JsonProperty("containsCaseInsensitive")
+    ContainsCaseInsensitive,
+
+    @JsonProperty("beginWith")
+    BeginsWith,
+
+    @JsonProperty("beginWithCaseInsensitive")
+    BeginsWithCaseInsensitive,
+
+    @JsonProperty("endWith")
+    EndsWith,
+
+    @JsonProperty("endWithCaseInsensitive")
+    EndsWithCaseInsensitive,
 }
 
 @Serializable

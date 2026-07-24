@@ -162,4 +162,264 @@ class JrdDefinitionTest {
               }
             }""".trimIndent())
     }
+
+
+    @Test
+    fun `operators serialize correctly`() {
+        val variableStructure = aVariableStructure("struct")
+        val allBinOpsRule = DisplayRuleBuilder("allBinOpsRule")
+            .internal(false)
+            .group {
+                // Equality
+                comparison { value("a").equals().value("a") }
+                comparison { value("a").equalsCaseInsensitive().value("a") }
+                comparison { value("a").notEquals().value("a") }
+                comparison { value("a").notEqualsCaseInsensitive().value("a") }
+                // Numeric ordering
+                comparison { value(100.0).greaterThan().value(50.0) }
+                comparison { value(100.0).greaterOrEqualThan().value(100.0) }
+                comparison { value(50.0).lessThan().value(100.0) }
+                comparison { value(50.0).lessOrEqualThan().value(50.0) }
+                // Contains
+                comparison { value("a").contains().value("a") }
+                comparison { value("a").containsCaseInsensitive().value("a") }
+                comparison { value("a").notContains().value("a") }
+                comparison { value("a").notContainsCaseInsensitive().value("a") }
+                // BeginsWith
+                comparison { value("a").beginsWith().value("a") }
+                comparison { value("a").beginsWithCaseInsensitive().value("a") }
+                comparison { value("a").notBeginsWith().value("a") }
+                comparison { value("a").notBeginsWithCaseInsensitive().value("a") }
+                // EndsWith
+                comparison { value("a").endsWith().value("a") }
+                comparison { value("a").endsWithCaseInsensitive().value("a") }
+                comparison { value("a").notEndsWith().value("a") }
+                comparison { value("a").notEndsWithCaseInsensitive().value("a") }
+            }.build()
+
+        val result = Jrd.fromDisplayRule(allBinOpsRule, aProjectConfig(
+            baseTemplatePath = "icm://Interactive/StandardPackage/BaseTemplates/templ.wfd",
+            interactiveTenant = "StandardPackage",
+        ), variableStructure, { name -> aVariable(name) })
+
+
+        result.replace("\r\n", "\n").shouldBeEqualTo($$"""
+            {
+              "InteractivePlusJsonDefinition" : {
+                "Type" : "Rule",
+                "Subject" : "",
+                "DataSet" : {
+                  "Type" : "Template",
+                  "Master" : "map://interactive/BaseTemplates/templ.wfd"
+                },
+                "Rule" : {
+                  "Type" : "and",
+                  "Items" : [ {
+                    "Type" : "equal",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "equalCaseInsensitive",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "equal",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : true
+                  }, {
+                    "Type" : "equalCaseInsensitive",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : true
+                  }, {
+                    "Type" : "more",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : 100.0
+                    }, {
+                      "Type" : "value",
+                      "Value" : 50.0
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "moreequal",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : 100.0
+                    }, {
+                      "Type" : "value",
+                      "Value" : 100.0
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "less",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : 50.0
+                    }, {
+                      "Type" : "value",
+                      "Value" : 100.0
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "lessequal",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : 50.0
+                    }, {
+                      "Type" : "value",
+                      "Value" : 50.0
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "contains",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "containsCaseInsensitive",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "contains",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : true
+                  }, {
+                    "Type" : "containsCaseInsensitive",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : true
+                  }, {
+                    "Type" : "beginWith",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "beginWithCaseInsensitive",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "beginWith",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : true
+                  }, {
+                    "Type" : "beginWithCaseInsensitive",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : true
+                  }, {
+                    "Type" : "endWith",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "endWithCaseInsensitive",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : false
+                  }, {
+                    "Type" : "endWith",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : true
+                  }, {
+                    "Type" : "endWithCaseInsensitive",
+                    "Items" : [ {
+                      "Type" : "value",
+                      "Value" : "a"
+                    }, {
+                      "Type" : "value",
+                      "Value" : "a"
+                    } ],
+                    "Negation" : true
+                  } ],
+                  "Negation" : false
+                },
+                "CustomProperties" : { },
+                "Nodes" : [ null ]
+              }
+            }""".trimIndent())
+    }
 }
