@@ -23,6 +23,7 @@ path.
 ### Fixed
 
 - Calculation of deploy order not accounting for transitive dependencies
+- displayRuleRef with targetId (not definition) incorrectly failing in first match case branches
 
 ## [17.0.27] - 2026-07-14
 
