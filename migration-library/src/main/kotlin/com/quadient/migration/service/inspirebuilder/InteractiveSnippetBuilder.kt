@@ -134,9 +134,6 @@ class InteractiveSnippetBuilder(
             }
 
             val displayRule = displayRuleRepository.findOrFail(case.displayRuleRef.id)
-            if (displayRule.definition == null) {
-                error("Display rule '${case.displayRuleRef.id}' definition is null.")
-            }
 
             val caseName = case.name ?: "Case ${i + 1}"
 
