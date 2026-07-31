@@ -653,13 +653,13 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         .build()
 
 def sms = new SmsObjectBuilder("sms")
-    .options { it.numberTo("123456789") }
+    .smsOptions { it.numberTo("123456789") }
     .string("Hello, ").variableRef(nameVariable).string(".")
     .string(" Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")
     .build()
 
 def email = new EmailObjectBuilder("email")
-    .options {
+    .emailOptions {
         it.width(600.0)
         it.backgroundFill("#ffffff")
         it.from("john@migration.com")

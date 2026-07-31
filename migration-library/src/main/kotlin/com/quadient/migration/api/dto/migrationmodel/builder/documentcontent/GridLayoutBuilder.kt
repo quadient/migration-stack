@@ -131,6 +131,15 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
     }
 
     /**
+     * Adds an existing column to the grid layout.
+     * @param column The [Column] instance to add.
+     * @return The [GridLayoutBuilder] instance for method chaining.
+     */
+    fun column(column: Column) = apply {
+        columns.add(column)
+    }
+
+    /**
      * Adds a column with the given content to the grid layout.
      * @param content The list of [DocumentContent] for the column, wrapped as [GridContent.Content].
      * @return The [GridLayoutBuilder] instance for method chaining.
@@ -195,6 +204,15 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
         }
 
         /**
+         * Adds an existing [GridContent.Content] block to the column.
+         * @param content The [GridContent.Content] instance to add.
+         * @return The [ColumnBuilder] instance for method chaining.
+         */
+        fun content(content: GridContent.Content): ColumnBuilder = apply {
+            gridContent.add(content)
+        }
+
+        /**
          * Adds an image column content block.
          * @param builder A builder function to configure the image content.
          * @return The [ColumnBuilder] instance for method chaining.
@@ -204,12 +222,30 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
         }
 
         /**
+         * Adds an existing image column content block.
+         * @param image The [GridContent.Image] instance to add.
+         * @return The [ColumnBuilder] instance for method chaining.
+         */
+        fun image(image: GridContent.Image): ColumnBuilder = apply {
+            gridContent.add(image)
+        }
+
+        /**
          * Adds an external image column content block.
          * @param builder A builder function to configure the external image content.
          * @return The [ColumnBuilder] instance for method chaining.
          */
         fun externalImage(builder: ExternalImageBuilder.() -> Unit): ColumnBuilder = apply {
             gridContent.add(ExternalImageBuilder().apply(builder).build())
+        }
+
+        /**
+         * Adds an existing external image column content block.
+         * @param externalImage The [GridContent.ExternalImage] instance to add.
+         * @return The [ColumnBuilder] instance for method chaining.
+         */
+        fun externalImage(externalImage: GridContent.ExternalImage): ColumnBuilder = apply {
+            gridContent.add(externalImage)
         }
 
         /**
@@ -319,6 +355,13 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
             fun url(url: String) = apply { this.url = listOf(StringValue(url)) }
 
             /**
+             * Sets the image source URL as variable string content.
+             * @param content The [VariableStringContent] composing the URL.
+             * @return This builder instance for method chaining.
+             */
+            fun url(vararg content: VariableStringContent) = apply { this.url = content.toList() }
+
+            /**
              * Sets the image source URL as a list of variable string content.
              * @param url The list of [VariableStringContent] composing the URL.
              * @return This builder instance for method chaining.
@@ -385,6 +428,13 @@ interface HasGridLinkUrl<T> {
      * @return This builder instance for method chaining.
      */
     fun linkUrl(linkUrl: String) = apply { this.linkUrl = listOf(StringValue(linkUrl)) } as T
+
+    /**
+     * Sets the hyperlink URL for the image as variable string content.
+     * @param content The [VariableStringContent] composing the URL.
+     * @return This builder instance for method chaining.
+     */
+    fun linkUrl(vararg content: VariableStringContent) = apply { this.linkUrl = content.toList() } as T
 
     /**
      * Sets the hyperlink URL for the image as a list of variable string content.

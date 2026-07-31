@@ -20,10 +20,8 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTarge
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasVariableStructureRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectOptions
 import com.quadient.migration.shared.DocumentObjectType
-import com.quadient.migration.api.dto.migrationmodel.EmailOptions
 import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
-import com.quadient.migration.api.dto.migrationmodel.SmsOptions
 
 class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
     DtoBuilderBase<DocumentObject, DocumentObjectBuilder>(id), DocumentContentBuilderBase<DocumentObjectBuilder>,
@@ -99,7 +97,7 @@ class EmailObjectBuilder(id: String) : DtoBuilderBase<DocumentObject, EmailObjec
     override var skip = false
     override var placeholder: String? = null
     override var reason: String? = null
-    override var options: EmailOptions? = null
+    override var options: DocumentObjectOptions? = null
 
     override fun build(): DocumentObject {
         return DocumentObject(
@@ -137,7 +135,7 @@ class SmsObjectBuilder(id: String) : DtoBuilderBase<DocumentObject, SmsObjectBui
     override var skip = false
     override var placeholder: String? = null
     override var reason: String? = null
-    override var options: SmsOptions? = null
+    override var options: DocumentObjectOptions? = null
 
     override fun build(): DocumentObject {
         return DocumentObject(

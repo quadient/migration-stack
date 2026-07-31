@@ -97,8 +97,8 @@ class ShapeBuilder: HasName<ShapeBuilder>, HasPosition<ShapeBuilder> {
      * @return This builder instance for method chaining.
      */
     fun square(position: Position) = apply {
-        require(paths.isEmpty()) { "Cannot set square path on a PathObject with existing paths." }
-        require(this.position == null) { "Cannot set square path on a PathObject with non-null position." }
+        require(paths.isEmpty()) { "Cannot set square path on a Shape with existing paths." }
+        require(this.position == null) { "Cannot set square path on a Shape with non-null position." }
 
         moveTo(Size.ofMeters(0), Size.ofMeters(0))
         lineTo(position.width, Size.ofMeters(0))
@@ -125,8 +125,8 @@ class ShapeBuilder: HasName<ShapeBuilder>, HasPosition<ShapeBuilder> {
      * @return This builder instance for method chaining.
      */
     fun triangle(position: Position) = apply {
-        require(paths.isEmpty()) { "Cannot set square path on a PathObject with existing paths." }
-        require(this.position == null) { "Cannot set square path on a PathObject with non-null position." }
+        require(paths.isEmpty()) { "Cannot set triangle path on a Shape with existing paths." }
+        require(this.position == null) { "Cannot set triangle path on a Shape with non-null position." }
 
         moveTo(position.width / 2.0, Size.ofMeters(0))
         lineTo(position.width, position.height)
@@ -152,8 +152,8 @@ class ShapeBuilder: HasName<ShapeBuilder>, HasPosition<ShapeBuilder> {
      * @return This builder instance for method chaining.
      */
     fun ellipse(position: Position) = apply {
-        require(paths.isEmpty()) { "Cannot set ellipse path on a PathObject with existing paths." }
-        require(this.position == null) { "Cannot set ellipse path on a PathObject with non-null position." }
+        require(paths.isEmpty()) { "Cannot set ellipse path on a Shape with existing paths." }
+        require(this.position == null) { "Cannot set ellipse path on a Shape with non-null position." }
 
         val kappa = 0.5522847498307936
         val zero = Size.ofMeters(0)
