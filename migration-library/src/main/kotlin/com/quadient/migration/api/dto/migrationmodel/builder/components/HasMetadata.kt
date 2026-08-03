@@ -21,18 +21,4 @@ interface HasMetadata<T> {
             metadata.add(IcmMetadata(key, result))
         }
     } as T
-
-    /**
-     * Adds an existing metadata entry to the object.
-     * Metadata are not stored if empty.
-     * @param metadata The [IcmMetadata] instance to add.
-     * @return This builder instance for method chaining.
-     */
-    fun metadata(metadata: IcmMetadata): T = apply {
-        if (metadata.value.isNotEmpty()) {
-            this.metadata.add(metadata)
-        }
-    } as T
-
-
 }

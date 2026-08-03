@@ -9,21 +9,8 @@ import com.quadient.migration.shared.Size
 interface HasBorder<T> {
     var border: BorderOptions?
 
-    /**
-     * Sets the border options using a builder function.
-     * @param init A builder function to build the [BorderOptions].
-     * @return This builder instance for method chaining.
-     */
     fun border(init: BorderOptionsBuilder.() -> Unit) =
         apply { this.border = BorderOptionsBuilder().apply(init).build() } as T
-
-    /**
-     * Sets the border options.
-     * @param border The [BorderOptions] to set, or null to remove.
-     * @return This builder instance for method chaining.
-     */
-    fun border(border: BorderOptions?) =
-        apply { this.border = border } as T
 }
 
 class BorderOptionsBuilder {

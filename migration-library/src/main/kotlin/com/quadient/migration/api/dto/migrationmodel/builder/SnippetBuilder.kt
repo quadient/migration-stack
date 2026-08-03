@@ -17,7 +17,6 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSubje
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTargetFolder
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasVariableStructureRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectOptions
-import com.quadient.migration.api.dto.migrationmodel.FirstMatch
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
@@ -72,16 +71,6 @@ class FirstMatchSnippetBuilder(id: String) : DtoBuilderBase<DocumentObject, Firs
     fun firstMatch(builder: SimpleFirstMatchBuilder.() -> Unit): FirstMatchSnippetBuilder = apply {
         this.content.clear()
         this.content.add(SimpleFirstMatchBuilder().apply(builder).build())
-    }
-
-    /**
-     * Adds an existing first match block to the content.
-     * @param firstMatch The existing first match block to add.
-     * @return This builder instance for method chaining.
-     */
-    fun firstMatch(firstMatch: FirstMatch): FirstMatchSnippetBuilder = apply {
-        this.content.clear()
-        this.content.add(firstMatch)
     }
 
     /**

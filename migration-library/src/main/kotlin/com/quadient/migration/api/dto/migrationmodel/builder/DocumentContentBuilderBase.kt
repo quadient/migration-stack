@@ -2,30 +2,21 @@
 
 package com.quadient.migration.api.dto.migrationmodel.builder
 
-import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.Barcode
-import com.quadient.migration.api.dto.migrationmodel.Code39Barcode
-import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
-import com.quadient.migration.api.dto.migrationmodel.FirstMatch
-import com.quadient.migration.api.dto.migrationmodel.GridLayout
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
-import com.quadient.migration.api.dto.migrationmodel.Paragraph
-import com.quadient.migration.api.dto.migrationmodel.QrCode
-import com.quadient.migration.api.dto.migrationmodel.RepeatedContent
-import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
 import com.quadient.migration.api.dto.migrationmodel.Shape
 import com.quadient.migration.api.dto.migrationmodel.StringValue
-import com.quadient.migration.api.dto.migrationmodel.Table
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder.TextBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.BarcodeBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.Code39BarcodeBuilder
@@ -87,15 +78,6 @@ interface HasParagraphContent<T> {
     fun paragraph(builder: ParagraphBuilder.() -> Unit): T = apply {
         this.content.add(ParagraphBuilder().apply(builder).build())
     } as T
-
-    /**
-     * Adds an existing paragraph to the content.
-     * @param paragraph The [Paragraph] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun paragraph(paragraph: Paragraph): T = apply {
-        this.content.add(paragraph)
-    } as T
 }
 
 interface HasTableContent<C, T> {
@@ -108,15 +90,6 @@ interface HasTableContent<C, T> {
      */
     fun table(builder: TableBuilder.() -> Unit): T = apply {
         this.content.add(TableBuilder().apply(builder).build() as C)
-    } as T
-
-    /**
-     * Adds an existing table to the content.
-     * @param table The [Table] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun table(table: Table): T = apply {
-        this.content.add(table as C)
     } as T
 }
 
@@ -143,12 +116,12 @@ interface HasImageRefContent<C, T> {
 
     /**
      * Adds an image reference to the content.
-     * @param ref The [ImageRef] to add.
-     * @return This builder instance for method chaining.
+     * @param ref The image reference to add.
+     * @return The current instance of [TextBuilder] for method chaining.
      */
-    fun imageRef(ref: ImageRef): T = apply {
+    fun imageRef(ref: ImageRef) = apply {
         content.add(ref as C)
-    } as T
+    }
 }
 
 interface HasAttachmentRefContent<C, T> {
@@ -174,12 +147,12 @@ interface HasAttachmentRefContent<C, T> {
 
     /**
      * Adds an attachment reference to the content.
-     * @param ref The [AttachmentRef] to add.
-     * @return This builder instance for method chaining.
+     * @param ref The attachment reference to add.
+     * @return The current instance of [TextBuilder] for method chaining.
      */
-    fun attachmentRef(ref: AttachmentRef): T = apply {
+    fun attachmentRef(ref: AttachmentRef) = apply {
         content.add(ref as C)
-    } as T
+    }
 }
 
 interface HasDocumentObjectRefContent<C, T> {
@@ -205,12 +178,12 @@ interface HasDocumentObjectRefContent<C, T> {
 
     /**
      * Adds a document object reference to the content.
-     * @param ref The [DocumentObjectRef] to add.
-     * @return This builder instance for method chaining.
+     * @param ref The attachment reference to add.
+     * @return The current builder instance for method chaining.
      */
-    fun documentObjectRef(ref: DocumentObjectRef): T = apply {
+    fun documentObjectRef(ref: DocumentObjectRef) = apply {
         content.add(ref as C)
-    } as T
+    }
 
     /**
      * Adds a conditional document object reference to the content.
@@ -244,15 +217,6 @@ interface HasFirstMatchContent<C, T> {
     fun firstMatch(builder: FirstMatchBuilder.() -> Unit): T = apply {
         this.content.add(FirstMatchBuilder().apply(builder).build() as C)
     } as T
-
-    /**
-     * Adds an existing first match block to the content.
-     * @param firstMatch The [FirstMatch] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun firstMatch(firstMatch: FirstMatch): T = apply {
-        this.content.add(firstMatch as C)
-    } as T
 }
 
 interface HasSelectByLanguageContent<T> {
@@ -266,23 +230,14 @@ interface HasSelectByLanguageContent<T> {
     fun selectByLanguage(builder: SelectByLanguageBuilder.() -> Unit): T = apply {
         this.content.add(SelectByLanguageBuilder().apply(builder).build())
     } as T
-
-    /**
-     * Adds an existing select by language block to the content.
-     * @param selectByLanguage The [SelectByLanguage] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun selectByLanguage(selectByLanguage: SelectByLanguage): T = apply {
-        this.content.add(selectByLanguage)
-    } as T
 }
 
 interface HasStringContent<C, T> {
     val content: MutableList<C>
 
     /**
-     * Adds a string value to the content.
-     * @param text The string value to add.
+     * Adds a paragraph with the given string to the content.
+     * @param text The string to add in a paragraph.
      * @return This builder instance for method chaining.
      */
     fun string(text: String): T = apply {
@@ -366,46 +321,6 @@ interface HasRepeatedContent<T> {
      */
     fun repeatedContent(variable: Variable, builder: RepeatedContentBuilder.() -> Unit): T =
         repeatedContent(VariableRefPath(variable.id), builder)
-
-    /**
-     * Adds an existing repeated content block to the content, repeating over the given array variable.
-     * @param variablePath The [VariablePath] referencing the array variable to repeat over.
-     * @param repeatedContent The [RepeatedContent] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun repeatedContent(variablePath: VariablePath, repeatedContent: RepeatedContent): T = apply {
-        this.content.add(repeatedContent.copy(variablePath = variablePath))
-    } as T
-
-    /**
-     * Adds an existing repeated content block to the content, repeating over the array variable at the given literal path.
-     * @param literalPath The literal data path of the array variable to repeat over.
-     * @param repeatedContent The [RepeatedContent] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun repeatedContent(literalPath: String, repeatedContent: RepeatedContent): T = apply {
-        this.content.add(repeatedContent.copy(variablePath = LiteralPath(literalPath)))
-    } as T
-
-    /**
-     * Adds an existing repeated content block to the content, repeating over the referenced array variable.
-     * @param variableRef The [VariableRef] referencing the array variable to repeat over.
-     * @param repeatedContent The [RepeatedContent] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun repeatedContent(variableRef: VariableRef, repeatedContent: RepeatedContent): T = apply {
-        this.content.add(repeatedContent.copy(variablePath = VariableRefPath(variableRef.id)))
-    } as T
-
-    /**
-     * Adds an existing repeated content block to the content, repeating over the given [Variable].
-     * @param variable The [Variable] referencing the array variable to repeat over.
-     * @param repeatedContent The [RepeatedContent] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun repeatedContent(variable: Variable, repeatedContent: RepeatedContent): T = apply {
-        this.content.add(repeatedContent.copy(variablePath = VariableRefPath(variable.id)))
-    } as T
 }
 
 interface HasColumnLayoutContent<C, T> {
@@ -419,15 +334,6 @@ interface HasColumnLayoutContent<C, T> {
     fun columnLayout(builder: ColumnLayoutBuilder.() -> Unit = {}): T = apply {
         this.content.add(ColumnLayoutBuilder().apply(builder).build() as C)
     } as T
-
-    /**
-     * Adds an existing column layout modifier to the content.
-     * @param columnLayout The [ColumnLayout] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun columnLayout(columnLayout: ColumnLayout): T = apply {
-        this.content.add(columnLayout as C)
-    } as T
 }
 
 interface HasGridLayoutContent<C, T> {
@@ -440,15 +346,6 @@ interface HasGridLayoutContent<C, T> {
      */
     fun gridLayout(builder: GridLayoutBuilder.() -> Unit): T = apply {
         this.content.add(GridLayoutBuilder().apply(builder).build() as C)
-    } as T
-
-    /**
-     * Adds an existing grid layout to the content.
-     * @param gridLayout The [GridLayout] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun gridLayout(gridLayout: GridLayout): T = apply {
-        this.content.add(gridLayout as C)
     } as T
 }
 
@@ -465,7 +362,7 @@ interface HasShapeContent<T> {
     } as T
 
     /**
-     * Adds a shape to the content using a builder function.
+     * Adds a path object to the content using a builder function.
      * @param builder A builder function to construct the [Shape].
      * @return This builder instance for method chaining.
      */
@@ -484,15 +381,6 @@ interface HasAreaContent<T> {
      */
     fun area(builder: AreaBuilder.() -> Unit) = apply {
         content.add(AreaBuilder().apply(builder).build())
-    } as T
-
-    /**
-     * Adds an existing area to the content.
-     * @param area The [Area] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun area(area: Area): T = apply {
-        content.add(area)
     } as T
 }
 
@@ -529,15 +417,6 @@ interface HasQrCodeContent<C, T> {
     fun qrCode(builder: QrCodeBuilder.() -> Unit): T = apply {
         this.content.add(QrCodeBuilder().apply(builder).build() as C)
     } as T
-
-    /**
-     * Adds an existing QR code to the content.
-     * @param qrCode The [QrCode] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun qrCode(qrCode: QrCode): T = apply {
-        this.content.add(qrCode as C)
-    } as T
 }
 
 interface HasCode39BarcodeContent<C, T> {
@@ -550,15 +429,6 @@ interface HasCode39BarcodeContent<C, T> {
      */
     fun code39Barcode(builder: Code39BarcodeBuilder.() -> Unit): T = apply {
         this.content.add(Code39BarcodeBuilder().apply(builder).build() as C)
-    } as T
-
-    /**
-     * Adds an existing Code 39 barcode to the content.
-     * @param code39Barcode The [Code39Barcode] instance to append.
-     * @return This builder instance for method chaining.
-     */
-    fun code39Barcode(code39Barcode: Code39Barcode): T = apply {
-        this.content.add(code39Barcode as C)
     } as T
 }
 

@@ -9,7 +9,6 @@ class SmsOptionsBuilder {
 
     fun numberTo(numberTo: String) = apply { this.numberTo = listOf(StringValue(numberTo)) }
     fun numberTo(vararg content: VariableStringContent) = apply { this.numberTo = content.toList() }
-    fun numberTo(content: List<VariableStringContent>) = apply { this.numberTo = content.toList() }
     fun numberTo(builder: VariableStringContentBuilder.() -> Unit) =
         apply { this.numberTo = VariableStringContentBuilder().apply(builder).build() }
 
