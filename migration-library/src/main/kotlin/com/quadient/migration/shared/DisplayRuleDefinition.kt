@@ -36,7 +36,26 @@ enum class GroupOp {
 }
 
 enum class BinOp {
-    Equals, EqualsCaseInsensitive, NotEquals, NotEqualsCaseInsensitive, GreaterThan, GreaterOrEqualThan, LessThan, LessOrEqualThen;
+    Equals,
+    EqualsCaseInsensitive,
+    NotEquals,
+    NotEqualsCaseInsensitive,
+    GreaterThan,
+    GreaterOrEqualThan,
+    LessThan,
+    LessOrEqualThen,
+    Contains,
+    ContainsCaseInsensitive,
+    NotContains,
+    NotContainsCaseInsensitive,
+    BeginsWith,
+    BeginsWithCaseInsensitive,
+    NotBeginsWith,
+    NotBeginsWithCaseInsensitive,
+    EndsWith,
+    EndsWithCaseInsensitive,
+    NotEndsWith,
+    NotEndsWithCaseInsensitive;
 }
 
 @Serializable
@@ -55,21 +74,32 @@ sealed class Function(val minArgs: Int, val maxArgs: Int, val args: List<Literal
         return args.flatMap { it.collectRefs() }.toSet()
     }
 
-    abstract fun validate(): String?
+    open fun validate(): String? = null
+
+    typealias Arg = LiteralOrFunctionCall
+    @Serializable
+    data class UpperCase(val arg: Arg): Function(minArgs = 1, maxArgs = 1, args = listOf(arg))
 
     @Serializable
-    data class UpperCase(val arg: LiteralOrFunctionCall): Function(minArgs = 1, maxArgs = 1, args = listOf(arg)) {
-        override fun validate(): String? {
-            return null
-        }
-    }
+    data class LowerCase(val arg: Arg): Function(minArgs = 1, maxArgs = 1, args = listOf(arg))
 
     @Serializable
-    data class LowerCase(val arg: LiteralOrFunctionCall): Function(minArgs = 1, maxArgs = 1, args = listOf(arg)) {
-        override fun validate(): String? {
-            return null
-        }
-    }
+    data class Left(val arg: Arg, val count: Arg) : Function(
+        minArgs = 2, maxArgs = 2, args = listOf(arg, count)
+    )
+
+    @Serializable
+    data class Right(val arg: Arg, val count: Arg) : Function(
+        minArgs = 2, maxArgs = 2, args = listOf(arg, count)
+    )
+
+    @Serializable
+    data class Contains(val arg: Arg, val pattern: Arg) : Function(
+        minArgs = 2, maxArgs = 2, args = listOf(arg, pattern)
+    )
+
+    @Serializable
+    data class Trim(val arg: Arg) : Function(minArgs = 1, maxArgs = 1, args = listOf(arg))
 }
 
 @Serializable

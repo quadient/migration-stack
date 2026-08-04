@@ -21,6 +21,7 @@ import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
+import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
@@ -42,6 +43,7 @@ class EvolveDeployClient(
     postProcess: PostProcessImpl,
     conflictDetector: ConflictDetectorImpl,
     progressReporter: ProgressReporterImpl,
+    deployOrder: DeployOrderImpl,
     documentObjectRepository: DocumentObjectRepository,
     imageRepository: ImageRepository,
     attachmentRepository: AttachmentRepository,
@@ -61,6 +63,7 @@ class EvolveDeployClient(
     postProcess,
     conflictDetector,
     progressReporter,
+    deployOrder,
     documentObjectRepository,
     imageRepository,
     attachmentRepository,

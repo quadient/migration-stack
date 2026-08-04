@@ -8,7 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.28] - 2026-08-04
+
+### Added
+
 - Support for multichannel templates (content/email/sms)
+- `Left`, `Right`, `Contains`, `Trim` functions to display rules
 
 ### Changed
 
@@ -18,8 +27,10 @@ path.
 - Removed usedBy from the displayRuleReport
 - `collectRefs()` on the migration objects now returns a set rather than a list to avoid duplicates
 
-
 ### Fixed
+
+- Calculation of deploy order not accounting for transitive dependencies
+- displayRuleRef with targetId (not definition) incorrectly failing in first match case branches
 
 ## [17.0.27] - 2026-07-14
 
@@ -435,7 +446,8 @@ path.
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.27...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.28...HEAD
+[17.0.28]: https://github.com/quadient/migration-stack/compare/v17.0.27...v17.0.28
 [17.0.27]: https://github.com/quadient/migration-stack/compare/v17.0.26...v17.0.27
 [17.0.26]: https://github.com/quadient/migration-stack/compare/v17.0.25...v17.0.26
 [17.0.25]: https://github.com/quadient/migration-stack/compare/v17.0.24...v17.0.25

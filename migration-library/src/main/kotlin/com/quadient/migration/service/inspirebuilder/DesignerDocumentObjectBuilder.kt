@@ -178,7 +178,10 @@ class DesignerDocumentObjectBuilder(
     }
 
     override fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean {
-        return documentObject.internal == true || documentObject.type == DocumentObjectType.Page
+        return documentObject.internal == true
+                || documentObject.type == DocumentObjectType.Page
+                || documentObject.type == DocumentObjectType.Email
+                || documentObject.type == DocumentObjectType.Sms
     }
 
     override fun wrapSuccessFlowInConditionFlow(

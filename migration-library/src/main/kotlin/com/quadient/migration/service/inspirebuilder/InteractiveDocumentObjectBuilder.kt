@@ -231,6 +231,8 @@ class InteractiveDocumentObjectBuilder(
 
     override fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean {
         return documentObject.internal == true
+                || documentObject.type == DocumentObjectType.Email
+                || documentObject.type == DocumentObjectType.Sms
     }
 
     override fun resolveParagraphStyleName(name: String): String =

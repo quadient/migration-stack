@@ -36,14 +36,17 @@ static void exportReport(Migration migration, List<DisplayRule> rules, Path expo
     def file =  exportFilePath.toFile()
     file.createParentDirectories()
     file.withWriter { writer ->
-        writer.writeLine("id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,translated,translationError,source_files,originContent")
+        writer.writeLine("id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,translated,translationResult,source_files,originContent")
 
         rules.each { rule ->
-            def translationError = rule.customFields.get("error")
 
             def status = migration.statusTrackingRepository.findLastEventRelevantToOutput(rule.id,
                 ResourceType.DisplayRule,
                 migration.projectConfig.inspireOutput)
+
+            def error = rule.customFields.get("error")
+            def warning = rule.customFields.get("warnings")
+            def resultPrefix = error ? "Error: " : (warning ? "Warning: " : "")
 
             def builder = new StringBuilder()
             builder.append(rule.id)
@@ -55,7 +58,7 @@ static void exportReport(Migration migration, List<DisplayRule> rules, Path expo
             builder.append("," + Csv.serialize(rule.variableStructureRef?.id))
             builder.append("," + Csv.serialize(status?.class?.simpleName))
             builder.append("," + Csv.serialize(rule.definition != null))
-            builder.append("," + "\"${translationError?.replace("\n", "\\n")?.replace("\"", "\\")}\"")
+            builder.append("," + Csv.serialize("$resultPrefix${error ?: warning ?: ""}".toString()))
             builder.append("," + rule.originLocations.join(";"))
             builder.append("," + "\"${rule.customFields?.get("originContent")?.replace("\n", "\\n")?.replace("\"", "\\")}\"")
             writer.writeLine(builder.toString())

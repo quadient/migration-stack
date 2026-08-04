@@ -66,7 +66,9 @@ import com.quadient.wfdxml.internal.module.layout.LayoutImpl
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestFactory
 import org.junit.jupiter.api.assertThrows
 import kotlin.collections.last
 
@@ -856,15 +858,38 @@ class InspireDocumentObjectBuilderTest {
         paraStyleContent["HAlign"].stringValue().shouldBeEqualTo("Center")
     }
 
-    @Test
-    fun `simple display rule with single expression`() {
-        val rule = aDisplayRule(
-            Literal("A", LiteralDataType.String), BinOp.Equals, Literal("B", LiteralDataType.String)
-        )
-
-        val result = rule.toScript()
-
-        result.shouldBeEqualTo("""return (String('A')==String('B'));""")
+    @TestFactory
+    fun `display rule operator scripts`(): List<DynamicTest> {
+        val left = Literal("A", LiteralDataType.String)
+        val right = Literal("B", LiteralDataType.String)
+        data class Case(val operator: BinOp, val expectedScript: String)
+        return listOf(
+            Case(BinOp.Equals,                       "return (String('A')==String('B'));"),
+            Case(BinOp.EqualsCaseInsensitive,        "return (String('A').equalCaseInsensitive(String('B')));"),
+            Case(BinOp.NotEquals,                    "return (String('A')!=String('B'));"),
+            Case(BinOp.NotEqualsCaseInsensitive,     "return ((not String('A').equalCaseInsensitive(String('B'))));"),
+            Case(BinOp.GreaterThan,                  "return (String('A')>String('B'));"),
+            Case(BinOp.GreaterOrEqualThan,           "return (String('A')>=String('B'));"),
+            Case(BinOp.LessThan,                     "return (String('A')<String('B'));"),
+            Case(BinOp.LessOrEqualThen,              "return (String('A')<=String('B'));"),
+            Case(BinOp.Contains,                     "return (String('A').contains(String('B')));"),
+            Case(BinOp.ContainsCaseInsensitive,      "return (String('A').containsCaseInsensitive(String('B')));"),
+            Case(BinOp.NotContains,                  "return ((not String('A').contains(String('B'))));"),
+            Case(BinOp.NotContainsCaseInsensitive,   "return ((not String('A').containsCaseInsensitive(String('B'))));"),
+            Case(BinOp.BeginsWith,                   "return (String('A').beginWith(String('B')));"),
+            Case(BinOp.BeginsWithCaseInsensitive,    "return (String('A').beginWithCaseInsensitive(String('B')));"),
+            Case(BinOp.NotBeginsWith,                "return ((not String('A').beginWith(String('B'))));"),
+            Case(BinOp.NotBeginsWithCaseInsensitive, "return ((not String('A').beginWithCaseInsensitive(String('B'))));"),
+            Case(BinOp.EndsWith,                     "return (String('A').endWith(String('B')));"),
+            Case(BinOp.EndsWithCaseInsensitive,      "return (String('A').endWithCaseInsensitive(String('B')));"),
+            Case(BinOp.NotEndsWith,                  "return ((not String('A').endWith(String('B'))));"),
+            Case(BinOp.NotEndsWithCaseInsensitive,   "return ((not String('A').endWithCaseInsensitive(String('B'))));"),
+        ).map { (operator, expectedScript) ->
+            DynamicTest.dynamicTest(operator.name) {
+                val rule = aDisplayRule(left, operator, right)
+                rule.toScript().shouldBeEqualTo(expectedScript)
+            }
+        }
     }
 
     @Test
@@ -891,31 +916,6 @@ class InspireDocumentObjectBuilderTest {
         val result = rule.toScript()
 
         result.shouldBeEqualTo("""return ((String('B')).toLowerCase()==String('B'));""")
-    }
-
-    @Test
-    fun `case insensitive equals`() {
-        val rule = aDisplayRule(
-            left = Literal("A", LiteralDataType.String),
-            operator = BinOp.EqualsCaseInsensitive,
-            right = Literal("B", LiteralDataType.String)
-        )
-        val result = rule.toScript()
-
-        result.shouldBeEqualTo("""return (String('A').equalCaseInsensitive(String('B')));""")
-    }
-
-    @Test
-    fun `case insensitive not equals`() {
-        val rule = aDisplayRule(
-            left = Literal("A", LiteralDataType.String),
-            operator = BinOp.NotEqualsCaseInsensitive,
-            right = Literal("B", LiteralDataType.String)
-        )
-
-        val result = rule.toScript()
-
-        result.shouldBeEqualTo("""return ((not String('A').equalCaseInsensitive(String('B'))));""")
     }
 
     @Test
