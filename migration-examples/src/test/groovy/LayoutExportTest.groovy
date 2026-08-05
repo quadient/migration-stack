@@ -4,7 +4,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuild
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.api.repository.DocumentObjectRepository
-import com.quadient.migration.example.common.mapping.AreasExport
+import com.quadient.migration.example.common.mapping.LayoutExport
 import com.quadient.migration.shared.BaseTemplateArea
 import com.quadient.migration.shared.BaseTemplatePage
 import com.quadient.migration.shared.DocumentObjectType
@@ -21,7 +21,7 @@ import java.nio.file.Paths
 import static org.mockito.ArgumentMatchers.any
 import static org.mockito.Mockito.when
 
-class AreasExportTest {
+class LayoutExportTest {
     @TempDir
     java.io.File dir
 
@@ -45,7 +45,7 @@ class AreasExportTest {
                     .build(),
         ])
 
-        AreasExport.run(migration, mappingFile)
+        LayoutExport.run(migration, mappingFile)
 
         def expected = """\
             templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
@@ -68,7 +68,7 @@ class AreasExportTest {
                     .build(),
         ])
 
-        AreasExport.run(migration, mappingFile)
+        LayoutExport.run(migration, mappingFile)
 
         def expected = """\
             templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
@@ -94,7 +94,7 @@ class AreasExportTest {
                     .build(),
         ])
 
-        AreasExport.run(migration, mappingFile)
+        LayoutExport.run(migration, mappingFile)
 
         def expected = """\
             templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
@@ -104,7 +104,7 @@ class AreasExportTest {
     }
 
     @Test
-    void exportIncludesBaseTemplatesImportedViaAreasImport() {
+    void exportIncludesBaseTemplatesImportedViaLayoutImport() {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         when(migration.mappingRepository.getAreaMapping(any())).thenReturn(new MappingItem.Area(null, [:], [:]))
         when((migration.documentObjectRepository as DocumentObjectRepository).list(any())).thenReturn([])
@@ -120,7 +120,7 @@ class AreasExportTest {
         ], null, null)
         when(migration.baseTemplateRepository.listAll()).thenReturn([baseTemplate])
 
-        AreasExport.run(migration, mappingFile)
+        LayoutExport.run(migration, mappingFile)
 
         def expected = """\
             templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
@@ -151,7 +151,7 @@ class AreasExportTest {
         when(migration.imageRepository.find("img-1")).thenReturn(new ImageBuilder("img-1").name("Image One").build())
         when(migration.imageRepository.find("img-2")).thenReturn(new ImageBuilder("img-2").name("Image Two").build())
 
-        AreasExport.run(migration, mappingFile)
+        LayoutExport.run(migration, mappingFile)
 
         def expected = """\
             templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)

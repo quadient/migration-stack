@@ -701,7 +701,7 @@ function computeContainment(areas) {
 }
 
 /**
- * Parses the areas CSV produced by AreasExport.groovy into a LayoutData object.
+ * Parses the layout CSV produced by LayoutExport.groovy into a LayoutData object.
  * Templates and templatePageIndex are derived from row order; containedIn is computed from geometry.
  * @param {string} text
  * @returns {LayoutData}
@@ -817,7 +817,7 @@ function parseCsvToLayoutData(text) {
 let currentCsvHeaders = null;
 /** @type {string[][]|null} */
 let currentCsvRows = null;
-let currentFileName = "areas.csv";
+let currentFileName = "layout.csv";
 /** @type {({pageIndex: number, areaIndex: number}|null)[]} */
 let currentRowMap = [];
 
@@ -839,7 +839,7 @@ async function loadFile(file) {
             currentCsvHeaders = null;
             currentCsvRows = null;
         }
-        currentFileName = file.name || "areas.csv";
+        currentFileName = file.name || "layout.csv";
         saveCsvBtn.disabled = !currentCsvHeaders;
 
         const layoutData = parseCsvToLayoutData(text);

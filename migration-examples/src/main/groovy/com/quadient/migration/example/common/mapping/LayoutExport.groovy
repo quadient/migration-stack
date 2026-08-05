@@ -1,5 +1,5 @@
 //! ---
-//! displayName: Export Areas
+//! displayName: Export Layout
 //! category: Mapping
 //! description: Export areas assigned to the appropriate pages and templates. Allows user to modify interactive flow name
 //! target: gradle
@@ -23,7 +23,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 @Field Migration migration = initMigration(this.binding)
 
-def areasFile = Mapping.csvPath(binding, migration.projectConfig.name, "areas")
+def areasFile = Mapping.csvPath(binding, migration.projectConfig.name, "layout")
 
 run(migration, areasFile)
 

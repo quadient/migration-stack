@@ -50,9 +50,9 @@ Path getVariablesMappingPath(String[] args, String projectName) {
     return selectedFile.toPath()
 }
 
-Path getAreasMappingPath(String projectName) {
+Path getLayoutMappingPath(String projectName) {
     def mappingDir = Paths.get("mapping").toFile()
-    def pattern = areasFileNamePattern(projectName)
+    def pattern = layoutFileNamePattern(projectName)
     def csvFiles = mappingDir.listFiles()?.findAll {
         it.name.toLowerCase().contains(pattern) && it.name.toLowerCase().endsWith(".csv")
     } ?: []
@@ -73,8 +73,8 @@ Path getAreasMappingPath(String projectName) {
     return selectedFile.toPath()
 }
 
-static String areasFileNamePattern(String projectName) {
-    return "${projectName}-areas".toLowerCase()
+static String layoutFileNamePattern(String projectName) {
+    return "${projectName}-layout".toLowerCase()
 }
 
 private static File promptForFileSelection(List<File> csvFiles) {

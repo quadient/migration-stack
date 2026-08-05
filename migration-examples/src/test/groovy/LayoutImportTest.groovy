@@ -2,7 +2,7 @@ import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
-import com.quadient.migration.example.common.mapping.AreasImport
+import com.quadient.migration.example.common.mapping.LayoutImport
 import com.quadient.migration.shared.BaseTemplateArea
 import com.quadient.migration.shared.BaseTemplatePage
 import com.quadient.migration.shared.DocumentObjectType
@@ -21,7 +21,7 @@ import java.nio.file.Paths
 import static org.mockito.Mockito.verify
 import static org.mockito.Mockito.when
 
-class AreasImportTest {
+class LayoutImportTest {
     @TempDir
     File dir
 
@@ -58,7 +58,7 @@ class AreasImportTest {
             """.stripIndent()
         mappingFile.toFile().write(input)
 
-        AreasImport.run(migration, mappingFile)
+        LayoutImport.run(migration, mappingFile)
 
         verify(migration.mappingRepository).upsertBatch([
             "page1": new MappingItem.Area(null, [0: "flow1", 1: "new flow2", 2: "flow3"], [0: false, 1: false, 2: true]),
@@ -88,7 +88,7 @@ class AreasImportTest {
             """.stripIndent()
         mappingFile.toFile().write(input)
 
-        AreasImport.run(migration, mappingFile)
+        LayoutImport.run(migration, mappingFile)
 
         verify(migration.mappingRepository).upsertBatch([
             "tmpl1": new MappingItem.Area(null, [0: "Updated Address", 1: "New Header", 2: "Footer"], [0: true, 1: false, 2: true])
@@ -116,7 +116,7 @@ class AreasImportTest {
             """.stripIndent()
         mappingFile.toFile().write(input)
 
-        AreasImport.run(migration, mappingFile)
+        LayoutImport.run(migration, mappingFile)
 
         verify(migration.mappingRepository).upsertBatch([
             "page1": new MappingItem.DocumentObject(null, false, new BaseTemplateRef("G1"), null, null, null, new SkipOptions(false, null, null)),
@@ -148,7 +148,7 @@ class AreasImportTest {
             """.stripIndent()
         mappingFile.toFile().write(input)
 
-        AreasImport.run(migration, mappingFile)
+        LayoutImport.run(migration, mappingFile)
 
         def baseTemplateCaptor = ArgumentCaptor.forClass(BaseTemplate.class)
         verify(migration.baseTemplateRepository).upsert(baseTemplateCaptor.capture())
@@ -178,7 +178,7 @@ class AreasImportTest {
             """.stripIndent()
         mappingFile.toFile().write(input)
 
-        AreasImport.run(migration, mappingFile)
+        LayoutImport.run(migration, mappingFile)
 
         def created = new BaseTemplatePage("Page group 1", Size.ofMillimeters(210), Size.ofMillimeters(297), [
             new BaseTemplateArea("G1-P1.Area1", new Position(Size.ofCentimeters(1), Size.ofCentimeters(1), Size.ofMillimeters(190), Size.ofMillimeters(20)), false),
