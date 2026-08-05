@@ -421,7 +421,7 @@
     </label>
     <div class="toolbar-sep"></div>
     <input type="file" id="file" accept=".csv"/>
-    <button id="save-csv" disabled title="Save the loaded CSV, optionally with edits, back to disk">Save CSV</button>
+    <button id="save-csv" disabled title="Save the loaded CSV, optionally with edits, back to disk">Export</button>
     <div class="status" id="status"></div>
 </div>
 
@@ -834,7 +834,9 @@ async function loadFile(file) {
         const lines = text.split(/\r?\n/);
         if (lines.length && lines[0].trim() !== "") {
             currentCsvHeaders = parseCsvLine(lines[0]);
-            currentCsvRows = lines.slice(1).map(parseCsvLine);
+            const typeIdx = currentCsvHeaders.map(h => normalizeHeaderName(h)).indexOf("type");
+            currentCsvRows = lines.slice(1).map(parseCsvLine)
+                .filter(row => typeIdx < 0 || (row[typeIdx] ?? "").trim().toLowerCase() !== "base");
         } else {
             currentCsvHeaders = null;
             currentCsvRows = null;
