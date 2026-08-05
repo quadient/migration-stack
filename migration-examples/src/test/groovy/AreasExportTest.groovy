@@ -5,6 +5,8 @@ import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.example.common.mapping.AreasExport
+import com.quadient.migration.shared.BaseTemplateArea
+import com.quadient.migration.shared.BaseTemplatePage
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
@@ -97,6 +99,34 @@ class AreasExportTest {
         def expected = """\
             templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
             tmpl with base,,page with own base,,,,test flow,false,0mm,0mm,0mm,0mm,Standard,\$G1,
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+    }
+
+    @Test
+    void exportIncludesBaseTemplatesImportedViaAreasImport() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        when(migration.mappingRepository.getAreaMapping(any())).thenReturn(new MappingItem.Area(null, [:], [:]))
+        when((migration.documentObjectRepository as DocumentObjectRepository).list(any())).thenReturn([])
+
+        def baseTemplate = new BaseTemplate("bt-1", "Base template 1", [], new CustomFieldMap(new HashMap<String, String>()), null, [
+            new BaseTemplatePage("Page 1", Size.ofMillimeters(210), Size.ofMillimeters(297), [
+                new BaseTemplateArea("address", new Position(Size.ofCentimeters(1), Size.ofCentimeters(1), Size.ofMillimeters(190), Size.ofMillimeters(20)), false),
+                new BaseTemplateArea("Area 2", new Position(Size.ofCentimeters(1), Size.ofMillimeters(30), Size.ofMillimeters(190), Size.ofMillimeters(50)), true),
+            ]),
+            new BaseTemplatePage("Page 2", Size.ofMillimeters(210), Size.ofMillimeters(99), [
+                new BaseTemplateArea("Area 1", new Position(Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(210), Size.ofMillimeters(99)), false),
+            ]),
+        ], null, null)
+        when(migration.baseTemplateRepository.listAll()).thenReturn([baseTemplate])
+
+        AreasExport.run(migration, mappingFile)
+
+        def expected = """\
+            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
+            bt-1,Base template 1,page-1,Page 1,210mm,297mm,address,false,1cm,1cm,190mm,20mm,Base,,
+            bt-1,Base template 1,page-1,Page 1,210mm,297mm,Area 2,true,1cm,30mm,190mm,50mm,Base,,
+            bt-1,Base template 1,page-2,Page 2,210mm,99mm,Area 1,false,0mm,0mm,210mm,99mm,Base,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

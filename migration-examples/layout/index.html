@@ -456,7 +456,7 @@
 /**
  * @typedef {Object} LayoutAnalysis
  * @property {Similarity} similarity
- * @property {ProximityGroup[][]} pageProximityGroups
+ * @property {BaseTemplateAreaDraft[][]} pageBaseTemplateAreaDrafts
  * @property {number} proximityGap
  */
 
@@ -514,9 +514,12 @@
  */
 
 /**
- * @typedef {Object} ProximityGroup
+ * A candidate base template area: a cluster of nearby areas on a page (grouped by proximity)
+ * that would become a single area/interactiveFlowName in a base template.
+ * @typedef {Object} BaseTemplateAreaDraft
  * @property {number[]} areaIndices
  * @property {Position} position
+ * @property {string} name
  */
 
 /**
@@ -671,12 +674,11 @@ function parseSizeMm(str) {
 
 /**
  * Computes containment for each area: the index of its smallest enclosing area, or null.
- * Mirrors the findContainment algorithm in LayoutExport.groovy.
  * @param {{x: number, y: number, w: number, h: number}[]} areas
  * @returns {(number|null)[]}
  */
 function computeContainment(areas) {
-    const TOL = 0.7;
+    const tolerance = 0.7;
     const containment = /** @type {(number|null)[]} */ (new Array(areas.length).fill(null));
     for (let i = 0; i < areas.length; i++) {
         const inner = areas[i];
@@ -686,9 +688,9 @@ function computeContainment(areas) {
             const outer = areas[j];
             const outerSize = outer.w * outer.h;
             if (outerSize <= innerSize) continue;
-            if (outer.x - TOL <= inner.x && outer.y - TOL <= inner.y
-                    && (inner.x + inner.w) <= (outer.x + outer.w) + TOL
-                    && (inner.y + inner.h) <= (outer.y + outer.h) + TOL) {
+            if (outer.x - tolerance <= inner.x && outer.y - tolerance <= inner.y
+                    && (inner.x + inner.w) <= (outer.x + outer.w) + tolerance
+                    && (inner.y + inner.h) <= (outer.y + outer.h) + tolerance) {
                 const cur = containment[i];
                 const curSize = cur != null ? areas[cur].w * areas[cur].h : Infinity;
                 if (curSize > outerSize) containment[i] = j;
@@ -762,7 +764,6 @@ function parseCsvToLayoutData(text) {
         tmplPageCounter.set(meta.templateId, n + 1);
     }
 
-    // TODO d.svitak - review start
     /** @type {PageEntry[]} */
     const pages = [];
     /** @type {({pageIndex: number, areaIndex: number}|null)[]} */
@@ -885,6 +886,31 @@ function serializeCsv(headers, rows) {
     return lines.join("\r\n") + "\r\n";
 }
 
+/**
+ * Derives a human-friendly interactive flow name from an area's content preview,
+ * e.g. "docRef: address" -> "address". Returns null if no usable name can be derived.
+ * @param {string} contentPreview
+ * @returns {string|null}
+ */
+function parseFlowNameFromPreview(contentPreview) {
+    if (!contentPreview) return null;
+    const first = contentPreview.split(";")[0]?.trim();
+    if (!first) return null;
+    const colonIdx = first.indexOf(": ");
+    const value = colonIdx === -1 ? first : first.slice(colonIdx + 2).trim();
+    return value || null;
+}
+
+/**
+ * Builds the "Base" CSV rows describing candidate base templates/pages/areas derived from the
+ * current template/page grouping, plus per-page interactiveFlowName/targetId overrides for the
+ * "Standard" rows that reference them.
+ *
+ * @param {LayoutData} data
+ * @param {ViewModel} viewModel
+ * @param {LayoutAnalysis} analysis
+ * @returns {{baseRows: string[][], overridesByPageIndex: Map<number, {flowNames: (string|null)[], targetId: string}>}}
+ */
 function computeBaseTemplateData(data, viewModel, analysis) {
     /** @type {string[][]} */
     const baseRows = [];
@@ -892,47 +918,53 @@ function computeBaseTemplateData(data, viewModel, analysis) {
     const overridesByPageIndex = new Map();
 
     viewModel.templateGroups.forEach((templateGroup, templateGroupIndex) => {
-        const baseTemplateId = `G${templateGroupIndex + 1}`;
-        const baseTemplateName = `Base template of ${templateGroup.templateNames.join(" / ")}`;
+        const baseTemplateId = `bt-${templateGroupIndex + 1}`;
+        const baseTemplateName = `${templateGroup.templateNames.join(" / ")}BaseTemplate`;
 
         templateGroup.pageGroups.forEach((pageGroup, pageGroupIndex) => {
-            const basePageId = `${baseTemplateId}-P${pageGroupIndex + 1}`;
-            const basePageName = `Page group ${pageGroupIndex + 1}`;
+            const basePageId = `page-${pageGroupIndex + 1}`;
+            const basePageName = `Page ${pageGroupIndex + 1}`;
 
             const representativePageIndex = pageGroup.pageIndices[0];
             const representativePage = data.pages[representativePageIndex];
-            const representativeGroups = analysis.pageProximityGroups[representativePageIndex] ?? [];
+            const representativeDrafts = analysis.pageBaseTemplateAreaDrafts[representativePageIndex] ?? [];
             const pageWidthMm = representativePage.pageSize ? `${representativePage.pageSize.w}mm` : "";
             const pageHeightMm = representativePage.pageSize ? `${representativePage.pageSize.h}mm` : "";
 
-            representativeGroups.forEach((pg, areaGroupIndex) => {
-                const flowName = `${basePageId}.Area${areaGroupIndex + 1}`;
-                const flowToNextPage = pg.areaIndices.some(ai => representativePage.areas[ai]?.flowToNextPage);
-                const contentPreview = pg.areaIndices
-                    .map(ai => representativePage.areas[ai]?.contentPreview)
-                    .filter(Boolean)
-                    .join(";");
+            /** @type {string[]} */
+            const flowNamesByAreaGroupIndex = [];
+            const usedFlowNames = new Set();
+
+            representativeDrafts.forEach((draft, areaGroupIndex) => {
+                const flowToNextPage = draft.areaIndices.some(ai => representativePage.areas[ai]?.flowToNextPage);
+                let flowName = draft.name;
+                if (usedFlowNames.has(flowName)) {
+                    flowName = `${flowName} (Area ${areaGroupIndex + 1})`;
+                }
+                usedFlowNames.add(flowName);
+                flowNamesByAreaGroupIndex.push(flowName);
+
                 baseRows.push([
                     baseTemplateId, baseTemplateName, basePageId, basePageName,
                     pageWidthMm, pageHeightMm,
                     flowName, String(flowToNextPage),
-                    `${pg.position.x}mm`, `${pg.position.y}mm`, `${pg.position.w}mm`, `${pg.position.h}mm`,
-                    "Base", "", contentPreview,
+                    `${draft.position.x}mm`, `${draft.position.y}mm`, `${draft.position.w}mm`, `${draft.position.h}mm`,
+                    "Base", "", "",
                 ]);
             });
 
             pageGroup.pageIndices.forEach(pageIndex => {
                 const page = data.pages[pageIndex];
-                const ownGroups = pageIndex === representativePageIndex
-                    ? representativeGroups
-                    : (analysis.pageProximityGroups[pageIndex] ?? []);
+                const ownDrafts = pageIndex === representativePageIndex
+                    ? representativeDrafts
+                    : (analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []);
 
                 /** @type {(string|null)[]} */
                 const flowNames = new Array(page.areas.length).fill(null);
-                ownGroups.forEach((pg, ordinal) => {
-                    if (ordinal >= representativeGroups.length) return;
-                    const flowName = `${basePageId}.Area${ordinal + 1}`;
-                    pg.areaIndices.forEach(ai => { flowNames[ai] = flowName; });
+                ownDrafts.forEach((draft, ordinal) => {
+                    if (ordinal >= flowNamesByAreaGroupIndex.length) return;
+                    const flowName = flowNamesByAreaGroupIndex[ordinal];
+                    draft.areaIndices.forEach(ai => { flowNames[ai] = flowName; });
                 });
                 overridesByPageIndex.set(pageIndex, { flowNames, targetId: `$${baseTemplateId}` });
             });
@@ -1027,7 +1059,6 @@ async function saveCsv() {
 }
 
 saveCsvBtn.addEventListener("click", () => { saveCsv(); });
-// TODO d.svitak - review end
 
 document.body.addEventListener("dragover", e => e.preventDefault());
 document.body.addEventListener("drop", e => {
@@ -1148,10 +1179,10 @@ function areaTip(ar, idx) {
 
 /**
  * @param {PageEntry} page
- * @param {ProximityGroup[]} proximityGroups
+ * @param {BaseTemplateAreaDraft[]} baseTemplateAreaDrafts
  * @returns {SVGElement|null}
  */
-function buildPageSvg(page, proximityGroups) {
+function buildPageSvg(page, baseTemplateAreaDrafts) {
     const areas = page.areas;
     if (!areas.length) return null;
 
@@ -1160,39 +1191,37 @@ function buildPageSvg(page, proximityGroups) {
     const scale = (settings.canvasW - 2 * PAD) / Math.max(maxX2, 210);
     const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
     const svg = svgEl("svg", {width: settings.canvasW, height: svgH, style: "background:#fff;cursor:default"});
-    svg.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {
-        textContent: pageCardTooltip(page)
-    }));
-    const proximityGroupByArea = new Map();
-    proximityGroups.forEach((group, groupIndex) => {
-        group.areaIndices.forEach(areaIndex => proximityGroupByArea.set(areaIndex, groupIndex));
+    svg.appendChild(svgTitle(pageCardTooltip(page)));
+    const draftIndexByArea = new Map();
+    baseTemplateAreaDrafts.forEach((draft, draftIndex) => {
+        draft.areaIndices.forEach(areaIndex => draftIndexByArea.set(areaIndex, draftIndex));
     });
 
-    proximityGroups.forEach((group, i) => {
-        const p = group.position;
-        const tip = `G${i + 1}\nw ${p.w}mm · h ${p.h}mm · x ${p.x}mm · y ${p.y}mm`;
+    baseTemplateAreaDrafts.forEach(draft => {
+        const p = draft.position;
+        const tip = `${draft.name}\nw ${p.w}mm · h ${p.h}mm · x ${p.x}mm · y ${p.y}mm`;
+        const gx = svgPos(p.x, scale), gy = svgPos(p.y, scale),
+            gw = svgDim(p.w, scale), gh = svgDim(p.h, scale);
 
         const bg = svgEl("rect", {
-            x: svgPos(p.x, scale), y: svgPos(p.y, scale),
-            width: svgDim(p.w, scale), height: svgDim(p.h, scale),
+            x: gx, y: gy, width: gw, height: gh,
             fill: "transparent", stroke: "none", "pointer-events": "all"
         });
-        bg.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {textContent: tip}));
+        bg.appendChild(svgTitle(tip));
         svg.appendChild(bg);
 
         const border = svgEl("rect", {
-            x: svgPos(p.x, scale), y: svgPos(p.y, scale),
-            width: svgDim(p.w, scale), height: svgDim(p.h, scale),
+            x: gx, y: gy, width: gw, height: gh,
             fill: "none", stroke: "#e00", "stroke-width": 1.5, "stroke-dasharray": "5,3",
             "pointer-events": "none"
         });
         svg.appendChild(border);
 
         const label = svgEl("text", {
-            x: svgPos(p.x, scale) + 2, y: svgPos(p.y, scale) - 2,
+            x: gx + 2, y: gy - 2,
             "font-size": 7, fill: "#e00", "font-weight": "bold", "pointer-events": "none"
         });
-        label.textContent = `G${i + 1}`;
+        label.textContent = draft.name.length > 24 ? draft.name.slice(0, 24) : draft.name;
         svg.appendChild(label);
     });
 
@@ -1207,12 +1236,12 @@ function buildPageSvg(page, proximityGroups) {
             .filter(({o, oi}) => oi !== i
                 && o.x < a.x + a.w && o.x + o.w > a.x
                 && o.y < a.y + a.h && o.y + o.h > a.y)
-            .sort((a, b) => (a.o.w * a.o.h) - (b.o.w * b.o.h));
+            .sort((m, n) => (m.o.w * m.o.h) - (n.o.w * n.o.h));
 
-        const proximityGroupIndex = proximityGroupByArea.get(i);
-        const pg = proximityGroupIndex != null ? proximityGroups[proximityGroupIndex] : null;
-        const pgLine = pg ? `G${proximityGroupIndex + 1}\nw ${pg.position.w}mm · h ${pg.position.h}mm · x ${pg.position.x}mm · y ${pg.position.y}mm\n\n` : "";
-        const tip = pgLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
+        const draftIndex = draftIndexByArea.get(i);
+        const draft = draftIndex != null ? baseTemplateAreaDrafts[draftIndex] : null;
+        const draftLine = draft ? `${draft.name}\nw ${draft.position.w}mm · h ${draft.position.h}mm · x ${draft.position.x}mm · y ${draft.position.y}mm\n\n` : "";
+        const tip = draftLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
 
         const rect = svgEl("rect", {
             x: rx, y: ry, width: rw, height: rh,
@@ -1220,7 +1249,7 @@ function buildPageSvg(page, proximityGroups) {
             "stroke-width": isRoot ? "1.5" : "1",
             "stroke-dasharray": isRoot ? "none" : "3,2"
         });
-        rect.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {textContent: tip}));
+        rect.appendChild(svgTitle(tip));
         svg.appendChild(rect);
 
         if (rw > 12 && rh > 8) {
@@ -1483,7 +1512,7 @@ function buildPageCard(pageIndex) {
     });
     wrap.appendChild(title);
 
-    const svg = buildPageSvg(currentData.pages[pageIndex], currentAnalysis.pageProximityGroups[pageIndex] ?? []);
+    const svg = buildPageSvg(currentData.pages[pageIndex], currentAnalysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []);
     if (svg) wrap.appendChild(svg);
     return wrap;
 }
@@ -1756,12 +1785,12 @@ function ensureAnalysis(data, previousAnalysis, activeSettings) {
     const similarity = sameData
         ? previousAnalysis.similarity
         : buildSimilarity(data);
-    const pageProximityGroups = sameData && previousAnalysis.proximityGap === activeSettings.proximityGap
-        ? previousAnalysis.pageProximityGroups
-        : buildPageProximityGroups(data.pages, activeSettings.proximityGap);
+    const pageBaseTemplateAreaDrafts = sameData && previousAnalysis.proximityGap === activeSettings.proximityGap
+        ? previousAnalysis.pageBaseTemplateAreaDrafts
+        : buildBaseTemplateAreaDrafts(data.pages, activeSettings.proximityGap);
     return {
         similarity,
-        pageProximityGroups,
+        pageBaseTemplateAreaDrafts,
         proximityGap: activeSettings.proximityGap,
     };
 }
@@ -1849,9 +1878,9 @@ function buildSimilarity(data) {
 /**
  * @param {PageEntry[]} pages
  * @param {number} groupingGap
- * @returns {ProximityGroup[][]}
+ * @returns {BaseTemplateAreaDraft[][]}
  */
-function buildPageProximityGroups(pages, groupingGap) {
+function buildBaseTemplateAreaDrafts(pages, groupingGap) {
     return pages.map(page => groupByProximity(page.areas, groupingGap));
 }
 
@@ -1942,10 +1971,10 @@ function templatePageOrder(page) {
 
 /**
  * Vertical sweep grouping: areas whose Y ranges overlap or are within
- * the proximity gap of each other are placed in the same group.
+ * the proximity gap of each other are placed in the same base template area draft.
  * @param {AreaEntry[]} areas
  * @param {number} groupingGap
- * @returns {ProximityGroup[]}
+ * @returns {BaseTemplateAreaDraft[]}
  */
 function groupByProximity(areas, groupingGap) {
     if (!areas.length) return [];
@@ -1967,12 +1996,13 @@ function groupByProximity(areas, groupingGap) {
     });
     groupedIndices.push(current);
 
-    return groupedIndices.map(areaIndices => {
+    return groupedIndices.map((areaIndices, draftIndex) => {
         const subset = areaIndices.map(index => areas[index]);
         const x = Math.min(...subset.map(area => area.x));
         const y = Math.min(...subset.map(area => area.y));
         const x2 = Math.max(...subset.map(area => area.x + area.w));
         const y2 = Math.max(...subset.map(area => area.y + area.h));
+        const previewSource = areaIndices.map(idx => areas[idx].contentPreview).find(Boolean);
         return {
             areaIndices,
             position: {
@@ -1981,6 +2011,7 @@ function groupByProximity(areas, groupingGap) {
                 w: roundTo(x2 - x, 2),
                 h: roundTo(y2 - y, 2),
             },
+            name: parseFlowNameFromPreview(previewSource) || `Area ${draftIndex + 1}`,
         };
     });
 }
@@ -2168,6 +2199,16 @@ function svgEl(tag, attrs) {
     const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
     Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, String(v)));
     return el;
+}
+
+/**
+ * @param {string} text
+ * @returns {SVGTitleElement}
+ */
+function svgTitle(text) {
+    const title = /** @type {SVGTitleElement} */ (document.createElementNS("http://www.w3.org/2000/svg", "title"));
+    title.textContent = text;
+    return title;
 }
 
 /**
