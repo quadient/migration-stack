@@ -28,11 +28,11 @@ Path getVariablesMappingPath(String[] args, String projectName) {
         System.exit(1)
     }
 
-    def selectedFile = null
+    File selectedFile = null
     def argUserInput = (getValueOfArg("--variable-structure-id", args as List<String>)).orElseGet { null }
     if (argUserInput) {
         def fileName = variableStructureFileNameFromId(argUserInput, projectName)
-        def csvFile = csvFiles.find { it.name.equalsIgnoreCase(fileName) }
+        File csvFile = csvFiles.find { (it as File).name.equalsIgnoreCase(fileName) } as File
         if (csvFile) {
             selectedFile = csvFile
             println "Selected file: ${selectedFile.name}"
@@ -40,26 +40,60 @@ Path getVariablesMappingPath(String[] args, String projectName) {
             println "CSV file '${fileName}' not found in mapping. Please provide a valid file name."
             System.exit(1)
         }
+    } else if (csvFiles.size() == 1) {
+        selectedFile = csvFiles.first() as File
+        println "Selected file: ${selectedFile.name}"
     } else {
-        println "Available CSV files for import:"
-        csvFiles.eachWithIndex { file, i -> println "${i + 1}) ${file.name}" }
-        println "Select a number of the CSV file to import:"
-
-        while (true) {
-            def userInput = System.in.newReader().readLine().trim()
-            if (userInput.isInteger()) {
-                def idx = userInput.toInteger() - 1
-                if (idx >= 0 && idx < csvFiles.size()) {
-                    selectedFile = csvFiles[idx]
-                    println "Selected file: ${selectedFile.name}"
-                    break
-                }
-            }
-            println "Invalid selection. Please enter a valid number:"
-        }
+        selectedFile = promptForFileSelection(csvFiles)
     }
 
     return selectedFile.toPath()
+}
+
+Path getAreasMappingPath(String projectName) {
+    def mappingDir = Paths.get("mapping").toFile()
+    def pattern = areasFileNamePattern(projectName)
+    def csvFiles = mappingDir.listFiles()?.findAll {
+        it.name.toLowerCase().contains(pattern) && it.name.toLowerCase().endsWith(".csv")
+    } ?: []
+
+    if (csvFiles.isEmpty()) {
+        println "No CSV files found in mapping with matching pattern '*${pattern}*.csv'."
+        System.exit(1)
+    }
+
+    File selectedFile
+    if (csvFiles.size() == 1) {
+        selectedFile = csvFiles.first() as File
+        println "Selected file: ${selectedFile.name}"
+    } else {
+        selectedFile = promptForFileSelection(csvFiles)
+    }
+
+    return selectedFile.toPath()
+}
+
+static String areasFileNamePattern(String projectName) {
+    return "${projectName}-areas".toLowerCase()
+}
+
+private static File promptForFileSelection(List<File> csvFiles) {
+    println "Available CSV files for import:"
+    csvFiles.eachWithIndex { file, i -> println "${i + 1}) ${file.name}" }
+    println "Select a number of the CSV file to import:"
+
+    while (true) {
+        def userInput = System.in.newReader().readLine().trim()
+        if (userInput.isInteger()) {
+            def idx = userInput.toInteger() - 1
+            if (idx >= 0 && idx < csvFiles.size()) {
+                def selectedFile = csvFiles[idx]
+                println "Selected file: ${selectedFile.name}"
+                return selectedFile
+            }
+        }
+        println "Invalid selection. Please enter a valid number:"
+    }
 }
 
 static String variableStructureFileNamePrefix(String projectName) {

@@ -1,8 +1,9 @@
 //! ---
 //! displayName: Import Areas
 //! category: Mapping
-//! description: Import areas with modified interactive flow names to their respective pages and templates
+//! description: Imports areas with modified interactive flow names to their respective pages and templates. The import is interactive, prompting the user to select the areas CSV to import if more than one matching file is found.
 //! target: gradle
+//! stdin: true
 //! ---
 package com.quadient.migration.example.common.mapping
 
@@ -29,7 +30,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 @Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 def migration = initMigration(this.binding)
-def areasFile = Mapping.csvPath(binding, migration.projectConfig.name, "areas")
+def areasFile = new Mapping().getAreasMappingPath(migration.projectConfig.name)
 
 run(migration, areasFile)
 
