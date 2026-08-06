@@ -30,24 +30,24 @@ jobs:
           log "Running dependency check for migration-library"
           (cd migration-library && ./gradlew dependencyCheckAnalyze)
           log "Uploading report for migration-library"
-          curl -X POST --insecure -F "upload=@./migration-library/build/reports/dependency-check-report.xml" \
+          curl -X POST --insecure -F "upload=@./migration-library/build/reports/dependency-check/dependency-check-report.xml" \
             "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=migration-library&versionName=$VERSION"
 
           log "Running dependency check for migration-examples"
           (cd migration-examples && ./gradlew dependencyCheckAnalyze)
           log "Uploading report for migration-examples"
-          curl -X POST --insecure -F "upload=@./migration-examples/build/reports/dependency-check-report.xml" \
+          curl -X POST --insecure -F "upload=@./migration-examples/build/reports/dependency-check/dependency-check-report.xml" \
             "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=migration-examples&versionName=$VERSION"
 
           log "Running dependency check for wfd-xml"
           (cd wfd-xml && ./gradlew dependencyCheckAggregate)
           log "Uploading report for wfd-xml"
-          curl -X POST --insecure -F "upload=@./wfd-xml/build/reports/dependency-check-report.xml" \
+          curl -X POST --insecure -F "upload=@./wfd-xml/build/reports/dependency-check/dependency-check-report.xml" \
             "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=wfd-xml&versionName=$VERSION"
 
           log "Running dependency check for migration-app"
           (cd migration-app && ./gradlew dependencyCheckAnalyze)
           log "Uploading report for migration-app"
-          curl -X POST --insecure -F "upload=@./migration-app/build/reports/dependency-check-report.xml" \
+          curl -X POST --insecure -F "upload=@./migration-app/build/reports/dependency-check/dependency-check-report.xml" \
             "https://osquality-api.quadient.group/scan/api/report/?apiKey=$API_KEY&stream=migration-app&versionName=$VERSION"
 
