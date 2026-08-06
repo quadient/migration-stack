@@ -8,14 +8,12 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
-import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
-import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
-import com.quadient.migration.shared.BaseTemplateArea
 import com.quadient.migration.shared.BaseTemplatePage
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
@@ -116,10 +114,10 @@ private static void assignAreaToBaseTemplateDraft(Map<String, BaseTemplateDraft>
     }
 
     def page = baseTemplateDraft.pages.computeIfAbsent(pageGroupId) {
-        new BaseTemplatePage(Csv.deserialize(values.get("pageName"), String.class),
-                Csv.deserialize(values.get("pageWidth"), Size.class),
-                Csv.deserialize(values.get("pageHeight"), Size.class),
-                new ArrayList<BaseTemplateArea>())
+        new BaseTemplateBuilder.Page()
+                .name(Csv.deserialize(values.get("pageName"), String.class))
+                .pageWidth(Csv.deserialize(values.get("pageWidth"), Size.class))
+                .pageHeight(Csv.deserialize(values.get("pageHeight"), Size.class))
     }
 
     def interactiveFlowName = Csv.deserialize(values.get("interactiveFlowName"), String.class)
@@ -133,7 +131,9 @@ private static void assignAreaToBaseTemplateDraft(Map<String, BaseTemplateDraft>
     def position = (x != null && y != null && width != null && height != null) ? new Position(x, y, width, height) : null
     def flowToNextPage = Csv.deserialize(values.get("flowToNextPage"), Boolean.class) ?: false
 
-    page.areas.add(new BaseTemplateArea(interactiveFlowName, position, flowToNextPage))
+    page.addArea(interactiveFlowName)
+            .position(position)
+            .flowToNextPage(flowToNextPage)
 }
 
 private static void applyDocumentObjectTargetIdMappings(Migration migration, Map<String, String> docObjectsToTargetIds) {
@@ -165,13 +165,13 @@ private static void applyBaseTemplateDraftMappings(Migration migration, Map<Stri
     baseTemplateDrafts.each { baseTemplateId, draft ->
         def existing = migration.baseTemplateRepository.find(baseTemplateId)
         if (existing == null) {
-            migration.baseTemplateRepository.upsert(new BaseTemplate(baseTemplateId, null, [], new CustomFieldMap(new HashMap<String, String>()), null, [], null, null))
+            migration.baseTemplateRepository.upsert(new BaseTemplateBuilder(baseTemplateId).build())
         }
 
         def mapping = migration.mappingRepository.getBaseTemplateMapping(baseTemplateId)
         mapping.name = draft.name ?: existing?.name
         mapping.targetFolder = existing?.targetFolder
-        mapping.pages = new ArrayList<BaseTemplatePage>(draft.pages.values())
+        mapping.pages = draft.pages.values().collect { it.build() } as List<BaseTemplatePage>
 
         mappings[baseTemplateId] = mapping
     }
@@ -182,5 +182,5 @@ private static void applyBaseTemplateDraftMappings(Migration migration, Map<Stri
 
 class BaseTemplateDraft {
     String name
-    Map<String, BaseTemplatePage> pages = new LinkedHashMap<>()
+    Map<String, BaseTemplateBuilder.Page> pages = new LinkedHashMap<>()
 }
