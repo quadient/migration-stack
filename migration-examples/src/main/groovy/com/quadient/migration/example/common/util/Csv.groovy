@@ -1,5 +1,8 @@
 package com.quadient.migration.example.common.util
 
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
+import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.api.dto.migrationmodel.Tab
 import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.shared.Color
@@ -102,6 +105,8 @@ static String serialize(Object obj, Size.Unit unitOverride) {
         case Long: return obj.toString()
         case Color: return obj.toHex()
         case IcmPath: return obj.toString()
+        case BaseTemplateRef: return "\$${obj.id}"
+        case LiteralBaseTemplatePath: return obj.path
         case Size: return unitOverride != null ? obj.toString(unitOverride) : obj.toString()
         case Tabs: return """{ "tabs": ${serialize(obj.tabs)}; "useOutsideTabs": "${serialize(obj.useOutsideTabs)}" }"""
         case Tab: return """{ "position": ${serialize(obj.position)}; "type": "${serialize(obj.type)}" }"""
@@ -142,6 +147,10 @@ static <T> T deserialize(String value, Class<T> cls) {
         case IcmPath: return IcmPath.from(value) as T
         case Color: return Color.fromHex(value) as T
         case Size: return Size.fromString(value) as T
+        case BaseTemplateLocation: {
+            if (value.startsWith("@") || value.startsWith("\$")) return new BaseTemplateRef(value.substring(1)) as T
+            return new LiteralBaseTemplatePath(value) as T
+        }
         case Boolean:
         case boolean:
             if (value.toLowerCase() == "true") {

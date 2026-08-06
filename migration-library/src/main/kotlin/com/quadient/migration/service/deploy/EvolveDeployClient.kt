@@ -7,6 +7,7 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -53,6 +54,7 @@ class EvolveDeployClient(
     displayRuleRepository: DisplayRuleRepository,
     variableRepository: VariableRepository,
     variableStructureRepository: VariableStructureRepository,
+    baseTemplateRepository: BaseTemplateRepository,
     documentObjectBuilder: InspireDocumentObjectBuilder,
     ipsService: IpsService,
     storage: Storage,
@@ -73,6 +75,7 @@ class EvolveDeployClient(
     displayRuleRepository,
     variableRepository,
     variableStructureRepository,
+    baseTemplateRepository,
     documentObjectBuilder,
     ipsService,
     storage,
@@ -95,7 +98,9 @@ class EvolveDeployClient(
         val ipsMemLocation = "memory://${UUID.randomUUID()}"
         try {
             val runCommandType = obj.type.toRunCommandType()
-            val baseTemplatePath = getBaseTemplateFullPath(projectConfig, obj.baseTemplate)
+            val baseTemplatePath = getBaseTemplateFullPath(
+                projectConfig, obj.baseTemplate, resourcePathProvider
+            ) { baseTemplateRepository.findOrFail(it) }
             val deployResult = ipsService.deployJld(
                 baseTemplate = baseTemplatePath,
                 type = runCommandType,
@@ -215,7 +220,9 @@ class EvolveDeployClient(
         }
         val resolvedFolder = resolveTargetDir(projectConfig.defaultTargetFolder, rule.targetFolder?.toIcmPath())
 
-        val baseTemplatePath = getBaseTemplateFullPath(projectConfig, rule.baseTemplate)
+        val baseTemplatePath = getBaseTemplateFullPath(
+            projectConfig, rule.baseTemplate, resourcePathProvider
+        ) { baseTemplateRepository.findOrFail(it) }
         val result =  caClient.createRuleDraft(rule.nameOrId(), resolvedFolder, baseTemplatePath, data)
         if (result !is HttpResult.Success) return result.toOperationResult()
 

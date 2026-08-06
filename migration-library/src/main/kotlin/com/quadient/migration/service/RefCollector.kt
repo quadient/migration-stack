@@ -1,6 +1,7 @@
 package com.quadient.migration.service
 
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
@@ -12,6 +13,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -29,6 +31,7 @@ class RefCollector(
     private val displayRuleRepository: DisplayRuleRepository,
     private val variableRepository: VariableRepository,
     private val variableStructureRepository: VariableStructureRepository,
+    private val baseTemplateRepository: BaseTemplateRepository,
 ) {
     fun <T: RefValidatable> collectAllRefs(obj: T, breakFn: (MigrationObject) -> Boolean = { true }): Set<Ref> {
         return obj.collectAllRefs(breakFn)
@@ -61,6 +64,7 @@ class RefCollector(
         is TextStyleRef -> textStyleRepository.findOrFail(ref.id)
         is VariableRef -> variableRepository.findOrFail(ref.id)
         is VariableStructureRef -> variableStructureRepository.findOrFail(ref.id)
+        is BaseTemplateRef -> baseTemplateRepository.findOrFail(ref.id)
     }
 
     private fun <T : RefValidatable> T.traverse(

@@ -9,6 +9,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
@@ -18,6 +19,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -75,6 +77,7 @@ sealed class DeployClient(
     protected val displayRuleRepository: DisplayRuleRepository,
     protected val variableRepository: VariableRepository,
     protected val variableStructureRepository: VariableStructureRepository,
+    protected val baseTemplateRepository: BaseTemplateRepository,
     protected val documentObjectBuilder: InspireDocumentObjectBuilder,
     protected val ipsService: IpsService,
     protected val storage: Storage,
@@ -351,7 +354,7 @@ sealed class DeployClient(
         val dependencies = mutableListOf<DocumentObject>()
         this.collectRefs().forEach { ref ->
             when (ref) {
-                is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef -> {}
+                is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef, is BaseTemplateRef -> {}
                 is ImageRef -> {}
                 is AttachmentRef -> {}
                 is DocumentObjectRef -> {
@@ -371,7 +374,7 @@ sealed class DeployClient(
 
         this.collectRefs().forEach { ref ->
             when (ref) {
-                is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef -> {}
+                is DisplayRuleRef, is TextStyleRef, is ParagraphStyleRef, is VariableRef, is VariableStructureRef, is BaseTemplateRef -> {}
                 is ResourceRef -> resources.add(ref)
                 is DocumentObjectRef -> {
                     val model = documentObjectRepository.find(ref.id)

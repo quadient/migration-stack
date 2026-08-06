@@ -8,6 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -40,6 +41,7 @@ class InteractiveDocumentObjectBuilder(
     projectConfig: ProjectConfig,
     resourcePathProvider: ResourcePathProvider,
     icmDataCache: IcmDataCache,
+    baseTemplateRepository: BaseTemplateRepository,
 ) : InspireDocumentObjectBuilder(
     documentObjectRepository,
     textStyleRepository,
@@ -53,6 +55,7 @@ class InteractiveDocumentObjectBuilder(
     resourcePathProvider,
     projectConfig.inspireOutput,
     icmDataCache,
+    baseTemplateRepository,
 ) {
     private val mainFlowId = "Def.MainFlow"
     private val snippetBuilder = InteractiveSnippetBuilder(
@@ -93,7 +96,9 @@ class InteractiveDocumentObjectBuilder(
         }
 
 
-        val baseTemplatePath = getBaseTemplateFullPath(projectConfig, documentObject.baseTemplate)
+        val baseTemplatePath = getBaseTemplateFullPath(
+            projectConfig, documentObject.baseTemplate, resourcePathProvider
+        ) { baseTemplateRepository.findOrFail(it) }
         val currentBaseTemplateData = icmDataCache.getOrLoadBaseTemplateData(baseTemplatePath)
             ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
 

@@ -1,6 +1,7 @@
 package com.quadient.migration.service.deploy.utility
 
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
@@ -99,6 +100,7 @@ class DeployOrderImpl(private val documentObjectRepository: DocumentObjectReposi
                 is TextStyleRef -> {}
                 is VariableRef -> {}
                 is VariableStructureRef -> {}
+                is BaseTemplateRef -> {}
             }
         }
 

@@ -1,5 +1,6 @@
 package com.quadient.migration.persistence.table
 
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
@@ -7,6 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectOptions
 import com.quadient.migration.api.dto.migrationmodel.PdfMetadata
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.persistence.migrationmodel.BaseTemplateLocationEntity
 import com.quadient.migration.persistence.migrationmodel.DocumentContentEntity
 import com.quadient.migration.persistence.migrationmodel.PdfMetadataEntity
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectOptionsEntity
@@ -24,7 +26,7 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
     val targetFolder = varchar("target_folder", 255).nullable()
     val displayRuleRef = varchar("display_rule_ref", 255).nullable()
     val variableStructureRef = varchar("variable_structure_ref", 255).nullable()
-    val baseTemplate = varchar("base_template", 255).nullable()
+    val baseTemplate = jsonb<BaseTemplateLocationEntity>("base_template", Json).nullable()
     val documentObjectOptions = jsonb<DocumentObjectOptionsEntity>("options", Json).nullable()
     val pdfMetadata = jsonb<PdfMetadataEntity>("pdf_metadata", Json).nullable()
     val metadata = jsonb<List<MetadataEntry>>("metadata", Json)
@@ -45,7 +47,7 @@ object DocumentObjectTable : MigrationObjectTable("document_object") {
             lastUpdated = result[lastUpdated],
             displayRuleRef = result[displayRuleRef]?.let { DisplayRuleRef(it) },
             variableStructureRef = result[variableStructureRef]?.let { VariableStructureRef(it) },
-            baseTemplate = result[baseTemplate],
+            baseTemplate = result[baseTemplate]?.let { BaseTemplateLocation.fromDb(it) },
             options = result[documentObjectOptions]?.let(DocumentObjectOptions::fromDb),
             pdfMetadata = result[pdfMetadata]?.let(PdfMetadata::fromDb),
             metadata = result[metadata],

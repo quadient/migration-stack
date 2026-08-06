@@ -421,6 +421,7 @@
     </label>
     <div class="toolbar-sep"></div>
     <input type="file" id="file" accept=".csv"/>
+    <button id="save-csv" disabled title="Save the loaded CSV, optionally with edits, back to disk">Export</button>
     <div class="status" id="status"></div>
 </div>
 
@@ -449,12 +450,13 @@
  * @typedef {Object} LayoutData
  * @property {PageEntry[]} pages
  * @property {TemplateEntry[]} templates
+ * @property {({pageIndex: number, areaIndex: number}|null)[]} [rowMap]
  */
 
 /**
  * @typedef {Object} LayoutAnalysis
  * @property {Similarity} similarity
- * @property {ProximityGroup[][]} pageProximityGroups
+ * @property {BaseTemplateAreaDraft[][]} pageBaseTemplateAreaDrafts
  * @property {number} proximityGap
  */
 
@@ -512,9 +514,12 @@
  */
 
 /**
- * @typedef {Object} ProximityGroup
+ * A candidate base template area: a cluster of nearby areas on a page (grouped by proximity)
+ * that would become a single area/interactiveFlowName in a base template.
+ * @typedef {Object} BaseTemplateAreaDraft
  * @property {number[]} areaIndices
  * @property {Position} position
+ * @property {string} name
  */
 
 /**
@@ -669,12 +674,11 @@ function parseSizeMm(str) {
 
 /**
  * Computes containment for each area: the index of its smallest enclosing area, or null.
- * Mirrors the findContainment algorithm in LayoutExport.groovy.
  * @param {{x: number, y: number, w: number, h: number}[]} areas
  * @returns {(number|null)[]}
  */
 function computeContainment(areas) {
-    const TOL = 0.7;
+    const tolerance = 0.7;
     const containment = /** @type {(number|null)[]} */ (new Array(areas.length).fill(null));
     for (let i = 0; i < areas.length; i++) {
         const inner = areas[i];
@@ -684,9 +688,9 @@ function computeContainment(areas) {
             const outer = areas[j];
             const outerSize = outer.w * outer.h;
             if (outerSize <= innerSize) continue;
-            if (outer.x - TOL <= inner.x && outer.y - TOL <= inner.y
-                    && (inner.x + inner.w) <= (outer.x + outer.w) + TOL
-                    && (inner.y + inner.h) <= (outer.y + outer.h) + TOL) {
+            if (outer.x - tolerance <= inner.x && outer.y - tolerance <= inner.y
+                    && (inner.x + inner.w) <= (outer.x + outer.w) + tolerance
+                    && (inner.y + inner.h) <= (outer.y + outer.h) + tolerance) {
                 const cur = containment[i];
                 const curSize = cur != null ? areas[cur].w * areas[cur].h : Infinity;
                 if (curSize > outerSize) containment[i] = j;
@@ -697,14 +701,14 @@ function computeContainment(areas) {
 }
 
 /**
- * Parses the areas CSV produced by AreasExport.groovy into a LayoutData object.
+ * Parses the layout CSV produced by LayoutExport.groovy into a LayoutData object.
  * Templates and templatePageIndex are derived from row order; containedIn is computed from geometry.
  * @param {string} text
  * @returns {LayoutData}
  */
 function parseCsvToLayoutData(text) {
     const lines = text.split(/\r?\n/);
-    if (!lines.length) return { pages: [], templates: [] };
+    if (!lines.length) return { pages: [], templates: [], rowMap: [] };
 
     // Parse headers, stripping the " (read-only)" suffix added by Mapping.displayHeader
     const headers = parseCsvLine(lines[0]).map(h => {
@@ -715,12 +719,13 @@ function parseCsvToLayoutData(text) {
     /** @param {string[]} row @param {string} name @returns {string} */
     const col = (row, name) => { const idx = headers.indexOf(name); return idx >= 0 ? (row[idx] ?? '') : ''; };
 
-    // Group rows into pages; each unique page in the CSV keeps its declaration order
-    /** @type {Map<string, {meta: {pageId:string|null,pageName:string|null,templateId:string|null,templateName:string|null,pageWidth:string,pageHeight:string}, rows:string[][]}>} */
+    /** @type {Map<string, {meta: {pageId:string|null,pageName:string|null,templateId:string|null,templateName:string|null,pageWidth:string,pageHeight:string}, rows:string[][], lineIndices:number[]}>} */
     const pageMap = new Map();
     for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
         const row = parseCsvLine(lines[i]);
+        if (col(row, 'type').trim().toLowerCase() === 'base') continue;
+
         const pageId = col(row, 'pageId') || null;
         const templateId = col(row, 'templateId') || null;
         const pageKey = pageId && templateId
@@ -741,12 +746,13 @@ function parseCsvToLayoutData(text) {
                     pageHeight: col(row, 'pageHeight'),
                 },
                 rows: [],
+                lineIndices: [],
             });
         }
         pageMap.get(pageKey).rows.push(row);
+        pageMap.get(pageKey).lineIndices.push(i);
     }
 
-    // Assign templatePageIndex as the ordinal of each real page within its template (CSV order)
     /** @type {Map<string, number>} */
     const pageIndexMap = new Map();
     /** @type {Map<string, number>} */
@@ -758,28 +764,36 @@ function parseCsvToLayoutData(text) {
         tmplPageCounter.set(meta.templateId, n + 1);
     }
 
-    // Build PageEntry objects
     /** @type {PageEntry[]} */
     const pages = [];
-    for (const [pageKey, { meta, rows }] of pageMap) {
-        const rawAreas = /** @type {{x:number,y:number,w:number,h:number,flowToNextPage:boolean,interactiveFlowName:string,contentPreview:string}[]} */ (
-            rows.map(row => {
-                const x = parseSizeMm(col(row, 'x'));
-                const y = parseSizeMm(col(row, 'y'));
-                const w = parseSizeMm(col(row, 'width'));
-                const h = parseSizeMm(col(row, 'height'));
-                if (x == null || y == null || w == null || h == null) return null;
-                return {
+    /** @type {({pageIndex: number, areaIndex: number}|null)[]} */
+    const rowMap = new Array(lines.length).fill(null);
+    for (const [pageKey, { meta, rows, lineIndices }] of pageMap) {
+        const rawAreasWithLine = rows.map((row, idx) => {
+            const x = parseSizeMm(col(row, 'x'));
+            const y = parseSizeMm(col(row, 'y'));
+            const w = parseSizeMm(col(row, 'width'));
+            const h = parseSizeMm(col(row, 'height'));
+            if (x == null || y == null || w == null || h == null) return null;
+            return {
+                area: {
                     x, y, w, h,
                     flowToNextPage: col(row, 'flowToNextPage') === 'true',
                     interactiveFlowName: col(row, 'interactiveFlowName') || '',
                     contentPreview: col(row, 'contentPreview') || '',
-                };
-            }).filter(a => a != null)
+                },
+                lineIndex: lineIndices[idx],
+            };
+        }).filter(a => a != null);
+        const rawAreas = /** @type {{x:number,y:number,w:number,h:number,flowToNextPage:boolean,interactiveFlowName:string,contentPreview:string}[]} */ (
+            rawAreasWithLine.map(a => a.area)
         );
 
         const containment = computeContainment(rawAreas);
         const areas = /** @type {AreaEntry[]} */ (rawAreas.map((a, idx) => ({ ...a, containedIn: containment[idx] })));
+
+        const pageIndex = pages.length;
+        rawAreasWithLine.forEach((a, areaIndex) => { rowMap[a.lineIndex] = { pageIndex, areaIndex }; });
 
         const pw = parseSizeMm(meta.pageWidth);
         const ph = parseSizeMm(meta.pageHeight);
@@ -794,8 +808,20 @@ function parseCsvToLayoutData(text) {
         }));
     }
 
-    return { pages, templates: deriveTemplates(pages) };
+    return { pages, templates: deriveTemplates(pages), rowMap };
 }
+
+// Raw CSV state kept alongside the parsed LayoutData so the file can be re-serialized
+// losslessly (including columns/rows the viewer doesn't otherwise use) for saving back to disk.
+/** @type {string[]|null} */
+let currentCsvHeaders = null;
+/** @type {string[][]|null} */
+let currentCsvRows = null;
+let currentFileName = "layout.csv";
+/** @type {({pageIndex: number, areaIndex: number}|null)[]} */
+let currentRowMap = [];
+
+const saveCsvBtn = /** @type {HTMLButtonElement} */ (document.getElementById("save-csv"));
 
 /**
  * @param {File} file
@@ -803,7 +829,24 @@ function parseCsvToLayoutData(text) {
 async function loadFile(file) {
     try {
         statusEl.textContent = "";
-        render(parseCsvToLayoutData(await file.text()));
+        const text = await file.text();
+
+        const lines = text.split(/\r?\n/);
+        if (lines.length && lines[0].trim() !== "") {
+            currentCsvHeaders = parseCsvLine(lines[0]);
+            const typeIdx = currentCsvHeaders.map(h => normalizeHeaderName(h)).indexOf("type");
+            currentCsvRows = lines.slice(1).map(parseCsvLine)
+                .filter(row => typeIdx < 0 || (row[typeIdx] ?? "").trim().toLowerCase() !== "base");
+        } else {
+            currentCsvHeaders = null;
+            currentCsvRows = null;
+        }
+        currentFileName = file.name || "layout.csv";
+        saveCsvBtn.disabled = !currentCsvHeaders;
+
+        const layoutData = parseCsvToLayoutData(text);
+        currentRowMap = layoutData.rowMap ?? [];
+        render(layoutData);
     } catch (err) {
         statusEl.textContent = "Error: " + /** @type {Error} */ (err).message;
     }
@@ -813,6 +856,211 @@ fileInput.addEventListener("change", () => {
     const [file] = /** @type {FileList} */ (fileInput.files);
     if (file) loadFile(file);
 });
+
+function normalizeHeaderName(header) {
+    const s = (header ?? "").trim();
+    return s.endsWith(" (read-only)") ? s.slice(0, -" (read-only)".length) : s;
+}
+
+function ensureCsvColumn(headers, rows, logicalName) {
+    const idx = headers.findIndex(h => normalizeHeaderName(h) === logicalName);
+    if (idx >= 0) return idx;
+    const insertIdx = headers.findIndex(h => normalizeHeaderName(h) === "contentPreview");
+    const at = insertIdx >= 0 ? insertIdx : headers.length;
+    headers.splice(at, 0, logicalName);
+    rows.forEach(row => { row.splice(at, 0, ""); });
+    return at;
+}
+
+function csvEscapeField(field) {
+    const s = field ?? "";
+    if (/[",\r\n]/.test(s)) {
+        return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+}
+
+function serializeCsv(headers, rows) {
+    const lines = [headers.map(csvEscapeField).join(",")];
+    for (const row of rows) {
+        lines.push(row.map(csvEscapeField).join(","));
+    }
+    return lines.join("\r\n") + "\r\n";
+}
+
+/**
+ * Derives a human-friendly interactive flow name from an area's content preview,
+ * e.g. "docRef: address" -> "address". Returns null if no usable name can be derived.
+ * @param {string} contentPreview
+ * @returns {string|null}
+ */
+function parseFlowNameFromPreview(contentPreview) {
+    if (!contentPreview) return null;
+    const first = contentPreview.split(";")[0]?.trim();
+    if (!first) return null;
+    const colonIdx = first.indexOf(": ");
+    const value = colonIdx === -1 ? first : first.slice(colonIdx + 2).trim();
+    return value || null;
+}
+
+/**
+ * Builds the "Base" CSV rows describing candidate base templates/pages/areas derived from the
+ * current template/page grouping, plus per-page interactiveFlowName/targetId overrides for the
+ * "Standard" rows that reference them.
+ *
+ * @param {LayoutData} data
+ * @param {ViewModel} viewModel
+ * @param {LayoutAnalysis} analysis
+ * @returns {{baseRows: string[][], overridesByPageIndex: Map<number, {flowNames: (string|null)[], targetId: string}>}}
+ */
+function computeBaseTemplateData(data, viewModel, analysis) {
+    /** @type {string[][]} */
+    const baseRows = [];
+    /** @type {Map<number, {flowNames: (string|null)[], targetId: string}>} */
+    const overridesByPageIndex = new Map();
+
+    viewModel.templateGroups.forEach((templateGroup, templateGroupIndex) => {
+        const baseTemplateId = `bt-${templateGroupIndex + 1}`;
+        const baseTemplateName = `${templateGroup.templateNames.join(" / ")}BaseTemplate`;
+
+        templateGroup.pageGroups.forEach((pageGroup, pageGroupIndex) => {
+            const basePageId = `page-${pageGroupIndex + 1}`;
+            const basePageName = `Page ${pageGroupIndex + 1}`;
+
+            const representativePageIndex = pageGroup.pageIndices[0];
+            const representativePage = data.pages[representativePageIndex];
+            const representativeDrafts = analysis.pageBaseTemplateAreaDrafts[representativePageIndex] ?? [];
+            const pageWidthMm = representativePage.pageSize ? `${representativePage.pageSize.w}mm` : "";
+            const pageHeightMm = representativePage.pageSize ? `${representativePage.pageSize.h}mm` : "";
+
+            /** @type {string[]} */
+            const flowNamesByAreaGroupIndex = [];
+            const usedFlowNames = new Set();
+
+            representativeDrafts.forEach((draft, areaGroupIndex) => {
+                const flowToNextPage = draft.areaIndices.some(ai => representativePage.areas[ai]?.flowToNextPage);
+                let flowName = draft.name;
+                if (usedFlowNames.has(flowName)) {
+                    flowName = `${flowName} (Area ${areaGroupIndex + 1})`;
+                }
+                usedFlowNames.add(flowName);
+                flowNamesByAreaGroupIndex.push(flowName);
+
+                baseRows.push([
+                    baseTemplateId, baseTemplateName, basePageId, basePageName,
+                    pageWidthMm, pageHeightMm,
+                    flowName, String(flowToNextPage),
+                    `${draft.position.x}mm`, `${draft.position.y}mm`, `${draft.position.w}mm`, `${draft.position.h}mm`,
+                    "Base", "", "",
+                ]);
+            });
+
+            pageGroup.pageIndices.forEach(pageIndex => {
+                const page = data.pages[pageIndex];
+                const ownDrafts = pageIndex === representativePageIndex
+                    ? representativeDrafts
+                    : (analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []);
+
+                /** @type {(string|null)[]} */
+                const flowNames = new Array(page.areas.length).fill(null);
+                ownDrafts.forEach((draft, ordinal) => {
+                    if (ordinal >= flowNamesByAreaGroupIndex.length) return;
+                    const flowName = flowNamesByAreaGroupIndex[ordinal];
+                    draft.areaIndices.forEach(ai => { flowNames[ai] = flowName; });
+                });
+                overridesByPageIndex.set(pageIndex, { flowNames, targetId: `$${baseTemplateId}` });
+            });
+        });
+    });
+
+    return { baseRows, overridesByPageIndex };
+}
+
+async function saveCsv() {
+    if (!currentCsvHeaders || !currentCsvRows) {
+        statusEl.textContent = "No CSV loaded to save.";
+        return;
+    }
+    if (!currentData || !currentViewModel || !currentAnalysis) {
+        statusEl.textContent = "No layout data loaded to save.";
+        return;
+    }
+
+    const headers = [...currentCsvHeaders];
+    const rows = currentCsvRows.map(row => [...row]);
+
+    const typeIdx = ensureCsvColumn(headers, rows, "type");
+    const targetIdIdx = ensureCsvColumn(headers, rows, "targetId");
+    const flowNameIdx = ensureCsvColumn(headers, rows, "interactiveFlowName");
+
+    const { baseRows, overridesByPageIndex } = computeBaseTemplateData(currentData, currentViewModel, currentAnalysis);
+
+    currentRowMap.forEach((entry, lineIndex) => {
+        if (!entry) return;
+        const rowIdx = lineIndex - 1;
+        const row = rows[rowIdx];
+        if (!row) return;
+
+        const override = overridesByPageIndex.get(entry.pageIndex);
+        if (!override) return;
+
+        row[targetIdIdx] = override.targetId;
+        const flowName = override.flowNames[entry.areaIndex];
+        if (flowName != null) row[flowNameIdx] = flowName;
+    });
+
+    for (let i = rows.length - 1; i >= 0; i--) {
+        if (rows[i].every(cell => cell === "")) {
+            rows.splice(i, 1);
+        } else if (!rows[i][typeIdx]) {
+            rows[i][typeIdx] = "Standard";
+        }
+    }
+
+    baseRows.forEach(baseRow => {
+        const byLogicalName = {
+            templateId: baseRow[0], templateName: baseRow[1], pageId: baseRow[2], pageName: baseRow[3],
+            pageWidth: baseRow[4], pageHeight: baseRow[5], interactiveFlowName: baseRow[6], flowToNextPage: baseRow[7],
+            x: baseRow[8], y: baseRow[9], width: baseRow[10], height: baseRow[11],
+            type: baseRow[12], targetId: baseRow[13], contentPreview: baseRow[14],
+        };
+        const row = headers.map(h => byLogicalName[normalizeHeaderName(h)] ?? "");
+        rows.push(row);
+    });
+
+    const text = serializeCsv(headers, rows);
+
+    if (typeof window.showSaveFilePicker === "function") {
+        try {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: currentFileName,
+                types: [{ description: "CSV file", accept: { "text/csv": [".csv"] } }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(text);
+            await writable.close();
+            statusEl.textContent = `Saved ${handle.name}`;
+            return;
+        } catch (err) {
+            if (/** @type {Error} */ (err).name === "AbortError") return;
+            statusEl.textContent = "Error saving file: " + /** @type {Error} */ (err).message;
+            return;
+        }
+    }
+
+    const blob = new Blob([text], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = currentFileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    statusEl.textContent = `Downloaded ${currentFileName}`;
+}
+
+saveCsvBtn.addEventListener("click", () => { saveCsv(); });
 
 document.body.addEventListener("dragover", e => e.preventDefault());
 document.body.addEventListener("drop", e => {
@@ -933,10 +1181,10 @@ function areaTip(ar, idx) {
 
 /**
  * @param {PageEntry} page
- * @param {ProximityGroup[]} proximityGroups
+ * @param {BaseTemplateAreaDraft[]} baseTemplateAreaDrafts
  * @returns {SVGElement|null}
  */
-function buildPageSvg(page, proximityGroups) {
+function buildPageSvg(page, baseTemplateAreaDrafts) {
     const areas = page.areas;
     if (!areas.length) return null;
 
@@ -945,39 +1193,37 @@ function buildPageSvg(page, proximityGroups) {
     const scale = (settings.canvasW - 2 * PAD) / Math.max(maxX2, 210);
     const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
     const svg = svgEl("svg", {width: settings.canvasW, height: svgH, style: "background:#fff;cursor:default"});
-    svg.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {
-        textContent: pageCardTooltip(page)
-    }));
-    const proximityGroupByArea = new Map();
-    proximityGroups.forEach((group, groupIndex) => {
-        group.areaIndices.forEach(areaIndex => proximityGroupByArea.set(areaIndex, groupIndex));
+    svg.appendChild(svgTitle(pageCardTooltip(page)));
+    const draftIndexByArea = new Map();
+    baseTemplateAreaDrafts.forEach((draft, draftIndex) => {
+        draft.areaIndices.forEach(areaIndex => draftIndexByArea.set(areaIndex, draftIndex));
     });
 
-    proximityGroups.forEach((group, i) => {
-        const p = group.position;
-        const tip = `G${i + 1}\nw ${p.w}mm · h ${p.h}mm · x ${p.x}mm · y ${p.y}mm`;
+    baseTemplateAreaDrafts.forEach(draft => {
+        const p = draft.position;
+        const tip = `${draft.name}\nw ${p.w}mm · h ${p.h}mm · x ${p.x}mm · y ${p.y}mm`;
+        const gx = svgPos(p.x, scale), gy = svgPos(p.y, scale),
+            gw = svgDim(p.w, scale), gh = svgDim(p.h, scale);
 
         const bg = svgEl("rect", {
-            x: svgPos(p.x, scale), y: svgPos(p.y, scale),
-            width: svgDim(p.w, scale), height: svgDim(p.h, scale),
+            x: gx, y: gy, width: gw, height: gh,
             fill: "transparent", stroke: "none", "pointer-events": "all"
         });
-        bg.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {textContent: tip}));
+        bg.appendChild(svgTitle(tip));
         svg.appendChild(bg);
 
         const border = svgEl("rect", {
-            x: svgPos(p.x, scale), y: svgPos(p.y, scale),
-            width: svgDim(p.w, scale), height: svgDim(p.h, scale),
+            x: gx, y: gy, width: gw, height: gh,
             fill: "none", stroke: "#e00", "stroke-width": 1.5, "stroke-dasharray": "5,3",
             "pointer-events": "none"
         });
         svg.appendChild(border);
 
         const label = svgEl("text", {
-            x: svgPos(p.x, scale) + 2, y: svgPos(p.y, scale) - 2,
+            x: gx + 2, y: gy - 2,
             "font-size": 7, fill: "#e00", "font-weight": "bold", "pointer-events": "none"
         });
-        label.textContent = `G${i + 1}`;
+        label.textContent = draft.name.length > 24 ? draft.name.slice(0, 24) : draft.name;
         svg.appendChild(label);
     });
 
@@ -992,12 +1238,12 @@ function buildPageSvg(page, proximityGroups) {
             .filter(({o, oi}) => oi !== i
                 && o.x < a.x + a.w && o.x + o.w > a.x
                 && o.y < a.y + a.h && o.y + o.h > a.y)
-            .sort((a, b) => (a.o.w * a.o.h) - (b.o.w * b.o.h));
+            .sort((m, n) => (m.o.w * m.o.h) - (n.o.w * n.o.h));
 
-        const proximityGroupIndex = proximityGroupByArea.get(i);
-        const pg = proximityGroupIndex != null ? proximityGroups[proximityGroupIndex] : null;
-        const pgLine = pg ? `G${proximityGroupIndex + 1}\nw ${pg.position.w}mm · h ${pg.position.h}mm · x ${pg.position.x}mm · y ${pg.position.y}mm\n\n` : "";
-        const tip = pgLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
+        const draftIndex = draftIndexByArea.get(i);
+        const draft = draftIndex != null ? baseTemplateAreaDrafts[draftIndex] : null;
+        const draftLine = draft ? `${draft.name}\nw ${draft.position.w}mm · h ${draft.position.h}mm · x ${draft.position.x}mm · y ${draft.position.y}mm\n\n` : "";
+        const tip = draftLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
 
         const rect = svgEl("rect", {
             x: rx, y: ry, width: rw, height: rh,
@@ -1005,7 +1251,7 @@ function buildPageSvg(page, proximityGroups) {
             "stroke-width": isRoot ? "1.5" : "1",
             "stroke-dasharray": isRoot ? "none" : "3,2"
         });
-        rect.appendChild(Object.assign(document.createElementNS("http://www.w3.org/2000/svg", "title"), {textContent: tip}));
+        rect.appendChild(svgTitle(tip));
         svg.appendChild(rect);
 
         if (rw > 12 && rh > 8) {
@@ -1268,7 +1514,7 @@ function buildPageCard(pageIndex) {
     });
     wrap.appendChild(title);
 
-    const svg = buildPageSvg(currentData.pages[pageIndex], currentAnalysis.pageProximityGroups[pageIndex] ?? []);
+    const svg = buildPageSvg(currentData.pages[pageIndex], currentAnalysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []);
     if (svg) wrap.appendChild(svg);
     return wrap;
 }
@@ -1541,12 +1787,12 @@ function ensureAnalysis(data, previousAnalysis, activeSettings) {
     const similarity = sameData
         ? previousAnalysis.similarity
         : buildSimilarity(data);
-    const pageProximityGroups = sameData && previousAnalysis.proximityGap === activeSettings.proximityGap
-        ? previousAnalysis.pageProximityGroups
-        : buildPageProximityGroups(data.pages, activeSettings.proximityGap);
+    const pageBaseTemplateAreaDrafts = sameData && previousAnalysis.proximityGap === activeSettings.proximityGap
+        ? previousAnalysis.pageBaseTemplateAreaDrafts
+        : buildBaseTemplateAreaDrafts(data.pages, activeSettings.proximityGap);
     return {
         similarity,
-        pageProximityGroups,
+        pageBaseTemplateAreaDrafts,
         proximityGap: activeSettings.proximityGap,
     };
 }
@@ -1634,9 +1880,9 @@ function buildSimilarity(data) {
 /**
  * @param {PageEntry[]} pages
  * @param {number} groupingGap
- * @returns {ProximityGroup[][]}
+ * @returns {BaseTemplateAreaDraft[][]}
  */
-function buildPageProximityGroups(pages, groupingGap) {
+function buildBaseTemplateAreaDrafts(pages, groupingGap) {
     return pages.map(page => groupByProximity(page.areas, groupingGap));
 }
 
@@ -1727,10 +1973,10 @@ function templatePageOrder(page) {
 
 /**
  * Vertical sweep grouping: areas whose Y ranges overlap or are within
- * the proximity gap of each other are placed in the same group.
+ * the proximity gap of each other are placed in the same base template area draft.
  * @param {AreaEntry[]} areas
  * @param {number} groupingGap
- * @returns {ProximityGroup[]}
+ * @returns {BaseTemplateAreaDraft[]}
  */
 function groupByProximity(areas, groupingGap) {
     if (!areas.length) return [];
@@ -1752,12 +1998,13 @@ function groupByProximity(areas, groupingGap) {
     });
     groupedIndices.push(current);
 
-    return groupedIndices.map(areaIndices => {
+    return groupedIndices.map((areaIndices, draftIndex) => {
         const subset = areaIndices.map(index => areas[index]);
         const x = Math.min(...subset.map(area => area.x));
         const y = Math.min(...subset.map(area => area.y));
         const x2 = Math.max(...subset.map(area => area.x + area.w));
         const y2 = Math.max(...subset.map(area => area.y + area.h));
+        const previewSource = areaIndices.map(idx => areas[idx].contentPreview).find(Boolean);
         return {
             areaIndices,
             position: {
@@ -1766,6 +2013,7 @@ function groupByProximity(areas, groupingGap) {
                 w: roundTo(x2 - x, 2),
                 h: roundTo(y2 - y, 2),
             },
+            name: parseFlowNameFromPreview(previewSource) || `Area ${draftIndex + 1}`,
         };
     });
 }
@@ -1956,6 +2204,16 @@ function svgEl(tag, attrs) {
 }
 
 /**
+ * @param {string} text
+ * @returns {SVGTitleElement}
+ */
+function svgTitle(text) {
+    const title = /** @type {SVGTitleElement} */ (document.createElementNS("http://www.w3.org/2000/svg", "title"));
+    title.textContent = text;
+    return title;
+}
+
+/**
  * @param {number} mm
  * @param {number} scale
  * @returns {number}
@@ -1979,8 +2237,8 @@ function svgDim(mm, scale) {
  */
 function areaLabel(preview) {
     if (!preview) return "";
-    const m = preview.match(/\(([^)]+)\)$/);
-    return m ? m[1] : preview.slice(0, 40);
+    const firstChunk = preview.split(";")[0];
+    return firstChunk.slice(0, 40);
 }
 
 /**

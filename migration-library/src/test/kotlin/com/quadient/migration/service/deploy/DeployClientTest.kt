@@ -14,6 +14,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -78,6 +79,7 @@ class DeployClientTest {
     val displayRuleRepository = mockk<DisplayRuleRepository>()
     val variableRepository = mockk<VariableRepository>()
     val variableStructureRepository = mockk<VariableStructureRepository>()
+    val baseTemplateRepository = mockk<BaseTemplateRepository>()
     val ipsService = mockk<IpsService>()
     val storage = mockk<Storage>()
     val projectConfig = aProjectConfig(output = InspireOutput.Designer)
@@ -104,6 +106,7 @@ class DeployClientTest {
         displayRuleRepository,
         variableRepository,
         variableStructureRepository,
+        baseTemplateRepository,
         documentObjectBuilder,
         ipsService,
         storage

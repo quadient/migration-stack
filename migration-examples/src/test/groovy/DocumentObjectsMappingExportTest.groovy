@@ -37,7 +37,7 @@ class DocumentObjectsMappingExportTest {
                         .customFields(["originalName": "originalFull"])
                         .targetFolder("someDir")
                         .variableStructureRef("struct")
-                        .baseTemplate("tmpl.wfd")
+                        .baseTemplateRef("tmplRef")
                         .build(),
         ])
 
@@ -50,7 +50,7 @@ class DocumentObjectsMappingExportTest {
             empty,,Block,false,,,,Active,false,,,,[]
             full,full,Page,false,tmpl.wfd,someDir,struct,Active,true,placeholder,reason,,[foo; bar]
             overridden empty,,Block,false,,,,Active,false,,,,[]
-            overridden full,full,Page,false,tmpl.wfd,someDir,struct,Active,false,,,originalFull,[foo; bar]
+            overridden full,full,Page,false,\$tmplRef,someDir,struct,Active,false,,,originalFull,[foo; bar]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

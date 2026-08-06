@@ -2,6 +2,7 @@ package com.quadient.migration.service
 
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
@@ -44,6 +45,9 @@ interface ResourcePathProvider {
     }
 
     fun getDisplayRulePath(rule: DisplayRule): IcmPath
+
+    fun getBaseTemplatePath(literalPath: String): IcmPath
+    fun getBaseTemplatePath(baseTemplate: BaseTemplate): IcmPath
 
     fun getStyleDefinitionPath(): IcmPath
 
@@ -110,6 +114,14 @@ class DesignerResourcePathProvider(private val projectConfig: ProjectConfig) : R
 
     override fun getDisplayRulePath(rule: DisplayRule): IcmPath {
         error("External display rules are not supported and should not be used for Designer output. Report this as a bug.")
+    }
+
+    override fun getBaseTemplatePath(literalPath: String): IcmPath {
+        error("Referencing base templates is not supported for Designer output. Report this as a bug.")
+    }
+
+    override fun getBaseTemplatePath(baseTemplate: BaseTemplate): IcmPath {
+        error("Referencing base templates by id is not supported for Designer output. Report this as a bug.")
     }
 
     override fun getFontRootFolder(): IcmPath {
@@ -199,6 +211,26 @@ open class InteractiveResourcePathProvider(private val projectConfig: ProjectCon
 
         return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant).join(fileConfigPath)
             .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(attachmentName)
+    }
+
+    override fun getBaseTemplatePath(literalPath: String): IcmPath {
+        return IcmPath.root()
+            .join("Interactive")
+            .join(projectConfig.interactiveTenant)
+            .join("BaseTemplates")
+            .join(literalPath)
+    }
+
+    override fun getBaseTemplatePath(baseTemplate: BaseTemplate): IcmPath {
+        val fileName = "${baseTemplate.name ?: baseTemplate.id}.wfd"
+
+        val targetFolder = baseTemplate.targetFolder?.let { IcmPath.from(it) }
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName)
+        }
+
+        val relativePath = resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)?.join(fileName) ?: IcmPath.from(fileName)
+        return getBaseTemplatePath(relativePath.toString())
     }
 
     override fun getStyleDefinitionPath(): IcmPath {

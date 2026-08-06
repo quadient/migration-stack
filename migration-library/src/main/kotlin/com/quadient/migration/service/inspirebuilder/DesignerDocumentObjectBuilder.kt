@@ -4,6 +4,7 @@ import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -58,6 +59,7 @@ class DesignerDocumentObjectBuilder(
     resourcePathProvider: ResourcePathProvider,
     projectConfig: ProjectConfig,
     icmDataCache: IcmDataCache,
+    baseTemplateRepository: BaseTemplateRepository,
 ) : InspireDocumentObjectBuilder(
     documentObjectRepository,
     textStyleRepository,
@@ -71,6 +73,7 @@ class DesignerDocumentObjectBuilder(
     resourcePathProvider,
     projectConfig.inspireOutput,
     icmDataCache,
+    baseTemplateRepository,
 ) {
     private val resolvedStyleDefinitionPath: IcmPath? by lazy {
         val path = resourcePathProvider.getStyleDefinitionPath()

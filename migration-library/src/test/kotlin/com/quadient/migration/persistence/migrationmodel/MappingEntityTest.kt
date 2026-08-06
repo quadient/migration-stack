@@ -9,6 +9,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuild
 import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
+import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.shared.Alignment
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DataType
@@ -69,7 +70,7 @@ class MappingEntityTest {
             val mapping = MappingItemEntity.DocumentObject(
                 name = "new name",
                 internal = false,
-                baseTemplate = "new base",
+                baseTemplate = LiteralBaseTemplatePathEntity("new base"),
                 targetFolder = "new folder",
                 type = Block,
                 variableStructureRef = "new structure",
@@ -89,7 +90,7 @@ class MappingEntityTest {
 
             assertEquals(result.name, "new name")
             assertEquals(result.internal, false)
-            assertEquals(result.baseTemplate, "new base")
+            assertEquals(result.baseTemplate, LiteralBaseTemplatePath("new base"))
             assertEquals(result.targetFolder, "new folder")
             assertEquals(result.type, Block)
             assertEquals(result.variableStructureRef?.id, "new structure")

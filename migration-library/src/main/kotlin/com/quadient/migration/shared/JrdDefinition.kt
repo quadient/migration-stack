@@ -27,11 +27,11 @@ class Jrd(@field:JsonProperty("InteractivePlusJsonDefinition") val interactivePl
     companion object {
         fun fromDisplayRule(
             rule: DisplayRule,
-            projectConfig: ProjectConfig,
+            baseTemplate: String,
             variableStructure: VariableStructure,
-            findVar: (String) -> Variable
+            findVar: (String) -> Variable,
         ): String {
-            val result = Jrd(JrdDefinition.fromDisplayRule(rule, projectConfig, variableStructure, findVar))
+            val result = Jrd(JrdDefinition.fromDisplayRule(rule, baseTemplate, variableStructure, findVar))
             return JsonMapper.builder().disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY).build()
                 .writerWithDefaultPrettyPrinter().writeValueAsString(result)
         }
@@ -50,9 +50,9 @@ data class JrdDefinition(
     companion object {
         fun fromDisplayRule(
             rule: DisplayRule,
-            projectConfig: ProjectConfig,
+            baseTemplate: String,
             variableStructure: VariableStructure,
-            findVar: (String) -> Variable
+            findVar: (String) -> Variable,
         ): JrdDefinition {
             val nodes = mutableListOf<Node?>(null)
 
@@ -82,9 +82,6 @@ data class JrdDefinition(
 
                 variable
             }
-
-            val baseTemplate = IcmPath.from(rule.baseTemplate ?: projectConfig.baseTemplatePath)
-                .toMapInteractive(projectConfig.interactiveTenant)
 
             val ruleDef = requireNotNull(rule.definition) { "Display rule '${rule.id}' cannot be deployed because it has missing definition" }
             val value = JrdDefinition(

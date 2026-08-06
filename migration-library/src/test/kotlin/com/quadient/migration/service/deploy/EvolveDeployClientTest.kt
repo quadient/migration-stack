@@ -8,6 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -52,6 +53,7 @@ class EvolveDeployClientTest {
     val displayRuleRepository = mockk<DisplayRuleRepository>()
     val variableRepository = mockk<VariableRepository>()
     val variableStructureRepository = mockk<VariableStructureRepository>()
+    val baseTemplateRepository = mockk<BaseTemplateRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
     val documentObjectBuilder = mockk<InteractiveDocumentObjectBuilder>()
     val ipsService = mockk<IpsService>()
@@ -102,6 +104,7 @@ class EvolveDeployClientTest {
         displayRuleRepository,
         variableRepository,
         variableStructureRepository,
+        baseTemplateRepository,
         documentObjectBuilder,
         ipsService,
         storage,
@@ -335,7 +338,7 @@ class EvolveDeployClientTest {
     @Test
     fun `uploadDocumentObject for Block uses custom baseTemplate when set on document object`() {
         val customBaseTemplate = "icm://Interactive/tenant/BaseTemplates/custom.wfd"
-        val block = DocumentObjectBuilder("B1", DocumentObjectType.Block).baseTemplate(customBaseTemplate).build()
+        val block = DocumentObjectBuilder("B1", DocumentObjectType.Block).baseTemplatePath(customBaseTemplate).build()
         val targetPath = "icm://Interactive/tenant/B1.jld".toIcmPath()
         val draftResult = DraftJsonIpsResult(
             draft = CreateDraftResult(guid = draftGuid, url = "http://example.com"),

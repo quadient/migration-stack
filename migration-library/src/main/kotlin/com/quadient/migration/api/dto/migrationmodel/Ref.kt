@@ -1,6 +1,8 @@
 package com.quadient.migration.api.dto.migrationmodel
 
 import com.quadient.migration.persistence.migrationmodel.ColumnLayoutEntity
+import com.quadient.migration.persistence.migrationmodel.BaseTemplateEntityRef
+import com.quadient.migration.persistence.migrationmodel.BaseTemplateLocationEntity
 import com.quadient.migration.persistence.migrationmodel.DisplayRuleEntityRef
 import com.quadient.migration.persistence.migrationmodel.DocumentObjectEntityRef
 import com.quadient.migration.persistence.migrationmodel.FirstMatchEntity
@@ -8,6 +10,7 @@ import com.quadient.migration.persistence.migrationmodel.HyperlinkEntity
 import com.quadient.migration.persistence.migrationmodel.ImageEntityRef
 import com.quadient.migration.persistence.migrationmodel.AttachmentEntityRef
 import com.quadient.migration.persistence.migrationmodel.BarcodeEntity
+import com.quadient.migration.persistence.migrationmodel.LiteralBaseTemplatePathEntity
 import com.quadient.migration.persistence.migrationmodel.ParagraphStyleEntityRef
 import com.quadient.migration.persistence.migrationmodel.ResourceEntityRef
 import com.quadient.migration.persistence.migrationmodel.StringEntity
@@ -136,6 +139,36 @@ data class AttachmentRef(override val id: String) : ResourceRef(id) {
 
 data class VariableStructureRef(override val id: String) : Ref(id) {
     fun toDb() = VariableStructureEntityRef(id)
+}
+
+sealed interface BaseTemplateLocation {
+    companion object {
+        fun fromDb(entity: BaseTemplateLocationEntity): BaseTemplateLocation = when (entity) {
+            is LiteralBaseTemplatePathEntity -> LiteralBaseTemplatePath.fromDb(entity)
+            is BaseTemplateEntityRef -> BaseTemplateRef.fromDb(entity)
+        }
+    }
+}
+
+fun BaseTemplateLocation.toDb(): BaseTemplateLocationEntity = when (this) {
+    is LiteralBaseTemplatePath -> this.toDb()
+    is BaseTemplateRef -> this.toDb()
+}
+
+data class LiteralBaseTemplatePath(val path: String) : BaseTemplateLocation {
+    companion object {
+        fun fromDb(entity: LiteralBaseTemplatePathEntity) = LiteralBaseTemplatePath(entity.path)
+    }
+
+    fun toDb() = LiteralBaseTemplatePathEntity(path)
+}
+
+data class BaseTemplateRef(override val id: String) : Ref(id), BaseTemplateLocation {
+    companion object {
+        fun fromDb(entity: BaseTemplateEntityRef) = BaseTemplateRef(entity.id)
+    }
+
+    fun toDb() = BaseTemplateEntityRef(id)
 }
 
 data class StringValue(val value: String) : VariableStringContent {

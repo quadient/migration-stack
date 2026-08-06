@@ -13,7 +13,7 @@ sealed class MappingItem {
     data class DocumentObject(
         override var name: String?,
         var internal: Boolean?,
-        var baseTemplate: String?,
+        var baseTemplate: BaseTemplateLocation?,
         var targetFolder: String?,
         var type: DocumentObjectType?,
         var variableStructureRef: String?,
@@ -98,9 +98,15 @@ sealed class MappingItem {
         override var name: String?,
         var targetFolder: String?,
         var targetId: String?,
-        var baseTemplate: String?,
+        var baseTemplate: BaseTemplateLocation?,
         var variableStructureRef: String?,
         var internal: Boolean?,
+    ) : MappingItem()
+
+    data class BaseTemplate(
+        override var name: String?,
+        var targetFolder: String?,
+        var pages: List<BaseTemplatePage> = emptyList(),
     ) : MappingItem()
 
     data class Table(
@@ -123,7 +129,7 @@ sealed class MappingItem {
                 MappingItemEntity.DocumentObject(
                     name = this.name,
                     internal = this.internal,
-                    baseTemplate = this.baseTemplate,
+                    baseTemplate = this.baseTemplate?.toDb(),
                     targetFolder = this.targetFolder,
                     type = this.type,
                     variableStructureRef = this.variableStructureRef,
@@ -133,6 +139,12 @@ sealed class MappingItem {
 
             is MappingItem.Area -> MappingItemEntity.Area(
                 name = this.name, areas = this.areas, flowToNextPage = this.flowToNextPage
+            )
+
+            is MappingItem.BaseTemplate -> MappingItemEntity.BaseTemplate(
+                name = this.name,
+                targetFolder = this.targetFolder,
+                pages = this.pages,
             )
 
             is MappingItem.Image -> {
@@ -221,7 +233,7 @@ sealed class MappingItem {
                 internal = this.internal,
                 variableStructureRef = this.variableStructureRef,
                 targetFolder = this.targetFolder,
-                baseTemplate = this.baseTemplate,
+                baseTemplate = this.baseTemplate?.toDb(),
             )
 
             is MappingItem.Table -> MappingItemEntity.Table(

@@ -37,6 +37,7 @@ import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.ImageType
+import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.shared.LiteralOrFunctionCall
 import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.Position
@@ -71,7 +72,7 @@ fun aDocObj(
         created = null,
         lastUpdated = null,
         displayRuleRef = displayRuleRef?.let { DisplayRuleRef(it) },
-        baseTemplate = baseTemplate,
+        baseTemplate = baseTemplate?.let { LiteralBaseTemplatePath(it) },
         variableStructureRef = VariableStructureRef?.let { VariableStructureRef(it) },
         options = options,
         metadata = metadata,
@@ -108,7 +109,7 @@ fun aBlock(
         created = created,
         lastUpdated = lastUpdated,
         displayRuleRef = displayRuleRef,
-        baseTemplate = baseTemplate,
+        baseTemplate = baseTemplate?.let { LiteralBaseTemplatePath(it) },
         options = null,
         metadata = metadata,
         skip = skip,
@@ -140,7 +141,7 @@ fun aTemplate(
         customFields = CustomFieldMap(),
         created = null,
         lastUpdated = null,
-        baseTemplate = baseTemplate,
+        baseTemplate = baseTemplate?.let { LiteralBaseTemplatePath(it) },
         options = null,
         metadata = emptyList(),
         skip = SkipOptions(false, null, null),

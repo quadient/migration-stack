@@ -1,6 +1,7 @@
 package com.quadient.migration.service
 
 import com.quadient.migration.api.dto.migrationmodel.*
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.AttachmentRepository
@@ -19,6 +20,7 @@ class ReferenceValidator(
     private val displayRuleRepository: DisplayRuleRepository,
     private val imageRepository: ImageRepository,
     private val attachmentRepository: AttachmentRepository,
+    private val baseTemplateRepository: BaseTemplateRepository,
 ) {
     /**
      * Validates all objects in the database.
@@ -152,6 +154,17 @@ class ReferenceValidator(
                         validatedRefs.add(current)
                         alreadyValidRefs.add(current)
                         queue.addAll(variableStructure.collectRefs())
+                    } else {
+                        missingRefs.add(current)
+                    }
+                }
+
+                is BaseTemplateRef -> {
+                    val baseTemplate = baseTemplateRepository.find(current.id)
+
+                    if (baseTemplate != null) {
+                        validatedRefs.add(current)
+                        alreadyValidRefs.add(current)
                     } else {
                         missingRefs.add(current)
                     }

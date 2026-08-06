@@ -16,6 +16,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -99,6 +100,7 @@ class InteractiveDeployClientTest {
     val displayRuleRepository = mockk<DisplayRuleRepository>()
     val variableRepository = mockk<VariableRepository>()
     val variableStructureRepository = mockk<VariableStructureRepository>()
+    val baseTemplateRepository = mockk<BaseTemplateRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
     val documentObjectBuilder = mockk<InteractiveDocumentObjectBuilder>()
     val ipsService = mockk<IpsService>()
@@ -131,6 +133,7 @@ class InteractiveDeployClientTest {
         displayRuleRepository,
         variableRepository,
         variableStructureRepository,
+        baseTemplateRepository,
         documentObjectBuilder,
         ipsService,
         storage,

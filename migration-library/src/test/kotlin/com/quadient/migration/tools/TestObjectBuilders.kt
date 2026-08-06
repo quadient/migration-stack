@@ -29,6 +29,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -52,6 +53,7 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.LineSpacing
+import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SkipOptions
@@ -92,7 +94,7 @@ fun aBlockDto(
         metadata = emptyList(),
         skip = SkipOptions(false, null, null),
         subject = null,
-        baseTemplate = baseTemplate,
+        baseTemplate = baseTemplate?.let { LiteralBaseTemplatePath(it) },
         variableStructureRef = variableStructureRef,
     )
 }
@@ -147,7 +149,7 @@ fun aBlockModel(
         created = Clock.System.now(),
         lastUpdated = Clock.System.now(),
         displayRuleRef = null,
-        baseTemplate = baseTemplate,
+        baseTemplate = baseTemplate?.let { LiteralBaseTemplatePath(it) },
         options = options,
         metadata = emptyList(),
         skip = SkipOptions(false, null, null),
@@ -528,3 +530,4 @@ fun aTextStyleRepository() = TextStyleRepository(ProjectName(aProjectConfig().na
 fun aDisplayRuleRepository() = DisplayRuleRepository(ProjectName(aProjectConfig().name), statusRepo)
 fun aImageRepository() = ImageRepository(ProjectName(aProjectConfig().name), statusRepo)
 fun aAttachmentRepository() = AttachmentRepository(ProjectName(aProjectConfig().name), statusRepo)
+fun aBaseTemplateRepository() = BaseTemplateRepository(ProjectName(aProjectConfig().name))

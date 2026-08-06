@@ -1,5 +1,5 @@
 //! ---
-//! displayName: Export Areas
+//! displayName: Export Layout
 //! category: Mapping
 //! description: Export areas assigned to the appropriate pages and templates. Allows user to modify interactive flow name
 //! target: gradle
@@ -12,6 +12,8 @@ import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectFilte
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
+import com.quadient.migration.shared.BaseTemplateArea
+import com.quadient.migration.shared.BaseTemplatePage
 import com.quadient.migration.shared.DocumentObjectType
 import groovy.transform.Field
 
@@ -21,7 +23,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 @Field Migration migration = initMigration(this.binding)
 
-def areasFile = Mapping.csvPath(binding, migration.projectConfig.name, "areas")
+def areasFile = Mapping.csvPath(binding, migration.projectConfig.name, "layout")
 
 run(migration, areasFile)
 
@@ -50,7 +52,9 @@ static void run(Migration migration, Path path) {
             Mapping.displayHeader("y", true),
             Mapping.displayHeader("width", true),
             Mapping.displayHeader("height", true),
-            Mapping.displayHeader("contentPreview", true)
+            Mapping.displayHeader("type", false),
+            Mapping.displayHeader("targetId", false),
+            Mapping.displayHeader("contentPreview", true),
         ]
         writer.writeLine(headers.join(","))
         templates.each { template ->
@@ -82,6 +86,16 @@ static void run(Migration migration, Path path) {
                 areas.eachWithIndex { area, idx -> writer.writeLine(buildArea(migration, idx, area, page, null)) }
             }
         }
+
+        def baseTemplates = migration.baseTemplateRepository.listAll() ?: []
+        baseTemplates.each { baseTemplate ->
+            baseTemplate.pages.eachWithIndex { page, pageIdx ->
+                def pageId = "page-${pageIdx + 1}"
+                page.areas.each { area ->
+                    writer.writeLine(buildBaseTemplateArea(baseTemplate, pageId, page, area))
+                }
+            }
+        }
     }
 }
 
@@ -102,7 +116,33 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     builder.append(Csv.serialize(area.position.width) + ",")
     builder.append(Csv.serialize(area.position.height) + ",")
 
+    builder.append("Standard,")
+    builder.append(Csv.serialize(page?.baseTemplate ?: template?.baseTemplate) + ",")
+
     builder.append(Csv.serialize(migration.previewProvider.buildDocumentContentListPreview(area.content)))
+
+    return builder.toString()
+}
+
+static String buildBaseTemplateArea(BaseTemplate baseTemplate, String pageId, BaseTemplatePage page, BaseTemplateArea area) {
+    def builder = new StringBuilder()
+    builder.append(Csv.serialize(baseTemplate.id) + ",")
+    builder.append(Csv.serialize(baseTemplate.name) + ",")
+    builder.append(Csv.serialize(pageId) + ",")
+    builder.append(Csv.serialize(page.name) + ",")
+    builder.append(Csv.serialize(page.pageWidth) + ",")
+    builder.append(Csv.serialize(page.pageHeight) + ",")
+    builder.append(Csv.serialize(area.interactiveFlowName) + ",")
+    builder.append(Csv.serialize(area.flowToNextPage) + ",")
+    builder.append(Csv.serialize(area.position?.x) + ",")
+    builder.append(Csv.serialize(area.position?.y) + ",")
+    builder.append(Csv.serialize(area.position?.width) + ",")
+    builder.append(Csv.serialize(area.position?.height) + ",")
+
+    builder.append("Base,")
+    builder.append(Csv.serialize(null) + ",")
+
+    builder.append(Csv.serialize(null))
 
     return builder.toString()
 }

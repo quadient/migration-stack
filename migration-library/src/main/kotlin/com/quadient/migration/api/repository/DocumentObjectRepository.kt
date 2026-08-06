@@ -85,7 +85,7 @@ class DocumentObjectRepository(projectName: ProjectName, private val statusTrack
                 stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
                 stmt.setString(index++, dto.displayRuleRef?.id)
                 stmt.setString(index++, dto.variableStructureRef?.id)
-                stmt.setString(index++, dto.baseTemplate)
+                stmt.setObject(index++, dto.baseTemplate?.let { Json.encodeToString(it.toDb()) }, Types.OTHER)
                 stmt.setObject(index++, dto.options?.let { Json.encodeToString(it.toDb()) }, Types.OTHER)
                 stmt.setObject(index++, dto.pdfMetadata?.let { Json.encodeToString(it.toDb()) }, Types.OTHER)
                 stmt.setObject(index++, dto.metadata.let { Json.encodeToString(it) }, Types.OTHER)
@@ -128,7 +128,7 @@ class DocumentObjectRepository(projectName: ProjectName, private val statusTrack
                 it[DocumentObjectTable.lastUpdated] = now
                 it[DocumentObjectTable.displayRuleRef] = dto.displayRuleRef?.id
                 it[DocumentObjectTable.variableStructureRef] = dto.variableStructureRef?.id
-                it[DocumentObjectTable.baseTemplate] = dto.baseTemplate
+                it[DocumentObjectTable.baseTemplate] = dto.baseTemplate?.toDb()
                 it[DocumentObjectTable.documentObjectOptions] = dto.options?.toDb()
                 it[DocumentObjectTable.pdfMetadata] = dto.pdfMetadata?.toDb()
                 it[DocumentObjectTable.metadata] = dto.metadata

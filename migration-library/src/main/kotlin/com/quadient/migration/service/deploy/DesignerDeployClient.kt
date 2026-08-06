@@ -7,6 +7,7 @@ import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -57,6 +58,7 @@ class DesignerDeployClient(
     displayRuleRepository: DisplayRuleRepository,
     variableRepository: VariableRepository,
     variableStructureRepository: VariableStructureRepository,
+    baseTemplateRepository: BaseTemplateRepository,
     documentObjectBuilder: InspireDocumentObjectBuilder,
     ipsService: IpsService,
     storage: Storage,
@@ -77,6 +79,7 @@ class DesignerDeployClient(
     displayRuleRepository,
     variableRepository,
     variableStructureRepository,
+    baseTemplateRepository,
     documentObjectBuilder,
     ipsService,
     storage

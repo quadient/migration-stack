@@ -25,6 +25,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -82,6 +83,7 @@ class InspireDocumentObjectBuilderTest {
     private val displayRuleRepository = mockk<DisplayRuleRepository>()
     private val imageRepository = mockk<ImageRepository>()
     private val attachmentRepository = mockk<AttachmentRepository>()
+    private val baseTemplateRepository = mockk<BaseTemplateRepository>()
     private val ipsService = mockk<IpsService>()
     private val resourcePathProvider = DesignerResourcePathProvider(config)
     private val icmDataCache = DesignerIcmDataCache(ipsService, resourcePathProvider)
@@ -100,6 +102,7 @@ class InspireDocumentObjectBuilderTest {
         resourcePathProvider,
         config,
         icmDataCache,
+        baseTemplateRepository,
     )
 
     @BeforeEach
@@ -1522,5 +1525,6 @@ class InspireDocumentObjectBuilderTest {
         resourcePathProvider,
         config,
         icmDataCache,
+        baseTemplateRepository,
     )
 }

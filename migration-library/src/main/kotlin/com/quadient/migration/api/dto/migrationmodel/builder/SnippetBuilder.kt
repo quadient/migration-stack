@@ -17,6 +17,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasSubje
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTargetFolder
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasVariableStructureRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectOptions
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
@@ -54,7 +55,7 @@ class FirstMatchSnippetBuilder(id: String) : DtoBuilderBase<DocumentObject, Firs
     override var displayRuleRef: DisplayRuleRef? = null
     override var internal: Boolean = false
     override var targetFolder: String? = null
-    override var baseTemplate: String? = null
+    override var baseTemplate: BaseTemplateLocation? = null
     override var subject: String? = null
     override var options: DocumentObjectOptions? = null
     override var metadata: MutableList<MetadataEntry> = mutableListOf()
@@ -118,7 +119,7 @@ class SimpleSnippetBuilder(id: String) : DtoBuilderBase<DocumentObject, SimpleSn
     override var displayRuleRef: DisplayRuleRef? = null
     override var internal: Boolean = false
     override var targetFolder: String? = null
-    override var baseTemplate: String? = null
+    override var baseTemplate: BaseTemplateLocation? = null
     override var subject: String? = null
     override var options: DocumentObjectOptions? = null
     override var metadata: MutableList<MetadataEntry> = mutableListOf()

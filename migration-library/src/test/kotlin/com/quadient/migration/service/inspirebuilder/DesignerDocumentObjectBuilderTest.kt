@@ -23,6 +23,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.EmailObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.SmsObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.ShapeBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -89,6 +90,7 @@ class DesignerDocumentObjectBuilderTest {
     val displayRuleRepository = mockk<DisplayRuleRepository>()
     val imageRepository = mockk<ImageRepository>()
     val attachmentRepository = mockk<AttachmentRepository>()
+    val baseTemplateRepository = mockk<BaseTemplateRepository>()
     val ipsService = mockk<IpsService>()
     val config = aProjectConfig(targetDefaultFolder = "defaultFolder", output = InspireOutput.Designer)
     val resourcePathProvider = DesignerResourcePathProvider(config)
@@ -1283,6 +1285,7 @@ class DesignerDocumentObjectBuilderTest {
         resourcePathProvider,
         config,
         icmDataCache,
+        baseTemplateRepository,
     )
 
     @Test
