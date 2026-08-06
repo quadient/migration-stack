@@ -25,11 +25,11 @@ annotation class TableBuilderDsl
 
 @TableBuilderDsl
 class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
-    override val rows = mutableListOf<TableRow>()
-    private var header = mutableListOf<TableRow>()
-    private var firstHeader = mutableListOf<TableRow>()
-    private var footer = mutableListOf<TableRow>()
-    private var lastFooter = mutableListOf<TableRow>()
+    override val rows = mutableListOf<TableRowOrBuilder>()
+    private var header = mutableListOf<TableRowOrBuilder>()
+    private var firstHeader = mutableListOf<TableRowOrBuilder>()
+    private var footer = mutableListOf<TableRowOrBuilder>()
+    private var lastFooter = mutableListOf<TableRowOrBuilder>()
     private val columnWidths = mutableListOf<ColumnWidth>()
     private var pdfTaggingRule: TablePdfTaggingRule = TablePdfTaggingRule.Default
     private var pdfAlternateText: String? = null
@@ -84,15 +84,27 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
     fun addRepeatedHeaderRow(variable: VariablePath) = RepeatedRowBuilder(variable).also { header.add(it) }
     fun addRepeatedHeaderRow(variable: VariablePath, init: RepeatedRowBuilder.() -> Unit): TableBuilder =
         apply { header.add(RepeatedRowBuilder(variable).apply(init)) }
+    fun addRepeatedHeaderRow(repeatedRow: Table.RepeatedRow): TableBuilder = apply {
+        header.add(PrebuiltRow(repeatedRow))
+    }
     fun addRepeatedFirstHeaderRow(variable: VariablePath) = RepeatedRowBuilder(variable).also { firstHeader.add(it) }
     fun addRepeatedFirstHeaderRow(variable: VariablePath, init: RepeatedRowBuilder.() -> Unit): TableBuilder =
         apply { firstHeader.add(RepeatedRowBuilder(variable).apply(init)) }
+    fun addRepeatedFirstHeaderRow(repeatedRow: Table.RepeatedRow): TableBuilder = apply {
+        firstHeader.add(PrebuiltRow(repeatedRow))
+    }
     fun addRepeatedFooterRow(variable: VariablePath) = RepeatedRowBuilder(variable).also { footer.add(it) }
     fun addRepeatedFooterRow(variable: VariablePath, init: RepeatedRowBuilder.() -> Unit): TableBuilder =
         apply { footer.add(RepeatedRowBuilder(variable).apply(init)) }
+    fun addRepeatedFooterRow(repeatedRow: Table.RepeatedRow): TableBuilder = apply {
+        footer.add(PrebuiltRow(repeatedRow))
+    }
     fun addRepeatedLastFooterRow(variable: VariablePath) = RepeatedRowBuilder(variable).also { lastFooter.add(it) }
     fun addRepeatedLastFooterRow(variable: VariablePath, init: RepeatedRowBuilder.() -> Unit): TableBuilder =
         apply { lastFooter.add(RepeatedRowBuilder(variable).apply(init)) }
+    fun addRepeatedLastFooterRow(repeatedRow: Table.RepeatedRow): TableBuilder = apply {
+        lastFooter.add(PrebuiltRow(repeatedRow))
+    }
 
     /**
      * Adds a table style to this table. The table style must exist in
@@ -106,11 +118,11 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
 
     fun build(): Table {
         return Table(
-            rows = rows.map(TableRow::build),
-            header = header.map(TableRow::build),
-            firstHeader = firstHeader.map(TableRow::build),
-            footer = footer.map(TableRow::build),
-            lastFooter = lastFooter.map(TableRow::build),
+            rows = rows.map(TableRowOrBuilder::unwrap),
+            header = header.map(TableRowOrBuilder::unwrap),
+            firstHeader = firstHeader.map(TableRowOrBuilder::unwrap),
+            footer = footer.map(TableRowOrBuilder::unwrap),
+            lastFooter = lastFooter.map(TableRowOrBuilder::unwrap),
             columnWidths = columnWidths.map { Table.ColumnWidth(it.minWidth, it.percentWidth) },
             pdfTaggingRule = pdfTaggingRule,
             pdfAlternateText = pdfAlternateText,
@@ -125,15 +137,28 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
         )
     }
 
-    /** Builder row type — sealed to allow both [Row] and [RepeatedRowBuilder] in the same list. */
-    sealed interface TableRow {
+
+    @JvmInline
+    value class PrebuiltRow(val row: TableRowModel) : TableRowOrBuilder
+
+    sealed interface TableRow : TableRowOrBuilder {
         fun build(): TableRowModel
     }
 
     @TableBuilderDsl
     class Row : TableRow {
-        val cells = mutableListOf<Cell>()
+        val cells = mutableListOf<CellOrBuilder>()
         var displayRuleRef: DisplayRuleRef? = null
+
+        /**
+         * Sets cells of the rows. This will replace the existing cells.
+         * All rows must have the same number of cells.
+         * @return The row instance for method chaining.
+         */
+        fun cells(cells: List<Table.Cell>) = apply {
+            this.cells.clear()
+            this.cells.addAll(cells.map { PrebuiltCell(it) })
+        }
 
         /**
          * Add a cell to the row. Cells are added in the order they are defined.
@@ -151,29 +176,42 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
          * Appends a pre-configured [cell] to the row.
          * @return The row instance for method chaining.
          */
+        @Deprecated("Overloads which take other builders are not supported anymore and will be removed in the future")
         fun addCell(cell: Cell) = apply { cells.add(cell) }
+
+        /**
+         * Appends a pre-configured [cell] to the row.
+         * @return The row instance for method chaining.
+         */
+        fun addCell(cell: Table.Cell) = apply { cells.add(PrebuiltCell(cell)) }
 
         /**
          * Adds multiple cells to the row. This will append the cells to any existing cells.
          * @param cells The list of cells to add.
          * @return The builder instance for method chaining.
          */
-        fun addCells(cells: List<Cell>) = apply {
-            this.cells.addAll(cells)
+        fun addCells(cells: List<Table.Cell>) = apply {
+            this.cells.addAll(cells.map { PrebuiltCell(it) })
         }
+
 
         fun displayRuleRef(id: String) = this.apply { this.displayRuleRef = DisplayRuleRef(id) }
         fun displayRuleRef(ref: DisplayRuleRef) = this.apply { this.displayRuleRef = ref }
         fun displayRuleRef(rule: DisplayRule) = this.apply { this.displayRuleRef = DisplayRuleRef(rule.id) }
 
         override fun build(): Table.Row {
-            return Table.Row(cells = cells.map { it.build() }, displayRuleRef = displayRuleRef)
+            return Table.Row(cells = cells.map {
+                when (it) {
+                    is Cell -> it.build()
+                    is PrebuiltCell -> it.cell
+                }
+            }, displayRuleRef = displayRuleRef)
         }
     }
 
     @TableBuilderDsl
     class RepeatedRowBuilder(private val variable: VariablePath) : TableRow, RowBuilderBase<RepeatedRowBuilder> {
-        override val rows = mutableListOf<TableRow>()
+        override val rows = mutableListOf<TableRowOrBuilder>()
         var displayRuleRef: DisplayRuleRef? = null
 
         fun displayRuleRef(id: String) = this.apply { this.displayRuleRef = DisplayRuleRef(id) }
@@ -181,16 +219,17 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
         fun displayRuleRef(rule: DisplayRule) = this.apply { this.displayRuleRef = DisplayRuleRef(rule.id) }
 
         override fun build(): Table.RepeatedRow {
-            return Table.RepeatedRow(
-                rows = rows.map { it.build() },
-                variable = variable,
-                displayRuleRef = displayRuleRef,
-            )
+            return Table.RepeatedRow(rows = rows.map { it.unwrap() }, variable = variable, displayRuleRef = displayRuleRef)
         }
     }
 
+    sealed interface CellOrBuilder
+
+    @JvmInline
+    value class PrebuiltCell(val cell: Table.Cell) : CellOrBuilder
+
     @TableBuilderDsl
-    class Cell : DocumentContentBuilderBase<Cell>, HasBorder<Cell> {
+    class Cell : CellOrBuilder, DocumentContentBuilderBase<Cell>, HasBorder<Cell> {
         override val content = mutableListOf<DocumentContent>()
         var mergeLeft = false
         var mergeUp = false
@@ -229,7 +268,16 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
 @Suppress("UNCHECKED_CAST")
 @TableBuilderDsl
 interface RowBuilderBase<T> {
-    val rows: MutableList<TableBuilder.TableRow>
+    val rows: MutableList<TableRowOrBuilder>
+
+    /**
+     * Sets rows to the provided list of [newRows]. This will replace any existing rows.
+     * @return This builder instance for method chaining.
+     */
+    fun rows(newRows: List<TableBuilder.TableRow>): T = apply {
+        rows.clear()
+        rows.addAll(newRows)
+    } as T
 
     /** Creates a new [TableBuilder.Row], appends it, and returns it for further configuration. */
     fun addRow(): TableBuilder.Row = TableBuilder.Row().also { rows.add(it) }
@@ -269,6 +317,13 @@ interface RowBuilderBase<T> {
         apply { rows.add(TableBuilder.RepeatedRowBuilder(variable).apply(init)) } as T
 
     /**
+     * Add an existing repeated row group.
+     * @param repeatedRow The [Table.RepeatedRow] instance to add.
+     * @return This builder instance for method chaining.
+     */
+    fun addRepeatedRow(repeatedRow: Table.RepeatedRow): T = apply { rows.add(TableBuilder.PrebuiltRow(repeatedRow)) } as T
+
+    /**
      * Add a repeated row group driven by a literal path (e.g. "Data.Clients").
      */
     fun addRepeatedRow(literalPath: String): TableBuilder.RepeatedRowBuilder =
@@ -306,4 +361,14 @@ interface RowBuilderBase<T> {
      */
     fun addRepeatedRow(variable: Variable, init: TableBuilder.RepeatedRowBuilder.() -> Unit): T =
         addRepeatedRow(VariableRefPath(variable.id), init)
+}
+
+sealed interface TableRowOrBuilder {
+    fun unwrap(): TableRowModel {
+        return when (this) {
+            is TableBuilder.PrebuiltRow -> this.row
+            is TableBuilder.RepeatedRowBuilder -> this.build()
+            is TableBuilder.Row -> this.build()
+        }
+    }
 }

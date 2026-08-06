@@ -15,7 +15,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTextS
 class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
     private var styleRef: ParagraphStyleRef? = null
     override var displayRuleRef: DisplayRuleRef? = null
-    private var content: MutableList<TextBuilder> = mutableListOf()
+    private var content: MutableList<TextOrBuilder> = mutableListOf()
 
     /**
      * Sets the style reference for the paragraph.
@@ -57,6 +57,15 @@ class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
         val result = TextBuilder()
         block(result)
         this.content.add(result)
+    }
+
+    /**
+     * Adds an existing text block to the paragraph content.
+     * @param text The [Paragraph.Text] instance to add.
+     * @return The current instance of [ParagraphBuilder] for method chaining.
+     */
+    fun text(text: Paragraph.Text) = apply {
+        this.content.add(PrebuiltText(text))
     }
 
     /**
@@ -107,20 +116,21 @@ class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
      * style reference, and display rule reference.
      */
     fun build(): Paragraph {
-        return Paragraph(
-            content = content.map {
-                Paragraph.Text(
-                    content = it.content,
-                    styleRef = it.styleRef,
-                    displayRuleRef = it.displayRuleRef
-                )
-            },
-            styleRef = styleRef,
-            displayRuleRef = displayRuleRef,
-        )
+        return Paragraph(content = content.map {
+            when (it) {
+                is TextBuilder -> it.build()
+                is PrebuiltText -> it.text
+            }
+        }, styleRef = styleRef, displayRuleRef = displayRuleRef)
     }
 
+    private sealed interface TextOrBuilder
+
+    @JvmInline
+    value class PrebuiltText(val text: Paragraph.Text) : TextOrBuilder
+
     class TextBuilder :
+        TextOrBuilder,
         HasDisplayRuleRef<TextBuilder>,
         HasTextStyleRef<TextBuilder>,
         HasBarcodeContent<TextContent, TextBuilder>,
@@ -180,6 +190,10 @@ class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
          */
         fun hyperlink(hyperlink: Hyperlink) = apply {
             content.add(hyperlink)
+        }
+
+        fun build(): Paragraph.Text {
+            return Paragraph.Text(content = content, styleRef = styleRef, displayRuleRef = displayRuleRef)
         }
     }
 }

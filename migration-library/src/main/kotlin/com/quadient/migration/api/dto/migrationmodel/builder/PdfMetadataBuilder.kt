@@ -23,6 +23,12 @@ class PdfMetadataBuilder {
     fun keywords(vararg content: VariableStringContent) = apply { this.keywords = content.toList() }
     fun producer(vararg content: VariableStringContent) = apply { this.producer = content.toList() }
 
+    fun title(content: List<VariableStringContent>) = apply { this.title = content.toList() }
+    fun author(content: List<VariableStringContent>) = apply { this.author = content.toList() }
+    fun subject(content: List<VariableStringContent>) = apply { this.subject = content.toList() }
+    fun keywords(content: List<VariableStringContent>) = apply { this.keywords = content.toList() }
+    fun producer(content: List<VariableStringContent>) = apply { this.producer = content.toList() }
+
     fun title(builder: VariableStringContentBuilder.() -> Unit) =
         apply { this.title = VariableStringContentBuilder().apply(builder).build() }
 

@@ -261,7 +261,7 @@ class DocumentObjectRepositoryTest {
     @Test
     fun `emailOptions roundtrip with all fields`() {
         val dto = EmailObjectBuilder("email1")
-            .options {
+            .emailOptions {
                 width(600.0)
                 backgroundFill("#ffffff")
                 from("sender@example.com")
@@ -282,7 +282,7 @@ class DocumentObjectRepositoryTest {
     @Test
     fun `smsOptions roundtrip with all fields`() {
         val dto = SmsObjectBuilder("sms1")
-            .options {
+            .smsOptions {
                 numberTo("+1234567890")
             }
             .string("SMS body")

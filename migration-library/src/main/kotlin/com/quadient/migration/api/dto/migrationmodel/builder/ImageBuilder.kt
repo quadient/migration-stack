@@ -37,6 +37,15 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id),
     fun options(options: ImageOptions) = apply { this.options = options }
 
     /**
+     * Sets the image options using a builder.
+     * @param builder Builder function where receiver is an [ImageOptionsBuilder].
+     * @return This builder instance for method chaining.
+     */
+    fun options(builder: ImageOptionsBuilder.() -> Unit) = apply {
+        this.options = ImageOptionsBuilder().apply(builder).build()
+    }
+
+    /**
      * Sets the file type of the image.
      * @param imageType The [ImageType] of the image.
      * @return This builder instance for method chaining.
@@ -44,10 +53,10 @@ class ImageBuilder(id: String) : DtoBuilderBase<Image, ImageBuilder>(id),
     fun imageType(imageType: ImageType) = apply { this.imageType = imageType }
 
     /**
-     * Sets the subject of the document object. This is visible as description in Interactive
+     * Sets the subject of the image. This is visible as description in Interactive
      * The subject is part of the metadata with key "Subject" and this is just a shorthand for
      * metadata("Subject") { string(subject) }
-     * @param subject the subject of the document object
+     * @param subject the subject of the image
      * @return the builder instance for chaining
      */
     fun subject(subject: String) = apply {

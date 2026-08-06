@@ -20,21 +20,25 @@ class EmailOptionsBuilder {
 
     fun from(from: String) = apply { this.from = listOf(StringValue(from)) }
     fun from(vararg content: VariableStringContent) = apply { this.from = content.toList() }
+    fun from(content: List<VariableStringContent>) = apply { this.from = content.toList() }
     fun from(builder: VariableStringContentBuilder.() -> Unit) =
         apply { this.from = VariableStringContentBuilder().apply(builder).build() }
 
     fun fromName(fromName: String) = apply { this.fromName = listOf(StringValue(fromName)) }
     fun fromName(vararg content: VariableStringContent) = apply { this.fromName = content.toList() }
+    fun fromName(content: List<VariableStringContent>) = apply { this.fromName = content.toList() }
     fun fromName(builder: VariableStringContentBuilder.() -> Unit) =
         apply { this.fromName = VariableStringContentBuilder().apply(builder).build() }
 
     fun subject(subject: String) = apply { this.subject = listOf(StringValue(subject)) }
     fun subject(vararg content: VariableStringContent) = apply { this.subject = content.toList() }
+    fun subject(content: List<VariableStringContent>) = apply { this.subject = content.toList() }
     fun subject(builder: VariableStringContentBuilder.() -> Unit) =
         apply { this.subject = VariableStringContentBuilder().apply(builder).build() }
 
     fun to(to: String) = apply { this.to = listOf(StringValue(to)) }
     fun to(vararg content: VariableStringContent) = apply { this.to = content.toList() }
+    fun to(content: List<VariableStringContent>) = apply { this.to = content.toList() }
     fun to(builder: VariableStringContentBuilder.() -> Unit) =
         apply { this.to = VariableStringContentBuilder().apply(builder).build() }
 

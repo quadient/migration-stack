@@ -17,5 +17,24 @@ interface HasCategorization<T> {
     fun categorization(name: String, block: CategorizationBuilder.() -> Unit) = apply {
         metadata.add(Categorization(name, CategorizationBuilder().apply(block).build()))
     } as T
+
+    /**
+     * Adds an existing categorization to the object.
+     * @param categorization The [Categorization] instance to append.
+     * @return This builder instance for method chaining.
+     */
+    fun categorization(categorization: Categorization): T = apply {
+        metadata.add(categorization)
+    } as T
+
+    /**
+     * Adds an existing categorization to the object, overriding its name.
+     * @param name Name of the categorization.
+     * @param categorization The [Categorization] instance to append.
+     * @return This builder instance for method chaining.
+     */
+    fun categorization(name: String, categorization: Categorization): T = apply {
+        metadata.add(categorization.copy(name = name))
+    } as T
 }
 

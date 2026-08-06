@@ -5,18 +5,19 @@ import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentContentBuilderBase
 
 class SelectByLanguageBuilder {
-    private var cases: MutableList<CaseBuilder> = mutableListOf()
+    private var cases: MutableList<CaseOrBuilder> = mutableListOf()
 
     /**
-     * Builds a SelectByLanguage instance with the provided cases and default content.
-     * @return A SelectByLanguage instance containing the cases and default content.
+     * Builds a SelectByLanguage instance with the provided cases.
+     * @return A SelectByLanguage instance containing the cases.
      */
     fun build(): SelectByLanguage {
-        return SelectByLanguage(
-            cases.map {
-                SelectByLanguage.Case(
-                    it.content, requireNotNull(it.language) { "language must be provided" })
-            })
+        return SelectByLanguage(cases.map {
+            when (it) {
+                is PrebuiltCase -> it.case
+                is CaseBuilder -> it.build()
+            }
+        })
     }
 
     /**
@@ -35,7 +36,21 @@ class SelectByLanguageBuilder {
         cases.add(caseBuilder)
     }
 
-    class CaseBuilder : DocumentContentBuilderBase<CaseBuilder> {
+    /**
+     * Adds an existing case to the SelectByLanguageBuilder instance.
+     * @param case The [SelectByLanguage.Case] instance to add.
+     * @return The SelectByLanguageBuilder instance for method chaining.
+     */
+    fun case(case: SelectByLanguage.Case) = apply {
+        cases.add(PrebuiltCase(case))
+    }
+
+    private sealed interface CaseOrBuilder
+
+    @JvmInline
+    value class PrebuiltCase(val case: SelectByLanguage.Case): CaseOrBuilder
+
+    class CaseBuilder : DocumentContentBuilderBase<CaseBuilder>, CaseOrBuilder {
         override val content: MutableList<DocumentContent> = mutableListOf()
         var language: String? = null
 
@@ -45,5 +60,9 @@ class SelectByLanguageBuilder {
          * @return A CaseBuilder instance for method chaining.
          */
         fun language(language: String) = apply { this.language = language }
+
+        fun build(): SelectByLanguage.Case {
+            return SelectByLanguage.Case(content, requireNotNull(language) { "language must be provided" })
+        }
     }
 }

@@ -1153,7 +1153,7 @@ class DesignerDocumentObjectBuilderTest {
         // given
         val emailDoc = EmailObjectBuilder("E_1")
             .string("Email content")
-            .options {
+            .emailOptions {
                 width(600.0)
                 backgroundFill("#ff0000")
             }
@@ -1173,7 +1173,7 @@ class DesignerDocumentObjectBuilderTest {
         // given
         val emailDoc = EmailObjectBuilder("E_1")
             .string("Email content")
-            .options {
+            .emailOptions {
                 from("sender@example.com")
                 fromName("Sender Name")
                 subject("Test Subject")
@@ -1213,7 +1213,7 @@ class DesignerDocumentObjectBuilderTest {
         // given
         val smsDoc = SmsObjectBuilder("S_1")
             .string("SMS content")
-            .options { numberTo("+1234567890") }
+            .smsOptions { numberTo("+1234567890") }
             .build().mock()
         val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(smsDoc).build().mock()
 

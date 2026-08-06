@@ -15,4 +15,13 @@ interface HasPdfMetadata<T> {
     fun pdfMetadata(builder: PdfMetadataBuilder.() -> Unit) = apply {
         this.pdfMetadata = PdfMetadataBuilder().apply(builder).build()
     } as T
+
+    /**
+     * Set PDF metadata for the object.
+     * @param pdfMetadata The [PdfMetadata] to set, or null to remove.
+     * @return This builder instance for method chaining.
+     */
+    fun pdfMetadata(pdfMetadata: PdfMetadata?): T = apply {
+        this.pdfMetadata = pdfMetadata
+    } as T
 }
