@@ -4,8 +4,8 @@ import com.quadient.migration.api.dto.migrationmodel.PageOptions
 import com.quadient.migration.shared.Size
 
 class PageOptionsBuilder {
-    private var width: Size? = null
-    private var height: Size? = null
+    var width: Size? = null; private set
+    var height: Size? = null; private set
 
     fun width(width: Size?) = apply { this.width = width }
     fun height(height: Size?) = apply { this.height = height }

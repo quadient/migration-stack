@@ -6,12 +6,12 @@ import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
 import com.quadient.migration.shared.Color
 
 class EmailOptionsBuilder {
-    private var width: Double? = null
-    private var backgroundFill: Color = Color(255, 255, 255)
-    private var from: List<VariableStringContent> = emptyList()
-    private var fromName: List<VariableStringContent> = emptyList()
-    private var subject: List<VariableStringContent> = emptyList()
-    private var to: List<VariableStringContent> = emptyList()
+    var width: Double? = null; private set
+    var backgroundFill: Color = Color(255, 255, 255); private set
+    var from: List<VariableStringContent> = emptyList(); private set
+    var fromName: List<VariableStringContent> = emptyList(); private set
+    var subject: List<VariableStringContent> = emptyList(); private set
+    var to: List<VariableStringContent> = emptyList(); private set
 
     fun width(width: Double?) = apply { this.width = width }
 

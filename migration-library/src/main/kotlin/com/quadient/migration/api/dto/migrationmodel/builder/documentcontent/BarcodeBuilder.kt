@@ -13,7 +13,7 @@ import com.quadient.migration.shared.QrCodeSize
 import com.quadient.migration.shared.Size
 
 class BarcodeBuilder {
-    private var result: Barcode? = null
+    var result: Barcode? = null; private set
 
     fun qr() = QrCodeBuilder()
     fun qr(block: QrCodeBuilder.() -> Unit) = apply {
@@ -33,13 +33,13 @@ class BarcodeBuilder {
 class QrCodeBuilder : HasPosition<QrCodeBuilder>, HasVariableRef<QrCodeBuilder> {
     override var position: Position? = null
     override var variableRef: VariableRef? = null
-    private var data: String? = null
-    private var errorCorrection: QrCodeErrorCorrectionLevel = QrCodeErrorCorrectionLevel.M
-    private var size: QrCodeSize = QrCodeSize.Auto
-    private var moduleWidth: Size = Size.ofMillimeters(1)
-    private var quietZone: Size = Size.ofMillimeters(4)
-    private var barcodeFill: Color? = Color.fromHex("#000000")
-    private var backgroundFill: Color? = null
+    var data: String? = null; private set
+    var errorCorrection: QrCodeErrorCorrectionLevel = QrCodeErrorCorrectionLevel.M; private set
+    var size: QrCodeSize = QrCodeSize.Auto; private set
+    var moduleWidth: Size = Size.ofMillimeters(1); private set
+    var quietZone: Size = Size.ofMillimeters(4); private set
+    var barcodeFill: Color? = Color.fromHex("#000000"); private set
+    var backgroundFill: Color? = null; private set
 
     /**
      * Sets the barcode data content.
@@ -112,20 +112,20 @@ class QrCodeBuilder : HasPosition<QrCodeBuilder>, HasVariableRef<QrCodeBuilder> 
 class Code39BarcodeBuilder : HasPosition<Code39BarcodeBuilder>, HasVariableRef<Code39BarcodeBuilder> {
     override var position: Position? = null
     override var variableRef: VariableRef? = null
-    private var data: String? = null
-    private var barcodeFill: Color? = Color.fromHex("#000000")
-    private var backgroundFill: Color? = null
-    private var height: Size = Size.ofMillimeters(10)
-    private var moduleSize: Size = Size.ofMillimeters(0.19)
-    private var quietZone: Double = 0.0
-    private var useControlSum: Boolean = false
-    private var ratio: Double = 2.0
-    private var interCharacterSpaceRatio: Double = 1.0
-    private var directMetric: Boolean = false
-    private var firstBarWidth: Size = Size.ofMillimeters(0.19)
-    private var secondBarWidth: Size = Size.ofMillimeters(0.57)
-    private var firstBarSpace: Size = Size.ofMillimeters(0.19)
-    private var secondBarSpace: Size = Size.ofMillimeters(0.57)
+    var data: String? = null; private set
+    var barcodeFill: Color? = Color.fromHex("#000000"); private set
+    var backgroundFill: Color? = null; private set
+    var height: Size = Size.ofMillimeters(10); private set
+    var moduleSize: Size = Size.ofMillimeters(0.19); private set
+    var quietZone: Double = 0.0; private set
+    var useControlSum: Boolean = false; private set
+    var ratio: Double = 2.0; private set
+    var interCharacterSpaceRatio: Double = 1.0; private set
+    var directMetric: Boolean = false; private set
+    var firstBarWidth: Size = Size.ofMillimeters(0.19); private set
+    var secondBarWidth: Size = Size.ofMillimeters(0.57); private set
+    var firstBarSpace: Size = Size.ofMillimeters(0.19); private set
+    var secondBarSpace: Size = Size.ofMillimeters(0.57); private set
 
     /**
      * Sets the barcode data content.

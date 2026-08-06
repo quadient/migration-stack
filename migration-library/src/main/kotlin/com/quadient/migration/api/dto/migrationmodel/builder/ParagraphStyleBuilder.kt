@@ -10,8 +10,8 @@ import com.quadient.migration.shared.ParagraphPdfTaggingRule
 import com.quadient.migration.shared.Size
 
 class ParagraphStyleBuilder(id: String) : DtoBuilderBase<ParagraphStyle, ParagraphStyleBuilder>(id) {
-    private var definition: ParagraphStyleDefinition? = null
-    private var targetId: ParagraphStyleRef? = null
+    var definition: ParagraphStyleDefinition? = null; private set
+    var targetId: ParagraphStyleRef? = null; private set
 
     fun definition(builder: ParagraphStyleDefinitionBuilder.() -> Unit) = apply {
         this.definition = ParagraphStyleDefinitionBuilder().apply(builder).build()

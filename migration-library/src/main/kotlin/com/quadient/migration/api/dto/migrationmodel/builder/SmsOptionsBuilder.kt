@@ -5,7 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
 import com.quadient.migration.api.dto.migrationmodel.SmsOptions
 
 class SmsOptionsBuilder {
-    private var numberTo: List<VariableStringContent> = emptyList()
+    var numberTo: List<VariableStringContent> = emptyList(); private set
 
     fun numberTo(numberTo: String) = apply { this.numberTo = listOf(StringValue(numberTo)) }
     fun numberTo(vararg content: VariableStringContent) = apply { this.numberTo = content.toList() }

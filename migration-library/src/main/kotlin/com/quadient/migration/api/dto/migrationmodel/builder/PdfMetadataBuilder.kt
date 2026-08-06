@@ -5,11 +5,11 @@ import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
 import com.quadient.migration.api.dto.migrationmodel.PdfMetadata
 
 class PdfMetadataBuilder {
-    private var title: List<VariableStringContent>? = null
-    private var author: List<VariableStringContent>? = null
-    private var subject: List<VariableStringContent>? = null
-    private var keywords: List<VariableStringContent>? = null
-    private var producer: List<VariableStringContent>? = null
+    var title: List<VariableStringContent>? = null; private set
+    var author: List<VariableStringContent>? = null; private set
+    var subject: List<VariableStringContent>? = null; private set
+    var keywords: List<VariableStringContent>? = null; private set
+    var producer: List<VariableStringContent>? = null; private set
 
     fun title(title: String) = apply { this.title = listOf(StringValue(title)) }
     fun author(author: String) = apply { this.author = listOf(StringValue(author)) }

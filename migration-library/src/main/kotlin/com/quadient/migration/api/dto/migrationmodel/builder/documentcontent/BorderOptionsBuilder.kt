@@ -27,17 +27,17 @@ interface HasBorder<T> {
 }
 
 class BorderOptionsBuilder {
-    private var leftLine: BorderLine? = null
-    private var rightLine: BorderLine? = null
-    private var topLine: BorderLine? = null
-    private var bottomLine: BorderLine? = null
+    var leftLine: BorderLine? = null; private set
+    var rightLine: BorderLine? = null; private set
+    var topLine: BorderLine? = null; private set
+    var bottomLine: BorderLine? = null; private set
 
-    private var paddingTop: Size = Size.ofMillimeters(0)
-    private var paddingBottom: Size = Size.ofMillimeters(0)
-    private var paddingLeft: Size = Size.ofMillimeters(0)
-    private var paddingRight: Size = Size.ofMillimeters(0)
+    var paddingTop: Size = Size.ofMillimeters(0); private set
+    var paddingBottom: Size = Size.ofMillimeters(0); private set
+    var paddingLeft: Size = Size.ofMillimeters(0); private set
+    var paddingRight: Size = Size.ofMillimeters(0); private set
 
-    private var fill: Color? = null
+    var fill: Color? = null; private set
 
     fun leftLine(color: Color?, width: Size?) = apply {
         val builder = BorderLineBuilder()
@@ -101,7 +101,7 @@ class BorderOptionsBuilder {
 }
 
 class BorderLineBuilder {
-    private var line = BorderLine()
+    var line = BorderLine(); private set
 
     fun color(color: Color) = apply { line = line.copy(color = color) }
     fun width(size: Size) = apply { line = line.copy(width = size) }

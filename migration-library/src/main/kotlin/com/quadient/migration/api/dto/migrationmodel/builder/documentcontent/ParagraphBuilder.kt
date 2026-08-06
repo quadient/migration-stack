@@ -13,9 +13,9 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasDispl
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTextStyleRef
 
 class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
-    private var styleRef: ParagraphStyleRef? = null
+    var styleRef: ParagraphStyleRef? = null; private set
     override var displayRuleRef: DisplayRuleRef? = null
-    private var content: MutableList<TextOrBuilder> = mutableListOf()
+    var content: MutableList<TextOrBuilder> = mutableListOf(); private set
 
     /**
      * Sets the style reference for the paragraph.
@@ -124,7 +124,7 @@ class ParagraphBuilder : HasDisplayRuleRef<ParagraphBuilder> {
         }, styleRef = styleRef, displayRuleRef = displayRuleRef)
     }
 
-    private sealed interface TextOrBuilder
+    sealed interface TextOrBuilder
 
     @JvmInline
     value class PrebuiltText(val text: Paragraph.Text) : TextOrBuilder

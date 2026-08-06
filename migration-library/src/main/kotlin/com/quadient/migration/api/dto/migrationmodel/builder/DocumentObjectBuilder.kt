@@ -24,7 +24,7 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
 
-class DocumentObjectBuilder(id: String, private val type: DocumentObjectType) :
+class DocumentObjectBuilder(id: String, val type: DocumentObjectType) :
     DtoBuilderBase<DocumentObject, DocumentObjectBuilder>(id), DocumentContentBuilderBase<DocumentObjectBuilder>,
     HasDisplayRuleRef<DocumentObjectBuilder>,
     HasVariableStructureRef<DocumentObjectBuilder>,

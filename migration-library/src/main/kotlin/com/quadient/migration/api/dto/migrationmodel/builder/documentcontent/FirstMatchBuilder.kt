@@ -11,8 +11,8 @@ import com.quadient.migration.api.dto.migrationmodel.builder.components.HasDispl
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasName
 
 class FirstMatchBuilder {
-    private var default: MutableList<DocumentContent> = mutableListOf()
-    private var cases: MutableList<CaseOrBuilder> = mutableListOf()
+    var default: MutableList<DocumentContent> = mutableListOf(); private set
+    var cases: MutableList<CaseOrBuilder> = mutableListOf(); private set
 
     /**
      * Builds a FirstMatch instance with the provided cases and default content.
@@ -112,7 +112,7 @@ class FirstMatchBuilder {
         default.add(StringValue(text))
     }
 
-    private sealed interface CaseOrBuilder
+    sealed interface CaseOrBuilder
 
     @JvmInline
     value class PrebuiltCase(val case: FirstMatch.Case) : CaseOrBuilder
@@ -134,8 +134,8 @@ class FirstMatchBuilder {
 }
 
 class SimpleFirstMatchBuilder {
-    private var default: MutableList<VariableStringContent> = mutableListOf()
-    private var cases: MutableList<CaseOrBuilder> = mutableListOf()
+    var default: MutableList<VariableStringContent> = mutableListOf(); private set
+    var cases: MutableList<CaseOrBuilder> = mutableListOf(); private set
 
     /**
      * Builds a FirstMatch instance with the provided cases and default content.
@@ -199,7 +199,7 @@ class SimpleFirstMatchBuilder {
         default.add(StringValue(text))
     }
 
-    private sealed interface CaseOrBuilder
+    sealed interface CaseOrBuilder
 
     @JvmInline
     value class PrebuiltCase(val case: FirstMatch.Case) : CaseOrBuilder

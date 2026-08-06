@@ -5,7 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.RepeatedContent
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentContentBuilderBase
 import com.quadient.migration.shared.VariablePath
 
-class RepeatedContentBuilder(private val variablePath: VariablePath) : DocumentContentBuilderBase<RepeatedContentBuilder> {
+class RepeatedContentBuilder(val variablePath: VariablePath) : DocumentContentBuilderBase<RepeatedContentBuilder> {
     override val content = mutableListOf<DocumentContent>()
 
     /**

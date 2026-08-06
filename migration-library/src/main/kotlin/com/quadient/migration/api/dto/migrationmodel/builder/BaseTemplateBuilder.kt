@@ -15,7 +15,7 @@ annotation class BaseTemplateBuilderDsl
 class BaseTemplateBuilder(id: String) : DtoBuilderBase<BaseTemplate, BaseTemplateBuilder>(id),
     HasTargetFolder<BaseTemplateBuilder> {
     override var targetFolder: String? = null
-    private val pages = mutableListOf<Page>()
+    val pages = mutableListOf<Page>()
 
     /** Creates a new [Page], appends it, and returns it for further configuration. */
     fun addPage() = Page().also { pages.add(it) }
@@ -51,10 +51,10 @@ class BaseTemplateBuilder(id: String) : DtoBuilderBase<BaseTemplate, BaseTemplat
 
     @BaseTemplateBuilderDsl
     class Page {
-        private var name: String? = null
-        private var pageWidth: Size? = null
-        private var pageHeight: Size? = null
-        private val areas = mutableListOf<Area>()
+        var name: String? = null; private set
+        var pageWidth: Size? = null; private set
+        var pageHeight: Size? = null; private set
+        val areas = mutableListOf<Area>()
 
         fun name(name: String?) = apply { this.name = name }
         fun pageWidth(pageWidth: Size?) = apply { this.pageWidth = pageWidth }
@@ -102,9 +102,9 @@ class BaseTemplateBuilder(id: String) : DtoBuilderBase<BaseTemplate, BaseTemplat
     }
 
     @BaseTemplateBuilderDsl
-    class Area(private val interactiveFlowName: String) : HasPosition<Area> {
+    class Area(val interactiveFlowName: String) : HasPosition<Area> {
         override var position: Position? = null
-        private var flowToNextPage: Boolean = false
+        var flowToNextPage: Boolean = false; private set
 
         /**
          * Set whether the flow area should flow to the next page.

@@ -4,9 +4,9 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentObjectFilter
 import com.quadient.migration.shared.DocumentObjectType
 
 class DocumentObjectFilterBuilder {
-    private var ids: List<String>? = null
-    private var names: List<String>? = null
-    private var types: List<DocumentObjectType>? = null
+    var ids: List<String>? = null; private set
+    var names: List<String>? = null; private set
+    var types: List<DocumentObjectType>? = null; private set
 
     fun ids(ids: List<String>) = apply { this.ids = ids }
     fun names(names: List<String>) = apply { this.names = names }

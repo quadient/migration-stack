@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+- Made builder properties public
+- Further improvements to builder consistency, added overloads accepting prebuilt objects
+- **Breaking** - Removed `TableBuilder.Row.addCells(List<TableBuilder.Cell>)`
+  overload and replaced it by one that takes list of already built cells instead of cell builders. You will need to
+  adjust your code to build the cells before adding them to the row.
+
 ### Fixed
 
 ## [17.0.28] - 2026-08-04
@@ -24,12 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - **Breaking** - `PageOptions` were moved from `com.quadient.migration.shared` to the
 `com.quadient.migration.api.dto.migrationmodel` package, you will need to adjust imports in your code to reflect the new
 path.
-- **Breaking** - Removed `TableBuilder.Row.addCells(List<TableBuilder.Cell>)`
-  overload and replaced it by one that takes list of already built cells instead of cell builders. You will need to
-  adjust your code to build the cells before adding them to the row.
 - Removed usedBy from the displayRuleReport
 - `collectRefs()` on the migration objects now returns a set rather than a list to avoid duplicates
-- Further improvements to builder consistency, added overloads accepting prebuilt objects
 
 ### Fixed
 

@@ -6,7 +6,7 @@ import java.time.Instant
 import kotlin.time.Instant as KInstant
 
 class CategorizationBuilder {
-    private val fields: MutableList<CategorizationMetadata> = mutableListOf()
+    val fields: MutableList<CategorizationMetadata> = mutableListOf()
 
     companion object {
         /**

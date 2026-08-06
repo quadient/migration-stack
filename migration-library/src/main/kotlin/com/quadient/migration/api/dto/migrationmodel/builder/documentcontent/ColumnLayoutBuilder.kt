@@ -6,10 +6,10 @@ import com.quadient.migration.shared.ColumnBalancingType
 import com.quadient.migration.shared.Size
 
 class ColumnLayoutBuilder {
-    private var numberOfColumns: Int = 2
-    private var gutterWidth: Size = Size.ofMillimeters(0)
-    private var balancingType: ColumnBalancingType = ColumnBalancingType.FirstColumn
-    private var applyTo: ColumnApplyTo = ColumnApplyTo.ThisBlockOnly
+    var numberOfColumns: Int = 2; private set
+    var gutterWidth: Size = Size.ofMillimeters(0); private set
+    var balancingType: ColumnBalancingType = ColumnBalancingType.FirstColumn; private set
+    var applyTo: ColumnApplyTo = ColumnApplyTo.ThisBlockOnly; private set
 
     /**
      * Sets the number of columns. Defaults to 2 if not set.

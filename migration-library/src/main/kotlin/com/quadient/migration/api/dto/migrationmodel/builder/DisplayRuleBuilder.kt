@@ -121,9 +121,9 @@ class DisplayRuleBuilder(id: String) : DtoBuilderBase<DisplayRule, DisplayRuleBu
 }
 
 class DisplayRuleGroupBuilder {
-    private var operator: GroupOp = GroupOp.And
-    private var negation: Boolean = false
-    private val items = mutableListOf<BinaryOrGroup>()
+    var operator: GroupOp = GroupOp.And; private set
+    var negation: Boolean = false; private set
+    val items = mutableListOf<BinaryOrGroup>()
 
     /**
      * Adds a binary expression to the group.
@@ -188,7 +188,7 @@ class BinaryExpressionBuilder {
     var left: LiteralOrFunctionCall? = null
     var right: LiteralOrFunctionCall? = null
     var operator: BinOp? = null
-    private var leftSet = false
+    var leftSet = false; private set
 
     /**
      * Sets the next operand of the binary expression to a literal [Double] value.

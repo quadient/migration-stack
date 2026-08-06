@@ -6,7 +6,7 @@ import java.time.Instant
 import kotlin.time.Instant as KInstant
 
 class MetadataBuilder {
-    private val list: MutableList<MetadataPrimitive> = mutableListOf()
+    val list: MutableList<MetadataPrimitive> = mutableListOf()
     fun add(primitive: MetadataPrimitive) {
         list.add(primitive)
     }

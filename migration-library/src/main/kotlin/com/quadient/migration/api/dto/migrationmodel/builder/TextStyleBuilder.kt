@@ -8,8 +8,8 @@ import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.SuperOrSubscript
 
 class TextStyleBuilder(id: String) : DtoBuilderBase<TextStyle, TextStyleBuilder>(id) {
-    private var definition: TextStyleDefinition? = null
-    private var targetId: TextStyleRef? = null
+    var definition: TextStyleDefinition? = null; private set
+    var targetId: TextStyleRef? = null; private set
 
     fun definition(builder: TextStyleDefinitionBuilder.() -> Unit) = apply {
         this.definition = TextStyleDefinitionBuilder().apply(builder).build()

@@ -4,8 +4,8 @@ import com.quadient.migration.shared.ImageOptions
 import com.quadient.migration.shared.Size
 
 class ImageOptionsBuilder {
-    private var resizeWidth: Size? = null
-    private var resizeHeight: Size? = null
+    var resizeWidth: Size? = null; private set
+    var resizeHeight: Size? = null; private set
 
     fun resizeWidth(resizeWidth: Size?) = apply { this.resizeWidth = resizeWidth }
 

@@ -5,7 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentContentBuilderBase
 
 class SelectByLanguageBuilder {
-    private var cases: MutableList<CaseOrBuilder> = mutableListOf()
+    var cases: MutableList<CaseOrBuilder> = mutableListOf(); private set
 
     /**
      * Builds a SelectByLanguage instance with the provided cases.
@@ -45,7 +45,7 @@ class SelectByLanguageBuilder {
         cases.add(PrebuiltCase(case))
     }
 
-    private sealed interface CaseOrBuilder
+    sealed interface CaseOrBuilder
 
     @JvmInline
     value class PrebuiltCase(val case: SelectByLanguage.Case): CaseOrBuilder

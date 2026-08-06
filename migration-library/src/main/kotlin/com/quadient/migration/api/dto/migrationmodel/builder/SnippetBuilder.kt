@@ -23,7 +23,7 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.MetadataEntry
 import com.quadient.migration.shared.SkipOptions
 
-class SnippetBuilder(private val id: String) {
+class SnippetBuilder(val id: String) {
     /**
      * Adds a first match block to the content using a builder function.
      * @param builder A builder function to build the first match block.

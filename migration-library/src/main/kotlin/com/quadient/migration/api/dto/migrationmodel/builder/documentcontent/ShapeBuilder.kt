@@ -11,11 +11,11 @@ import com.quadient.migration.shared.Size
 
 class ShapeBuilder: HasName<ShapeBuilder>, HasPosition<ShapeBuilder> {
     override var name: String? = null
-    private val paths: MutableList<ShapePath> = mutableListOf()
+    val paths: MutableList<ShapePath> = mutableListOf()
     override var position: Position? = null
-    private var fill: Color? = null
-    private var lineFill: Color? = null
-    private var lineWidth: Size = Size.ofMillimeters(0.2)
+    var fill: Color? = null; private set
+    var lineFill: Color? = null; private set
+    var lineWidth: Size = Size.ofMillimeters(0.2); private set
 
     /**
      * Sets the fill color for the shape interior.

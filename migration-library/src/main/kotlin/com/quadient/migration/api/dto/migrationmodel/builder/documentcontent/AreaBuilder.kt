@@ -9,8 +9,8 @@ import com.quadient.migration.shared.Position
 class AreaBuilder : DocumentContentBuilderBase<AreaBuilder>, HasPosition<AreaBuilder> {
     override val content = mutableListOf<DocumentContent>()
     override var position: Position? = null
-    private var interactiveFlowName: String? = null
-    private var flowToNextPage: Boolean = false
+    var interactiveFlowName: String? = null; private set
+    var flowToNextPage: Boolean = false; private set
 
     /**
      * Set the name of Interactive flow defined in Base Template to which the content will flow.

@@ -4,10 +4,10 @@ import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 
 class PositionBuilder {
-    private var x: Size = Size.ofCentimeters(0)
-    private var y: Size = Size.ofCentimeters(0)
-    private var width: Size = Size.ofCentimeters(0)
-    private var height: Size = Size.ofCentimeters(0)
+    var x: Size = Size.ofCentimeters(0); private set
+    var y: Size = Size.ofCentimeters(0); private set
+    var width: Size = Size.ofCentimeters(0); private set
+    var height: Size = Size.ofCentimeters(0); private set
 
     /**
      * Sets the left position in [Size] units.

@@ -26,21 +26,21 @@ annotation class TableBuilderDsl
 @TableBuilderDsl
 class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
     override val rows = mutableListOf<TableRowOrBuilder>()
-    private var header = mutableListOf<TableRowOrBuilder>()
-    private var firstHeader = mutableListOf<TableRowOrBuilder>()
-    private var footer = mutableListOf<TableRowOrBuilder>()
-    private var lastFooter = mutableListOf<TableRowOrBuilder>()
-    private val columnWidths = mutableListOf<ColumnWidth>()
-    private var pdfTaggingRule: TablePdfTaggingRule = TablePdfTaggingRule.Default
-    private var pdfAlternateText: String? = null
-    private var minWidth: Size? = null
-    private var maxWidth: Size? = null
-    private var percentWidth: Double? = null
+    var header = mutableListOf<TableRowOrBuilder>(); private set
+    var firstHeader = mutableListOf<TableRowOrBuilder>(); private set
+    var footer = mutableListOf<TableRowOrBuilder>(); private set
+    var lastFooter = mutableListOf<TableRowOrBuilder>(); private set
+    val columnWidths = mutableListOf<ColumnWidth>()
+    var pdfTaggingRule: TablePdfTaggingRule = TablePdfTaggingRule.Default; private set
+    var pdfAlternateText: String? = null; private set
+    var minWidth: Size? = null; private set
+    var maxWidth: Size? = null; private set
+    var percentWidth: Double? = null; private set
     override var border: BorderOptions? = null
-    private var alignment: TableAlignment = TableAlignment.Left
-    private var tableStyleName: String? = null
-    private var action: TableAction = TableAction.Keep
-    private var name: String? = null
+    var alignment: TableAlignment = TableAlignment.Left; private set
+    var tableStyleName: String? = null; private set
+    var action: TableAction = TableAction.Keep; private set
+    var name: String? = null; private set
 
     fun pdfTaggingRule(rule: TablePdfTaggingRule) = apply { this.pdfTaggingRule = rule }
     fun pdfAlternateText(text: String?) = apply { this.pdfAlternateText = text }
@@ -210,7 +210,7 @@ class TableBuilder : RowBuilderBase<TableBuilder>, HasBorder<TableBuilder> {
     }
 
     @TableBuilderDsl
-    class RepeatedRowBuilder(private val variable: VariablePath) : TableRow, RowBuilderBase<RepeatedRowBuilder> {
+    class RepeatedRowBuilder(val variable: VariablePath) : TableRow, RowBuilderBase<RepeatedRowBuilder> {
         override val rows = mutableListOf<TableRowOrBuilder>()
         var displayRuleRef: DisplayRuleRef? = null
 

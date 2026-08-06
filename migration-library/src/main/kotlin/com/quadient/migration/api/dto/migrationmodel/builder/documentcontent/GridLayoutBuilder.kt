@@ -30,16 +30,16 @@ import com.quadient.migration.shared.GridHorizontalAlignment
 import com.quadient.migration.shared.OnMobile
 
 class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
-    private val columns = mutableListOf<Column>()
-    private var distribution: ColumnDistribution = ColumnDistribution.EvenWidth
-    private var verticalAlignment: GridAlignment = GridAlignment.Top
-    private var columnStackingOnMobile: OnMobile = OnMobile.FromLeft
-    private var paddingTop: Double = 0.0
-    private var paddingBottom: Double = 0.0
-    private var paddingLeft: Double = 0.0
-    private var paddingRight: Double = 0.0
-    private var fill: Color? = null
-    private var fullWidthBackground: Boolean = false
+    val columns = mutableListOf<Column>()
+    var distribution: ColumnDistribution = ColumnDistribution.EvenWidth; private set
+    var verticalAlignment: GridAlignment = GridAlignment.Top; private set
+    var columnStackingOnMobile: OnMobile = OnMobile.FromLeft; private set
+    var paddingTop: Double = 0.0; private set
+    var paddingBottom: Double = 0.0; private set
+    var paddingLeft: Double = 0.0; private set
+    var paddingRight: Double = 0.0; private set
+    var fill: Color? = null; private set
+    var fullWidthBackground: Boolean = false; private set
     override var displayRuleRef: DisplayRuleRef? = null
 
     /**
@@ -192,7 +192,7 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
     }
 
     class ColumnBuilder {
-        private val gridContent = mutableListOf<GridContent>()
+        val gridContent = mutableListOf<GridContent>()
 
         /**
          * Adds a [GridContent.Content] block built with a [DocumentContentBuilderBase] DSL.
@@ -281,7 +281,7 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
             HasGridHorizontalAlignment<ImageBuilder>,
             HasGridImageWidth<ImageBuilder>,
             HasGridLinkUrl<ImageBuilder> {
-            private var ref: ImageRef? = null
+            var ref: ImageRef? = null; private set
             override var horizontalAlignment: GridHorizontalAlignment? = null
             override var width: Double? = null
             override var linkUrl: List<VariableStringContent> = emptyList()
@@ -336,10 +336,10 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
             HasGridHorizontalAlignment<ExternalImageBuilder>,
             HasGridImageWidth<ExternalImageBuilder>,
             HasGridLinkUrl<ExternalImageBuilder> {
-            private var url: List<VariableStringContent> = emptyList()
+            var url: List<VariableStringContent> = emptyList(); private set
             override var horizontalAlignment: GridHorizontalAlignment? = null
             override var width: Double? = null
-            private var alternateText: String? = null
+            var alternateText: String? = null; private set
             override var linkUrl: List<VariableStringContent> = emptyList()
             override var openInNewWindow: Boolean = false
             override var paddingTop: Double = 0.0
