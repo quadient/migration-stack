@@ -37,6 +37,7 @@ dependencyCheck {
 
 koinCompiler {
     strictSafety = true
+    aiAssist = false
 }
 
 buildscript {
