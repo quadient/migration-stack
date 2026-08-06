@@ -2,6 +2,9 @@ package com.quadient.migration.service
 
 import com.quadient.migration.service.inspirebuilder.appendExtensionIfMissing
 import com.quadient.migration.service.inspirebuilder.extractExtensionFromPath
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
+import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.shouldBeEqualTo
@@ -11,10 +14,12 @@ class DeployPhaseUtilsTest {
     val projectConfig = aProjectConfig(
         "vcs:\\\\Interactive\\StandardPackage\\BaseTemplates\\BaseTemplate.wfd", interactiveTenant = "StandardPackage"
     )
+    val resourcePathProvider = InteractiveResourcePathProvider(projectConfig)
+    val findBaseTemplate: (String) -> BaseTemplate = { error("Unexpected base template lookup for '$it'") }
 
     @Test
     fun `project config base template is used and normalized`() {
-        val result = getBaseTemplateFullPath(projectConfig, null).toString()
+        val result = getBaseTemplateFullPath(projectConfig, null, resourcePathProvider, findBaseTemplate).toString()
 
         result.shouldBeEqualTo("icm://Interactive/StandardPackage/BaseTemplates/BaseTemplate.wfd")
     }
@@ -22,23 +27,57 @@ class DeployPhaseUtilsTest {
     @Test
     fun `specific base template path is preferred over the project config one`() {
         val baseTemplatePath = "icm://Interactive/Vital/BaseTemplates/MyBaseTemplate.wfd"
-        val result = getBaseTemplateFullPath(projectConfig, LiteralBaseTemplatePath(baseTemplatePath)).toString()
+        val result = getBaseTemplateFullPath(
+            projectConfig, LiteralBaseTemplatePath(baseTemplatePath), resourcePathProvider, findBaseTemplate
+        ).toString()
 
         result.shouldBeEqualTo(baseTemplatePath)
     }
 
     @Test
     fun `path not starting with icm is handled as relative`() {
-        val result = getBaseTemplateFullPath(projectConfig, LiteralBaseTemplatePath("/projectA/AddressBT.wfd")).toString()
+        val result = getBaseTemplateFullPath(
+            projectConfig, LiteralBaseTemplatePath("/projectA/AddressBT.wfd"), resourcePathProvider, findBaseTemplate
+        ).toString()
 
         result.shouldBeEqualTo("icm://Interactive/${projectConfig.interactiveTenant}/BaseTemplates/projectA/AddressBT.wfd")
     }
 
     @Test
     fun `only base template name in project config is correctly translated to full path`() {
-        val result = getBaseTemplateFullPath(aProjectConfig("myBT.wfd", interactiveTenant = "StandardPackage"), null).toString()
+        val config = aProjectConfig("myBT.wfd", interactiveTenant = "StandardPackage")
+        val result = getBaseTemplateFullPath(
+            config, null, InteractiveResourcePathProvider(config), findBaseTemplate
+        ).toString()
 
         result.shouldBeEqualTo("icm://Interactive/StandardPackage/BaseTemplates/myBT.wfd")
+    }
+
+    @Test
+    fun `base template referenced by id is looked up and resolved via resource path provider, but project config default is used instead`() {
+        val baseTemplate = BaseTemplate(
+            id = "bt-1",
+            name = "AddressBaseTemplate",
+            customFields = CustomFieldMap(),
+        )
+
+        val result = getBaseTemplateFullPath(
+            projectConfig, BaseTemplateRef(baseTemplate.id), resourcePathProvider
+        ) { id -> if (id == baseTemplate.id) baseTemplate else error("Unexpected id '$id'") }.toString()
+
+        result.shouldBeEqualTo("icm://Interactive/StandardPackage/BaseTemplates/BaseTemplate.wfd")
+    }
+
+    @Test
+    fun `base template referenced by id fails if it cannot be found`() {
+        try {
+            getBaseTemplateFullPath(
+                projectConfig, BaseTemplateRef("missing"), resourcePathProvider
+            ) { error("Record 'missing' not found") }
+            error("Expected an exception to be thrown")
+        } catch (e: IllegalStateException) {
+            e.message.shouldBeEqualTo("Record 'missing' not found")
+        }
     }
 
     @Test

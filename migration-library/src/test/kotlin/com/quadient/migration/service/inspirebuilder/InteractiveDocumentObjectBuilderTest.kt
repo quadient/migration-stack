@@ -28,6 +28,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -96,6 +97,7 @@ class InteractiveDocumentObjectBuilderTest {
     val paragraphStyleRepository = mockk<ParagraphStyleRepository>()
     val variableRepository = mockk<VariableRepository>()
     val variableStructureRepository = mockk<VariableStructureRepository>()
+    val baseTemplateRepository = mockk<BaseTemplateRepository>()
     val displayRuleRepository = mockk<DisplayRuleRepository>()
     val imageRepository = mockk<ImageRepository>()
     val attachmentRepository = mockk<AttachmentRepository>()
@@ -935,7 +937,7 @@ class InteractiveDocumentObjectBuilderTest {
         }
 
         every {
-            ipsService.wfd2xml(getBaseTemplateFullPath(config, null))
+            ipsService.wfd2xml(getBaseTemplateFullPath(config, null, resourcePathProvider) { baseTemplateRepository.findOrFail(it) })
         } returns """<Workflow>
             <Layout>
                 <Layout>
@@ -1657,7 +1659,7 @@ class InteractiveDocumentObjectBuilderTest {
         val emailDoc = EmailObjectBuilder("E_1").string("Email content").build().mock()
         val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(emailDoc).build()
 
-        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null)) } returns """
+        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null, resourcePathProvider) { baseTemplateRepository.findOrFail(it) }) } returns """
             <Workflow>
                 <Layout>
                     <Layout>
@@ -1716,7 +1718,7 @@ class InteractiveDocumentObjectBuilderTest {
         val smsDoc = SmsObjectBuilder("S_1").string("SMS content").build().mock()
         val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(smsDoc).build()
 
-        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null)) } returns """
+        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null, resourcePathProvider) { baseTemplateRepository.findOrFail(it) }) } returns """
             <Workflow>
                 <Layout>
                     <Layout>
@@ -1772,7 +1774,7 @@ class InteractiveDocumentObjectBuilderTest {
             .build().mock()
         val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(emailDoc).build()
 
-        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null)) } returns """
+        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null, resourcePathProvider) { baseTemplateRepository.findOrFail(it) }) } returns """
             <Workflow>
                 <Layout>
                     <Layout>
@@ -1848,7 +1850,7 @@ class InteractiveDocumentObjectBuilderTest {
             .build().mock()
         val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(smsDoc).build()
 
-        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null)) } returns """
+        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null, resourcePathProvider) { baseTemplateRepository.findOrFail(it) }) } returns """
             <Workflow>
                 <Layout>
                     <Layout>
@@ -1950,5 +1952,6 @@ class InteractiveDocumentObjectBuilderTest {
         config,
         resourcePathProvider,
         icmDataCache,
+        baseTemplateRepository,
     )
 }

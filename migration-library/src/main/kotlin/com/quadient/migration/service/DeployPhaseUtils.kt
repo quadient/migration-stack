@@ -3,6 +3,7 @@ package com.quadient.migration.service
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
@@ -62,23 +63,31 @@ fun resolveTargetDir(defaultTargetFolder: IcmPath? = null, specificTargetFolder:
     }
 }
 
-fun getBaseTemplateFullPath(config: ProjectConfig, documentObjectBaseTemplate: BaseTemplateLocation?): IcmPath {
+fun getBaseTemplateFullPath(
+    config: ProjectConfig,
+    documentObjectBaseTemplate: BaseTemplateLocation?,
+    resourcePathProvider: ResourcePathProvider,
+    findBaseTemplate: (String) -> BaseTemplate,
+): IcmPath {
     val literalPath = when (documentObjectBaseTemplate) {
         is LiteralBaseTemplatePath -> documentObjectBaseTemplate.path
-        is BaseTemplateRef -> error(
-            "Referencing base templates by id ('${documentObjectBaseTemplate.id}') is not yet supported during deployment." // TODO d.svitak - handle
-        )
+
+        is BaseTemplateRef -> {
+            val baseTemplate = findBaseTemplate(documentObjectBaseTemplate.id)
+            val baseTemplatePath = resourcePathProvider.getBaseTemplatePath(baseTemplate)
+            logger.info(
+                "Base template '$baseTemplatePath' will not be used because referencing base templates by id is not yet supported during deployment. The project config default base template will be used instead."
+            )
+            config.baseTemplatePath
+        }
 
         null -> config.baseTemplatePath
     }
-    val path = literalPath.toIcmPath()
 
+    val path = literalPath.toIcmPath()
     if (path.isAbsolute()) return path
 
-    return "icm://Interactive".toIcmPath()
-        .join(config.interactiveTenant)
-        .join("BaseTemplates")
-        .join(path)
+    return resourcePathProvider.getBaseTemplatePath(literalPath)
 }
 
 fun DisplayRule.resolveTarget(findRule: (String) -> DisplayRule): DisplayRule {

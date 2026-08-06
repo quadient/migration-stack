@@ -111,6 +111,7 @@ import com.quadient.migration.api.dto.migrationmodel.Shape
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.VariableRepository
@@ -141,6 +142,7 @@ abstract class InspireDocumentObjectBuilder(
     protected val resourcePathProvider: ResourcePathProvider,
     protected val output: InspireOutput,
     protected val icmDataCache: IcmDataCache,
+    protected val baseTemplateRepository: BaseTemplateRepository,
 ) {
     protected val logger by logger()
 

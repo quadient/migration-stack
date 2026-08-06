@@ -18,6 +18,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -61,7 +62,7 @@ import kotlin.uuid.Uuid
 
 open class InteractiveDeployClient(
     private val projectConfig: ProjectConfig,
-    private val resourcePathProvider: ResourcePathProvider,
+    protected val resourcePathProvider: ResourcePathProvider,
     metadataValidator: MetadataValidatorImpl,
     postProcess: PostProcessImpl,
     conflictDetector: ConflictDetectorImpl,
@@ -76,6 +77,7 @@ open class InteractiveDeployClient(
     displayRuleRepository: DisplayRuleRepository,
     variableRepository: VariableRepository,
     variableStructureRepository: VariableStructureRepository,
+    baseTemplateRepository: BaseTemplateRepository,
     documentObjectBuilder: InspireDocumentObjectBuilder,
     ipsService: IpsService,
     storage: Storage,
@@ -96,6 +98,7 @@ open class InteractiveDeployClient(
     displayRuleRepository,
     variableRepository,
     variableStructureRepository,
+    baseTemplateRepository,
     documentObjectBuilder,
     ipsService,
     storage,
@@ -156,7 +159,9 @@ open class InteractiveDeployClient(
     override fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult {
         val runCommandType = obj.type.toRunCommandType()
         return ipsService.deployJld(
-            baseTemplate = getBaseTemplateFullPath(projectConfig, obj.baseTemplate),
+            baseTemplate = getBaseTemplateFullPath(
+                projectConfig, obj.baseTemplate, resourcePathProvider
+            ) { baseTemplateRepository.findOrFail(it) },
             type = runCommandType,
             moduleName = "DocumentLayout",
             xmlContent = wfdXml,
@@ -280,7 +285,11 @@ open class InteractiveDeployClient(
                 continue
             }
 
-            val jrd = Jrd.fromDisplayRule(rule, projectConfig, variableStructure, findVar)
+            val baseTemplatePath = getBaseTemplateFullPath(
+                projectConfig, rule.baseTemplate, resourcePathProvider
+            ) { baseTemplateRepository.findOrFail(it) }.toMapInteractive(projectConfig.interactiveTenant)
+
+            val jrd = Jrd.fromDisplayRule(rule, baseTemplatePath, variableStructure, findVar)
 
             val uploadResult = deployDisplayRule(rule, targetPath, jrd.toByteArray())
             if (uploadResult is OperationResult.Failure) {

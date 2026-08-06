@@ -19,6 +19,7 @@ import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
@@ -76,6 +77,7 @@ sealed class DeployClient(
     protected val displayRuleRepository: DisplayRuleRepository,
     protected val variableRepository: VariableRepository,
     protected val variableStructureRepository: VariableStructureRepository,
+    protected val baseTemplateRepository: BaseTemplateRepository,
     protected val documentObjectBuilder: InspireDocumentObjectBuilder,
     protected val ipsService: IpsService,
     protected val storage: Storage,

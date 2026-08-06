@@ -35,8 +35,8 @@ class JrdDefinitionTest {
             .definition(DisplayRuleDefinition(group = Group(items = groupItems, operator = GroupOp.Or, false)))
             .build()
 
-        val result = JrdDefinition.fromDisplayRule(rule, projectConfig, variableStructure, { name -> aVariable(name) })
-        val json = Jrd.fromDisplayRule(rule, projectConfig, variableStructure, { name -> aVariable(name) })
+        val result = JrdDefinition.fromDisplayRule(rule, "map://interactive/BaseTemplates/templ.wfd", variableStructure, { name -> aVariable(name) })
+        val json = Jrd.fromDisplayRule(rule, "map://interactive/BaseTemplates/templ.wfd", variableStructure, { name -> aVariable(name) })
 
         result.subject.shouldBeEqualTo("Test Subject")
         result.dataSet.type.shouldBeEqualTo("Template")
@@ -128,10 +128,7 @@ class JrdDefinitionTest {
             .definition(DisplayRuleDefinition(group = Group(items = groupItems, operator = GroupOp.And, false)))
             .build()
 
-        val result = Jrd.fromDisplayRule(rule, aProjectConfig(
-            baseTemplatePath = "icm://Interactive/StandardPackage/BaseTemplates/templ.wfd",
-            interactiveTenant = "StandardPackage",
-        ), variableStructure, { name -> aVariable(name) })
+        val result = Jrd.fromDisplayRule(rule, "map://interactive/BaseTemplates/templ.wfd", variableStructure, { name -> aVariable(name) })
 
          result.replace("\r\n", "\n").shouldBeEqualTo($$"""
             {
@@ -197,10 +194,7 @@ class JrdDefinitionTest {
                 comparison { value("a").notEndsWithCaseInsensitive().value("a") }
             }.build()
 
-        val result = Jrd.fromDisplayRule(allBinOpsRule, aProjectConfig(
-            baseTemplatePath = "icm://Interactive/StandardPackage/BaseTemplates/templ.wfd",
-            interactiveTenant = "StandardPackage",
-        ), variableStructure, { name -> aVariable(name) })
+        val result = Jrd.fromDisplayRule(allBinOpsRule, "map://interactive/BaseTemplates/templ.wfd", variableStructure, { name -> aVariable(name) })
 
 
         result.replace("\r\n", "\n").shouldBeEqualTo($$"""
