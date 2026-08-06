@@ -145,6 +145,9 @@ static <T> T deserialize(String value, Class<T> cls) {
             return (trimmed.isEmpty() ? null : trimmed) as T
         }
         case IcmPath: return IcmPath.from(value) as T
+        case Integer:
+        case int:
+            return value.trim().toInteger() as T
         case Color: return Color.fromHex(value) as T
         case Size: return Size.fromString(value) as T
         case BaseTemplateLocation: {
