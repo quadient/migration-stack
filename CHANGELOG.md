@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - **Breaking** - Removed `TableBuilder.Row.addCells(List<TableBuilder.Cell>)`
   overload and replaced it by one that takes list of already built cells instead of cell builders. You will need to
   adjust your code to build the cells before adding them to the row.
+- introducing index into the areas/layout mappings to be resistant to sorting and other potential discrepancies
 
 ### Fixed
 
