@@ -46,6 +46,7 @@ static void run(Migration migration, Path path) {
             Mapping.displayHeader("pageName", true),
             Mapping.displayHeader("pageWidth", true),
             Mapping.displayHeader("pageHeight", true),
+            Mapping.displayHeader("areaIndex", true),
             Mapping.displayHeader("interactiveFlowName", false),
             Mapping.displayHeader("flowToNextPage", false),
             Mapping.displayHeader("x", true),
@@ -91,8 +92,8 @@ static void run(Migration migration, Path path) {
         baseTemplates.each { baseTemplate ->
             baseTemplate.pages.eachWithIndex { page, pageIdx ->
                 def pageId = "page-${pageIdx + 1}"
-                page.areas.each { area ->
-                    writer.writeLine(buildBaseTemplateArea(baseTemplate, pageId, page, area))
+                page.areas.eachWithIndex { area, areaIdx ->
+                    writer.writeLine(buildBaseTemplateArea(baseTemplate, pageId, page, area, areaIdx))
                 }
             }
         }
@@ -109,6 +110,7 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     def pageOptions = page?.options instanceof PageOptions ? page.options as PageOptions : null
     builder.append(Csv.serialize(pageOptions?.width) + ",")
     builder.append(Csv.serialize(pageOptions?.height) + ",")
+    builder.append(Csv.serialize(idx) + ",")
     builder.append(Csv.serialize(area.interactiveFlowName) + ",")
     builder.append(Csv.serialize(area.flowToNextPage) + ",")
     builder.append(Csv.serialize(area.position.x) + ",")
@@ -124,7 +126,7 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     return builder.toString()
 }
 
-static String buildBaseTemplateArea(BaseTemplate baseTemplate, String pageId, BaseTemplatePage page, BaseTemplateArea area) {
+static String buildBaseTemplateArea(BaseTemplate baseTemplate, String pageId, BaseTemplatePage page, BaseTemplateArea area, Number idx) {
     def builder = new StringBuilder()
     builder.append(Csv.serialize(baseTemplate.id) + ",")
     builder.append(Csv.serialize(baseTemplate.name) + ",")
@@ -132,6 +134,7 @@ static String buildBaseTemplateArea(BaseTemplate baseTemplate, String pageId, Ba
     builder.append(Csv.serialize(page.name) + ",")
     builder.append(Csv.serialize(page.pageWidth) + ",")
     builder.append(Csv.serialize(page.pageHeight) + ",")
+    builder.append(Csv.serialize(idx) + ",")
     builder.append(Csv.serialize(area.interactiveFlowName) + ",")
     builder.append(Csv.serialize(area.flowToNextPage) + ",")
     builder.append(Csv.serialize(area.position?.x) + ",")

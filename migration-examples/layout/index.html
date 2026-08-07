@@ -775,6 +775,10 @@ function parseCsvToLayoutData(text) {
             const w = parseSizeMm(col(row, 'width'));
             const h = parseSizeMm(col(row, 'height'));
             if (x == null || y == null || w == null || h == null) return null;
+            const areaIndex = Number(col(row, 'areaIndex').trim());
+            if (Number.isNaN(areaIndex)) {
+                throw new Error(`Row ${lineIndices[idx] + 1} is missing a valid areaIndex value.`);
+            }
             return {
                 area: {
                     x, y, w, h,
@@ -783,8 +787,10 @@ function parseCsvToLayoutData(text) {
                     contentPreview: col(row, 'contentPreview') || '',
                 },
                 lineIndex: lineIndices[idx],
+                areaIndex,
             };
         }).filter(a => a != null);
+        rawAreasWithLine.sort((a, b) => a.areaIndex - b.areaIndex);
         const rawAreas = /** @type {{x:number,y:number,w:number,h:number,flowToNextPage:boolean,interactiveFlowName:string,contentPreview:string}[]} */ (
             rawAreasWithLine.map(a => a.area)
         );
@@ -949,6 +955,7 @@ function computeBaseTemplateData(data, viewModel, analysis) {
                 baseRows.push([
                     baseTemplateId, baseTemplateName, basePageId, basePageName,
                     pageWidthMm, pageHeightMm,
+                    String(areaGroupIndex),
                     flowName, String(flowToNextPage),
                     `${draft.position.x}mm`, `${draft.position.y}mm`, `${draft.position.w}mm`, `${draft.position.h}mm`,
                     "Base", "", "",
@@ -1020,9 +1027,10 @@ async function saveCsv() {
     baseRows.forEach(baseRow => {
         const byLogicalName = {
             templateId: baseRow[0], templateName: baseRow[1], pageId: baseRow[2], pageName: baseRow[3],
-            pageWidth: baseRow[4], pageHeight: baseRow[5], interactiveFlowName: baseRow[6], flowToNextPage: baseRow[7],
-            x: baseRow[8], y: baseRow[9], width: baseRow[10], height: baseRow[11],
-            type: baseRow[12], targetId: baseRow[13], contentPreview: baseRow[14],
+            pageWidth: baseRow[4], pageHeight: baseRow[5], areaIndex: baseRow[6],
+            interactiveFlowName: baseRow[7], flowToNextPage: baseRow[8],
+            x: baseRow[9], y: baseRow[10], width: baseRow[11], height: baseRow[12],
+            type: baseRow[13], targetId: baseRow[14], contentPreview: baseRow[15],
         };
         const row = headers.map(h => byLogicalName[normalizeHeaderName(h)] ?? "");
         rows.push(row);

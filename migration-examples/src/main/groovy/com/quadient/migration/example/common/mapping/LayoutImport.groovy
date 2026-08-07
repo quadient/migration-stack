@@ -9,7 +9,6 @@ package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
-import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.example.common.util.Csv
@@ -36,13 +35,10 @@ static void run(Migration migration, Path path) {
     def fileLines = path.toFile().readLines()
     def columnNames = Csv.parseColumnNames(fileLines.removeFirst()).collect { Mapping.normalizeHeader(it) }
 
-    def areaMappings = new HashMap<String, MappingItem>()
+    def areaMappings = new HashMap<String, MappingItem.Area>()
     def docObjectsToTargetIds = new LinkedHashMap<String, String>()
     def baseTemplateDrafts = new LinkedHashMap<String, BaseTemplateDraft>()
 
-    DocumentObject currentDocumentObject = null
-    MappingItem.Area areaMapping = null
-    int areaIndex = 0
     for (line in fileLines) {
         def values = Csv.getCells(line, columnNames)
 
@@ -56,19 +52,16 @@ static void run(Migration migration, Path path) {
         def templateId = Csv.deserialize(values.get("templateId"), String.class)
         def documentObjectId = pageId ?: templateId
 
-        if (currentDocumentObject?.id != documentObjectId) {
-            if (currentDocumentObject != null) {
-                areaMappings[currentDocumentObject.id] = areaMapping
-            }
-
-            def documentObjectModel = migration.documentObjectRepository.find(documentObjectId)
-            if (!documentObjectModel) {
+        def areaMapping = areaMappings.computeIfAbsent(documentObjectId) {
+            if (!migration.documentObjectRepository.find(documentObjectId)) {
                 throw new IllegalStateException("Document object '${documentObjectId}' not found.")
             }
+            migration.mappingRepository.getAreaMapping(documentObjectId)
+        }
 
-            areaMapping = migration.mappingRepository.getAreaMapping(documentObjectId)
-            currentDocumentObject = documentObjectModel
-            areaIndex = 0
+        def areaIndex = Csv.deserialize(values.get("areaIndex"), Integer.class)
+        if (areaIndex == null) {
+            throw new IllegalStateException("Row for document object '${documentObjectId}' is missing an areaIndex value.")
         }
 
         def interactiveFlowName = Csv.deserialize(values.get("interactiveFlowName"), String.class)
@@ -86,12 +79,6 @@ static void run(Migration migration, Path path) {
                 docObjectsToTargetIds[templateId] = targetId
             }
         }
-
-        areaIndex++
-    }
-
-    if (currentDocumentObject != null) {
-        areaMappings[currentDocumentObject.id] = areaMapping
     }
 
     Mapping.upsertBatched(migration.mappingRepository, areaMappings, "area mappings", log)
@@ -113,16 +100,19 @@ private static void assignAreaToBaseTemplateDraft(Map<String, BaseTemplateDraft>
         baseTemplateDraft.name = Csv.deserialize(values.get("templateName"), String.class)
     }
 
-    def page = baseTemplateDraft.pages.computeIfAbsent(pageGroupId) {
-        new BaseTemplateBuilder.Page()
-                .name(Csv.deserialize(values.get("pageName"), String.class))
-                .pageWidth(Csv.deserialize(values.get("pageWidth"), Size.class))
-                .pageHeight(Csv.deserialize(values.get("pageHeight"), Size.class))
+    def pageDraft = baseTemplateDraft.pages.computeIfAbsent(pageGroupId) {
+        new BaseTemplatePageDraft(name: Csv.deserialize(values.get("pageName"), String.class),
+                pageWidth: Csv.deserialize(values.get("pageWidth"), Size.class),
+                pageHeight: Csv.deserialize(values.get("pageHeight"), Size.class))
     }
 
     def interactiveFlowName = Csv.deserialize(values.get("interactiveFlowName"), String.class)
     if (!interactiveFlowName) {
         throw new IllegalStateException("Rows of type 'Base' must specify an interactiveFlowName for the consolidated area.")
+    }
+    def areaIndex = Csv.deserialize(values.get("areaIndex"), Integer.class)
+    if (areaIndex == null) {
+        throw new IllegalStateException("Rows of type 'Base' must specify an areaIndex identifying the area's position.")
     }
     def x = Csv.deserialize(values.get("x"), Size.class)
     def y = Csv.deserialize(values.get("y"), Size.class)
@@ -131,7 +121,7 @@ private static void assignAreaToBaseTemplateDraft(Map<String, BaseTemplateDraft>
     def position = (x != null && y != null && width != null && height != null) ? new Position(x, y, width, height) : null
     def flowToNextPage = Csv.deserialize(values.get("flowToNextPage"), Boolean.class) ?: false
 
-    page.addArea(interactiveFlowName)
+    pageDraft.areasByIndex[areaIndex] = new BaseTemplateBuilder.Area(interactiveFlowName)
             .position(position)
             .flowToNextPage(flowToNextPage)
 }
@@ -171,7 +161,14 @@ private static void applyBaseTemplateDraftMappings(Migration migration, Map<Stri
         def mapping = migration.mappingRepository.getBaseTemplateMapping(baseTemplateId)
         mapping.name = draft.name ?: existing?.name
         mapping.targetFolder = existing?.targetFolder
-        mapping.pages = draft.pages.values().collect { it.build() } as List<BaseTemplatePage>
+        mapping.pages = draft.pages.values().collect { pageDraft ->
+            new BaseTemplateBuilder.Page()
+                    .name(pageDraft.name)
+                    .pageWidth(pageDraft.pageWidth)
+                    .pageHeight(pageDraft.pageHeight)
+                    .addAreas(pageDraft.areasByIndex.values() as List)
+                    .build()
+        } as List<BaseTemplatePage>
 
         mappings[baseTemplateId] = mapping
     }
@@ -182,5 +179,12 @@ private static void applyBaseTemplateDraftMappings(Migration migration, Map<Stri
 
 class BaseTemplateDraft {
     String name
-    Map<String, BaseTemplateBuilder.Page> pages = new LinkedHashMap<>()
+    Map<String, BaseTemplatePageDraft> pages = new LinkedHashMap<>()
+}
+
+class BaseTemplatePageDraft {
+    String name
+    Size pageWidth
+    Size pageHeight
+    Map<Integer, BaseTemplateBuilder.Area> areasByIndex = new TreeMap<>()
 }

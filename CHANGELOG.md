@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Added base template model, builder and database table. Document objects and display rules can reference them by id
 - Layout index.html able to export suggested base template setup to layout csv file. Importing it creates base templates,
   links templates and pages to them and assigns areas to created base template areas via interactive flow names.
+- Introducing index into the layout mappings to be resistant to sorting and other potential discrepancies
 
 ### Changed
 

@@ -45,16 +45,16 @@ class LayoutImportTest {
         givenPageExists("page3", [null, "beta", null, "delta"])
 
         def input = """\
-            templateId,templateName,pageId,pageName,interactiveFlowName,flowToNextPage,x,y,width,height,contentPreview
-            ,,page1,,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,
-            ,,page1,,new flow2,false,0.0mm,0.0mm,0.0mm,0.0mm,
-            ,,page1,,flow3,true,0.0mm,0.0mm,0.0mm,0.0mm,
-            tmpl2,,page2,,flowA,true,0.0mm,0.0mm,0.0mm,0.0mm,
-            tmpl2,,page2,,modified flowB,false,0.0mm,0.0mm,0.0mm,0.0mm,
-            tmpl3,,page3,,new alpha,false,0.0mm,0.0mm,0.0mm,0.0mm,
-            tmpl3,,page3,,beta,true,0.0mm,0.0mm,0.0mm,0.0mm,
-            tmpl3,,page3,,new gamma,false,0.0mm,0.0mm,0.0mm,0.0mm,
-            tmpl3,,page3,,modified delta,true,0.0mm,0.0mm,0.0mm,0.0mm,
+            templateId,templateName,pageId,pageName,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,contentPreview
+            ,,page1,,0,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,
+            ,,page1,,1,new flow2,false,0.0mm,0.0mm,0.0mm,0.0mm,
+            ,,page1,,2,flow3,true,0.0mm,0.0mm,0.0mm,0.0mm,
+            tmpl2,,page2,,0,flowA,true,0.0mm,0.0mm,0.0mm,0.0mm,
+            tmpl2,,page2,,1,modified flowB,false,0.0mm,0.0mm,0.0mm,0.0mm,
+            tmpl3,,page3,,0,new alpha,false,0.0mm,0.0mm,0.0mm,0.0mm,
+            tmpl3,,page3,,1,beta,true,0.0mm,0.0mm,0.0mm,0.0mm,
+            tmpl3,,page3,,2,new gamma,false,0.0mm,0.0mm,0.0mm,0.0mm,
+            tmpl3,,page3,,3,modified delta,true,0.0mm,0.0mm,0.0mm,0.0mm,
             """.stripIndent()
         mappingFile.toFile().write(input)
 
@@ -64,6 +64,38 @@ class LayoutImportTest {
             "page1": new MappingItem.Area(null, [0: "flow1", 1: "new flow2", 2: "flow3"], [0: false, 1: false, 2: true]),
             "page2": new MappingItem.Area(null, [0: "flowA", 1: "modified flowB"], [0: true, 1: false]),
             "page3": new MappingItem.Area(null, [0: "new alpha", 1: "beta", 2: "new gamma", 3: "modified delta"], [0: false, 1: true, 2: false, 3: true])
+        ])
+        verify(migration.mappingRepository).applyAllAreaMappings()
+    }
+
+    @Test
+    void importIsRobustToReorderedAndNonContiguousRows() {
+        // Simulates a user sorting/filtering the exported CSV in Excel: rows for the same page are
+        // no longer adjacent, and their relative order no longer matches the areaIndex column. The
+        // import must still assign each row to the correct area and must not drop any of them.
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+
+        when(migration.mappingRepository.getAreaMapping("page1")).thenReturn(new MappingItem.Area(null, [:], [:]))
+        when(migration.mappingRepository.getAreaMapping("page2")).thenReturn(new MappingItem.Area(null, [:], [:]))
+
+        givenPageExists("page1", ["flow1", "flow2", "flow3"], [false, false, false])
+        givenPageExists("page2", ["flowA", "flowB"], [false, false])
+
+        def input = """\
+            templateId,templateName,pageId,pageName,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,contentPreview
+            tmpl2,,page2,,1,modified flowB,false,0.0mm,0.0mm,0.0mm,0.0mm,
+            ,,page1,,2,flow3,true,0.0mm,0.0mm,0.0mm,0.0mm,
+            ,,page1,,0,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,
+            tmpl2,,page2,,0,flowA,true,0.0mm,0.0mm,0.0mm,0.0mm,
+            ,,page1,,1,new flow2,false,0.0mm,0.0mm,0.0mm,0.0mm,
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+
+        LayoutImport.run(migration, mappingFile)
+
+        verify(migration.mappingRepository).upsertBatch([
+            "page1": new MappingItem.Area(null, [0: "flow1", 1: "new flow2", 2: "flow3"], [0: false, 1: false, 2: true]),
+            "page2": new MappingItem.Area(null, [0: "flowA", 1: "modified flowB"], [0: true, 1: false])
         ])
         verify(migration.mappingRepository).applyAllAreaMappings()
     }
@@ -81,10 +113,10 @@ class LayoutImportTest {
         )
 
         def input = """\
-            templateId,templateName,pageId,pageName,interactiveFlowName,flowToNextPage,x,y,width,height,contentPreview
-            tmpl1,,,,Updated Address,true,0.0mm,0.0mm,0.0mm,0.0mm,
-            tmpl1,,,,New Header,false,0.0mm,0.0mm,0.0mm,0.0mm,
-            tmpl1,,,,Footer,true,0.0mm,0.0mm,0.0mm,0.0mm,
+            templateId,templateName,pageId,pageName,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,contentPreview
+            tmpl1,,,,0,Updated Address,true,0.0mm,0.0mm,0.0mm,0.0mm,
+            tmpl1,,,,1,New Header,false,0.0mm,0.0mm,0.0mm,0.0mm,
+            tmpl1,,,,2,Footer,true,0.0mm,0.0mm,0.0mm,0.0mm,
             """.stripIndent()
         mappingFile.toFile().write(input)
 
@@ -110,9 +142,9 @@ class LayoutImportTest {
         givenPageExists("page1", ["flow1", "flow2"], [false, false])
 
         def input = """\
-            templateId,templateName,pageId,pageName,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
-            tmpl1,,page1,,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
-            tmpl1,,page1,,flow2,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
+            templateId,templateName,pageId,pageName,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
+            tmpl1,,page1,,0,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
+            tmpl1,,page1,,1,flow2,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
             """.stripIndent()
         mappingFile.toFile().write(input)
 
@@ -141,10 +173,10 @@ class LayoutImportTest {
         when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, []))
 
         def input = """\
-            templateId,templateName,pageId,pageName,pageWidth,pageHeight,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
-            tmpl1,,page1,,,,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
-            G1,Base template 1,G1-P1,Page group 1,210mm,297mm,G1-P1.Area1,false,1cm,1cm,190mm,20mm,Base,,
-            G1,Base template 1,G1-P1,Page group 1,210mm,297mm,G1-P1.Area2,true,1cm,30mm,190mm,50mm,Base,,
+            templateId,templateName,pageId,pageName,pageWidth,pageHeight,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
+            tmpl1,,page1,,,,0,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
+            G1,Base template 1,G1-P1,Page group 1,210mm,297mm,1,G1-P1.Area2,true,1cm,30mm,190mm,50mm,Base,,
+            G1,Base template 1,G1-P1,Page group 1,210mm,297mm,0,G1-P1.Area1,false,1cm,1cm,190mm,20mm,Base,,
             """.stripIndent()
         mappingFile.toFile().write(input)
 
@@ -173,8 +205,8 @@ class LayoutImportTest {
         when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, []))
 
         def input = """\
-            templateId,templateName,pageId,pageName,pageWidth,pageHeight,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
-            G1,,G1-P1,Page group 1,210mm,297mm,G1-P1.Area1,false,1cm,1cm,190mm,20mm,Base,,
+            templateId,templateName,pageId,pageName,pageWidth,pageHeight,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
+            G1,,G1-P1,Page group 1,210mm,297mm,0,G1-P1.Area1,false,1cm,1cm,190mm,20mm,Base,,
             """.stripIndent()
         mappingFile.toFile().write(input)
 
