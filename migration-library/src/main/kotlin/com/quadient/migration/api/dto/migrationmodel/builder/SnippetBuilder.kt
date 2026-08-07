@@ -33,6 +33,14 @@ class SnippetBuilder(val id: String) {
         FirstMatchSnippetBuilder(id).apply { firstMatch(builder) }
 
     /**
+     * Adds an existing first match block to the content.
+     * @param firstMatch The existing first match block to add.
+     * @return A [FirstMatchSnippetBuilder] instance with the first match block applied.
+     */
+    fun firstMatch(firstMatch: FirstMatch) =
+        FirstMatchSnippetBuilder(id).apply { firstMatch(firstMatch) }
+
+    /**
      * Creates a [SimpleSnippetBuilder] for building a snippet with simple string content.
      * @return A new [SimpleSnippetBuilder] instance.
      */
