@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+- Added base template model, builder and database table. Document objects and display rules can reference them by id
+- Layout index.html able to export suggested base template setup to layout csv file. Importing it creates base templates,
+  links templates and pages to them and assigns areas to created base template areas via interactive flow names.
+
 ### Changed
 
 - Made builder properties public
@@ -15,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - **Breaking** - Removed `TableBuilder.Row.addCells(List<TableBuilder.Cell>)`
   overload and replaced it by one that takes list of already built cells instead of cell builders. You will need to
   adjust your code to build the cells before adding them to the row.
+- AreasExport and AreasImport tasks renamed to LayoutExport and LayoutImport to better reflect their purpose.
 
 ### Fixed
 
