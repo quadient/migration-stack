@@ -44,17 +44,17 @@ static void run(Migration migration, Path path) {
             Mapping.displayHeader("templateName", true),
             Mapping.displayHeader("pageId", false),
             Mapping.displayHeader("pageName", true),
-            Mapping.displayHeader("pageWidth", true),
-            Mapping.displayHeader("pageHeight", true),
-            Mapping.displayHeader("areaIndex", true),
+            Mapping.displayHeader("type", false),
+            Mapping.displayHeader("baseTemplateTargetId", false),
             Mapping.displayHeader("interactiveFlowName", false),
             Mapping.displayHeader("flowToNextPage", false),
+            Mapping.displayHeader("areaIndex", true),
             Mapping.displayHeader("x", true),
             Mapping.displayHeader("y", true),
             Mapping.displayHeader("width", true),
             Mapping.displayHeader("height", true),
-            Mapping.displayHeader("type", false),
-            Mapping.displayHeader("targetId", false),
+            Mapping.displayHeader("pageWidth", true),
+            Mapping.displayHeader("pageHeight", true),
             Mapping.displayHeader("contentPreview", true),
         ]
         writer.writeLine(headers.join(","))
@@ -107,19 +107,18 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     builder.append(Csv.serialize(template?.name) + ",")
     builder.append(Csv.serialize(page?.id) + ",")
     builder.append(Csv.serialize(page?.name) + ",")
-    def pageOptions = page?.options instanceof PageOptions ? page.options as PageOptions : null
-    builder.append(Csv.serialize(pageOptions?.width) + ",")
-    builder.append(Csv.serialize(pageOptions?.height) + ",")
-    builder.append(Csv.serialize(idx) + ",")
+    builder.append("Standard,")
+    builder.append(Csv.serialize(page?.baseTemplate ?: template?.baseTemplate) + ",")
     builder.append(Csv.serialize(area.interactiveFlowName) + ",")
     builder.append(Csv.serialize(area.flowToNextPage) + ",")
+    builder.append(Csv.serialize(idx) + ",")
     builder.append(Csv.serialize(area.position.x) + ",")
     builder.append(Csv.serialize(area.position.y) + ",")
     builder.append(Csv.serialize(area.position.width) + ",")
     builder.append(Csv.serialize(area.position.height) + ",")
-
-    builder.append("Standard,")
-    builder.append(Csv.serialize(page?.baseTemplate ?: template?.baseTemplate) + ",")
+    def pageOptions = page?.options instanceof PageOptions ? page.options as PageOptions : null
+    builder.append(Csv.serialize(pageOptions?.width) + ",")
+    builder.append(Csv.serialize(pageOptions?.height) + ",")
 
     builder.append(Csv.serialize(migration.previewProvider.buildDocumentContentListPreview(area.content)))
 
@@ -132,18 +131,17 @@ static String buildBaseTemplateArea(BaseTemplate baseTemplate, String pageId, Ba
     builder.append(Csv.serialize(baseTemplate.name) + ",")
     builder.append(Csv.serialize(pageId) + ",")
     builder.append(Csv.serialize(page.name) + ",")
-    builder.append(Csv.serialize(page.pageWidth) + ",")
-    builder.append(Csv.serialize(page.pageHeight) + ",")
-    builder.append(Csv.serialize(idx) + ",")
+    builder.append("Base,")
+    builder.append(Csv.serialize(null) + ",")
     builder.append(Csv.serialize(area.interactiveFlowName) + ",")
     builder.append(Csv.serialize(area.flowToNextPage) + ",")
+    builder.append(Csv.serialize(idx) + ",")
     builder.append(Csv.serialize(area.position?.x) + ",")
     builder.append(Csv.serialize(area.position?.y) + ",")
     builder.append(Csv.serialize(area.position?.width) + ",")
     builder.append(Csv.serialize(area.position?.height) + ",")
-
-    builder.append("Base,")
-    builder.append(Csv.serialize(null) + ",")
+    builder.append(Csv.serialize(page.pageWidth) + ",")
+    builder.append(Csv.serialize(page.pageHeight) + ",")
 
     builder.append(Csv.serialize(null))
 

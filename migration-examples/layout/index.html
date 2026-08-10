@@ -954,11 +954,11 @@ function computeBaseTemplateData(data, viewModel, analysis) {
 
                 baseRows.push([
                     baseTemplateId, baseTemplateName, basePageId, basePageName,
-                    pageWidthMm, pageHeightMm,
-                    String(areaGroupIndex),
-                    flowName, String(flowToNextPage),
+                    "Base", "",
+                    flowName, String(flowToNextPage), String(areaGroupIndex),
                     `${draft.position.x}mm`, `${draft.position.y}mm`, `${draft.position.w}mm`, `${draft.position.h}mm`,
-                    "Base", "", "",
+                    pageWidthMm, pageHeightMm,
+                    "",
                 ]);
             });
 
@@ -997,7 +997,7 @@ async function saveCsv() {
     const rows = currentCsvRows.map(row => [...row]);
 
     const typeIdx = ensureCsvColumn(headers, rows, "type");
-    const targetIdIdx = ensureCsvColumn(headers, rows, "targetId");
+    const targetIdIdx = ensureCsvColumn(headers, rows, "baseTemplateTargetId");
     const flowNameIdx = ensureCsvColumn(headers, rows, "interactiveFlowName");
 
     const { baseRows, overridesByPageIndex } = computeBaseTemplateData(currentData, currentViewModel, currentAnalysis);
@@ -1027,10 +1027,10 @@ async function saveCsv() {
     baseRows.forEach(baseRow => {
         const byLogicalName = {
             templateId: baseRow[0], templateName: baseRow[1], pageId: baseRow[2], pageName: baseRow[3],
-            pageWidth: baseRow[4], pageHeight: baseRow[5], areaIndex: baseRow[6],
-            interactiveFlowName: baseRow[7], flowToNextPage: baseRow[8],
+            type: baseRow[4], baseTemplateTargetId: baseRow[5],
+            interactiveFlowName: baseRow[6], flowToNextPage: baseRow[7], areaIndex: baseRow[8],
             x: baseRow[9], y: baseRow[10], width: baseRow[11], height: baseRow[12],
-            type: baseRow[13], targetId: baseRow[14], contentPreview: baseRow[15],
+            pageWidth: baseRow[13], pageHeight: baseRow[14], contentPreview: baseRow[15],
         };
         const row = headers.map(h => byLogicalName[normalizeHeaderName(h)] ?? "");
         rows.push(row);
