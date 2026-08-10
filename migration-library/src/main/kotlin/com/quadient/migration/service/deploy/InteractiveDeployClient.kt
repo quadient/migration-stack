@@ -34,8 +34,8 @@ import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTracker
-import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.ResourcePathProvider
+import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
@@ -159,8 +159,8 @@ open class InteractiveDeployClient(
     override fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult {
         val runCommandType = obj.type.toRunCommandType()
         return ipsService.deployJld(
-            baseTemplate = getBaseTemplateFullPath(
-                projectConfig, obj.baseTemplate, resourcePathProvider
+            baseTemplate = resourcePathProvider.getBaseTemplateFullPath(
+                projectConfig, obj.baseTemplate
             ) { baseTemplateRepository.findOrFail(it) },
             type = runCommandType,
             moduleName = "DocumentLayout",
@@ -285,8 +285,8 @@ open class InteractiveDeployClient(
                 continue
             }
 
-            val baseTemplatePath = getBaseTemplateFullPath(
-                projectConfig, rule.baseTemplate, resourcePathProvider
+            val baseTemplatePath = resourcePathProvider.getBaseTemplateFullPath(
+                projectConfig, rule.baseTemplate
             ) { baseTemplateRepository.findOrFail(it) }.toMapInteractive(projectConfig.interactiveTenant)
 
             val jrd = Jrd.fromDisplayRule(rule, baseTemplatePath, variableStructure, findVar)

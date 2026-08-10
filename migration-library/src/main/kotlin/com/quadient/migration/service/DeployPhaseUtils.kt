@@ -1,22 +1,16 @@
 package com.quadient.migration.service
 
-import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
-import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
-import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
-import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.api.dto.migrationmodel.ResourceRef
 import com.quadient.migration.api.repository.Repository
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.isNullOrBlank
-import com.quadient.migration.shared.toIcmPath
 import org.slf4j.LoggerFactory
 import java.lang.invoke.MethodHandles
 
@@ -61,33 +55,6 @@ fun resolveTargetDir(defaultTargetFolder: IcmPath? = null, specificTargetFolder:
         !defaultTargetFolder.isNullOrBlank() -> defaultTargetFolder
         else -> null
     }
-}
-
-fun getBaseTemplateFullPath(
-    config: ProjectConfig,
-    documentObjectBaseTemplate: BaseTemplateLocation?,
-    resourcePathProvider: ResourcePathProvider,
-    findBaseTemplate: (String) -> BaseTemplate,
-): IcmPath {
-    val literalPath = when (documentObjectBaseTemplate) {
-        is LiteralBaseTemplatePath -> documentObjectBaseTemplate.path
-
-        is BaseTemplateRef -> {
-            val baseTemplate = findBaseTemplate(documentObjectBaseTemplate.id)
-            val baseTemplatePath = resourcePathProvider.getBaseTemplatePath(baseTemplate)
-            logger.info(
-                "Base template '$baseTemplatePath' will not be used because referencing base templates by id is not yet supported during deployment. The project config default base template will be used instead."
-            )
-            config.baseTemplatePath
-        }
-
-        null -> config.baseTemplatePath
-    }
-
-    val path = literalPath.toIcmPath()
-    if (path.isAbsolute()) return path
-
-    return resourcePathProvider.getBaseTemplatePath(literalPath)
 }
 
 fun DisplayRule.resolveTarget(findRule: (String) -> DisplayRule): DisplayRule {
