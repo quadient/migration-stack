@@ -19,7 +19,7 @@ class DeployPhaseUtilsTest {
 
     @Test
     fun `project config base template is used and normalized`() {
-        val result = getBaseTemplateFullPath(projectConfig, null, resourcePathProvider, findBaseTemplate).toString()
+        val result = resourcePathProvider.getBaseTemplateFullPath(projectConfig, null, findBaseTemplate).toString()
 
         result.shouldBeEqualTo("icm://Interactive/StandardPackage/BaseTemplates/BaseTemplate.wfd")
     }
@@ -27,8 +27,8 @@ class DeployPhaseUtilsTest {
     @Test
     fun `specific base template path is preferred over the project config one`() {
         val baseTemplatePath = "icm://Interactive/Vital/BaseTemplates/MyBaseTemplate.wfd"
-        val result = getBaseTemplateFullPath(
-            projectConfig, LiteralBaseTemplatePath(baseTemplatePath), resourcePathProvider, findBaseTemplate
+        val result = resourcePathProvider.getBaseTemplateFullPath(
+            projectConfig, LiteralBaseTemplatePath(baseTemplatePath), findBaseTemplate
         ).toString()
 
         result.shouldBeEqualTo(baseTemplatePath)
@@ -36,8 +36,8 @@ class DeployPhaseUtilsTest {
 
     @Test
     fun `path not starting with icm is handled as relative`() {
-        val result = getBaseTemplateFullPath(
-            projectConfig, LiteralBaseTemplatePath("/projectA/AddressBT.wfd"), resourcePathProvider, findBaseTemplate
+        val result = resourcePathProvider.getBaseTemplateFullPath(
+            projectConfig, LiteralBaseTemplatePath("/projectA/AddressBT.wfd"), findBaseTemplate
         ).toString()
 
         result.shouldBeEqualTo("icm://Interactive/${projectConfig.interactiveTenant}/BaseTemplates/projectA/AddressBT.wfd")
@@ -46,33 +46,38 @@ class DeployPhaseUtilsTest {
     @Test
     fun `only base template name in project config is correctly translated to full path`() {
         val config = aProjectConfig("myBT.wfd", interactiveTenant = "StandardPackage")
-        val result = getBaseTemplateFullPath(
-            config, null, InteractiveResourcePathProvider(config), findBaseTemplate
+        val result = InteractiveResourcePathProvider(config).getBaseTemplateFullPath(
+            config, null, findBaseTemplate
         ).toString()
 
         result.shouldBeEqualTo("icm://Interactive/StandardPackage/BaseTemplates/myBT.wfd")
     }
 
     @Test
-    fun `base template referenced by id is looked up and resolved via resource path provider, but project config default is used instead`() {
+    fun `base template referenced by id fails because it is not yet supported`() {
         val baseTemplate = BaseTemplate(
             id = "bt-1",
             name = "AddressBaseTemplate",
             customFields = CustomFieldMap(),
         )
 
-        val result = getBaseTemplateFullPath(
-            projectConfig, BaseTemplateRef(baseTemplate.id), resourcePathProvider
-        ) { id -> if (id == baseTemplate.id) baseTemplate else error("Unexpected id '$id'") }.toString()
-
-        result.shouldBeEqualTo("icm://Interactive/StandardPackage/BaseTemplates/BaseTemplate.wfd")
+        try {
+            resourcePathProvider.getBaseTemplateFullPath(
+                projectConfig, BaseTemplateRef(baseTemplate.id)
+            ) { id -> if (id == baseTemplate.id) baseTemplate else error("Unexpected id '$id'") }
+            error("Expected an exception to be thrown")
+        } catch (e: IllegalStateException) {
+            e.message.shouldBeEqualTo(
+                "Base template 'icm://Interactive/StandardPackage/BaseTemplates/AddressBaseTemplate.wfd' cannot be used because referencing base templates by id is not yet supported during deployment."
+            )
+        }
     }
 
     @Test
     fun `base template referenced by id fails if it cannot be found`() {
         try {
-            getBaseTemplateFullPath(
-                projectConfig, BaseTemplateRef("missing"), resourcePathProvider
+            resourcePathProvider.getBaseTemplateFullPath(
+                projectConfig, BaseTemplateRef("missing")
             ) { error("Record 'missing' not found") }
             error("Expected an exception to be thrown")
         } catch (e: IllegalStateException) {

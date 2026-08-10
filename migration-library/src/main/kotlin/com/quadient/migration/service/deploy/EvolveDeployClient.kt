@@ -19,8 +19,8 @@ import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
-import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.ResourcePathProvider
+import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
@@ -98,8 +98,8 @@ class EvolveDeployClient(
         val ipsMemLocation = "memory://${UUID.randomUUID()}"
         try {
             val runCommandType = obj.type.toRunCommandType()
-            val baseTemplatePath = getBaseTemplateFullPath(
-                projectConfig, obj.baseTemplate, resourcePathProvider
+            val baseTemplatePath = resourcePathProvider.getBaseTemplateFullPath(
+                projectConfig, obj.baseTemplate
             ) { baseTemplateRepository.findOrFail(it) }
             val deployResult = ipsService.deployJld(
                 baseTemplate = baseTemplatePath,
@@ -220,8 +220,8 @@ class EvolveDeployClient(
         }
         val resolvedFolder = resolveTargetDir(projectConfig.defaultTargetFolder, rule.targetFolder?.toIcmPath())
 
-        val baseTemplatePath = getBaseTemplateFullPath(
-            projectConfig, rule.baseTemplate, resourcePathProvider
+        val baseTemplatePath = resourcePathProvider.getBaseTemplateFullPath(
+            projectConfig, rule.baseTemplate
         ) { baseTemplateRepository.findOrFail(it) }
         val result =  caClient.createRuleDraft(rule.nameOrId(), resolvedFolder, baseTemplatePath, data)
         if (result !is HttpResult.Success) return result.toOperationResult()

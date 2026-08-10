@@ -3,15 +3,23 @@ package com.quadient.migration.service
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
+import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.service.inspirebuilder.appendExtensionIfMissing
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
+import com.quadient.migration.shared.toIcmPath
+import org.slf4j.LoggerFactory
+import java.lang.invoke.MethodHandles
+
+private val logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass())
 
 interface ResourcePathProvider {
     fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): IcmPath
@@ -52,6 +60,32 @@ interface ResourcePathProvider {
     fun getStyleDefinitionPath(): IcmPath
 
     fun getFontRootFolder(): IcmPath
+}
+
+fun ResourcePathProvider.getBaseTemplateFullPath(
+    config: ProjectConfig,
+    documentObjectBaseTemplate: BaseTemplateLocation?,
+    findBaseTemplate: (String) -> BaseTemplate,
+): IcmPath {
+    val literalPath = when (documentObjectBaseTemplate) {
+        is LiteralBaseTemplatePath -> documentObjectBaseTemplate.path
+
+        is BaseTemplateRef -> {
+            val baseTemplate = findBaseTemplate(documentObjectBaseTemplate.id)
+            val baseTemplatePath = getBaseTemplatePath(baseTemplate)
+            val message =
+                "Base template '$baseTemplatePath' cannot be used because referencing base templates by id is not yet supported during deployment."
+            logger.error(message)
+            error(message)
+        }
+
+        null -> config.baseTemplatePath
+    }
+
+    val path = literalPath.toIcmPath()
+    if (path.isAbsolute()) return path
+
+    return getBaseTemplatePath(literalPath)
 }
 
 class DesignerResourcePathProvider(private val projectConfig: ProjectConfig) : ResourcePathProvider {

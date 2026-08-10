@@ -937,7 +937,7 @@ class InteractiveDocumentObjectBuilderTest {
         }
 
         every {
-            ipsService.wfd2xml(getBaseTemplateFullPath(config, null, resourcePathProvider) { baseTemplateRepository.findOrFail(it) })
+            ipsService.wfd2xml(resourcePathProvider.getBaseTemplateFullPath(config, null) { baseTemplateRepository.findOrFail(it) })
         } returns """<Workflow>
             <Layout>
                 <Layout>
@@ -1659,7 +1659,7 @@ class InteractiveDocumentObjectBuilderTest {
         val emailDoc = EmailObjectBuilder("E_1").string("Email content").build().mock()
         val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(emailDoc).build()
 
-        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null, resourcePathProvider) { baseTemplateRepository.findOrFail(it) }) } returns """
+        every { ipsService.wfd2xml(resourcePathProvider.getBaseTemplateFullPath(config, null) { baseTemplateRepository.findOrFail(it) }) } returns """
             <Workflow>
                 <Layout>
                     <Layout>
@@ -1718,7 +1718,7 @@ class InteractiveDocumentObjectBuilderTest {
         val smsDoc = SmsObjectBuilder("S_1").string("SMS content").build().mock()
         val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(smsDoc).build()
 
-        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null, resourcePathProvider) { baseTemplateRepository.findOrFail(it) }) } returns """
+        every { ipsService.wfd2xml(resourcePathProvider.getBaseTemplateFullPath(config, null) { baseTemplateRepository.findOrFail(it) }) } returns """
             <Workflow>
                 <Layout>
                     <Layout>
@@ -1774,7 +1774,7 @@ class InteractiveDocumentObjectBuilderTest {
             .build().mock()
         val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(emailDoc).build()
 
-        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null, resourcePathProvider) { baseTemplateRepository.findOrFail(it) }) } returns """
+        every { ipsService.wfd2xml(resourcePathProvider.getBaseTemplateFullPath(config, null) { baseTemplateRepository.findOrFail(it) }) } returns """
             <Workflow>
                 <Layout>
                     <Layout>
@@ -1850,7 +1850,7 @@ class InteractiveDocumentObjectBuilderTest {
             .build().mock()
         val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(smsDoc).build()
 
-        every { ipsService.wfd2xml(getBaseTemplateFullPath(config, null, resourcePathProvider) { baseTemplateRepository.findOrFail(it) }) } returns """
+        every { ipsService.wfd2xml(resourcePathProvider.getBaseTemplateFullPath(config, null) { baseTemplateRepository.findOrFail(it) }) } returns """
             <Workflow>
                 <Layout>
                     <Layout>

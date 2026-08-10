@@ -48,12 +48,12 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),areaIndex (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
-            full tmpl,,full page,,,,0,test flow2,false,0mm,0mm,0mm,0mm,Standard,,
-            full tmpl,,full page,,,,1,test flow3,true,0mm,0mm,0mm,0mm,Standard,,
-            full tmpl,,full page,,,,2,,false,0mm,0mm,0mm,0mm,Standard,,
-            full tmpl,,full page,,,,3,test flow5,false,0mm,0mm,0mm,0mm,Standard,,
-            ,,unreferenced page,,,,0,test flow,true,0mm,0mm,0mm,0mm,Standard,,
+            templateId,templateName (read-only),pageId,pageName (read-only),type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex (read-only),x (read-only),y (read-only),width (read-only),height (read-only),pageWidth (read-only),pageHeight (read-only),contentPreview (read-only)
+            full tmpl,,full page,,Standard,,test flow2,false,0,0mm,0mm,0mm,0mm,,,
+            full tmpl,,full page,,Standard,,test flow3,true,1,0mm,0mm,0mm,0mm,,,
+            full tmpl,,full page,,Standard,,,false,2,0mm,0mm,0mm,0mm,,,
+            full tmpl,,full page,,Standard,,test flow5,false,3,0mm,0mm,0mm,0mm,,,
+            ,,unreferenced page,,Standard,,test flow,true,0,0mm,0mm,0mm,0mm,,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -71,10 +71,10 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),areaIndex (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
-            tmpl with areas,,,,,,0,Address Content,false,0mm,0mm,0mm,0mm,Standard,,
-            tmpl with areas,,,,,,1,,true,0mm,0mm,0mm,0mm,Standard,,
-            tmpl with areas,,,,,,2,Footer,false,0mm,0mm,0mm,0mm,Standard,,
+            templateId,templateName (read-only),pageId,pageName (read-only),type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex (read-only),x (read-only),y (read-only),width (read-only),height (read-only),pageWidth (read-only),pageHeight (read-only),contentPreview (read-only)
+            tmpl with areas,,,,Standard,,Address Content,false,0,0mm,0mm,0mm,0mm,,,
+            tmpl with areas,,,,Standard,,,true,1,0mm,0mm,0mm,0mm,,,
+            tmpl with areas,,,,Standard,,Footer,false,2,0mm,0mm,0mm,0mm,,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -97,8 +97,8 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),areaIndex (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
-            tmpl with base,,page with own base,,,,0,test flow,false,0mm,0mm,0mm,0mm,Standard,\$G1,
+            templateId,templateName (read-only),pageId,pageName (read-only),type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex (read-only),x (read-only),y (read-only),width (read-only),height (read-only),pageWidth (read-only),pageHeight (read-only),contentPreview (read-only)
+            tmpl with base,,page with own base,,Standard,\$G1,test flow,false,0,0mm,0mm,0mm,0mm,,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -123,10 +123,10 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),areaIndex (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
-            bt-1,Base template 1,page-1,Page 1,210mm,297mm,0,address,false,1cm,1cm,190mm,20mm,Base,,
-            bt-1,Base template 1,page-1,Page 1,210mm,297mm,1,Area 2,true,1cm,30mm,190mm,50mm,Base,,
-            bt-1,Base template 1,page-2,Page 2,210mm,99mm,0,Area 1,false,0mm,0mm,210mm,99mm,Base,,
+            templateId,templateName (read-only),pageId,pageName (read-only),type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex (read-only),x (read-only),y (read-only),width (read-only),height (read-only),pageWidth (read-only),pageHeight (read-only),contentPreview (read-only)
+            bt-1,Base template 1,page-1,Page 1,Base,,address,false,0,1cm,1cm,190mm,20mm,210mm,297mm,
+            bt-1,Base template 1,page-1,Page 1,Base,,Area 2,true,1,1cm,30mm,190mm,50mm,210mm,297mm,
+            bt-1,Base template 1,page-2,Page 2,Base,,Area 1,false,0,0mm,0mm,210mm,99mm,210mm,99mm,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -154,8 +154,8 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),pageWidth (read-only),pageHeight (read-only),areaIndex (read-only),interactiveFlowName,flowToNextPage,x (read-only),y (read-only),width (read-only),height (read-only),type,targetId,contentPreview (read-only)
-            ,,page with preview,,,,0,test flow,false,0mm,0mm,0mm,0mm,Standard,,docRef: Block One;imageRef: Image One;docRef: Block Two;(+2 more)
+            templateId,templateName (read-only),pageId,pageName (read-only),type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex (read-only),x (read-only),y (read-only),width (read-only),height (read-only),pageWidth (read-only),pageHeight (read-only),contentPreview (read-only)
+            ,,page with preview,,Standard,,test flow,false,0,0mm,0mm,0mm,0mm,,,docRef: Block One;imageRef: Image One;docRef: Block Two;(+2 more)
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

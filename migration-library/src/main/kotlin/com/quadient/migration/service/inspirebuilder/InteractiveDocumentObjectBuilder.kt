@@ -96,8 +96,8 @@ class InteractiveDocumentObjectBuilder(
         }
 
 
-        val baseTemplatePath = getBaseTemplateFullPath(
-            projectConfig, documentObject.baseTemplate, resourcePathProvider
+        val baseTemplatePath = resourcePathProvider.getBaseTemplateFullPath(
+            projectConfig, documentObject.baseTemplate
         ) { baseTemplateRepository.findOrFail(it) }
         val currentBaseTemplateData = icmDataCache.getOrLoadBaseTemplateData(baseTemplatePath)
             ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")

@@ -70,13 +70,13 @@ static void run(Migration migration, Path path) {
         def flowToNextPage = Csv.deserialize(values.get("flowToNextPage"), Boolean.class)
         areaMapping.flowToNextPage[areaIndex] = flowToNextPage ?: false
 
-        def targetId = Csv.deserialize(values.get("targetId"), String.class)
-        if (targetId) {
+        def baseTemplateTargetId = Csv.deserialize(values.get("baseTemplateTargetId"), String.class)
+        if (baseTemplateTargetId) {
             if (pageId && !docObjectsToTargetIds.containsKey(pageId)) {
-                docObjectsToTargetIds[pageId] = targetId
+                docObjectsToTargetIds[pageId] = baseTemplateTargetId
             }
             if (templateId && !docObjectsToTargetIds.containsKey(templateId)) {
-                docObjectsToTargetIds[templateId] = targetId
+                docObjectsToTargetIds[templateId] = baseTemplateTargetId
             }
         }
     }

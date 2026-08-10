@@ -142,7 +142,7 @@ class LayoutImportTest {
         givenPageExists("page1", ["flow1", "flow2"], [false, false])
 
         def input = """\
-            templateId,templateName,pageId,pageName,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
+            templateId,templateName,pageId,pageName,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,baseTemplateTargetId,contentPreview
             tmpl1,,page1,,0,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
             tmpl1,,page1,,1,flow2,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
             """.stripIndent()
@@ -173,7 +173,7 @@ class LayoutImportTest {
         when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, []))
 
         def input = """\
-            templateId,templateName,pageId,pageName,pageWidth,pageHeight,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
+            templateId,templateName,pageId,pageName,pageWidth,pageHeight,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,baseTemplateTargetId,contentPreview
             tmpl1,,page1,,,,0,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
             G1,Base template 1,G1-P1,Page group 1,210mm,297mm,1,G1-P1.Area2,true,1cm,30mm,190mm,50mm,Base,,
             G1,Base template 1,G1-P1,Page group 1,210mm,297mm,0,G1-P1.Area1,false,1cm,1cm,190mm,20mm,Base,,
@@ -205,7 +205,7 @@ class LayoutImportTest {
         when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, []))
 
         def input = """\
-            templateId,templateName,pageId,pageName,pageWidth,pageHeight,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,targetId,contentPreview
+            templateId,templateName,pageId,pageName,pageWidth,pageHeight,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,baseTemplateTargetId,contentPreview
             G1,,G1-P1,Page group 1,210mm,297mm,0,G1-P1.Area1,false,1cm,1cm,190mm,20mm,Base,,
             """.stripIndent()
         mappingFile.toFile().write(input)
