@@ -220,9 +220,13 @@ class EvolveDeployClient(
         }
         val resolvedFolder = resolveTargetDir(projectConfig.defaultTargetFolder, rule.targetFolder?.toIcmPath())
 
-        val baseTemplatePath = resourcePathProvider.getBaseTemplateFullPath(
-            projectConfig, rule.baseTemplate
-        ) { baseTemplateRepository.findOrFail(it) }
+        val baseTemplatePath = try {
+            resourcePathProvider.getBaseTemplateFullPath(
+                projectConfig, rule.baseTemplate
+            ) { baseTemplateRepository.findOrFail(it) }
+        } catch (e: IllegalStateException) {
+            return OperationResult.Failure(e.message ?: "Failed to resolve base template for display rule '${rule.id}'.")
+        }
         val result =  caClient.createRuleDraft(rule.nameOrId(), resolvedFolder, baseTemplatePath, data)
         if (result !is HttpResult.Success) return result.toOperationResult()
 

@@ -285,9 +285,14 @@ open class InteractiveDeployClient(
                 continue
             }
 
-            val baseTemplatePath = resourcePathProvider.getBaseTemplateFullPath(
-                projectConfig, rule.baseTemplate
-            ) { baseTemplateRepository.findOrFail(it) }.toMapInteractive(projectConfig.interactiveTenant)
+            val baseTemplatePath = try {
+                resourcePathProvider.getBaseTemplateFullPath(
+                    projectConfig, rule.baseTemplate
+                ) { baseTemplateRepository.findOrFail(it) }.toMapInteractive(projectConfig.interactiveTenant)
+            } catch (e: IllegalStateException) {
+                tracker.errorDisplayRule(rule.id, targetPath, e.message ?: "")
+                continue
+            }
 
             val jrd = Jrd.fromDisplayRule(rule, baseTemplatePath, variableStructure, findVar)
 

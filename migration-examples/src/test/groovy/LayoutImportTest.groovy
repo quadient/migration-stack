@@ -158,6 +158,35 @@ class LayoutImportTest {
     }
 
     @Test
+    void importClearsPageBaseTemplateWhenTargetIdColumnIsBlank() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+
+        when(migration.mappingRepository.getAreaMapping("page1")).thenReturn(new MappingItem.Area(null, [:], [:]))
+        when(migration.mappingRepository.getDocumentObjectMapping("page1")).thenReturn(
+            new MappingItem.DocumentObject(null, null, new BaseTemplateRef("G1"), null, null, null, null)
+        )
+        when(migration.mappingRepository.getDocumentObjectMapping("tmpl1")).thenReturn(
+            new MappingItem.DocumentObject(null, null, new BaseTemplateRef("G1"), null, null, null, null)
+        )
+        givenPageExists("page1", ["flow1", "flow2"], [false, false])
+
+        def input = """\
+            templateId,templateName,pageId,pageName,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,baseTemplateTargetId,contentPreview
+            tmpl1,,page1,,0,flow1,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,,
+            tmpl1,,page1,,1,flow2,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,,
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+
+        LayoutImport.run(migration, mappingFile)
+
+        verify(migration.mappingRepository).upsertBatch([
+            "page1": new MappingItem.DocumentObject(null, false, null, null, null, null, new SkipOptions(false, null, null)),
+            "tmpl1": new MappingItem.DocumentObject(null, null, null, null, null, null, null)
+        ])
+        verify(migration.mappingRepository).applyAllDocumentObjectMappings()
+    }
+
+    @Test
     void importCreatesNewBaseTemplateFromBaseRows() {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 

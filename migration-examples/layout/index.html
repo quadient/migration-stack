@@ -927,7 +927,7 @@ function computeBaseTemplateData(data, viewModel, analysis) {
 
     viewModel.templateGroups.forEach((templateGroup, templateGroupIndex) => {
         const baseTemplateId = `bt-${templateGroupIndex + 1}`;
-        const baseTemplateName = `${templateGroup.templateNames.join(" / ")}BaseTemplate`;
+        const baseTemplateName = `${templateGroup.templateNames[0]}BaseTemplate`;
 
         templateGroup.pageGroups.forEach((pageGroup, pageGroupIndex) => {
             const basePageId = `page-${pageGroupIndex + 1}`;

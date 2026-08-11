@@ -475,6 +475,21 @@ class EvolveDeployClientTest {
         (result as OperationResult.Failure).message.shouldBeEqualTo("network failure")
     }
 
+    @Test
+    fun `uploadDisplayRule returns Failure instead of throwing when base template cannot be resolved`() {
+        val rule = DisplayRuleBuilder("R1").baseTemplateRef("missingBaseTemplate").build()
+        val targetPath = "icm://path/to/R1.jrd".toIcmPath()
+        val data = byteArrayOf(10, 20, 30)
+        every { baseTemplateRepository.findOrFail("missingBaseTemplate") } throws
+                IllegalStateException("Record 'missingBaseTemplate' not found in 'BaseTemplateTable'.")
+
+        val result = subject.uploadDisplayRule(rule, targetPath, data)
+
+        result.shouldBeOfInstance<OperationResult.Failure>()
+        (result as OperationResult.Failure).message.shouldBeEqualTo("Record 'missingBaseTemplate' not found in 'BaseTemplateTable'.")
+        verify(exactly = 0) { caClient.createRuleDraft(any(), any(), any(), any()) }
+    }
+
     @Nested
     inner class CategorizationTest {
 

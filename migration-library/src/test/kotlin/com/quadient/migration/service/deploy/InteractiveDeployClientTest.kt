@@ -880,6 +880,51 @@ class InteractiveDeployClientTest {
         ))
     }
 
+    @Test
+    fun `display rule deployment fails gracefully when its base template cannot be resolved`() {
+        // given
+        val ruleWithMissingBaseTemplate = DisplayRuleBuilder("ruleWithMissingBaseTemplate")
+            .comparison { value("a").equals().value("b") }
+            .baseTemplateRef("missingBaseTemplate")
+            .internal(false)
+            .build()
+            .mock()
+        every { baseTemplateRepository.findOrFail("missingBaseTemplate") } throws
+                IllegalStateException("Record 'missingBaseTemplate' not found in 'BaseTemplateTable'.")
+
+        val block = mockObj(
+            aDocObj(
+                "B_1", DocumentObjectType.Block,
+                listOf(aParagraph(displayRuleRef = DisplayRuleRef(ruleWithMissingBaseTemplate.id)))
+            )
+        )
+        val template = mockObj(aDocObj("T_1", DocumentObjectType.Template, listOf(aDocumentObjectRef(block.id))))
+        mockBasicSuccessfulIpsOperations()
+        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
+        every {
+            statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any())
+        } returns aDeployedStatus("id")
+        every {
+            statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any(), any())
+        } returns aErrorStatus("ruleWithMissingBaseTemplate")
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
+
+        // when
+        val result = subject.deployDocumentObjects()
+
+        // then: the missing base template is reported as a display rule error but deployment
+        // of the remaining document objects still proceeds instead of aborting.
+        result.errors.shouldBeEqualTo(listOf(
+            DeploymentError(
+                "ruleWithMissingBaseTemplate", "Record 'missingBaseTemplate' not found in 'BaseTemplateTable'."
+            )
+        ))
+        result.deployed.shouldBeEqualTo(listOf(
+            DeploymentInfo("B_1", ResourceType.DocumentObject, "icm://B_1name".toIcmPath()),
+            DeploymentInfo("T_1", ResourceType.DocumentObject, "icm://T_1name".toIcmPath())
+        ))
+    }
+
     private fun mockBasicDocumentObjects() {
         val blocks = List(2) {
             mockDocumentObject(

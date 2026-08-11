@@ -71,12 +71,14 @@ static void run(Migration migration, Path path) {
         areaMapping.flowToNextPage[areaIndex] = flowToNextPage ?: false
 
         def baseTemplateTargetId = Csv.deserialize(values.get("baseTemplateTargetId"), String.class)
-        if (baseTemplateTargetId) {
-            if (pageId && !docObjectsToTargetIds.containsKey(pageId)) {
-                docObjectsToTargetIds[pageId] = baseTemplateTargetId
-            }
-            if (templateId && !docObjectsToTargetIds.containsKey(templateId)) {
-                docObjectsToTargetIds[templateId] = baseTemplateTargetId
+        if (columnNames.contains("baseTemplateTargetId")) {
+            [pageId, templateId].each { documentObjectIdForTarget ->
+                if (!documentObjectIdForTarget) return
+                if (baseTemplateTargetId) {
+                    docObjectsToTargetIds[documentObjectIdForTarget] = baseTemplateTargetId
+                } else if (!docObjectsToTargetIds.containsKey(documentObjectIdForTarget)) {
+                    docObjectsToTargetIds[documentObjectIdForTarget] = null
+                }
             }
         }
     }
