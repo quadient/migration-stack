@@ -108,6 +108,8 @@ sealed class DeployClient(
 
     abstract fun shouldIncludeDependency(documentObject: DocumentObject): Boolean
 
+    abstract fun deployBaseTemplates(): DeploymentResult
+
     fun deployDocumentObjects(): DeploymentResult {
         val tracker = ResultTrackerImpl(statusTrackingRepository, projectConfig.inspireOutput)
         val ordered = deployOrder(getAllDocumentObjectsToDeploy())

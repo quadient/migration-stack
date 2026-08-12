@@ -44,6 +44,7 @@ import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
+import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTargetDir
@@ -60,7 +61,6 @@ import com.quadient.migration.shared.MetadataValue
 import com.quadient.migration.shared.SkipOptions
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aActiveStatus
-import com.quadient.migration.tools.aBlockModel
 import com.quadient.migration.tools.aDeployedStatus
 import com.quadient.migration.tools.aErrorStatus
 import com.quadient.migration.tools.aProjectConfig
@@ -103,6 +103,7 @@ class InteractiveDeployClientTest {
     val baseTemplateRepository = mockk<BaseTemplateRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
     val documentObjectBuilder = mockk<InteractiveDocumentObjectBuilder>()
+    val baseTemplateBuilder = mockk<InspireBaseTemplateBuilder>()
     val ipsService = mockk<IpsService>()
     val storage = mockk<Storage>()
     val config = aProjectConfig(
@@ -135,6 +136,7 @@ class InteractiveDeployClientTest {
         variableStructureRepository,
         baseTemplateRepository,
         documentObjectBuilder,
+        baseTemplateBuilder,
         ipsService,
         storage,
     )

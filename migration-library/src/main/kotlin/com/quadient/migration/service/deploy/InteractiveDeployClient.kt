@@ -29,6 +29,7 @@ import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.deploy.utility.DeploymentError
+import com.quadient.migration.service.deploy.utility.DeploymentInfo
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
@@ -40,6 +41,7 @@ import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
+import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTarget
@@ -79,6 +81,7 @@ open class InteractiveDeployClient(
     variableStructureRepository: VariableStructureRepository,
     baseTemplateRepository: BaseTemplateRepository,
     documentObjectBuilder: InspireDocumentObjectBuilder,
+    private val baseTemplateBuilder: InspireBaseTemplateBuilder,
     ipsService: IpsService,
     storage: Storage,
 ) : DeployClient(
@@ -183,6 +186,33 @@ open class InteractiveDeployClient(
 
     override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
         return documentObject.internal != true
+    }
+
+    override fun deployBaseTemplates(): DeploymentResult {
+        val deploymentResult = DeploymentResult(Uuid.random())
+
+        val baseTemplates = baseTemplateRepository.listAll()
+        logger.info("Found ${baseTemplates.size} base template(s) in the repository.")
+
+        for (baseTemplate in baseTemplates) {
+            val targetPath = resourcePathProvider.getBaseTemplatePath(baseTemplate)
+            val wfdXml = baseTemplateBuilder.buildBaseTemplate(baseTemplate)
+
+            when (val result = ipsService.xml2wfd(wfdXml, targetPath)) {
+                is OperationResult.Success -> {
+                    logger.debug("Deployment of base template '${baseTemplate.nameOrId()}' to $targetPath is successful.")
+                    deploymentResult.deployed.add(DeploymentInfo(baseTemplate.id, ResourceType.BaseTemplate, targetPath))
+                }
+
+                is OperationResult.Failure -> {
+                    val message = "Failed to deploy base template '${baseTemplate.nameOrId()}' to $targetPath."
+                    logger.error(message)
+                    deploymentResult.errors.add(DeploymentError(baseTemplate.id, message))
+                }
+            }
+        }
+
+        return deploymentResult
     }
 
     override fun getAllDocumentObjectsToDeploy(): List<DocumentObject> {

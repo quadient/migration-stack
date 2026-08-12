@@ -25,6 +25,7 @@ import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
+import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.ipsclient.Version
@@ -56,6 +57,7 @@ class EvolveDeployClientTest {
     val baseTemplateRepository = mockk<BaseTemplateRepository>()
     val statusTrackingRepository = mockk<StatusTrackingRepository>()
     val documentObjectBuilder = mockk<InteractiveDocumentObjectBuilder>()
+    val baseTemplateBuilder = mockk<InspireBaseTemplateBuilder>()
     val ipsService = mockk<IpsService>()
     val storage = mockk<Storage>()
     val caClient = mockk<CaApiClient>()
@@ -106,6 +108,7 @@ class EvolveDeployClientTest {
         variableStructureRepository,
         baseTemplateRepository,
         documentObjectBuilder,
+        baseTemplateBuilder,
         ipsService,
         storage,
     )

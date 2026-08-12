@@ -30,7 +30,7 @@ data class DeploymentInfo(
 )
 
 enum class ResourceType {
-    DocumentObject, Image, Attachment, TextStyle, ParagraphStyle, DisplayRule
+    DocumentObject, Image, Attachment, TextStyle, ParagraphStyle, DisplayRule, BaseTemplate
 }
 
 data class DeploymentError(val id: String, val message: String)

@@ -121,6 +121,10 @@ class DesignerDeployClient(
         return documentObject.type != DocumentObjectType.Page && documentObject.internal != true
     }
 
+    override fun deployBaseTemplates(): DeploymentResult {
+        error("Base template deployment is not supported for Designer output.")
+    }
+
     override fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult {
         return ipsService.xml2wfd(wfdXml, targetPath)
     }

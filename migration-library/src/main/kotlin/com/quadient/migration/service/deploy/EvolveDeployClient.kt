@@ -23,8 +23,10 @@ import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
+import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
+import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.ipsclient.Version
@@ -56,6 +58,7 @@ class EvolveDeployClient(
     variableStructureRepository: VariableStructureRepository,
     baseTemplateRepository: BaseTemplateRepository,
     documentObjectBuilder: InspireDocumentObjectBuilder,
+    baseTemplateBuilder: InspireBaseTemplateBuilder,
     ipsService: IpsService,
     storage: Storage,
 ) : InteractiveDeployClient(
@@ -77,6 +80,7 @@ class EvolveDeployClient(
     variableStructureRepository,
     baseTemplateRepository,
     documentObjectBuilder,
+    baseTemplateBuilder,
     ipsService,
     storage,
 ) {
@@ -248,6 +252,10 @@ class EvolveDeployClient(
 
     override fun deployStyles() {
         error("Styles deployment is not currently supported in Evolve output")
+    }
+
+    override fun deployBaseTemplates(): DeploymentResult {
+        error("Base template deployment is not currently supported in Evolve output")
     }
 
     private fun HttpResult<*, ApiBadRequestException>.toOperationResult(): OperationResult = when (this) {

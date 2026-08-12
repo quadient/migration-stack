@@ -105,6 +105,7 @@ class ConflictDetectorImpl(
 
             ResourceType.TextStyle -> resourcePathProvider.getStyleDefinitionPath()
             ResourceType.ParagraphStyle -> resourcePathProvider.getStyleDefinitionPath()
+            ResourceType.BaseTemplate -> null
         }
     }.getOrNull()
 }
