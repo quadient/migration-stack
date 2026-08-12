@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Fixed
 
+- Deployment report showing next icm path for internal display rules
+
 ## [17.0.28] - 2026-08-04
 
 ### Added

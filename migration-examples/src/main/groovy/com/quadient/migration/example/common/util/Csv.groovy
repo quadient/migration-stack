@@ -176,7 +176,8 @@ static <T> T deserialize(String value, Class<T> cls) {
 }
 
 static String escapeJson(String value) {
-    return value.replaceAll("[\n\r]", " ")
-    .replaceAll("\"", "\\\"")
+    def escaped = value.replaceAll("[\n\r]", " ")
     .replaceAll(",", ";")
+    .replace("\"", "\"\"")
+    return "\"${escaped}\""
 }

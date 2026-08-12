@@ -221,7 +221,7 @@ class ProgressReporterImpl(
                                     null
                                 }
                                 else -> {
-                                    val nextIcmPath = resourcePathProvider.getDisplayRulePath(rule)
+                                    val nextIcmPath = if (!rule.internal) resourcePathProvider.getDisplayRulePath(rule) else null
                                     val deployKind = rule.getDeployKind(nextIcmPath)
                                     val lastStatus = rule.getLastStatus(lastDeployment)
 

@@ -75,7 +75,7 @@ static void writeDeploymentReport(Binding binding, Report report, String project
                     writer << Csv.serialize(item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";")) + "," // Error Message
                     writer << Csv.serialize(item.deploymentId) + "," // Deploy ID
                     writer << Csv.serialize(item.deployTimestamp) + "," // Deploy Timestamp
-                    writer << Csv.serialize("") +"," // Content
+                    writer << Csv.serialize("") // Content
                     writer << ("\n")
                 }
                 case ReportedDisplayRule -> {
@@ -93,7 +93,7 @@ static void writeDeploymentReport(Binding binding, Report report, String project
                     writer << Csv.serialize(item.errorMessage?.replaceAll("[\r\n]+", "")?.replaceAll(",", ";")) + "," // Error Message
                     writer << Csv.serialize(item.deploymentId) + "," // Deploy ID
                     writer << Csv.serialize(item.deployTimestamp) + "," // Deploy Timestamp
-                    writer << Csv.serialize(content) + "," // Content
+                    writer << "${content}" // Content
                     writer << ("\n")
                 }
                 default -> ""
