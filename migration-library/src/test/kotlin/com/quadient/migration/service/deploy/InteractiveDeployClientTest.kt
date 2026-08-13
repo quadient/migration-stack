@@ -12,6 +12,7 @@ import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
@@ -520,6 +521,45 @@ class InteractiveDeployClientTest {
         // then
         verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd.toIcmPath())) }
         verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
+    }
+
+    @Test
+    fun `deployBaseTemplates uploads base templates and sets production approval state`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+        every { baseTemplateRepository.listAll() } returns listOf(baseTemplate)
+        every { baseTemplateBuilder.buildBaseTemplate(baseTemplate) } returns "<xml />"
+        every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Success
+        every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
+
+        val targetPath = "icm://Interactive/BaseTemplates/BT_1.wfd".toIcmPath()
+        every { resourcePathProvider.getBaseTemplatePath(baseTemplate) } returns targetPath
+
+        // when
+        val result = subject.deployBaseTemplates()
+
+        // then
+        result.deployed.shouldBeOfSize(1)
+        verify { ipsService.xml2wfd(eq("<xml />"), eq(targetPath)) }
+        verify { ipsService.setProductionApprovalState(eq(listOf(targetPath))) }
+    }
+
+    @Test
+    fun `deployBaseTemplates does not set production approval state when upload fails`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+        every { baseTemplateRepository.listAll() } returns listOf(baseTemplate)
+        every { baseTemplateBuilder.buildBaseTemplate(baseTemplate) } returns "<xml />"
+        every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Failure("Problem")
+        every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
+        every { resourcePathProvider.getBaseTemplatePath(baseTemplate) } returns "icm://Interactive/BaseTemplates/BT_1.wfd".toIcmPath()
+
+        // when
+        val result = subject.deployBaseTemplates()
+
+        // then
+        result.errors.shouldBeOfSize(1)
+        verify { ipsService.setProductionApprovalState(eq(emptyList<IcmPath>())) }
     }
 
     @Test

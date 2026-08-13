@@ -1,16 +1,43 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
+import com.quadient.migration.service.DesignerIcmDataCache
+import com.quadient.migration.service.DesignerResourcePathProvider
+import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.millimeters
+import com.quadient.migration.shared.toIcmPath
+import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
+import io.mockk.every
+import io.mockk.mockk
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import tools.jackson.dataformat.xml.XmlMapper
 import tools.jackson.module.kotlin.KotlinModule
 
 class InspireBaseTemplateBuilderTest {
-    private val subject = InspireBaseTemplateBuilder()
+    private val ipsService = mockk<IpsService>()
+    private val config = aProjectConfig()
+    private val resourcePathProvider = DesignerResourcePathProvider(config)
+    private val icmDataCache = DesignerIcmDataCache(ipsService, resourcePathProvider)
+    private val subject = InspireBaseTemplateBuilder(config, icmDataCache)
     private val xmlMapper = XmlMapper.builder().addModule(KotlinModule.Builder().build()).build()
+
+    @BeforeEach
+    fun setUp() {
+        every { ipsService.wfd2xml(any<IcmPath>()) } returns """
+        <Workflow>
+          <Layout>
+            <Id>Layout1</Id>
+            <Name>Layout1</Name>
+            <Layout>
+            </Layout>
+          </Layout>
+        </Workflow>
+        """.trimIndent()
+    }
 
     @Test
     fun `buildBaseTemplate creates page with name and size`() {
@@ -50,9 +77,11 @@ class InspireBaseTemplateBuilderTest {
         val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
 
         // then
-        val flowId = "Def.InteractiveFlow0"
+        val flowId = result["Flow"].first { it["Name"]?.stringValue() == "Body" }["Id"].stringValue()
 
         val flowAreaId = result["FlowArea"].first { it["FlowId"]?.stringValue() == flowId }["Id"].stringValue()
+        val flowAreaStub = result["FlowArea"].first { it["Id"].stringValue() == flowAreaId && it["Name"] != null }
+        flowAreaStub["Name"].stringValue().shouldBeEqualTo("BodyArea")
         val flowArea = result["FlowArea"].last { it["Id"].stringValue() == flowAreaId }
         flowArea["FlowingToNextPage"].stringValue().shouldBeEqualTo("True")
         flowArea["Pos"]["X"].stringValue().shouldBeEqualTo(10.millimeters().toMeters().toString())
@@ -77,9 +106,61 @@ class InspireBaseTemplateBuilderTest {
 
         // then
         result["Page"].filter { it["Name"] != null }.size.shouldBeEqualTo(2)
-        result["Flow"].size().shouldBeEqualTo(3)
+        result["Flow"].filter { it["Name"] != null }.size.shouldBeEqualTo(3)
         result["FlowArea"].filter { it["FlowId"] != null }.size.shouldBeEqualTo(3)
         result["Pages"]["InteractiveFlow"].size().shouldBeEqualTo(3)
+    }
+
+    @Test
+    fun `buildBaseTemplate picks the largest area as the main flow`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1")
+            .addPage {
+                name("Page 1")
+                addArea("Header") {
+                    position { left(0.millimeters()); top(0.millimeters()); width(210.millimeters()); height(20.millimeters()) }
+                }
+                addArea("Body") {
+                    position { left(0.millimeters()); top(20.millimeters()); width(210.millimeters()); height(250.millimeters()) }
+                }
+            }
+            .build()
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val bodyFlowId = result["Flow"].first { it["Name"]?.stringValue() == "Body" }["Id"].stringValue()
+        result["Pages"]["MainFlow"].stringValue().shouldBeEqualTo(bodyFlowId)
+    }
+
+    @Test
+    fun `buildBaseTemplate picks the largest area on the first page only as the main flow`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1")
+            .addPage {
+                name("Title page")
+                addArea("Title") {
+                    position { left(0.millimeters()); top(0.millimeters()); width(210.millimeters()); height(297.millimeters()) }
+                }
+            }
+            .addPage {
+                name("Page 2")
+                addArea("Header") {
+                    position { left(0.millimeters()); top(0.millimeters()); width(210.millimeters()); height(20.millimeters()) }
+                }
+                addArea("Body") {
+                    position { left(0.millimeters()); top(20.millimeters()); width(210.millimeters()); height(250.millimeters()) }
+                }
+            }
+            .build()
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val titleFlowId = result["Flow"].first { it["Name"]?.stringValue() == "Title" }["Id"].stringValue()
+        result["Pages"]["MainFlow"].stringValue().shouldBeEqualTo(titleFlowId)
     }
 
     @Test

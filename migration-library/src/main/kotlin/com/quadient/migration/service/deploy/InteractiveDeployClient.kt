@@ -212,6 +212,8 @@ open class InteractiveDeployClient(
             }
         }
 
+        runPostProcessors(deploymentResult)
+
         return deploymentResult
     }
 
