@@ -525,23 +525,8 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    private fun upsertSubFont(font: Font, isBold: Boolean, isItalic: Boolean): SubFont? {
-        val subFontName = buildFontName(isBold, isItalic)
-
-        val fontLocation = icmDataCache.font[FontKey(font.name, subFontName)]
-            ?: icmDataCache.font[FontKey(font.name, buildFontName(bold = false, italic = false))]
-            ?: return null
-
-        font.subFonts.removeAll { it.name == subFontName }
-        return font.addSubfont().setName(subFontName).setBold(isBold).setItalic(isItalic)
-            .setLocation(fontLocation, LocationType.ICM)
-    }
-
     fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyle>) {
-        val arialFont = getFontByName(layout, "Arial")
-        require(arialFont != null) { "Layout must contain Arial font." }
-        arialFont.setName("Arial").setFontName("Arial")
-        upsertSubFont(arialFont, isBold = false, isItalic = false)
+        resolveArialFont(layout, icmDataCache)
 
         textStyleModels.forEach { styleModel ->
             val definition = styleModel.resolve().definition
@@ -556,7 +541,7 @@ abstract class InspireDocumentObjectBuilder(
         val font = getFontByName(layout, fontFamily) ?: layout.addFont().setName(fontFamily).setFontName(fontFamily)
         textStyle.setFont(font)
 
-        val subFont = upsertSubFont(font, definition.bold, definition.italic)
+        val subFont = upsertSubFont(icmDataCache, font, definition.bold, definition.italic)
         if (subFont != null) {
             textStyle.setSubFont(subFont)
         }

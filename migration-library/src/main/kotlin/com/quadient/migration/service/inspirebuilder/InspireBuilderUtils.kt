@@ -7,7 +7,9 @@ import com.quadient.wfdxml.api.layoutnodes.FillStyle
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Font
 import com.quadient.wfdxml.api.layoutnodes.Image
+import com.quadient.wfdxml.api.layoutnodes.LocationType
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
+import com.quadient.wfdxml.api.layoutnodes.font.SubFont
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.Group
 import com.quadient.wfdxml.internal.layoutnodes.FlowImpl
@@ -233,6 +235,25 @@ fun appendExtensionIfMissing(fileName: String, sourcePath: String?): String {
 fun toScriptStringLiteral(value: String): String = "'${
     value.replace("\\", "\\\\").replace("\"", "\\\"").replace("'", "\\'")
 }'"
+
+fun resolveArialFont(layout: Layout, icmDataCache: IcmDataCache) {
+    val arialFont = getFontByName(layout, "Arial")
+    require(arialFont != null) { "Layout must contain Arial font." }
+    arialFont.setName("Arial").setFontName("Arial")
+    upsertSubFont(icmDataCache, arialFont, isBold = false, isItalic = false)
+}
+
+fun upsertSubFont(icmDataCache: IcmDataCache, font: Font, isBold: Boolean, isItalic: Boolean): SubFont? {
+    val subFontName = buildFontName(isBold, isItalic)
+
+    val fontLocation = icmDataCache.font[FontKey(font.name, subFontName)]
+        ?: icmDataCache.font[FontKey(font.name, buildFontName(bold = false, italic = false))]
+        ?: return null
+
+    font.subFonts.removeAll { it.name == subFontName }
+    return font.addSubfont().setName(subFontName).setBold(isBold).setItalic(isItalic)
+        .setLocation(fontLocation, LocationType.ICM)
+}
 
 fun enrichLayoutWithSourceBaseTemplate(
     icmDataCache: IcmDataCache, documentObjectXml: String, sourceBaseTemplatePath: IcmPath,

@@ -1,12 +1,11 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
-import com.quadient.migration.service.DesignerIcmDataCache
-import com.quadient.migration.service.DesignerResourcePathProvider
+import com.quadient.migration.service.InteractiveIcmDataCache
+import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.millimeters
-import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
@@ -20,9 +19,9 @@ import tools.jackson.module.kotlin.KotlinModule
 class InspireBaseTemplateBuilderTest {
     private val ipsService = mockk<IpsService>()
     private val config = aProjectConfig()
-    private val resourcePathProvider = DesignerResourcePathProvider(config)
-    private val icmDataCache = DesignerIcmDataCache(ipsService, resourcePathProvider)
-    private val subject = InspireBaseTemplateBuilder(config, icmDataCache)
+    private val resourcePathProvider = InteractiveResourcePathProvider(config)
+    private val icmDataCache = InteractiveIcmDataCache(ipsService, resourcePathProvider)
+    private val subject = InspireBaseTemplateBuilder(config, icmDataCache, resourcePathProvider)
     private val xmlMapper = XmlMapper.builder().addModule(KotlinModule.Builder().build()).build()
 
     @BeforeEach
@@ -37,6 +36,47 @@ class InspireBaseTemplateBuilderTest {
           </Layout>
         </Workflow>
         """.trimIndent()
+        every { ipsService.fileExists(any<IcmPath>()) } returns false
+        every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Fonts/arial.ttf;"
+    }
+
+    @Test
+    fun `buildBaseTemplate sets external styles layout when style definition exists`() {
+        // given
+        every { ipsService.fileExists(any<IcmPath>()) } returns true
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val styleDefinitionPath = resourcePathProvider.getStyleDefinitionPath()
+        result["Root"]["ExternalStylesLayout"].stringValue().shouldBeEqualTo("VCSLocation,$styleDefinitionPath")
+    }
+
+    @Test
+    fun `buildBaseTemplate does not set external styles layout when style definition does not exist`() {
+        // given
+        every { ipsService.fileExists(any<IcmPath>()) } returns false
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["Root"]["ExternalStylesLayout"].shouldBeNull()
+    }
+
+    @Test
+    fun `buildBaseTemplate redirects Arial font to ICM location`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["Font"]["SubFont"]["FontLocation"].stringValue().shouldBeEqualTo("VCSLocation,icm://Fonts/arial.ttf")
     }
 
     @Test

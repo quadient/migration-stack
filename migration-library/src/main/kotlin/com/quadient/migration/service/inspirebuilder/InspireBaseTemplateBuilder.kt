@@ -3,6 +3,7 @@ package com.quadient.migration.service.inspirebuilder
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
 import com.quadient.migration.service.IcmDataCache
+import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.logger
@@ -14,15 +15,29 @@ import com.quadient.wfdxml.api.layoutnodes.Pages
 class InspireBaseTemplateBuilder(
     private val projectConfig: ProjectConfig,
     private val icmDataCache: IcmDataCache,
+    private val resourcePathProvider: ResourcePathProvider,
 ) {
     private val logger by logger()
+
+    private val resolvedStyleDefinitionPath: IcmPath? by lazy {
+        val path = resourcePathProvider.getStyleDefinitionPath()
+        try {
+            if (icmDataCache.fileExists(path)) path else null
+        } catch (e: Exception) {
+            throw RuntimeException("Failed to check for style definition existence", e)
+        }
+    }
 
     fun buildBaseTemplate(baseTemplate: BaseTemplate): String {
         logger.debug("Starting to build base template '${baseTemplate.nameOrId()}'.")
 
         val builder = WfdXmlBuilder()
         val layout = builder.addLayout()
-        layout.setName("DocumentLayout").addRoot().setAllowRuntimeModifications(true)
+        val root = layout.setName("DocumentLayout").addRoot().setAllowRuntimeModifications(true)
+        if (resolvedStyleDefinitionPath != null) {
+            root.setExternalStylesLayout(resolvedStyleDefinitionPath.toString())
+        }
+        resolveArialFont(layout, icmDataCache)
 
         val interactiveFlows = mutableListOf<Flow>()
         var mainFlow: Flow? = null
