@@ -945,7 +945,7 @@ function computeBaseTemplateData(data, viewModel, analysis) {
 
             representativeDrafts.forEach((draft, areaGroupIndex) => {
                 const flowToNextPage = draft.areaIndices.some(ai => representativePage.areas[ai]?.flowToNextPage);
-                let flowName = draft.name;
+                let flowName = `${draft.name}Flow`;
                 if (usedFlowNames.has(flowName)) {
                     flowName = `${flowName} (Area ${areaGroupIndex + 1})`;
                 }

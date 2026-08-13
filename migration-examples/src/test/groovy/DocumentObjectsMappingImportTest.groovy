@@ -65,6 +65,26 @@ class DocumentObjectsMappingImportTest {
         verify(migration.mappingRepository, times(1)).applyAllDocumentObjectMappings()
     }
 
+    @Test
+    void clearsVariableStructureRefWhenCsvValueIsBlank() {
+        def migration = Utils.mockMigration()
+        Path mappingFile = Paths.get(dir.path, "testProject-variables.csv")
+        def input = """\
+            id,name,type,internal,originLocation,baseTemplate,targetFolder,variableStructureId,status
+            cleared,,Block,false,[],,,,Active
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+        givenExistingDocumentObject(migration, "cleared", null, false, null, null, null, "previousVarStructure")
+        givenExistingDocumentObjectMapping(migration, "cleared", null, null, null, null, null, "previousVarStructure")
+
+        DocumentObjectsImport.run(migration, mappingFile)
+
+        verify(migration.mappingRepository, times(1)).upsertBatch([
+            "cleared": new MappingItem.DocumentObject(null, false, null, null, DocumentObjectType.Block, null, new SkipOptions(false, null, null))
+        ])
+        verify(migration.mappingRepository, times(1)).applyAllDocumentObjectMappings()
+    }
+
     static void givenExistingDocumentObject(Migration mig, String id, String name, Boolean internal, String baseTemplate, String targetFolder, DocumentObjectType type, String varStructureRef) {
         def builder = new DocumentObjectBuilder(id, type ?: DocumentObjectType.Block)
         if (name != null) {
