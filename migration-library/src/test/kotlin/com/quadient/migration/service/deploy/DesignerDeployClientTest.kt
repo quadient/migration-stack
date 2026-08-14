@@ -138,6 +138,7 @@ class DesignerDeployClientTest {
         }
         every { ipsService.writeMetadata(any<List<IcmFileMetadata>>()) } just runs
         every { documentObjectRepository.find(any()) } returns null
+        every { documentObjectRepository.listAll() } returns emptyList()
     }
 
     @Test

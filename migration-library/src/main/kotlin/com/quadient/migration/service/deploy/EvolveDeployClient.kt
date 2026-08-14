@@ -24,6 +24,7 @@ import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.DeploymentResult
+import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
@@ -47,6 +48,7 @@ class EvolveDeployClient(
     conflictDetector: ConflictDetectorImpl,
     progressReporter: ProgressReporterImpl,
     deployOrder: DeployOrderImpl,
+    refInheritanceService: RefInheritanceServiceImpl,
     documentObjectRepository: DocumentObjectRepository,
     imageRepository: ImageRepository,
     attachmentRepository: AttachmentRepository,
@@ -69,6 +71,7 @@ class EvolveDeployClient(
     conflictDetector,
     progressReporter,
     deployOrder,
+    refInheritanceService,
     documentObjectRepository,
     imageRepository,
     attachmentRepository,

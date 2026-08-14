@@ -5,6 +5,7 @@ import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplateLocation
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplateRef
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
@@ -39,6 +40,7 @@ import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
+import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
@@ -70,6 +72,7 @@ open class InteractiveDeployClient(
     conflictDetector: ConflictDetectorImpl,
     progressReporter: ProgressReporterImpl,
     deployOrder: DeployOrderImpl,
+    refInheritanceService: RefInheritanceServiceImpl,
     documentObjectRepository: DocumentObjectRepository,
     imageRepository: ImageRepository,
     attachmentRepository: AttachmentRepository,
@@ -91,6 +94,7 @@ open class InteractiveDeployClient(
     conflictDetector,
     progressReporter,
     deployOrder,
+    refInheritanceService,
     resourcePathProvider,
     documentObjectRepository,
     imageRepository,
@@ -272,7 +276,7 @@ open class InteractiveDeployClient(
         tracker: ResultTracker,
         deployDisplayRule: (DisplayRule, IcmPath, ByteArray) -> OperationResult,
     ) {
-        val rules = documentObjects
+        val enrichedRules = documentObjects
             .flatMap {
                 try {
                     it.getAllExternalDisplayRules()
@@ -281,10 +285,14 @@ open class InteractiveDeployClient(
                     emptyList()
                 }
             }
-            .distinctBy { it.id }
+            .distinctBy { it.rule.id }
 
-        for (r in rules) {
-            val rule = r.resolveTarget(displayRuleRepository::findOrFail)
+        for (enrichedRule in enrichedRules) {
+            val resolvedRule = enrichedRule.rule.resolveTarget(displayRuleRepository::findOrFail)
+            val rule = resolvedRule.copy(
+                baseTemplate = resolvedRule.baseTemplate ?: enrichedRule.inheritedBaseTemplate,
+                variableStructureRef = resolvedRule.variableStructureRef ?: enrichedRule.inheritedVariableStructureRef,
+            )
             val targetPath = resourcePathProvider.getDisplayRulePath(rule)
 
             if (!shouldDeployObject(rule.id, ResourceType.DisplayRule, targetPath, tracker.deploymentResult)) {
@@ -491,8 +499,13 @@ open class InteractiveDeployClient(
         }
     }
 
-    private fun DocumentObject.getAllExternalDisplayRules(): List<DisplayRule> {
-        val resources = mutableListOf<DisplayRule>()
+    private fun DocumentObject.getAllExternalDisplayRules(
+        inheritedBaseTemplate: BaseTemplateLocation? = null,
+        inheritedVariableStructureRef: VariableStructureRef? = null,
+    ): List<EnrichedDisplayRule> {
+        val resources = mutableListOf<EnrichedDisplayRule>()
+        val effectiveBaseTemplate = this.baseTemplate ?: inheritedBaseTemplate
+        val effectiveVariableStructureRef = this.variableStructureRef ?: inheritedVariableStructureRef
 
         this.collectRefs().forEach {
             when (it) {
@@ -502,14 +515,14 @@ open class InteractiveDeployClient(
 
                     val resolvedModel = model.resolveTarget(displayRuleRepository::findOrFail)
                     if (!resolvedModel.internal) {
-                        resources.add(model)
+                        resources.add(EnrichedDisplayRule(model, effectiveBaseTemplate, effectiveVariableStructureRef))
                     }
                 }
                 is DocumentObjectRef -> {
                     val model = documentObjectRepository.find(it.id)
                         ?: error("Unable to collect resource references because inner document object '${it.id}' was not found.")
 
-                    resources.addAll(model.getAllExternalDisplayRules())
+                    resources.addAll(model.getAllExternalDisplayRules(effectiveBaseTemplate, effectiveVariableStructureRef))
                 }
                 is ParagraphStyleRef, is AttachmentRef, is ImageRef, is TextStyleRef, is VariableRef, is VariableStructureRef, is BaseTemplateRef -> {}
             }
@@ -517,4 +530,10 @@ open class InteractiveDeployClient(
 
         return resources
     }
+
+    protected data class EnrichedDisplayRule(
+        val rule: DisplayRule,
+        val inheritedBaseTemplate: BaseTemplateLocation?,
+        val inheritedVariableStructureRef: VariableStructureRef?,
+    )
 }

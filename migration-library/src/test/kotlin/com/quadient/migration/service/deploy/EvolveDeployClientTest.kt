@@ -25,6 +25,7 @@ import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
+import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
@@ -63,7 +64,6 @@ class EvolveDeployClientTest {
     val caClient = mockk<CaApiClient>()
     val resourcePathProvider = mockk<InteractiveResourcePathProvider>()
     val postProcess = mockk<PostProcessImpl>(relaxed = true)
-    val deployOrder = DeployOrderImpl(documentObjectRepository)
 
     val evolveConfig = EvolveConfig(
         apiRetryDelayMs = 0L,
@@ -84,6 +84,9 @@ class EvolveDeployClientTest {
         targetDefaultFolder = "defaultFolder"
     )
 
+    val deployOrder = DeployOrderImpl(documentObjectRepository)
+    val refInheritanceService = RefInheritanceServiceImpl(documentObjectRepository)
+
     val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, projectConfig.inspireOutput)
     val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, projectConfig.inspireOutput)
 
@@ -97,6 +100,7 @@ class EvolveDeployClientTest {
         conflictDetector,
         progressReporter,
         deployOrder,
+        refInheritanceService,
         documentObjectRepository,
         imageRepository,
         attachmentRepository,

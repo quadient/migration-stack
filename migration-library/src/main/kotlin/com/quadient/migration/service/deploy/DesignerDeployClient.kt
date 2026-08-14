@@ -25,6 +25,7 @@ import com.quadient.migration.service.deploy.utility.ResultTracker
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
+import com.quadient.migration.service.deploy.utility.NoopRefInheritanceService
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.ipsclient.IpsService
@@ -69,6 +70,7 @@ class DesignerDeployClient(
     conflictDetector,
     progressReporter,
     deployOrder,
+    NoopRefInheritanceService(),
     resourcePathProvider,
     documentObjectRepository,
     imageRepository,

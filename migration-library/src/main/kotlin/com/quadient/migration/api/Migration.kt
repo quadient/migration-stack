@@ -26,6 +26,7 @@ import com.quadient.migration.service.PreviewProvider
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
+import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
@@ -111,6 +112,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
         single<ProgressReporterImpl>()
         single<ConflictDetectorImpl>()
         single<DeployOrderImpl>()
+        single<RefInheritanceServiceImpl>()
 
         single<ReferenceValidator>()
         single<StylesValidator>()

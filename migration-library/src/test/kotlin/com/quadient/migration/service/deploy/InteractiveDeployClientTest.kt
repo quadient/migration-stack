@@ -5,6 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
+import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
@@ -45,6 +46,7 @@ import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
+import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
@@ -117,6 +119,7 @@ class InteractiveDeployClientTest {
     val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, config.inspireOutput)
     val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, config.inspireOutput)
     val deployOrder = DeployOrderImpl(documentObjectRepository)
+    val refInheritanceService = RefInheritanceServiceImpl(documentObjectRepository)
 
     private val subject = InteractiveDeployClient(
         config,
@@ -126,6 +129,7 @@ class InteractiveDeployClientTest {
         conflictDetector,
         progressReporter,
         deployOrder,
+        refInheritanceService,
         documentObjectRepository,
         imageRepository,
         attachmentRepository,
@@ -151,6 +155,7 @@ class InteractiveDeployClientTest {
         every { ipsService.writeMetadata(any()) } just runs
         every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
         every { documentObjectRepository.find(any()) } returns null
+        every { documentObjectRepository.listAll() } returns emptyList()
     }
 
     @Test
@@ -973,6 +978,81 @@ class InteractiveDeployClientTest {
             DeploymentInfo("B_1", ResourceType.DocumentObject, "icm://B_1name".toIcmPath()),
             DeploymentInfo("T_1", ResourceType.DocumentObject, "icm://T_1name".toIcmPath())
         ))
+    }
+
+    @Test
+    fun `deployDocumentObjects deploys a standalone block inheriting baseTemplate from its ancestor template`() {
+        // given
+        val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, internal = false))
+        val template = mockObj(
+            aDocObj(
+                "T_1", DocumentObjectType.Template,
+                content = listOf(aDocumentObjectRef(block.id)),
+                internal = false,
+                baseTemplate = "icm://Interactive/tenant/BaseTemplates/inherited.wfd",
+            )
+        )
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
+        every { documentObjectRepository.listAll() } returns listOf(block, template)
+        every { documentObjectBuilder.buildDocumentObject(any()) } answers { firstArg<DocumentObject>().id }
+        every { resourcePathProvider.getDocumentObjectPath(any()) } answers { "icm://${firstArg<DocumentObject>().id}".toIcmPath() }
+        mockBasicSuccessfulIpsOperations()
+        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
+        every {
+            statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any())
+        } returns aDeployedStatus("id")
+
+        // when
+        subject.deployDocumentObjects(listOf(block.id), true)
+
+        // then
+        verify {
+            documentObjectBuilder.buildDocumentObject(
+                withArg { it.baseTemplate.shouldBeEqualTo(LiteralBaseTemplatePath("icm://Interactive/tenant/BaseTemplates/inherited.wfd")) }
+            )
+        }
+    }
+
+    @Test
+    fun `deployDocumentObjects deploys an external display rule inheriting baseTemplate from the document object that introduced it`() {
+        // given
+        val rule = DisplayRuleBuilder("R_1")
+            .comparison { value("a").equals().value("b") }
+            .internal(false)
+            .build()
+            .mock()
+        val block = mockObj(
+            aDocObj(
+                "B_1", DocumentObjectType.Block,
+                content = listOf(aParagraph(displayRuleRef = DisplayRuleRef(rule.id))),
+                internal = false,
+                baseTemplate = "icm://Interactive/tenant/BaseTemplates/inherited.wfd",
+            )
+        )
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(block)
+        every { documentObjectRepository.listAll() } returns listOf(block)
+        every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml />"
+        every { resourcePathProvider.getDocumentObjectPath(any()) } answers { "icm://${firstArg<DocumentObject>().id}".toIcmPath() }
+        every { resourcePathProvider.getDisplayRulePath(any()) } returns "icm://Interactive/$tenant/Rules/defaultFolder/${rule.id}.jrd".toIcmPath()
+        every { ipsService.tryUpload(any<IcmPath>(), any()) } returns OperationResult.Success
+        mockBasicSuccessfulIpsOperations()
+        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
+        every {
+            statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any())
+        } returns aDeployedStatus("id")
+
+        // when
+        subject.deployDocumentObjects()
+
+        // then
+        verify {
+            ipsService.tryUpload(
+                "icm://Interactive/$tenant/Rules/defaultFolder/${rule.id}.jrd".toIcmPath(),
+                withArg {
+                    String(it).contains("map://interactive/BaseTemplates/inherited.wfd").shouldBeEqualTo(true)
+                }
+            )
+        }
     }
 
     private fun mockBasicDocumentObjects() {

@@ -48,6 +48,7 @@ import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilde
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.deploy.utility.DeployOrder
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
+import com.quadient.migration.service.deploy.utility.RefInheritanceService
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.readSafely
@@ -67,6 +68,7 @@ sealed class DeployClient(
     private val conflictDetector: ConflictDetectorImpl,
     private val progressReporter: ProgressReporterImpl,
     private val deployOrder: DeployOrderImpl,
+    private val refInheritanceService: RefInheritanceService,
     private val resourcePathProvider: ResourcePathProvider,
     protected val documentObjectRepository: DocumentObjectRepository,
     protected val imageRepository: ImageRepository,
@@ -112,7 +114,7 @@ sealed class DeployClient(
 
     fun deployDocumentObjects(): DeploymentResult {
         val tracker = ResultTrackerImpl(statusTrackingRepository, projectConfig.inspireOutput)
-        val ordered = deployOrder(getAllDocumentObjectsToDeploy())
+        val ordered = refInheritanceService.apply(deployOrder(getAllDocumentObjectsToDeploy()))
         val result = deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
         runPostProcessors(result)
 
@@ -124,11 +126,11 @@ sealed class DeployClient(
         val documentObjects = getDocumentObjectsToDeploy(documentObjectIds)
         val tracker = ResultTrackerImpl(statusTrackingRepository, projectConfig.inspireOutput)
         val result = if (skipDependencies) {
-            val ordered = deployOrder(documentObjects)
+            val ordered = refInheritanceService.apply(deployOrder(documentObjects))
             deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
         } else {
             val dependencies = documentObjects.flatMap { it.findDependencies() }.filter { it.internal != true }
-            val ordered = deployOrder((documentObjects + dependencies).toSet().toList())
+            val ordered = refInheritanceService.apply(deployOrder((documentObjects + dependencies).toSet().toList()))
             deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
         }
 
