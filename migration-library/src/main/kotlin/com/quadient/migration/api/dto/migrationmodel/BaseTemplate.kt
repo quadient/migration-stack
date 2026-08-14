@@ -12,4 +12,6 @@ data class BaseTemplate(
     var pages: List<BaseTemplatePage> = emptyList(),
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
-) : MigrationObject
+) : MigrationObject, RefValidatable {
+    override fun collectRefs(): Set<Ref> = emptySet()
+}
