@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.29] - 2026-08-14
+
+### Added
+
 - Added base template model, builder and database table. Document objects and display rules can reference them by id
 - Layout index.html able to export suggested base template setup to layout csv file. Importing it creates base templates,
   links templates and pages to them and assigns areas to created base template areas via interactive flow names.
@@ -460,7 +468,8 @@ path.
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.28...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.29...HEAD
+[17.0.29]: https://github.com/quadient/migration-stack/compare/v17.0.28...v17.0.29
 [17.0.28]: https://github.com/quadient/migration-stack/compare/v17.0.27...v17.0.28
 [17.0.27]: https://github.com/quadient/migration-stack/compare/v17.0.26...v17.0.27
 [17.0.26]: https://github.com/quadient/migration-stack/compare/v17.0.25...v17.0.26
