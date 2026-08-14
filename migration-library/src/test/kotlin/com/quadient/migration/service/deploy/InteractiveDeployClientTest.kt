@@ -531,6 +531,10 @@ class InteractiveDeployClientTest {
         every { baseTemplateBuilder.buildBaseTemplate(baseTemplate) } returns "<xml />"
         every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Success
         every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
+        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
+        every {
+            statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any())
+        } returns aDeployedStatus("id")
 
         val targetPath = "icm://Interactive/BaseTemplates/BT_1.wfd".toIcmPath()
         every { resourcePathProvider.getBaseTemplatePath(baseTemplate) } returns targetPath
@@ -553,6 +557,10 @@ class InteractiveDeployClientTest {
         every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Failure("Problem")
         every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
         every { resourcePathProvider.getBaseTemplatePath(baseTemplate) } returns "icm://Interactive/BaseTemplates/BT_1.wfd".toIcmPath()
+        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
+        every {
+            statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any())
+        } returns aDeployedStatus("id")
 
         // when
         val result = subject.deployBaseTemplates()

@@ -52,6 +52,8 @@ interface ResultTracker {
     fun deployedDisplayRule(id: String, targetPath: IcmPath)
     fun warningDisplayRule(id: String, path: IcmPath, message: String)
     fun errorDisplayRule(id: String, path: IcmPath, message: String)
+    fun deployedBaseTemplate(id: String, targetPath: IcmPath)
+    fun errorBaseTemplate(id: String, targetPath: IcmPath?, message: String)
 }
 
 class ResultTrackerImpl(
@@ -205,6 +207,31 @@ class ResultTrackerImpl(
             resourceType = ResourceType.DisplayRule,
             output = inspireOutput,
             icmPath = path,
+            message = message,
+        )
+        deploymentResult.errors.add(DeploymentError(id, message))
+    }
+
+    override fun deployedBaseTemplate(id: String, targetPath: IcmPath) {
+        statusTrackingRepository?.deployed(
+            id = id,
+            deploymentId = deploymentId,
+            timestamp = timestamp,
+            resourceType = ResourceType.BaseTemplate,
+            output = inspireOutput,
+            icmPath = targetPath,
+        )
+        deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.BaseTemplate, targetPath))
+    }
+
+    override fun errorBaseTemplate(id: String, targetPath: IcmPath?, message: String) {
+        statusTrackingRepository?.error(
+            id = id,
+            deploymentId = deploymentId,
+            timestamp = timestamp,
+            resourceType = ResourceType.BaseTemplate,
+            output = inspireOutput,
+            icmPath = targetPath,
             message = message,
         )
         deploymentResult.errors.add(DeploymentError(id, message))

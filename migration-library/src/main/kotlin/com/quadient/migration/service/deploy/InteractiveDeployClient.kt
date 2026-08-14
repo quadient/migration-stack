@@ -29,12 +29,12 @@ import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.deploy.utility.DeploymentError
-import com.quadient.migration.service.deploy.utility.DeploymentInfo
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTracker
+import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
@@ -189,32 +189,38 @@ open class InteractiveDeployClient(
     }
 
     override fun deployBaseTemplates(): DeploymentResult {
-        val deploymentResult = DeploymentResult(Uuid.random())
+        val tracker = ResultTrackerImpl(statusTrackingRepository, projectConfig.inspireOutput)
 
         val baseTemplates = baseTemplateRepository.listAll()
         logger.info("Found ${baseTemplates.size} base template(s) in the repository.")
 
         for (baseTemplate in baseTemplates) {
             val targetPath = resourcePathProvider.getBaseTemplatePath(baseTemplate)
+
+            if (!shouldDeployObject(baseTemplate.id, ResourceType.BaseTemplate, targetPath, tracker.deploymentResult)) {
+                logger.info("Skipping deployment of '${baseTemplate.id}' as it is not marked for deployment.")
+                continue
+            }
+
             val wfdXml = baseTemplateBuilder.buildBaseTemplate(baseTemplate)
 
             when (val result = ipsService.xml2wfd(wfdXml, targetPath)) {
                 is OperationResult.Success -> {
                     logger.debug("Deployment of base template '${baseTemplate.nameOrId()}' to $targetPath is successful.")
-                    deploymentResult.deployed.add(DeploymentInfo(baseTemplate.id, ResourceType.BaseTemplate, targetPath))
+                    tracker.deployedBaseTemplate(baseTemplate.id, targetPath)
                 }
 
                 is OperationResult.Failure -> {
                     val message = "Failed to deploy base template '${baseTemplate.nameOrId()}' to $targetPath."
                     logger.error(message)
-                    deploymentResult.errors.add(DeploymentError(baseTemplate.id, message))
+                    tracker.errorBaseTemplate(baseTemplate.id, targetPath, message)
                 }
             }
         }
 
-        runPostProcessors(deploymentResult)
+        runPostProcessors(tracker.deploymentResult)
 
-        return deploymentResult
+        return tracker.deploymentResult
     }
 
     override fun getAllDocumentObjectsToDeploy(): List<DocumentObject> {
