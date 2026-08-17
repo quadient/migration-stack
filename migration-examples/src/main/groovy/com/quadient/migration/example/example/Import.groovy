@@ -568,6 +568,7 @@ def separator = new ShapeBuilder()
 def paragraph1TopMargin = topMargin + Size.ofMillimeters(25)
 def signatureTopMargin = pageHeight - Size.ofCentimeters(3)
 def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
+        .internal(true)
         .options(new PageOptions(pageWidth, pageHeight))
         .shape(separator)
         .area {
@@ -713,14 +714,10 @@ def email = new EmailObjectBuilder("email")
     }
     .build()
 
-def templateEmailSms = new DocumentObjectBuilder("templateEmailSms", DocumentObjectType.Template)
-    .documentObjectRef(sms)
-    .documentObjectRef(email)
-    .baseTemplate("vcs://Interactive/StandardPackage/BaseTemplates/ResponsiveEmailBaseTemplate.wfd")
-    .build()
-
 def template = new DocumentObjectBuilder("template", DocumentObjectType.Template)
         .documentObjectRef(page)
+        .documentObjectRef(sms)
+        .documentObjectRef(email)
         .subject("Document example template")
         .pdfMetadata {
             it.author(new VariableRef(nameVariable.id))
@@ -733,7 +730,7 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
         .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, snippet, fmSnippet, sms, email, templateEmailSms]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, snippet, fmSnippet, sms, email]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {

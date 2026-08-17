@@ -1,14 +1,20 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
+import com.quadient.migration.api.repository.BaseTemplateRepository
+import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.service.InteractiveIcmDataCache
 import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.ipsclient.IpsService
+import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.tools.aProjectConfig
+import com.quadient.migration.tools.model.aDocObj
+import com.quadient.migration.tools.model.aDocumentObjectRef
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
+import com.quadient.migration.tools.shouldNotBeNull
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
@@ -21,7 +27,11 @@ class InspireBaseTemplateBuilderTest {
     private val config = aProjectConfig()
     private val resourcePathProvider = InteractiveResourcePathProvider(config)
     private val icmDataCache = InteractiveIcmDataCache(ipsService, resourcePathProvider)
-    private val subject = InspireBaseTemplateBuilder(config, icmDataCache, resourcePathProvider)
+    private val baseTemplateRepository = mockk<BaseTemplateRepository>()
+    private val documentObjectRepository = mockk<DocumentObjectRepository>()
+    private val subject = InspireBaseTemplateBuilder(
+        config, icmDataCache, resourcePathProvider, baseTemplateRepository, documentObjectRepository
+    )
     private val xmlMapper = XmlMapper.builder().addModule(KotlinModule.Builder().build()).build()
 
     @BeforeEach
@@ -38,6 +48,7 @@ class InspireBaseTemplateBuilderTest {
         """.trimIndent()
         every { ipsService.fileExists(any<IcmPath>()) } returns false
         every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Fonts/arial.ttf;"
+        every { baseTemplateRepository.findUsages(any()) } returns emptyList()
     }
 
     @Test
@@ -215,6 +226,60 @@ class InspireBaseTemplateBuilderTest {
         result["Flow"].shouldBeNull()
         result["FlowArea"].shouldBeNull()
         result["Page"].first()["Name"].stringValue().shouldBeEqualTo("Page 1")
+    }
+
+    @Test
+    fun `buildBaseTemplate registers SMS root when a usage references an Sms document object`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+        val smsModel = aDocObj("Sms_1", DocumentObjectType.Sms)
+        val template = aDocObj("T_1", DocumentObjectType.Template, content = listOf(aDocumentObjectRef(smsModel.id)))
+        every { baseTemplateRepository.findUsages(baseTemplate.id) } returns listOf(template)
+        every { documentObjectRepository.find(smsModel.id) } returns smsModel
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["SMSRoot"]["FlowId"].shouldNotBeNull()
+        result["Pages"]["InteractiveFlow"]["FlowType"].stringValue().shouldBeEqualTo("Normal")
+        result["ECPlaceHolder"].shouldBeNull()
+    }
+
+    @Test
+    fun `buildBaseTemplate registers email component root and HTML interactive flow when a usage references an Email document object`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+        val emailModel = aDocObj("Email_1", DocumentObjectType.Email)
+        val template = aDocObj("T_1", DocumentObjectType.Template, content = listOf(aDocumentObjectRef(emailModel.id)))
+        every { baseTemplateRepository.findUsages(baseTemplate.id) } returns listOf(template)
+        every { documentObjectRepository.find(emailModel.id) } returns emailModel
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["ECRoot"].shouldNotBeNull()
+        result["ECPlaceHolder"]["Id"].stringValue().shouldBeEqualTo("Def.EmailsBody")
+        result["Pages"]["InteractiveFlow"]["FlowType"].stringValue().shouldBeEqualTo("HTML")
+        result["SMSRoot"].shouldBeNull()
+    }
+
+    @Test
+    fun `buildBaseTemplate registers neither email nor sms modules when no usage references them`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+        val block = aDocObj("B_1", DocumentObjectType.Block)
+        val template = aDocObj("T_1", DocumentObjectType.Template, content = listOf(aDocumentObjectRef(block.id)))
+        every { baseTemplateRepository.findUsages(baseTemplate.id) } returns listOf(template)
+        every { documentObjectRepository.find(block.id) } returns block
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["SMSRoot"].shouldBeNull()
+        result["ECRoot"].shouldBeNull()
     }
 
     @Test
