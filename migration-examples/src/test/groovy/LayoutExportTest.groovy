@@ -117,7 +117,7 @@ class LayoutExportTest {
             new BaseTemplatePage("Page 2", Size.ofMillimeters(210), Size.ofMillimeters(99), [
                 new BaseTemplateArea("Area 1", new Position(Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(210), Size.ofMillimeters(99)), false),
             ]),
-        ], null, null)
+        ], null, null, null)
         when(migration.baseTemplateRepository.listAll()).thenReturn([baseTemplate])
 
         LayoutExport.run(migration, mappingFile)

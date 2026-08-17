@@ -11,7 +11,6 @@ import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
-import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.IcmDataCache
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.resolveAliases
@@ -42,7 +41,7 @@ class DesignerDocumentObjectBuilder(
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
     variableRepository: VariableRepository,
-    variableStructureRepository: VariableStructureRepository,
+    variableStructureBuilder: InspireVariableStructureBuilder,
     displayRuleRepository: DisplayRuleRepository,
     imageRepository: ImageRepository,
     attachmentRepository: AttachmentRepository,
@@ -55,7 +54,7 @@ class DesignerDocumentObjectBuilder(
     textStyleRepository,
     paragraphStyleRepository,
     variableRepository,
-    variableStructureRepository,
+    variableStructureBuilder,
     displayRuleRepository,
     imageRepository,
     attachmentRepository,
@@ -90,7 +89,7 @@ class DesignerDocumentObjectBuilder(
         var smsModel: DocumentObject? = null
         val virtualPageContent = mutableListOf<DocumentContent>()
 
-        val variableStructure = initVariableStructure(layout, documentObject.variableStructureRef?.id)
+        val variableStructure = variableStructureBuilder.initVariableStructure(layout, documentObject.variableStructureRef?.id)
         val languages = collectLanguages(documentObject)
 
         val languageVariable = variableStructure.languageVariable
@@ -105,7 +104,7 @@ class DesignerDocumentObjectBuilder(
             layout.data.setLanguageVariable(variable)
         }
 
-        layout.addPdfMetadataToPages(documentObject, variableStructure)
+        variableStructureBuilder.addPdfMetadataToPages(layout, documentObject, variableStructure)
 
         documentObject.content.paragraphIfEmpty().forEach {
             val model = (it as? DocumentObjectRef)?.id?.let(documentObjectRepository::findOrFail)
@@ -309,7 +308,7 @@ class DesignerDocumentObjectBuilder(
     }
 
     private fun DocumentObject.buildSmsRoot(layout: Layout, varStructure: VariableStructure, languages: List<String>) {
-        layout.addSmsNumberToPages(this, varStructure)
+        variableStructureBuilder.addSmsNumberToPages(layout, this, varStructure)
         val smsRoot = layout.addSmsRoot()
 
         val flow = buildDocumentContentAsSingleFlow(
@@ -325,7 +324,7 @@ class DesignerDocumentObjectBuilder(
         smsRoot.setContent(flow)
     }
     private fun DocumentObject.buildEmailRoot(layout: Layout, varStructure: VariableStructure, languages: List<String>) {
-        layout.addEmailMetadataToPages(this, varStructure)
+        variableStructureBuilder.addEmailMetadataToPages(layout, this, varStructure)
         val emailRoot = layout.addEmailComponentRoot()
         val emailBodyRootFlow = layout.addFlow().setSectionFlow(true)
         val emailTmText = layout.addEmailTMText()

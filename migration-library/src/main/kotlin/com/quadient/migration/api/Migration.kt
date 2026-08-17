@@ -30,6 +30,7 @@ import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
+import com.quadient.migration.service.inspirebuilder.InspireVariableStructureBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.Version
 import com.quadient.migration.service.ipsclient.display
@@ -118,6 +119,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
         single<StylesValidator>()
         single<RefCollector>()
         single<PreviewProvider>()
+        single<InspireVariableStructureBuilder>()
         single<InspireBaseTemplateBuilder>()
     }
 

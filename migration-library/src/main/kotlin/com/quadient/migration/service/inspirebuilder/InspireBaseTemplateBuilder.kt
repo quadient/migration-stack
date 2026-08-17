@@ -4,10 +4,13 @@ import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.EmailOptions
+import com.quadient.migration.api.dto.migrationmodel.SmsOptions
 import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.service.IcmDataCache
 import com.quadient.migration.service.ResourcePathProvider
+import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.toIcmPath
@@ -25,6 +28,8 @@ class InspireBaseTemplateBuilder(
     private val resourcePathProvider: ResourcePathProvider,
     private val baseTemplateRepository: BaseTemplateRepository,
     private val documentObjectRepository: DocumentObjectRepository,
+    private val variableStructureBuilder: InspireVariableStructureBuilder,
+    private val refInheritanceService: RefInheritanceServiceImpl,
 ) {
     private val logger by logger()
 
@@ -99,34 +104,49 @@ class InspireBaseTemplateBuilder(
     private fun enrichFromDocumentObjects(baseTemplate: BaseTemplate, layout: Layout) {
         val usages = baseTemplateRepository.findUsages(baseTemplate.id).filterIsInstance<DocumentObject>()
 
-        var needsEmail = false
-        var needsSms = false
+        var emailModel: DocumentObject? = null
+        var smsModel: DocumentObject? = null
 
         for (usage in usages) {
             for (content in usage.content) {
-                val referencedType = (content as? DocumentObjectRef)?.id?.let(documentObjectRepository::find)?.type
-                when (referencedType) {
-                    DocumentObjectType.Email -> needsEmail = true
-                    DocumentObjectType.Sms -> needsSms = true
+                val referenced = (content as? DocumentObjectRef)?.id?.let(documentObjectRepository::find) ?: continue
+                when (referenced.type) {
+                    DocumentObjectType.Email -> if (emailModel == null) emailModel = referenced
+                    DocumentObjectType.Sms -> if (smsModel == null) smsModel = referenced
                     else -> Unit
                 }
             }
         }
 
-        if (needsSms) {
+        if (emailModel == null && smsModel == null) return
+
+        val resolvedVariableStructureId = baseTemplate.variableStructureRef?.id
+            ?: listOfNotNull(emailModel, smsModel).firstNotNullOfOrNull {
+                refInheritanceService.apply(listOf(it)).first().variableStructureRef?.id
+            }
+
+        val variableStructure = variableStructureBuilder.initVariableStructure(layout, resolvedVariableStructureId)
+
+        if (smsModel != null) {
             val smsFlow = layout.addFlow().setSectionFlow(true).setWebEditingType(SECTION)
                 .addCustomProperty("customName", "SMS Content")
             layout.pages.addInteractiveFlow(smsFlow, Pages.InteractiveFlowType.NORMAL)
             layout.addSmsRoot().setContent(smsFlow)
+            variableStructureBuilder.addSmsNumberToPages(
+                layout, smsModel.options as? SmsOptions, variableStructure
+            )
         }
 
-        if (needsEmail) {
+        if (emailModel != null) {
             val emailBodyRootFlow = layout.addFlow().setSectionFlow(true).setWebEditingType(SECTION)
                 .addCustomProperty("customName", "Body Content")
             layout.pages.addInteractiveFlow(emailBodyRootFlow, Pages.InteractiveFlowType.HTML)
             layout.addEmailComponentRoot().setEmailComponentsText(layout.addEmailTMText())
             layout.addEmailComponentPlaceHolder().setId("Def.EmailsBody").setType(EmailComponentPlaceHolder.Type.BODY)
                 .setContent(emailBodyRootFlow)
+            variableStructureBuilder.addEmailMetadataToPages(
+                layout, emailModel.options as? EmailOptions, variableStructure
+            )
         }
     }
 }

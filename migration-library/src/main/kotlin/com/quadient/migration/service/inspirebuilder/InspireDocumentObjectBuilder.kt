@@ -4,7 +4,6 @@ import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
-import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
@@ -68,7 +67,6 @@ import com.quadient.migration.shared.TableAction
 import com.quadient.migration.shared.TableAlignment
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
-import com.quadient.wfdxml.api.layoutnodes.Font
 import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentGrid
 import com.quadient.migration.shared.ColumnDistribution
 import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
@@ -77,14 +75,12 @@ import com.quadient.wfdxml.api.layoutnodes.Pages
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle as WfdXmlParagraphStyle
 import com.quadient.wfdxml.api.layoutnodes.ParagraphStyle.LineSpacingType.*
 import com.quadient.wfdxml.api.layoutnodes.Section as WfdXmlSection
-import com.quadient.wfdxml.api.layoutnodes.SheetNameType
 import com.quadient.wfdxml.api.layoutnodes.TabulatorType
 import com.quadient.wfdxml.api.layoutnodes.data.Data
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
 import com.quadient.wfdxml.api.layoutnodes.data.Variable as WfdXmlVariable
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.layoutnodes.flow.Text as WfdXmlText
-import com.quadient.wfdxml.api.layoutnodes.font.SubFont
 import com.quadient.wfdxml.api.layoutnodes.tables.GeneralRowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.RowSet
 import com.quadient.wfdxml.api.layoutnodes.tables.Table as WfdXmlTable
@@ -97,12 +93,9 @@ import com.quadient.wfdxml.api.layoutnodes.tables.BorderStyle
 import com.quadient.wfdxml.api.layoutnodes.tables.Cell
 import com.quadient.wfdxml.api.layoutnodes.flow.Paragraph as WfdXmlParagraph
 import com.quadient.wfdxml.api.module.Layout
-import com.quadient.wfdxml.internal.data.WorkFlowTreeDefinition
 import com.quadient.wfdxml.internal.layoutnodes.TextStyleImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeOptionality
-import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.SUB_TREE
-import kotlin.time.Clock
 import com.quadient.migration.tools.logger
 import kotlin.collections.ifEmpty
 import com.quadient.migration.shared.DataType as DataTypeModel
@@ -115,17 +108,14 @@ import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.VariableRepository
-import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.IcmDataCache
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.shared.VariablePath
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariableRefPath
 import com.quadient.migration.service.resolveTarget
-import com.quadient.migration.api.dto.migrationmodel.EmailOptions
 import com.quadient.migration.api.dto.migrationmodel.QrCode
 import com.quadient.migration.shared.Size
-import com.quadient.migration.api.dto.migrationmodel.SmsOptions
 import com.quadient.wfdxml.api.layoutnodes.Flow.WebEditingType.SECTION
 import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentContent
 
@@ -134,7 +124,7 @@ abstract class InspireDocumentObjectBuilder(
     protected val textStyleRepository: TextStyleRepository,
     protected val paragraphStyleRepository: ParagraphStyleRepository,
     protected val variableRepository: VariableRepository,
-    protected val variableStructureRepository: VariableStructureRepository,
+    protected val variableStructureBuilder: InspireVariableStructureBuilder,
     protected val displayRuleRepository: DisplayRuleRepository,
     protected val imageRepository: ImageRepository,
     protected val attachmentRepository: AttachmentRepository,
@@ -472,57 +462,6 @@ abstract class InspireDocumentObjectBuilder(
         return buildDocumentContentAsFlows(layout, variableStructure, content, flowName, languages, isInline).toSingleFlow(
             layout, variableStructure, flowName, displayRuleRef
         )
-    }
-
-    protected fun initVariableStructure(layout: Layout, variableStructureId: String?): VariableStructure {
-        val variableStructureId = variableStructureId ?: projectConfig.defaultVariableStructure
-
-        val variableStructureModel =
-            variableStructureId?.let { variableStructureRepository.findOrFail(it) } ?: VariableStructure(
-                id = "defaultVariableStructure",
-                lastUpdated = Clock.System.now(),
-                created = Clock.System.now(),
-                structure = mutableMapOf(),
-                customFields = CustomFieldMap(),
-                languageVariable = null,
-            )
-
-        val normalizedVariablePaths = variableStructureModel.structure.map { (variableId, variablePathData) ->
-            val literalPath = variablePathData.path.resolve(variableStructureModel, variableRepository::findOrFail)
-                ?: error("Variable '$variableId' referenced as array path has no resolvable literal path in structure")
-            removeDataFromVariablePath(literalPath)
-        }.filter { it.isNotBlank() }.filter { it != "SystemVariable" && !it.startsWith("SystemVariable.") }
-
-        val variableTree = buildVariableTree(normalizedVariablePaths)
-
-        val workflowTreeDefinition = WorkFlowTreeDefinition("Root", SUB_TREE, NodeOptionality.ARRAY).also {
-            buildVariablePathPart(it, variableTree)
-        }
-
-        val layoutData = layout.data
-        layoutData.importDataDefinition(workflowTreeDefinition)
-        if (variableTree.isNotEmpty() && variableTree.values.first() is ArrayVariable) {
-            layoutData.setRepeatedBy("Data.${variableTree.keys.first()}")
-        }
-
-        return variableStructureModel
-    }
-
-    private fun buildVariablePathPart(
-        parentNode: WorkFlowTreeDefinition, currentMap: Map<String, VariablePathPart>
-    ) {
-        currentMap.forEach {
-            val variablePathPart = it.value
-            val optionality =
-                if (variablePathPart is ArrayVariable) NodeOptionality.ARRAY else NodeOptionality.MUST_EXIST
-
-            val node = WorkFlowTreeDefinition(variablePathPart.name, SUB_TREE, optionality)
-            parentNode.addSubNode(node)
-
-            if (variablePathPart.children.isNotEmpty()) {
-                buildVariablePathPart(node, variablePathPart.children)
-            }
-        }
     }
 
     fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyle>) {
@@ -1846,43 +1785,6 @@ abstract class InspireDocumentObjectBuilder(
         }
     }
 
-    protected fun Layout.addEmailMetadataToPages(documentObject: DocumentObject, variableStructure: VariableStructure) {
-        val emailOptions = documentObject.options as? EmailOptions ?: return
-        this.addSheetNameVariable(variableStructure, SheetNameType.EMAIL_FROM, "EmailFrom", emailOptions.from)
-        this.addSheetNameVariable(variableStructure, SheetNameType.EMAIL_FROM_NAME, "EmailFromName", emailOptions.fromName)
-        this.addSheetNameVariable(variableStructure, SheetNameType.EMAIL_SUBJECT, "EmailSubject", emailOptions.subject)
-        this.addSheetNameVariable(variableStructure, SheetNameType.EMAIL_TO, "EmailTo", emailOptions.to)
-    }
-
-    protected fun Layout.addSmsNumberToPages(documentObject: DocumentObject, variableStructure: VariableStructure) {
-        val smsOptions = documentObject.options as? SmsOptions ?: return
-        this.addSheetNameVariable(variableStructure, SheetNameType.SMS_NUMBER_TO, "NumberTo", smsOptions.numberTo)
-    }
-
-    protected fun Layout.addPdfMetadataToPages(documentObject: DocumentObject, variableStructure: VariableStructure) {
-        val pdfMetadata = documentObject.pdfMetadata ?: return
-        this.addSheetNameVariable(variableStructure, SheetNameType.PDF_TITLE, "TaggingTitle", pdfMetadata.title)
-        this.addSheetNameVariable(variableStructure, SheetNameType.PDF_AUTHOR, "TaggingAuthor", pdfMetadata.author)
-        this.addSheetNameVariable(variableStructure, SheetNameType.PDF_SUBJECT, "TaggingSubject", pdfMetadata.subject)
-        this.addSheetNameVariable(variableStructure, SheetNameType.PDF_KEYWORDS, "TaggingKeywords", pdfMetadata.keywords)
-        this.addSheetNameVariable(variableStructure, SheetNameType.PDF_PRODUCER, "TaggingProduce", pdfMetadata.producer)
-    }
-
-    private fun Layout.addSheetNameVariable(
-        variableStructure: VariableStructure,
-        type: SheetNameType,
-        variableName: String,
-        value: List<VariableStringContent>?,
-    ) {
-        if (value.isNullOrEmpty()) return
-        val variable = this.data
-            .addVariable()
-            .setName(variableName)
-            .setKind(VariableKind.CALCULATED)
-            .setScript(variableStringContentToScript(value, this, variableStructure, variableRepository::findOrFail))
-        this.pages.addSheetName(type, variable)
-    }
-
     sealed interface ScriptResult {
         data class Success(val variableScript: String) : ScriptResult {
             override fun toString() = variableScript
@@ -2071,7 +1973,7 @@ internal fun VariablePath.resolve(variableStructure: VariableStructure, findVari
     }
 }
 
-private fun variableStringContentToScript(
+internal fun variableStringContentToScript(
     variableStringContent: List<VariableStringContent>,
     layout: Layout,
     variableStructure: VariableStructure,

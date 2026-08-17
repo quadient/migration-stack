@@ -1,12 +1,19 @@
 package com.quadient.migration.service.inspirebuilder
 
+import com.quadient.migration.api.dto.migrationmodel.EmailOptions
+import com.quadient.migration.api.dto.migrationmodel.SmsOptions
+import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
 import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.InteractiveIcmDataCache
 import com.quadient.migration.service.InteractiveResourcePathProvider
+import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.millimeters
 import com.quadient.migration.tools.aProjectConfig
@@ -19,6 +26,7 @@ import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import tools.jackson.databind.JsonNode
 import tools.jackson.dataformat.xml.XmlMapper
 import tools.jackson.module.kotlin.KotlinModule
 
@@ -29,8 +37,17 @@ class InspireBaseTemplateBuilderTest {
     private val icmDataCache = InteractiveIcmDataCache(ipsService, resourcePathProvider)
     private val baseTemplateRepository = mockk<BaseTemplateRepository>()
     private val documentObjectRepository = mockk<DocumentObjectRepository>()
+    private val variableRepository = mockk<VariableRepository>()
+    private val variableStructureRepository = mockk<VariableStructureRepository>()
+    private val refInheritanceService = RefInheritanceServiceImpl(documentObjectRepository)
     private val subject = InspireBaseTemplateBuilder(
-        config, icmDataCache, resourcePathProvider, baseTemplateRepository, documentObjectRepository
+        config,
+        icmDataCache,
+        resourcePathProvider,
+        baseTemplateRepository,
+        documentObjectRepository,
+        InspireVariableStructureBuilder(variableRepository, variableStructureRepository, config),
+        refInheritanceService,
     )
     private val xmlMapper = XmlMapper.builder().addModule(KotlinModule.Builder().build()).build()
 
@@ -49,6 +66,7 @@ class InspireBaseTemplateBuilderTest {
         every { ipsService.fileExists(any<IcmPath>()) } returns false
         every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Fonts/arial.ttf;"
         every { baseTemplateRepository.findUsages(any()) } returns emptyList()
+        every { documentObjectRepository.listAll() } returns emptyList()
     }
 
     @Test
@@ -244,6 +262,25 @@ class InspireBaseTemplateBuilderTest {
         result["SMSRoot"]["FlowId"].shouldNotBeNull()
         result["Pages"]["InteractiveFlow"]["FlowType"].stringValue().shouldBeEqualTo("Normal")
         result["ECPlaceHolder"].shouldBeNull()
+        sheetNameScript(result, 0).shouldBeEqualTo("return \"\";")
+    }
+
+    @Test
+    fun `buildBaseTemplate uses sms options to build NumberTo sheet name script when present`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+        val smsModel = aDocObj(
+            "Sms_1", DocumentObjectType.Sms, options = SmsOptions(numberTo = listOf(StringValue("+1234567890")))
+        )
+        val template = aDocObj("T_1", DocumentObjectType.Template, content = listOf(aDocumentObjectRef(smsModel.id)))
+        every { baseTemplateRepository.findUsages(baseTemplate.id) } returns listOf(template)
+        every { documentObjectRepository.find(smsModel.id) } returns smsModel
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        sheetNameScript(result, 0).shouldBeEqualTo("return '+1234567890';")
     }
 
     @Test
@@ -263,6 +300,37 @@ class InspireBaseTemplateBuilderTest {
         result["ECPlaceHolder"]["Id"].stringValue().shouldBeEqualTo("Def.EmailsBody")
         result["Pages"]["InteractiveFlow"]["FlowType"].stringValue().shouldBeEqualTo("HTML")
         result["SMSRoot"].shouldBeNull()
+        sheetNameScript(result, 0).shouldBeEqualTo("return \"\";")
+        sheetNameScript(result, 2).shouldBeEqualTo("return \"\";")
+    }
+
+    @Test
+    fun `buildBaseTemplate uses email options to build sheet name scripts when present`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+        val emailModel = aDocObj(
+            "Email_1",
+            DocumentObjectType.Email,
+            options = EmailOptions(
+                width = null,
+                backgroundFill = Color(255, 255, 255),
+                from = listOf(StringValue("from@quadient.com")),
+                fromName = emptyList(),
+                subject = listOf(StringValue("Hello")),
+                to = emptyList(),
+            ),
+        )
+        val template = aDocObj("T_1", DocumentObjectType.Template, content = listOf(aDocumentObjectRef(emailModel.id)))
+        every { baseTemplateRepository.findUsages(baseTemplate.id) } returns listOf(template)
+        every { documentObjectRepository.find(emailModel.id) } returns emailModel
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        sheetNameScript(result, 0).shouldBeEqualTo("return 'from@quadient.com';")
+        sheetNameScript(result, 1).shouldBeEqualTo("return \"\";")
+        sheetNameScript(result, 2).shouldBeEqualTo("return 'Hello';")
     }
 
     @Test
@@ -293,5 +361,10 @@ class InspireBaseTemplateBuilderTest {
         // then
         result["Page"].shouldBeNull()
         result["Flow"].shouldBeNull()
+    }
+
+    private fun sheetNameScript(result: JsonNode, index: Int): String {
+        val calculatedScripts = result["Variable"].filter { it["Script"] != null }.map { it["Script"].stringValue() }
+        return calculatedScripts[index]
     }
 }

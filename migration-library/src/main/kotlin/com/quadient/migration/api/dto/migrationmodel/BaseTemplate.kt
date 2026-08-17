@@ -10,8 +10,9 @@ data class BaseTemplate(
     override var customFields: CustomFieldMap,
     var targetFolder: String? = null,
     var pages: List<BaseTemplatePage> = emptyList(),
+    var variableStructureRef: VariableStructureRef? = null,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
 ) : MigrationObject, RefValidatable {
-    override fun collectRefs(): Set<Ref> = emptySet()
+    override fun collectRefs(): Set<Ref> = setOfNotNull(variableStructureRef)
 }

@@ -229,7 +229,7 @@ class LayoutImportTest {
     void importUpdatesExistingBaseTemplateMappingButKeepsItsOtherFields() {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
-        def existing = new BaseTemplate("G1", "Old name", ["origin.wfd"], new CustomFieldMap(new HashMap<String, String>()), "target/folder", [], null, null)
+        def existing = new BaseTemplate("G1", "Old name", ["origin.wfd"], new CustomFieldMap(new HashMap<String, String>()), "target/folder", [], null, null, null)
         when(migration.baseTemplateRepository.find("G1")).thenReturn(existing)
         when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, []))
 

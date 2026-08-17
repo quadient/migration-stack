@@ -1278,7 +1278,7 @@ class DesignerDocumentObjectBuilderTest {
         textStyleRepository,
         paragraphStyleRepository,
         variableRepository,
-        variableStructureRepository,
+        InspireVariableStructureBuilder(variableRepository, variableStructureRepository, config),
         displayRuleRepository,
         imageRepository,
         attachmentRepository,

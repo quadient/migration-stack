@@ -4,6 +4,7 @@ import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MigrationObject
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.persistence.table.BaseTemplateTable
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.deploy.utility.ResourceType
@@ -35,6 +36,7 @@ class BaseTemplateRepository(
             originLocations = row[BaseTemplateTable.originLocations],
             targetFolder = row[BaseTemplateTable.targetFolder],
             pages = row[BaseTemplateTable.pages],
+            variableStructureRef = row[BaseTemplateTable.variableStructureRef]?.let { VariableStructureRef(it) },
         )
     }
 
@@ -68,6 +70,7 @@ class BaseTemplateRepository(
                 it[BaseTemplateTable.lastUpdated] = now
                 it[BaseTemplateTable.targetFolder] = dto.targetFolder
                 it[BaseTemplateTable.pages] = dto.pages
+                it[BaseTemplateTable.variableStructureRef] = dto.variableStructureRef?.id
             }.first()
         }
     }
@@ -77,7 +80,7 @@ class BaseTemplateRepository(
 
         val columns = listOf(
             "id", "project_name", "name", "origin_locations", "custom_fields",
-            "created", "last_updated", "target_folder", "pages"
+            "created", "last_updated", "target_folder", "pages", "variable_structure_ref"
         )
         val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
@@ -101,6 +104,7 @@ class BaseTemplateRepository(
                 stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
                 stmt.setString(index++, dto.targetFolder)
                 stmt.setObject(index++, Json.encodeToString(dto.pages), Types.OTHER)
+                stmt.setString(index++, dto.variableStructureRef?.id)
             }
 
             stmt.executeUpdate()
