@@ -8,6 +8,7 @@ import com.quadient.wfdxml.api.layoutnodes.data.Variable;
 import com.quadient.wfdxml.internal.Tree;
 import com.quadient.wfdxml.internal.xml.export.XmlExporter;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,8 +24,10 @@ public class PagesImpl extends Tree<Pages> implements Pages {
     private PageConditionType type = SIMPLE;
     private PageImpl page = null;
     private Flow mainFlow = null;
-    private List<Flow> interactiveFlows = null;
+    private final List<InteractiveFlowEntry> interactiveFlows = new ArrayList<>();
     private final Map<SheetNameType, Variable> sheetNames = new HashMap<>();
+
+    private record InteractiveFlowEntry(Flow flow, InteractiveFlowType type) {}
 
     public static String pageConditionTypeToXml(PageConditionType type) {
         switch (type) {
@@ -110,7 +113,16 @@ public class PagesImpl extends Tree<Pages> implements Pages {
 
     @Override
     public Pages setInteractiveFlows(List<Flow> interactiveFlows) {
-        this.interactiveFlows = interactiveFlows;
+        this.interactiveFlows.clear();
+        for (Flow flow : interactiveFlows) {
+            this.interactiveFlows.add(new InteractiveFlowEntry(flow, Pages.InteractiveFlowType.NORMAL));
+        }
+        return this;
+    }
+
+    @Override
+    public Pages addInteractiveFlow(Flow flow, Pages.InteractiveFlowType type) {
+        this.interactiveFlows.add(new InteractiveFlowEntry(flow, type));
         return this;
     }
 
@@ -136,13 +148,11 @@ public class PagesImpl extends Tree<Pages> implements Pages {
             exporter.addElementWithIface("MainFlow", mainFlow);
             exporter.addElementWithBoolData("UseAnotherFlowAsInteractiveMainFlow", false);
         }
-        if (interactiveFlows != null){
-            for (Flow flow:interactiveFlows) {
-                exporter.beginElement("InteractiveFlow");
-                exporter.addElementWithIface("FlowId", flow);
-                exporter.addElementWithStringData("FlowType", "Normal");
-                exporter.endElement();
-            }
+        for (InteractiveFlowEntry entry : interactiveFlows) {
+            exporter.beginElement("InteractiveFlow");
+            exporter.addElementWithIface("FlowId", entry.flow());
+            exporter.addElementWithStringData("FlowType", interactiveFlowTypeToXml(entry.type()));
+            exporter.endElement();
         }
         if (pageSelectionType == VARIABLE) {
             exporter.addElementWithStringData("ConditionType", pageConditionTypeToXml(type));
@@ -185,6 +195,13 @@ public class PagesImpl extends Tree<Pages> implements Pages {
 
             exporter.addElementWithIface("SheetNameVariableId", variable);
         }
+    }
+
+    public static String interactiveFlowTypeToXml(Pages.InteractiveFlowType type) {
+        return switch (type) {
+            case NORMAL -> "Normal";
+            case HTML -> "HTML";
+        };
     }
 
     public String pageSelectionTypeToXml() {

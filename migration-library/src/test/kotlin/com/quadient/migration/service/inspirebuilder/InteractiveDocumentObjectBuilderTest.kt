@@ -1945,7 +1945,7 @@ class InteractiveDocumentObjectBuilderTest {
         textStyleRepository,
         paragraphStyleRepository,
         variableRepository,
-        variableStructureRepository,
+        InspireVariableStructureBuilder(variableRepository, variableStructureRepository, config),
         displayRuleRepository,
         imageRepository,
         attachmentRepository,

@@ -70,9 +70,7 @@ static void run(Migration migration, Path documentObjFilePath) {
         Mapping.mapProp(existingMapping, existingDocObject, "type", newType)
 
         def varStructureRef = Csv.deserialize(values.get("variableStructureId"), String.class)
-        if (varStructureRef != existingDocObject.variableStructureRef?.id && varStructureRef != existingMapping.variableStructureRef) {
-            existingMapping.variableStructureRef = varStructureRef
-        }
+        existingMapping.variableStructureRef = varStructureRef
 
         def csvStatus = values.get("status")
         if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {

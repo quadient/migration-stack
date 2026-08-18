@@ -48,7 +48,7 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex (read-only),x (read-only),y (read-only),width (read-only),height (read-only),pageWidth (read-only),pageHeight (read-only),contentPreview (read-only)
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
             full tmpl,,full page,,Standard,,test flow2,false,0,0mm,0mm,0mm,0mm,,,
             full tmpl,,full page,,Standard,,test flow3,true,1,0mm,0mm,0mm,0mm,,,
             full tmpl,,full page,,Standard,,,false,2,0mm,0mm,0mm,0mm,,,
@@ -71,7 +71,7 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex (read-only),x (read-only),y (read-only),width (read-only),height (read-only),pageWidth (read-only),pageHeight (read-only),contentPreview (read-only)
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
             tmpl with areas,,,,Standard,,Address Content,false,0,0mm,0mm,0mm,0mm,,,
             tmpl with areas,,,,Standard,,,true,1,0mm,0mm,0mm,0mm,,,
             tmpl with areas,,,,Standard,,Footer,false,2,0mm,0mm,0mm,0mm,,,
@@ -97,7 +97,7 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex (read-only),x (read-only),y (read-only),width (read-only),height (read-only),pageWidth (read-only),pageHeight (read-only),contentPreview (read-only)
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
             tmpl with base,,page with own base,,Standard,\$G1,test flow,false,0,0mm,0mm,0mm,0mm,,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
@@ -117,13 +117,13 @@ class LayoutExportTest {
             new BaseTemplatePage("Page 2", Size.ofMillimeters(210), Size.ofMillimeters(99), [
                 new BaseTemplateArea("Area 1", new Position(Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(210), Size.ofMillimeters(99)), false),
             ]),
-        ], null, null)
+        ], null, null, null)
         when(migration.baseTemplateRepository.listAll()).thenReturn([baseTemplate])
 
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex (read-only),x (read-only),y (read-only),width (read-only),height (read-only),pageWidth (read-only),pageHeight (read-only),contentPreview (read-only)
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
             bt-1,Base template 1,page-1,Page 1,Base,,address,false,0,1cm,1cm,190mm,20mm,210mm,297mm,
             bt-1,Base template 1,page-1,Page 1,Base,,Area 2,true,1,1cm,30mm,190mm,50mm,210mm,297mm,
             bt-1,Base template 1,page-2,Page 2,Base,,Area 1,false,0,0mm,0mm,210mm,99mm,210mm,99mm,
@@ -154,7 +154,7 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName (read-only),pageId,pageName (read-only),type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex (read-only),x (read-only),y (read-only),width (read-only),height (read-only),pageWidth (read-only),pageHeight (read-only),contentPreview (read-only)
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
             ,,page with preview,,Standard,,test flow,false,0,0mm,0mm,0mm,0mm,,,docRef: Block One;imageRef: Image One;docRef: Block Two;(+2 more)
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))

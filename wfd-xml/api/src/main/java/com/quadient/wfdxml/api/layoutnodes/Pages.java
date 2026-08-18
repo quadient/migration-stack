@@ -17,12 +17,19 @@ public interface Pages extends Node<Pages> {
 
     Pages setInteractiveFlows(List<Flow> interactiveFlows);
 
+    Pages addInteractiveFlow(Flow flow, InteractiveFlowType type);
+
     Pages addSheetName(SheetNameType type, Variable variable);
 
     enum PageOrder {
         SIMPLE,
         VARIABLE_SELECTION,
         DATA_VARIABLE_SELECTION,
+    }
+
+    enum InteractiveFlowType {
+        NORMAL,
+        HTML,
     }
 
     enum PageConditionType {

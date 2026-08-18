@@ -37,10 +37,11 @@ class ReferenceValidator(
         val displayRules = displayRuleRepository.listAll()
         val images = imageRepository.listAll()
         val attachments = attachmentRepository.listAll()
+        val baseTemplates = baseTemplateRepository.listAll()
         val alreadyValidatedRefs = mutableSetOf<Ref>()
 
         val missingRefs =
-            (documentObjects + variables + paragraphStyles + textStyles + dataStructures + displayRules + images + attachments).mapNotNull {
+            (documentObjects + variables + paragraphStyles + textStyles + dataStructures + displayRules + images + attachments + baseTemplates).mapNotNull {
                     validate(it, alreadyValidatedRefs).missingRefs.ifEmpty { null }
         }.flatten()
 

@@ -119,7 +119,6 @@ def displayAddressRule = new DisplayRuleBuilder("displayAddressRule")
         .internal(false)
         .subject("External display rule")
         .metadata("key") { it.string("value") }
-        .variableStructureRef(variableStructure)
         .group {
             it.operator(GroupOp.Or)
             it.comparison { it.variable(nameVariable).notEquals().value("") }
@@ -403,7 +402,6 @@ def address = new DocumentObjectBuilder("address", DocumentObjectType.Block)
         .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(addressVariable) } }
         .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(cityVariable) } }
         .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).variableRef(stateVariable) } }
-        .variableStructureRef(variableStructure)
         .build()
 
 // Footer of the document containing a signature.
@@ -411,7 +409,6 @@ def signature = new DocumentObjectBuilder("signature", DocumentObjectType.Block)
         .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("Sincerely,") } }
         .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("John Migration") } }
         .paragraph { it.styleRef(compactParagraphStyle).text { it.styleRef(normalStyle).string("CEO of Lorem ipsum") } }
-        .variableStructureRef(variableStructure)
         .build()
 
 // Sample paragraph containing a heading using headingStyle style,
@@ -490,7 +487,6 @@ def conditionalParagraph = new DocumentObjectBuilder("conditionalParagraph", Doc
                         it.styleRef(normalStyle).string("Integer quis quam semper, accumsan neque at, pellentesque diam. Etiam in blandit dolor. Maecenas sit amet interdum augue, vel pellentesque erat. Suspendisse ut sem in justo rhoncus placerat vitae ut lacus. Etiam consequat bibendum justo ut posuere. Donec aliquam posuere nibh, vehicula pulvinar lectus dictum et. Nullam rhoncus ultrices ipsum et consectetur. Nam tincidunt id purus ac viverra. ")
                     }
         }
-        .variableStructureRef(variableStructure)
         .build()
 
 def firstMatchBlock = new DocumentObjectBuilder("firstMatch", DocumentObjectType.Block)
@@ -534,7 +530,6 @@ def snippet = new SnippetBuilder("snippet")
     .simple()
     .string("Lorem ipsum: ")
     .variableRef(nameVariable)
-    .variableStructureRef(variableStructure)
     .build()
 
 // A simple first match snippet example
@@ -551,7 +546,6 @@ def fmSnippet = new SnippetBuilder("firstMatchSnippet")
             }
             .defaultString("For more information visit ")
     }
-    .variableStructureRef(variableStructure)
     .build()
 
 
@@ -574,6 +568,7 @@ def separator = new ShapeBuilder()
 def paragraph1TopMargin = topMargin + Size.ofMillimeters(25)
 def signatureTopMargin = pageHeight - Size.ofCentimeters(3)
 def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
+        .internal(true)
         .options(new PageOptions(pageWidth, pageHeight))
         .shape(separator)
         .area {
@@ -649,7 +644,6 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
                     .attachmentRef(exampleAttachment)
                     .flowToNextPage(true)
         }
-        .variableStructureRef(variableStructure)
         .build()
 
 def sms = new SmsObjectBuilder("sms")
@@ -720,15 +714,10 @@ def email = new EmailObjectBuilder("email")
     }
     .build()
 
-def templateEmailSms = new DocumentObjectBuilder("templateEmailSms", DocumentObjectType.Template)
-    .documentObjectRef(sms)
-    .documentObjectRef(email)
-    .baseTemplate("vcs://Interactive/StandardPackage/BaseTemplates/ResponsiveEmailBaseTemplate.wfd")
-    .variableStructureRef(variableStructure)
-    .build()
-
 def template = new DocumentObjectBuilder("template", DocumentObjectType.Template)
         .documentObjectRef(page)
+        .documentObjectRef(sms)
+        .documentObjectRef(email)
         .subject("Document example template")
         .pdfMetadata {
             it.author(new VariableRef(nameVariable.id))
@@ -741,7 +730,7 @@ def template = new DocumentObjectBuilder("template", DocumentObjectType.Template
         .build()
 
 // Insert all content into the database to be used in the deploy task
-for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, snippet, fmSnippet, sms, email, templateEmailSms]) {
+for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, page, template, firstMatchBlock, selectByLanguageBlock, jobListBlock, snippet, fmSnippet, sms, email]) {
     migration.documentObjectRepository.upsert(item)
 }
 for (item in [headingStyle, normalStyle]) {

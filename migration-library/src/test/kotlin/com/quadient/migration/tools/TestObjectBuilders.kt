@@ -530,4 +530,4 @@ fun aTextStyleRepository() = TextStyleRepository(ProjectName(aProjectConfig().na
 fun aDisplayRuleRepository() = DisplayRuleRepository(ProjectName(aProjectConfig().name), statusRepo)
 fun aImageRepository() = ImageRepository(ProjectName(aProjectConfig().name), statusRepo)
 fun aAttachmentRepository() = AttachmentRepository(ProjectName(aProjectConfig().name), statusRepo)
-fun aBaseTemplateRepository() = BaseTemplateRepository(ProjectName(aProjectConfig().name))
+fun aBaseTemplateRepository() = BaseTemplateRepository(ProjectName(aProjectConfig().name), statusRepo)

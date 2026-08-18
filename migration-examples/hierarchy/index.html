@@ -183,6 +183,10 @@
                 color: #40a02b;
             }
 
+            .label.base_template {
+                color: #8839ef;
+            }
+
             .label mark {
                 background: var(--hl);
                 padding: 0 2px;
@@ -247,6 +251,8 @@
                 <label for="images">Images</label>
                 <input id="attachments" type="checkbox" checked />
                 <label for="attachments">Attachments</label>
+                <input id="baseTemplates" type="checkbox" checked />
+                <label for="baseTemplates">Base templates</label>
             </div>
 
             <div id="content">
@@ -289,6 +295,7 @@
             const variableStructuresChkbox = /** @type {HTMLInputElement} */ (document.getElementById("variableStructures"));
             const attachmentsChkbox = /** @type {HTMLInputElement} */ (document.getElementById("attachments"));
             const imagesChkbox = /** @type {HTMLInputElement} */ (document.getElementById("images"));
+            const baseTemplatesChkbox = /** @type {HTMLInputElement} */ (document.getElementById("baseTemplates"));
 
             function refresh() {
                 indexes = buildIndexes(data);
@@ -307,6 +314,7 @@
             variableStructuresChkbox.addEventListener("change", refresh);
             attachmentsChkbox.addEventListener("change", refresh);
             imagesChkbox.addEventListener("change", refresh);
+            baseTemplatesChkbox.addEventListener("change", refresh);
 
             treeEl.addEventListener("click", onTreeClick);
 
@@ -488,6 +496,9 @@
                     };
                     case 'VARIABLE_STRUCTURE': {
                         return variableStructuresChkbox.checked;
+                    };
+                    case 'BASE_TEMPLATE': {
+                        return baseTemplatesChkbox.checked;
                     };
                 }
             }
@@ -916,6 +927,7 @@
                 addBucket(root.images, "IMAGE");
                 addBucket(root.variables, "VARIABLE");
                 addBucket(root.variableStructures, "VARIABLE_STRUCTURE");
+                addBucket(root.baseTemplates, "BASE_TEMPLATE");
 
                 return { nodeByKey, childrenByKey, parentsByKey };
             }
@@ -967,6 +979,9 @@
                     case 'VARIABLE_STRUCTURE': {
                         return root.variableStructures[ref.id];
                     };
+                    case 'BASE_TEMPLATE': {
+                        return root.baseTemplates[ref.id];
+                    };
                 }
             }
 
@@ -1012,6 +1027,10 @@
                         label = "VS"
                         break;
                     };
+                    case 'BASE_TEMPLATE': {
+                        label = "BT"
+                        break;
+                    };
                 }
 
                 let eid = id;
@@ -1040,6 +1059,7 @@
             * @property {Object.<string, Leaf>} images
             * @property {Object.<string, Leaf>} variables
             * @property {Object.<string, Child>} variableStructures
+            * @property {Object.<string, Leaf>} baseTemplates
             */
 
             /**
@@ -1073,7 +1093,8 @@
              *  | 'ATTACHMENT'
              *  | 'IMAGE'
              *  | 'VARIABLE'
-             *  | 'VARIABLE_STRUCTURE'} ChildType
+             *  | 'VARIABLE_STRUCTURE'
+             *  | 'BASE_TEMPLATE'} ChildType
              */
         </script>
     </body>

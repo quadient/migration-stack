@@ -929,6 +929,10 @@ function computeBaseTemplateData(data, viewModel, analysis) {
         const baseTemplateId = `bt-${templateGroupIndex + 1}`;
         const baseTemplateName = `${templateGroup.templateNames[0]}BaseTemplate`;
 
+        const usedFlowNames = new Set();
+        /** @type {Map<string, number>} */
+        const firstPageGroupIndexForName = new Map();
+
         templateGroup.pageGroups.forEach((pageGroup, pageGroupIndex) => {
             const basePageId = `page-${pageGroupIndex + 1}`;
             const basePageName = `Page ${pageGroupIndex + 1}`;
@@ -941,14 +945,25 @@ function computeBaseTemplateData(data, viewModel, analysis) {
 
             /** @type {string[]} */
             const flowNamesByAreaGroupIndex = [];
-            const usedFlowNames = new Set();
 
             representativeDrafts.forEach((draft, areaGroupIndex) => {
                 const flowToNextPage = draft.areaIndices.some(ai => representativePage.areas[ai]?.flowToNextPage);
-                let flowName = draft.name;
-                if (usedFlowNames.has(flowName)) {
-                    flowName = `${flowName} (Area ${areaGroupIndex + 1})`;
+                const baseFlowName = `${draft.name}Flow`;
+                let flowName = baseFlowName;
+                if (usedFlowNames.has(baseFlowName)) {
+                    flowName = firstPageGroupIndexForName.get(baseFlowName) === pageGroupIndex
+                        ? `${baseFlowName} (Area ${areaGroupIndex + 1})`
+                        : `${baseFlowName} (${basePageName})`;
+                } else {
+                    firstPageGroupIndexForName.set(baseFlowName, pageGroupIndex);
                 }
+                let uniqueFlowName = flowName;
+                let dedupCounter = 2;
+                while (usedFlowNames.has(uniqueFlowName)) {
+                    uniqueFlowName = `${flowName} (${dedupCounter})`;
+                    dedupCounter++;
+                }
+                flowName = uniqueFlowName;
                 usedFlowNames.add(flowName);
                 flowNamesByAreaGroupIndex.push(flowName);
 

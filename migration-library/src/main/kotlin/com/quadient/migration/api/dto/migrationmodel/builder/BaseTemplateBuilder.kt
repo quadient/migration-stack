@@ -1,8 +1,10 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasPosition
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTargetFolder
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasVariableStructureRef
 import com.quadient.migration.shared.BaseTemplateArea
 import com.quadient.migration.shared.BaseTemplatePage
 import com.quadient.migration.shared.Position
@@ -13,8 +15,10 @@ annotation class BaseTemplateBuilderDsl
 
 @BaseTemplateBuilderDsl
 class BaseTemplateBuilder(id: String) : DtoBuilderBase<BaseTemplate, BaseTemplateBuilder>(id),
-    HasTargetFolder<BaseTemplateBuilder> {
+    HasTargetFolder<BaseTemplateBuilder>,
+    HasVariableStructureRef<BaseTemplateBuilder> {
     override var targetFolder: String? = null
+    override var variableStructureRef: VariableStructureRef? = null
     val pages = mutableListOf<Page>()
 
     /** Creates a new [Page], appends it, and returns it for further configuration. */
@@ -46,6 +50,7 @@ class BaseTemplateBuilder(id: String) : DtoBuilderBase<BaseTemplate, BaseTemplat
             customFields = customFields,
             targetFolder = targetFolder,
             pages = pages.map(Page::build),
+            variableStructureRef = variableStructureRef,
         )
     }
 

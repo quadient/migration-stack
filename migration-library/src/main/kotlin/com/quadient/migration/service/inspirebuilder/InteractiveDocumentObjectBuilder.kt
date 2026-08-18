@@ -15,7 +15,6 @@ import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
-import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.IcmDataCache
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.getBaseTemplateFullPath
@@ -34,7 +33,7 @@ class InteractiveDocumentObjectBuilder(
     textStyleRepository: TextStyleRepository,
     paragraphStyleRepository: ParagraphStyleRepository,
     variableRepository: VariableRepository,
-    variableStructureRepository: VariableStructureRepository,
+    variableStructureBuilder: InspireVariableStructureBuilder,
     displayRuleRepository: DisplayRuleRepository,
     imageRepository: ImageRepository,
     attachmentRepository: AttachmentRepository,
@@ -47,7 +46,7 @@ class InteractiveDocumentObjectBuilder(
     textStyleRepository,
     paragraphStyleRepository,
     variableRepository,
-    variableStructureRepository,
+    variableStructureBuilder,
     displayRuleRepository,
     imageRepository,
     attachmentRepository,
@@ -103,9 +102,9 @@ class InteractiveDocumentObjectBuilder(
             ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
 
         val languages = collectLanguages(documentObject)
-        val variableStructure = initVariableStructure(layout, documentObject.variableStructureRef?.id)
+        val variableStructure = variableStructureBuilder.initVariableStructure(layout, documentObject.variableStructureRef?.id)
 
-        layout.addPdfMetadataToPages(documentObject, variableStructure)
+        variableStructureBuilder.addPdfMetadataToPages(layout, documentObject, variableStructure)
 
         val interactiveFlowsWithContent = mutableMapOf<String, MutableList<DocumentContent>>()
         var usedSmsModel: DocumentObject? = null
@@ -169,11 +168,11 @@ class InteractiveDocumentObjectBuilder(
         val hasMultipleFlows = interactiveFlowsWithContent.size > 1
 
         if (usedSmsModel != null) {
-            layout.addSmsNumberToPages(usedSmsModel, variableStructure)
+            variableStructureBuilder.addSmsNumberToPages(layout, usedSmsModel, variableStructure)
         }
 
         if (usedEmailModel != null) {
-            layout.addEmailMetadataToPages(usedEmailModel, variableStructure)
+            variableStructureBuilder.addEmailMetadataToPages(layout, usedEmailModel, variableStructure)
         }
 
         interactiveFlowsWithContent.forEach {

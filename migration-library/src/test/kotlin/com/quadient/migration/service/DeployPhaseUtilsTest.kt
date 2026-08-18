@@ -54,23 +54,18 @@ class DeployPhaseUtilsTest {
     }
 
     @Test
-    fun `base template referenced by id fails because it is not yet supported`() {
+    fun `base template referenced by id resolves to its deployed path`() {
         val baseTemplate = BaseTemplate(
             id = "bt-1",
             name = "AddressBaseTemplate",
             customFields = CustomFieldMap(),
         )
 
-        try {
-            resourcePathProvider.getBaseTemplateFullPath(
-                projectConfig, BaseTemplateRef(baseTemplate.id)
-            ) { id -> if (id == baseTemplate.id) baseTemplate else error("Unexpected id '$id'") }
-            error("Expected an exception to be thrown")
-        } catch (e: IllegalStateException) {
-            e.message.shouldBeEqualTo(
-                "Base template 'icm://Interactive/StandardPackage/BaseTemplates/AddressBaseTemplate.wfd' cannot be used because referencing base templates by id is not yet supported during deployment."
-            )
-        }
+        val result = resourcePathProvider.getBaseTemplateFullPath(
+            projectConfig, BaseTemplateRef(baseTemplate.id)
+        ) { id -> if (id == baseTemplate.id) baseTemplate else error("Unexpected id '$id'") }.toString()
+
+        result.shouldBeEqualTo("icm://Interactive/StandardPackage/BaseTemplates/AddressBaseTemplate.wfd")
     }
 
     @Test

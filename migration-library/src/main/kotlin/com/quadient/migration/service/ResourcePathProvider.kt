@@ -16,10 +16,6 @@ import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.orDefault
 import com.quadient.migration.shared.toIcmPath
-import org.slf4j.LoggerFactory
-import java.lang.invoke.MethodHandles
-
-private val logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass())
 
 interface ResourcePathProvider {
     fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): IcmPath
@@ -72,11 +68,7 @@ fun ResourcePathProvider.getBaseTemplateFullPath(
 
         is BaseTemplateRef -> {
             val baseTemplate = findBaseTemplate(documentObjectBaseTemplate.id)
-            val baseTemplatePath = getBaseTemplatePath(baseTemplate)
-            val message =
-                "Base template '$baseTemplatePath' cannot be used because referencing base templates by id is not yet supported during deployment."
-            logger.error(message)
-            error(message)
+            return getBaseTemplatePath(baseTemplate)
         }
 
         null -> config.baseTemplatePath

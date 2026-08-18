@@ -88,9 +88,12 @@ class PagesImplTest extends Specification {
         Flow mainFlow = new FlowImpl()
         Flow interactiveFlow1 = new FlowImpl()
         Flow interactiveFlow2 = new FlowImpl()
+        Flow htmlFlow = new FlowImpl()
         PagesImpl pages = new PagesImpl()
                 .setMainFlow(mainFlow)
-                .setInteractiveFlows([interactiveFlow1, interactiveFlow2])
+                .addInteractiveFlow(interactiveFlow1, Pages.InteractiveFlowType.NORMAL)
+                .addInteractiveFlow(interactiveFlow2, Pages.InteractiveFlowType.NORMAL)
+                .addInteractiveFlow(htmlFlow, Pages.InteractiveFlowType.HTML)
 
         when:
         pages.export(exporter)
@@ -107,6 +110,10 @@ class PagesImplTest extends Specification {
             <InteractiveFlow>
                 <FlowId>SR_3</FlowId>
                 <FlowType>Normal</FlowType>
+            </InteractiveFlow>
+            <InteractiveFlow>
+                <FlowId>SR_4</FlowId>
+                <FlowType>HTML</FlowType>
             </InteractiveFlow>
         """)
     }

@@ -27,6 +27,7 @@ def attachments = migration.attachmentRepository.listAll()
 def images = migration.imageRepository.listAll()
 def variables = migration.variableRepository.listAll()
 def variableStructures = migration.variableStructureRepository.listAll()
+def baseTemplates = migration.baseTemplateRepository.listAll()
 
 def root = new Root()
 
@@ -87,6 +88,12 @@ for (variableStructure in variableStructures) {
     root.variableStructures[node.id] = node
 }
 
+for (baseTemplate in baseTemplates) {
+    def node = new Leaf(id: baseTemplate.id, name: baseTemplate.name, type: ChildType.BASE_TEMPLATE)
+
+    root.baseTemplates[node.id] = node
+}
+
 // Collect parents
 for (node in root.documentObjects.values()) {
     def parentNode = new Reference(id: node.id, type: ChildType.DOCUMENT_OBJECT)
@@ -121,6 +128,7 @@ static void collectParents(Root root, Node node, Reference parentNode) {
             case ChildType.IMAGE -> root.images
             case ChildType.VARIABLE -> root.variables
             case ChildType.VARIABLE_STRUCTURE -> root.variableStructures
+            case ChildType.BASE_TEMPLATE -> root.baseTemplates
             default -> throw new IllegalStateException("Unknown parent type: ${child.type}")
         }
 
@@ -139,6 +147,7 @@ static void collectChildren(Node node, Set<Ref> refs) {
             case ImageRef -> ChildType.IMAGE
             case VariableRef -> ChildType.VARIABLE
             case VariableStructureRef -> ChildType.VARIABLE_STRUCTURE
+            case BaseTemplateRef -> ChildType.BASE_TEMPLATE
             default -> throw new IllegalStateException("Unknown reference type: ${child.class}")
         }
 
@@ -155,6 +164,7 @@ class Root {
     Map<String, Leaf> images = [:]
     Map<String, Leaf> variables = [:]
     Map<String, Child> variableStructures = [:]
+    Map<String, Leaf> baseTemplates = [:]
 }
 
 class Node {
@@ -186,4 +196,5 @@ enum ChildType {
     IMAGE,
     VARIABLE,
     VARIABLE_STRUCTURE,
+    BASE_TEMPLATE,
 }
