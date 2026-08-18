@@ -335,7 +335,8 @@ def mainFlow = new DocumentObjectBuilder("mainFlow", DocumentObjectType.Block)
     .build()
 migration.documentObjectRepository.upsert(mainFlow)
 
-def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
+def page = new DocumentObjectBuilder("page", DocumentObjectType.Page)
+    .internal(true)
     .options(new PageOptions(Size.ofMillimeters(210), Size.ofMillimeters(297)))
     .area {
         it.position {
