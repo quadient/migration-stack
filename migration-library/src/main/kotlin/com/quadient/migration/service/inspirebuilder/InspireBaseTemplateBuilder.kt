@@ -53,6 +53,8 @@ class InspireBaseTemplateBuilder(
         }
         resolveArialFont(layout, icmDataCache)
 
+        val usages = baseTemplateRepository.findUsages(baseTemplate.id).filterIsInstance<DocumentObject>()
+
         var mainFlow: Flow? = null
         var mainFlowSize = -1.0
 
@@ -89,7 +91,7 @@ class InspireBaseTemplateBuilder(
 
         mainFlow?.let { layout.pages.setMainFlow(it) }
 
-        enrichFromDocumentObjects(baseTemplate, layout)
+        enrichFromDocumentObjects(baseTemplate, usages, layout)
 
         val baseTemplateXml = builder.build()
         val sourceBaseTemplatePath = if (projectConfig.sourceBaseTemplatePath.isNullOrBlank()) {
@@ -101,9 +103,7 @@ class InspireBaseTemplateBuilder(
         return enrichLayoutWithSourceBaseTemplate(icmDataCache, baseTemplateXml, sourceBaseTemplatePath)
     }
 
-    private fun enrichFromDocumentObjects(baseTemplate: BaseTemplate, layout: Layout) {
-        val usages = baseTemplateRepository.findUsages(baseTemplate.id).filterIsInstance<DocumentObject>()
-
+    private fun enrichFromDocumentObjects(baseTemplate: BaseTemplate, usages: List<DocumentObject>, layout: Layout) {
         var emailModel: DocumentObject? = null
         var smsModel: DocumentObject? = null
 
