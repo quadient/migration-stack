@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+- DeployBaseTemplates task that deploys base templates with pages, areas, interactive flows and other options.  
+
 ### Changed
 
 ### Fixed
