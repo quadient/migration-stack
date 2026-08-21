@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleDefinition
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
@@ -17,14 +18,14 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def exportFilePath = Mapping.csvPath(binding, migration.projectConfig.name, "paragraph-styles")
+def exportFilePath = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "paragraph-styles")
 run(migration, exportFilePath)
 
 static void run(Migration migration, Path exportFilePath) {
     def file = exportFilePath.toFile()
     file.createParentDirectories()
 
-    def styles = migration.paragraphStyleRepository.listAll()
+    List<ParagraphStyle> styles = Mapping.collectSelectedOrAll(migration, ParagraphStyle) { migration.paragraphStyleRepository.listAll() }
     file.withWriter { writer ->
         def headers = ["id", "name", "targetId", "leftIndent", "rightIndent", "defaultTabSize", "spaceBefore", "spaceAfter", "alignment", "firstLineIndent", "keepWithNextParagraph", "lineSpacingType", "lineSpacingValue", "pdfTaggingRule", Mapping.displayHeader("originLocations", true)]
         writer.writeLine(headers.join(","))

@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
@@ -21,7 +22,7 @@ import static com.quadient.migration.service.TableUtilKt.collectDocumentTables
 
 @Field Migration migration = initMigration(this.binding)
 
-def tablesFile = Mapping.csvPath(binding, migration.projectConfig.name, "tables")
+def tablesFile = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "tables")
 
 run(migration, tablesFile)
 
@@ -29,8 +30,9 @@ static void run(Migration migration, Path path) {
     def tablesFile = path.toFile()
     tablesFile.createParentDirectories()
 
-    def documentObjects = (migration.documentObjectRepository as DocumentObjectRepository).listAll()
-            .sort { it.name ?: it.id }
+    List<DocumentObject> documentObjects = Mapping.collectSelectedOrAll(migration, DocumentObject) {
+        (migration.documentObjectRepository as DocumentObjectRepository).listAll()
+    }.sort { it.name ?: it.id }
 
     tablesFile.withWriter { writer ->
         def headers = [

@@ -1,8 +1,10 @@
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.data.Active
 import com.quadient.migration.example.common.mapping.AttachmentsExport
 import com.quadient.migration.shared.AttachmentType
+import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.SkipOptions
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
@@ -48,5 +50,30 @@ class AttachmentsMappingExportTest {
 
     static SkipOptions emptySkipOptions() {
         return new SkipOptions(false, null, null)
+    }
+
+    @Test
+    void exportsOnlyAttachmentsReferencedBySelectedDocumentObjects() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        def migration = Utils.mockMigration()
+
+        def referencedAttachment = new Attachment("referenced", null, [], new CustomFieldMap([:]), null, null, [], AttachmentType.Document, emptySkipOptions(), null)
+        def unselectedAttachment = new Attachment("unselected", null, [], new CustomFieldMap([:]), null, null, [], AttachmentType.Document, emptySkipOptions(), null)
+        def selectedDocObject = new DocumentObjectBuilder("doc1", DocumentObjectType.Block).build()
+
+        when(migration.projectConfig.getDocumentObjectsToProcess()).thenReturn(["doc1"])
+        when(migration.documentObjectRepository.listIds(["doc1"])).thenReturn([selectedDocObject])
+        when(migration.referenceCollector.collectAllObjects(selectedDocObject)).thenReturn([referencedAttachment] as Set)
+        when(migration.attachmentRepository.listAll()).thenReturn([referencedAttachment, unselectedAttachment])
+
+        when(migration.statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any())).thenReturn(new Active())
+
+        AttachmentsExport.run(migration, mappingFile)
+
+        def expected = """\
+            id,name,sourcePath,attachmentType,targetFolder,targetImageId,status,skip,skipPlaceholder,skipReason,originalName (read-only),originLocations (read-only)
+            referenced,,,Document,,,Active,false,,,,[]
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
 }

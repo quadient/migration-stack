@@ -121,8 +121,12 @@ class InteractiveDeployClientTest {
     val deployOrder = DeployOrderImpl(documentObjectRepository)
     val refInheritanceService = RefInheritanceServiceImpl(documentObjectRepository)
 
-    private val subject = InteractiveDeployClient(
-        config,
+    private fun subject(selectedDocumentObjects: List<String> = emptyList()) = InteractiveDeployClient(
+        aProjectConfig(
+            targetDefaultFolder = "defaultFolder",
+            baseTemplatePath = "icm://Interactive/tenant/BaseTemplates/templ.wfd",
+            selectedDocumentObjects = selectedDocumentObjects,
+        ),
         resourcePathProvider,
         metadataValidator,
         postProcess,
@@ -173,14 +177,14 @@ class InteractiveDeployClientTest {
         } returns aDeployedStatus("id")
 
         // when
-        subject.deployDocumentObjects()
+        subject().deployDocumentObjects()
 
         // then
         verifyBasicIpsOperations(
             listOf(
                 "icm://Interactive/$tenant/Blocks/defaultFolder/0.jld",
                 "icm://Interactive/$tenant/Blocks/defaultFolder/1.jld",
-                "icm://Interactive/$tenant/Templates/defaultFolder/0.jld"
+                "icm://Interactive/$tenant/Templates/defaultFolder/2.jld"
             )
         )
         verify(exactly = 3) { documentObjectBuilder.buildDocumentObject(any()) }
@@ -227,7 +231,7 @@ class InteractiveDeployClientTest {
         mockBasicSuccessfulIpsOperations()
 
         // when
-        subject.deployDocumentObjects()
+        subject().deployDocumentObjects()
 
         // then
         verifyBasicIpsOperations(
@@ -264,7 +268,7 @@ class InteractiveDeployClientTest {
         } returns aErrorStatus("id")
 
         // when
-        subject.deployDocumentObjects()
+        subject().deployDocumentObjects()
 
         // then
         verify(exactly = 3) { ipsService.deployJld(any(), any(), any(), any(), any<IcmPath>()) }
@@ -272,7 +276,7 @@ class InteractiveDeployClientTest {
             ipsService.setProductionApprovalState(
                 listOf(
                     "icm://Interactive/$tenant/Blocks/defaultFolder/1.jld".toIcmPath(),
-                    "icm://Interactive/$tenant/Templates/defaultFolder/0.jld".toIcmPath()
+                    "icm://Interactive/$tenant/Templates/defaultFolder/2.jld".toIcmPath()
                 )
             )
         }
@@ -310,7 +314,7 @@ class InteractiveDeployClientTest {
         mockBasicSuccessfulIpsOperations()
 
         // when
-        subject.deployDocumentObjects()
+        subject().deployDocumentObjects()
 
         // then
         verifyBasicIpsOperations(
@@ -354,7 +358,7 @@ class InteractiveDeployClientTest {
         val expectedAttachmentIcmPath = "icm://Interactive/$tenant/Resources/Attachments/defaultFolder/${attachment.sourcePath}"
 
         // when
-        val deploymentResult = subject.deployDocumentObjects()
+        val deploymentResult = subject().deployDocumentObjects()
 
         // then
         deploymentResult.deployed.size.shouldBeEqualTo(4)
@@ -409,7 +413,7 @@ class InteractiveDeployClientTest {
         mockBasicSuccessfulIpsOperations()
 
         // when
-        val deploymentResult = subject.deployDocumentObjects()
+        val deploymentResult = subject().deployDocumentObjects()
 
         // then
         deploymentResult.deployed.size.shouldBeEqualTo(1)
@@ -452,7 +456,7 @@ class InteractiveDeployClientTest {
         val expectedAttachmentIcmPath = "icm://Interactive/$tenant/Resources/Attachments/defaultFolder/${attachment.sourcePath}"
 
         // when
-        subject.deployDocumentObjects()
+        subject().deployDocumentObjects()
 
         // then
         verify(exactly = 1) { ipsService.tryUpload(expectedImageIcmPath.toIcmPath(), any()) }
@@ -491,7 +495,7 @@ class InteractiveDeployClientTest {
         every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
 
         // when
-        subject.deployStyles()
+        subject().deployStyles()
 
         // then
         verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd.toIcmPath())) }
@@ -521,7 +525,7 @@ class InteractiveDeployClientTest {
         every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
 
         // when
-        subject.deployStyles()
+        subject().deployStyles()
 
         // then
         verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd.toIcmPath())) }
@@ -545,7 +549,7 @@ class InteractiveDeployClientTest {
         every { resourcePathProvider.getBaseTemplatePath(baseTemplate) } returns targetPath
 
         // when
-        val result = subject.deployBaseTemplates()
+        val result = subject().deployBaseTemplates()
 
         // then
         result.deployed.shouldBeOfSize(1)
@@ -568,7 +572,7 @@ class InteractiveDeployClientTest {
         } returns aDeployedStatus("id")
 
         // when
-        val result = subject.deployBaseTemplates()
+        val result = subject().deployBaseTemplates()
 
         // then
         result.errors.shouldBeOfSize(1)
@@ -577,7 +581,7 @@ class InteractiveDeployClientTest {
 
     @Test
     fun `deploy list of document objects validates that no document objects are unsupported`() {
-        val spy = spyk(subject)
+        val spy = spyk(subject(listOf("1", "2", "3")))
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
         )
@@ -587,7 +591,7 @@ class InteractiveDeployClientTest {
             aBlock(id = "3", skip = SkipOptions(true, null, null)),
         )
 
-        val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(listOf("1", "2", "3")) }
+        val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects() }
 
         assertEquals("The following document objects are skipped: [1, 3]. ", ex.message)
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
@@ -595,7 +599,7 @@ class InteractiveDeployClientTest {
 
     @Test
     fun `deploy list of document objects validates that no document objects are `() {
-        val spy = spyk(subject)
+        val spy = spyk(subject(listOf("1", "2", "3")))
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
         )
@@ -605,7 +609,7 @@ class InteractiveDeployClientTest {
             aBlock(id = "3", internal = false),
         )
 
-        val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(listOf("1", "2", "3")) }
+        val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects() }
 
         assertEquals("The following document objects are internal: [1, 2]. ", ex.message)
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
@@ -613,7 +617,7 @@ class InteractiveDeployClientTest {
 
     @Test
     fun `deploy list of document objects validates that no document are missing`() {
-        val spy = spyk(subject)
+        val spy = spyk(subject(listOf("1", "2", "3")))
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
         )
@@ -621,7 +625,7 @@ class InteractiveDeployClientTest {
             aBlock(id = "1"),
         )
 
-        val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(listOf("1", "2", "3")) }
+        val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects() }
 
         assertEquals("The following document objects were not found: [2, 3]. ", ex.message)
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
@@ -629,7 +633,7 @@ class InteractiveDeployClientTest {
 
     @Test
     fun `deploy list of document objects has all kinds of problems`() {
-        val spy = spyk(subject)
+        val spy = spyk(subject(listOf("1", "2", "3", "5", "6", "7", "8")))
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
         )
@@ -642,13 +646,7 @@ class InteractiveDeployClientTest {
             aBlock(id = "7"),
         )
 
-        val ex = assertThrows<IllegalArgumentException> {
-            spy.deployDocumentObjects(
-                listOf(
-                    "1", "2", "3", "5", "6", "7", "8"
-                )
-            )
-        }
+        val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects() }
 
         assertEquals(
             "The following document objects were not found: [8]. The following document objects are skipped: [6]. The following document objects are internal: [2]. ",
@@ -659,7 +657,7 @@ class InteractiveDeployClientTest {
 
     @Test
     fun `deploy list of document objects filters out Email and Sms type document objects`() {
-        val spy = spyk(subject)
+        val spy = spyk(subject(listOf("1", "2", "3")))
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
         )
@@ -669,7 +667,7 @@ class InteractiveDeployClientTest {
             aBlock(id = "3", type = DocumentObjectType.Block),
         )
 
-        spy.deployDocumentObjects(listOf("1", "2", "3"))
+        spy.deployDocumentObjects()
 
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
         verify {
@@ -681,7 +679,7 @@ class InteractiveDeployClientTest {
 
     @Test
     fun `external page objects are included in deploy list`() {
-        val spy = spyk(subject)
+        val spy = spyk(subject(listOf("1", "2", "3", "4")))
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
         )
@@ -692,7 +690,7 @@ class InteractiveDeployClientTest {
             aBlock(id = "4", type = DocumentObjectType.Section),
         )
 
-        spy.deployDocumentObjects(listOf("1", "2", "3", "4"))
+        spy.deployDocumentObjects()
 
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
         verify {
@@ -704,7 +702,7 @@ class InteractiveDeployClientTest {
 
     @Test
     fun `deploy list of document objects excludes internal pages but includes their transitive external dependencies`() {
-        val spy = spyk(subject)
+        val spy = spyk(subject(listOf("template1")))
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
         )
@@ -722,7 +720,7 @@ class InteractiveDeployClientTest {
         every { documentObjectRepository.findOrFail("block3") } returns block3
         every { documentObjectRepository.find("4") } returns null
 
-        spy.deployDocumentObjects(listOf("template1"), false)
+        spy.deployDocumentObjects(false)
 
         verify {
             spy.deployDocumentObjectsInternal(match { docObjects ->
@@ -737,11 +735,11 @@ class InteractiveDeployClientTest {
 
     @Test
     fun `deploy list of document objects without dependencies`() {
-        val spy = spyk(subject)
+        val toDeploy = listOf("1", "2", "3")
+        val spy = spyk(subject(toDeploy))
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
         )
-        val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
             aBlock(id = "2", content = listOf(aDocumentObjectRef("5"))),
@@ -750,7 +748,7 @@ class InteractiveDeployClientTest {
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns docObjects
         every { documentObjectRepository.find("4") } returns null
 
-        spy.deployDocumentObjects(toDeploy, true)
+        spy.deployDocumentObjects(true)
 
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
         verify { spy.deployDocumentObjectsInternal(docObjects, any(), any(), any(), any(), any()) }
@@ -758,11 +756,11 @@ class InteractiveDeployClientTest {
 
     @Test
     fun `deploy list of document objects with recursive dependencies, deduplicates them and skips internal dependencies`() {
-        val spy = spyk(subject)
+        val toDeploy = listOf("1", "2", "3")
+        val spy = spyk(subject(toDeploy))
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
         )
-        val toDeploy = listOf("1", "2", "3")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
             aBlock(id = "2", content = listOf(aDocumentObjectRef("5"))),
@@ -780,7 +778,7 @@ class InteractiveDeployClientTest {
             every { documentObjectRepository.findOrFail(dependency.id) } returns dependency
         }
 
-        spy.deployDocumentObjects(toDeploy)
+        spy.deployDocumentObjects()
 
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
         verify {
@@ -792,18 +790,18 @@ class InteractiveDeployClientTest {
 
     @Test
     fun `deploy list of document objects with dependencies when dependency is not found`() {
-        val spy = spyk(subject)
+        val toDeploy = listOf("1")
+        val spy = spyk(subject(toDeploy))
         every { spy.deployDocumentObjectsInternal(any(), any(), any(), any(), any(), any()) } returns DeploymentResult(
             Uuid.random()
         )
-        val toDeploy = listOf("1")
         val docObjects = listOf(
             aBlock(id = "1", content = listOf(aDocumentObjectRef("4"))),
         )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns docObjects
         every { documentObjectRepository.findOrFail(any()) } throws IllegalArgumentException("not found")
 
-        val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects(toDeploy) }
+        val ex = assertThrows<IllegalArgumentException> { spy.deployDocumentObjects() }
 
         assertEquals("not found", ex.message)
         verify(exactly = 1) { documentObjectRepository.list(any<Op<Boolean>>()) }
@@ -836,7 +834,7 @@ class InteractiveDeployClientTest {
         every { statusTrackingRepository.error("B_2", any(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("B_2")
 
         // when
-        val result = subject.deployDocumentObjects()
+        val result = subject().deployDocumentObjects()
 
         // then
         result.deployed.shouldBeEqualTo(
@@ -908,7 +906,7 @@ class InteractiveDeployClientTest {
         every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/failed.jrd".toIcmPath(), any()) } returns OperationResult.Failure("oops")
         every { ipsService.tryUpload("icm://Interactive/tenant/Rules/defaultFolder/targetRule.jrd".toIcmPath(), any()) } returns OperationResult.Success
 
-        val result = subject.deployDocumentObjects()
+        val result = subject().deployDocumentObjects()
 
         result.warnings.shouldBeEqualTo(listOf(
             DeploymentWarning(
@@ -965,7 +963,7 @@ class InteractiveDeployClientTest {
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns listOf(template, block)
 
         // when
-        val result = subject.deployDocumentObjects()
+        val result = subject().deployDocumentObjects()
 
         // then: the missing base template is reported as a display rule error but deployment
         // of the remaining document objects still proceeds instead of aborting.
@@ -984,6 +982,7 @@ class InteractiveDeployClientTest {
     fun `deployDocumentObjects deploys a standalone block inheriting baseTemplate from its ancestor template`() {
         // given
         val block = mockObj(aDocObj("B_1", DocumentObjectType.Block, internal = false))
+        val localSubject = subject(listOf(block.id))
         val template = mockObj(
             aDocObj(
                 "T_1", DocumentObjectType.Template,
@@ -1003,7 +1002,7 @@ class InteractiveDeployClientTest {
         } returns aDeployedStatus("id")
 
         // when
-        subject.deployDocumentObjects(listOf(block.id), true)
+        localSubject.deployDocumentObjects(true)
 
         // then
         verify {
@@ -1042,7 +1041,7 @@ class InteractiveDeployClientTest {
         } returns aDeployedStatus("id")
 
         // when
-        subject.deployDocumentObjects()
+        subject().deployDocumentObjects()
 
         // then
         verify {
@@ -1072,7 +1071,7 @@ class InteractiveDeployClientTest {
             )
         }
         val templates = List(1) {
-            mockDocumentObject(aTemplate(it.toString(), listOf(aDocumentObjectRef("$it"))))
+            mockDocumentObject(aTemplate((it + 2).toString(), listOf(aDocumentObjectRef("$it"))))
         }
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns blocks + templates
     }
@@ -1463,19 +1462,20 @@ class InteractiveDeployClientTest {
     }
 
     private fun runDeploy(documentObjects: List<DocumentObject>): DeploymentResult {
-        return subject.deployDocumentObjectsInternal(
+        val localSubject = subject()
+        return localSubject.deployDocumentObjectsInternal(
             documentObjects,
             ResultTrackerImpl(statusTrackingRepository, InspireOutput.Interactive),
-            subject::uploadDocumentObject,
-            subject::uploadImage,
-            subject::uploadAttachment,
-            subject::uploadDisplayRule
+            localSubject::uploadDocumentObject,
+            localSubject::uploadImage,
+            localSubject::uploadAttachment,
+            localSubject::uploadDisplayRule
         )
     }
 
     @Nested
     inner class MetadataPostProcessorTest {
-        private val metadataPostProcessor: PostProcessor = subject.clearPostProcessors().first()
+        private val metadataPostProcessor: PostProcessor = subject().clearPostProcessors().first()
 
         private fun aDeploymentResult(vararg infos: DeploymentInfo) = DeploymentResult(
             deploymentId = Uuid.random(),

@@ -160,6 +160,64 @@ class LayoutExportTest {
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
 
+    @Test
+    void exportsOnlySelectedTemplatesPagesAndTheirReferences() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        when(migration.mappingRepository.getAreaMapping(any())).thenReturn(new MappingItem.Area(null, [:], [:]))
+
+        def selectedPage = new DocumentObjectBuilder("selected page", DocumentObjectType.Page)
+                .content([createArea("selected flow")])
+                .build()
+        def selectedTemplate = new DocumentObjectBuilder("selected tmpl", DocumentObjectType.Template)
+                .documentObjectRef("selected page")
+                .build()
+        def unselectedTemplate = new DocumentObjectBuilder("unselected tmpl", DocumentObjectType.Template)
+                .content([createArea("unselected flow")])
+                .build()
+
+        when(migration.projectConfig.getDocumentObjectsToProcess()).thenReturn(["selected tmpl"])
+        when(migration.documentObjectRepository.listIds(["selected tmpl"])).thenReturn([selectedTemplate])
+        when(migration.referenceCollector.collectAllObjects(selectedTemplate)).thenReturn([selectedPage] as Set)
+        when((migration.documentObjectRepository as DocumentObjectRepository).list(any())).thenReturn([
+            selectedTemplate, selectedPage, unselectedTemplate,
+        ])
+
+        LayoutExport.run(migration, mappingFile)
+
+        def expected = """\
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            selected tmpl,,selected page,,Standard,,selected flow,false,0,0mm,0mm,0mm,0mm,,,
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+    }
+
+    @Test
+    void exportIncludesAllBaseTemplatesEvenWhenDocumentObjectsAreSelected() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        when(migration.mappingRepository.getAreaMapping(any())).thenReturn(new MappingItem.Area(null, [:], [:]))
+
+        def selectedTemplate = new DocumentObjectBuilder("selected tmpl", DocumentObjectType.Template).build()
+
+        when(migration.projectConfig.getDocumentObjectsToProcess()).thenReturn(["selected tmpl"])
+        when(migration.documentObjectRepository.listIds(["selected tmpl"])).thenReturn([selectedTemplate])
+        when(migration.referenceCollector.collectAllObjects(selectedTemplate)).thenReturn([] as Set)
+
+        def baseTemplate = new BaseTemplate("bt-1", "Base template 1", [], new CustomFieldMap(new HashMap<String, String>()), null, [
+            new BaseTemplatePage("Page 1", Size.ofMillimeters(210), Size.ofMillimeters(297), [
+                new BaseTemplateArea("address", new Position(Size.ofCentimeters(1), Size.ofCentimeters(1), Size.ofMillimeters(190), Size.ofMillimeters(20)), false),
+            ]),
+        ], null, null, null)
+        when(migration.baseTemplateRepository.listAll()).thenReturn([baseTemplate])
+
+        LayoutExport.run(migration, mappingFile)
+
+        def expected = """\
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            bt-1,Base template 1,page-1,Page 1,Base,,address,false,0,1cm,1cm,190mm,20mm,210mm,297mm,
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+    }
+
     static Area createArea(String flowName, Boolean flowToNextPage = false, List<DocumentContent> content = null) {
         def areaBuilder = new AreaBuilder()
                 .position(new Position(Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0)))

@@ -11,6 +11,7 @@ import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aDocumentObjectRepository
 import com.quadient.migration.tools.aParaStyleRepository
+import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.aTextStyleRepository
 import com.quadient.migration.tools.shouldBeEmpty
 import com.quadient.migration.tools.shouldBeEqualTo
@@ -34,7 +35,8 @@ class StylesValidatorTest {
         paragraphStyleRepository = paraStyleRepository,
         resourcePathProvider = resourcePathProvider,
         deployClient = deployClient,
-        ipsService = ipsService
+        ipsService = ipsService,
+        projectConfig = aProjectConfig(),
     )
 
     @BeforeEach
@@ -72,7 +74,7 @@ class StylesValidatorTest {
         )
         every { ipsService.wfd2xml(any<IcmPath>()) } returns xml
 
-        val result = subject.validateAll()
+        val result = subject.validate()
 
         result.textStyles.sorted().shouldBeEqualTo(listOf("Text Display Name", "found-text"))
         result.paragraphStyles.sorted().shouldBeEqualTo(listOf("Para Display Name", "found-para"))
@@ -99,7 +101,7 @@ class StylesValidatorTest {
         )
         every { ipsService.wfd2xml(any<IcmPath>()) } returns xml
 
-        val result = subject.validateAll()
+        val result = subject.validate()
 
         result.textStyles.shouldBeEqualTo(listOf("found-text"))
         result.paragraphStyles.shouldBeEqualTo(listOf("found-para"))
@@ -121,7 +123,7 @@ class StylesValidatorTest {
         val xml = buildXml(textStyles = listOf(), paraStyles = listOf("found-para"))
         every { ipsService.wfd2xml(any<IcmPath>()) } returns xml
 
-        val result = subject.validateAll()
+        val result = subject.validate()
 
         result.textStyles.shouldBeEmpty()
         result.paragraphStyles.shouldBeEmpty()

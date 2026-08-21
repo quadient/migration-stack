@@ -185,6 +185,7 @@ fun aProjectConfig(
     defaultVariableStructure: String? = null,
     styleDefinitionPath: IcmPath? = null,
     defaultLanguage: String? = "en_us",
+    selectedDocumentObjects: List<String>? = null,
 ): ProjectConfig {
     return ProjectConfig(
         name = name,
@@ -198,6 +199,7 @@ fun aProjectConfig(
         sourceBaseTemplatePath = sourceBaseTemplatePath,
         defaultVariableStructure = defaultVariableStructure,
         defaultLanguage = defaultLanguage,
+        selectedDocumentObjects = selectedDocumentObjects,
     )
 }
 

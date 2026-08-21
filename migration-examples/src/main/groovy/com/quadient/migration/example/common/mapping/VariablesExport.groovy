@@ -8,6 +8,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
@@ -70,7 +71,7 @@ while (true) {
     }
 }
 
-def fileName = Mapping.variableStructureFileNameFromId(variableStructureId, migration.projectConfig.name)
+def fileName = Mapping.variableStructureFileNameFromId(variableStructureId, migration.projectConfig.name, migration.projectConfig.subProjectId)
 def exportFile = Paths.get("mapping", fileName)
 
 def file = exportFile.toFile()
@@ -78,9 +79,9 @@ def file = exportFile.toFile()
 run(migration, file.toPath())
 
 static void run(Migration migration, Path filePath) {
-    def variables = migration.variableRepository.listAll()
+    List<Variable> variables = Mapping.collectSelectedOrAll(migration, Variable) { migration.variableRepository.listAll() }
 
-    def structureId = Mapping.variableStructureIdFromFileName(filePath.fileName.toString(), migration.projectConfig.name)
+    def structureId = Mapping.variableStructureIdFromFileName(filePath.fileName.toString(), migration.projectConfig.name, migration.projectConfig.subProjectId)
     def existingStructure = migration.variableStructureRepository.find(structureId)
 
     def file = filePath.toFile()

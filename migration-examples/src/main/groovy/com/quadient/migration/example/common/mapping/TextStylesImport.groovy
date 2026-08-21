@@ -27,7 +27,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def exportFilePath = Mapping.csvPath(binding, migration.projectConfig.name, "text-styles")
+def exportFilePath = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "text-styles")
 
 run(migration, exportFilePath)
 

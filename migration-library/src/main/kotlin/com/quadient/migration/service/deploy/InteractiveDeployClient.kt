@@ -189,7 +189,7 @@ open class InteractiveDeployClient(
     }
 
     override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
-        return documentObject.internal != true
+        return documentObject.internal != true && !documentObject.skip.skipped
     }
 
     override fun deployBaseTemplates(): DeploymentResult {

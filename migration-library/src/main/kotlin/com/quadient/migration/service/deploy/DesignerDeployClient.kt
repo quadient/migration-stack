@@ -120,7 +120,10 @@ class DesignerDeployClient(
     }
 
     override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
-        return documentObject.type != DocumentObjectType.Page && documentObject.internal != true
+        return documentObject.type != DocumentObjectType.Page
+                && documentObject.type != DocumentObjectType.Snippet
+                && documentObject.internal != true
+                && !documentObject.skip.skipped
     }
 
     override fun deployBaseTemplates(): DeploymentResult {

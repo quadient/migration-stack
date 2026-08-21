@@ -9,7 +9,6 @@ package com.quadient.migration.example.common.mapping
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.*
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectFilterBuilder
-import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.shared.BaseTemplateArea
@@ -23,7 +22,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 @Field Migration migration = initMigration(this.binding)
 
-def areasFile = Mapping.csvPath(binding, migration.projectConfig.name, "layout")
+def areasFile = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "layout")
 
 run(migration, areasFile)
 
@@ -32,7 +31,9 @@ static void run(Migration migration, Path path) {
 
     areasFile.createParentDirectories()
 
-    def templatesAndPages = (migration.documentObjectRepository as DocumentObjectRepository).list(new DocumentObjectFilterBuilder().types([DocumentObjectType.Page, DocumentObjectType.Template]).build())
+    List<DocumentObject> templatesAndPages = Mapping.collectSelectedOrAll(migration, DocumentObject) {
+        migration.documentObjectRepository.list(new DocumentObjectFilterBuilder().types([DocumentObjectType.Page, DocumentObjectType.Template]).build())
+    }.findAll { it.type == DocumentObjectType.Page || it.type == DocumentObjectType.Template }
     def templates = templatesAndPages.findAll { it.type == DocumentObjectType.Template }
     def pages = templatesAndPages.findAll { it.type == DocumentObjectType.Page }
     def pageIds = pages.collect { it.id }

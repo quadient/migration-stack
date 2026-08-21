@@ -41,8 +41,30 @@ data class ProjectConfig(
     val sourceBaseTemplatePath: String? = null,
     val defaultVariableStructure: String? = null,
     val defaultLanguage: String? = null,
+    val selectedDocumentObjectsFile: String? = null,
+    val selectedDocumentObjects: List<String>? = null,
+    val subProjectId: String? = null,
     val context: Map<String, Any> = emptyMap(),
 ) {
+    private val _selectedDocumentObjects by lazy {
+        if (selectedDocumentObjects != null) {
+            selectedDocumentObjects
+        } else if (selectedDocumentObjectsFile == null) {
+            emptyList()
+        } else {
+            File(selectedDocumentObjectsFile)
+                .readLines()
+                .asSequence()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toList()
+        }
+    }
+
+    fun getDocumentObjectsToProcess(): List<String> {
+        return _selectedDocumentObjects
+    }
+
     companion object {
         val objectMapper = TomlMapper.builder().addModule(KotlinModule.Builder().build()).build()
 

@@ -1,6 +1,8 @@
 package com.quadient.migration.example.common.util
 
+import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
+import com.quadient.migration.api.dto.migrationmodel.MigrationObject
 import com.quadient.migration.api.repository.MappingRepository
 import org.slf4j.Logger
 
@@ -13,25 +15,40 @@ static void mapProp(Object mapping, Object obj, String key, Object newValue) {
     mapping[key] = newValue
 }
 
-static Path csvPath(Binding binding, String projectName, String mapping) {
-    return PathUtil.dataDirPath(binding, "mapping", "${projectName}-${mapping}.csv")
+static <T extends MigrationObject> List<T> collectSelectedOrAll(Migration migration, Class<T> type, Closure<List<T>> listAll) {
+    if (!migration.projectConfig.getDocumentObjectsToProcess().empty) {
+        def selected = migration.documentObjectRepository.listIds(migration.projectConfig.getDocumentObjectsToProcess())
+        def referenced = selected.collect { migration.referenceCollector.collectAllObjects(it) }.flatten()
+        return (selected + referenced)
+            .toSet()
+            .findAll { type.isInstance(it) } as List<T>
+    }
+    return listAll()
 }
 
-Path getVariablesMappingPath(String[] args, String projectName) {
+static Path csvPath(Binding binding, String projectName, String subProjectId, String mapping) {
+    return PathUtil.dataDirPath(binding, "mapping", "${namePrefix(projectName, subProjectId)}-${mapping}.csv")
+}
+
+static String namePrefix(String projectName, String subProjectId) {
+    return subProjectId ? "${projectName}-${subProjectId}" : projectName
+}
+
+Path getVariablesMappingPath(String[] args, String projectName, String subProjectId) {
     def variablesMappingDir = Paths.get("mapping").toFile()
     def csvFiles = variablesMappingDir.listFiles()?.findAll {
-        it.name.startsWith(variableStructureFileNamePrefix(projectName)) && it.name.toLowerCase().endsWith(".csv")
+        it.name.startsWith(variableStructureFileNamePrefix(projectName, subProjectId)) && it.name.toLowerCase().endsWith(".csv")
     } ?: []
 
     if (csvFiles.isEmpty()) {
-        println "No CSV files found in mapping with matching pattern '${variableStructureFileNamePrefix(projectName)}<id>.csv'."
+        println "No CSV files found in mapping with matching pattern '${variableStructureFileNamePrefix(projectName, subProjectId)}<id>.csv'."
         System.exit(1)
     }
 
     File selectedFile = null
     def argUserInput = (getValueOfArg("--variable-structure-id", args as List<String>)).orElseGet { null }
     if (argUserInput) {
-        def fileName = variableStructureFileNameFromId(argUserInput, projectName)
+        def fileName = variableStructureFileNameFromId(argUserInput, projectName, subProjectId)
         File csvFile = csvFiles.find { (it as File).name.equalsIgnoreCase(fileName) } as File
         if (csvFile) {
             selectedFile = csvFile
@@ -50,9 +67,9 @@ Path getVariablesMappingPath(String[] args, String projectName) {
     return selectedFile.toPath()
 }
 
-Path getLayoutMappingPath(String projectName) {
+Path getLayoutMappingPath(String projectName, String subProjectId) {
     def mappingDir = Paths.get("mapping").toFile()
-    def pattern = layoutFileNamePattern(projectName)
+    def pattern = layoutFileNamePattern(projectName, subProjectId)
     def csvFiles = mappingDir.listFiles()?.findAll {
         it.name.toLowerCase().contains(pattern) && it.name.toLowerCase().endsWith(".csv")
     } ?: []
@@ -73,8 +90,8 @@ Path getLayoutMappingPath(String projectName) {
     return selectedFile.toPath()
 }
 
-static String layoutFileNamePattern(String projectName) {
-    return "${projectName}-layout".toLowerCase()
+static String layoutFileNamePattern(String projectName, String subProjectId) {
+    return "${namePrefix(projectName, subProjectId)}-layout".toLowerCase()
 }
 
 private static File promptForFileSelection(List<File> csvFiles) {
@@ -96,16 +113,16 @@ private static File promptForFileSelection(List<File> csvFiles) {
     }
 }
 
-static String variableStructureFileNamePrefix(String projectName) {
-    return "${projectName}-variable-structure-"
+static String variableStructureFileNamePrefix(String projectName, String subProjectId) {
+    return "${namePrefix(projectName, subProjectId)}-variable-structure-"
 }
 
-static String variableStructureFileNameFromId(String id, String projectName) {
-    return "${variableStructureFileNamePrefix(projectName)}${id}.csv"
+static String variableStructureFileNameFromId(String id, String projectName, String subProjectId) {
+    return "${variableStructureFileNamePrefix(projectName, subProjectId)}${id}.csv"
 }
 
-static String variableStructureIdFromFileName(String fileName, String projectName) {
-    def prefix = variableStructureFileNamePrefix(projectName)
+static String variableStructureIdFromFileName(String fileName, String projectName, String subProjectId) {
+    def prefix = variableStructureFileNamePrefix(projectName, subProjectId)
     if (!fileName.startsWith(prefix) || !fileName.endsWith(".csv")) {
         throw new IllegalArgumentException("Invalid variable structure file name: ${fileName}")
     }

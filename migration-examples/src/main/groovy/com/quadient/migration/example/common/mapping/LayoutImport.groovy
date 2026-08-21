@@ -27,7 +27,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 @Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 def migration = initMigration(this.binding)
-def areasFile = new Mapping().getLayoutMappingPath(migration.projectConfig.name)
+def areasFile = new Mapping().getLayoutMappingPath(migration.projectConfig.name, migration.projectConfig.subProjectId)
 
 run(migration, areasFile)
 

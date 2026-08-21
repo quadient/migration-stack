@@ -23,7 +23,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def displayRulePath = Mapping.csvPath(binding, migration.projectConfig.name, "display-rules")
+def displayRulePath = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "display-rules")
 
 run(migration, displayRulePath.toFile())
 

@@ -24,7 +24,7 @@ import static com.quadient.migration.service.TableUtilKt.collectDocumentTables
 @Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 def migration = initMigration(this.binding)
-def tablesFile = Mapping.csvPath(binding, migration.projectConfig.name, "tables")
+def tablesFile = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "tables")
 
 run(migration, tablesFile)
 

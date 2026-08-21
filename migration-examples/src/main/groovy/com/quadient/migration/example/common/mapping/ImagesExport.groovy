@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.utility.ResourceType
@@ -17,12 +18,12 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def imagesPath = Mapping.csvPath(binding, migration.projectConfig.name, "images")
+def imagesPath = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "images")
 
 run(migration, imagesPath)
 
 static void run(Migration migration, Path imagesDstPath) {
-    def images = migration.imageRepository.listAll()
+    List<Image> images = Mapping.collectSelectedOrAll(migration, Image) { migration.imageRepository.listAll() }
 
     imagesDstPath.toFile().createParentDirectories()
 

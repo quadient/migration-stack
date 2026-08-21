@@ -29,7 +29,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def exportFilePath = Mapping.csvPath(binding, migration.projectConfig.name, "paragraph-styles")
+def exportFilePath = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "paragraph-styles")
 
 run(migration, exportFilePath)
 

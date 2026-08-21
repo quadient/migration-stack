@@ -9,8 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 
 - DeployBaseTemplates task that deploys base templates with pages, areas, interactive flows and other options.  
+- Added selectedDocumentObjectsFile, selectedDocumentObjects, subProjectId to project config to assist with partial
+  migration
 
 ### Changed
+
+- Removed all the "<task>Ids" variants, they are now replaced by selectedDocumentObjects
 
 ### Fixed
 

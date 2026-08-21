@@ -8,6 +8,9 @@ inspireOutput = "Designer" # "Evolve", "Interactive", "Designer"
 #sourceBaseTemplatePath = "icm://<path to source base template>"
 #defaultVariableStructure = "<variable structure id>"
 #defaultLanguage = "en_us"
+#selectedDocumentObjectsFile = "<filename>"
+#selectedDocumentObjects = []
+#subProjectId = "<id>"
 
 [paths]
 #images = ""

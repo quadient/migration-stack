@@ -54,4 +54,32 @@ class DocumentObjectsMappingExportTest {
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
+
+    @Test
+    void exportsOnlySelectedDocumentObjectsAndTheirReferences() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        def migration = Utils.mockMigration()
+
+        def referencedBlock = new DocumentObjectBuilder("referenced block", DocumentObjectType.Block).build()
+        def selectedTemplate = new DocumentObjectBuilder("selected template", DocumentObjectType.Template)
+                .documentObjectRef("referenced block")
+                .build()
+        def unselectedBlock = new DocumentObjectBuilder("unselected block", DocumentObjectType.Block).build()
+
+        when(migration.projectConfig.getDocumentObjectsToProcess()).thenReturn(["selected template"])
+        when(migration.documentObjectRepository.listIds(["selected template"])).thenReturn([selectedTemplate])
+        when(migration.referenceCollector.collectAllObjects(selectedTemplate)).thenReturn([referencedBlock] as Set)
+        when(migration.documentObjectRepository.listAll()).thenReturn([selectedTemplate, referencedBlock, unselectedBlock])
+
+        when(migration.statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any())).thenReturn(new Active())
+
+        DocumentObjectsExport.run(migration, mappingFile)
+
+        def expected = """\
+            id,name,type,internal,baseTemplate,targetFolder,variableStructureId,status,skip,skipPlaceholder,skipReason,originalName (read-only),originLocations (read-only)
+            referenced block,,Block,false,,,,Active,false,,,,[]
+            selected template,,Template,false,,,,Active,false,,,,[]
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+    }
 }

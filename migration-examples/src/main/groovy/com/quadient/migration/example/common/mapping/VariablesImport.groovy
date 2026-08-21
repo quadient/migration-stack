@@ -30,14 +30,14 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def selectedFilePath = new Mapping().getVariablesMappingPath(this.binding.variables["args"], migration.projectConfig.name)
+def selectedFilePath = new Mapping().getVariablesMappingPath(this.binding.variables["args"], migration.projectConfig.name, migration.projectConfig.subProjectId)
 run(migration, selectedFilePath)
 
 static void run(Migration migration, Path path) {
     def lines = path.toFile().readLines()
     def columnNames = Csv.parseColumnNames(lines.removeFirst()).collect { Mapping.normalizeHeader(it) }
     def total = lines.size()
-    def structureId = Mapping.variableStructureIdFromFileName(path.fileName.toString(), migration.projectConfig.name)
+    def structureId = Mapping.variableStructureIdFromFileName(path.fileName.toString(), migration.projectConfig.name, migration.projectConfig.subProjectId)
     def structureMapping = migration.mappingRepository.getVariableStructureMapping(structureId)
 
     def existingStructure = migration.variableStructureRepository.find(structureId)

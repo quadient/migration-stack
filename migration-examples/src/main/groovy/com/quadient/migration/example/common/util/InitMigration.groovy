@@ -10,8 +10,6 @@ import groovy.transform.Field
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-import java.nio.charset.StandardCharsets
-
 import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
 
 @Field static Logger log = LoggerFactory.getLogger(this.class.name)
@@ -45,6 +43,9 @@ static Migration initMigration(Binding binding) {
     def sourceBaseTemplate = getValueOfArg("--source-base-template-path", argsList).orElse(fileProjectConfig.sourceBaseTemplatePath)
     def defaultVariableStructure = getValueOfArg("--default-variable-structure", argsList).orElse(fileProjectConfig.defaultVariableStructure)
     def defaultLanguage = getValueOfArg("--default-language", argsList).orElse(fileProjectConfig.defaultLanguage)
+    def selectedDocumentObjectsFile = getValueOfArg("--selected-document-objects-file", argsList).orElse(fileProjectConfig.selectedDocumentObjectsFile)
+    def selectedDocumentObjects = fileProjectConfig.selectedDocumentObjects
+    def subProjectId = getValueOfArg("--sub-project-id", argsList).orElse(fileProjectConfig.subProjectId)
 
     def imagesPathArg = getValueOfArg("--images-path", argsList).orElse(fileProjectConfig.paths.images?.toString())
     def fontsPathArg = getValueOfArg("--fonts-path", argsList).orElse(fileProjectConfig.paths.fonts?.toString())
@@ -69,6 +70,9 @@ static Migration initMigration(Binding binding) {
             sourceBaseTemplate,
             defaultVariableStructure,
             defaultLanguage,
+            selectedDocumentObjectsFile != null ? classLoader.getResource(selectedDocumentObjectsFile).toURI().path : null,
+            selectedDocumentObjects,
+            subProjectId,
             fileProjectConfig.context)
     log.info "Preparing to start migration script with $projectConfig."
 

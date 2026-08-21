@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.utility.ResourceType
@@ -17,12 +18,13 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def docObjPath = Mapping.csvPath(binding, migration.projectConfig.name, "document-objects")
+def docObjPath = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "document-objects")
 
 run(migration, docObjPath)
 
 static void run(Migration migration, Path documentObjectsDstPath) {
-    def objects = migration.documentObjectRepository.listAll().findAll { !it.internal }
+    List<DocumentObject> objects = Mapping.collectSelectedOrAll(migration, DocumentObject) { migration.documentObjectRepository.listAll() }
+        .findAll { !it.internal }
 
     documentObjectsDstPath.toFile().createParentDirectories()
 

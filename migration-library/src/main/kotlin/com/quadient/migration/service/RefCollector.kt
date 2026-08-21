@@ -36,9 +36,16 @@ class RefCollector(
     fun <T: RefValidatable> collectAllRefs(obj: T, breakFn: (MigrationObject) -> Boolean = { true }): Set<Ref> {
         return obj.collectAllRefs(breakFn)
     }
+    fun <T: RefValidatable> collectAllRefs(obj: T): Set<Ref> {
+        return collectAllRefs(obj) { true }
+    }
 
     fun <T: RefValidatable> collectAllObjects(obj: T, breakFn: (MigrationObject) -> Boolean = { true }): Set<MigrationObject> {
         return obj.collectAllObjects(breakFn)
+    }
+
+    fun <T: RefValidatable> collectAllObjects(obj: T): Set<MigrationObject> {
+        return collectAllObjects(obj) { true }
     }
 
     @JvmName("#collectAllObjectsExt")

@@ -62,4 +62,38 @@ class TablesMappingExportTest {
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
+
+    @Test
+    void exportsOnlySelectedDocumentObjectsAndTheirReferences() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        def migration = Utils.mockMigration()
+
+        def referencedDoc = new DocumentObjectBuilder("doc2", DocumentObjectType.Block)
+                .name("Referenced Doc")
+                .content([new TableBuilder().name("T2").build()])
+                .build()
+        def selectedDoc = new DocumentObjectBuilder("doc1", DocumentObjectType.Block)
+                .name("Selected Doc")
+                .content([new TableBuilder().name("T1").build()])
+                .documentObjectRef("doc2")
+                .build()
+        def unselectedDoc = new DocumentObjectBuilder("doc3", DocumentObjectType.Block)
+                .name("Unselected Doc")
+                .content([new TableBuilder().name("T3").build()])
+                .build()
+
+        when(migration.projectConfig.getDocumentObjectsToProcess()).thenReturn(["doc1"])
+        when(migration.documentObjectRepository.listIds(["doc1"])).thenReturn([selectedDoc])
+        when(migration.referenceCollector.collectAllObjects(selectedDoc)).thenReturn([referencedDoc] as Set)
+        when(migration.documentObjectRepository.listAll()).thenReturn([selectedDoc, referencedDoc, unselectedDoc])
+
+        TablesExport.run(migration, mappingFile)
+
+        def expected = """\
+            documentObjectId,documentObjectName (read-only),tableId,contentPreview (read-only),tableName,pdfTaggingRule,pdfAlternateText,action
+            doc2,Referenced Doc,table:0,table: 0 cols | 0 body rows,T2,Default,,Keep
+            doc1,Selected Doc,table:0,table: 0 cols | 0 body rows,T1,Default,,Keep
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+    }
 }

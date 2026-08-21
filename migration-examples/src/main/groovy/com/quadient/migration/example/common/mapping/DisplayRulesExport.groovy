@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
@@ -16,12 +17,12 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def displayRulePath = Mapping.csvPath(binding, migration.projectConfig.name, "display-rules")
+def displayRulePath = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "display-rules")
 
 run(migration, displayRulePath.toFile())
 
 static void run(Migration migration, File displayRuleDstPath) {
-    def displayRules = migration.displayRuleRepository.listAll()
+    List<DisplayRule> displayRules = Mapping.collectSelectedOrAll(migration, DisplayRule) { migration.displayRuleRepository.listAll() }
     def variableStructure
     if (migration.projectConfig.defaultVariableStructure != null) {
         variableStructure = migration

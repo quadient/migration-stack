@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import com.quadient.migration.service.deploy.utility.ResourceType
@@ -17,12 +18,13 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def attachmentsPath = Mapping.csvPath(binding, migration.projectConfig.name, "attachments")
+def attachmentsPath = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "attachments")
 
 run(migration, attachmentsPath)
 
 static void run(Migration migration, Path attachmentsDstPath) {
-    def attachments = migration.attachmentRepository.listAll()
+    List<Attachment> attachments = Mapping.collectSelectedOrAll(migration, Attachment)
+        { migration.attachmentRepository.listAll() }
 
     attachmentsDstPath.toFile().createParentDirectories()
 

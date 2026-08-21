@@ -27,7 +27,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def path  = Mapping.csvPath(binding, migration.projectConfig.name, "images")
+def path  = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "images")
 
 run(migration, path)
 

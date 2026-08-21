@@ -112,18 +112,14 @@ sealed class DeployClient(
 
     abstract fun deployBaseTemplates(): DeploymentResult
 
-    fun deployDocumentObjects(): DeploymentResult {
-        val tracker = ResultTrackerImpl(statusTrackingRepository, projectConfig.inspireOutput)
-        val ordered = refInheritanceService.apply(deployOrder(getAllDocumentObjectsToDeploy()))
-        val result = deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
-        runPostProcessors(result)
+    fun deployDocumentObjects() = deployDocumentObjects(false)
+    fun deployDocumentObjects(skipDependencies: Boolean): DeploymentResult {
+        val documentObjects = if (projectConfig.getDocumentObjectsToProcess().isNotEmpty()) {
+            getDocumentObjectsToDeploy(projectConfig.getDocumentObjectsToProcess())
+        } else {
+            getAllDocumentObjectsToDeploy()
+        }
 
-        return result
-    }
-
-    fun deployDocumentObjects(documentObjectIds: List<String>) = deployDocumentObjects(documentObjectIds, false)
-    fun deployDocumentObjects(documentObjectIds: List<String>, skipDependencies: Boolean): DeploymentResult {
-        val documentObjects = getDocumentObjectsToDeploy(documentObjectIds)
         val tracker = ResultTrackerImpl(statusTrackingRepository, projectConfig.inspireOutput)
         val result = if (skipDependencies) {
             val ordered = refInheritanceService.apply(deployOrder(documentObjects))
@@ -325,30 +321,24 @@ sealed class DeployClient(
     }
 
     fun progressReport(deployId: Uuid? = null): ProgressReport {
-        val objects = getAllDocumentObjectsToDeploy()
-        return createProgressReport(objects, deployId)
-    }
-
-    fun progressReport(documentObjectIds: List<String>, deployId: Uuid? = null): ProgressReport {
-        val objects = getDocumentObjectsToDeploy(documentObjectIds)
-        return createProgressReport(objects, deployId)
+        val documentObjects = if (projectConfig.getDocumentObjectsToProcess().isNotEmpty()) {
+            getDocumentObjectsToDeploy(projectConfig.getDocumentObjectsToProcess())
+        } else {
+            getAllDocumentObjectsToDeploy()
+        }
+        return createProgressReport(documentObjects, deployId)
     }
 
     fun validateConflicts(): ValidationResult {
         // Post processors should not run for conflict validation because they modify content in ICM
         val pp = clearPostProcessors()
         try {
-            return runConflictValidation(getAllDocumentObjectsToDeploy(), ::deployDocumentObjectsInternal)
-        } finally {
-            pp.forEach(::addPostProcessor)
-        }
-    }
-
-    fun validateConflicts(documentObjectIds: List<String>): ValidationResult {
-        // Post processors should not run for conflict validation because they modify content in ICM
-        val pp = clearPostProcessors()
-        try {
-            return runConflictValidation(getDocumentObjectsToDeploy(documentObjectIds), ::deployDocumentObjectsInternal)
+            val documentObjects = if (projectConfig.getDocumentObjectsToProcess().isNotEmpty()) {
+                getDocumentObjectsToDeploy(projectConfig.getDocumentObjectsToProcess())
+            } else {
+                getAllDocumentObjectsToDeploy()
+            }
+            return runConflictValidation(documentObjects, ::deployDocumentObjectsInternal)
         } finally {
             pp.forEach(::addPostProcessor)
         }

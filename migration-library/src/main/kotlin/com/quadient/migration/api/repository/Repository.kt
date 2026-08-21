@@ -38,6 +38,16 @@ abstract class Repository<T : MigrationObject>(
         }
     }
 
+    open fun listIds(ids: List<String>): List<T> {
+        return transaction {
+            table.selectAll().where((table.id inList ids) and filter()).map {
+                val result = fromDb(it)
+                cache[result.id] = result
+                result
+            }
+        }
+    }
+
     open fun list(customFilter: Op<Boolean>): List<T> {
         return transaction {
             table.selectAll().where(customFilter and filter()).map {

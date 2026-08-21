@@ -4,8 +4,10 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
 import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.data.Active
 import com.quadient.migration.example.common.mapping.DisplayRulesExport
+import com.quadient.migration.shared.DocumentObjectType
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -44,6 +46,31 @@ class DisplayRulesMappingExportTest {
             with-variable-structure,with-var-struct,true,,,,varStruct2,Active,,[],
             overridden empty,,true,,,,,Active,,[],
             overridden full,full,false,\$baseTemplate2,targetFolder2,targetId2,,Active,originalFull,[foo; bar],
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+    }
+
+    @Test
+    void exportsOnlyDisplayRulesReferencedBySelectedDocumentObjects() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        def migration = Utils.mockMigration()
+
+        def referencedRule = new DisplayRule("referenced", null, [], new CustomFieldMap([:]), null, null, null, null, true, [], null, null, null, null)
+        def unselectedRule = new DisplayRule("unselected", null, [], new CustomFieldMap([:]), null, null, null, null, true, [], null, null, null, null)
+        def selectedDocObject = new DocumentObjectBuilder("doc1", DocumentObjectType.Block).build()
+
+        when(migration.projectConfig.getDocumentObjectsToProcess()).thenReturn(["doc1"])
+        when(migration.documentObjectRepository.listIds(["doc1"])).thenReturn([selectedDocObject])
+        when(migration.referenceCollector.collectAllObjects(selectedDocObject)).thenReturn([referencedRule] as Set)
+        when(migration.displayRuleRepository.listAll()).thenReturn([referencedRule, unselectedRule])
+
+        when(migration.statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any())).thenReturn(new Active())
+
+        DisplayRulesExport.run(migration, mappingFile.toFile())
+
+        def expected = """\
+            id,name,internal,baseTemplate,targetFolder,targetId,variableStructureRef,status,originalName (read-only),originLocations (read-only),definition (read-only)
+            referenced,,true,,,,,Active,,[],
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

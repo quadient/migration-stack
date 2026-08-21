@@ -7,6 +7,7 @@
 package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
+import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
 import groovy.transform.Field
@@ -28,11 +29,11 @@ static List<String> definitionOrder = ["fontFamily",
                                        "superOrSubscript",
                                        "interspacing"]
 
-def exportFilePath = Mapping.csvPath(binding, migration.projectConfig.name, "text-styles")
+def exportFilePath = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "text-styles")
 run(migration, exportFilePath)
 
 static void run(Migration migration, Path dstPath) {
-    def styles = migration.textStyleRepository.listAll()
+    List<TextStyle> styles = Mapping.collectSelectedOrAll(migration, TextStyle) { migration.textStyleRepository.listAll() }
 
     def file = dstPath.toFile()
     file.createParentDirectories()

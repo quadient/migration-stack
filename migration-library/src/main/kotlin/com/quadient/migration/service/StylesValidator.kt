@@ -1,5 +1,6 @@
 package com.quadient.migration.service
 
+import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
@@ -29,15 +30,17 @@ class StylesValidator(
     private val deployClient: DeployClient,
     private val ipsService: IpsService,
     private val resourcePathProvider: ResourcePathProvider,
+    private val projectConfig: ProjectConfig,
 ) {
     private val jsonMapper = ObjectMapper()
-    fun validateAll(): ValidationResult {
-        val documentObjects = deployClient.getAllDocumentObjectsToDeploy()
-        return validateInternal(documentObjects)
-    }
 
-    fun validate(ids: List<String>): ValidationResult {
-        val documentObjects = deployClient.getDocumentObjectsToDeploy(ids)
+    fun validate(): ValidationResult {
+        val documentObjects  = if (projectConfig.getDocumentObjectsToProcess().isNotEmpty()) {
+            deployClient.getDocumentObjectsToDeploy(projectConfig.getDocumentObjectsToProcess())
+        } else {
+            deployClient.getAllDocumentObjectsToDeploy()
+        }
+
         return validateInternal(documentObjects)
     }
 

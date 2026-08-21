@@ -13,6 +13,7 @@ import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.PreviewProvider
+import com.quadient.migration.service.RefCollector
 
 import static org.mockito.Mockito.mock
 import static org.mockito.Mockito.when
@@ -48,6 +49,9 @@ static Migration mockMigration() {
     when(migration.getMappingRepository()).thenReturn(mappingRepo)
     when(migration.getDisplayRuleRepository()).thenReturn(displayRuleRepo)
     when(migration.getBaseTemplateRepository()).thenReturn(baseTemplateRepo)
+
+    def referenceCollector = mock(RefCollector.class)
+    when(migration.getReferenceCollector()).thenReturn(referenceCollector)
 
     def previewProvider = new PreviewProvider(docObjectRepo, imageRepo, attachmentRepo, varRepo)
     when(migration.getPreviewProvider()).thenReturn(previewProvider)

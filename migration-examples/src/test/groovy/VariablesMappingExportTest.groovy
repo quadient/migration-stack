@@ -3,8 +3,10 @@ import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.example.common.mapping.VariablesExport
 import com.quadient.migration.shared.DataType
+import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.shared.VariableRefPath
 import org.junit.jupiter.api.Assertions
@@ -68,6 +70,31 @@ refVar,,String,\$full,ref name,,[]\n"""
         def text = mappingFile.toFile().text
 
         def expectedResult = "id,name,data_type,inspire_path,inspire_name,language_variable,originLocations (read-only)\n"
+
+        Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
+    }
+
+    @Test
+    void exportsOnlyVariablesReferencedBySelectedDocumentObjects() {
+        Path mappingFile = Paths.get(dir.path, "testProject-variable-structure-test.csv")
+        def migration = Utils.mockMigration()
+
+        def referencedVariable = new Variable("referenced", null, [], new CustomFieldMap([:]), DataType.String, null)
+        def unselectedVariable = new Variable("unselected", null, [], new CustomFieldMap([:]), DataType.String, null)
+        def selectedDocObject = new DocumentObjectBuilder("doc1", DocumentObjectType.Block).build()
+
+        when(migration.projectConfig.getDocumentObjectsToProcess()).thenReturn(["doc1"])
+        when(migration.documentObjectRepository.listIds(["doc1"])).thenReturn([selectedDocObject])
+        when(migration.referenceCollector.collectAllObjects(selectedDocObject)).thenReturn([referencedVariable] as Set)
+        when(migration.variableRepository.listAll()).thenReturn([referencedVariable, unselectedVariable])
+
+        VariablesExport.run(migration, mappingFile)
+
+        def text = mappingFile.toFile().text
+
+        def expectedResult =
+                """id,name,data_type,inspire_path,inspire_name,language_variable,originLocations (read-only)
+referenced,,String,,,,[]\n"""
 
         Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
     }

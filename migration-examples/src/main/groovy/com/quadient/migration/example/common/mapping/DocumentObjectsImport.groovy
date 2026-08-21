@@ -27,7 +27,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def docObjPath  = Mapping.csvPath(binding, migration.projectConfig.name, "document-objects")
+def docObjPath  = Mapping.csvPath(binding, migration.projectConfig.name, migration.projectConfig.subProjectId, "document-objects")
 
 run(migration, docObjPath)
 
