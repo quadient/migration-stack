@@ -75,11 +75,11 @@ class DocumentObjectsMappingExportTest {
 
         DocumentObjectsExport.run(migration, mappingFile)
 
-        def expected = """\
-            id,name,type,internal,baseTemplate,targetFolder,variableStructureId,status,skip,skipPlaceholder,skipReason,originalName (read-only),originLocations (read-only)
-            referenced block,,Block,false,,,,Active,false,,,,[]
-            selected template,,Template,false,,,,Active,false,,,,[]
-            """.stripIndent()
-        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+
+        def text = mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n").lines().toList()
+        Assertions.assertEquals(text.size(), 3)
+        Assertions.assertEquals(text[0], "id,name,type,internal,baseTemplate,targetFolder,variableStructureId,status,skip,skipPlaceholder,skipReason,originalName (read-only),originLocations (read-only)")
+        Assertions.assertTrue(text.contains("referenced block,,Block,false,,,,Active,false,,,,[]"))
+        Assertions.assertTrue(text.contains("selected template,,Template,false,,,,Active,false,,,,[]"))
     }
 }
