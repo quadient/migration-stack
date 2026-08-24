@@ -979,17 +979,26 @@ function computeBaseTemplateData(data, viewModel, analysis) {
 
             pageGroup.pageIndices.forEach(pageIndex => {
                 const page = data.pages[pageIndex];
-                const ownDrafts = pageIndex === representativePageIndex
-                    ? representativeDrafts
-                    : (analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []);
 
                 /** @type {(string|null)[]} */
                 const flowNames = new Array(page.areas.length).fill(null);
-                ownDrafts.forEach((draft, ordinal) => {
-                    if (ordinal >= flowNamesByAreaGroupIndex.length) return;
-                    const flowName = flowNamesByAreaGroupIndex[ordinal];
-                    draft.areaIndices.forEach(ai => { flowNames[ai] = flowName; });
-                });
+                if (pageIndex === representativePageIndex) {
+                    // The representative page's own drafts are exactly what defined
+                    // flowNamesByAreaGroupIndex above, so the ordinal mapping is correct here.
+                    representativeDrafts.forEach((draft, areaGroupIndex) => {
+                        const flowName = flowNamesByAreaGroupIndex[areaGroupIndex];
+                        draft.areaIndices.forEach(ai => { flowNames[ai] = flowName; });
+                    });
+                } else if (flowNamesByAreaGroupIndex.length) {
+                    // Other pages in the group may legitimately have a different number/order of
+                    // proximity-grouped areas than the representative page (different source data).
+                    // Map each of this page's areas directly onto the representative draft whose
+                    // geometry it best matches, instead of assuming matching draft ordinals.
+                    page.areas.forEach((area, areaIndex) => {
+                        const bestDraftIndex = nearestDraftIndex(area, representativeDrafts);
+                        flowNames[areaIndex] = flowNamesByAreaGroupIndex[bestDraftIndex];
+                    });
+                }
                 overridesByPageIndex.set(pageIndex, { flowNames, targetId: `$${baseTemplateId}` });
             });
         });
@@ -2039,6 +2048,37 @@ function groupByProximity(areas, groupingGap) {
             name: parseFlowNameFromPreview(previewSource) || `Area ${draftIndex + 1}`,
         };
     });
+}
+
+/**
+ * Finds the base-template area draft (from the representative page of a page group) whose
+ * bounding box most closely matches the given area's geometry. Used to map areas of
+ * non-representative pages in a group onto the representative page's draft/flow names without
+ * relying on the two pages having the same number/order of proximity-grouped drafts - multiple
+ * areas on a page may end up matching (and thus merging into) the same representative draft.
+ * Reuses the same x/width/height-ratio distance metric as {@link pageSimilarity}, plus a
+ * y-distance term since drafts are vertical bands and same-size areas at different vertical
+ * positions on the page (e.g. header vs. footer) must not be conflated.
+ * @param {AreaEntry} area
+ * @param {BaseTemplateAreaDraft[]} drafts
+ * @returns {number} index into drafts of the closest match (0 if drafts is empty, caller must guard)
+ */
+function nearestDraftIndex(area, drafts) {
+    let bestIndex = 0;
+    let bestDistance = Infinity;
+    drafts.forEach((draft, index) => {
+        const pos = draft.position;
+        const xDist = Math.abs(area.x - pos.x) / PAGE_REF_MM;
+        const yDist = Math.abs(area.y - pos.y) / PAGE_REF_MM;
+        const wDist = Math.abs(area.w - pos.w) / PAGE_REF_MM;
+        const hRatio = Math.abs(Math.log(Math.max(area.h, 0.1) / Math.max(pos.h, 0.1))) / Math.log(3);
+        const distance = Math.sqrt(xDist * xDist + yDist * yDist + wDist * wDist + hRatio * hRatio);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            bestIndex = index;
+        }
+    });
+    return bestIndex;
 }
 
 /**
