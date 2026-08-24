@@ -910,6 +910,215 @@ function parseFlowNameFromPreview(contentPreview) {
 }
 
 /**
+ * Identifies the physical identity of a page entry for area-equivalence purposes. Real pages
+ * (referenced by a pageId) can be shared by multiple templates - every occurrence in
+ * `data.pages` with the same pageId is literally the same underlying page/Area list, so they
+ * must all resolve to the same identity key. A template's own direct areas (no pageId) can never
+ * be shared this way, so each such entry gets its own unique key instead.
+ * @param {PageEntry} page
+ * @param {number} pageIndex
+ * @returns {string}
+ */
+function pageIdentityKey(page, pageIndex) {
+    return page.pageId != null ? `page:${page.pageId}` : `virtual:${pageIndex}`;
+}
+
+/**
+ * Picks one `data.pages` entry per distinct page identity key (arbitrarily the first one
+ * encountered) to serve as the source of that page's canonical, grouping-independent proximity
+ * drafts - duplicate occurrences of the same real page carry identical areas/geometry, so any one
+ * of them produces the same drafts.
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis} analysis
+ * @returns {Map<string, {page: PageEntry, drafts: BaseTemplateAreaDraft[]}>}
+ */
+function computeCanonicalDraftsByPageIdentity(data, analysis) {
+    /** @type {Map<string, {page: PageEntry, drafts: BaseTemplateAreaDraft[]}>} */
+    const canonicalDraftsByIdentityKey = new Map();
+    data.pages.forEach((page, pageIndex) => {
+        const identityKey = pageIdentityKey(page, pageIndex);
+        if (!canonicalDraftsByIdentityKey.has(identityKey)) {
+            canonicalDraftsByIdentityKey.set(identityKey, {
+                page,
+                drafts: analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? [],
+            });
+        }
+    });
+    return canonicalDraftsByIdentityKey;
+}
+
+/**
+ * A minimal union-find (disjoint-set) structure over string keys. Used here to merge area drafts
+ * (identified by a "pageIdentityKey::draftIndex" string) that should be treated as "the same"
+ * base template area, even when they originate from different pages and/or different template
+ * groups.
+ */
+class AreaDraftUnionFind {
+    constructor() {
+        /** @type {Map<string, string>} */
+        this.parentByKey = new Map();
+    }
+
+    /**
+     * Returns the canonical representative ("root") key of the set that the given key belongs
+     * to, registering the key as its own singleton set the first time it is seen.
+     * @param {string} key
+     * @returns {string}
+     */
+    findRoot(key) {
+        if (!this.parentByKey.has(key)) this.parentByKey.set(key, key);
+        let root = key;
+        while (this.parentByKey.get(root) !== root) root = /** @type {string} */ (this.parentByKey.get(root));
+
+        // Path compression: point every visited key directly at the root so future lookups are fast.
+        let current = key;
+        while (current !== root) {
+            const next = /** @type {string} */ (this.parentByKey.get(current));
+            this.parentByKey.set(current, root);
+            current = next;
+        }
+        return root;
+    }
+
+    /**
+     * Merges the sets containing keyA and keyB into a single set.
+     * @param {string} keyA
+     * @param {string} keyB
+     */
+    union(keyA, keyB) {
+        const rootOfA = this.findRoot(keyA);
+        const rootOfB = this.findRoot(keyB);
+        if (rootOfA !== rootOfB) this.parentByKey.set(rootOfA, rootOfB);
+    }
+}
+
+/**
+ * Greedily pairs the area drafts of two pages by closest geometry (reusing the same
+ * x/width/height-ratio distance metric as {@link pageSimilarity}, plus a y term), analogous to
+ * the bipartite area matching used for page similarity scoring but applied to already
+ * proximity-grouped drafts instead of raw areas.
+ * @param {BaseTemplateAreaDraft[]} draftsOfPageA
+ * @param {BaseTemplateAreaDraft[]} draftsOfPageB
+ * @returns {[number, number][]} pairs of [draftIndexInPageA, draftIndexInPageB]
+ */
+function matchDraftsBetweenPagesGreedily(draftsOfPageA, draftsOfPageB) {
+    /** @type {{distance: number, draftIndexInPageA: number, draftIndexInPageB: number}[]} */
+    const candidatePairs = [];
+    draftsOfPageA.forEach((draftA, draftIndexInPageA) => {
+        draftsOfPageB.forEach((draftB, draftIndexInPageB) => {
+            const xDist = Math.abs(draftA.position.x - draftB.position.x) / PAGE_REF_MM;
+            const yDist = Math.abs(draftA.position.y - draftB.position.y) / PAGE_REF_MM;
+            const wDist = Math.abs(draftA.position.w - draftB.position.w) / PAGE_REF_MM;
+            const hRatio = Math.abs(Math.log(
+                Math.max(draftA.position.h, 0.1) / Math.max(draftB.position.h, 0.1)
+            )) / Math.log(3);
+            const distance = Math.sqrt(xDist * xDist + yDist * yDist + wDist * wDist + hRatio * hRatio);
+            candidatePairs.push({ distance, draftIndexInPageA, draftIndexInPageB });
+        });
+    });
+    candidatePairs.sort((left, right) => left.distance - right.distance);
+
+    const matchedDraftIndicesInPageA = new Set();
+    const matchedDraftIndicesInPageB = new Set();
+    /** @type {[number, number][]} */
+    const matchedPairs = [];
+    candidatePairs.forEach(({ draftIndexInPageA, draftIndexInPageB }) => {
+        if (matchedDraftIndicesInPageA.has(draftIndexInPageA) || matchedDraftIndicesInPageB.has(draftIndexInPageB)) return;
+        matchedDraftIndicesInPageA.add(draftIndexInPageA);
+        matchedDraftIndicesInPageB.add(draftIndexInPageB);
+        matchedPairs.push([draftIndexInPageA, draftIndexInPageB]);
+    });
+    return matchedPairs;
+}
+
+/**
+ * Builds equivalence classes of area drafts that should share a single interactiveFlowName/base
+ * template area. Every pair of distinct pages placed together in the same page group has its
+ * drafts pairwise-matched by geometry and unioned; because a shared (real) page contributes the
+ * same identity key to every template group it appears in, this transitively chains equivalences
+ * across template groups (e.g. P1<->P2 unioned while building one base template, P2<->P3 unioned
+ * while building another) without ever needing a single "representative" page per group.
+ *
+ * @param {TemplateGroup[]} templateGroups
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis} analysis
+ * @returns {{canonicalDraftsByIdentityKey: Map<string, {page: PageEntry, drafts: BaseTemplateAreaDraft[]}>, areaDraftUnionFind: AreaDraftUnionFind}}
+ */
+function buildAreaEquivalenceClasses(templateGroups, data, analysis) {
+    const canonicalDraftsByIdentityKey = computeCanonicalDraftsByPageIdentity(data, analysis);
+    const areaDraftUnionFind = new AreaDraftUnionFind();
+    canonicalDraftsByIdentityKey.forEach(({ drafts }, identityKey) => {
+        drafts.forEach((_, draftIndex) => areaDraftUnionFind.findRoot(`${identityKey}::${draftIndex}`));
+    });
+
+    templateGroups.forEach(templateGroup => {
+        templateGroup.pageGroups.forEach(pageGroup => {
+            const identityKeysInGroup = [...new Set(
+                pageGroup.pageIndices.map(pageIndex => pageIdentityKey(data.pages[pageIndex], pageIndex))
+            )];
+            for (let firstPos = 0; firstPos < identityKeysInGroup.length; firstPos++) {
+                for (let secondPos = firstPos + 1; secondPos < identityKeysInGroup.length; secondPos++) {
+                    const identityKeyA = identityKeysInGroup[firstPos];
+                    const identityKeyB = identityKeysInGroup[secondPos];
+                    const draftsOfPageA = canonicalDraftsByIdentityKey.get(identityKeyA)?.drafts ?? [];
+                    const draftsOfPageB = canonicalDraftsByIdentityKey.get(identityKeyB)?.drafts ?? [];
+                    matchDraftsBetweenPagesGreedily(draftsOfPageA, draftsOfPageB)
+                        .forEach(([draftIndexInPageA, draftIndexInPageB]) => {
+                            areaDraftUnionFind.union(
+                                `${identityKeyA}::${draftIndexInPageA}`,
+                                `${identityKeyB}::${draftIndexInPageB}`
+                            );
+                        });
+                }
+            }
+        });
+    });
+
+    return { canonicalDraftsByIdentityKey, areaDraftUnionFind };
+}
+
+/**
+ * Assigns one canonical, globally-unique interactiveFlowName per equivalence class, in stable
+ * traversal order (the first template group / page group / page encountered wins the name,
+ * derived from that page's own content preview).
+ * @param {TemplateGroup[]} templateGroups
+ * @param {LayoutData} data
+ * @param {Map<string, {page: PageEntry, drafts: BaseTemplateAreaDraft[]}>} canonicalDraftsByIdentityKey
+ * @param {AreaDraftUnionFind} areaDraftUnionFind
+ * @returns {Map<string, string>} equivalence class root key -> flow name
+ */
+function assignFlowNamesToEquivalenceClasses(templateGroups, data, canonicalDraftsByIdentityKey, areaDraftUnionFind) {
+    /** @type {Map<string, string>} */
+    const flowNameByClassRoot = new Map();
+    const usedFlowNames = new Set();
+
+    templateGroups.forEach(templateGroup => {
+        templateGroup.pageGroups.forEach(pageGroup => {
+            pageGroup.pageIndices.forEach(pageIndex => {
+                const identityKey = pageIdentityKey(data.pages[pageIndex], pageIndex);
+                const drafts = canonicalDraftsByIdentityKey.get(identityKey)?.drafts ?? [];
+                drafts.forEach((draft, draftIndex) => {
+                    const classRoot = areaDraftUnionFind.findRoot(`${identityKey}::${draftIndex}`);
+                    if (flowNameByClassRoot.has(classRoot)) return;
+
+                    const baseFlowName = `${draft.name}Flow`;
+                    let flowName = baseFlowName;
+                    let dedupCounter = 2;
+                    while (usedFlowNames.has(flowName)) {
+                        flowName = `${baseFlowName} (${dedupCounter})`;
+                        dedupCounter++;
+                    }
+                    usedFlowNames.add(flowName);
+                    flowNameByClassRoot.set(classRoot, flowName);
+                });
+            });
+        });
+    });
+
+    return flowNameByClassRoot;
+}
+
+/**
  * Builds the "Base" CSV rows describing candidate base templates/pages/areas derived from the
  * current template/page grouping, plus per-page interactiveFlowName/targetId overrides for the
  * "Standard" rows that reference them.
@@ -925,60 +1134,57 @@ function computeBaseTemplateData(data, viewModel, analysis) {
     /** @type {Map<number, {flowNames: (string|null)[], targetId: string}>} */
     const overridesByPageIndex = new Map();
 
-    // A page referenced by multiple templates can end up in different page groups belonging to
-    // different template (base template) groups. Its Area.interactiveFlowName values are shared
-    // (there's only one copy of the page's areas), so whichever base template ends up deployed
-    // for a given template must still resolve those same flow names correctly. Since each
-    // template group derives its own area/flow names solely from its representative page's own
-    // geometry/content, always using this shared page as the representative - wherever it
-    // appears - makes the derived flow names for its own areas identical across every base
-    // template it participates in, so a single interactiveFlowName keeps working regardless of
-    // which base template a given template targets.
-    const sharedPageIds = findPageIdsSharedAcrossTemplateGroups(viewModel.templateGroups, data);
-    console.log(sharedPageIds);
+    // A page referenced by multiple templates can end up in page groups belonging to different
+    // base templates. Since it physically has only one Area.interactiveFlowName per area (there's
+    // one copy of the page's content), that name must resolve correctly under every base template
+    // it ends up wired to. Rather than picking a single "representative" page per group (which
+    // breaks down once two different shared pages meet in the same group - e.g. BT1={P1,P2},
+    // BT2={P2,P3}, BT3={P3,P4}), every page's own drafts are computed independently of any group,
+    // and drafts that end up in the same page group anywhere are unioned into one equivalence
+    // class sharing a single canonical name - this chains correctly through arbitrarily long
+    // sharing relationships without needing a single point of truth per group.
+    const { canonicalDraftsByIdentityKey, areaDraftUnionFind } =
+        buildAreaEquivalenceClasses(viewModel.templateGroups, data, analysis);
+    const flowNameByClassRoot =
+        assignFlowNamesToEquivalenceClasses(viewModel.templateGroups, data, canonicalDraftsByIdentityKey, areaDraftUnionFind);
 
     viewModel.templateGroups.forEach((templateGroup, templateGroupIndex) => {
         const baseTemplateId = `bt-${templateGroupIndex + 1}`;
         const baseTemplateName = `${templateGroup.templateNames[0]}BaseTemplate`;
 
-        const usedFlowNames = new Set();
-        /** @type {Map<string, number>} */
-        const firstPageGroupIndexForName = new Map();
-
         templateGroup.pageGroups.forEach((pageGroup, pageGroupIndex) => {
             const basePageId = `page-${pageGroupIndex + 1}`;
             const basePageName = `Page ${pageGroupIndex + 1}`;
 
-            const sharedPageIndex = pageGroup.pageIndices.find(pi => sharedPageIds.has(data.pages[pi].pageId));
-            const representativePageIndex = sharedPageIndex ?? pageGroup.pageIndices[0];
-            const representativePage = data.pages[representativePageIndex];
-            const representativeDrafts = analysis.pageBaseTemplateAreaDrafts[representativePageIndex] ?? [];
-            const pageWidthMm = representativePage.pageSize ? `${representativePage.pageSize.w}mm` : "";
-            const pageHeightMm = representativePage.pageSize ? `${representativePage.pageSize.h}mm` : "";
+            const anyPageInGroup = data.pages[pageGroup.pageIndices[0]];
+            const pageWidthMm = anyPageInGroup.pageSize ? `${anyPageInGroup.pageSize.w}mm` : "";
+            const pageHeightMm = anyPageInGroup.pageSize ? `${anyPageInGroup.pageSize.h}mm` : "";
 
+            // Collect the distinct equivalence classes touched by any page in this page group -
+            // usually one class per position, but a group joining two independently-shared pages
+            // (like BT2={P2,P3} above) legitimately needs one Base area per class, even if their
+            // positions overlap, since each carries its own page's required flow name.
             /** @type {string[]} */
-            const flowNamesByAreaGroupIndex = [];
+            const classRootsInOrder = [];
+            /** @type {Map<string, {draft: BaseTemplateAreaDraft, page: PageEntry}>} */
+            const draftByClassRoot = new Map();
+            pageGroup.pageIndices.forEach(pageIndex => {
+                const page = data.pages[pageIndex];
+                const identityKey = pageIdentityKey(page, pageIndex);
+                const drafts = canonicalDraftsByIdentityKey.get(identityKey)?.drafts ?? [];
+                drafts.forEach((draft, draftIndex) => {
+                    const classRoot = areaDraftUnionFind.findRoot(`${identityKey}::${draftIndex}`);
+                    if (!draftByClassRoot.has(classRoot)) {
+                        draftByClassRoot.set(classRoot, { draft, page });
+                        classRootsInOrder.push(classRoot);
+                    }
+                });
+            });
 
-            representativeDrafts.forEach((draft, areaGroupIndex) => {
-                const flowToNextPage = draft.areaIndices.some(ai => representativePage.areas[ai]?.flowToNextPage);
-                const baseFlowName = `${draft.name}Flow`;
-                let flowName = baseFlowName;
-                if (usedFlowNames.has(baseFlowName)) {
-                    flowName = firstPageGroupIndexForName.get(baseFlowName) === pageGroupIndex
-                        ? `${baseFlowName} (Area ${areaGroupIndex + 1})`
-                        : `${baseFlowName} (${basePageName})`;
-                } else {
-                    firstPageGroupIndexForName.set(baseFlowName, pageGroupIndex);
-                }
-                let uniqueFlowName = flowName;
-                let dedupCounter = 2;
-                while (usedFlowNames.has(uniqueFlowName)) {
-                    uniqueFlowName = `${flowName} (${dedupCounter})`;
-                    dedupCounter++;
-                }
-                flowName = uniqueFlowName;
-                usedFlowNames.add(flowName);
-                flowNamesByAreaGroupIndex.push(flowName);
+            classRootsInOrder.forEach((classRoot, areaGroupIndex) => {
+                const { draft, page } = /** @type {{draft: BaseTemplateAreaDraft, page: PageEntry}} */ (draftByClassRoot.get(classRoot));
+                const flowName = /** @type {string} */ (flowNameByClassRoot.get(classRoot));
+                const flowToNextPage = draft.areaIndices.some(areaIndex => page.areas[areaIndex]?.flowToNextPage);
 
                 baseRows.push([
                     baseTemplateId, baseTemplateName, basePageId, basePageName,
@@ -992,26 +1198,16 @@ function computeBaseTemplateData(data, viewModel, analysis) {
 
             pageGroup.pageIndices.forEach(pageIndex => {
                 const page = data.pages[pageIndex];
+                const identityKey = pageIdentityKey(page, pageIndex);
+                const drafts = canonicalDraftsByIdentityKey.get(identityKey)?.drafts ?? [];
 
                 /** @type {(string|null)[]} */
                 const flowNames = new Array(page.areas.length).fill(null);
-                if (pageIndex === representativePageIndex) {
-                    // The representative page's own drafts are exactly what defined
-                    // flowNamesByAreaGroupIndex above, so the ordinal mapping is correct here.
-                    representativeDrafts.forEach((draft, areaGroupIndex) => {
-                        const flowName = flowNamesByAreaGroupIndex[areaGroupIndex];
-                        draft.areaIndices.forEach(ai => { flowNames[ai] = flowName; });
-                    });
-                } else if (flowNamesByAreaGroupIndex.length) {
-                    // Other pages in the group may legitimately have a different number/order of
-                    // proximity-grouped areas than the representative page (different source data).
-                    // Map each of this page's areas directly onto the representative draft whose
-                    // geometry it best matches, instead of assuming matching draft ordinals.
-                    page.areas.forEach((area, areaIndex) => {
-                        const bestDraftIndex = nearestDraftIndex(area, representativeDrafts);
-                        flowNames[areaIndex] = flowNamesByAreaGroupIndex[bestDraftIndex];
-                    });
-                }
+                drafts.forEach((draft, draftIndex) => {
+                    const classRoot = areaDraftUnionFind.findRoot(`${identityKey}::${draftIndex}`);
+                    const flowName = flowNameByClassRoot.get(classRoot) ?? null;
+                    draft.areaIndices.forEach(areaIndex => { flowNames[areaIndex] = flowName; });
+                });
                 overridesByPageIndex.set(pageIndex, { flowNames, targetId: `$${baseTemplateId}` });
             });
         });
@@ -2061,67 +2257,6 @@ function groupByProximity(areas, groupingGap) {
             name: parseFlowNameFromPreview(previewSource) || `Area ${draftIndex + 1}`,
         };
     });
-}
-
-/**
- * Identifies pageIds that appear in page groups belonging to more than one distinct template
- * group. Such a page is physically shared (its Area objects, including interactiveFlowName, are
- * the same instance across every template referencing it), so it needs a consistent draft/flow
- * naming outcome no matter which template group's base template ends up matching it.
- * @param {TemplateGroup[]} templateGroups
- * @param {LayoutData} data
- * @returns {Set<string>}
- */
-function findPageIdsSharedAcrossTemplateGroups(templateGroups, data) {
-    /** @type {Map<string, Set<number>>} */
-    const templateGroupIndicesByPageId = new Map();
-    templateGroups.forEach((templateGroup, templateGroupIndex) => {
-        templateGroup.pageGroups.forEach(pageGroup => {
-            const pageIdsInGroup = new Set(
-                pageGroup.pageIndices.map(pi => data.pages[pi].pageId).filter(Boolean)
-            );
-            pageIdsInGroup.forEach(pageId => {
-                if (!templateGroupIndicesByPageId.has(pageId)) templateGroupIndicesByPageId.set(pageId, new Set());
-                templateGroupIndicesByPageId.get(pageId).add(templateGroupIndex);
-            });
-        });
-    });
-    return new Set(
-        [...templateGroupIndicesByPageId.entries()]
-            .filter(([, templateGroupIndices]) => templateGroupIndices.size > 1)
-            .map(([pageId]) => pageId)
-    );
-}
-
-/**
- * Finds the base-template area draft (from the representative page of a page group) whose
- * bounding box most closely matches the given area's geometry. Used to map areas of
- * non-representative pages in a group onto the representative page's draft/flow names without
- * relying on the two pages having the same number/order of proximity-grouped drafts - multiple
- * areas on a page may end up matching (and thus merging into) the same representative draft.
- * Reuses the same x/width/height-ratio distance metric as {@link pageSimilarity}, plus a
- * y-distance term since drafts are vertical bands and same-size areas at different vertical
- * positions on the page (e.g. header vs. footer) must not be conflated.
- * @param {AreaEntry} area
- * @param {BaseTemplateAreaDraft[]} drafts
- * @returns {number} index into drafts of the closest match (0 if drafts is empty, caller must guard)
- */
-function nearestDraftIndex(area, drafts) {
-    let bestIndex = 0;
-    let bestDistance = Infinity;
-    drafts.forEach((draft, index) => {
-        const pos = draft.position;
-        const xDist = Math.abs(area.x - pos.x) / PAGE_REF_MM;
-        const yDist = Math.abs(area.y - pos.y) / PAGE_REF_MM;
-        const wDist = Math.abs(area.w - pos.w) / PAGE_REF_MM;
-        const hRatio = Math.abs(Math.log(Math.max(area.h, 0.1) / Math.max(pos.h, 0.1))) / Math.log(3);
-        const distance = Math.sqrt(xDist * xDist + yDist * yDist + wDist * wDist + hRatio * hRatio);
-        if (distance < bestDistance) {
-            bestDistance = distance;
-            bestIndex = index;
-        }
-    });
-    return bestIndex;
 }
 
 /**
