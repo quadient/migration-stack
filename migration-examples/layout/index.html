@@ -925,6 +925,18 @@ function computeBaseTemplateData(data, viewModel, analysis) {
     /** @type {Map<number, {flowNames: (string|null)[], targetId: string}>} */
     const overridesByPageIndex = new Map();
 
+    // A page referenced by multiple templates can end up in different page groups belonging to
+    // different template (base template) groups. Its Area.interactiveFlowName values are shared
+    // (there's only one copy of the page's areas), so whichever base template ends up deployed
+    // for a given template must still resolve those same flow names correctly. Since each
+    // template group derives its own area/flow names solely from its representative page's own
+    // geometry/content, always using this shared page as the representative - wherever it
+    // appears - makes the derived flow names for its own areas identical across every base
+    // template it participates in, so a single interactiveFlowName keeps working regardless of
+    // which base template a given template targets.
+    const sharedPageIds = findPageIdsSharedAcrossTemplateGroups(viewModel.templateGroups, data);
+    console.log(sharedPageIds);
+
     viewModel.templateGroups.forEach((templateGroup, templateGroupIndex) => {
         const baseTemplateId = `bt-${templateGroupIndex + 1}`;
         const baseTemplateName = `${templateGroup.templateNames[0]}BaseTemplate`;
@@ -937,7 +949,8 @@ function computeBaseTemplateData(data, viewModel, analysis) {
             const basePageId = `page-${pageGroupIndex + 1}`;
             const basePageName = `Page ${pageGroupIndex + 1}`;
 
-            const representativePageIndex = pageGroup.pageIndices[0];
+            const sharedPageIndex = pageGroup.pageIndices.find(pi => sharedPageIds.has(data.pages[pi].pageId));
+            const representativePageIndex = sharedPageIndex ?? pageGroup.pageIndices[0];
             const representativePage = data.pages[representativePageIndex];
             const representativeDrafts = analysis.pageBaseTemplateAreaDrafts[representativePageIndex] ?? [];
             const pageWidthMm = representativePage.pageSize ? `${representativePage.pageSize.w}mm` : "";
@@ -2048,6 +2061,36 @@ function groupByProximity(areas, groupingGap) {
             name: parseFlowNameFromPreview(previewSource) || `Area ${draftIndex + 1}`,
         };
     });
+}
+
+/**
+ * Identifies pageIds that appear in page groups belonging to more than one distinct template
+ * group. Such a page is physically shared (its Area objects, including interactiveFlowName, are
+ * the same instance across every template referencing it), so it needs a consistent draft/flow
+ * naming outcome no matter which template group's base template ends up matching it.
+ * @param {TemplateGroup[]} templateGroups
+ * @param {LayoutData} data
+ * @returns {Set<string>}
+ */
+function findPageIdsSharedAcrossTemplateGroups(templateGroups, data) {
+    /** @type {Map<string, Set<number>>} */
+    const templateGroupIndicesByPageId = new Map();
+    templateGroups.forEach((templateGroup, templateGroupIndex) => {
+        templateGroup.pageGroups.forEach(pageGroup => {
+            const pageIdsInGroup = new Set(
+                pageGroup.pageIndices.map(pi => data.pages[pi].pageId).filter(Boolean)
+            );
+            pageIdsInGroup.forEach(pageId => {
+                if (!templateGroupIndicesByPageId.has(pageId)) templateGroupIndicesByPageId.set(pageId, new Set());
+                templateGroupIndicesByPageId.get(pageId).add(templateGroupIndex);
+            });
+        });
+    });
+    return new Set(
+        [...templateGroupIndicesByPageId.entries()]
+            .filter(([, templateGroupIndices]) => templateGroupIndices.size > 1)
+            .map(([pageId]) => pageId)
+    );
 }
 
 /**
