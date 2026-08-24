@@ -67,6 +67,12 @@ def displayLastSentenceVariable = new VariableBuilder("displayLastSentence")
 def nameVariable = new VariableBuilder("name")
         .defaultValue("John Doe")
         .dataType(DataType.String).build()
+def phoneNumberVariable = new VariableBuilder("phoneNumber")
+        .defaultValue("123-456-7890")
+        .dataType(DataType.String).build()
+def emailVariable = new VariableBuilder("email")
+        .defaultValue("john.doe@example.com")
+        .dataType(DataType.String).build()
 def addressVariable = new VariableBuilder("address")
         .defaultValue("123 Main St")
         .dataType(DataType.String).build()
@@ -100,6 +106,8 @@ def variableStructure = new VariableStructureBuilder("variableStructure")
         .addVariable(displayParagraphVariable.id, clientsArrayVariable)
         .addVariable(displayLastSentenceVariable.id, clientsArrayVariable)
         .addVariable(nameVariable.id, "Data.Clients.Value") // Literal path that works the same way as reference to clientsArrayVariable
+        .addVariable(phoneNumberVariable.id, "Data.Clients.Value")
+        .addVariable(emailVariable.id, "Data.Clients.Value")
         .addVariable(addressVariable.id, addressSubtreeVariable)
         .addVariable(cityVariable.id, addressSubtreeVariable)
         .addVariable(stateVariable.id, "Data.Clients.Value.Address") // Literal path with another subtree level that works the same way as reference to addressSubtreeVariable
@@ -647,7 +655,7 @@ def page = new DocumentObjectBuilder("page1", DocumentObjectType.Page)
         .build()
 
 def sms = new SmsObjectBuilder("sms")
-    .smsOptions { it.numberTo("123456789") }
+    .smsOptions { it.numberTo(phoneNumberVariable) }
     .string("Hello, ").variableRef(nameVariable).string(".")
     .string(" Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.")
     .build()
@@ -659,7 +667,7 @@ def email = new EmailObjectBuilder("email")
         it.from("john@migration.com")
         it.fromName("John Migration")
         it.subject { it.string("Hello, ").variableRef(nameVariable.id) }
-        it.to("john.doe@example.com")
+        it.to(emailVariable)
     }
     .gridLayout {
         it.column {
@@ -736,7 +744,7 @@ for (item in [address, signature, paragraph1, paragraph2, conditionalParagraph, 
 for (item in [headingStyle, normalStyle]) {
     migration.textStyleRepository.upsert(item)
 }
-for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, addressVariable, cityVariable, stateVariable, jobNameVariable, clientsArrayVariable, addressSubtreeVariable, jobsArrayVariable, transactionsArrayVariable, transactionAccountVariable, transactionTypeVariable, transactionAmountVariable]) {
+for (item in [displayHeaderVariable, displayParagraphVariable, displayLastSentenceVariable, nameVariable, phoneNumberVariable, emailVariable, addressVariable, cityVariable, stateVariable, jobNameVariable, clientsArrayVariable, addressSubtreeVariable, jobsArrayVariable, transactionsArrayVariable, transactionAccountVariable, transactionTypeVariable, transactionAmountVariable]) {
     migration.variableRepository.upsert(item)
 }
 for (item in [displayAddressRule, dummyDisplayHeaderRule, displayHeaderRule, displayParagraphRule, displayLastSentenceRule, displayRuleStateCzechia, displayRuleStateFrance]) {

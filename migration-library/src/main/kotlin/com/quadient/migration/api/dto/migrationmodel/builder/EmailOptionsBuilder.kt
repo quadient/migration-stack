@@ -2,6 +2,8 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.EmailOptions
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.Variable
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
 import com.quadient.migration.shared.Color
 
@@ -19,24 +21,32 @@ class EmailOptionsBuilder {
     fun backgroundFill(hex: String) = apply { this.backgroundFill = Color.fromHex(hex) }
 
     fun from(from: String) = apply { this.from = listOf(StringValue(from)) }
+    fun from(from: Variable) = apply { this.from = listOf(VariableRef(from.id)) }
+    fun from(from: VariableRef) = apply { this.from = listOf(from) }
     fun from(vararg content: VariableStringContent) = apply { this.from = content.toList() }
     fun from(content: List<VariableStringContent>) = apply { this.from = content.toList() }
     fun from(builder: VariableStringContentBuilder.() -> Unit) =
         apply { this.from = VariableStringContentBuilder().apply(builder).build() }
 
     fun fromName(fromName: String) = apply { this.fromName = listOf(StringValue(fromName)) }
+    fun fromName(fromName: Variable) = apply { this.fromName = listOf(VariableRef(fromName.id)) }
+    fun fromName(fromName: VariableRef) = apply { this.fromName = listOf(fromName) }
     fun fromName(vararg content: VariableStringContent) = apply { this.fromName = content.toList() }
     fun fromName(content: List<VariableStringContent>) = apply { this.fromName = content.toList() }
     fun fromName(builder: VariableStringContentBuilder.() -> Unit) =
         apply { this.fromName = VariableStringContentBuilder().apply(builder).build() }
 
     fun subject(subject: String) = apply { this.subject = listOf(StringValue(subject)) }
+    fun subject(subject: Variable) = apply { this.subject = listOf(VariableRef(subject.id)) }
+    fun subject(subject: VariableRef) = apply { this.subject = listOf(subject) }
     fun subject(vararg content: VariableStringContent) = apply { this.subject = content.toList() }
     fun subject(content: List<VariableStringContent>) = apply { this.subject = content.toList() }
     fun subject(builder: VariableStringContentBuilder.() -> Unit) =
         apply { this.subject = VariableStringContentBuilder().apply(builder).build() }
 
     fun to(to: String) = apply { this.to = listOf(StringValue(to)) }
+    fun to(to: Variable) = apply { this.to = listOf(VariableRef(to.id)) }
+    fun to(to: VariableRef) = apply { this.to = listOf(to) }
     fun to(vararg content: VariableStringContent) = apply { this.to = content.toList() }
     fun to(content: List<VariableStringContent>) = apply { this.to = content.toList() }
     fun to(builder: VariableStringContentBuilder.() -> Unit) =

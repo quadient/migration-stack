@@ -6,6 +6,8 @@ import com.quadient.migration.api.dto.migrationmodel.GridContent
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.Variable
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentContentBuilderBase
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStringContentBuilder
@@ -355,6 +357,20 @@ class GridLayoutBuilder : HasDisplayRuleRef<GridLayoutBuilder> {
             fun url(url: String) = apply { this.url = listOf(StringValue(url)) }
 
             /**
+             * Sets the image source URL as a variable reference.
+             * @param url The [Variable] whose reference will be used as the URL.
+             * @return This builder instance for method chaining.
+             */
+            fun url(url: Variable) = apply { this.url = listOf(VariableRef(url.id)) }
+
+            /**
+             * Sets the image source URL as a variable reference.
+             * @param url The [VariableRef] to use as the URL.
+             * @return This builder instance for method chaining.
+             */
+            fun url(url: VariableRef) = apply { this.url = listOf(url) }
+
+            /**
              * Sets the image source URL as variable string content.
              * @param content The [VariableStringContent] composing the URL.
              * @return This builder instance for method chaining.
@@ -428,6 +444,20 @@ interface HasGridLinkUrl<T> {
      * @return This builder instance for method chaining.
      */
     fun linkUrl(linkUrl: String) = apply { this.linkUrl = listOf(StringValue(linkUrl)) } as T
+
+    /**
+     * Sets the hyperlink URL for the image as a variable reference.
+     * @param linkUrl The [Variable] whose reference will be used as the link.
+     * @return This builder instance for method chaining.
+     */
+    fun linkUrl(linkUrl: Variable) = apply { this.linkUrl = listOf(VariableRef(linkUrl.id)) } as T
+
+    /**
+     * Sets the hyperlink URL for the image as a variable reference.
+     * @param linkUrl The [VariableRef] to use as the link.
+     * @return This builder instance for method chaining.
+     */
+    fun linkUrl(linkUrl: VariableRef) = apply { this.linkUrl = listOf(linkUrl) } as T
 
     /**
      * Sets the hyperlink URL for the image as variable string content.

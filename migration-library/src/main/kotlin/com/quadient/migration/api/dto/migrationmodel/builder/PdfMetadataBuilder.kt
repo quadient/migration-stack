@@ -1,6 +1,8 @@
 package com.quadient.migration.api.dto.migrationmodel.builder
 
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.Variable
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStringContent
 import com.quadient.migration.api.dto.migrationmodel.PdfMetadata
 
@@ -16,6 +18,18 @@ class PdfMetadataBuilder {
     fun subject(subject: String) = apply { this.subject = listOf(StringValue(subject)) }
     fun keywords(keywords: String) = apply { this.keywords = listOf(StringValue(keywords)) }
     fun producer(producer: String) = apply { this.producer = listOf(StringValue(producer)) }
+
+    fun title(title: Variable) = apply { this.title = listOf(VariableRef(title.id)) }
+    fun author(author: Variable) = apply { this.author = listOf(VariableRef(author.id)) }
+    fun subject(subject: Variable) = apply { this.subject = listOf(VariableRef(subject.id)) }
+    fun keywords(keywords: Variable) = apply { this.keywords = listOf(VariableRef(keywords.id)) }
+    fun producer(producer: Variable) = apply { this.producer = listOf(VariableRef(producer.id)) }
+
+    fun title(title: VariableRef) = apply { this.title = listOf(title) }
+    fun author(author: VariableRef) = apply { this.author = listOf(author) }
+    fun subject(subject: VariableRef) = apply { this.subject = listOf(subject) }
+    fun keywords(keywords: VariableRef) = apply { this.keywords = listOf(keywords) }
+    fun producer(producer: VariableRef) = apply { this.producer = listOf(producer) }
 
     fun title(vararg content: VariableStringContent) = apply { this.title = content.toList() }
     fun author(vararg content: VariableStringContent) = apply { this.author = content.toList() }

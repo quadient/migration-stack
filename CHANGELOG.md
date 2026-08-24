@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Changed
 
 - Removed all the "<task>Ids" variants, they are now replaced by selectedDocumentObjects
+- Updated import example to use variables for numberTo/emailTo fields instead of hardcoded strings
 
 ### Fixed
 
