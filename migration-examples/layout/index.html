@@ -910,6 +910,250 @@ function parseFlowNameFromPreview(contentPreview) {
 }
 
 /**
+ * Identifies the physical identity of a page entry for area-linking purposes. Real pages
+ * (referenced by a pageId) can be shared by multiple templates - every occurrence in
+ * `data.pages` with the same pageId is literally the same underlying page/Area list, so they
+ * must all resolve to the same key. A template's own direct areas (no pageId) can never be
+ * shared this way, so each such entry gets its own unique key instead.
+ * @param {PageEntry} page
+ * @param {number} pageIndex
+ * @returns {string}
+ */
+function pageIdentityKey(page, pageIndex) {
+    return page.pageId != null ? `page:${page.pageId}` : `virtual:${pageIndex}`;
+}
+
+/**
+ * Builds the shared-name-group tracking key for one specific area draft of one specific page,
+ * in the format used consistently by {@link LinkedAreaGroups}.
+ * @param {string} identityKey
+ * @param {number} draftIndex
+ * @returns {string}
+ */
+function btAreaDraftGroupKey(identityKey, draftIndex) {
+    return `${identityKey}::${draftIndex}`;
+}
+
+/**
+ * Looks up the area drafts already computed for a page's identity (see
+ * {@link getBaseTemplateAreaDraftsByPageIdentity}), regardless of which specific `data.pages`
+ * occurrence of that page is passed in.
+ * @param {PageEntry} page
+ * @param {number} pageIndex
+ * @param {Map<string, {page: PageEntry, drafts: BaseTemplateAreaDraft[]}>} baseTemplateAreaDraftsByIdentityKey
+ * @returns {BaseTemplateAreaDraft[]}
+ */
+function getBtAreaDraftsForPage(page, pageIndex, baseTemplateAreaDraftsByIdentityKey) {
+    const identityKey = pageIdentityKey(page, pageIndex);
+    return baseTemplateAreaDraftsByIdentityKey.get(identityKey)?.drafts ?? [];
+}
+
+/**
+ * Picks one `data.pages` entry per distinct page identity key (arbitrarily the first one
+ * encountered) to serve as the source of that page's own, grouping-independent proximity drafts.
+ * Duplicate occurrences of the same real page carry identical areas/geometry, so any one of them
+ * produces the same drafts.
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis} analysis
+ * @returns {Map<string, {page: PageEntry, drafts: BaseTemplateAreaDraft[]}>}
+ */
+function getBaseTemplateAreaDraftsByPageIdentity(data, analysis) {
+    /** @type {Map<string, {page: PageEntry, drafts: BaseTemplateAreaDraft[]}>} */
+    const baseTemplateAreaDraftsByIdentityKey = new Map();
+    data.pages.forEach((page, pageIndex) => {
+        const identityKey = pageIdentityKey(page, pageIndex);
+        if (!baseTemplateAreaDraftsByIdentityKey.has(identityKey)) {
+            baseTemplateAreaDraftsByIdentityKey.set(identityKey, {
+                page,
+                drafts: analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? [],
+            });
+        }
+    });
+    return baseTemplateAreaDraftsByIdentityKey;
+}
+
+/**
+ * Tracks which area drafts (identified by a "pageIdentityKey::draftIndex" string) should be
+ * treated as "the same" base template area and therefore must share one interactiveFlowName -
+ * even when they originate from different pages and/or different template groups.
+ *
+ * Internally this is a standard "union-find"/"disjoint-set" structure, but the important idea is
+ * simple: every draft starts out in its own one-item group. Calling `linkAsSameArea(a, b)` merges
+ * a's group and b's group into one. Because merging is transitive, if a is linked with b, and b is
+ * later linked with c, then a/b/c all end up in the very same group automatically - even though a
+ * and c were never compared directly. `groupLeaderOf(x)` returns one shared "label" key for x's
+ * whole group (arbitrarily, whichever member happened to be discovered first) so that every
+ * member of the group can be looked up under that one common label.
+ */
+class LinkedAreaGroups {
+    constructor() {
+        /** @type {Map<string, string>} */
+        this.groupLeaderByKey = new Map();
+    }
+
+    /**
+     * Returns the shared label key ("leader") for the group that the given draft key currently
+     * belongs to. Two drafts belong to the same group if and only if this returns the same
+     * leader key for both. The first time a key is seen, it becomes its own one-item group.
+     * @param {string} draftKey
+     * @returns {string}
+     */
+    groupLeaderOf(draftKey) {
+        if (!this.groupLeaderByKey.has(draftKey)) this.groupLeaderByKey.set(draftKey, draftKey);
+        let leader = draftKey;
+        while (this.groupLeaderByKey.get(leader) !== leader) leader = /** @type {string} */ (this.groupLeaderByKey.get(leader));
+
+        // Shortcut: point every key visited along the way directly at the leader so future
+        // lookups for the same keys are fast. Purely a performance detail, doesn't change results.
+        let current = draftKey;
+        while (current !== leader) {
+            const next = /** @type {string} */ (this.groupLeaderByKey.get(current));
+            this.groupLeaderByKey.set(current, leader);
+            current = next;
+        }
+        return leader;
+    }
+
+    /**
+     * Marks two draft keys as representing the same base template area, merging their groups
+     * (and the groups of anything already linked to either of them) into one.
+     * @param {string} draftKeyA
+     * @param {string} draftKeyB
+     */
+    linkAsSameArea(draftKeyA, draftKeyB) {
+        const leaderOfA = this.groupLeaderOf(draftKeyA);
+        const leaderOfB = this.groupLeaderOf(draftKeyB);
+        if (leaderOfA !== leaderOfB) this.groupLeaderByKey.set(leaderOfA, leaderOfB);
+    }
+}
+
+/**
+ * Greedily pairs the area drafts of two pages by closest geometry (reusing the same
+ * x/width/height-ratio distance metric as {@link pageSimilarity}, plus a y term), analogous to
+ * the bipartite area matching used for page similarity scoring but applied to already
+ * proximity-grouped drafts instead of raw areas.
+ * @param {BaseTemplateAreaDraft[]} draftsOfPageA
+ * @param {BaseTemplateAreaDraft[]} draftsOfPageB
+ * @returns {[number, number][]} pairs of [draftIndexInPageA, draftIndexInPageB]
+ */
+function matchBaseTemplateAreaDraftsBetweenPagesGreedily(draftsOfPageA, draftsOfPageB) {
+    /** @type {{distance: number, draftIndexInPageA: number, draftIndexInPageB: number}[]} */
+    const candidatePairs = [];
+    draftsOfPageA.forEach((draftA, draftIndexInPageA) => {
+        draftsOfPageB.forEach((draftB, draftIndexInPageB) => {
+            const xDist = Math.abs(draftA.position.x - draftB.position.x) / PAGE_REF_MM;
+            const yDist = Math.abs(draftA.position.y - draftB.position.y) / PAGE_REF_MM;
+            const wDist = Math.abs(draftA.position.w - draftB.position.w) / PAGE_REF_MM;
+            const hRatio = Math.abs(Math.log(
+                Math.max(draftA.position.h, 0.1) / Math.max(draftB.position.h, 0.1)
+            )) / Math.log(3);
+            const distance = Math.sqrt(xDist * xDist + yDist * yDist + wDist * wDist + hRatio * hRatio);
+            candidatePairs.push({ distance, draftIndexInPageA, draftIndexInPageB });
+        });
+    });
+    candidatePairs.sort((left, right) => left.distance - right.distance);
+
+    const matchedDraftIndicesInPageA = new Set();
+    const matchedDraftIndicesInPageB = new Set();
+    /** @type {[number, number][]} */
+    const matchedPairs = [];
+    candidatePairs.forEach(({ draftIndexInPageA, draftIndexInPageB }) => {
+        if (matchedDraftIndicesInPageA.has(draftIndexInPageA) || matchedDraftIndicesInPageB.has(draftIndexInPageB)) return;
+        matchedDraftIndicesInPageA.add(draftIndexInPageA);
+        matchedDraftIndicesInPageB.add(draftIndexInPageB);
+        matchedPairs.push([draftIndexInPageA, draftIndexInPageB]);
+    });
+    return matchedPairs;
+}
+
+/**
+ * Links together the area drafts that should share a single interactiveFlowName/base template
+ * area. Every pair of distinct pages placed together in the same page group has its drafts
+ * pairwise-matched by geometry and linked; because a shared (real) page contributes the same
+ * identity key to every template group it appears in, this transitively chains links across
+ * template groups (e.g. P1<->P2 linked while building one base template, P2<->P3 linked while
+ * building another) without ever needing a single "representative" page per group.
+ *
+ * @param {TemplateGroup[]} templateGroups
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis} analysis
+ * @returns {{baseTemplateAreaDraftsByIdentityKey: Map<string, {page: PageEntry, drafts: BaseTemplateAreaDraft[]}>, linkedAreaGroups: LinkedAreaGroups}}
+ */
+function buildLinkedAreaGroups(templateGroups, data, analysis) {
+    const baseTemplateAreaDraftsByIdentityKey = getBaseTemplateAreaDraftsByPageIdentity(data, analysis);
+    const linkedAreaGroups = new LinkedAreaGroups();
+    baseTemplateAreaDraftsByIdentityKey.forEach(({ drafts }, identityKey) => {
+        drafts.forEach((_, draftIndex) => linkedAreaGroups.groupLeaderOf(btAreaDraftGroupKey(identityKey, draftIndex)));
+    });
+
+    templateGroups.forEach(templateGroup => {
+        templateGroup.pageGroups.forEach(pageGroup => {
+            const identityKeysInGroup = [...new Set(
+                pageGroup.pageIndices.map(pageIndex => pageIdentityKey(data.pages[pageIndex], pageIndex))
+            )];
+            for (let firstPos = 0; firstPos < identityKeysInGroup.length; firstPos++) {
+                for (let secondPos = firstPos + 1; secondPos < identityKeysInGroup.length; secondPos++) {
+                    const identityKeyA = identityKeysInGroup[firstPos];
+                    const identityKeyB = identityKeysInGroup[secondPos];
+                    const btAreaDraftsOfPageA = baseTemplateAreaDraftsByIdentityKey.get(identityKeyA)?.drafts ?? [];
+                    const btAreaDraftsOfPageB = baseTemplateAreaDraftsByIdentityKey.get(identityKeyB)?.drafts ?? [];
+                    matchBaseTemplateAreaDraftsBetweenPagesGreedily(btAreaDraftsOfPageA, btAreaDraftsOfPageB)
+                        .forEach(([draftIndexInPageA, draftIndexInPageB]) => {
+                            linkedAreaGroups.linkAsSameArea(
+                                btAreaDraftGroupKey(identityKeyA, draftIndexInPageA),
+                                btAreaDraftGroupKey(identityKeyB, draftIndexInPageB)
+                            );
+                        });
+                }
+            }
+        });
+    });
+
+    return { baseTemplateAreaDraftsByIdentityKey, linkedAreaGroups };
+}
+
+/**
+ * Assigns one shared, globally-unique interactiveFlowName per linked group of area drafts, in
+ * stable traversal order (the first template group / page group / page encountered wins the
+ * name, derived from that page's own content preview).
+ * @param {TemplateGroup[]} templateGroups
+ * @param {LayoutData} data
+ * @param {Map<string, {page: PageEntry, drafts: BaseTemplateAreaDraft[]}>} baseTemplateAreaDraftsByIdentityKey
+ * @param {LinkedAreaGroups} linkedAreaGroups
+ * @returns {Map<string, string>} group leader key -> flow name
+ */
+function assignFlowNamesToLinkedGroups(templateGroups, data, baseTemplateAreaDraftsByIdentityKey, linkedAreaGroups) {
+    /** @type {Map<string, string>} */
+    const flowNameByGroupLeader = new Map();
+    const usedFlowNames = new Set();
+
+    templateGroups.forEach(templateGroup => {
+        templateGroup.pageGroups.forEach(pageGroup => {
+            pageGroup.pageIndices.forEach(pageIndex => {
+                const page = data.pages[pageIndex];
+                const btAreaDrafts = getBtAreaDraftsForPage(page, pageIndex, baseTemplateAreaDraftsByIdentityKey);
+                btAreaDrafts.forEach((draft, draftIndex) => {
+                    const groupLeader = linkedAreaGroups.groupLeaderOf(btAreaDraftGroupKey(pageIdentityKey(page, pageIndex), draftIndex));
+                    if (flowNameByGroupLeader.has(groupLeader)) return;
+
+                    const baseFlowName = `${draft.name}Flow`;
+                    let flowName = baseFlowName;
+                    let dedupCounter = 2;
+                    while (usedFlowNames.has(flowName)) {
+                        flowName = `${baseFlowName} (${dedupCounter})`;
+                        dedupCounter++;
+                    }
+                    usedFlowNames.add(flowName);
+                    flowNameByGroupLeader.set(groupLeader, flowName);
+                });
+            });
+        });
+    });
+
+    return flowNameByGroupLeader;
+}
+
+/**
  * Builds the "Base" CSV rows describing candidate base templates/pages/areas derived from the
  * current template/page grouping, plus per-page interactiveFlowName/targetId overrides for the
  * "Standard" rows that reference them.
@@ -925,47 +1169,46 @@ function computeBaseTemplateData(data, viewModel, analysis) {
     /** @type {Map<number, {flowNames: (string|null)[], targetId: string}>} */
     const overridesByPageIndex = new Map();
 
+    const {
+        baseTemplateAreaDraftsByIdentityKey,
+        linkedAreaGroups
+    } = buildLinkedAreaGroups(viewModel.templateGroups, data, analysis);
+    const flowNameByGroupLeader =
+        assignFlowNamesToLinkedGroups(viewModel.templateGroups, data, baseTemplateAreaDraftsByIdentityKey, linkedAreaGroups);
+
     viewModel.templateGroups.forEach((templateGroup, templateGroupIndex) => {
         const baseTemplateId = `bt-${templateGroupIndex + 1}`;
         const baseTemplateName = `${templateGroup.templateNames[0]}BaseTemplate`;
-
-        const usedFlowNames = new Set();
-        /** @type {Map<string, number>} */
-        const firstPageGroupIndexForName = new Map();
 
         templateGroup.pageGroups.forEach((pageGroup, pageGroupIndex) => {
             const basePageId = `page-${pageGroupIndex + 1}`;
             const basePageName = `Page ${pageGroupIndex + 1}`;
 
-            const representativePageIndex = pageGroup.pageIndices[0];
-            const representativePage = data.pages[representativePageIndex];
-            const representativeDrafts = analysis.pageBaseTemplateAreaDrafts[representativePageIndex] ?? [];
-            const pageWidthMm = representativePage.pageSize ? `${representativePage.pageSize.w}mm` : "";
-            const pageHeightMm = representativePage.pageSize ? `${representativePage.pageSize.h}mm` : "";
+            const anyPageInGroup = data.pages[pageGroup.pageIndices[0]];
+            const pageWidthMm = anyPageInGroup.pageSize ? `${anyPageInGroup.pageSize.w}mm` : "";
+            const pageHeightMm = anyPageInGroup.pageSize ? `${anyPageInGroup.pageSize.h}mm` : "";
 
             /** @type {string[]} */
-            const flowNamesByAreaGroupIndex = [];
+            const groupLeadersInOrder = [];
+            /** @type {Map<string, {draft: BaseTemplateAreaDraft, page: PageEntry}>} */
+            const draftByGroupLeader = new Map();
+            pageGroup.pageIndices.forEach(pageIndex => {
+                const page = data.pages[pageIndex];
+                const identityKey = pageIdentityKey(page, pageIndex);
+                const drafts = getBtAreaDraftsForPage(page, pageIndex, baseTemplateAreaDraftsByIdentityKey);
+                drafts.forEach((draft, draftIndex) => {
+                    const groupLeader = linkedAreaGroups.groupLeaderOf(btAreaDraftGroupKey(identityKey, draftIndex));
+                    if (!draftByGroupLeader.has(groupLeader)) {
+                        draftByGroupLeader.set(groupLeader, { draft, page });
+                        groupLeadersInOrder.push(groupLeader);
+                    }
+                });
+            });
 
-            representativeDrafts.forEach((draft, areaGroupIndex) => {
-                const flowToNextPage = draft.areaIndices.some(ai => representativePage.areas[ai]?.flowToNextPage);
-                const baseFlowName = `${draft.name}Flow`;
-                let flowName = baseFlowName;
-                if (usedFlowNames.has(baseFlowName)) {
-                    flowName = firstPageGroupIndexForName.get(baseFlowName) === pageGroupIndex
-                        ? `${baseFlowName} (Area ${areaGroupIndex + 1})`
-                        : `${baseFlowName} (${basePageName})`;
-                } else {
-                    firstPageGroupIndexForName.set(baseFlowName, pageGroupIndex);
-                }
-                let uniqueFlowName = flowName;
-                let dedupCounter = 2;
-                while (usedFlowNames.has(uniqueFlowName)) {
-                    uniqueFlowName = `${flowName} (${dedupCounter})`;
-                    dedupCounter++;
-                }
-                flowName = uniqueFlowName;
-                usedFlowNames.add(flowName);
-                flowNamesByAreaGroupIndex.push(flowName);
+            groupLeadersInOrder.forEach((groupLeader, areaGroupIndex) => {
+                const { draft, page } = /** @type {{draft: BaseTemplateAreaDraft, page: PageEntry}} */ (draftByGroupLeader.get(groupLeader));
+                const flowName = /** @type {string} */ (flowNameByGroupLeader.get(groupLeader));
+                const flowToNextPage = draft.areaIndices.some(areaIndex => page.areas[areaIndex]?.flowToNextPage);
 
                 baseRows.push([
                     baseTemplateId, baseTemplateName, basePageId, basePageName,
@@ -979,16 +1222,15 @@ function computeBaseTemplateData(data, viewModel, analysis) {
 
             pageGroup.pageIndices.forEach(pageIndex => {
                 const page = data.pages[pageIndex];
-                const ownDrafts = pageIndex === representativePageIndex
-                    ? representativeDrafts
-                    : (analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []);
+                const identityKey = pageIdentityKey(page, pageIndex);
+                const drafts = getBtAreaDraftsForPage(page, pageIndex, baseTemplateAreaDraftsByIdentityKey);
 
                 /** @type {(string|null)[]} */
                 const flowNames = new Array(page.areas.length).fill(null);
-                ownDrafts.forEach((draft, ordinal) => {
-                    if (ordinal >= flowNamesByAreaGroupIndex.length) return;
-                    const flowName = flowNamesByAreaGroupIndex[ordinal];
-                    draft.areaIndices.forEach(ai => { flowNames[ai] = flowName; });
+                drafts.forEach((draft, draftIndex) => {
+                    const groupLeader = linkedAreaGroups.groupLeaderOf(btAreaDraftGroupKey(identityKey, draftIndex));
+                    const flowName = flowNameByGroupLeader.get(groupLeader) ?? null;
+                    draft.areaIndices.forEach(areaIndex => { flowNames[areaIndex] = flowName; });
                 });
                 overridesByPageIndex.set(pageIndex, { flowNames, targetId: `$${baseTemplateId}` });
             });
