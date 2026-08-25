@@ -136,6 +136,68 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
             </Card>
             <Card>
                 <CardHeader>
+                    <CardTitle>Partial migration</CardTitle>
+                    <CardDescription>Migrate only a subset of the project</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-6">
+                    <div className="grid gap-3">
+                        <Label>Sub project id</Label>
+                        <Input
+                            value={settings.projectConfig.subProjectId ?? ""}
+                            onChange={(e) =>
+                                setSettings((prev) => ({
+                                    ...prev,
+                                    projectConfig: {
+                                        ...prev.projectConfig,
+                                        subProjectId: e.target.value || undefined,
+                                    },
+                                }))
+                            }
+                        />
+                    </div>
+                </CardContent>
+                <CardContent className="grid gap-6">
+                    <div className="grid gap-3">
+                        <Label>Selected document objects file path</Label>
+                        <Input
+                            value={settings.projectConfig.selectedDocumentObjectsFile ?? ""}
+                            onChange={(e) =>
+                                setSettings((prev) => ({
+                                    ...prev,
+                                    projectConfig: {
+                                        ...prev.projectConfig,
+                                        selectedDocumentObjectsFile: e.target.value || undefined,
+                                    },
+                                }))
+                            }
+                        />
+                    </div>
+                </CardContent>
+                <CardContent className="grid gap-6">
+                    <div className="grid gap-3">
+                        <Label>Selected document objects</Label>
+                        <Input
+                            value={settings.projectConfig.selectedDocumentObjects ?? ""}
+                            onChange={(e) => {
+                                const value = (e.target.value ?? "")
+                                    .split(",")
+                                    .map((s) => s.trim())
+                                    .filter((s) => s.length > 0);
+
+                                setSettings((prev) => ({
+                                    ...prev,
+                                    projectConfig: {
+                                        ...prev.projectConfig,
+                                        selectedDocumentObjects: value || undefined,
+                                    },
+                                }));
+                            }}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
                     <CardTitle>Context</CardTitle>
                     <CardDescription>Custom values map for parse modules</CardDescription>
                 </CardHeader>

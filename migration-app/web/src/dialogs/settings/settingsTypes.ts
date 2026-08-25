@@ -45,6 +45,9 @@ export type ProjectConfig = {
     sourceBaseTemplatePath?: string;
     defaultVariableStructure?: string;
     defaultLanguage?: string;
+    selectedDocumentObjectsFile?: string;
+    selectedDocumentObjects?: string[];
+    subProjectId?: string;
     context: Record<string, any>;
 };
 

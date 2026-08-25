@@ -6,7 +6,6 @@
 package com.quadient.migration.example.common
 
 import com.quadient.migration.example.common.util.PathUtil
-import com.quadient.migration.shared.DocumentObjectType
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
@@ -16,7 +15,7 @@ def objects = migration.documentObjectRepository
         .listAll()
         .findAll { !it.internal && !it.skip.skipped }
 
-def documentObjFile = PathUtil.dataDirPath(binding, "deploy", "${migration.projectConfig.name}-document-objects").toFile()
+def documentObjFile = PathUtil.dataDirPath(binding, "document-objects", "${migration.projectConfig.name}-document-objects").toFile()
 
 documentObjFile.createParentDirectories()
 

@@ -8,7 +8,7 @@ inspireOutput = "Designer" # "Evolve", "Interactive", "Designer"
 #sourceBaseTemplatePath = "icm://<path to source base template>"
 #defaultVariableStructure = "<variable structure id>"
 #defaultLanguage = "en_us"
-#selectedDocumentObjectsFile = "<filename>"
+#selectedDocumentObjectsFile = "<path to file>" # e.g. DocBook: "<path to repository>/migration-examples/document-objects/<project name>-document-objects"
 #selectedDocumentObjects = []
 #subProjectId = "<id>"
 

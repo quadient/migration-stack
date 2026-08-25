@@ -1,6 +1,6 @@
 package com.quadient.migration.example.common
 //! ---
-//! displayName: Activate All
+//! displayName: Activate
 //! description: Sets tracking status of all assets to active so they can be deployed again
 //! category: Utils
 //! ---
@@ -24,6 +24,6 @@ for (status in all) {
     migration.statusTrackingRepository.active(
         status.id.toString(),
         status.resourceType.toString() as ResourceType,
-        [reason: "ActivateAll"]
+        [reason: "Activate"]
     )
 }
