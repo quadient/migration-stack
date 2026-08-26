@@ -59,17 +59,6 @@ static Migration initMigration(Binding binding) {
     def documentsPath = (documentsPathArg == null || documentsPathArg.isEmpty()) ? null : IcmPath.from(documentsPathArg)
     def attachmentsPath = (attachmentsPathArg == null || attachmentsPathArg.isEmpty()) ? null : IcmPath.from(attachmentsPathArg)
 
-    def selectedDocumentsObjectsResolvedFilePath
-    if (new File(selectedDocumentObjectsFile).isAbsolute()) {
-        selectedDocumentsObjectsResolvedFilePath = selectedDocumentObjectsFile
-    } else {
-        def resourceUrl = classLoader.getResource(selectedDocumentObjectsFile)
-        if (resourceUrl != null) {
-            selectedDocumentsObjectsResolvedFilePath = resourceUrl.toURI().path
-        } else {
-            throw new RuntimeException("Could not find selected document objects file: $selectedDocumentObjectsFile. Please ensure the file exists in the resources directory.")
-        }
-    }
     def projectConfig = new ProjectConfig(projectName,
             baseTemplatePath,
             styleDefinitionPath,
@@ -81,13 +70,31 @@ static Migration initMigration(Binding binding) {
             sourceBaseTemplate,
             defaultVariableStructure,
             defaultLanguage,
-            selectedDocumentsObjectsResolvedFilePath,
+            resolveSelectedDocumentObjectsFilePath(classLoader, selectedDocumentObjectsFile),
             selectedDocumentObjects,
             subProjectId,
             fileProjectConfig.context)
     log.info "Preparing to start migration script with $projectConfig."
 
     return new Migration(migConfig, projectConfig)
+}
+
+private static String resolveSelectedDocumentObjectsFilePath(ClassLoader classLoader, String selectedDocumentObjectsFile) {
+    if (selectedDocumentObjectsFile == null) {
+        return null
+    }
+
+    def file = new File(selectedDocumentObjectsFile)
+    if (file.exists() && file.isAbsolute()) {
+        return selectedDocumentObjectsFile
+    }
+
+    def resourceUrl = classLoader.getResource(selectedDocumentObjectsFile)
+    if (resourceUrl != null) {
+        return resourceUrl.toURI().path
+    }
+
+    throw new RuntimeException("Could not find selected document objects file: $selectedDocumentObjectsFile. Please ensure the file exists in the resources directory.")
 }
 
 private static String getActiveProjectConfigFromFile(ClassLoader classLoader) {
