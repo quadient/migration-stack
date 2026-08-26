@@ -94,7 +94,7 @@ private static String resolveSelectedDocumentObjectsFilePath(ClassLoader classLo
         return resourceUrl.toURI().path
     }
 
-    throw new RuntimeException("Could not find selected document objects file: $selectedDocumentObjectsFile. Please ensure the file exists in the resources directory.")
+    throw new RuntimeException("Could not find selected document objects file: $selectedDocumentObjectsFile.")
 }
 
 private static String getActiveProjectConfigFromFile(ClassLoader classLoader) {
