@@ -36,6 +36,7 @@ import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.DesignerResourcePathProvider
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
+import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.IcmMetadata
@@ -88,6 +89,7 @@ class DeployClientTest {
     val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
     val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
     val deployOrder = DeployOrderImpl(documentObjectRepository)
+    val refInheritanceService = RefInheritanceServiceImpl(documentObjectRepository)
 
     private val subject = DesignerDeployClient(
         projectConfig,
@@ -97,6 +99,7 @@ class DeployClientTest {
         conflictDetector,
         progressReporter,
         deployOrder,
+        refInheritanceService,
         documentObjectRepository,
         imageRepository,
         attachmentRepository,

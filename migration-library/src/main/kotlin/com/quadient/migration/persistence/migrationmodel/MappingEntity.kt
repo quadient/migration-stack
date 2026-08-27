@@ -115,12 +115,14 @@ sealed class MappingItemEntity {
         override val name: String?,
         val targetFolder: String?,
         val pages: List<BaseTemplatePage> = emptyList(),
+        val variableStructureRef: String? = null,
     ) : MappingItemEntity() {
         fun apply(item: BaseTemplateModel): BaseTemplateModel {
             return item.copy(
                 name = name,
                 targetFolder = targetFolder,
                 pages = pages,
+                variableStructureRef = variableStructureRef?.let { VariableStructureRef(it) },
             )
         }
     }
@@ -389,6 +391,7 @@ sealed class MappingItemEntity {
                 name = this.name,
                 targetFolder = this.targetFolder,
                 pages = this.pages,
+                variableStructureRef = this.variableStructureRef,
             )
 
             is Image -> {

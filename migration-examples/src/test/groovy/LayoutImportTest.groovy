@@ -199,7 +199,7 @@ class LayoutImportTest {
         )
         givenPageExists("page1", ["flow1"], [false])
         when(migration.baseTemplateRepository.find("G1")).thenReturn(null)
-        when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, []))
+        when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, [], null))
 
         def input = """\
             templateId,templateName,pageId,pageName,pageWidth,pageHeight,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,baseTemplateTargetId,contentPreview
@@ -220,7 +220,7 @@ class LayoutImportTest {
             new BaseTemplateArea("G1-P1.Area2", new Position(Size.ofCentimeters(1), Size.ofMillimeters(30), Size.ofMillimeters(190), Size.ofMillimeters(50)), true),
         ])
         verify(migration.mappingRepository).upsertBatch([
-            "G1": new MappingItem.BaseTemplate("Base template 1", null, [created])
+            "G1": new MappingItem.BaseTemplate("Base template 1", null, [created], null)
         ])
         verify(migration.mappingRepository).applyAllBaseTemplateMappings()
     }
@@ -231,7 +231,7 @@ class LayoutImportTest {
 
         def existing = new BaseTemplate("G1", "Old name", ["origin.wfd"], new CustomFieldMap(new HashMap<String, String>()), "target/folder", [], null, null, null)
         when(migration.baseTemplateRepository.find("G1")).thenReturn(existing)
-        when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, []))
+        when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, [], null))
 
         def input = """\
             templateId,templateName,pageId,pageName,pageWidth,pageHeight,areaIndex,interactiveFlowName,flowToNextPage,x,y,width,height,type,baseTemplateTargetId,contentPreview
@@ -245,7 +245,7 @@ class LayoutImportTest {
             new BaseTemplateArea("G1-P1.Area1", new Position(Size.ofCentimeters(1), Size.ofCentimeters(1), Size.ofMillimeters(190), Size.ofMillimeters(20)), false),
         ])
         verify(migration.mappingRepository).upsertBatch([
-            "G1": new MappingItem.BaseTemplate("Old name", "target/folder", [created])
+            "G1": new MappingItem.BaseTemplate("Old name", "target/folder", [created], null)
         ])
         verify(migration.mappingRepository).applyAllBaseTemplateMappings()
     }

@@ -3,7 +3,7 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.shared.BaseTemplatePage
 import kotlin.time.Instant
 
-data class BaseTemplate(
+data class BaseTemplate @JvmOverloads constructor(
     override val id: String,
     override var name: String? = null,
     override var originLocations: List<String> = emptyList(),

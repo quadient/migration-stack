@@ -66,7 +66,3 @@ class RefInheritanceServiceImpl(
         }
     }
 }
-
-class NoopRefInheritanceService : RefInheritanceService {
-    override fun apply(documentObjects: List<DocumentObject>): List<DocumentObject> = documentObjects
-}

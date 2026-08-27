@@ -312,7 +312,7 @@ class MappingRepository(
 
     fun getBaseTemplateMapping(id: String): MappingItem.BaseTemplate {
         return (internalRepository.find<MappingItemEntity.BaseTemplate>(id) ?: MappingItemEntity.BaseTemplate(
-            name = null, targetFolder = null, pages = emptyList()
+            name = null, targetFolder = null, pages = emptyList(), variableStructureRef = null
         )).toDto() as MappingItem.BaseTemplate
     }
 

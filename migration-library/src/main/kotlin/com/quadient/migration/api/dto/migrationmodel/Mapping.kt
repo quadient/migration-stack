@@ -107,6 +107,7 @@ sealed class MappingItem {
         override var name: String?,
         var targetFolder: String?,
         var pages: List<BaseTemplatePage> = emptyList(),
+        var variableStructureRef: String? = null,
     ) : MappingItem()
 
     data class Table(
@@ -145,6 +146,7 @@ sealed class MappingItem {
                 name = this.name,
                 targetFolder = this.targetFolder,
                 pages = this.pages,
+                variableStructureRef = this.variableStructureRef,
             )
 
             is MappingItem.Image -> {
