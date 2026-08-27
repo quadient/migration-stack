@@ -35,10 +35,10 @@ class BaseTemplatesMappingExportTest {
         BaseTemplatesExport.run(migration, mappingFile.toFile())
 
         def expected = """\
-            id,name,targetFolder,variableStructureRef,status,originalName (read-only),originLocations (read-only)
-            empty,,,,Active,,[]
-            full,full,targetFolder1,varStruct1,Active,,[foo; bar]
-            overridden full,full,targetFolder2,varStruct2,Active,originalFull,[foo; bar]
+            id,name,targetFolder,variableStructureRef,status,originLocations (read-only)
+            empty,,,,Active,[]
+            full,full,targetFolder1,varStruct1,Active,[foo; bar]
+            overridden full,full,targetFolder2,varStruct2,Active,[foo; bar]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -62,8 +62,8 @@ class BaseTemplatesMappingExportTest {
         BaseTemplatesExport.run(migration, mappingFile.toFile())
 
         def expected = """\
-            id,name,targetFolder,variableStructureRef,status,originalName (read-only),originLocations (read-only)
-            referenced,,,,Active,,[]
+            id,name,targetFolder,variableStructureRef,status,originLocations (read-only)
+            referenced,,,,Active,[]
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

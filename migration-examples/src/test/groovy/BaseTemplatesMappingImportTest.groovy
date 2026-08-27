@@ -26,9 +26,9 @@ class BaseTemplatesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def input = """\
-            id,name,targetFolder,variableStructureRef,status,originalName (read-only),originLocations (read-only)
-            unchanged,,,,Active,,[]
-            overridden,someName,overriddenFolder,overriddenVarStruct,Active,,[]
+            id,name,targetFolder,variableStructureRef,status,originLocations (read-only)
+            unchanged,,,,Active,[]
+            overridden,someName,overriddenFolder,overriddenVarStruct,Active,[]
             """.stripIndent()
         mappingFile.toFile().write(input)
         givenExistingBaseTemplate(migration, "unchanged", null, null, null)
@@ -50,10 +50,10 @@ class BaseTemplatesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def input = """\
-            id,name,targetFolder,variableStructureRef,status,originalName (read-only),originLocations (read-only)
-            activateNew,,,,Active,,[]
-            keepActive,,,,Active,,[]
-            deployExisting,,,,Deployed,,[]
+            id,name,targetFolder,variableStructureRef,status,originLocations (read-only)
+            activateNew,,,,Active,[]
+            keepActive,,,,Active,[]
+            deployExisting,,,,Deployed,[]
             """.stripIndent()
         mappingFile.toFile().write(input)
         givenExistingBaseTemplate(migration, "activateNew", null, null, null)
@@ -79,8 +79,8 @@ class BaseTemplatesMappingImportTest {
         def migration = Utils.mockMigration()
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
         def input = """\
-            id,name,targetFolder,variableStructureRef,status,originalName (read-only),originLocations (read-only)
-            baseTemplate1,myName,myFolder,myVarStruct,Active,ignoredOriginalName,[some; location]
+            id,name,targetFolder,variableStructureRef,status,originLocations (read-only)
+            baseTemplate1,myName,myFolder,myVarStruct,Active,[some; location]
             """.stripIndent()
         mappingFile.toFile().write(input)
         givenExistingBaseTemplate(migration, "baseTemplate1", "originalName", null, null)
