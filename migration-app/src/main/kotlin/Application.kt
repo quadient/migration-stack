@@ -7,7 +7,7 @@ import com.quadient.migration.route.rootModule
 import com.quadient.migration.route.scriptsModule
 import com.quadient.migration.service.Settings
 import com.quadient.migration.service.SettingsService
-import io.ktor.serialization.jackson.*
+import io.ktor.serialization.jackson3.*
 import io.ktor.server.application.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*

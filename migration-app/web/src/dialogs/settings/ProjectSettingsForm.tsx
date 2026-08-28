@@ -74,43 +74,39 @@ export function ProjectSettingsForm({
                             options={[...inspireOutputOptions]}
                         />
                     </div>
+                    <div className="grid gap-3">
+                        <Label>Source base template path</Label>
+                        <Input
+                            value={settings.projectConfig.sourceBaseTemplatePath ?? ""}
+                            onChange={(e) => updateSettings("sourceBaseTemplatePath", e.target.value || undefined)}
+                        />
+                    </div>
                 </CardContent>
             </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>{`${settings.projectConfig.inspireOutput} Output`}</CardTitle>
-                    <CardDescription>{`Inspire ${settings.projectConfig.inspireOutput} specific configuration`}</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-6">
-                    {settings.projectConfig.inspireOutput !== "Designer" && (
-                        <>
-                            <div className="grid gap-3">
-                                <Label>Tenant</Label>
-                                <Input
-                                    value={settings.projectConfig.interactiveTenant}
-                                    onChange={(e) => updateSettings("interactiveTenant", e.target.value)}
-                                />
-                            </div>
-                            <div className="grid gap-3">
-                                <Label>Base template path</Label>
-                                <Input
-                                    value={settings.projectConfig.baseTemplatePath}
-                                    onChange={(e) => updateSettings("baseTemplatePath", e.target.value)}
-                                />
-                            </div>
-                        </>
-                    )}
-                    {settings.projectConfig.inspireOutput === "Designer" && (
+            {settings.projectConfig.inspireOutput !== "Designer" && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{`${settings.projectConfig.inspireOutput} Output`}</CardTitle>
+                        <CardDescription>{`Inspire ${settings.projectConfig.inspireOutput} specific configuration`}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid gap-6">
                         <div className="grid gap-3">
-                            <Label>Source base template path</Label>
+                            <Label>Tenant</Label>
                             <Input
-                                value={settings.projectConfig.sourceBaseTemplatePath ?? ""}
-                                onChange={(e) => updateSettings("sourceBaseTemplatePath", e.target.value || undefined)}
+                                value={settings.projectConfig.interactiveTenant}
+                                onChange={(e) => updateSettings("interactiveTenant", e.target.value)}
                             />
                         </div>
-                    )}
-                </CardContent>
-            </Card>
+                        <div className="grid gap-3">
+                            <Label>Base template path</Label>
+                            <Input
+                                value={settings.projectConfig.baseTemplatePath}
+                                onChange={(e) => updateSettings("baseTemplatePath", e.target.value)}
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
