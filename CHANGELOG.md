@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.30] - 2026-08-31
+
+### Added
+
 - DeployBaseTemplates task that deploys base templates with pages, areas, interactive flows and other options.  
 - Added selectedDocumentObjectsFile, selectedDocumentObjects, subProjectId to project config to assist with partial
   migration
@@ -477,7 +485,8 @@ path.
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.29...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.30...HEAD
+[17.0.30]: https://github.com/quadient/migration-stack/compare/v17.0.29...v17.0.30
 [17.0.29]: https://github.com/quadient/migration-stack/compare/v17.0.28...v17.0.29
 [17.0.28]: https://github.com/quadient/migration-stack/compare/v17.0.27...v17.0.28
 [17.0.27]: https://github.com/quadient/migration-stack/compare/v17.0.26...v17.0.27
