@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Fixed
 
+- Variables used in display rules with functions correctly registered for Interactive output (minimal supported Designer version is now 17.0.696.0)
+
 ## [17.0.29] - 2026-08-14
 
 ### Added
