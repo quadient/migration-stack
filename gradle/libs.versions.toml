@@ -27,6 +27,9 @@ koin-ktor = "4.2.2"
 ktor = "3.5.2"
 stately = "2.1.0"
 
+# examples
+poi-ooxml = "5.5.1"
+
 # wfd-xml
 spock = "2.4-groovy-5.0"
 xmlunit = "2.13.0"
@@ -104,6 +107,8 @@ groovy-json = { module = "org.apache.groovy:groovy-json", version.ref = "groovy"
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit-jupiter" }
 junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit-jupiter" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
+poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi-ooxml" }
+poi-ooxml-full = { module = "org.apache.poi:poi-ooxml-full", version.ref = "poi-ooxml" }
 
 # wfd-xml
 spock-core = { module = "org.spockframework:spock-core", version.ref = "spock" }
