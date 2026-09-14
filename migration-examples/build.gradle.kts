@@ -45,6 +45,8 @@ dependencies {
     implementation(libs.groovy.json)
     implementation(libs.jackson.databind)
     implementation(libs.slf4j.api)
+    implementation(libs.poi.ooxml)
+    implementation(libs.poi.ooxml.full)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
