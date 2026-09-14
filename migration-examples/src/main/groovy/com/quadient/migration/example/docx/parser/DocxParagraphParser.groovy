@@ -4,8 +4,10 @@ import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import org.apache.poi.xwpf.usermodel.XWPFParagraph
+import org.apache.poi.xwpf.usermodel.XWPFFieldRun
 import org.apache.poi.xwpf.usermodel.XWPFRun
 import org.apache.xmlbeans.XmlObject
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSimpleField
 
 import static com.quadient.migration.example.docx.style.DocxParagraphStyles.captureParagraphStyle
 import static com.quadient.migration.example.docx.style.DocxTextStyles.captureTextStyle
@@ -22,6 +24,9 @@ class ParagraphContentCollector {
     private String textStyleId
     // The field state may be shared by consecutive paragraphs (cell, body flow) so that fields spanning paragraphs resolve.
     private final FieldParseState fieldState
+    // POI exposes the cached result runs inside w:fldSimple as ordinary paragraph runs.  Remember fields already
+    // resolved so that the cached «name» text does not become literal content (or get emitted once per result run).
+    private final Set<CTSimpleField> resolvedSimpleFields = Collections.newSetFromMap(new IdentityHashMap<CTSimpleField, Boolean>())
     private boolean containsFieldCode = false
 
     ParagraphContentCollector(Migration migration, String fileName, Set<String> excludedImageEmbedIds = Collections.emptySet(),
@@ -37,6 +42,18 @@ class ParagraphContentCollector {
             flushText()
             flushFields()
             DocxImages.processRunImages(migration, run, fileName, textBuilders, excludedImageEmbedIds)
+        }
+
+        CTSimpleField simpleField = run instanceof XWPFFieldRun ? (run as XWPFFieldRun).CTField : null
+        if (simpleField != null && !resolvedSimpleFields.contains(simpleField)) {
+            String instruction = simpleField.instr
+            if (DocxMergeFields.isMergeField(instruction)) {
+                resolvedSimpleFields.add(simpleField)
+                flushText()
+                flushFields()
+                DocxMergeFields.addMergeField(migration, textBuilders, fileName, instruction, styleId)
+                return
+            }
         }
 
         List<XmlObject> fieldChildren = DocxMergeFields.fieldChildren(run)

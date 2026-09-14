@@ -331,8 +331,8 @@ private static boolean isFirstMatchCandidate(ParsedIfField field) {
             && (field.trueContent.first() as FieldTextPart).text
 }
 
-private static void addMergeField(Migration migration, List<ParagraphBuilder.TextBuilder> textBuilders, String fileName,
-                                  String fieldInstruction, String textStyleId) {
+static void addMergeField(Migration migration, List<ParagraphBuilder.TextBuilder> textBuilders, String fileName,
+                          String fieldInstruction, String textStyleId) {
     String variableId = extractMergeFieldName(fieldInstruction)
     if (!variableId) {
         return
