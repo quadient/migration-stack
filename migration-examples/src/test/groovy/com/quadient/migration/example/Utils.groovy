@@ -16,17 +16,22 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.PreviewProvider
 import com.quadient.migration.service.RefCollector
+import com.quadient.migration.service.Storage
 
 import static org.mockito.Mockito.mock
 import static org.mockito.Mockito.when
 
-static Migration mockMigration() {
+static Migration mockMigration(Map<String, Object> context = [:]) {
     def migration = mock(Migration.class)
 
     def projectConfig = mock(ProjectConfig.class)
     when(migration.getProjectConfig()).thenReturn(projectConfig)
     when(projectConfig.getName()).thenReturn("testProject")
     when(projectConfig.getInspireOutput()).thenReturn(InspireOutput.Interactive)
+    when(projectConfig.getContext()).thenReturn(context)
+
+    def storage = mock(Storage.class)
+    when(migration.getStorage()).thenReturn(storage)
 
     def varRepo = mock(VariableRepository.class)
     def structureRepo = mock(VariableStructureRepository.class)

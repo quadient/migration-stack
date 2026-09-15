@@ -14,7 +14,7 @@ import org.mockito.ArgumentCaptor
 
 import static org.mockito.ArgumentMatchers.any
 import static org.mockito.Mockito.*
-import static com.quadient.migration.example.docx.DocxTestSupport.mockMigration
+import static com.quadient.migration.example.Utils.mockMigration
 
 class DocxImagesTest {
     @BeforeEach

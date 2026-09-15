@@ -16,7 +16,7 @@ import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STRelFro
 
 import static org.mockito.Mockito.mock
 import static org.mockito.Mockito.when
-import static com.quadient.migration.example.docx.DocxTestSupport.mockMigration
+import static com.quadient.migration.example.Utils.mockMigration
 
 class DocxAnchoredAreasTest {
     @Test

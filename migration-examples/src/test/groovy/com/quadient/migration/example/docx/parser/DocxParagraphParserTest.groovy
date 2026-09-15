@@ -12,7 +12,7 @@ import static org.mockito.ArgumentMatchers.any
 import static org.mockito.Mockito.times
 import static org.mockito.Mockito.verify
 import static com.quadient.migration.example.docx.DocxFieldFixtures.*
-import static com.quadient.migration.example.docx.DocxTestSupport.mockMigration
+import static com.quadient.migration.example.Utils.mockMigration
 
 class DocxParagraphParserTest {
 

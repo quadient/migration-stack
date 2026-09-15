@@ -14,7 +14,7 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.STStyleType
 
 import static org.mockito.Mockito.times
 import static org.mockito.Mockito.verify
-import static com.quadient.migration.example.docx.DocxTestSupport.mockMigration
+import static com.quadient.migration.example.Utils.mockMigration
 
 class DocxSectionsTest {
 

@@ -7,7 +7,7 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument
 import org.junit.jupiter.api.Test
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STHdrFtr
 
-import static com.quadient.migration.example.docx.DocxTestSupport.mockMigration
+import static com.quadient.migration.example.Utils.mockMigration
 
 class DocxHeaderFootersTest {
     @Test
