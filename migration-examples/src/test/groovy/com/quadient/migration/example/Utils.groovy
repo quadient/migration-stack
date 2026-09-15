@@ -1,0 +1,62 @@
+package com.quadient.migration.example
+
+import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.Migration
+import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.api.repository.BaseTemplateRepository
+import com.quadient.migration.api.repository.DisplayRuleRepository
+import com.quadient.migration.api.repository.DocumentObjectRepository
+import com.quadient.migration.api.repository.AttachmentRepository
+import com.quadient.migration.api.repository.ImageRepository
+import com.quadient.migration.api.repository.MappingRepository
+import com.quadient.migration.api.repository.ParagraphStyleRepository
+import com.quadient.migration.api.repository.StatusTrackingRepository
+import com.quadient.migration.api.repository.TextStyleRepository
+import com.quadient.migration.api.repository.VariableRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
+import com.quadient.migration.service.PreviewProvider
+import com.quadient.migration.service.RefCollector
+
+import static org.mockito.Mockito.mock
+import static org.mockito.Mockito.when
+
+static Migration mockMigration() {
+    def migration = mock(Migration.class)
+
+    def projectConfig = mock(ProjectConfig.class)
+    when(migration.getProjectConfig()).thenReturn(projectConfig)
+    when(projectConfig.getName()).thenReturn("testProject")
+    when(projectConfig.getInspireOutput()).thenReturn(InspireOutput.Interactive)
+
+    def varRepo = mock(VariableRepository.class)
+    def structureRepo = mock(VariableStructureRepository.class)
+    def mappingRepo = mock(MappingRepository.class)
+    def docObjectRepo = mock(DocumentObjectRepository.class)
+    def imageRepo = mock(ImageRepository.class)
+    def attachmentRepo = mock(AttachmentRepository.class)
+    def statusTrackingRepo = mock(StatusTrackingRepository.class)
+    def textStyleRepo = mock(TextStyleRepository.class)
+    def paraStyleRepo = mock(ParagraphStyleRepository.class)
+    def displayRuleRepo = mock(DisplayRuleRepository.class)
+    def baseTemplateRepo = mock(BaseTemplateRepository.class)
+
+    when(migration.getParagraphStyleRepository()).thenReturn(paraStyleRepo)
+    when(migration.getTextStyleRepository()).thenReturn(textStyleRepo)
+    when(migration.getStatusTrackingRepository()).thenReturn(statusTrackingRepo)
+    when(migration.getImageRepository()).thenReturn(imageRepo)
+    when(migration.getAttachmentRepository()).thenReturn(attachmentRepo)
+    when(migration.getDocumentObjectRepository()).thenReturn(docObjectRepo)
+    when(migration.getVariableRepository()).thenReturn(varRepo)
+    when(migration.getVariableStructureRepository()).thenReturn(structureRepo)
+    when(migration.getMappingRepository()).thenReturn(mappingRepo)
+    when(migration.getDisplayRuleRepository()).thenReturn(displayRuleRepo)
+    when(migration.getBaseTemplateRepository()).thenReturn(baseTemplateRepo)
+
+    def referenceCollector = mock(RefCollector.class)
+    when(migration.getReferenceCollector()).thenReturn(referenceCollector)
+
+    def previewProvider = new PreviewProvider(docObjectRepo, imageRepo, attachmentRepo, varRepo)
+    when(migration.getPreviewProvider()).thenReturn(previewProvider)
+
+    return migration
+}
