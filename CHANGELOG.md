@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - DeployStyles will now ignore styles that are named Normal or PartialEmpty to avoid collisions
 - listFiles function to icm client
+- Adjusted error message when base template fails to load or is missing to better describe the issue
 
 ### Fixed
 

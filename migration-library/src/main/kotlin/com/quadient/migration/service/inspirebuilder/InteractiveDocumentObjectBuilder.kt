@@ -99,7 +99,7 @@ class InteractiveDocumentObjectBuilder(
             projectConfig, documentObject.baseTemplate
         ) { baseTemplateRepository.findOrFail(it) }
         val currentBaseTemplateData = icmDataCache.getOrLoadBaseTemplateData(baseTemplatePath)
-            ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' does not exist.")
+            ?: error("Unable to deploy document object ${documentObject.id}. Base template '$baseTemplatePath' could not be loaded or does not exist. Check the detailed logs above.")
 
         val languages = collectLanguages(documentObject)
         val variableStructure = variableStructureBuilder.initVariableStructure(layout, documentObject.variableStructureRef?.id)
