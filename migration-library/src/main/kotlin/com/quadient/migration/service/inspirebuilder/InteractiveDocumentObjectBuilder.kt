@@ -208,7 +208,8 @@ class InteractiveDocumentObjectBuilder(
         layout: Layout,
         variableStructure: VariableStructure,
         documentObjectRef: DocumentObjectRef,
-        languages: List<String>
+        languages: List<String>,
+        isInline: Boolean,
     ): Flow? {
         val flow = getFlowByName(layout, documentModel.nameOrId()) ?: if (documentModel.internal == true) {
             buildDocumentContentAsSingleFlow(
@@ -217,7 +218,8 @@ class InteractiveDocumentObjectBuilder(
                 documentModel.content,
                 documentModel.nameOrId(),
                 documentModel.displayRuleRef?.let { DisplayRuleRef(it.id) },
-                languages
+                languages,
+                isInline,
             )
         } else {
             layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)

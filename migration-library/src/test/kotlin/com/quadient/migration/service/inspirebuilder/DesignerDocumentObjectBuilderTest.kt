@@ -177,6 +177,38 @@ class DesignerDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `buildDocumentObject keeps the area name in the resulting layout`() {
+        // given
+        val image = aImage("Img_1").mock()
+        val page = aDocObj(
+            "P_1", Page,
+            listOf(
+                anArea(
+                    listOf(aParagraph("text")),
+                    Position(60.millimeters(), 60.millimeters(), 10.centimeters(), 10.centimeters()),
+                    name = "Overflow Area",
+                ),
+                anArea(
+                    listOf(ImageRef(image.id)),
+                    Position(60.millimeters(), 120.millimeters(), 20.centimeters(), 10.centimeters()),
+                    name = "Logo Area",
+                ),
+            ),
+        ).mock()
+        val template = aDocObj("T_1", Template, listOf(aDocumentObjectRef(page.id))).mock()
+
+        // when
+        val result =
+            subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["FlowArea"].first { it.get("ParentId") != null }["Name"].stringValue()
+            .shouldBeEqualTo("Overflow Area")
+        result["ImageObject"].first { it.get("ParentId") != null }["Name"].stringValue()
+            .shouldBeEqualTo("Logo Area")
+    }
+
+    @Test
     fun `buildDocumentObject creates flow area with placeholder text in case of invalid image`() {
         // given
         val image = aImage("Img_1", sourcePath = null, skip = SkipOptions(true, "img placeholder", null)).mock()

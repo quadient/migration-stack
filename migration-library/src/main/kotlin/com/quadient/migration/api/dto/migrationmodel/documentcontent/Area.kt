@@ -3,7 +3,13 @@ package com.quadient.migration.api.dto.migrationmodel
 import com.quadient.migration.persistence.migrationmodel.AreaEntity
 import com.quadient.migration.shared.Position
 
-data class Area(var content: List<DocumentContent>, var position: Position?, var interactiveFlowName: String?, var flowToNextPage: Boolean = false) :
+data class Area(
+    var content: List<DocumentContent>,
+    var position: Position?,
+    var interactiveFlowName: String?,
+    var flowToNextPage: Boolean = false,
+    var name: String? = null,
+) :
     DocumentContent, RefValidatable {
     override val pathName = "area"
 
@@ -22,9 +28,13 @@ data class Area(var content: List<DocumentContent>, var position: Position?, var
 
     companion object {
         fun fromDb(entity: AreaEntity): Area = Area(
-            entity.content.map { DocumentContent.fromDbContent(it) }, entity.position, entity.interactiveFlowName, entity.flowToNextPage
+            entity.content.map { DocumentContent.fromDbContent(it) },
+            entity.position,
+            entity.interactiveFlowName,
+            entity.flowToNextPage,
+            entity.name
         )
     }
 
-    fun toDb() = AreaEntity(content.toDb(), position, interactiveFlowName, flowToNextPage)
+    fun toDb() = AreaEntity(content.toDb(), position, interactiveFlowName, flowToNextPage, name)
 }

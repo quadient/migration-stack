@@ -3,11 +3,13 @@ package com.quadient.migration.api.dto.migrationmodel.builder.documentcontent
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Area
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentContentBuilderBase
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasName
 import com.quadient.migration.api.dto.migrationmodel.builder.components.HasPosition
 import com.quadient.migration.shared.Position
 
-class AreaBuilder : DocumentContentBuilderBase<AreaBuilder>, HasPosition<AreaBuilder> {
+class AreaBuilder : DocumentContentBuilderBase<AreaBuilder>, HasName<AreaBuilder>, HasPosition<AreaBuilder> {
     override val content = mutableListOf<DocumentContent>()
+    override var name: String? = null
     override var position: Position? = null
     var interactiveFlowName: String? = null; private set
     var flowToNextPage: Boolean = false; private set
@@ -37,6 +39,7 @@ class AreaBuilder : DocumentContentBuilderBase<AreaBuilder>, HasPosition<AreaBui
             position = position,
             interactiveFlowName = interactiveFlowName,
             flowToNextPage = flowToNextPage,
+            name = name,
         )
     }
 }

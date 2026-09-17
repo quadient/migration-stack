@@ -42,6 +42,14 @@ class FirstMatchBuilder {
     fun default(default: DocumentContent) = apply { this.default = mutableListOf(default) }
 
     /**
+     * Replaces the default content for the FirstMatch instance.
+     * @param default The default DocumentContent to be used.
+     * @return The FirstMatchBuilder instance for method chaining.
+     */
+    fun default(default: List<DocumentContent>) = apply { this.default = default.toMutableList() }
+
+
+    /**
      * Appends additional default content to the FirstMatch instance.
      * @param default The DocumentContent to be added to the default list.
      * @return The FirstMatchBuilder instance for method chaining.

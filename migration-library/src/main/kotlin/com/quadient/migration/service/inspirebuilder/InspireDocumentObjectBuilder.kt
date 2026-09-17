@@ -306,6 +306,11 @@ abstract class InspireDocumentObjectBuilder(
         return builder.buildStyleLayoutDelta()
     }
 
+    companion object {
+        val RESERVED_TEXT_STYLES = setOf("normal", "partialempty")
+        val RESERVED_PARA_STYLES = setOf("normal")
+    }
+
     fun buildStyles(
         textStyles: List<TextStyle>,
         paragraphStyles: List<ParagraphStyle>,
@@ -467,7 +472,12 @@ abstract class InspireDocumentObjectBuilder(
     fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyle>) {
         resolveArialFont(layout, icmDataCache)
 
-        textStyleModels.forEach { styleModel ->
+        for (styleModel in textStyleModels) {
+            if (styleModel.nameOrId().lowercase() in RESERVED_TEXT_STYLES) {
+                logger.warn("Skipping reserved text style '{}' from style definition.", styleModel.nameOrId())
+                continue
+            }
+
             val definition = styleModel.resolve().definition
             val textStyle = layout.addTextStyle().setName(styleModel.nameOrId())
             applyTextStyleProperties(layout, textStyle, definition)
@@ -503,7 +513,12 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     fun buildParagraphStyles(layout: Layout, paragraphStyleModels: List<ParagraphStyle>) {
-        paragraphStyleModels.forEach { styleModel ->
+        for (styleModel in paragraphStyleModels) {
+            if (styleModel.nameOrId().lowercase() in RESERVED_PARA_STYLES) {
+                logger.warn("Skipping reserved paragraph style '{}' from style definition.", styleModel.nameOrId())
+                continue
+            }
+
             val definition = styleModel.resolve().definition
 
             val paragraphStyle = layout.addParagraphStyle().setName(styleModel.nameOrId())
@@ -738,6 +753,7 @@ abstract class InspireDocumentObjectBuilder(
         variableStructure: VariableStructure,
         documentObjectRef: DocumentObjectRef,
         languages: List<String>,
+        isInline: Boolean = false,
     ): Flow?
 
     private fun buildDocumentObjectRefOrPlaceholder(
@@ -745,6 +761,7 @@ abstract class InspireDocumentObjectBuilder(
         variableStructure: VariableStructure,
         documentObjectRef: DocumentObjectRef,
         languages: List<String>,
+        isInline: Boolean = false,
     ): Flow? {
         val documentModel = documentObjectRepository.findOrFail(documentObjectRef.id)
 
@@ -760,7 +777,7 @@ abstract class InspireDocumentObjectBuilder(
             return flow
         }
 
-        return buildDocumentObjectRef(documentModel, layout, variableStructure, documentObjectRef, languages)
+        return buildDocumentObjectRef(documentModel, layout, variableStructure, documentObjectRef, languages, isInline)
     }
 
     private fun gatherFlowParts(content: List<DocumentContent>, startIndex: Int): List<DocumentContent> {
@@ -854,7 +871,7 @@ abstract class InspireDocumentObjectBuilder(
                         )
                     }
                     is DocumentObjectRef -> buildDocumentObjectRefOrPlaceholder(
-                        layout, variableStructure, textContent, languages
+                        layout, variableStructure, textContent, languages, isInline = true
                     )?.also { flow ->
                         currentText.appendFlow(flow)
                     }

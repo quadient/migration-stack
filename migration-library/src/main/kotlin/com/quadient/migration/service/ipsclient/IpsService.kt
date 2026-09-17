@@ -1,5 +1,7 @@
 package com.quadient.migration.service.ipsclient
 
+import com.quadient.migration.api.FileEntry
+import com.quadient.migration.api.FileList
 import tools.jackson.dataformat.xml.XmlMapper
 import tools.jackson.module.kotlin.KotlinModule
 import com.quadient.migration.api.IcmClient
@@ -531,6 +533,27 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
                 logger.error("Failed to cleanup deleteFiles.wfd result csv memory: {}", it)
             }
         }
+    }
+
+    override fun listFiles(path: String, extension: String? ): FileList {
+        val resultLocation = "memory://${UUID.randomUUID()}"
+
+        val args = mutableListOf("-f", resultLocation, "-dirInput", path)
+        if (extension != null) {
+            args.add("-extensionInput")
+            args.add(extension)
+        }
+        val result =
+            runWfd("listFiles.wfd", args)
+        if (result !is OperationResult.Success) {
+            throw IpsClientException("Failed to list files from folder: $path")
+        }
+
+        val resultJson = client.download(resultLocation).throwIfNotOk()
+        val json = Json.decodeFromString<JsonElement>(String(resultJson.customData))
+        val inner = json.jsonObject["Params"]!!.jsonObject["files"]!!.jsonPrimitive.content
+
+        return Json.decodeFromString<FileList>(inner)
     }
 }
 

@@ -220,7 +220,8 @@ class DesignerDocumentObjectBuilder(
         layout: Layout,
         variableStructure: VariableStructure,
         documentObjectRef: DocumentObjectRef,
-        languages: List<String>
+        languages: List<String>,
+        isInline: Boolean,
     ): Flow? {
         val flow = getFlowByName(layout, documentModel.nameOrId())
             ?: if (documentModel.type == DocumentObjectType.Snippet) {
@@ -240,7 +241,8 @@ class DesignerDocumentObjectBuilder(
                     documentModel.content,
                     documentModel.nameOrId(),
                     documentModel.displayRuleRef?.let { DisplayRuleRef(it.id) },
-                    languages
+                    languages,
+                    isInline,
                 )
             } else {
                 layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)
@@ -415,12 +417,14 @@ class DesignerDocumentObjectBuilder(
                     page.addImageArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
                         .setWidth(position.width.toMeters()).setHeight(position.height.toMeters())
                         .setImage(getOrBuildImage(layout, imageModel, imageModel.alternateText))
+                        .also { area -> areaModel.name?.takeIf { it.isNotBlank() }?.let { area.setName(it) } }
                 }
                 is ImagePlaceholderResult.Placeholder -> {
                     val flow = layout.addFlow()
                     flow.addParagraph().addText().appendText(imagePlaceholder.value)
                     page.addFlowArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
                         .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlow(flow)
+                        .also { area -> areaModel.name?.takeIf { it.isNotBlank() }?.let { area.setName(it) } }
                 }
             }
         } else {
@@ -440,6 +444,7 @@ class DesignerDocumentObjectBuilder(
             page.addFlowArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
                 .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlow(sectionAreaFlow)
                 .setFlowToNextPage(areaModel.flowToNextPage)
+                .also { area -> areaModel.name?.takeIf { it.isNotBlank() }?.let { area.setName(it) } }
         }
     }
 

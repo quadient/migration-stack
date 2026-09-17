@@ -4,6 +4,7 @@ import com.quadient.migration.service.ipsclient.IpsClientException
 import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.MetadataValue
+import kotlinx.serialization.Serializable
 import java.io.IOException
 
 interface IcmClient {
@@ -181,4 +182,19 @@ interface IcmClient {
      * @throws IOException
      */
     fun writeMetadata(path: IcmPath, metadata: Map<String, MetadataValue>)
+
+    /**
+     * Lists files in the given ICM folder
+     * @param path Path to the folder in ICM. Path must start with "icm://"
+     * @param extension If provided, only files with this extension are returned
+     * @return FileList containing the matched files
+     * @throws IpsClientException if failure occurs when working with IPS
+     */
+    fun listFiles(path: String, extension: String? = null): FileList
 }
+
+@Serializable
+data class FileList(val files: List<FileEntry>)
+
+@Serializable
+data class FileEntry(val path: String, val name: String, val ext: String, val size: Long)

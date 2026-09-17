@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+- DeployStyles will now ignore styles that are named Normal or PartialEmpty to avoid collisions
+- listFiles function to icm client
+
 ### Fixed
 
 ## [17.0.30] - 2026-08-31
@@ -76,6 +79,8 @@ path.
 ## [17.0.27] - 2026-07-14
 
 ### Added
+
+- Naming support to Areas
 
 ### Changed
 

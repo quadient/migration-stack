@@ -144,6 +144,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
     val mappingRepository: MappingRepository by lazy { koin.get() }
 
     val icmClient: IcmClient by lazy { koin.get() }
+    val ipsService: IpsService by lazy { koin.get() }
     val deployClient: DeployClient by lazy { koin.get() }
     val referenceValidator: ReferenceValidator by lazy { koin.get() }
     val stylesValidator: StylesValidator by lazy { koin.get() }
@@ -152,7 +153,6 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
     val previewProvider: PreviewProvider by lazy { koin.get() }
     val storage: Storage by lazy { koin.get() }
 
-    private val ipsService: IpsService by lazy { koin.get() }
 
     init {
         Database.connect(
@@ -187,7 +187,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
                             
                             ************************************************************
                             *                                                          *
-                            * WARNING: Connected to unsupported IPS version $version   *
+                            * WARNING: Connected to unsupported IPS version $version *
                             *                                                          *
                             ************************************************************
                             """.trimIndent()

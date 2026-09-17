@@ -8,7 +8,7 @@ data class VariableStructure @JvmOverloads constructor(
     override var name: String? = null,
     override var originLocations: List<String> = emptyList(),
     override var customFields: CustomFieldMap,
-    val structure: Map<String, VariablePathData>,
+    var structure: Map<String, VariablePathData>,
     val languageVariable: VariableRef?,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,

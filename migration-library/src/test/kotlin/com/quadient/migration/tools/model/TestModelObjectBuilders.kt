@@ -121,8 +121,9 @@ fun anArea(
     content: List<DocumentContent>,
     position: Position? = null,
     interactiveFlowName: String? = null,
+    name: String? = null,
 ): Area {
-    return Area(content, position, interactiveFlowName)
+    return Area(content, position, interactiveFlowName, false, name)
 }
 
 fun aTemplate(
