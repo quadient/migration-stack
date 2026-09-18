@@ -105,7 +105,7 @@ dependencies {
 
     constraints {
         // ktor CVE fixes
-        implementation("org.springframework.security:spring-security-crypto:7.0.6")
+        implementation("org.springframework.security:spring-security-crypto:7.0.7")
         implementation("com.fasterxml.jackson.core:jackson-databind:2.21.5")
         implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.21.5")
     }
