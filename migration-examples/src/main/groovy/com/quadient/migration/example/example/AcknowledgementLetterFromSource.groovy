@@ -101,12 +101,12 @@ migration.variableStructureRepository.upsert(new VariableStructureBuilder("varSt
     .addVariable(notificationDateVar.id, variablePath)
     .build())
 
-def boldStyle = new TextStyleBuilder("bold").definition {
+def boldStyle = new TextStyleBuilder("boldStyle").definition {
     it.fontFamily("Aptos")
     it.size(Size.ofPoints(11))
     it.bold(true)
 }.build()
-def normalStyle = new TextStyleBuilder("normal").definition {
+def normalStyle = new TextStyleBuilder("normalStyle").definition {
     it.fontFamily("Aptos")
     it.size(Size.ofPoints(11))
     it.bold(false)
@@ -120,7 +120,7 @@ def justifyLeftParagraphStyle = new ParagraphStyleBuilder("justifyLeft")
         it.spaceAfter(Size.ofMillimeters(3))
     }
     .build()
-def normalParagraphStyle = new ParagraphStyleBuilder("normal")
+def normalParagraphStyle = new ParagraphStyleBuilder("normalStyle")
     .definition {
         it.spaceAfter(Size.ofMillimeters(3))
     }
