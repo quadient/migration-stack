@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Fixed
 
+- Fix icm remove not working properly
+
 ## [17.0.30] - 2026-08-31
 
 ### Added
