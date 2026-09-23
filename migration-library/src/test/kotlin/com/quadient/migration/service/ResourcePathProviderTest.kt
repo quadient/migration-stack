@@ -3,11 +3,17 @@ package com.quadient.migration.service
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.PathsConfig
 import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.Template
 import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aAttachment
@@ -200,6 +206,40 @@ class ResourcePathProviderTest {
             val path = pathTestSubject.getAttachmentPath(attachment)
 
             path.toString().shouldBeEqualTo("icm://Interactive/tenant/Documents/document.pdf")
+        }
+
+        @Test
+        fun `file names use platform extensions`() {
+            val subject = aSubject(aProjectConfig(output = InspireOutput.Interactive, interactiveTenant = "tenant"))
+
+            subject.getDocumentObjectFileName(DocumentObjectBuilder("B_1", DocumentObjectType.Block).name("block").build())
+                .shouldBeEqualTo("block.jld")
+            subject.getDocumentObjectFileName(DocumentObjectBuilder("S_1", DocumentObjectType.Snippet).build())
+                .shouldBeEqualTo("S_1.jsd")
+            subject.getImageFileName(ImageBuilder("I_1").name("image").imageType(ImageType.Png).build())
+                .shouldBeEqualTo("image.png")
+            subject.getAttachmentFileName(AttachmentBuilder("A_1").name("attachment").sourcePath("C:/doc.pdf").build())
+                .shouldBeEqualTo("attachment.pdf")
+            subject.getDisplayRuleFileName(DisplayRuleBuilder("R_1").name("rule").build())
+                .shouldBeEqualTo("rule.jrd")
+            subject.getBaseTemplateFileName(BaseTemplateBuilder("BT_1").name("base").build())
+                .shouldBeEqualTo("base.wfd")
+        }
+
+        @Test
+        fun `document object path ends with its file name`() {
+            val subject = aSubject(aProjectConfig(output = InspireOutput.Interactive, interactiveTenant = "tenant"))
+            val block = DocumentObjectBuilder("B_1", DocumentObjectType.Block).name("block").targetFolder("sub").build()
+
+            subject.getDocumentObjectPath(block).filename().shouldBeEqualTo(subject.getDocumentObjectFileName(block))
+        }
+
+        @Test
+        fun `file name keeps path separator from name`() {
+            val subject = aSubject(aProjectConfig(output = InspireOutput.Interactive, interactiveTenant = "tenant"))
+            val block = DocumentObjectBuilder("B_1", DocumentObjectType.Block).name("folder/block").build()
+
+            subject.getDocumentObjectFileName(block).shouldBeEqualTo("folder/block.jld")
         }
     }
 

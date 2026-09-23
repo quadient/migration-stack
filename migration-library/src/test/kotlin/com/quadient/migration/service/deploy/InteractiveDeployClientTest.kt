@@ -36,6 +36,7 @@ import com.quadient.migration.service.deploy.utility.DeploymentInfo
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.DeploymentWarning
 import com.quadient.migration.service.deploy.utility.MetadataValidator
+import com.quadient.migration.service.deploy.utility.InteractiveFileNameValidator
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
@@ -95,6 +96,7 @@ import kotlin.uuid.Uuid
 
 class InteractiveDeployClientTest {
     val metadataValidator = MetadataValidatorImpl()
+    val pathValidator = InteractiveFileNameValidator()
     val documentObjectRepository = mockk<DocumentObjectRepository>()
     val imageRepository = mockk<ImageRepository>()
     val attachmentRepository = mockk<AttachmentRepository>()
@@ -129,6 +131,7 @@ class InteractiveDeployClientTest {
         ),
         resourcePathProvider,
         metadataValidator,
+        pathValidator,
         postProcess,
         conflictDetector,
         progressReporter,
@@ -160,6 +163,12 @@ class InteractiveDeployClientTest {
         every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
         every { documentObjectRepository.find(any()) } returns null
         every { documentObjectRepository.listAll() } returns emptyList()
+        every { resourcePathProvider.getBaseTemplateFullPath(any(), any(), any()) } answers { callOriginal() }
+        every { resourcePathProvider.getDocumentObjectFileName(any()) } answers { callOriginal() }
+        every { resourcePathProvider.getImageFileName(any()) } answers { callOriginal() }
+        every { resourcePathProvider.getAttachmentFileName(any()) } answers { callOriginal() }
+        every { resourcePathProvider.getDisplayRuleFileName(any()) } answers { callOriginal() }
+        every { resourcePathProvider.getBaseTemplateFileName(any()) } answers { callOriginal() }
     }
 
     @Test
@@ -1307,6 +1316,23 @@ class InteractiveDeployClientTest {
             }
 
             assertEquals(MetadataValidator.DISALLOWED_METADATA.size, count)
+        }
+
+        @Test
+        fun `deployDocumentObjects reports path separator in name as forbidden character`() {
+            // given
+            val docObjects = listOf(DocumentObjectBuilder("D_1", DocumentObjectType.Block).name("folder/block").build())
+            givenObjectIsActive("D_1")
+
+            // when
+            val result = runDeploy(docObjects)
+
+            // then
+            assertEquals(
+                listOf(DeploymentError("D_1", "File name 'folder/block.jld' of 'DocumentObject' 'D_1' contains forbidden characters: ['/']")),
+                result.errors
+            )
+            verify(exactly = 0) { ipsService.deployJld(any(), any(), any(), any(), any<IcmPath>()) }
         }
 
         @Test

@@ -31,6 +31,7 @@ import com.quadient.migration.service.deploy.utility.DeploymentError
 import com.quadient.migration.service.deploy.utility.DeploymentInfo
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidator
+import com.quadient.migration.service.deploy.utility.DesignerFileNameValidator
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
@@ -88,6 +89,7 @@ import kotlin.uuid.Uuid
 
 class DesignerDeployClientTest {
     val metadataValidator = MetadataValidatorImpl()
+    val pathValidator = DesignerFileNameValidator()
     val postProcess = mockk<PostProcessImpl>(relaxed = true)
     val documentObjectRepository = mockk<DocumentObjectRepository>()
     val imageRepository = mockk<ImageRepository>()
@@ -112,6 +114,7 @@ class DesignerDeployClientTest {
         aProjectConfig(output = InspireOutput.Designer, selectedDocumentObjects = selectedDocumentObjects),
         resourcePathProvider,
         metadataValidator,
+        pathValidator,
         postProcess,
         conflictDetector,
         progressReporter,
@@ -141,6 +144,9 @@ class DesignerDeployClientTest {
         every { ipsService.writeMetadata(any<List<IcmFileMetadata>>()) } just runs
         every { documentObjectRepository.find(any()) } returns null
         every { documentObjectRepository.listAll() } returns emptyList()
+        every { resourcePathProvider.getDocumentObjectFileName(any()) } answers { callOriginal() }
+        every { resourcePathProvider.getImageFileName(any()) } answers { callOriginal() }
+        every { resourcePathProvider.getAttachmentFileName(any()) } answers { callOriginal() }
     }
 
     @Test

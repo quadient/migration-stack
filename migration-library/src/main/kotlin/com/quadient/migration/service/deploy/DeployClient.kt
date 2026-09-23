@@ -35,6 +35,7 @@ import com.quadient.migration.service.deploy.utility.DeploymentError
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidator
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
+import com.quadient.migration.service.deploy.utility.FileNameValidator
 import com.quadient.migration.service.deploy.utility.PostProcess
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ProgressReport
@@ -64,6 +65,7 @@ import com.quadient.migration.data.Error as StatusError
 sealed class DeployClient(
     private val projectConfig: ProjectConfig,
     private val metadataValidator: MetadataValidatorImpl,
+    private val fileNameValidator: FileNameValidator,
     private val postProcess: PostProcessImpl,
     private val conflictDetector: ConflictDetectorImpl,
     private val progressReporter: ProgressReporterImpl,
@@ -84,6 +86,7 @@ sealed class DeployClient(
     protected val ipsService: IpsService,
     protected val storage: Storage,
 ) : MetadataValidator by metadataValidator,
+    FileNameValidator by fileNameValidator,
     PostProcess by postProcess,
     ProgressReporter by progressReporter,
     ConflictDetector by conflictDetector,
@@ -188,6 +191,13 @@ sealed class DeployClient(
             return
         }
 
+        val fileNameError = validateFileName(resourcePathProvider.getImageFileName(imageModel), ResourceType.Image, imageModel.id)
+        if (fileNameError != null) {
+            logger.error(fileNameError)
+            tracker.errorImage(imageModel.id, icmImagePath, fileNameError)
+            return
+        }
+
         if (imageModel.imageType == ImageType.Unknown) {
             val message = "Skipping deployment of image '${imageModel.nameOrId()}' due to unknown image type."
             logger.warn(message)
@@ -253,6 +263,13 @@ sealed class DeployClient(
 
         val icmFilePath = resourcePathProvider.getAttachmentPath(attachmentModel)
 
+        val fileNameError = validateFileName(resourcePathProvider.getAttachmentFileName(attachmentModel), ResourceType.Attachment, attachmentModel.id)
+        if (fileNameError != null) {
+            logger.error(fileNameError)
+            tracker.errorAttachment(attachmentModel.id, icmFilePath, fileNameError)
+            return
+        }
+
         if (attachmentModel.skip.skipped) {
             val reason = attachmentModel.skip.reason?.let { " Reason: $it" } ?: ""
             val message = "Attachment '${attachmentModel.nameOrId()}' is skipped.$reason"
@@ -289,6 +306,14 @@ sealed class DeployClient(
 
         logger.debug("Deployment of attachment '{}' to '{}' is successful.", attachmentModel.nameOrId(), icmFilePath)
         tracker.deployedAttachment(attachmentModel.id, icmFilePath)
+    }
+
+    protected fun validateFileName(fileName: String, kind: ResourceType, id: String): String? {
+        val forbiddenChars = validate(fileName)
+        if (forbiddenChars.isEmpty()) return null
+
+        val chars = forbiddenChars.joinToString(", ", prefix = "[", postfix = "]") { "'$it'" }
+        return "File name '$fileName' of '$kind' '$id' contains forbidden characters: $chars"
     }
 
     protected fun shouldDeployObject(

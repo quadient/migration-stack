@@ -18,39 +18,27 @@ import com.quadient.migration.shared.orDefault
 import com.quadient.migration.shared.toIcmPath
 
 interface ResourcePathProvider {
-    fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): IcmPath
-    fun getDocumentObjectPath(documentObject: DocumentObject): IcmPath {
-        return getDocumentObjectPath(
-            documentObject.nameOrId(),
-            documentObject.type,
-            documentObject.targetFolder?.let { IcmPath.from(it) })
-    }
+    fun getDocumentObjectFileName(documentObject: DocumentObject): String
+    fun getDocumentObjectPath(documentObject: DocumentObject): IcmPath
 
-    fun getImagePath(id: String, imageType: ImageType, name: String?, targetFolder: IcmPath?, sourcePath: String?): IcmPath
-    fun getImagePath(image: Image): IcmPath {
-        return getImagePath(
-            image.id,
-            image.imageType ?: ImageType.Unknown,
-            image.name,
-            image.targetFolder?.let { IcmPath.from(it) },
-            image.sourcePath
-        )
-    }
+    fun getImageFileName(image: Image): String
+    fun getImagePath(image: Image): IcmPath
 
-    fun getAttachmentPath(id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType): IcmPath
-    fun getAttachmentPath(attachment: Attachment): IcmPath {
-        return getAttachmentPath(
-            attachment.id,
-            attachment.name,
-            attachment.targetFolder?.let { IcmPath.from(it) },
-            attachment.sourcePath,
-            attachment.attachmentType
-        )
-    }
+    fun getAttachmentFileName(attachment: Attachment): String
+    fun getAttachmentPath(attachment: Attachment): IcmPath
 
+    fun getBaseTemplateFullPath(
+        config: ProjectConfig,
+        documentObjectBaseTemplate: BaseTemplateLocation?,
+        findBaseTemplate: (String) -> BaseTemplate,
+    ): IcmPath
+
+
+    fun getDisplayRuleFileName(rule: DisplayRule): String
     fun getDisplayRulePath(rule: DisplayRule): IcmPath
 
     fun getBaseTemplatePath(literalPath: String): IcmPath
+    fun getBaseTemplateFileName(baseTemplate: BaseTemplate): String
     fun getBaseTemplatePath(baseTemplate: BaseTemplate): IcmPath
 
     fun getStyleDefinitionPath(): IcmPath
@@ -58,43 +46,31 @@ interface ResourcePathProvider {
     fun getFontRootFolder(): IcmPath
 }
 
-fun ResourcePathProvider.getBaseTemplateFullPath(
-    config: ProjectConfig,
-    documentObjectBaseTemplate: BaseTemplateLocation?,
-    findBaseTemplate: (String) -> BaseTemplate,
-): IcmPath {
-    val literalPath = when (documentObjectBaseTemplate) {
-        is LiteralBaseTemplatePath -> documentObjectBaseTemplate.path
-
-        is BaseTemplateRef -> {
-            val baseTemplate = findBaseTemplate(documentObjectBaseTemplate.id)
-            return getBaseTemplatePath(baseTemplate)
-        }
-
-        null -> config.baseTemplatePath
+class DesignerResourcePathProvider(private val projectConfig: ProjectConfig) : ResourcePathProvider {
+    override fun getDocumentObjectFileName(documentObject: DocumentObject): String {
+        return "${documentObject.nameOrId()}.wfd"
     }
 
-    val path = literalPath.toIcmPath()
-    if (path.isAbsolute()) return path
-
-    return getBaseTemplatePath(literalPath)
-}
-
-class DesignerResourcePathProvider(private val projectConfig: ProjectConfig) : ResourcePathProvider {
-    override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): IcmPath {
-        val fileName = "$nameOrId.wfd"
+    override fun getDocumentObjectPath(documentObject: DocumentObject): IcmPath {
+        val fileName = getDocumentObjectFileName(documentObject)
+        val targetFolder = documentObject.targetFolder?.let { IcmPath.from(it) }
 
         if (targetFolder?.isAbsolute() == true) {
             return targetFolder.join(fileName)
         }
 
-        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName)
+        return IcmPath.root()
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
+            .join(fileName)
     }
 
-    override fun getImagePath(
-        id: String, imageType: ImageType, name: String?, targetFolder: IcmPath?, sourcePath: String?
-    ): IcmPath {
-        val fileName = "${name ?: id}${imageExtension(imageType, name, sourcePath)}"
+    override fun getImageFileName(image: Image): String {
+        return "${image.nameOrId()}${imageExtension(image.imageType ?: ImageType.Unknown, image.name, image.sourcePath)}"
+    }
+
+    override fun getImagePath(image: Image): IcmPath {
+        val fileName = getImageFileName(image)
+        val targetFolder = image.targetFolder?.let { IcmPath.from(it) }
 
         if (targetFolder?.isAbsolute() == true) {
             return targetFolder.join(fileName)
@@ -102,30 +78,37 @@ class DesignerResourcePathProvider(private val projectConfig: ProjectConfig) : R
 
         val imageConfigPath = projectConfig.paths.images
 
-        return IcmPath.root().join(imageConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName)
+        return IcmPath.root()
+            .join(imageConfigPath)
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
+            .join(fileName)
     }
 
-    override fun getAttachmentPath(
-        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType
-    ): IcmPath {
-        val baseAttachmentName = name ?: id
-        val attachmentName = appendExtensionIfMissing(baseAttachmentName, sourcePath)
+    override fun getAttachmentFileName(attachment: Attachment): String {
+        return appendExtensionIfMissing(attachment.nameOrId(), attachment.sourcePath)
+    }
+
+    override fun getAttachmentPath(attachment: Attachment): IcmPath {
+        val fileName = getAttachmentFileName(attachment)
+        val targetFolder = attachment.targetFolder?.let { IcmPath.from(it) }
 
         if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(attachmentName)
+            return targetFolder.join(fileName)
         }
 
-        val fileConfigPath = when (attachmentType) {
+        val fileConfigPath = when (attachment.attachmentType) {
             AttachmentType.Attachment -> projectConfig.paths.attachments
             AttachmentType.Document -> projectConfig.paths.documents
         }
 
-        return IcmPath.root().join(fileConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(attachmentName)
+        return IcmPath.root()
+            .join(fileConfigPath)
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
+            .join(fileName)
     }
 
     override fun getStyleDefinitionPath(): IcmPath {
+        val fileName = "${projectConfig.name}Styles.wfd"
         val styleDefinitionPath = projectConfig.styleDefinitionPath
 
         if (styleDefinitionPath != null && !styleDefinitionPath.isAbsolute()) {
@@ -134,16 +117,33 @@ class DesignerResourcePathProvider(private val projectConfig: ProjectConfig) : R
             return styleDefinitionPath
         }
 
-        return IcmPath.root().join(resolveTargetDir(projectConfig.defaultTargetFolder))
-            .join("${projectConfig.name}Styles.wfd")
+        return IcmPath.root()
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder))
+            .join(fileName)
+    }
+
+    override fun getDisplayRuleFileName(rule: DisplayRule): String {
+        error("External display rules are not supported and should not be used for Designer output. Report this as a bug.")
     }
 
     override fun getDisplayRulePath(rule: DisplayRule): IcmPath {
         error("External display rules are not supported and should not be used for Designer output. Report this as a bug.")
     }
 
+    override fun getBaseTemplateFullPath(
+        config: ProjectConfig,
+        documentObjectBaseTemplate: BaseTemplateLocation?,
+        findBaseTemplate: (String) -> BaseTemplate
+    ): IcmPath {
+        error("Referencing base templates is not supported for Designer output. Report this as a bug.")
+    }
+
     override fun getBaseTemplatePath(literalPath: String): IcmPath {
         error("Referencing base templates is not supported for Designer output. Report this as a bug.")
+    }
+
+    override fun getBaseTemplateFileName(baseTemplate: BaseTemplate): String {
+        error("Referencing base templates by id is not supported for Designer output. Report this as a bug.")
     }
 
     override fun getBaseTemplatePath(baseTemplate: BaseTemplate): IcmPath {
@@ -158,20 +158,24 @@ class DesignerResourcePathProvider(private val projectConfig: ProjectConfig) : R
 }
 
 open class InteractiveResourcePathProvider(private val projectConfig: ProjectConfig) : ResourcePathProvider {
-    override fun getDocumentObjectPath(nameOrId: String, type: DocumentObjectType, targetFolder: IcmPath?): IcmPath {
-        val ext = when (type) {
+    override fun getDocumentObjectFileName(documentObject: DocumentObject): String {
+        val ext = when (documentObject.type) {
             DocumentObjectType.Snippet -> "jsd"
             else -> "jld"
         }
+        return "${documentObject.nameOrId()}.$ext"
+    }
 
-        val fileName = "$nameOrId.$ext"
+    override fun getDocumentObjectPath(documentObject: DocumentObject): IcmPath {
+        val targetFolder = documentObject.targetFolder?.let { IcmPath.from(it) }
+        val fileName = getDocumentObjectFileName(documentObject)
 
         if (targetFolder?.isAbsolute() == true) {
             return targetFolder.join(fileName)
         }
 
         val tenant = projectConfig.interactiveTenant
-        val documentObjectType = type.toInteractiveFolder()
+        val documentObjectType = documentObject.type.toInteractiveFolder()
 
         return IcmPath.root()
             .join("Interactive")
@@ -181,14 +185,13 @@ open class InteractiveResourcePathProvider(private val projectConfig: ProjectCon
             .join(fileName)
     }
 
-    override fun getImagePath(
-        id: String,
-        imageType: ImageType,
-        name: String?,
-        targetFolder: IcmPath?,
-        sourcePath: String?
-    ): IcmPath {
-        val fileName = "${name ?: id}${imageExtension(imageType, name, sourcePath)}"
+    override fun getImageFileName(image: Image): String {
+        return "${image.nameOrId()}${imageExtension(image.imageType ?: ImageType.Unknown, image.name, image.sourcePath)}"
+    }
+
+    override fun getImagePath(image: Image): IcmPath {
+        val fileName = getImageFileName(image)
+        val targetFolder = image.targetFolder?.let { IcmPath.from(it) }
 
         if (targetFolder?.isAbsolute() == true) {
             return targetFolder.join(fileName)
@@ -204,8 +207,12 @@ open class InteractiveResourcePathProvider(private val projectConfig: ProjectCon
             .join(fileName)
     }
 
+    override fun getDisplayRuleFileName(rule: DisplayRule): String {
+        return "${rule.nameOrId()}.jrd"
+    }
+
     override fun getDisplayRulePath(rule: DisplayRule): IcmPath {
-        val fileName = "${rule.name ?: rule.id}.jrd"
+        val fileName = getDisplayRuleFileName(rule)
 
         val targetFolder = rule.targetFolder?.let { IcmPath.from(it) }
         if (targetFolder?.isAbsolute() == true) {
@@ -220,23 +227,25 @@ open class InteractiveResourcePathProvider(private val projectConfig: ProjectCon
             .join(fileName)
     }
 
-    override fun getAttachmentPath(
-        id: String, name: String?, targetFolder: IcmPath?, sourcePath: String?, attachmentType: AttachmentType
-    ): IcmPath {
-        val baseAttachmentName = name ?: id
-        val attachmentName = appendExtensionIfMissing(baseAttachmentName, sourcePath)
+    override fun getAttachmentFileName(attachment: Attachment): String {
+        return appendExtensionIfMissing(attachment.nameOrId(), attachment.sourcePath)
+    }
+
+    override fun getAttachmentPath(attachment: Attachment): IcmPath {
+        val fileName = getAttachmentFileName(attachment)
+        val targetFolder = attachment.targetFolder?.let { IcmPath.from(it) }
 
         if (targetFolder?.isAbsolute() == true) {
-            return targetFolder.join(attachmentName)
+            return targetFolder.join(fileName)
         }
 
-        val fileConfigPath = when (attachmentType) {
+        val fileConfigPath = when (attachment.attachmentType) {
             AttachmentType.Attachment -> projectConfig.paths.attachments.orDefault("Attachments")
             AttachmentType.Document -> projectConfig.paths.documents.orDefault("Documents")
         }
 
         return IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant).join(fileConfigPath)
-            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(attachmentName)
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder)).join(fileName)
     }
 
     override fun getBaseTemplatePath(literalPath: String): IcmPath {
@@ -247,8 +256,34 @@ open class InteractiveResourcePathProvider(private val projectConfig: ProjectCon
             .join(literalPath)
     }
 
+    override fun getBaseTemplateFullPath(
+        config: ProjectConfig,
+        documentObjectBaseTemplate: BaseTemplateLocation?,
+        findBaseTemplate: (String) -> BaseTemplate,
+    ): IcmPath {
+        val literalPath = when (documentObjectBaseTemplate) {
+            is LiteralBaseTemplatePath -> documentObjectBaseTemplate.path
+
+            is BaseTemplateRef -> {
+                val baseTemplate = findBaseTemplate(documentObjectBaseTemplate.id)
+                return getBaseTemplatePath(baseTemplate)
+            }
+
+            null -> config.baseTemplatePath
+        }
+
+        val path = literalPath.toIcmPath()
+        if (path.isAbsolute()) return path
+
+        return getBaseTemplatePath(literalPath)
+    }
+
+    override fun getBaseTemplateFileName(baseTemplate: BaseTemplate): String {
+        return "${baseTemplate.nameOrId()}.wfd"
+    }
+
     override fun getBaseTemplatePath(baseTemplate: BaseTemplate): IcmPath {
-        val fileName = "${baseTemplate.name ?: baseTemplate.id}.wfd"
+        val fileName = getBaseTemplateFileName(baseTemplate)
 
         val targetFolder = baseTemplate.targetFolder?.let { IcmPath.from(it) }
         if (targetFolder?.isAbsolute() == true) {

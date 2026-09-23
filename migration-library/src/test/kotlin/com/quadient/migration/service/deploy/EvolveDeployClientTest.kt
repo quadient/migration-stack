@@ -18,6 +18,7 @@ import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.Storage
+import com.quadient.migration.service.deploy.utility.EvolveFileNameValidator
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
@@ -47,6 +48,7 @@ import org.junit.jupiter.api.assertThrows
 
 class EvolveDeployClientTest {
     val metadataValidator = MetadataValidatorImpl()
+    val pathValidator = EvolveFileNameValidator()
     val documentObjectRepository = mockk<DocumentObjectRepository>()
     val imageRepository = mockk<ImageRepository>()
     val attachmentRepository = mockk<AttachmentRepository>()
@@ -96,6 +98,7 @@ class EvolveDeployClientTest {
         caClient,
         resourcePathProvider,
         metadataValidator,
+        pathValidator,
         postProcess,
         conflictDetector,
         progressReporter,
@@ -132,6 +135,12 @@ class EvolveDeployClientTest {
         every { ipsService.download(any<String>()) } returns jld
         every { ipsService.delete(any<String>()) } returns true
         every { caClient.targetVersion } returns null
+        every { resourcePathProvider.getBaseTemplateFullPath(any(), any(), any()) } answers { callOriginal() }
+        every { resourcePathProvider.getDocumentObjectFileName(any()) } answers { callOriginal() }
+        every { resourcePathProvider.getImageFileName(any()) } answers { callOriginal() }
+        every { resourcePathProvider.getAttachmentFileName(any()) } answers { callOriginal() }
+        every { resourcePathProvider.getDisplayRuleFileName(any()) } answers { callOriginal() }
+        every { resourcePathProvider.getBaseTemplateFileName(any()) } answers { callOriginal() }
     }
 
     @Test

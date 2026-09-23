@@ -11,7 +11,11 @@ import com.quadient.migration.service.deploy.DeployClient
 import com.quadient.migration.service.deploy.DesignerDeployClient
 import com.quadient.migration.service.deploy.EvolveDeployClient
 import com.quadient.migration.service.deploy.InteractiveDeployClient
+import com.quadient.migration.service.deploy.utility.DesignerFileNameValidator
+import com.quadient.migration.service.deploy.utility.EvolveFileNameValidator
+import com.quadient.migration.service.deploy.utility.InteractiveFileNameValidator
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
+import com.quadient.migration.service.deploy.utility.FileNameValidator
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.inspirebuilder.DesignerDocumentObjectBuilder
 import com.quadient.migration.service.DesignerIcmDataCache
@@ -52,6 +56,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
     private val designerModule = module {
         single<DesignerDeployClient>() bind DeployClient::class
         single<DesignerResourcePathProvider>() bind ResourcePathProvider::class
+        single<DesignerFileNameValidator>() bind FileNameValidator::class
         single<DesignerIcmDataCache>() bind IcmDataCache::class
         single<DesignerDocumentObjectBuilder>() bind InspireDocumentObjectBuilder::class
     }
@@ -59,6 +64,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
     private val evolveModule = module {
         single<EvolveDeployClient>() bind DeployClient::class
         single<EvolveResourcePathProvider>() bind ResourcePathProvider::class
+        single<EvolveFileNameValidator>() bind FileNameValidator::class
         single<EvolveIcmDataCache>() bind IcmDataCache::class
         single<InteractiveDocumentObjectBuilder>() bind InspireDocumentObjectBuilder::class
         single<CaApiClient>()
@@ -67,6 +73,7 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
     private val interactiveModule = module {
         single<InteractiveDeployClient>() bind DeployClient::class
         single<InteractiveResourcePathProvider>() bind ResourcePathProvider::class
+        single<InteractiveFileNameValidator>() bind FileNameValidator::class
         single<InteractiveIcmDataCache>() bind IcmDataCache::class
         single<InteractiveDocumentObjectBuilder>() bind InspireDocumentObjectBuilder::class
     }

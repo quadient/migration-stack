@@ -17,7 +17,6 @@ import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.service.IcmDataCache
 import com.quadient.migration.service.ResourcePathProvider
-import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow

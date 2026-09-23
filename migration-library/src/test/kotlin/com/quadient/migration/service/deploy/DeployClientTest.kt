@@ -27,6 +27,7 @@ import com.quadient.migration.service.deploy.utility.DeployKind
 import com.quadient.migration.service.deploy.utility.DeploymentInfo
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.LastStatus
+import com.quadient.migration.service.deploy.utility.DesignerFileNameValidator
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
@@ -70,6 +71,7 @@ import kotlin.uuid.Uuid
 
 class DeployClientTest {
     val metadataValidator = MetadataValidatorImpl()
+    val pathValidator = DesignerFileNameValidator()
     val documentObjectRepository = mockk<DocumentObjectRepository>()
     val imageRepository = mockk<ImageRepository>()
     val attachmentRepository = mockk<AttachmentRepository>()
@@ -95,6 +97,7 @@ class DeployClientTest {
         projectConfig,
         resourcePathProvider,
         metadataValidator,
+        pathValidator,
         postProcess,
         conflictDetector,
         progressReporter,

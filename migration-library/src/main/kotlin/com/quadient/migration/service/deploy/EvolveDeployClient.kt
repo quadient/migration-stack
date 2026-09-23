@@ -18,9 +18,9 @@ import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
+import com.quadient.migration.service.deploy.utility.FileNameValidator
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.ResourcePathProvider
-import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.DeploymentResult
@@ -44,6 +44,7 @@ class EvolveDeployClient(
     private val caClient: CaApiClient,
     resourcePathProvider: ResourcePathProvider,
     metadataValidator: MetadataValidatorImpl,
+    fileNameValidator: FileNameValidator,
     postProcess: PostProcessImpl,
     conflictDetector: ConflictDetectorImpl,
     progressReporter: ProgressReporterImpl,
@@ -67,6 +68,7 @@ class EvolveDeployClient(
     projectConfig,
     resourcePathProvider,
     metadataValidator,
+    fileNameValidator,
     postProcess,
     conflictDetector,
     progressReporter,

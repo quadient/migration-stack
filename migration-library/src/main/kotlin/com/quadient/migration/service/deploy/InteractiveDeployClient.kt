@@ -32,12 +32,12 @@ import com.quadient.migration.service.Storage
 import com.quadient.migration.service.deploy.utility.DeploymentError
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
+import com.quadient.migration.service.deploy.utility.FileNameValidator
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTracker
 import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.ResourcePathProvider
-import com.quadient.migration.service.getBaseTemplateFullPath
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
@@ -68,6 +68,7 @@ open class InteractiveDeployClient(
     private val projectConfig: ProjectConfig,
     protected val resourcePathProvider: ResourcePathProvider,
     metadataValidator: MetadataValidatorImpl,
+    fileNameValidator: FileNameValidator,
     postProcess: PostProcessImpl,
     conflictDetector: ConflictDetectorImpl,
     progressReporter: ProgressReporterImpl,
@@ -90,6 +91,7 @@ open class InteractiveDeployClient(
 ) : DeployClient(
     projectConfig,
     metadataValidator,
+    fileNameValidator,
     postProcess,
     conflictDetector,
     progressReporter,
@@ -206,6 +208,13 @@ open class InteractiveDeployClient(
                 continue
             }
 
+            val fileNameError = validateFileName(resourcePathProvider.getBaseTemplateFileName(baseTemplate), ResourceType.BaseTemplate, baseTemplate.id)
+            if (fileNameError != null) {
+                logger.error(fileNameError)
+                tracker.errorBaseTemplate(baseTemplate.id, targetPath, fileNameError)
+                continue
+            }
+
             val wfdXml = baseTemplateBuilder.buildBaseTemplate(baseTemplate)
 
             when (val result = ipsService.xml2wfd(wfdXml, targetPath)) {
@@ -309,6 +318,13 @@ open class InteractiveDeployClient(
                 continue
             }
 
+            val fileNameError = validateFileName(resourcePathProvider.getDisplayRuleFileName(rule), ResourceType.DisplayRule, rule.id)
+            if (fileNameError != null) {
+                logger.error(fileNameError)
+                tracker.errorDisplayRule(rule.id, targetPath, fileNameError)
+                continue
+            }
+
             val variableStructureId = rule.variableStructureRef?.id ?: projectConfig.defaultVariableStructure
             val variableStructure=
                 variableStructureId?.let { variableStructureRepository.findOrFail(it) } ?: VariableStructure(
@@ -378,6 +394,13 @@ open class InteractiveDeployClient(
                 val keys = invalidMetadata.joinToString(", ", prefix = "[", postfix = "]")
                 val message = "Metadata of document object '${it.id}' contains invalid keys: $keys"
                 tracker.errorDocumentObject(it.id, targetPath, it.type, message)
+                continue
+            }
+
+            val fileNameError = validateFileName(resourcePathProvider.getDocumentObjectFileName(it), ResourceType.DocumentObject, it.id)
+            if (fileNameError != null) {
+                logger.error(fileNameError)
+                tracker.errorDocumentObject(it.id, targetPath, it.type, fileNameError)
                 continue
             }
 

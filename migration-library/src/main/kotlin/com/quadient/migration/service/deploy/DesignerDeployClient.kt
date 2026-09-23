@@ -19,6 +19,7 @@ import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
+import com.quadient.migration.service.deploy.utility.FileNameValidator
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTracker
@@ -46,6 +47,7 @@ class DesignerDeployClient(
     private val projectConfig: ProjectConfig,
     private val resourcePathProvider: ResourcePathProvider,
     metadataValidator: MetadataValidatorImpl,
+    fileNameValidator: FileNameValidator,
     postProcess: PostProcessImpl,
     conflictDetector: ConflictDetectorImpl,
     progressReporter: ProgressReporterImpl,
@@ -67,6 +69,7 @@ class DesignerDeployClient(
 ) : DeployClient(
     projectConfig,
     metadataValidator,
+    fileNameValidator,
     postProcess,
     conflictDetector,
     progressReporter,
@@ -171,6 +174,13 @@ class DesignerDeployClient(
                 val keys = invalidMetadata.joinToString(", ", prefix = "[", postfix = "]")
                 val message = "Metadata of document object '${it.id}' contains invalid keys: $keys"
                 tracker.errorDocumentObject(it.id, targetPath, it.type, message)
+                continue
+            }
+
+            val fileNameError = validateFileName(resourcePathProvider.getDocumentObjectFileName(it), ResourceType.DocumentObject, it.id)
+            if (fileNameError != null) {
+                logger.error(fileNameError)
+                tracker.errorDocumentObject(it.id, targetPath, it.type, fileNameError)
                 continue
             }
 

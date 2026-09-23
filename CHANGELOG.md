@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 
 - New parser for DOCX format
+- Forbidden characters in filenames are now validated during deploy stage and will not be deployed if they are present.
 
 ### Changed
 
