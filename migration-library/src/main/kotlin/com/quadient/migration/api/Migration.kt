@@ -79,13 +79,6 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
     }
 
     private val migrationModule = module {
-        val outputModule = when(projectConfig.inspireOutput) {
-            InspireOutput.Interactive -> interactiveModule
-            InspireOutput.Designer -> designerModule
-            InspireOutput.Evolve -> evolveModule
-        }
-        includes(outputModule)
-
         single<ProjectConfig> { projectConfig }
         single<MigConfig> { config }
         single<ProjectName> { projectName }
@@ -130,8 +123,10 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
         single<InspireBaseTemplateBuilder>()
     }
 
-    private val koinApp: KoinApplication = koinApplication {
-        modules(migrationModule)
+    private val koinApp: KoinApplication = when (projectConfig.inspireOutput) {
+        InspireOutput.Interactive -> koinApplication { modules(interactiveModule, migrationModule) }
+        InspireOutput.Designer -> koinApplication { modules(designerModule, migrationModule) }
+        InspireOutput.Evolve -> koinApplication { modules(evolveModule, migrationModule) }
     }
 
     private val koin = koinApp.koin
