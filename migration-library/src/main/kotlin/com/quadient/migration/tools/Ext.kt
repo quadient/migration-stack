@@ -96,3 +96,13 @@ inline fun <reified T, reified V> Iterable<*>.partitionByType(): Pair<List<T>, L
 fun <R : Any> R.logger(): Lazy<Logger> {
     return lazy { LoggerFactory.getLogger(this::class.java) }
 }
+
+fun Float.min(other: Float) = if (this < other) { this } else { other }
+fun Double.min(other: Double) = if (this < other) { this } else { other }
+fun Int.min(other: Int) = if (this < other) { this } else { other }
+fun Long.min(other: Double) = if (this < other) { this } else { other }
+
+fun Float.max(other: Float) = if (this > other) { this } else { other }
+fun Double.max(other: Double) = if (this > other) { this } else { other }
+fun Int.max(other: Int) = if (this > other) { this } else { other }
+fun Long.max(other: Double) = if (this > other) { this } else { other }

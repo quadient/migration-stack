@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Fixed
 
 - Fix icm remove not working properly
+- Fix tables with 0 column width size not deploying properly
 
 ## [17.0.30] - 2026-08-31
 

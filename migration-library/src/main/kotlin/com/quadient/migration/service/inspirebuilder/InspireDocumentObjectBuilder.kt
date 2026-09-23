@@ -116,6 +116,7 @@ import com.quadient.migration.shared.VariableRefPath
 import com.quadient.migration.service.resolveTarget
 import com.quadient.migration.api.dto.migrationmodel.QrCode
 import com.quadient.migration.shared.Size
+import com.quadient.migration.tools.max
 import com.quadient.wfdxml.api.layoutnodes.Flow.WebEditingType.SECTION
 import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentContent
 
@@ -1360,7 +1361,11 @@ abstract class InspireDocumentObjectBuilder(
         }
 
         if (model.columnWidths.isNotEmpty()) {
-            model.columnWidths.forEach { table.addColumn(it.minWidth.toMeters(), it.percentWidth) }
+            val minColumnSize = Size.ofMillimeters(0.001)
+            val minPercentWidth = 0.001
+            for ((minWidth, percentWidth) in model.columnWidths) {
+                table.addColumn(minWidth.max(minColumnSize).toMeters(), percentWidth.max(minPercentWidth))
+            }
         } else {
             val numberOfColumns = when (val firstRow = model.rows.firstOrNull()) {
                 is Table.Row -> firstRow.cells.size

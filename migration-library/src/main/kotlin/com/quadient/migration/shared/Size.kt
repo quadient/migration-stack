@@ -139,6 +139,9 @@ class Size {
         return "${convertedValue.toPlainString()}${unitSuffix(targetUnit)}"
     }
 
+    fun min(other: Size) = if (this.millimeters <= other.millimeters) this else other
+    fun max(other: Size) = if (this.millimeters >= other.millimeters) this else other
+
     private fun unitSuffix(u: Unit): String = when (u) {
         Unit.Points -> "pt"
         Unit.Millimeters -> "mm"
