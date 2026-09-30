@@ -38,7 +38,7 @@ class ParagraphContentCollector {
     }
 
     void addRun(XWPFRun run, String styleId) {
-        if (!run.embeddedPictures.isEmpty()) {
+        if (DocxImages.hasRunImages(run)) {
             flushText()
             flushFields()
             DocxImages.processRunImages(migration, run, fileName, textBuilders, excludedImageEmbedIds)

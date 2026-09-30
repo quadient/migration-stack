@@ -22,6 +22,10 @@ static void resetImageState() {
     imageCounter = 0
 }
 
+static boolean hasRunImages(XWPFRun run) {
+    return !run.embeddedPictures.isEmpty() || DocxVmlImages.hasImages(run)
+}
+
 static void processRunImages(Migration migration, XWPFRun run, String fileName, List<ParagraphBuilder.TextBuilder> textBuilders, Set<String> excludedEmbedIds = Collections.emptySet()) {
     run.getEmbeddedPictures().each { XWPFPicture picture ->
         XWPFPictureData data = picture.getPictureData()
@@ -32,13 +36,27 @@ static void processRunImages(Migration migration, XWPFRun run, String fileName, 
         if (embedId && excludedEmbedIds.contains(embedId)) {
             return
         }
-        String imageId = registerImageData(migration, data, fileName, resolveOptions(picture))
-        if (imageId == null) {
-            return
+        addImageRef(textBuilders, registerImageData(migration, data, fileName, resolveOptions(picture)))
+    }
+
+    DocxVmlImages.extract(run).each { VmlImageSource source ->
+        String imageId
+        if (source.embedId) {
+            if (excludedEmbedIds.contains(source.embedId)) {
+                return
+            }
+            XWPFPictureData data = run.document.getPictureDataByID(source.embedId)
+            imageId = data == null ? null : registerImageData(migration, data, fileName, source.options)
+        } else {
+            imageId = registerImageBytes(migration, source.bytes, fileName, source.imageType, source.options, source.checksum)
         }
-        ParagraphBuilder.TextBuilder textBuilder = new ParagraphBuilder.TextBuilder()
-        textBuilder.imageRef(imageId)
-        textBuilders.add(textBuilder)
+        addImageRef(textBuilders, imageId)
+    }
+}
+
+private static void addImageRef(List<ParagraphBuilder.TextBuilder> textBuilders, String imageId) {
+    if (imageId != null) {
+        textBuilders.add(new ParagraphBuilder.TextBuilder().imageRef(imageId))
     }
 }
 
@@ -47,12 +65,18 @@ static String registerImageData(Migration migration, XWPFPictureData data, Strin
     if (checksum != null && imageIdByChecksum.containsKey(checksum)) {
         return imageIdByChecksum[checksum]
     }
-
     ImageType imageType = toImageType(data.getPictureTypeEnum())
     if (imageType == ImageType.Unknown) {
-        // Unsupported/unrecognized format (e.g. EMF/WMF vector metafiles) - skip rather than upsert unusable data.
         println "  Warning: Skipping embedded image with unsupported type: ${data.getPictureTypeEnum()}"
         return null
+    }
+    return registerImageBytes(migration, data.getData(), fileName, imageType, options, checksum)
+}
+
+private static String registerImageBytes(Migration migration, byte[] imageBytes, String fileName, ImageType imageType,
+                                         ImageOptions options, Long checksum) {
+    if (checksum != null && imageIdByChecksum.containsKey(checksum)) {
+        return imageIdByChecksum[checksum]
     }
 
     String imageId = "${fileName}_img_${++imageCounter}"
@@ -60,7 +84,6 @@ static String registerImageData(Migration migration, XWPFPictureData data, Strin
 
     // Storage has both String and byte[] overloads. Keep the declared type so a malformed/empty picture payload
     // cannot make Groovy select neither overload at runtime.
-    byte[] imageBytes = data.getData()
     migration.storage.write(storagePath, imageBytes)
 
     def imageBuilder = new ImageBuilder(imageId)
