@@ -54,11 +54,12 @@ class DocxHeaderFooters {
         XWPFHeaderFooter part = selectPart(headerOnly ? parts.headers : parts.footers, page)
         if (part != null) {
             Position position = headerOnly ? headerPosition(page) : footerPosition(page)
-            Set<String> directImageEmbedIds = anchoredEmbedIds(part) + inlineEmbedIds(part)
+            Set<String> directImageEmbedIds = anchoredEmbedIds(part) + inlineEmbedIds(part) + vmlEmbedIds(part)
             Area area = buildArea(migration, part, fileName, position, directImageEmbedIds)
             if (area != null) result.add(area)
             result.addAll(inlineImageAreas(migration, doc, part, fileName, position))
             result.addAll(anchoredImageAreas(migration, doc, part, fileName, page, position))
+            result.addAll(vmlImageAreas(migration, doc, part, fileName, position))
         }
         return result
     }
@@ -166,6 +167,29 @@ class DocxHeaderFooters {
         return areas
     }
 
+    private static List<Area> vmlImageAreas(Migration migration, XWPFDocument doc, XWPFHeaderFooter source, String fileName,
+                                            Position flowPosition) {
+        List<Area> areas = []
+        source.paragraphs.each { XWPFParagraph paragraph ->
+            paragraph.runs.each { XWPFRun run ->
+                DocxVmlImages.extract(run).each { VmlImageSource vmlImage ->
+                    if (!vmlImage.embedId) return
+                    XWPFPictureData data = pictureData(doc, source, vmlImage.embedId)
+                    if (data == null) return
+                    String imageId = registerImageData(migration, data, fileName, vmlImage.options)
+                    if (imageId != null) {
+                        Size width = vmlImage.options?.resizeWidth
+                        Size height = vmlImage.options?.resizeHeight
+                        Position position = width != null && height != null
+                                ? new Position(flowPosition.x, flowPosition.y, width, height) : flowPosition
+                        areas.add(new AreaBuilder().imageRef(imageId).position(position).build())
+                    }
+                }
+            }
+        }
+        return areas
+    }
+
     private static List<CTAnchor> findAnchors(XWPFRun run) {
         XmlObject[] found = run.CTR.selectPath("declare namespace wp='${WP_NS}' .//wp:anchor")
         return found.collect { XmlObject o -> o instanceof CTAnchor ? o : CTAnchor.Factory.parse(o.xmlText()) }
@@ -195,6 +219,18 @@ class DocxHeaderFooters {
                 findInlines(run).each { XmlObject inline ->
                     String embedId = inlinePicture(inline)?.blipFill?.blip?.embed
                     if (embedId) ids.add(embedId)
+                }
+            }
+        }
+        return ids
+    }
+
+    private static Set<String> vmlEmbedIds(XWPFHeaderFooter source) {
+        Set<String> ids = []
+        source.paragraphs.each { XWPFParagraph paragraph ->
+            paragraph.runs.each { XWPFRun run ->
+                DocxVmlImages.extract(run).each { VmlImageSource image ->
+                    if (image.embedId) ids.add(image.embedId)
                 }
             }
         }
