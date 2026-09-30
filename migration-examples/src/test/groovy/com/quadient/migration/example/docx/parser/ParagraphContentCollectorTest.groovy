@@ -109,6 +109,30 @@ class ParagraphContentCollectorTest {
     }
 
     @Test
+    void "collector emits Word page fields as migration variables rather than their cached values"() {
+        // given: the PAGE and SECTIONPAGES fields in MV0407GX2.docx's footer
+        def migration = mockMigration()
+        def document = new XWPFDocument()
+        def paragraph = document.createParagraph()
+        paragraph.createRun().setText('Página ')
+        appendPageField(paragraph, ' PAGE ', '1')
+        paragraph.createRun().setText(' de ')
+        appendPageField(paragraph, ' SECTIONPAGES ', '1')
+
+        // when
+        def collector = new ParagraphContentCollector(migration, 'sample')
+        paragraph.runs.each { collector.addRun(it, 'footer') }
+        def content = collector.finish()*.build()
+
+        // then: the cached values are ignored and migration authors can bind the variables as needed
+        assert content.collect { it.content[0].hasProperty('id') ? it.content[0].id : it.content[0].value } ==
+                ['Página ', 'PageNumber', ' de ', 'SectionPagesCount']
+        verify(migration.variableRepository, times(2)).upsert(any())
+
+        document.close()
+    }
+
+    @Test
     void "adjacent exclusive equality fields become one styled FirstMatch in source order"() {
         // given
         def migration = mockMigration()

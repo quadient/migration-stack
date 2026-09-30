@@ -207,6 +207,14 @@ private static void resolveField(Migration migration, FieldParseState state, Lis
         addMergeField(migration, textBuilders, fileName, instruction, field.styleId)
         return
     }
+    String pageFieldVariableId = pageFieldVariableId(instruction)
+    if (pageFieldVariableId) {
+        // PAGE and SECTIONPAGES are Word-managed values. Keep them as ordinary migration variables so the
+        // migration author can decide whether and how to bind them to an Inspire system variable.
+        flushPendingIfFields(migration, state, textBuilders, fileName)
+        addPageField(migration, textBuilders, fileName, pageFieldVariableId, field.styleId)
+        return
+    }
 
     ParsedIfField parsed = parseIfField(field)
     if (parsed == null) {
@@ -337,6 +345,14 @@ static void addMergeField(Migration migration, List<ParagraphBuilder.TextBuilder
     if (!variableId) {
         return
     }
+    ensureVariable(migration, variableId, fileName)
+    textBuilders.add(new ParagraphBuilder.TextBuilder()
+            .variableRef(variableId)
+            .styleRef(textStyleId))
+}
+
+static void addPageField(Migration migration, List<ParagraphBuilder.TextBuilder> textBuilders, String fileName,
+                         String variableId, String textStyleId) {
     ensureVariable(migration, variableId, fileName)
     textBuilders.add(new ParagraphBuilder.TextBuilder()
             .variableRef(variableId)
@@ -563,6 +579,11 @@ private static boolean startsWithWordIgnoreCase(String input, int index, String 
 
 static boolean isMergeField(String fieldInstruction) {
     return fieldInstruction?.trim()?.toUpperCase(Locale.ROOT)?.startsWith("MERGEFIELD")
+}
+
+static String pageFieldVariableId(String fieldInstruction) {
+    String keyword = fieldInstruction?.trim()?.tokenize()?.first()?.toUpperCase(Locale.ROOT)
+    return [PAGE: 'PageNumber', SECTIONPAGES: 'SectionPagesCount'][keyword]
 }
 
 static String extractMergeFieldName(String fieldInstruction) {

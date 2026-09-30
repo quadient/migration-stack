@@ -50,9 +50,21 @@ private static <T> List<T> buildPropertyChain(T directProperties, XWPFStyles doc
 static String resolveFontName(CTRPr rPr) {
     if (rPr?.getRFontsList()) {
         def font = rPr.getRFontsList().get(0)
-        return font.getAscii() ?: font.getHAnsi() ?: font.getEastAsia()
+        return font.getAscii() ?: font.getHAnsi()
     }
     return null
+}
+
+// Word font slots are script-specific. A direct East Asian override must not replace an inherited Latin font for
+// English text (as in 01CVRPG0222.docx); use it only when the complete style chain lacks ascii/hAnsi data.
+static String resolveEffectiveFontName(List<CTRPr> chain) {
+    String latinFont = resolveFirst(chain, StyleChainResolver.&resolveFontName)
+    if (latinFont) {
+        return latinFont
+    }
+    return resolveFirst(chain) { CTRPr rPr ->
+        rPr?.getRFontsList() ? rPr.getRFontsList().get(0).getEastAsia() : null
+    }
 }
 
 static Double resolveFontSize(CTRPr rPr) {

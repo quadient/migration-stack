@@ -19,7 +19,7 @@ static String captureTextStyle(Migration migration, XWPFRun run, String fileName
     // Attribute order and fallbacks feed the style id hash; changing them invalidates persisted mappings.
     LinkedHashMap styleAttributes = [
             name    : styleId,
-            fontName: resolveFirst(rPrChain, StyleChainResolver.&resolveFontName),
+            fontName: StyleChainResolver.resolveEffectiveFontName(rPrChain),
             fontSize: (resolveFirst(rPrChain, StyleChainResolver.&resolveFontSize) ?: -1) as double,
             bold    : resolveFirst(rPrChain, StyleChainResolver.&resolveBold) ?: false,
             italic  : resolveFirst(rPrChain, StyleChainResolver.&resolveItalic) ?: false,
