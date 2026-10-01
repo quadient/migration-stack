@@ -110,7 +110,8 @@ class ParagraphContentCollectorTest {
 
     @Test
     void "collector emits Word page fields as migration variables rather than their cached values"() {
-        // given: the PAGE and SECTIONPAGES fields in MV0407GX2.docx's footer
+        // given: PAGE and SECTIONPAGES fields in MV0407GX2.docx's footer, plus NUMPAGES from
+        // Nyt brev SK195 Anmod om vidneerklæring.docx
         def migration = mockMigration()
         def document = new XWPFDocument()
         def paragraph = document.createParagraph()
@@ -118,6 +119,8 @@ class ParagraphContentCollectorTest {
         appendPageField(paragraph, ' PAGE ', '1')
         paragraph.createRun().setText(' de ')
         appendPageField(paragraph, ' SECTIONPAGES ', '1')
+        paragraph.createRun().setText(' af ')
+        appendPageField(paragraph, ' NUMPAGES ', '2')
 
         // when
         def collector = new ParagraphContentCollector(migration, 'sample')
@@ -126,8 +129,8 @@ class ParagraphContentCollectorTest {
 
         // then: the cached values are ignored and migration authors can bind the variables as needed
         assert content.collect { it.content[0].hasProperty('id') ? it.content[0].id : it.content[0].value } ==
-                ['Página ', 'PageNumber', ' de ', 'SectionPagesCount']
-        verify(migration.variableRepository, times(2)).upsert(any())
+                ['Página ', 'PageNumber', ' de ', 'SectionPagesCount', ' af ', 'PagesCount']
+        verify(migration.variableRepository, times(3)).upsert(any())
 
         document.close()
     }

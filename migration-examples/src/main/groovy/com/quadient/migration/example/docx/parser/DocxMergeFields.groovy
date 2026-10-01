@@ -209,7 +209,7 @@ private static void resolveField(Migration migration, FieldParseState state, Lis
     }
     String pageFieldVariableId = pageFieldVariableId(instruction)
     if (pageFieldVariableId) {
-        // PAGE and SECTIONPAGES are Word-managed values. Keep them as ordinary migration variables so the
+        // PAGE, NUMPAGES and SECTIONPAGES are Word-managed values. Keep them as ordinary migration variables so the
         // migration author can decide whether and how to bind them to an Inspire system variable.
         flushPendingIfFields(migration, state, textBuilders, fileName)
         addPageField(migration, textBuilders, fileName, pageFieldVariableId, field.styleId)
@@ -583,7 +583,7 @@ static boolean isMergeField(String fieldInstruction) {
 
 static String pageFieldVariableId(String fieldInstruction) {
     String keyword = fieldInstruction?.trim()?.tokenize()?.first()?.toUpperCase(Locale.ROOT)
-    return [PAGE: 'PageNumber', SECTIONPAGES: 'SectionPagesCount'][keyword]
+    return [PAGE: 'PageNumber', NUMPAGES: 'PagesCount', SECTIONPAGES: 'SectionPagesCount'][keyword]
 }
 
 static String extractMergeFieldName(String fieldInstruction) {

@@ -5,6 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import org.apache.poi.xwpf.usermodel.XWPFParagraph
 import org.apache.poi.xwpf.usermodel.XWPFFieldRun
+import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun
 import org.apache.poi.xwpf.usermodel.XWPFRun
 import org.apache.xmlbeans.XmlObject
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSimpleField
@@ -42,6 +43,17 @@ class ParagraphContentCollector {
             flushText()
             flushFields()
             DocxImages.processRunImages(migration, run, fileName, textBuilders, excludedImageEmbedIds)
+        }
+
+        if (run instanceof XWPFHyperlinkRun) {
+            String url = hyperlinkUrl(run as XWPFHyperlinkRun)
+            String displayText = run.text()
+            if (url && displayText) {
+                flushText()
+                flushFields()
+                textBuilders.add(new ParagraphBuilder.TextBuilder().hyperlink(url, displayText, null).styleRef(styleId))
+                return
+            }
         }
 
         CTSimpleField simpleField = run instanceof XWPFFieldRun ? (run as XWPFFieldRun).CTField : null
@@ -108,6 +120,11 @@ class ParagraphContentCollector {
 
     private void flushFields() {
         DocxMergeFields.flushPendingIfFields(migration, fieldState, textBuilders, fileName)
+    }
+
+    private static String hyperlinkUrl(XWPFHyperlinkRun run) {
+        String externalUrl = run.getHyperlink(run.document)?.URL
+        return externalUrl ?: (run.anchor ? "#${run.anchor}" : null)
     }
 }
 

@@ -1,6 +1,7 @@
 package com.quadient.migration.example.docx.parser
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.example.docx.util.DocxUtils
 import org.apache.poi.xwpf.usermodel.XWPFDocument
@@ -15,6 +16,28 @@ import static com.quadient.migration.example.docx.DocxFieldFixtures.*
 import static com.quadient.migration.example.Utils.mockMigration
 
 class DocxParagraphParserTest {
+
+    @Test
+    void "external hyperlinks become model hyperlinks while surrounding text remains plain"() {
+        // given: a normal Word external hyperlink between unlinked text runs
+        new XWPFDocument().withCloseable { doc ->
+            doc.createStyles()
+            def paragraph = doc.createParagraph()
+            paragraph.createRun().setText('Read ')
+            paragraph.createHyperlinkRun('https://example.com/terms').setText('the terms')
+            paragraph.createRun().setText(' before proceeding.')
+
+            // when
+            def parsed = DocxParagraphParser.parseParagraph(mockMigration(), paragraph, 'sample')
+
+            // then: only the linked text is represented by Hyperlink content, in source order
+            assert parsed.content*.content.flatten().collect { it instanceof Hyperlink ? it : it.value } == [
+                    'Read ',
+                    new Hyperlink('https://example.com/terms', 'the terms', null),
+                    ' before proceeding.'
+            ]
+        }
+    }
 
     @Test
     void "adjacent equal formatting coalesces while style changes preserve text order"() {
