@@ -48,6 +48,15 @@ class DocxVariablePatterns {
         addLiteral(textBuilders, text.substring(offset), styleId)
     }
 
+    static void addVariable(Migration migration, List<ParagraphBuilder.TextBuilder> textBuilders, String variableId,
+                            String styleId, String fileName) {
+        if (!variableId) return
+        ensureVariable(migration, variableId, fileName)
+        ParagraphBuilder.TextBuilder builder = new ParagraphBuilder.TextBuilder().variableRef(variableId)
+        if (styleId) builder.styleRef(styleId)
+        textBuilders.add(builder)
+    }
+
     private static List<Pattern> configuredPatterns(Migration migration) {
         def configured = migration.projectConfig.context?.get(CONTEXT_KEY)
         Collection values = configured instanceof Collection ? configured : configured == null ? [] : [configured]

@@ -17,6 +17,7 @@ import groovy.io.FileType
 import org.apache.poi.xwpf.usermodel.XWPFDocument
 import org.apache.poi.xwpf.usermodel.XWPFParagraph
 import org.apache.poi.xwpf.usermodel.XWPFTable
+import org.apache.poi.xwpf.usermodel.XWPFSDT
 
 import java.util.regex.Pattern
 
@@ -97,6 +98,9 @@ static List<DocumentObject> parsePages(Migration migration, File docxFile, Docum
                         if (paragraph != null) {
                             body.add(paragraph, headingLevel(elem))
                         }
+                    } else if (elem instanceof XWPFSDT) {
+                        Paragraph paragraph = DocxContentControls.parseBlock(migration, elem as XWPFSDT, fileName)
+                        if (paragraph != null) body.add(paragraph)
                     } else if (elem instanceof XWPFTable) {
                         if (fieldState.depth > 0) {
                             // The table sits inside an open IF field; it is emitted (with a display rule) once the field resolves.

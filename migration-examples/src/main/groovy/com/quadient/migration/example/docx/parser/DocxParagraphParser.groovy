@@ -7,6 +7,8 @@ import org.apache.poi.xwpf.usermodel.XWPFParagraph
 import org.apache.poi.xwpf.usermodel.XWPFFieldRun
 import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun
 import org.apache.poi.xwpf.usermodel.XWPFRun
+import org.apache.poi.xwpf.usermodel.XWPFSDT
+import org.apache.poi.xwpf.usermodel.IRunElement
 import org.apache.xmlbeans.XmlObject
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSimpleField
 
@@ -88,6 +90,14 @@ class ParagraphContentCollector {
         DocxMergeFields.handleFieldChildren(migration, fieldChildren, styleId, fieldState, textBuilders, fileName)
     }
 
+    void addContentControl(XWPFSDT control, String styleId) {
+        flushText()
+        flushFields()
+        if (!DocxContentControls.addInline(migration, textBuilders, control, styleId, fileName)) {
+            appendText(control.content.text, styleId)
+        }
+    }
+
     List<ParagraphBuilder.TextBuilder> finish() {
         flushText()
         flushFields()
@@ -143,8 +153,12 @@ static Paragraph parseFlowParagraph(Migration migration, XWPFParagraph paragraph
     String paragraphStyleId = paragraph.styleID ?: "unknown"
     ParagraphContentCollector collector = new ParagraphContentCollector(migration, fileName, excludedImageEmbedIds, fieldState)
 
-    paragraph.runs.each { XWPFRun run ->
-        collector.addRun(run, captureTextStyle(migration, run, fileName, paragraphStyleId, context))
+    paragraph.getIRuns().each { IRunElement run ->
+        if (run instanceof XWPFRun) {
+            collector.addRun(run as XWPFRun, captureTextStyle(migration, run as XWPFRun, fileName, paragraphStyleId, context))
+        } else if (run instanceof XWPFSDT) {
+            collector.addContentControl(run as XWPFSDT, null)
+        }
     }
 
     List<ParagraphBuilder.TextBuilder> content = collector.finish()
