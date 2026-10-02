@@ -2,7 +2,9 @@ package com.quadient.migration.example.docx.parser
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
+import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
 import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
+import com.quadient.migration.shared.ColumnApplyTo
 import org.apache.poi.xwpf.usermodel.XWPFTable
 import org.apache.poi.xwpf.usermodel.XWPFTableCell
 import org.apache.xmlbeans.XmlObject
@@ -94,18 +96,40 @@ class DocxBodyContent {
         if (topLevel == null) {
             return content
         }
-        List<List<DocumentContent>> sections = [[]]
-        content.each { DocumentContent item ->
-            if (headingLevels[item] == topLevel && !sections.last().isEmpty()) {
-                sections << []
+        List<DocumentContent> result = []
+        List<DocumentContent> section = []
+        int blockNumber = 0
+        ColumnLayout pendingColumnLayout
+        Closure flushSection = {
+            if (section.isEmpty()) {
+                return
             }
-            sections.last() << item
+            String id = "${pageId}_section${++blockNumber}"
+            String heading = headingLevels[section[0]] == topLevel ? extractParagraphText(section[0]) : null
+            List<DocumentContent> blockContent = pendingColumnLayout == null ? section : [new ColumnLayout(
+                    pendingColumnLayout.numberOfColumns, pendingColumnLayout.gutterWidth, pendingColumnLayout.balancingType,
+                    ColumnApplyTo.ThisBlockOnly)] + section
+            pendingColumnLayout = null
+            result.add(upsertBlock(migration, id, blockName(heading, null, id), blockContent, fileName))
+            section.clear()
         }
-        return sections.withIndex().collect { List<DocumentContent> items, int i ->
-            String id = "${pageId}_section${i + 1}"
-            String heading = headingLevels[items[0]] == topLevel ? extractParagraphText(items[0]) : null
-            upsertBlock(migration, id, blockName(heading, null, id), items, fileName)
+        content.each { DocumentContent item ->
+            // A marker before a generated block belongs to that block, so its emitted scope is ThisBlockOnly.
+            if (item instanceof ColumnLayout) {
+                flushSection()
+                pendingColumnLayout = item
+            } else {
+                if (headingLevels[item] == topLevel && !section.isEmpty()) {
+                    flushSection()
+                }
+                section << item
+            }
         }
+        flushSection()
+        if (pendingColumnLayout != null) {
+            result.add(pendingColumnLayout)
+        }
+        return result
     }
 
     // Text of the first non-empty cell of the table's first row (typically the heading of the row). Word stores the

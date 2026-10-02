@@ -2,6 +2,7 @@ package com.quadient.migration.example.docx.parser
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.Area
+import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.PageOptions
@@ -84,26 +85,33 @@ static List<DocumentObject> parsePages(Migration migration, File docxFile, Docum
             DocxBodyContent body = new DocxBodyContent(migration, fileName, pageId)
             FieldParseState fieldState = new FieldParseState(conditionalTableHandler: body.&addConditionalTable)
             int floatingTables = 0
-            page.bodyElements().each { elem ->
-                if (elem instanceof XWPFParagraph) {
-                    Paragraph paragraph = parseFlowParagraph(migration, elem, fileName, fieldState, null, anchoredAreas.consumedEmbedIds)
-                    if (paragraph != null) {
-                        body.add(paragraph, headingLevel(elem))
-                    }
-                } else if (elem instanceof XWPFTable) {
-                    if (fieldState.depth > 0) {
-                        // The table sits inside an open IF field; it is emitted (with a display rule) once the field resolves.
-                        handleTableInsideField(fieldState, elem)
-                    } else if (DocxFloatingTables.isFloating(elem)) {
-                        Area area = buildFloatingTableArea(migration, elem, page, fileName, "${pageId}_floating_table${++floatingTables}")
-                        if (area != null) {
-                            anchoredAreas.floatingAreasByPage.computeIfAbsent(page.index) { [] }.add(area)
+            page.sections.each { DocxSection section ->
+                ColumnLayout columnLayout = DocxPageLayout.resolveColumnLayout(section.sectPr)
+                if (columnLayout != null) {
+                    // A continuous section stays on the current page, so retain its position in the page flow.
+                    body.add(columnLayout)
+                }
+                section.elements.each { elem ->
+                    if (elem instanceof XWPFParagraph) {
+                        Paragraph paragraph = parseFlowParagraph(migration, elem, fileName, fieldState, null, anchoredAreas.consumedEmbedIds)
+                        if (paragraph != null) {
+                            body.add(paragraph, headingLevel(elem))
+                        }
+                    } else if (elem instanceof XWPFTable) {
+                        if (fieldState.depth > 0) {
+                            // The table sits inside an open IF field; it is emitted (with a display rule) once the field resolves.
+                            handleTableInsideField(fieldState, elem)
+                        } else if (DocxFloatingTables.isFloating(elem)) {
+                            Area area = buildFloatingTableArea(migration, elem, page, fileName, "${pageId}_floating_table${++floatingTables}")
+                            if (area != null) {
+                                anchoredAreas.floatingAreasByPage.computeIfAbsent(page.index) { [] }.add(area)
+                            }
+                        } else {
+                            addBodyTable(migration, body, elem, fileName)
                         }
                     } else {
-                        addBodyTable(migration, body, elem, fileName)
+                        otherElements++
                     }
-                } else {
-                    otherElements++
                 }
             }
             warnUnterminatedField(fieldState, "page ${page.index + 1} body")
