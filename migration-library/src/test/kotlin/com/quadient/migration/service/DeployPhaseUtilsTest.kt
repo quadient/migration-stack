@@ -19,7 +19,7 @@ class DeployPhaseUtilsTest {
 
     @Test
     fun `project config base template is used and normalized`() {
-        val result = resourcePathProvider.getBaseTemplateFullPath(projectConfig, null, findBaseTemplate).toString()
+        val result = resourcePathProvider.getBaseTemplateFullPath(null, findBaseTemplate).toString()
 
         result.shouldBeEqualTo("icm://Interactive/StandardPackage/BaseTemplates/BaseTemplate.wfd")
     }
@@ -28,7 +28,7 @@ class DeployPhaseUtilsTest {
     fun `specific base template path is preferred over the project config one`() {
         val baseTemplatePath = "icm://Interactive/Vital/BaseTemplates/MyBaseTemplate.wfd"
         val result = resourcePathProvider.getBaseTemplateFullPath(
-            projectConfig, LiteralBaseTemplatePath(baseTemplatePath), findBaseTemplate
+            LiteralBaseTemplatePath(baseTemplatePath), findBaseTemplate
         ).toString()
 
         result.shouldBeEqualTo(baseTemplatePath)
@@ -37,7 +37,7 @@ class DeployPhaseUtilsTest {
     @Test
     fun `path not starting with icm is handled as relative`() {
         val result = resourcePathProvider.getBaseTemplateFullPath(
-            projectConfig, LiteralBaseTemplatePath("/projectA/AddressBT.wfd"), findBaseTemplate
+            LiteralBaseTemplatePath("/projectA/AddressBT.wfd"), findBaseTemplate
         ).toString()
 
         result.shouldBeEqualTo("icm://Interactive/${projectConfig.interactiveTenant}/BaseTemplates/projectA/AddressBT.wfd")
@@ -47,7 +47,7 @@ class DeployPhaseUtilsTest {
     fun `only base template name in project config is correctly translated to full path`() {
         val config = aProjectConfig("myBT.wfd", interactiveTenant = "StandardPackage")
         val result = InteractiveResourcePathProvider(config).getBaseTemplateFullPath(
-            config, null, findBaseTemplate
+            null, findBaseTemplate
         ).toString()
 
         result.shouldBeEqualTo("icm://Interactive/StandardPackage/BaseTemplates/myBT.wfd")
@@ -62,7 +62,7 @@ class DeployPhaseUtilsTest {
         )
 
         val result = resourcePathProvider.getBaseTemplateFullPath(
-            projectConfig, BaseTemplateRef(baseTemplate.id)
+            BaseTemplateRef(baseTemplate.id)
         ) { id -> if (id == baseTemplate.id) baseTemplate else error("Unexpected id '$id'") }.toString()
 
         result.shouldBeEqualTo("icm://Interactive/StandardPackage/BaseTemplates/AddressBaseTemplate.wfd")
@@ -72,7 +72,7 @@ class DeployPhaseUtilsTest {
     fun `base template referenced by id fails if it cannot be found`() {
         try {
             resourcePathProvider.getBaseTemplateFullPath(
-                projectConfig, BaseTemplateRef("missing")
+                BaseTemplateRef("missing")
             ) { error("Record 'missing' not found") }
             error("Expected an exception to be thrown")
         } catch (e: IllegalStateException) {

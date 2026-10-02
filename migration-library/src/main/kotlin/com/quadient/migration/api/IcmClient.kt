@@ -191,6 +191,22 @@ interface IcmClient {
      * @throws IpsClientException if failure occurs when working with IPS
      */
     fun listFiles(path: String, extension: String? = null): FileList
+
+    /**
+     * Lists dependencies of the given ICM file
+     * @param path Path to the file in ICM, e.g. "icm://..." or "vcs://..."
+     * @return List of paths of the files the given file depends on
+     * @throws IpsClientException if failure occurs when working with IPS
+     */
+    fun listDependencies(path: String): List<String>
+
+    /**
+     * Lists dependencies of the given ICM file
+     * @param path Path to the file in ICM
+     * @return List of paths of the files the given file depends on
+     * @throws IpsClientException if failure occurs when working with IPS
+     */
+    fun listDependencies(path: IcmPath): List<String>
 }
 
 @Serializable

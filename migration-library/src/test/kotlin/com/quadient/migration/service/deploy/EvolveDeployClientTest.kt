@@ -3,10 +3,14 @@ package com.quadient.migration.service.deploy
 import com.quadient.migration.api.EvolveConfig
 import com.quadient.migration.api.InspireConfig
 import com.quadient.migration.api.MigConfig
+import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
@@ -17,34 +21,44 @@ import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
+import com.quadient.migration.data.Active
 import com.quadient.migration.service.Storage
 import com.quadient.migration.service.deploy.utility.EvolveFileNameValidator
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ConflictDetectorImpl
+import com.quadient.migration.service.deploy.utility.DeploymentError
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
+import com.quadient.migration.service.ipsclient.IpsClientException
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.ipsclient.Version
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.toIcmPath
+import com.quadient.migration.tools.aDeployedStatus
+import com.quadient.migration.tools.aErrorStatus
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfInstance
 import com.quadient.migration.tools.shouldStartWith
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
+import io.mockk.verifyOrder
+import org.jetbrains.exposed.v1.core.Op
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import kotlin.uuid.Uuid
 
 class EvolveDeployClientTest {
     val metadataValidator = MetadataValidatorImpl()
@@ -76,6 +90,7 @@ class EvolveDeployClientTest {
         publishBlockActionId = "publishBlock",
         publishTemplateActionId = "publishTemplate",
         publishRuleActionId = "publishRule",
+        publishStyleDefinitionActionId = "publishStyleDefinition",
     )
 
     val migConfig = MigConfig(inspireConfig = InspireConfig(evolveConfig = evolveConfig))
@@ -92,7 +107,10 @@ class EvolveDeployClientTest {
     val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, projectConfig.inspireOutput)
     val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, projectConfig.inspireOutput)
 
-    private val subject = EvolveDeployClient(
+    private fun createSubject(
+        projectConfig: ProjectConfig = this.projectConfig,
+        migConfig: MigConfig = this.migConfig,
+    ) = EvolveDeployClient(
         projectConfig,
         migConfig,
         caClient,
@@ -120,10 +138,19 @@ class EvolveDeployClientTest {
         storage,
     )
 
+    private val subject = createSubject()
+
     private val jld = byteArrayOf(1, 2, 3)
     private val draftGuid = "draft-guid-123"
     private val ruleGuid = "rule-guid-456"
     private val baseTemplatePath = "icm://Interactive/tenant/BaseTemplates/templ.wfd".toIcmPath()
+    private val styleDefinitionPath = "icm://Interactive/tenant/CompanyStyles/defaultFolder/nameStyles.jld".toIcmPath()
+    private val styleDefinitionBaseTemplatePath = "icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd".toIcmPath()
+    private val styleDefinitionBaseTemplateWfd = byteArrayOf(7, 8, 9)
+    private val styleDraftResult = DraftJsonIpsResult(
+        draft = CreateDraftResult(guid = draftGuid, url = "http://example.com"),
+        result = CreateIcmObjectResult(valid = true)
+    )
 
     @BeforeEach
     fun setup() {
@@ -134,8 +161,12 @@ class EvolveDeployClientTest {
         every { ipsService.deployJld(any<IcmPath>(), any<String>(), any<String>(), any<String>(), any<String>()) } returns OperationResult.Success
         every { ipsService.download(any<String>()) } returns jld
         every { ipsService.delete(any<String>()) } returns true
+        every { ipsService.listDependencies(any<IcmPath>()) } returns emptyList()
+        every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
         every { caClient.targetVersion } returns null
-        every { resourcePathProvider.getBaseTemplateFullPath(any(), any(), any()) } answers { callOriginal() }
+        every { resourcePathProvider.getBaseTemplateFullPath(any(), any()) } answers {
+            InteractiveResourcePathProvider(projectConfig).getBaseTemplateFullPath(firstArg(), secondArg())
+        }
         every { resourcePathProvider.getDocumentObjectFileName(any()) } answers { callOriginal() }
         every { resourcePathProvider.getImageFileName(any()) } answers { callOriginal() }
         every { resourcePathProvider.getAttachmentFileName(any()) } answers { callOriginal() }
@@ -144,8 +175,300 @@ class EvolveDeployClientTest {
     }
 
     @Test
-    fun `deployStyles throws IllegalStateException`() {
-        assertThrows<IllegalStateException> { subject.deployStyles() }
+    fun `deployStyles creates and publishes style definition draft from standard style definition`() {
+        mockStylesToDeploy()
+        val memoryLocation = slot<String>()
+        every { ipsService.deployStyleJld(any<String>(), any(), capture(memoryLocation)) } returns OperationResult.Success
+
+        subject.deployStyles()
+
+        memoryLocation.captured.shouldStartWith("memory://")
+        verifyOrder {
+            caClient.downloadFile(styleDefinitionBaseTemplatePath)
+            ipsService.tryUpload(styleDefinitionBaseTemplatePath, styleDefinitionBaseTemplateWfd)
+            ipsService.setProductionApprovalState(listOf(styleDefinitionBaseTemplatePath))
+            ipsService.deployStyleJld(styleDefinitionBaseTemplatePath.toString(), "<delta/>", memoryLocation.captured)
+            ipsService.download(memoryLocation.captured)
+            caClient.createStyleDefinitionDraft("nameStyles", projectConfig.defaultTargetFolder, jld)
+            caClient.executeAction("publishStyleDefinition", draftGuid, ObjectType.CompanyStyleDraft)
+        }
+        verify { ipsService.delete(memoryLocation.captured) }
+        verify { statusTrackingRepository.deployed("ts1", any<Uuid>(), any(), ResourceType.TextStyle, styleDefinitionPath, projectConfig.inspireOutput) }
+        verify { statusTrackingRepository.deployed("ps1", any<Uuid>(), any(), ResourceType.ParagraphStyle, styleDefinitionPath, projectConfig.inspireOutput) }
+        verify(exactly = 0) { statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `deployStyles records error status when standard style definition download fails`() {
+        mockStylesToDeploy()
+        every { caClient.downloadFile(styleDefinitionBaseTemplatePath) } returns HttpResult.Failure("File not found")
+
+        subject.deployStyles()
+
+        val message = "Failed to download '$styleDefinitionBaseTemplatePath' from Evolve: File not found"
+        verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, styleDefinitionPath, projectConfig.inspireOutput, message) }
+        verify { statusTrackingRepository.error("ps1", any<Uuid>(), any(), ResourceType.ParagraphStyle, styleDefinitionPath, projectConfig.inspireOutput, message) }
+        verify(exactly = 0) { ipsService.tryUpload(any<IcmPath>(), any()) }
+        verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
+        verify(exactly = 0) { ipsService.deployStyleJld(any<String>(), any(), any<String>()) }
+        verify(exactly = 0) { caClient.createStyleDefinitionDraft(any(), any(), any()) }
+    }
+
+    @Test
+    fun `deployStyles records error status and deletes memory location when style JLD deployment fails`() {
+        mockStylesToDeploy()
+        every { ipsService.deployStyleJld(any<String>(), any(), any<String>()) } returns OperationResult.Failure("IPS failure")
+
+        subject.deployStyles()
+
+        verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, styleDefinitionPath, projectConfig.inspireOutput, "IPS failure") }
+        verify { ipsService.delete(match<String> { it.startsWith("memory://") }) }
+        verify(exactly = 0) { caClient.createStyleDefinitionDraft(any(), any(), any()) }
+    }
+
+    @Test
+    fun `deployStyles records error status when createStyleDefinitionDraft fails`() {
+        mockStylesToDeploy()
+        val error = ApiBadRequestException(status = 400, title = "Bad Request", detail = "Invalid style definition")
+        every { caClient.createStyleDefinitionDraft(any(), any(), any()) } returns HttpResult.Failure(error)
+
+        subject.deployStyles()
+
+        verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, styleDefinitionPath, projectConfig.inspireOutput, "CA API error 400: Bad Request - Invalid style definition") }
+        verify(exactly = 0) { caClient.executeAction(any(), any(), any()) }
+    }
+
+    @Test
+    fun `deployStyles records error status when executeAction fails`() {
+        mockStylesToDeploy()
+        val error = ApiBadRequestException(status = 500, title = "Server Error", detail = "Action failed")
+        every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Failure(error)
+
+        subject.deployStyles()
+
+        verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, styleDefinitionPath, projectConfig.inspireOutput, "CA API error 500: Server Error - Action failed") }
+        verify(exactly = 0) { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `deployStyles throws when publishStyleDefinitionActionId is not set`() {
+        val configWithoutPublishId = MigConfig(inspireConfig = InspireConfig(evolveConfig = evolveConfig.copy(publishStyleDefinitionActionId = null)))
+
+        val exception = assertThrows<IllegalStateException> { createSubject(migConfig = configWithoutPublishId).deployStyles() }
+
+        exception.message.shouldBeEqualTo("publishStyleDefinitionActionId must be set in migration-config to deploy styles to Evolve output")
+        verify(exactly = 0) { caClient.downloadFile(any<IcmPath>()) }
+        verify(exactly = 0) { caClient.createStyleDefinitionDraft(any(), any(), any()) }
+    }
+
+    @Test
+    fun `deployStyles throws when styleDefinitionPath is configured`() {
+        val configWithStylePath = aProjectConfig(
+            baseTemplatePath = "icm://Interactive/tenant/BaseTemplates/templ.wfd",
+            interactiveTenant = "tenant",
+            targetDefaultFolder = "defaultFolder",
+            styleDefinitionPath = "icm://Interactive/tenant/CompanyStyles/Custom.jld".toIcmPath(),
+        )
+
+        val exception = assertThrows<IllegalStateException> { createSubject(projectConfig = configWithStylePath).deployStyles() }
+
+        exception.message.shouldBeEqualTo("Configured styleDefinitionPath 'icm://Interactive/tenant/CompanyStyles/Custom.jld' is not supported for Evolve output")
+        verify(exactly = 0) { caClient.downloadFile(any<IcmPath>()) }
+        verify(exactly = 0) { caClient.createStyleDefinitionDraft(any(), any(), any()) }
+    }
+
+    private fun mockStylesToDeploy() {
+        every { resourcePathProvider.getStyleDefinitionPath() } returns styleDefinitionPath
+        every { textStyleRepository.listAll() } returns listOf(TextStyleBuilder("ts1").build())
+        every { paragraphStyleRepository.listAll() } returns listOf(ParagraphStyleBuilder("ps1").build())
+        every { documentObjectBuilder.buildStyleLayoutDelta(any(), any()) } returns "<delta/>"
+        every { caClient.downloadFile(styleDefinitionBaseTemplatePath) } returns HttpResult.Success(styleDefinitionBaseTemplateWfd)
+        every { ipsService.tryUpload(styleDefinitionBaseTemplatePath, styleDefinitionBaseTemplateWfd) } returns OperationResult.Success
+        every { ipsService.deployStyleJld(any<String>(), any(), any<String>()) } returns OperationResult.Success
+        every { caClient.createStyleDefinitionDraft(any(), any(), any()) } returns HttpResult.Success(styleDraftResult)
+        every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Success(Unit)
+        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every { statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
+    }
+
+    @Test
+    fun `deployDocumentObjects copies base template from Evolve to local ICM once before building`() {
+        val baseTemplateWfd = byteArrayOf(4, 5, 6)
+        mockDocumentObjectsToDeploy(
+            DocumentObjectBuilder("T1", DocumentObjectType.Template).build(),
+            DocumentObjectBuilder("T2", DocumentObjectType.Template).build(),
+        )
+        every { caClient.downloadFile(baseTemplatePath) } returns HttpResult.Success(baseTemplateWfd)
+        every { ipsService.tryUpload(baseTemplatePath, baseTemplateWfd) } returns OperationResult.Success
+
+        val result = subject.deployDocumentObjects()
+
+        result.errors.shouldBeEqualTo(mutableListOf())
+        verify(exactly = 1) { caClient.downloadFile(baseTemplatePath) }
+        verifyOrder {
+            ipsService.tryUpload(baseTemplatePath, baseTemplateWfd)
+            documentObjectBuilder.buildDocumentObject(any())
+        }
+    }
+
+    @Test
+    fun `deployDocumentObjects records error and skips JLD deployment when base template copy fails`() {
+        mockDocumentObjectsToDeploy(DocumentObjectBuilder("T1", DocumentObjectType.Template).build())
+        every { caClient.downloadFile(baseTemplatePath) } returns HttpResult.Failure("File not found")
+
+        val result = subject.deployDocumentObjects()
+
+        result.errors.shouldBeEqualTo(
+            mutableListOf(DeploymentError("T1", "Failed to download '$baseTemplatePath' from Evolve: File not found"))
+        )
+        verify(exactly = 0) { ipsService.tryUpload(any<IcmPath>(), any()) }
+        verify(exactly = 0) { ipsService.deployJld(any<IcmPath>(), any<String>(), any<String>(), any<String>(), any<String>()) }
+        verify(exactly = 0) { ipsService.listDependencies(any<IcmPath>()) }
+        verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
+    }
+
+    @Test
+    fun `deployDocumentObjects copies deduplicated base template dependencies to local ICM`() {
+        val customBaseTemplatePath = "icm://Interactive/tenant/BaseTemplates/custom.wfd".toIcmPath()
+        val image = "icm://Interactive/tenant/Images/logo.jpg".toIcmPath()
+        val font = "icm://Interactive/tenant/Fonts/arial.ttf".toIcmPath()
+        val flow = "icm://Interactive/tenant/Flows/footer.wfd".toIcmPath()
+        mockDocumentObjectsToDeploy(
+            DocumentObjectBuilder("T1", DocumentObjectType.Template).build(),
+            DocumentObjectBuilder("T2", DocumentObjectType.Template).baseTemplatePath(customBaseTemplatePath.toString()).build(),
+        )
+        every { caClient.downloadFile(any<IcmPath>()) } answers { HttpResult.Success(firstArg<IcmPath>().toString().toByteArray()) }
+        every { ipsService.tryUpload(any<IcmPath>(), any()) } returns OperationResult.Success
+        every { ipsService.listDependencies(baseTemplatePath) } returns listOf(image.toString(), font.toString())
+        every { ipsService.listDependencies(customBaseTemplatePath) } returns listOf("vcs://Interactive/tenant/Images/logo.jpg", flow.toString())
+
+        val result = subject.deployDocumentObjects()
+
+        result.errors.shouldBeEqualTo(mutableListOf())
+        verify(exactly = 1) { caClient.downloadFile(image) }
+        verify(exactly = 1) { caClient.downloadFile(font) }
+        verify(exactly = 1) { caClient.downloadFile(flow) }
+        verifyOrder {
+            ipsService.tryUpload(image, any())
+            ipsService.tryUpload(font, any())
+            ipsService.tryUpload(flow, any())
+            documentObjectBuilder.buildDocumentObject(any())
+        }
+    }
+
+    @Test
+    fun `deployDocumentObjects records error and skips JLD deployment when base template dependency copy fails`() {
+        val image = "icm://Interactive/tenant/Images/logo.jpg".toIcmPath()
+        mockDocumentObjectsToDeploy(DocumentObjectBuilder("T1", DocumentObjectType.Template).build())
+        every { caClient.downloadFile(baseTemplatePath) } returns HttpResult.Success(byteArrayOf(4, 5, 6))
+        every { caClient.downloadFile(image) } returns HttpResult.Failure("File not found")
+        every { ipsService.tryUpload(baseTemplatePath, any()) } returns OperationResult.Success
+        every { ipsService.listDependencies(baseTemplatePath) } returns listOf(image.toString())
+
+        val result = subject.deployDocumentObjects()
+
+        result.errors.shouldBeEqualTo(
+            mutableListOf(DeploymentError("T1", "Failed to download '$image' from Evolve: File not found"))
+        )
+        verify(exactly = 0) { ipsService.deployJld(any<IcmPath>(), any<String>(), any<String>(), any<String>(), any<String>()) }
+    }
+
+    @Test
+    fun `deployDocumentObjects sets production approval state on copied base templates and dependencies in local ICM`() {
+        val customBaseTemplatePath = "icm://Interactive/tenant/BaseTemplates/custom.wfd".toIcmPath()
+        val image = "icm://Interactive/tenant/Images/logo.jpg".toIcmPath()
+        val font = "icm://Interactive/tenant/Fonts/arial.ttf".toIcmPath()
+        val flow = "icm://Interactive/tenant/Flows/footer.wfd".toIcmPath()
+        mockDocumentObjectsToDeploy(
+            DocumentObjectBuilder("T1", DocumentObjectType.Template).build(),
+            DocumentObjectBuilder("T2", DocumentObjectType.Template).baseTemplatePath(customBaseTemplatePath.toString()).build(),
+        )
+        every { caClient.downloadFile(any<IcmPath>()) } answers { HttpResult.Success(firstArg<IcmPath>().toString().toByteArray()) }
+        every { ipsService.tryUpload(any<IcmPath>(), any()) } returns OperationResult.Success
+        every { ipsService.listDependencies(baseTemplatePath) } returns listOf(image.toString(), font.toString())
+        every { ipsService.listDependencies(customBaseTemplatePath) } returns listOf(image.toString(), flow.toString())
+
+        val result = subject.deployDocumentObjects()
+
+        result.errors.shouldBeEqualTo(mutableListOf())
+        verify(exactly = 1) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
+        verifyOrder {
+            ipsService.tryUpload(flow, any())
+            ipsService.setProductionApprovalState(listOf(baseTemplatePath, customBaseTemplatePath, image, font, flow))
+            documentObjectBuilder.buildDocumentObject(any())
+        }
+    }
+
+    @Test
+    fun `deployDocumentObjects does not approve files whose copy failed`() {
+        val image = "icm://Interactive/tenant/Images/logo.jpg".toIcmPath()
+        mockDocumentObjectsToDeploy(DocumentObjectBuilder("T1", DocumentObjectType.Template).build())
+        every { caClient.downloadFile(baseTemplatePath) } returns HttpResult.Success(byteArrayOf(4, 5, 6))
+        every { caClient.downloadFile(image) } returns HttpResult.Failure("File not found")
+        every { ipsService.tryUpload(baseTemplatePath, any()) } returns OperationResult.Success
+        every { ipsService.listDependencies(baseTemplatePath) } returns listOf(image.toString())
+
+        subject.deployDocumentObjects()
+
+        verify(exactly = 1) { ipsService.setProductionApprovalState(listOf(baseTemplatePath)) }
+    }
+
+    @Test
+    fun `deployDocumentObjects continues deployment when setting production approval state fails`() {
+        mockDocumentObjectsToDeploy(DocumentObjectBuilder("T1", DocumentObjectType.Template).build())
+        every { caClient.downloadFile(baseTemplatePath) } returns HttpResult.Success(byteArrayOf(4, 5, 6))
+        every { ipsService.tryUpload(baseTemplatePath, any()) } returns OperationResult.Success
+        every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Failure("IPS failure")
+
+        val result = subject.deployDocumentObjects()
+
+        result.errors.shouldBeEqualTo(mutableListOf())
+        verify(exactly = 1) { ipsService.deployJld(baseTemplatePath, any<String>(), any<String>(), any<String>(), any<String>()) }
+    }
+
+    @Test
+    fun `deployDocumentObjects records error and skips JLD deployment when listing base template dependencies fails`() {
+        mockDocumentObjectsToDeploy(DocumentObjectBuilder("T1", DocumentObjectType.Template).build())
+        every { caClient.downloadFile(baseTemplatePath) } returns HttpResult.Success(byteArrayOf(4, 5, 6))
+        every { ipsService.tryUpload(baseTemplatePath, any()) } returns OperationResult.Success
+        every { ipsService.listDependencies(baseTemplatePath) } throws IpsClientException("IPS failure")
+
+        val result = subject.deployDocumentObjects()
+
+        result.errors.shouldBeEqualTo(
+            mutableListOf(DeploymentError("T1", "Failed to list dependencies of base template '$baseTemplatePath': IPS failure"))
+        )
+        verify(exactly = 0) { ipsService.deployJld(any<IcmPath>(), any<String>(), any<String>(), any<String>(), any<String>()) }
+    }
+
+    @Test
+    fun `validateConflicts does not copy base template to local ICM`() {
+        mockDocumentObjectsToDeploy(DocumentObjectBuilder("T1", DocumentObjectType.Template).build())
+        every { statusTrackingRepository.listAll() } returns emptyList()
+
+        subject.validateConflicts()
+
+        verify(exactly = 0) { caClient.downloadFile(any<IcmPath>()) }
+        verify(exactly = 0) { ipsService.tryUpload(any<IcmPath>(), any()) }
+    }
+
+    private fun mockDocumentObjectsToDeploy(vararg documentObjects: DocumentObject) {
+        val draftResult = DraftJsonIpsResult(
+            draft = CreateDraftResult(guid = draftGuid, url = "http://example.com"),
+            result = CreateIcmObjectResult(valid = true)
+        )
+        every { documentObjectRepository.list(any<Op<Boolean>>()) } returns documentObjects.toList()
+        every { documentObjectRepository.listAll() } returns documentObjects.toList()
+        every { documentObjectRepository.find(any()) } answers { documentObjects.find { it.id == firstArg<String>() } }
+        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
+        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every { statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
+        every { documentObjectBuilder.buildDocumentObject(any()) } returns "<xml/>"
+        every { resourcePathProvider.getDocumentObjectPath(any()) } answers {
+            "icm://Interactive/tenant/Templates/${firstArg<DocumentObject>().id}.jld".toIcmPath()
+        }
+        every { caClient.createTemplateDraft(any(), any(), any(), any()) } returns HttpResult.Success(draftResult)
+        every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Success(Unit)
     }
 
     @Test

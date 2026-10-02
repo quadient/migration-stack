@@ -1,5 +1,6 @@
 package com.quadient.migration.shared
 
+import com.quadient.migration.tools.shouldBeEqualTo
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -287,5 +288,68 @@ class IcmPathTest {
         val reconstructed = original.parentDir().join(original.filename())
 
         assertEquals(original, reconstructed)
+    }
+
+    @Test
+    fun `startsWith returns true when path starts with string prefix`() {
+        val path = IcmPath.from("icm://Interactive/tenant/Images/logo.jpg")
+
+        path.startsWith("icm://Interactive/tenant/").shouldBeEqualTo(true)
+    }
+
+    @Test
+    fun `startsWith returns false when path does not start with string prefix`() {
+        val path = IcmPath.from("icm://Interactive/tenant/Images/logo.jpg")
+
+        path.startsWith("icm://Interactive/other/").shouldBeEqualTo(false)
+    }
+
+    @Test
+    fun `startsWith returns true when path starts with IcmPath prefix`() {
+        val path = IcmPath.from("icm://Interactive/tenant/Images/logo.jpg")
+
+        path.startsWith(IcmPath.from("vcs://Interactive/tenant/Images")).shouldBeEqualTo(true)
+    }
+
+    @Test
+    fun `startsWith returns false when path does not start with IcmPath prefix`() {
+        val path = IcmPath.from("icm://Interactive/tenant/Images/logo.jpg")
+
+        path.startsWith(IcmPath.from("icm://Interactive/other")).shouldBeEqualTo(false)
+    }
+
+    @Test
+    fun `startsWith normalizes vcs string prefix`() {
+        val path = IcmPath.from("icm://Interactive/tenant/Images/logo.jpg")
+
+        path.startsWith("vcs://Interactive/tenant").shouldBeEqualTo(true)
+    }
+
+    @Test
+    fun `startsWith returns false when prefix matches only part of folder name`() {
+        val path = IcmPath.from("icm://Interactive/tenant/Images/logo.jpg")
+
+        path.startsWith("icm://Interactive/ten").shouldBeEqualTo(false)
+    }
+
+    @Test
+    fun `startsWith returns true when prefix is the same path`() {
+        val path = IcmPath.from("icm://Interactive/tenant/Images/logo.jpg")
+
+        path.startsWith("icm://Interactive/tenant/Images/logo.jpg").shouldBeEqualTo(true)
+    }
+
+    @Test
+    fun `startsWith root returns true for absolute path`() {
+        val path = IcmPath.from("icm://Interactive/tenant/Images/logo.jpg")
+
+        path.startsWith(IcmPath.root()).shouldBeEqualTo(true)
+    }
+
+    @Test
+    fun `startsWith root returns false for relative path`() {
+        val path = IcmPath.from("Images/logo.jpg")
+
+        path.startsWith(IcmPath.root()).shouldBeEqualTo(false)
     }
 }

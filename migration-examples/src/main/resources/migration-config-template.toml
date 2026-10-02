@@ -21,3 +21,4 @@ port = 30354
 # publishBlockActionId = "A_block_scenario_senior_template_designer_publish"
 # publishTemplateActionId = "A_template_scenario_senior_template_designer_publish"
 # publishRuleActionId = "A_rule_scenario_senior_template_designer_publish"
+# publishStyleDefinitionActionId = "<action id>" # Optional, required for DeployStyles

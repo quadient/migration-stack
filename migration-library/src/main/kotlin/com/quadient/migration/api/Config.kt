@@ -104,6 +104,7 @@ data class EvolveConfig(
     val publishBlockActionId: String,
     val publishTemplateActionId: String,
     val publishRuleActionId: String,
+    val publishStyleDefinitionActionId: String? = null,
 )
 
 data class IpsConfig(val host: String = "localhost", val port: Int = 30354, val timeoutSeconds: Int = 120)

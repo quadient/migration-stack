@@ -26,8 +26,10 @@ import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
+import com.quadient.migration.service.ipsclient.IpsClientException
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.ipsclient.Version
@@ -37,6 +39,8 @@ import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.shared.toIcmPath
 import java.util.UUID
+import kotlin.time.Clock
+import kotlin.uuid.Uuid
 
 class EvolveDeployClient(
     private val projectConfig: ProjectConfig,
@@ -89,6 +93,10 @@ class EvolveDeployClient(
     ipsService,
     storage,
 ) {
+    private companion object {
+        val STYLE_DEFINITION_MASTER = "icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd".toIcmPath()
+    }
+
     init {
         // Clear existing postprocessors for Interactive output since
         // they are not valid for Evolve output
@@ -103,13 +111,66 @@ class EvolveDeployClient(
         }
     }
 
+    private val baseTemplateCopyFailures = mutableMapOf<IcmPath, OperationResult.Failure>()
+
+    override fun prepareDocumentObjectsDeployment(documentObjects: List<DocumentObject>) {
+        baseTemplateCopyFailures.clear()
+        val baseTemplatePaths = documentObjects.map { obj ->
+            resourcePathProvider.getBaseTemplateFullPath(obj.baseTemplate, baseTemplateRepository::findOrFail)
+        }.distinct()
+
+        val dependenciesByBaseTemplate = mutableMapOf<IcmPath, List<IcmPath>>()
+        for (path in baseTemplatePaths) {
+            val result = copyFileToLocalIcm(path)
+            if (result is OperationResult.Failure) {
+                logger.error(result.message)
+                baseTemplateCopyFailures[path] = result
+                continue
+            }
+
+            val dependencies = try {
+                ipsService.listDependencies(path)
+            } catch (e: IpsClientException) {
+                val failure = OperationResult.Failure("Failed to list dependencies of base template '$path': ${e.message}")
+                logger.error(failure.message)
+                baseTemplateCopyFailures[path] = failure
+                continue
+            }
+            dependenciesByBaseTemplate[path] = dependencies.map(String::toIcmPath)
+        }
+
+        val dependencies = dependenciesByBaseTemplate.values
+            .flatten()
+            .distinct()
+            // Do not download the color profiles, download is blocked on Evolve side,
+            // and they should already be present in the local StandardPackage
+            .filter { !it.startsWith("icm://Interactive/StandardPackage/CompanyStyles/ICCProfiles") }
+        val dependencyCopyFailures = mutableMapOf<IcmPath, OperationResult.Failure>()
+        for (path in dependencies) {
+            val result = copyFileToLocalIcm(path)
+            if (result is OperationResult.Failure) {
+                logger.error(result.message)
+                dependencyCopyFailures[path] = result
+            }
+        }
+
+        approveInLocalIcm((dependenciesByBaseTemplate.keys + dependencies.filterNot(dependencyCopyFailures::containsKey)).toList())
+
+        for ((baseTemplatePath, baseTemplateDependencies) in dependenciesByBaseTemplate) {
+            baseTemplateDependencies.firstNotNullOfOrNull { dependencyCopyFailures[it] }?.let {
+                baseTemplateCopyFailures[baseTemplatePath] = it
+            }
+        }
+    }
+
+
     override fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult {
+        val baseTemplatePath = resourcePathProvider.getBaseTemplateFullPath(obj.baseTemplate, baseTemplateRepository::findOrFail)
+        baseTemplateCopyFailures[baseTemplatePath]?.let { return it }
+
         val ipsMemLocation = "memory://${UUID.randomUUID()}"
         try {
             val runCommandType = obj.type.toRunCommandType()
-            val baseTemplatePath = resourcePathProvider.getBaseTemplateFullPath(
-                projectConfig, obj.baseTemplate
-            ) { baseTemplateRepository.findOrFail(it) }
             val deployResult = ipsService.deployJld(
                 baseTemplate = baseTemplatePath,
                 type = runCommandType,
@@ -230,9 +291,7 @@ class EvolveDeployClient(
         val resolvedFolder = resolveTargetDir(projectConfig.defaultTargetFolder, rule.targetFolder?.toIcmPath())
 
         val baseTemplatePath = try {
-            resourcePathProvider.getBaseTemplateFullPath(
-                projectConfig, rule.baseTemplate
-            ) { baseTemplateRepository.findOrFail(it) }
+            resourcePathProvider.getBaseTemplateFullPath(rule.baseTemplate, baseTemplateRepository::findOrFail)
         } catch (e: IllegalStateException) {
             return OperationResult.Failure(e.message ?: "Failed to resolve base template for display rule '${rule.id}'.")
         }
@@ -256,7 +315,115 @@ class EvolveDeployClient(
     }
 
     override fun deployStyles() {
-        error("Styles deployment is not currently supported in Evolve output")
+        if (projectConfig.styleDefinitionPath != null) {
+            error("Configured styleDefinitionPath '${projectConfig.styleDefinitionPath}' is not supported for Evolve output")
+        }
+        val publishActionId = evolveConfig.publishStyleDefinitionActionId
+            ?: error("publishStyleDefinitionActionId must be set in migration-config to deploy styles to Evolve output")
+
+        val deploymentId = Uuid.random()
+        val deploymentTimestamp = Clock.System.now()
+        val targetPath = resourcePathProvider.getStyleDefinitionPath()
+
+        val textStyles = textStyleRepository.listAll().filter { it.targetId == null }
+        val paragraphStyles = paragraphStyleRepository.listAll().filter { it.targetId == null }
+
+        val result = run {
+            val copyResult = copyFileToLocalIcm(STYLE_DEFINITION_MASTER)
+            if (copyResult is OperationResult.Failure) {
+                return@run copyResult
+            }
+            approveInLocalIcm(listOf(STYLE_DEFINITION_MASTER))
+
+            val ipsMemLocation = "memory://${UUID.randomUUID()}"
+            try {
+                val styleLayoutDeltaXml = documentObjectBuilder.buildStyleLayoutDelta(
+                    textStyles = textStyles,
+                    paragraphStyles = paragraphStyles
+                )
+
+                val deployResult = ipsService.deployStyleJld(
+                    baseTemplate = STYLE_DEFINITION_MASTER.toString(),
+                    xmlContent = styleLayoutDeltaXml,
+                    outputPath = ipsMemLocation,
+                )
+                if (deployResult is OperationResult.Failure) {
+                    return@run deployResult
+                }
+
+                val jld = runCatching { ipsService.download(ipsMemLocation) }.getOrElse {
+                    return@run OperationResult.Failure("Failed to download deployed style definition from '$ipsMemLocation': ${it.message}")
+                }
+
+                val name = targetPath.filename().removeSuffix(".jld")
+                val draftResult = caClient.createStyleDefinitionDraft(name, resolveTargetDir(projectConfig.defaultTargetFolder), jld)
+                if (draftResult !is HttpResult.Success) {
+                    return@run draftResult.toOperationResult()
+                }
+
+                caClient.executeAction(
+                    publishActionId,
+                    draftResult.response.draft.guid,
+                    ObjectType.CompanyStyleDraft,
+                ).toOperationResult()
+            } finally {
+                runCatching { ipsService.delete(ipsMemLocation) }.getOrElse {
+                    logger.error("Failed to delete deployed style definition from '$ipsMemLocation': ${it.message}")
+                }
+            }
+        }
+
+        when (result) {
+            OperationResult.Success -> {
+                logger.debug("Deployment of style definition '$targetPath' is successful.")
+                textStyles.forEach {
+                    statusTrackingRepository.deployed(
+                        id = it.id,
+                        deploymentId = deploymentId,
+                        timestamp = deploymentTimestamp,
+                        resourceType = ResourceType.TextStyle,
+                        icmPath = targetPath,
+                        output = projectConfig.inspireOutput
+                    )
+                }
+                paragraphStyles.forEach {
+                    statusTrackingRepository.deployed(
+                        id = it.id,
+                        deploymentId = deploymentId,
+                        timestamp = deploymentTimestamp,
+                        resourceType = ResourceType.ParagraphStyle,
+                        icmPath = targetPath,
+                        output = projectConfig.inspireOutput
+                    )
+                }
+            }
+
+            is OperationResult.Failure -> {
+                logger.error("Failed to deploy style definition '$targetPath': ${result.message}")
+                textStyles.forEach {
+                    statusTrackingRepository.error(
+                        it.id,
+                        deploymentId,
+                        deploymentTimestamp,
+                        ResourceType.TextStyle,
+                        targetPath,
+                        projectConfig.inspireOutput,
+                        result.message
+                    )
+                }
+                paragraphStyles.forEach {
+                    statusTrackingRepository.error(
+                        it.id,
+                        deploymentId,
+                        deploymentTimestamp,
+                        ResourceType.ParagraphStyle,
+                        targetPath,
+                        projectConfig.inspireOutput,
+                        result.message
+                    )
+                }
+            }
+        }
     }
 
     override fun deployBaseTemplates(): DeploymentResult {
@@ -296,5 +463,27 @@ class EvolveDeployClient(
                 })
             })
         )
+    }
+
+    private fun copyFileToLocalIcm(path: IcmPath): OperationResult {
+        val data = when (val result = caClient.downloadFile(path)) {
+            is HttpResult.Success if result.response.isEmpty() -> return OperationResult.Failure("Failed to download '$path' from Evolve: empty response. Does the file exist?")
+            is HttpResult.Success -> result.response
+            is HttpResult.Failure -> return OperationResult.Failure("Failed to download '$path' from Evolve: ${result.error}")
+            is HttpResult.Exception -> return OperationResult.Failure("Failed to download '$path' from Evolve: ${result.cause.message}")
+        }
+
+        return when (val uploadResult = ipsService.tryUpload(path, data)) {
+            is OperationResult.Success -> uploadResult
+            is OperationResult.Failure -> OperationResult.Failure("Failed to copy '$path' to local ICM: ${uploadResult.message}")
+        }
+    }
+
+    private fun approveInLocalIcm(paths: List<IcmPath>) {
+        if (paths.isEmpty()) return
+        val result = ipsService.setProductionApprovalState(paths)
+        if (result is OperationResult.Failure) {
+            logger.error("Failed to set production approval state in local ICM for $paths: ${result.message}")
+        }
     }
 }

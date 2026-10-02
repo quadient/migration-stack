@@ -5,6 +5,7 @@ import com.quadient.migration.api.InspireConfig
 import com.quadient.migration.api.MigConfig
 import com.quadient.migration.shared.IcmPath
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldBeNull
 import com.quadient.migration.tools.shouldBeOfInstance
 import io.mockk.every
 import io.mockk.mockk
@@ -114,6 +115,7 @@ class CaApiClientTest {
             requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.companyUrl}/authoring/api/system/v1/templateDraft/createFromJson")
             requestSlot.captured.method.shouldBeEqualTo("POST")
             multipartPartNames(requestSlot.captured).containsAll(listOf("name", "baseTemplatePath", "holder", "holderType", "jsonData", "state")).shouldBeEqualTo(true)
+            multipartPartValueString("createFolder").shouldBeEqualTo("true")
             multipartPartValueString("name").shouldBeEqualTo("MyTemplate")
             multipartPartValueString("holder").shouldBeEqualTo(evolveConfig.holder)
             multipartPartValueString("holderType").shouldBeEqualTo(evolveConfig.holderType)
@@ -160,6 +162,7 @@ class CaApiClientTest {
             success.response.result.contentMigrationResult?.result.shouldBeEqualTo(ContentMigrationResultStatus.Warning)
             requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.companyUrl}/authoring/api/system/v1/blockDraft/createFromJson")
             requestSlot.captured.method.shouldBeEqualTo("POST")
+            multipartPartValueString("createFolder").shouldBeEqualTo("true")
             multipartPartValueString("name").shouldBeEqualTo("MyBlock")
             multipartPartValueString("state").shouldBeEqualTo("S_block_scenario_assigned")
         }
@@ -206,6 +209,7 @@ class CaApiClientTest {
             requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.companyUrl}/authoring/api/system/v1/ruleDraft/createFromJson")
             requestSlot.captured.method.shouldBeEqualTo("POST")
             multipartPartNames(requestSlot.captured).containsAll(listOf("name", "baseTemplatePath", "holder", "holderType", "jsonData", "state")).shouldBeEqualTo(true)
+            multipartPartValueString("createFolder").shouldBeEqualTo("true")
             multipartPartValueString("name").shouldBeEqualTo("MyRule")
             multipartPartValueString("state").shouldBeEqualTo("S_rule_scenario_assigned")
         }
@@ -230,6 +234,40 @@ class CaApiClientTest {
             result.shouldBeOfInstance<HttpResult.Exception<*, *>>()
             (result as HttpResult.Exception).cause.message?.contains("network error").shouldBeEqualTo(true)
         }
+    }
+
+    @Test
+    fun `createStyleDefinitionDraft sends POST to correct endpoint with expected fields and returns Success`() {
+        mockSuccessResponse("""{"draft":{"guid":"style-guid","url":"https://ca.example.com/draft"},"result":{"valid":true}}""")
+        val jsonData = """{"type":"styles"}""".toByteArray()
+
+        val result = subject.createStyleDefinitionDraft("MyStyles", IcmPath.from("icm://folder"), jsonData)
+
+        result.shouldBeOfInstance<HttpResult.Success<*, *>>()
+        val success = result as HttpResult.Success
+        success.response.draft.guid.shouldBeEqualTo("style-guid")
+        success.response.result.valid.shouldBeEqualTo(true)
+        requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.companyUrl}/authoring/api/system/v1/styleDefinitionDraft/createFromJson")
+        requestSlot.captured.method.shouldBeEqualTo("POST")
+        requestSlot.captured.header("Authorization").shouldBeEqualTo("Bearer ${evolveConfig.contentAuthorApiKey}")
+        multipartPartValueString("createFolder").shouldBeEqualTo("true")
+        multipartPartValueString("name").shouldBeEqualTo("MyStyles")
+        multipartPartValueString("holder").shouldBeEqualTo(evolveConfig.holder)
+        multipartPartValueString("holderType").shouldBeEqualTo(evolveConfig.holderType)
+        multipartPartValueString("state").shouldBeEqualTo("S_company_styles_scenario_assigned")
+        multipartPartValueString("folder").shouldBeEqualTo("icm://folder")
+        multipartPartValue("jsonData").shouldBeEqualTo(jsonData)
+    }
+
+    @Test
+    fun `createStyleDefinitionDraft returns Failure on 400 response`() {
+        mockFailureResponse(400)
+
+        val result = subject.createStyleDefinitionDraft("MyStyles", null, byteArrayOf())
+
+        result.shouldBeOfInstance<HttpResult.Failure<*, *>>()
+        (result as HttpResult.Failure).error.detail.shouldBeEqualTo("Invalid input")
+        multipartPartValue("folder").shouldBeNull()
     }
 
     @Nested

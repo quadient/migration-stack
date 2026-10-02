@@ -555,6 +555,30 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
 
         return Json.decodeFromString<FileList>(inner)
     }
+
+    override fun listDependencies(path: String): List<String> {
+        val resultLocation = "memory://${UUID.randomUUID()}"
+        try {
+            val result = runWfd("listDependencies.wfd", listOf("-f", resultLocation, "-pathInput", path))
+            if (result !is OperationResult.Success) {
+                throw IpsClientException("Failed to list dependencies of file: $path")
+            }
+
+            val resultJson = client.download(resultLocation).throwIfNotOk()
+            val json = Json.decodeFromString<JsonElement>(String(resultJson.customData))
+            val inner = json.jsonObject["Params"]!!.jsonObject["files"]!!.jsonPrimitive.content
+
+            return Json.decodeFromString<JsonElement>(inner).jsonObject["files"]!!.jsonArray.map { it.jsonPrimitive.content }
+        } finally {
+            client.remove(resultLocation).ifNotSuccess {
+                logger.error("Failed to cleanup listDependencies.wfd result memory: {}", it)
+            }
+        }
+    }
+
+    override fun listDependencies(path: IcmPath): List<String> {
+        return listDependencies(path.toString())
+    }
 }
 
 data class UploadedFile(val path: String, val onClose: () -> Unit)

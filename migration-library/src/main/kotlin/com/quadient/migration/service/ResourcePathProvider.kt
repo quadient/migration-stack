@@ -28,7 +28,6 @@ interface ResourcePathProvider {
     fun getAttachmentPath(attachment: Attachment): IcmPath
 
     fun getBaseTemplateFullPath(
-        config: ProjectConfig,
         documentObjectBaseTemplate: BaseTemplateLocation?,
         findBaseTemplate: (String) -> BaseTemplate,
     ): IcmPath
@@ -131,7 +130,6 @@ class DesignerResourcePathProvider(private val projectConfig: ProjectConfig) : R
     }
 
     override fun getBaseTemplateFullPath(
-        config: ProjectConfig,
         documentObjectBaseTemplate: BaseTemplateLocation?,
         findBaseTemplate: (String) -> BaseTemplate
     ): IcmPath {
@@ -257,7 +255,6 @@ open class InteractiveResourcePathProvider(private val projectConfig: ProjectCon
     }
 
     override fun getBaseTemplateFullPath(
-        config: ProjectConfig,
         documentObjectBaseTemplate: BaseTemplateLocation?,
         findBaseTemplate: (String) -> BaseTemplate,
     ): IcmPath {
@@ -269,7 +266,7 @@ open class InteractiveResourcePathProvider(private val projectConfig: ProjectCon
                 return getBaseTemplatePath(baseTemplate)
             }
 
-            null -> config.baseTemplatePath
+            null -> projectConfig.baseTemplatePath
         }
 
         val path = literalPath.toIcmPath()

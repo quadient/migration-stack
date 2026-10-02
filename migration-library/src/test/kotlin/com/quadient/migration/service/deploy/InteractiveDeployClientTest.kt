@@ -17,6 +17,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DisplayRuleRepository
@@ -163,7 +164,9 @@ class InteractiveDeployClientTest {
         every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
         every { documentObjectRepository.find(any()) } returns null
         every { documentObjectRepository.listAll() } returns emptyList()
-        every { resourcePathProvider.getBaseTemplateFullPath(any(), any(), any()) } answers { callOriginal() }
+        every { resourcePathProvider.getBaseTemplateFullPath(any(), any()) } answers {
+            InteractiveResourcePathProvider(config).getBaseTemplateFullPath(firstArg(), secondArg())
+        }
         every { resourcePathProvider.getDocumentObjectFileName(any()) } answers { callOriginal() }
         every { resourcePathProvider.getImageFileName(any()) } answers { callOriginal() }
         every { resourcePathProvider.getAttachmentFileName(any()) } answers { callOriginal() }
@@ -538,6 +541,32 @@ class InteractiveDeployClientTest {
 
         // then
         verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd.toIcmPath())) }
+        verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
+    }
+
+    @Test
+    fun `deployStyles records error status when style jld deployment fails`() {
+        // given
+        val textStyle = TextStyleBuilder("ts1").build()
+        every { documentObjectBuilder.buildStyles(any(), any()) } returns "<xml />"
+        every { documentObjectBuilder.buildStyleLayoutDelta(any(), any()) } returns "<xml />"
+        every { textStyleRepository.listAll() } returns listOf(textStyle)
+        every { paragraphStyleRepository.listAll() } returns emptyList()
+        every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Success
+        every { ipsService.deployStyleJld(any<IcmPath>(), any(), any<IcmPath>()) } returns OperationResult.Failure("Problem")
+        every {
+            statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any())
+        } returns aErrorStatus("ts1")
+
+        val definitionPathJld =
+            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld"
+        every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
+
+        // when
+        subject().deployStyles()
+
+        // then
+        verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, any(), any(), "") }
         verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
     }
 

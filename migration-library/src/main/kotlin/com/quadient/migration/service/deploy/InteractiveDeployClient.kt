@@ -168,9 +168,7 @@ open class InteractiveDeployClient(
     override fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult {
         val runCommandType = obj.type.toRunCommandType()
         return ipsService.deployJld(
-            baseTemplate = resourcePathProvider.getBaseTemplateFullPath(
-                projectConfig, obj.baseTemplate
-            ) { baseTemplateRepository.findOrFail(it) },
+            baseTemplate = resourcePathProvider.getBaseTemplateFullPath(obj.baseTemplate,baseTemplateRepository::findOrFail),
             type = runCommandType,
             moduleName = "DocumentLayout",
             xmlContent = wfdXml,
@@ -349,8 +347,9 @@ open class InteractiveDeployClient(
 
             val baseTemplatePath = try {
                 resourcePathProvider.getBaseTemplateFullPath(
-                    projectConfig, rule.baseTemplate
-                ) { baseTemplateRepository.findOrFail(it) }.toMapInteractive(projectConfig.interactiveTenant)
+                    rule.baseTemplate,
+                    baseTemplateRepository::findOrFail
+                ).toMapInteractive(projectConfig.interactiveTenant)
             } catch (e: IllegalStateException) {
                 tracker.errorDisplayRule(rule.id, targetPath, e.message ?: "")
                 continue

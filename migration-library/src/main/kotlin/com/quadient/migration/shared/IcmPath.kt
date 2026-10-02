@@ -42,6 +42,15 @@ data class IcmPath private constructor(val path: String) {
     fun isAbsolute() = path.startsWith(SCHEMA)
     override fun toString() = path
 
+    fun startsWith(prefix: String) = startsWith(from(prefix))
+    fun startsWith(prefix: IcmPath): Boolean {
+        if (prefix.path == SCHEMA) {
+            return path.startsWith(SCHEMA)
+        }
+
+        return path == prefix.path || path.startsWith("${prefix.path}/")
+    }
+
     fun join(other: IcmPath?): IcmPath {
         if (other.isNullOrBlank()) {
             return this

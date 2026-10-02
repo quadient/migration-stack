@@ -124,19 +124,22 @@ sealed class DeployClient(
         }
 
         val tracker = ResultTrackerImpl(statusTrackingRepository, projectConfig.inspireOutput)
-        val result = if (skipDependencies) {
-            val ordered = refInheritanceService.apply(deployOrder(documentObjects))
-            deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
+        val ordered = if (skipDependencies) {
+            refInheritanceService.apply(deployOrder(documentObjects))
         } else {
             val dependencies = documentObjects.flatMap { it.findDependencies() }.filter { it.internal != true }
-            val ordered = refInheritanceService.apply(deployOrder((documentObjects + dependencies).toSet().toList()))
-            deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
+            refInheritanceService.apply(deployOrder((documentObjects + dependencies).toSet().toList()))
         }
+
+        prepareDocumentObjectsDeployment(ordered)
+        val result = deployDocumentObjectsInternal(ordered, tracker, ::uploadDocumentObject, ::uploadImage, ::uploadAttachment, ::uploadDisplayRule)
 
         runPostProcessors(result)
 
         return result
     }
+
+    protected open fun prepareDocumentObjectsDeployment(documentObjects: List<DocumentObject>) {}
 
     protected fun deployImagesAndAttachments(
         documentObjects: List<DocumentObject>,

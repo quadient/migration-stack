@@ -7,7 +7,12 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromStream
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import okhttp3.Call
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -69,6 +74,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
                 addFormDataPart("production", production.toString())
                 addFormDataPart("update", update.toString())
                 addFormDataPart("dataStream", filename, data.toRequestBody())
+                addFormDataPart("createPath", "true")
             }
             .executeRetrying()
     }
@@ -82,6 +88,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
         logger.debug("Creating template draft to {}/{}.jld", targetFolder, name)
         return createRequest("/templateDraft/createFromJson")
             .postMultipartForm {
+                addFormDataPart("createFolder", "true")
                 addFormDataPart("name", name)
                 addFormDataPart("baseTemplatePath", baseTemplatePath.toString())
                 addFormDataPart("holder", evolveConfig.holder)
@@ -102,6 +109,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
         logger.debug("Creating block draft to {}/{}.jld", targetFolder, name)
         return createRequest("/blockDraft/createFromJson")
             .postMultipartForm {
+                addFormDataPart("createFolder", "true")
                 addFormDataPart("baseTemplatePath", baseTemplatePath.toString())
                 addFormDataPart("holder", evolveConfig.holder)
                 addFormDataPart("holderType", evolveConfig.holderType)
@@ -122,12 +130,32 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
         logger.debug("Creating rule draft to {}/{}.jrd", targetFolder, name)
         return createRequest("/ruleDraft/createFromJson")
             .postMultipartForm {
+                addFormDataPart("createFolder", "true")
                 addFormDataPart("baseTemplatePath", baseTemplatePath.toString())
                 addFormDataPart("holder", evolveConfig.holder)
                 addFormDataPart("holderType", evolveConfig.holderType)
                 addFormDataPart("jsonData", null, data.toRequestBody())
                 addFormDataPart("name", name)
                 addFormDataPart("state", "S_rule_scenario_assigned")
+                addNonEmptyFormDataPart("folder", targetFolder?.toString())
+            }
+            .executeRetrying()
+    }
+
+    fun createStyleDefinitionDraft(
+        name: String,
+        targetFolder: IcmPath?,
+        data: ByteArray,
+    ): HttpResult<DraftJsonIpsResult, ApiBadRequestException> {
+        logger.debug("Creating style definition draft to {}/{}.jld", targetFolder, name)
+        return createRequest("/styleDefinitionDraft/createFromJson")
+            .postMultipartForm {
+                addFormDataPart("createFolder", "true")
+                addFormDataPart("holder", evolveConfig.holder)
+                addFormDataPart("holderType", evolveConfig.holderType)
+                addFormDataPart("jsonData", null, data.toRequestBody())
+                addFormDataPart("name", name)
+                addFormDataPart("state", "S_company_styles_scenario_assigned")
                 addNonEmptyFormDataPart("folder", targetFolder?.toString())
             }
             .executeRetrying()
@@ -147,6 +175,64 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
         return createRequest("/approvalProcesses/executeAction")
             .post(body.toRequestBody("application/json".toMediaType()))
             .executeRetrying()
+    }
+
+    fun downloadFile(source: IcmPath) = downloadFile(source.toString())
+    fun downloadFile(source: String): HttpResult<ByteArray, String> {
+        logger.debug("Downloading file {}", source)
+        val body = buildJsonObject {
+            put("pipelineName", "readFile")
+            putJsonArray("steps") {
+                addJsonObject {
+                    put("name", "Resource Copy")
+                    put("isRetryProcessingEnabled", false)
+                    put("failureNotificationEnabled", false)
+                    put("continueOnFailure", false)
+                    putJsonObject("module") {
+                        put("modulePath", "Public Modules/Utilities/Resource Copy")
+                        putJsonArray("approvedCapabilities") {}
+                        putJsonArray("inputParameters") {
+                            addJsonObject {
+                                put("parameterId", "source")
+                                put("value", source)
+                            }
+                            addJsonObject {
+                                put("parameterId", "target")
+                                put("value", "response://")
+                            }
+                            addJsonObject {
+                                put("parameterId", "strategy")
+                                put("value", "Overwrite")
+                            }
+                        }
+                        putJsonArray("outputParametersMapping") {}
+                    }
+                }
+            }
+            putJsonArray("onErrorSteps") {}
+            putJsonArray("variables") {
+                addJsonObject {
+                    put("codeName", "path")
+                    put("value", "")
+                    put("type", "Pipeline")
+                }
+            }
+            put("createWorkingFolder", false)
+            put("useDraftResources", false)
+            put("retryStepProcessingMode", "Disabled")
+        }
+
+        val request = Request.Builder()
+            .url("$baseUrl/production/v7/onDemandDocument")
+            .header("Authorization", "Bearer ${evolveConfig.contentAuthorApiKey}")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        return httpClient.newCall(request).executeRetrying(
+            delayMs = evolveConfig.apiRetryDelayMs,
+            successDecoder = { it.readBytes() },
+            failureDecoder = { it },
+        )
     }
 
     private fun MultipartBody.Builder.addNonEmptyFormDataPart(name: String, value: String?) {
