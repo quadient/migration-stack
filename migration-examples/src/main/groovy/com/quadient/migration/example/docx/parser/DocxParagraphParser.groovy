@@ -59,13 +59,13 @@ class ParagraphContentCollector {
         CTSimpleField simpleField = run instanceof XWPFFieldRun ? (run as XWPFFieldRun).CTField : null
         if (simpleField != null && !resolvedSimpleFields.contains(simpleField)) {
             String instruction = simpleField.instr
-            String pageFieldVariableId = DocxMergeFields.pageFieldVariableId(instruction)
-            if (DocxMergeFields.isMergeField(instruction) || pageFieldVariableId) {
+            String systemVariableId = DocxMergeFields.systemFieldVariableId(instruction)
+            if (DocxMergeFields.isMergeField(instruction) || systemVariableId) {
                 resolvedSimpleFields.add(simpleField)
                 flushText()
                 flushFields()
-                if (pageFieldVariableId) {
-                    DocxMergeFields.addPageField(migration, textBuilders, fileName, pageFieldVariableId, styleId)
+                if (systemVariableId) {
+                    DocxMergeFields.addSystemField(migration, textBuilders, fileName, systemVariableId, styleId)
                 } else {
                     DocxMergeFields.addMergeField(migration, textBuilders, fileName, instruction, styleId)
                 }

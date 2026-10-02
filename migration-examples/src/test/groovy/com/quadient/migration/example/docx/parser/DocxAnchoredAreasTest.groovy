@@ -2,11 +2,16 @@ package com.quadient.migration.example.docx.parser
 
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
+import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import org.apache.poi.common.usermodel.PictureType
 import org.apache.poi.xwpf.usermodel.XWPFDocument
+import org.apache.poi.xwpf.usermodel.XWPFParagraph
 import org.apache.poi.xwpf.usermodel.XWPFPictureData
 import org.apache.xmlbeans.XmlObject
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentCaptor
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTAnchor
@@ -16,9 +21,39 @@ import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.STRelFro
 
 import static org.mockito.Mockito.mock
 import static org.mockito.Mockito.when
+import static org.mockito.Mockito.verify
 import static com.quadient.migration.example.Utils.mockMigration
 
 class DocxAnchoredAreasTest {
+    @Test
+    void "legacy VML text box becomes a positioned area with parsed merge fields"() {
+        // given: the VML w:pict/v:shape form used by KB47 - Velkommen til GF Grænsen_Følgebrev.docx
+        new XWPFDocument().withCloseable { document ->
+            def paragraph = new XWPFParagraph(CTP.Factory.parse('''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+                    xmlns:v="urn:schemas-microsoft-com:vml">
+                <w:r><w:pict><v:shape id="address-box" style="position:absolute;margin-left:12pt;margin-top:18pt;width:120pt;height:36pt">
+                    <v:textbox><w:txbxContent><w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r>
+                    <w:r><w:instrText xml:space="preserve"> MERGEFIELD customer_name </w:instrText></w:r>
+                    <w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Customer name</w:t></w:r>
+                    <w:r><w:fldChar w:fldCharType="end"/></w:r></w:p></w:txbxContent></v:textbox>
+                </v:shape></w:pict></w:r>
+            </w:p>'''), document)
+            def page = page()
+            page.sections = [new DocxSection(elements: [paragraph])]
+            def migration = mockMigration()
+
+            // when
+            def result = DocxAnchoredAreas.extract(migration, document, 'sample', [page])
+
+            // then: VML CSS geometry is relative to the content origin and the cached merge value is ignored
+            def area = result.floatingAreasByPage[0][0]
+            assert [area.position.x, area.position.y, area.position.width, area.position.height]*.toPoints() == [52d, 78d, 120d, 36d]
+            def blockCaptor = ArgumentCaptor.forClass(DocumentObject)
+            verify(migration.documentObjectRepository).upsert(blockCaptor.capture())
+            assert blockCaptor.value.content[0].content[0].content[0] == new VariableRef('customer_name')
+        }
+    }
+
     @Test
     void "page-sized image is a background and the same embed is suppressed from floating areas across pages"() {
         // given: the same image appears as a small anchor and a duplicated background on another page

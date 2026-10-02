@@ -109,9 +109,8 @@ class ParagraphContentCollectorTest {
     }
 
     @Test
-    void "collector emits Word page fields as migration variables rather than their cached values"() {
-        // given: PAGE and SECTIONPAGES fields in MV0407GX2.docx's footer, plus NUMPAGES from
-        // Nyt brev SK195 Anmod om vidneerklæring.docx
+    void "collector emits recognized Word system fields as migration variables rather than their cached values"() {
+        // given: page fields plus DATE and TIME from the GF documents
         def migration = mockMigration()
         def document = new XWPFDocument()
         def paragraph = document.createParagraph()
@@ -121,6 +120,10 @@ class ParagraphContentCollectorTest {
         appendPageField(paragraph, ' SECTIONPAGES ', '1')
         paragraph.createRun().setText(' af ')
         appendPageField(paragraph, ' NUMPAGES ', '2')
+        paragraph.createRun().setText(' den ')
+        appendPageField(paragraph, ' DATE \\@ "d. MMMM yyyy" ', '1. oktober 2026')
+        paragraph.createRun().setText(' kl. ')
+        appendPageField(paragraph, ' TIME \\@ "HH:mm" ', '13:45')
 
         // when
         def collector = new ParagraphContentCollector(migration, 'sample')
@@ -129,8 +132,9 @@ class ParagraphContentCollectorTest {
 
         // then: the cached values are ignored and migration authors can bind the variables as needed
         assert content.collect { it.content[0].hasProperty('id') ? it.content[0].id : it.content[0].value } ==
-                ['Página ', 'PageNumber', ' de ', 'SectionPagesCount', ' af ', 'PagesCount']
-        verify(migration.variableRepository, times(3)).upsert(any())
+                ['Página ', 'systemPageNumber', ' de ', 'systemSectionPages', ' af ', 'systemTotalPages',
+                 ' den ', 'systemCurrentDate', ' kl. ', 'systemCurrentDateTime']
+        verify(migration.variableRepository, times(5)).upsert(any())
 
         document.close()
     }

@@ -133,6 +133,17 @@ class ParsedIfField {
 @Field
 static final char PLACEHOLDER = (char) 0xE000
 
+// Word-managed fields are deliberately separate from authored MERGEFIELD data.  Add supported fields here rather
+// than creating one-off parsing branches, and keep their source-independent model IDs in the system* namespace.
+@Field
+static final Map<String, String> SYSTEM_FIELD_VARIABLE_IDS = [
+        PAGE        : 'systemPageNumber',
+        NUMPAGES    : 'systemTotalPages',
+        SECTIONPAGES: 'systemSectionPages',
+        DATE        : 'systemCurrentDate',
+        TIME        : 'systemCurrentDateTime',
+].asImmutable()
+
 static List<XmlObject> fieldChildren(XWPFRun run) {
     return run.CTR.selectPath("./*").findAll { it.domNode.localName in ["fldChar", "instrText"] }
 }
@@ -207,12 +218,12 @@ private static void resolveField(Migration migration, FieldParseState state, Lis
         addMergeField(migration, textBuilders, fileName, instruction, field.styleId)
         return
     }
-    String pageFieldVariableId = pageFieldVariableId(instruction)
-    if (pageFieldVariableId) {
-        // PAGE, NUMPAGES and SECTIONPAGES are Word-managed values. Keep them as ordinary migration variables so the
-        // migration author can decide whether and how to bind them to an Inspire system variable.
+    String systemVariableId = systemFieldVariableId(instruction)
+    if (systemVariableId) {
+        // Word-managed values remain ordinary migration variables.  Their system* IDs prevent collisions with
+        // MERGEFIELD data and leave the migration author free to bind them to target system variables.
         flushPendingIfFields(migration, state, textBuilders, fileName)
-        addPageField(migration, textBuilders, fileName, pageFieldVariableId, field.styleId)
+        addSystemField(migration, textBuilders, fileName, systemVariableId, field.styleId)
         return
     }
 
@@ -351,8 +362,8 @@ static void addMergeField(Migration migration, List<ParagraphBuilder.TextBuilder
             .styleRef(textStyleId))
 }
 
-static void addPageField(Migration migration, List<ParagraphBuilder.TextBuilder> textBuilders, String fileName,
-                         String variableId, String textStyleId) {
+static void addSystemField(Migration migration, List<ParagraphBuilder.TextBuilder> textBuilders, String fileName,
+                           String variableId, String textStyleId) {
     ensureVariable(migration, variableId, fileName)
     textBuilders.add(new ParagraphBuilder.TextBuilder()
             .variableRef(variableId)
@@ -581,9 +592,9 @@ static boolean isMergeField(String fieldInstruction) {
     return fieldInstruction?.trim()?.toUpperCase(Locale.ROOT)?.startsWith("MERGEFIELD")
 }
 
-static String pageFieldVariableId(String fieldInstruction) {
+static String systemFieldVariableId(String fieldInstruction) {
     String keyword = fieldInstruction?.trim()?.tokenize()?.first()?.toUpperCase(Locale.ROOT)
-    return [PAGE: 'PageNumber', NUMPAGES: 'PagesCount', SECTIONPAGES: 'SectionPagesCount'][keyword]
+    return SYSTEM_FIELD_VARIABLE_IDS[keyword]
 }
 
 static String extractMergeFieldName(String fieldInstruction) {
