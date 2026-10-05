@@ -61,6 +61,7 @@ dependencies {
     constraints {
         implementation("com.fasterxml.jackson.core:jackson-databind:2.21.5")
         implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.21.5")
+        implementation("org.apache.logging.log4j:log4j-api:2.26.1")
     }
 }
 
