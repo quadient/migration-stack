@@ -42,6 +42,7 @@ class DocxAnchoredAreas {
     private static final String WPS_SHAPE_URI = "http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
     private static final String PIC_NS = "http://schemas.openxmlformats.org/drawingml/2006/picture"
     private static final String VML_NS = "urn:schemas-microsoft-com:vml"
+    private static final String MC_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
     private static final double BACKGROUND_COVERAGE_THRESHOLD = 0.6
 
     final Map<Integer, List<Area>> backgroundAreasByPage = [:]
@@ -164,7 +165,23 @@ class DocxAnchoredAreas {
         Element runDom = documentBuilder.parse(new InputSource(new StringReader(run.CTR.xmlText()))).documentElement
         def shapes = runDom.getElementsByTagNameNS(VML_NS, 'shape')
         return (0..<shapes.length).collect { shapes.item(it) as Element }
-                .findAll { it.getElementsByTagNameNS(W_NS, 'txbxContent').length > 0 }
+                .findAll { it.getElementsByTagNameNS(W_NS, 'txbxContent').length > 0 && !isVmlFallbackForAnchor(it) }
+    }
+
+    // Word's AlternateContent stores the same floating text box twice: a modern wp:anchor for current clients and
+    // a VML shape fallback for older ones.  POI exposes both branches, but only the modern choice is rendered.
+    private static boolean isVmlFallbackForAnchor(Element shape) {
+        Node current = shape
+        while ((current = current.parentNode) != null) {
+            if (current.nodeType != Node.ELEMENT_NODE || current.namespaceURI != MC_NS || current.localName != 'Fallback') {
+                continue
+            }
+            Node alternateContent = current.parentNode
+            return alternateContent instanceof Element && alternateContent.namespaceURI == MC_NS &&
+                    alternateContent.localName == 'AlternateContent' &&
+                    (alternateContent as Element).getElementsByTagNameNS(WP_NS, 'anchor').length > 0
+        }
+        return false
     }
 
     private static String vmlShapeId(Element shape) {

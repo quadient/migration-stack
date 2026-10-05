@@ -56,6 +56,24 @@ class DocxAnchoredAreasTest {
     }
 
     @Test
+    void "VML fallback text box is not duplicated when its alternate content has an anchor"() {
+        new XWPFDocument().withCloseable { document ->
+            document.createStyles()
+            def paragraph = document.createParagraph()
+            setAnchorWithVmlFallback(paragraph.createRun())
+            def page = page()
+            page.sections = [new DocxSection(elements: [paragraph])]
+            def migration = mockMigration()
+
+            def result = DocxAnchoredAreas.extract(migration, document, 'sample', [page])
+
+            assert result.floatingAreasByPage[0].size() == 1
+            assert [result.floatingAreasByPage[0][0].position.x, result.floatingAreasByPage[0][0].position.y]*.toPoints() == [50d, 80d]
+            verify(migration.documentObjectRepository).upsert(org.mockito.ArgumentMatchers.any(DocumentObject))
+        }
+    }
+
+    @Test
     void "page-sized image is a background and the same embed is suppressed from floating areas across pages"() {
         // given: the same image appears as a small anchor and a duplicated background on another page
         DocxImages.resetImageState()
@@ -106,6 +124,26 @@ class DocxAnchoredAreasTest {
             <pic:pic><pic:blipFill><a:blip r:embed="rId1"/></pic:blipFill></pic:pic>
         </xml-fragment>'''))
         graphicData.uri = 'http://schemas.openxmlformats.org/drawingml/2006/picture'
+    }
+
+    private static void setAnchorWithVmlFallback(def run) {
+        run.CTR.set(XmlObject.Factory.parse('''<xml-fragment
+                xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+                xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+                xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+                xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+                xmlns:v="urn:schemas-microsoft-com:vml"
+                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">
+            <mc:AlternateContent><mc:Choice Requires="wps"><w:drawing><wp:anchor>
+                <wp:positionH relativeFrom="margin"><wp:posOffset>127000</wp:posOffset></wp:positionH>
+                <wp:positionV relativeFrom="margin"><wp:posOffset>254000</wp:posOffset></wp:positionV>
+                <wp:extent cx="1270000" cy="635000"/><a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">
+                <wps:wsp><wps:txbx><w:txbxContent><w:p><w:r><w:t>Address</w:t></w:r></w:p></w:txbxContent></wps:txbx></wps:wsp>
+                </a:graphicData></a:graphic></wp:anchor></w:drawing></mc:Choice>
+                <mc:Fallback><w:pict><v:shape id="address-box" style="position:absolute;margin-left:12pt;margin-top:18pt;width:120pt;height:36pt">
+                <v:textbox><w:txbxContent><w:p><w:r><w:t>Address</w:t></w:r></w:p></w:txbxContent></v:textbox>
+                </v:shape></w:pict></mc:Fallback></mc:AlternateContent>
+            </xml-fragment>'''))
     }
 
     @ParameterizedTest
