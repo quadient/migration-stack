@@ -94,7 +94,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
                 addFormDataPart("holder", evolveConfig.holder)
                 addFormDataPart("holderType", evolveConfig.holderType)
                 addFormDataPart("jsonData", null, data.toRequestBody())
-                addFormDataPart("state", "S_template_scenario_assigned")
+                addFormDataPart("state", evolveConfig.initialTemplateStateId)
                 addNonEmptyFormDataPart("folder", targetFolder?.toString())
             }
             .executeRetrying()
@@ -115,7 +115,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
                 addFormDataPart("holderType", evolveConfig.holderType)
                 addFormDataPart("jsonData", null, data.toRequestBody())
                 addFormDataPart("name", name)
-                addFormDataPart("state", "S_block_scenario_assigned")
+                addFormDataPart("state", evolveConfig.initialBlockStateId)
                 addNonEmptyFormDataPart("folder", targetFolder?.toString())
             }
             .executeRetrying()
@@ -136,7 +136,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
                 addFormDataPart("holderType", evolveConfig.holderType)
                 addFormDataPart("jsonData", null, data.toRequestBody())
                 addFormDataPart("name", name)
-                addFormDataPart("state", "S_rule_scenario_assigned")
+                addFormDataPart("state", evolveConfig.initialRuleStateId)
                 addNonEmptyFormDataPart("folder", targetFolder?.toString())
             }
             .executeRetrying()
@@ -155,7 +155,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
                 addFormDataPart("holderType", evolveConfig.holderType)
                 addFormDataPart("jsonData", null, data.toRequestBody())
                 addFormDataPart("name", name)
-                addFormDataPart("state", "S_company_styles_scenario_assigned")
+                addFormDataPart("state", evolveConfig.initialStyleDefinitionStateId)
                 addNonEmptyFormDataPart("folder", targetFolder?.toString())
             }
             .executeRetrying()

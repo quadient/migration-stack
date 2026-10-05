@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - New parser for DOCX format
 - Forbidden characters in filenames are now validated during deploy stage and will not be deployed if they are present.
 - DeployStyles is now supported in Evolve output
+- Option to configure the initial state of Evolve resources
 
 ### Changed
 
