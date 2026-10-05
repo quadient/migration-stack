@@ -134,8 +134,8 @@ class DocumentParser {
     Migration migration
 
     DocumentParser(def parsedData, templateName, source, migration){
-        indexes = new ArrayList<int>()
-        paragraphsOutOfSections = new ArrayList<int>()
+        indexes = new ArrayList<Integer>()
+        paragraphsOutOfSections = new ArrayList<Integer>()
         sections = parsedData.get("sections")
         figures = parsedData.get("figures")
         paragraphs = parsedData.get("paragraphs")

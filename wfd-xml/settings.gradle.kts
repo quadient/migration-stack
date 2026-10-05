@@ -13,6 +13,8 @@ dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {
             from(files("../gradle/libs.versions.toml"))
+            // TODO: remove once Spock is released for Groovy 6
+            version("groovy", "5.1.2")
         }
     }
 }
