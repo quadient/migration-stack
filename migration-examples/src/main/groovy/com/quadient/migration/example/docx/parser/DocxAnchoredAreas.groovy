@@ -18,6 +18,7 @@ import org.openxmlformats.schemas.drawingml.x2006.picture.CTPicture
 import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTAnchor
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP
 import org.w3c.dom.Node
+import org.w3c.dom.Element
 import org.xml.sax.InputSource
 
 import javax.xml.parsers.DocumentBuilder
@@ -40,6 +41,7 @@ class DocxAnchoredAreas {
     private static final String W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
     private static final String WPS_SHAPE_URI = "http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
     private static final String PIC_NS = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+    private static final String VML_NS = "urn:schemas-microsoft-com:vml"
     private static final double BACKGROUND_COVERAGE_THRESHOLD = 0.6
 
     final Map<Integer, List<Area>> backgroundAreasByPage = [:]
@@ -67,7 +69,10 @@ class DocxAnchoredAreas {
         DocxAnchoredAreas result = new DocxAnchoredAreas(migration, doc, fileName)
         // Backgrounds are resolved over the whole document first so the same picture is never emitted as floating too.
         pages.each { DocxPage page -> result.eachUniqueAnchor(page) { result.addBackgroundArea(it, page) } }
-        pages.each { DocxPage page -> result.eachUniqueAnchor(page) { result.addFloatingArea(it, page) } }
+        pages.each { DocxPage page ->
+            result.eachUniqueAnchor(page) { result.addFloatingArea(it, page) }
+            result.eachUniqueVmlTextBox(page) { result.addVmlTextBoxArea(it, page) }
+        }
         return result
     }
 
@@ -78,6 +83,21 @@ class DocxAnchoredAreas {
                 findAnchors(run).each { CTAnchor anchor ->
                     if (seenDrawingIds.add(anchor.docPr?.id ?: anchor.xmlText())) {
                         handler(anchor)
+                    }
+                }
+            }
+        }
+    }
+
+    // Older Word documents use VML w:pict/v:shape text boxes rather than DrawingML wp:anchor shapes.
+    private void eachUniqueVmlTextBox(DocxPage page, Closure<Void> handler) {
+        Set<Object> seenShapeIds = []
+        page.paragraphs().each { XWPFParagraph paragraph ->
+            paragraph.runs.each { XWPFRun run ->
+                findVmlTextBoxes(run).each { Element shape ->
+                    String shapeId = vmlShapeId(shape)
+                    if (seenShapeIds.add(shapeId ?: shape.textContent)) {
+                        handler(shape)
                     }
                 }
             }
@@ -116,6 +136,13 @@ class DocxAnchoredAreas {
         }
     }
 
+    private void addVmlTextBoxArea(Element shape, DocxPage page) {
+        Area area = buildVmlTextBoxArea(shape, page)
+        if (area != null) {
+            floatingAreasByPage.computeIfAbsent(page.index) { [] }.add(area)
+        }
+    }
+
     private static boolean isPicture(CTAnchor anchor) {
         return anchor.graphic?.graphicData?.uri == PIC_NS
     }
@@ -130,6 +157,18 @@ class DocxAnchoredAreas {
     private static List<CTAnchor> findAnchors(XWPFRun run) {
         XmlObject[] found = run.CTR.selectPath("declare namespace wp='${WP_NS}' .//wp:anchor")
         return found.collect { XmlObject o -> o instanceof CTAnchor ? o : CTAnchor.Factory.parse(o.xmlText()) }
+    }
+
+    private List<Element> findVmlTextBoxes(XWPFRun run) {
+        // XMLBeans' XPath support can require optional Saxon classes.  DOM traversal keeps this parser self-contained.
+        Element runDom = documentBuilder.parse(new InputSource(new StringReader(run.CTR.xmlText()))).documentElement
+        def shapes = runDom.getElementsByTagNameNS(VML_NS, 'shape')
+        return (0..<shapes.length).collect { shapes.item(it) as Element }
+                .findAll { it.getElementsByTagNameNS(W_NS, 'txbxContent').length > 0 }
+    }
+
+    private static String vmlShapeId(Element shape) {
+        return shape.getAttribute('id') ?: null
     }
 
     private static String extractBlipEmbedId(CTAnchor anchor) {
@@ -161,29 +200,72 @@ class DocxAnchoredAreas {
             if (!cursor.toFirstChild()) {
                 return null
             }
-            def shapeDom = documentBuilder.parse(new InputSource(new StringReader(cursor.xmlText())))
-            def txbxContentNodes = shapeDom.getElementsByTagNameNS(W_NS, "txbxContent")
-            if (txbxContentNodes.length == 0) {
-                return null
-            }
-            List<DocumentContent> contentItems = []
-            def children = txbxContentNodes.item(0).childNodes
-            for (int i = 0; i < children.length; i++) {
-                Node child = children.item(i)
-                if (child.nodeType == Node.ELEMENT_NODE && child.localName == 'p') {
-                    XWPFParagraph paragraph = new XWPFParagraph(domParagraphToCtp(child), doc)
-                    contentItems.add(parseParagraph(migration, paragraph, fileName))
-                }
-            }
-            if (contentItems.isEmpty()) {
-                return null
-            }
-            String blockId = "${page.id(fileName)}_textbox${++textBoxes}"
-            String firstText = contentItems.findResult { extractParagraphText(it)?.trim() ?: null }
-            DocumentObjectRef blockRef = upsertBlock(migration, blockId, blockName(firstText, "text box", blockId), contentItems, fileName)
-            return new AreaBuilder().content([blockRef]).position(resolveAnchorPosition(anchor, page)).build()
+            return buildTextBoxArea(cursor.xmlText(), resolveAnchorPosition(anchor, page), page)
         } finally {
             cursor.dispose()
+        }
+    }
+
+    private Area buildVmlTextBoxArea(Element shape, DocxPage page) {
+        return buildTextBoxArea(shape, resolveVmlShapePosition(shape, page), page)
+    }
+
+    private Area buildTextBoxArea(String shapeXml, Position position, DocxPage page) {
+        def shapeDom = documentBuilder.parse(new InputSource(new StringReader(shapeXml)))
+        return buildTextBoxArea(shapeDom.documentElement, position, page)
+    }
+
+    private Area buildTextBoxArea(Element shapeDom, Position position, DocxPage page) {
+        def txbxContentNodes = shapeDom.getElementsByTagNameNS(W_NS, "txbxContent")
+        if (txbxContentNodes.length == 0) {
+            return null
+        }
+        List<DocumentContent> contentItems = []
+        def children = txbxContentNodes.item(0).childNodes
+        for (int i = 0; i < children.length; i++) {
+            Node child = children.item(i)
+            if (child.nodeType == Node.ELEMENT_NODE && child.localName == 'p') {
+                XWPFParagraph paragraph = new XWPFParagraph(domParagraphToCtp(child), doc)
+                contentItems.add(parseParagraph(migration, paragraph, fileName))
+            }
+        }
+        if (contentItems.isEmpty()) {
+            return null
+        }
+        String blockId = "${page.id(fileName)}_textbox${++textBoxes}"
+        String firstText = contentItems.findResult { extractParagraphText(it)?.trim() ?: null }
+        DocumentObjectRef blockRef = upsertBlock(migration, blockId, blockName(firstText, "text box", blockId), contentItems, fileName)
+        return new AreaBuilder().content([blockRef]).position(position).build()
+    }
+
+    private Position resolveVmlShapePosition(Element shape, DocxPage page) {
+        Map<String, String> style = vmlStyle(shape.getAttribute('style'))
+        double x = page.contentPosition.x.toPoints() + vmlPoints(style['margin-left'])
+        double y = page.contentPosition.y.toPoints() + vmlPoints(style['margin-top'])
+        return new Position(Size.ofPoints(x), Size.ofPoints(y), Size.ofPoints(vmlPoints(style['width'])), Size.ofPoints(vmlPoints(style['height'])))
+    }
+
+    private static Map<String, String> vmlStyle(String value) {
+        return value.split(';').collectEntries { String property ->
+            int separator = property.indexOf(':')
+            separator < 0 ? [:] : [(property.substring(0, separator).trim().toLowerCase(Locale.ROOT)): property.substring(separator + 1).trim()]
+        }
+    }
+
+    // Word's VML geometry is CSS-like; point values dominate its generated documents, with the common alternatives
+    // handled here as well so that the resulting Area geometry stays in points.
+    private static double vmlPoints(String value) {
+        def matcher = value =~ /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))(pt|in|cm|mm|px)?$/
+        if (!matcher.matches()) {
+            return 0d
+        }
+        double number = matcher.group(1) as double
+        return switch (matcher.group(2)?.toLowerCase(Locale.ROOT)) {
+            case 'in' -> number * 72d
+            case 'cm' -> number * 72d / 2.54d
+            case 'mm' -> number * 72d / 25.4d
+            case 'px' -> number * 72d / 96d
+            default -> number
         }
     }
 

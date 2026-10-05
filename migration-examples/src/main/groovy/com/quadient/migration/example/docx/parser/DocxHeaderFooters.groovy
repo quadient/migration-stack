@@ -54,11 +54,12 @@ class DocxHeaderFooters {
         XWPFHeaderFooter part = selectPart(headerOnly ? parts.headers : parts.footers, page)
         if (part != null) {
             Position position = headerOnly ? headerPosition(page) : footerPosition(page)
-            Set<String> directImageEmbedIds = anchoredEmbedIds(part) + inlineEmbedIds(part)
+            Set<String> directImageEmbedIds = anchoredEmbedIds(part) + inlineEmbedIds(part) + vmlEmbedIds(part)
             Area area = buildArea(migration, part, fileName, position, directImageEmbedIds)
             if (area != null) result.add(area)
             result.addAll(inlineImageAreas(migration, doc, part, fileName, position))
             result.addAll(anchoredImageAreas(migration, doc, part, fileName, page, position))
+            result.addAll(vmlImageAreas(migration, doc, part, fileName, position))
         }
         return result
     }
@@ -140,12 +141,20 @@ class DocxHeaderFooters {
         List<Area> areas = []
         source.paragraphs.each { XWPFParagraph paragraph ->
             paragraph.runs.each { XWPFRun run ->
+                Set<String> anchorEmbedIds = findAnchors(run).collect { CTAnchor anchor -> extractBlipEmbedId(anchor) }
+                        .findAll().toSet()
+                boolean hasInlinePicture = false
                 run.embeddedPictures.each { picture ->
                     CTPicture ctPicture = picture.CTPicture
-                    XWPFPictureData data = picture.pictureData ?: pictureData(doc, source, ctPicture?.blipFill?.blip?.embed)
+                    String embedId = ctPicture?.blipFill?.blip?.embed
+                    // POI can surface a wp:anchor through embeddedPictures.  It is emitted below by
+                    // anchoredImageAreas with its anchor offsets, so do not also treat it as an inline image.
+                    if (embedId && anchorEmbedIds.contains(embedId)) return
+                    XWPFPictureData data = picture.pictureData ?: pictureData(doc, source, embedId)
                     addInlineImageArea(areas, migration, data, ctPicture, fileName, flowPosition)
+                    hasInlinePicture = true
                 }
-                if (!run.embeddedPictures.isEmpty()) return
+                if (hasInlinePicture) return
                 findInlines(run).each { XmlObject inline ->
                     CTPicture picture = inlinePicture(inline)
                     addInlineImageArea(areas, migration, pictureData(doc, source, picture?.blipFill?.blip?.embed), picture, fileName, flowPosition)
@@ -161,6 +170,29 @@ class DocxHeaderFooters {
             String imageId = registerImageData(migration, data, fileName, null)
             if (imageId != null) {
                 areas.add(new AreaBuilder().imageRef(imageId).position(flowPosition).build())
+            }
+        }
+        return areas
+    }
+
+    private static List<Area> vmlImageAreas(Migration migration, XWPFDocument doc, XWPFHeaderFooter source, String fileName,
+                                            Position flowPosition) {
+        List<Area> areas = []
+        source.paragraphs.each { XWPFParagraph paragraph ->
+            paragraph.runs.each { XWPFRun run ->
+                DocxVmlImages.extract(run).each { VmlImageSource vmlImage ->
+                    if (!vmlImage.embedId) return
+                    XWPFPictureData data = pictureData(doc, source, vmlImage.embedId)
+                    if (data == null) return
+                    String imageId = registerImageData(migration, data, fileName, vmlImage.options)
+                    if (imageId != null) {
+                        Size width = vmlImage.options?.resizeWidth
+                        Size height = vmlImage.options?.resizeHeight
+                        Position position = width != null && height != null
+                                ? new Position(flowPosition.x, flowPosition.y, width, height) : flowPosition
+                        areas.add(new AreaBuilder().imageRef(imageId).position(position).build())
+                    }
+                }
             }
         }
         return areas
@@ -195,6 +227,18 @@ class DocxHeaderFooters {
                 findInlines(run).each { XmlObject inline ->
                     String embedId = inlinePicture(inline)?.blipFill?.blip?.embed
                     if (embedId) ids.add(embedId)
+                }
+            }
+        }
+        return ids
+    }
+
+    private static Set<String> vmlEmbedIds(XWPFHeaderFooter source) {
+        Set<String> ids = []
+        source.paragraphs.each { XWPFParagraph paragraph ->
+            paragraph.runs.each { XWPFRun run ->
+                DocxVmlImages.extract(run).each { VmlImageSource image ->
+                    if (image.embedId) ids.add(image.embedId)
                 }
             }
         }

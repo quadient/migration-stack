@@ -1,6 +1,7 @@
 package com.quadient.migration.example.docx.parser
 
 import com.quadient.migration.shared.Size
+import com.quadient.migration.shared.ColumnApplyTo
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
@@ -18,6 +19,32 @@ class DocxPageLayoutTest {
         def position = DocxPageLayout.resolvePageContentPosition(section)
         // then: margins determine both the content origin and remaining space
         assert [position.x, position.y, position.width, position.height]*.toPoints() == [18d, 36d, 522d, 702d]
+    }
+
+    @Test
+    void "multi-column section is converted to a page-flow column layout"() {
+        // given: Word's section properties declare two columns with a 340-twip gutter
+        def section = CTSectPr.Factory.newInstance()
+        def columns = section.addNewCols()
+        columns.num = BigInteger.valueOf(2)
+        columns.space = BigInteger.valueOf(340)
+
+        // when
+        def layout = DocxPageLayout.resolveColumnLayout(section)
+
+        // then: the page parser can prepend it before the first body element
+        assert layout.numberOfColumns == 2
+        assert layout.gutterWidth.toPoints() == 17d
+        assert layout.applyTo == ColumnApplyTo.WholeTemplate
+    }
+
+    @Test
+    void "single-column and absent settings do not emit a column layout"() {
+        // given / when / then: Word's implicit and explicit single-column layouts need no flow marker
+        assert DocxPageLayout.resolveColumnLayout(null) == null
+        def section = CTSectPr.Factory.newInstance()
+        section.addNewCols().num = BigInteger.ONE
+        assert DocxPageLayout.resolveColumnLayout(section) == null
     }
 
     @Test

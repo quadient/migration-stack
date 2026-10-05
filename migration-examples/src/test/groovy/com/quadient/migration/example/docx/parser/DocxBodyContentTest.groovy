@@ -1,9 +1,13 @@
 package com.quadient.migration.example.docx.parser
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
+import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.Table
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
+import com.quadient.migration.shared.ColumnApplyTo
+import com.quadient.migration.shared.Size
 import org.apache.poi.xwpf.usermodel.XWPFDocument
 import org.apache.poi.xwpf.usermodel.XWPFParagraph
 import org.apache.poi.xwpf.usermodel.XWPFTable
@@ -11,11 +15,33 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STFldCharType
 
+import static org.mockito.Mockito.times
 import static org.mockito.Mockito.verify
 import static com.quadient.migration.example.docx.DocxFieldFixtures.*
 import static com.quadient.migration.example.Utils.mockMigration
 
 class DocxBodyContentTest {
+
+    @Test
+    void "column layout before a generated section block is scoped to that block"() {
+        // given: a continuous section starts between two heading-derived blocks
+        def migration = mockMigration()
+        def body = new DocxBodyContent(migration, 'sample', 'sample_page1')
+        body.add(new ParagraphBuilder().string('Before columns').build(), 1)
+        body.add(new ColumnLayout(2, Size.ofPoints(17), null, ColumnApplyTo.WholeTemplate))
+        body.add(new ParagraphBuilder().string('In columns').build())
+
+        // when
+        def content = body.sectionBlocks()
+
+        // then: the marker is moved into the following referenced block with the narrower scope
+        assert content*.id == ['sample_page1_section1', 'sample_page1_section2']
+        def blockCaptor = ArgumentCaptor.forClass(DocumentObject)
+        verify(migration.documentObjectRepository, times(2)).upsert(blockCaptor.capture())
+        DocumentObject columnBlock = blockCaptor.allValues.find { it.id == 'sample_page1_section2' }
+        assert columnBlock.content[0] instanceof ColumnLayout
+        assert (columnBlock.content[0] as ColumnLayout).applyTo == ColumnApplyTo.ThisBlockOnly
+    }
 
     @Test
     void "tables wrapped in body-level IF fields become conditional rows of the preceding table"() {

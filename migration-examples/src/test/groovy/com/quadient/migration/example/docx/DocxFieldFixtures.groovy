@@ -15,6 +15,16 @@ class DocxFieldFixtures {
         fieldCharacter(paragraph.createRun(), STFldCharType.END)
     }
 
+    static void appendPageField(paragraph, String instructionText, String cachedResult = null) {
+        fieldCharacter(paragraph.createRun(), STFldCharType.BEGIN)
+        instruction(paragraph.createRun(), instructionText)
+        if (cachedResult != null) {
+            fieldCharacter(paragraph.createRun(), STFldCharType.SEPARATE)
+            paragraph.createRun().setText(cachedResult)
+        }
+        fieldCharacter(paragraph.createRun(), STFldCharType.END)
+    }
+
     static void appendEqualityIfField(paragraph, String variable, String operand, String result) {
         fieldCharacter(paragraph.createRun(), STFldCharType.BEGIN)
         instruction(paragraph.createRun(), " IF ")

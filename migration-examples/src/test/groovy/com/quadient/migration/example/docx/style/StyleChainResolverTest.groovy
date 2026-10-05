@@ -41,6 +41,27 @@ class StyleChainResolverTest {
     }
 
     @Test
+    void "East Asian-only run font does not replace an inherited Latin font"() {
+        // given: the BodyText/Times New Roman split stored by 01CVRPG0222.docx
+        new XWPFDocument().withCloseable { doc ->
+            doc.createStyles()
+            def bodyText = style(doc, 'BodyText', null)
+            bodyText.addNewRPr().addNewRFonts().ascii = 'Arial'
+            def paragraph = doc.createParagraph()
+            paragraph.style = 'BodyText'
+            def run = paragraph.createRun()
+            run.CTR.addNewRPr().addNewRFonts().eastAsia = 'Times New Roman'
+
+            // when: resolving an English run with an East Asian-only direct override
+            def chain = StyleChainResolver.resolveRunPropertyChain(run, 'BodyText')
+
+            // then: Latin text keeps Arial, while East Asian is still available as a final fallback
+            assert StyleChainResolver.resolveEffectiveFontName(chain) == 'Arial'
+            assert StyleChainResolver.resolveEffectiveFontName([run.CTR.RPr]) == 'Times New Roman'
+        }
+    }
+
+    @Test
     void "paragraph chain terminates cycles and preserves zero overrides"() {
         // given: cyclic parent styles and a direct zero-spacing override
         new XWPFDocument().withCloseable { doc ->

@@ -1,5 +1,7 @@
 package com.quadient.migration.example.docx.parser
 
+import com.quadient.migration.api.dto.migrationmodel.ColumnLayout
+import com.quadient.migration.shared.ColumnApplyTo
 import com.quadient.migration.shared.Position
 import com.quadient.migration.shared.Size
 import groovy.transform.Field
@@ -43,6 +45,21 @@ static Position resolvePageContentPosition(CTSectPr sectPr) {
 static List<Size> resolvePageSize(CTSectPr sectPr) {
     return [resolveDimension(sectPr?.pgSz?.w, DEFAULT_PAGE_SIZE[0]),
             resolveDimension(sectPr?.pgSz?.h, DEFAULT_PAGE_SIZE[1])]
+}
+
+/**
+ * Converts the section-wide Word column settings to flow content.  A single column is Word's default and needs no
+ * model marker; placing a multi-column marker before the page flow makes the layout apply from the first paragraph.
+ */
+static ColumnLayout resolveColumnLayout(CTSectPr sectPr) {
+    def columns = sectPr?.cols
+    int numberOfColumns = columns?.num?.intValue() ?: 1
+    if (numberOfColumns <= 1) {
+        return null
+    }
+    Double gutterPoints = twipsToPoints(columns.space)
+    return new ColumnLayout(numberOfColumns, gutterPoints != null ? Size.ofPoints(gutterPoints) : null, null,
+            ColumnApplyTo.WholeTemplate)
 }
 
 private static Size resolveDimension(Object twips, Size fallback) {

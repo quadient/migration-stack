@@ -3,14 +3,22 @@ package com.quadient.migration.example.docx.parser
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
+import groovy.transform.Field
 import org.apache.poi.xwpf.usermodel.XWPFParagraph
 import org.apache.poi.xwpf.usermodel.XWPFFieldRun
+import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun
 import org.apache.poi.xwpf.usermodel.XWPFRun
+import org.apache.poi.xwpf.usermodel.XWPFSDT
+import org.apache.poi.xwpf.usermodel.IRunElement
 import org.apache.xmlbeans.XmlObject
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSimpleField
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import static com.quadient.migration.example.docx.style.DocxParagraphStyles.captureParagraphStyle
 import static com.quadient.migration.example.docx.style.DocxTextStyles.captureTextStyle
+
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 class ParagraphContentCollector {
     private final Migration migration
@@ -38,20 +46,36 @@ class ParagraphContentCollector {
     }
 
     void addRun(XWPFRun run, String styleId) {
-        if (!run.embeddedPictures.isEmpty()) {
+        if (DocxImages.hasRunImages(run)) {
             flushText()
             flushFields()
             DocxImages.processRunImages(migration, run, fileName, textBuilders, excludedImageEmbedIds)
         }
 
+        if (run instanceof XWPFHyperlinkRun) {
+            String url = hyperlinkUrl(run as XWPFHyperlinkRun)
+            String displayText = run.text()
+            if (url && displayText) {
+                flushText()
+                flushFields()
+                textBuilders.add(new ParagraphBuilder.TextBuilder().hyperlink(url, displayText, null).styleRef(styleId))
+                return
+            }
+        }
+
         CTSimpleField simpleField = run instanceof XWPFFieldRun ? (run as XWPFFieldRun).CTField : null
         if (simpleField != null && !resolvedSimpleFields.contains(simpleField)) {
             String instruction = simpleField.instr
-            if (DocxMergeFields.isMergeField(instruction)) {
+            String systemVariableId = DocxMergeFields.systemFieldVariableId(instruction)
+            if (DocxMergeFields.isMergeField(instruction) || systemVariableId) {
                 resolvedSimpleFields.add(simpleField)
                 flushText()
                 flushFields()
-                DocxMergeFields.addMergeField(migration, textBuilders, fileName, instruction, styleId)
+                if (systemVariableId) {
+                    DocxMergeFields.addSystemField(migration, textBuilders, fileName, systemVariableId, styleId)
+                } else {
+                    DocxMergeFields.addMergeField(migration, textBuilders, fileName, instruction, styleId)
+                }
                 return
             }
         }
@@ -69,6 +93,14 @@ class ParagraphContentCollector {
             flushText()
         }
         DocxMergeFields.handleFieldChildren(migration, fieldChildren, styleId, fieldState, textBuilders, fileName)
+    }
+
+    void addContentControl(XWPFSDT control, String styleId) {
+        flushText()
+        flushFields()
+        if (!DocxContentControls.addInline(migration, textBuilders, control, styleId, fileName)) {
+            appendText(control.content.text, styleId)
+        }
     }
 
     List<ParagraphBuilder.TextBuilder> finish() {
@@ -104,6 +136,11 @@ class ParagraphContentCollector {
     private void flushFields() {
         DocxMergeFields.flushPendingIfFields(migration, fieldState, textBuilders, fileName)
     }
+
+    private static String hyperlinkUrl(XWPFHyperlinkRun run) {
+        String externalUrl = run.getHyperlink(run.document)?.URL
+        return externalUrl ?: (run.anchor ? "#${run.anchor}" : null)
+    }
 }
 
 static Paragraph parseParagraph(Migration migration, XWPFParagraph paragraph, String fileName, String context = null,
@@ -121,8 +158,12 @@ static Paragraph parseFlowParagraph(Migration migration, XWPFParagraph paragraph
     String paragraphStyleId = paragraph.styleID ?: "unknown"
     ParagraphContentCollector collector = new ParagraphContentCollector(migration, fileName, excludedImageEmbedIds, fieldState)
 
-    paragraph.runs.each { XWPFRun run ->
-        collector.addRun(run, captureTextStyle(migration, run, fileName, paragraphStyleId, context))
+    paragraph.getIRuns().each { IRunElement run ->
+        if (run instanceof XWPFRun) {
+            collector.addRun(run as XWPFRun, captureTextStyle(migration, run as XWPFRun, fileName, paragraphStyleId, context))
+        } else if (run instanceof XWPFSDT) {
+            collector.addContentControl(run as XWPFSDT, null)
+        }
     }
 
     List<ParagraphBuilder.TextBuilder> content = collector.finish()
@@ -134,7 +175,7 @@ static Paragraph parseFlowParagraph(Migration migration, XWPFParagraph paragraph
 
 static void warnUnterminatedField(FieldParseState fieldState, String location) {
     if (fieldState.depth > 0) {
-        println "  Warning: Unterminated complex field (missing fldChar end) in ${location}"
+        log.warn "  Warning: Unterminated complex field (missing fldChar end) in ${location}"
         fieldState.stack.clear()
     }
 }

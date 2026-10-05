@@ -109,6 +109,37 @@ class ParagraphContentCollectorTest {
     }
 
     @Test
+    void "collector emits recognized Word system fields as migration variables rather than their cached values"() {
+        // given: page fields plus DATE and TIME from the GF documents
+        def migration = mockMigration()
+        def document = new XWPFDocument()
+        def paragraph = document.createParagraph()
+        paragraph.createRun().setText('Página ')
+        appendPageField(paragraph, ' PAGE ', '1')
+        paragraph.createRun().setText(' de ')
+        appendPageField(paragraph, ' SECTIONPAGES ', '1')
+        paragraph.createRun().setText(' af ')
+        appendPageField(paragraph, ' NUMPAGES ', '2')
+        paragraph.createRun().setText(' den ')
+        appendPageField(paragraph, ' DATE \\@ "d. MMMM yyyy" ', '1. oktober 2026')
+        paragraph.createRun().setText(' kl. ')
+        appendPageField(paragraph, ' TIME \\@ "HH:mm" ', '13:45')
+
+        // when
+        def collector = new ParagraphContentCollector(migration, 'sample')
+        paragraph.runs.each { collector.addRun(it, 'footer') }
+        def content = collector.finish()*.build()
+
+        // then: the cached values are ignored and migration authors can bind the variables as needed
+        assert content.collect { it.content[0].hasProperty('id') ? it.content[0].id : it.content[0].value } ==
+                ['Página ', 'systemPageNumber', ' de ', 'systemSectionPages', ' af ', 'systemTotalPages',
+                 ' den ', 'systemCurrentDate', ' kl. ', 'systemCurrentDateTime']
+        verify(migration.variableRepository, times(5)).upsert(any())
+
+        document.close()
+    }
+
+    @Test
     void "adjacent exclusive equality fields become one styled FirstMatch in source order"() {
         // given
         def migration = mockMigration()

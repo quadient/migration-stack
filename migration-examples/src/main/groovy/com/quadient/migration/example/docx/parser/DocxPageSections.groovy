@@ -58,49 +58,15 @@ class DocxPageSections {
     static List<DocxPage> groupIntoPages(List<DocxSection> sections) {
         List<DocxPage> pages = []
         sections.eachWithIndex { DocxSection section, int i ->
-            // A section can contain Word's cached pagination marker.  It is not an authored page break, so only
-            // honor it where it begins a paragraph; using a marker after text would move already-laid-out content.
-            splitAtRenderedPageBreaks(section).eachWithIndex { DocxSection fragment, int fragmentIndex ->
-                if ((i == 0 && fragmentIndex == 0) || fragmentIndex > 0 || startsNewPage(section.sectPr)) {
-                    pages.add(newPage(pages.size(), fragment))
-                } else {
-                    pages.last().sections.add(fragment)
-                }
+            // lastRenderedPageBreak is Word's cached layout output, not an authored page boundary.  Mapping it to
+            // fixed design-time pages makes a single flowing template repeat headers only for the cached pages.
+            if (i == 0 || startsNewPage(section.sectPr)) {
+                pages.add(newPage(pages.size(), section))
+            } else {
+                pages.last().sections.add(section)
             }
         }
         return pages
-    }
-
-    private static List<DocxSection> splitAtRenderedPageBreaks(DocxSection section) {
-        if (!section.elements.any { it instanceof XWPFParagraph && beginsAfterRenderedPageBreak(it) }) {
-            // Preserve the original section object when no cached pagination is involved.
-            return [section]
-        }
-        List<DocxSection> fragments = []
-        DocxSection current = new DocxSection(sectPr: section.sectPr)
-        section.elements.each { IBodyElement element ->
-            if (element instanceof XWPFParagraph && beginsAfterRenderedPageBreak(element) && !current.elements.isEmpty()) {
-                fragments.add(current)
-                current = new DocxSection(sectPr: section.sectPr)
-            }
-            current.elements.add(element)
-        }
-        if (!current.elements.isEmpty()) {
-            fragments.add(current)
-        }
-        return fragments
-    }
-
-    private static boolean beginsAfterRenderedPageBreak(XWPFParagraph paragraph) {
-        String xml = paragraph.CTP.xmlText()
-        def marker = xml =~ /<(?:[A-Za-z_][\w.-]*:)?lastRenderedPageBreak(?=[\s\/>])/
-        if (!marker.find()) {
-            return false
-        }
-        // These are the WordprocessingML elements that produce visible paragraph content.  The marker is safe to
-        // treat as a page boundary only when none of them precedes it.
-        def visibleContent = xml =~ /<(?:[A-Za-z_][\w.-]*:)?(?:t|instrText|drawing|tab|br|object)(?=[\s\/>])/
-        return !visibleContent.find() || marker.start() < visibleContent.start()
     }
 
     private static DocxPage newPage(int index, DocxSection firstSection) {
