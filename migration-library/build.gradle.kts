@@ -104,6 +104,7 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 
     constraints {
+        implementation(libs.kotlin.reflect)
         // ktor CVE fixes
         implementation("org.springframework.security:spring-security-crypto:7.0.7")
         implementation("com.fasterxml.jackson.core:jackson-databind:2.21.5")

@@ -75,6 +75,7 @@ dependencies {
     testImplementation(libs.kotlin.test.junit)
 
     constraints {
+        implementation(libs.kotlin.reflect)
         val nettyVersion = "4.2.18.Final"
         implementation("io.netty:netty-handler:${nettyVersion}")
         implementation("io.netty:netty-codec:${nettyVersion}")

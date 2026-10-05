@@ -60,6 +60,8 @@ mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 
 groovy-xml = { module = "org.apache.groovy:groovy-xml", version.ref = "groovy" }
 
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 
 # library
