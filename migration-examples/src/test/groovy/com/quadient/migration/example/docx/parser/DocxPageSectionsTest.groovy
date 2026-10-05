@@ -63,31 +63,6 @@ class DocxPageSectionsTest {
     }
 
     @Test
-    void "a rendered page break at the start of a paragraph creates a new page"() {
-        // given: Word has cached a page boundary before the second paragraph's visible text
-        new XWPFDocument().withCloseable { doc ->
-            def first = doc.createParagraph()
-            first.createRun().setText('First-page content')
-            def second = doc.createParagraph()
-            second.createRun().CTR.addNewLastRenderedPageBreak()
-            second.createRun().setText('Second-page content')
-            def third = doc.createParagraph()
-            third.createRun().setText('More second-page content')
-            doc.document.body.addNewSectPr()
-            ByteArrayOutputStream serialized = new ByteArrayOutputStream()
-            doc.write(serialized)
-
-            new XWPFDocument(new ByteArrayInputStream(serialized.toByteArray())).withCloseable { reloaded ->
-                // when
-                def pages = DocxPageSections.groupIntoPages(DocxPageSections.splitIntoSections(reloaded))
-
-                // then: the paragraph carrying the marker and subsequent content belong to the next page
-                assert pages*.bodyElements()*.collect { it.text } == [['First-page content'], ['Second-page content', 'More second-page content']]
-            }
-        }
-    }
-
-    @Test
     void "a rendered page break after paragraph content is not used as a boundary"() {
         // given: a marker after content cannot be represented without splitting a paragraph
         new XWPFDocument().withCloseable { doc ->

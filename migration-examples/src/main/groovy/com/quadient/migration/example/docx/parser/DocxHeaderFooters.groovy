@@ -141,12 +141,20 @@ class DocxHeaderFooters {
         List<Area> areas = []
         source.paragraphs.each { XWPFParagraph paragraph ->
             paragraph.runs.each { XWPFRun run ->
+                Set<String> anchorEmbedIds = findAnchors(run).collect { CTAnchor anchor -> extractBlipEmbedId(anchor) }
+                        .findAll().toSet()
+                boolean hasInlinePicture = false
                 run.embeddedPictures.each { picture ->
                     CTPicture ctPicture = picture.CTPicture
-                    XWPFPictureData data = picture.pictureData ?: pictureData(doc, source, ctPicture?.blipFill?.blip?.embed)
+                    String embedId = ctPicture?.blipFill?.blip?.embed
+                    // POI can surface a wp:anchor through embeddedPictures.  It is emitted below by
+                    // anchoredImageAreas with its anchor offsets, so do not also treat it as an inline image.
+                    if (embedId && anchorEmbedIds.contains(embedId)) return
+                    XWPFPictureData data = picture.pictureData ?: pictureData(doc, source, embedId)
                     addInlineImageArea(areas, migration, data, ctPicture, fileName, flowPosition)
+                    hasInlinePicture = true
                 }
-                if (!run.embeddedPictures.isEmpty()) return
+                if (hasInlinePicture) return
                 findInlines(run).each { XmlObject inline ->
                     CTPicture picture = inlinePicture(inline)
                     addInlineImageArea(areas, migration, pictureData(doc, source, picture?.blipFill?.blip?.embed), picture, fileName, flowPosition)
