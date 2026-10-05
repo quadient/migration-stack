@@ -14,6 +14,8 @@ import org.apache.poi.xwpf.usermodel.XWPFParagraph
 import org.apache.poi.xwpf.usermodel.XWPFTable
 import org.apache.poi.xwpf.usermodel.XWPFTableCell
 import org.apache.poi.xwpf.usermodel.XWPFTableRow
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import static com.quadient.migration.example.docx.parser.DocxParagraphParser.parseFlowParagraph
 import static com.quadient.migration.example.docx.parser.DocxParagraphParser.parseParagraph
@@ -25,6 +27,8 @@ import static com.quadient.migration.example.docx.util.DocxUtils.isHorizontallyM
 
 @Field
 static final long GRID_TOLERANCE_TWIPS = 30
+
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 static Table parseTable(Migration migration, XWPFTable table, String fileName) {
     return buildTable(migration, table, table.rows, fileName, resolveExpectedColumnCount(table), true)
@@ -68,7 +72,7 @@ static void addRows(Migration migration, TableBuilder tableBuilder, XWPFTable so
                     int expectedColumnCount, boolean useHeader, String displayRuleId = null) {
     rows.eachWithIndex { XWPFTableRow row, int ri ->
         if (row.tableCells.size() != expectedColumnCount) {
-            println "  Warning: Row ${ri + 1} has ${row.tableCells.size()} cells, expected ${expectedColumnCount}."
+            log.warn "  Warning: Row ${ri + 1} has ${row.tableCells.size()} cells, expected ${expectedColumnCount}."
         }
         boolean isHeader = useHeader && ri == 0 && rows.size() > 1
         TableBuilder.Row rowBuilder = isHeader ? tableBuilder.addFirstHeaderRow() : tableBuilder.addRow()
@@ -89,7 +93,7 @@ static void addRows(Migration migration, TableBuilder tableBuilder, XWPFTable so
         }
         int missingCells = expectedColumnCount - rowBuilder.cells.size()
         if (missingCells > 0) {
-            println "  Adding ${missingCells} empty cells to row ${ri + 1} to match expected column count."
+            log.warn "  Adding ${missingCells} empty cells to row ${ri + 1} to match expected column count."
             missingCells.times { rowBuilder.addCell().mergeLeft = true }
         }
     }

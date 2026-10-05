@@ -4,6 +4,8 @@ import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableBuilder
 import com.quadient.migration.shared.DataType
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util.regex.Pattern
 
@@ -13,6 +15,7 @@ import java.util.regex.Pattern
  */
 class DocxVariablePatterns {
     static final String CONTEXT_KEY = "docxVariablePatterns"
+    private static final Logger log = LoggerFactory.getLogger(DocxVariablePatterns)
 
     static void addText(Migration migration, List<ParagraphBuilder.TextBuilder> textBuilders, String text, String styleId,
                         String fileName) {
@@ -64,12 +67,12 @@ class DocxVariablePatterns {
             try {
                 Pattern pattern = value instanceof Pattern ? value : Pattern.compile(value.toString())
                 if (pattern.matcher("").groupCount() < 1) {
-                    println "  Warning: DOCX variable pattern '${value}' has no capture group; it is ignored."
+                    log.warn "  Warning: DOCX variable pattern '${value}' has no capture group; it is ignored."
                     return null
                 }
                 pattern
             } catch (Exception e) {
-                println "  Warning: Invalid DOCX variable pattern '${value}': ${e.message}"
+                log.warn "  Warning: Invalid DOCX variable pattern '${value}': ${e.message}"
                 null
             }
         }.findAll()

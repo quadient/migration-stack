@@ -14,10 +14,13 @@ import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
 import com.quadient.migration.shared.DocumentObjectType
 import groovy.io.FileType
+import groovy.transform.Field
 import org.apache.poi.xwpf.usermodel.XWPFDocument
 import org.apache.poi.xwpf.usermodel.XWPFParagraph
 import org.apache.poi.xwpf.usermodel.XWPFTable
 import org.apache.poi.xwpf.usermodel.XWPFSDT
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util.regex.Pattern
 
@@ -34,6 +37,8 @@ import static com.quadient.migration.example.docx.parser.DocxTableParser.createT
 import static com.quadient.migration.example.docx.parser.DocxTableParser.parseTable
 import static com.quadient.migration.example.docx.parser.DocxTableParser.resolveExpectedColumnCount
 
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
+
 static void parseDocxFiles(Migration migration) {
     List<File> inputFiles = []
     new File(migration.projectConfig.inputDataPath).eachFileRecurse(FileType.FILES) { File file ->
@@ -49,7 +54,7 @@ static void parseDocxFile(Migration migration, File file) {
     String documentType = file.parentFile.name
     String relativePath = new File(migration.projectConfig.inputDataPath).toPath().relativize(file.toPath()).toString()
 
-    println("=== Processing: " + relativePath + " ===")
+    log.info("=== Processing: " + relativePath + " ===")
     DocumentObjectBuilder builder = new DocumentObjectBuilder(fileName, DocumentObjectType.Template)
             .name(fileName)
             .originLocations([relativePath])

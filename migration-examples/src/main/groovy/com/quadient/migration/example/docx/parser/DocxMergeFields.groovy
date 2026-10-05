@@ -21,6 +21,8 @@ import org.apache.poi.xwpf.usermodel.XWPFTable
 import org.apache.xmlbeans.XmlObject
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTFldChar
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTText
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import static com.quadient.migration.example.docx.util.DocxUtils.sha256Hex
 
@@ -133,6 +135,8 @@ class ParsedIfField {
 @Field
 static final char PLACEHOLDER = (char) 0xE000
 
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
+
 // Word-managed fields are deliberately separate from authored MERGEFIELD data.  Add supported fields here rather
 // than creating one-off parsing branches, and keep their source-independent model IDs in the system* namespace.
 @Field
@@ -231,7 +235,7 @@ private static void resolveField(Migration migration, FieldParseState state, Lis
     if (parsed == null) {
         flushPendingIfFields(migration, state, textBuilders, fileName)
         if (field.containsTable()) {
-            println "  Warning: Unsupported field wrapping a table, its tables are dropped: '${instruction.trim()}'"
+            log.warn "  Warning: Unsupported field wrapping a table, its tables are dropped: '${instruction.trim()}'"
         }
         return
     }
@@ -283,7 +287,7 @@ private static void emitBranch(Migration migration, FieldParseState state, List<
             if (state.conditionalTableHandler != null) {
                 state.conditionalTableHandler.call(part.table, upsertDisplayRule(migration, path, fileName))
             } else {
-                println "  Warning: Table inside IF field is not supported in this context and is dropped."
+                log.warn "  Warning: Table inside IF field is not supported in this context and is dropped."
             }
         } else if (part instanceof WordField) {
             emitNestedField(migration, state, textBuilders, fileName, part, path, blockLevel)
@@ -307,7 +311,7 @@ private static void emitNestedField(Migration migration, FieldParseState state, 
     }
     ParsedIfField nested = parseIfField(field)
     if (nested == null) {
-        println "  Warning: Unsupported nested field inside IF branch is dropped: '${instruction.trim()}'"
+        log.warn "  Warning: Unsupported nested field inside IF branch is dropped: '${instruction.trim()}'"
         return
     }
     ensureVariable(migration, nested.variableId, fileName)

@@ -3,6 +3,7 @@ package com.quadient.migration.example.docx.parser
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
+import groovy.transform.Field
 import org.apache.poi.xwpf.usermodel.XWPFParagraph
 import org.apache.poi.xwpf.usermodel.XWPFFieldRun
 import org.apache.poi.xwpf.usermodel.XWPFHyperlinkRun
@@ -11,9 +12,13 @@ import org.apache.poi.xwpf.usermodel.XWPFSDT
 import org.apache.poi.xwpf.usermodel.IRunElement
 import org.apache.xmlbeans.XmlObject
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSimpleField
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import static com.quadient.migration.example.docx.style.DocxParagraphStyles.captureParagraphStyle
 import static com.quadient.migration.example.docx.style.DocxTextStyles.captureTextStyle
+
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 class ParagraphContentCollector {
     private final Migration migration
@@ -170,7 +175,7 @@ static Paragraph parseFlowParagraph(Migration migration, XWPFParagraph paragraph
 
 static void warnUnterminatedField(FieldParseState fieldState, String location) {
     if (fieldState.depth > 0) {
-        println "  Warning: Unterminated complex field (missing fldChar end) in ${location}"
+        log.warn "  Warning: Unterminated complex field (missing fldChar end) in ${location}"
         fieldState.stack.clear()
     }
 }

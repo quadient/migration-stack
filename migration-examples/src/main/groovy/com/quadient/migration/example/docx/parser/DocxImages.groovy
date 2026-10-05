@@ -11,6 +11,10 @@ import org.apache.poi.common.usermodel.PictureType
 import org.apache.poi.xwpf.usermodel.XWPFPicture
 import org.apache.poi.xwpf.usermodel.XWPFPictureData
 import org.apache.poi.xwpf.usermodel.XWPFRun
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
+@Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 @Field
 static Map<Long, String> imageIdByChecksum = [:]
@@ -67,7 +71,7 @@ static String registerImageData(Migration migration, XWPFPictureData data, Strin
     }
     ImageType imageType = toImageType(data.getPictureTypeEnum())
     if (imageType == ImageType.Unknown) {
-        println "  Warning: Skipping embedded image with unsupported type: ${data.getPictureTypeEnum()}"
+        log.warn "  Warning: Skipping embedded image with unsupported type: ${data.getPictureTypeEnum()}"
         return null
     }
     return registerImageBytes(migration, data.getData(), fileName, imageType, options, checksum)
