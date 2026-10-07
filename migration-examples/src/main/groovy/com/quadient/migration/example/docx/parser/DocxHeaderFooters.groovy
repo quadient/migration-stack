@@ -22,6 +22,7 @@ import org.openxmlformats.schemas.drawingml.x2006.wordprocessingDrawing.CTAnchor
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSectPr
 
 import static com.quadient.migration.example.docx.parser.DocxParagraphParser.parseFlowParagraph
+import static com.quadient.migration.example.docx.parser.DocxBlocks.upsertBlock
 import static com.quadient.migration.example.docx.parser.DocxParagraphParser.warnUnterminatedField
 import static com.quadient.migration.example.docx.parser.DocxTableParser.parseTable
 import static com.quadient.migration.example.docx.parser.DocxImages.registerImageData
@@ -60,6 +61,12 @@ class DocxHeaderFooters {
             result.addAll(inlineImageAreas(migration, doc, part, fileName, position))
             result.addAll(anchoredImageAreas(migration, doc, part, fileName, page, position))
             result.addAll(vmlImageAreas(migration, doc, part, fileName, position))
+        }
+        String partType = headerOnly ? 'header' : 'footer'
+        result.eachWithIndex { Area area, int index ->
+            String blockId = "${page.id(fileName)}_${partType}_area${index + 1}"
+            String blockName = "${fileName} Page ${page.index + 1} ${headerOnly ? 'Header' : 'Footer'} Area ${index + 1}"
+            area.content = [upsertBlock(migration, blockId, blockName, area.content, fileName)]
         }
         return result
     }

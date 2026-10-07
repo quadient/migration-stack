@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+- DOCX header/footer areas now reference separate internal blocks containing their original content.
+
 ### Fixed
 - More robust column layout handling for DOCX parser
 
