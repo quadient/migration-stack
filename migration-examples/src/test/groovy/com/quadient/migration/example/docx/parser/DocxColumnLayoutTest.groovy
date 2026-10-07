@@ -19,7 +19,7 @@ import static org.mockito.Mockito.verify
 class DocxColumnLayoutTest {
 
     @Test
-    void "terms and conditions page flow begins with its two-column layout"() {
+    void "terms and conditions puts its whole-template two-column layout in the first generated block"() {
         // given: the supplied sample switches to two columns on its second page
         File sample = new File(getClass().getResource('/exampleResources/docx/02_terms_and_conditions.docx').toURI())
 
@@ -28,16 +28,17 @@ class DocxColumnLayoutTest {
         def pages = DocxTemplateParser.parsePages(migration, sample,
                 new DocumentObjectBuilder('terms', DocumentObjectType.Template), 'terms')
 
-        // then: the marker begins the generated block that contains the second page's flow content
+        // then: the first block provides the layout's following content while WholeTemplate covers later blocks
         Area secondPageFlow = pages[1].content.find { it instanceof Area } as Area
         assert !(secondPageFlow.content[0] instanceof ColumnLayout)
         def blockCaptor = ArgumentCaptor.forClass(DocumentObject)
         verify(migration.documentObjectRepository, atLeastOnce()).upsert(blockCaptor.capture())
-        DocumentObject columnBlock = blockCaptor.allValues.find { it.content && it.content[0] instanceof ColumnLayout }
-        ColumnLayout layout = columnBlock.content[0] as ColumnLayout
+        DocumentObject firstColumnBlock = blockCaptor.allValues.find { it.id == 'terms_page2_section1' }
+        ColumnLayout layout = firstColumnBlock.content[0] as ColumnLayout
         assert layout.numberOfColumns == 2
         assert layout.gutterWidth.toPoints() == 17d
-        assert layout.applyTo.name() == 'ThisBlockOnly'
+        assert layout.applyTo.name() == 'WholeTemplate'
+        assert secondPageFlow.content.size() > 1
     }
 
     @Test

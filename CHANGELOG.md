@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Changed
 
 ### Fixed
+- More robust column layout handling for DOCX parser
 
 ## [17.0.31] - 2026-10-06
 

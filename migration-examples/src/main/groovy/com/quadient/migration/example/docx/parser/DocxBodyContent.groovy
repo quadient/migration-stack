@@ -100,24 +100,30 @@ class DocxBodyContent {
         List<DocumentContent> section = []
         int blockNumber = 0
         ColumnLayout pendingColumnLayout
+        boolean pendingColumnLayoutSpansMultipleBlocks = false
         Closure flushSection = {
             if (section.isEmpty()) {
                 return
             }
             String id = "${pageId}_section${++blockNumber}"
             String heading = headingLevels[section[0]] == topLevel ? extractParagraphText(section[0]) : null
-            List<DocumentContent> blockContent = pendingColumnLayout == null ? section : [new ColumnLayout(
-                    pendingColumnLayout.numberOfColumns, pendingColumnLayout.gutterWidth, pendingColumnLayout.balancingType,
-                    ColumnApplyTo.ThisBlockOnly)] + section
+            // Put the marker in the first generated block.  A WholeTemplate marker still covers the following block
+            // references, but is now followed by real block content rather than ending an otherwise separate flow.
+            List<DocumentContent> blockContent = pendingColumnLayout == null ? section : [pendingColumnLayoutSpansMultipleBlocks ?
+                    pendingColumnLayout : new ColumnLayout(pendingColumnLayout.numberOfColumns, pendingColumnLayout.gutterWidth,
+                    pendingColumnLayout.balancingType, ColumnApplyTo.ThisBlockOnly)] + section
             pendingColumnLayout = null
+            pendingColumnLayoutSpansMultipleBlocks = false
             result.add(upsertBlock(migration, id, blockName(heading, null, id), blockContent, fileName))
             section.clear()
         }
-        content.each { DocumentContent item ->
-            // A marker before a generated block belongs to that block, so its emitted scope is ThisBlockOnly.
+        content.eachWithIndex { DocumentContent item, int itemIndex ->
+            // A marker before generated blocks retains WholeTemplate only when its Word section covers multiple
+            // heading-derived blocks; otherwise it is narrowed to the first generated block.
             if (item instanceof ColumnLayout) {
                 flushSection()
                 pendingColumnLayout = item
+                pendingColumnLayoutSpansMultipleBlocks = spansMultipleBlocks(itemIndex, topLevel)
             } else {
                 if (headingLevels[item] == topLevel && !section.isEmpty()) {
                     flushSection()
@@ -130,6 +136,24 @@ class DocxBodyContent {
             result.add(pendingColumnLayout)
         }
         return result
+    }
+
+    // A Word column section spanning multiple heading-derived blocks retains WholeTemplate. A one-block section is
+    // deliberately kept self-contained, which is needed for local layouts such as signature blocks.
+    private boolean spansMultipleBlocks(int layoutIndex, int topLevel) {
+        boolean hasContent = false
+        int blockCount = 0
+        for (int i = layoutIndex + 1; i < content.size(); i++) {
+            DocumentContent item = content[i]
+            if (item instanceof ColumnLayout) {
+                break
+            }
+            if (headingLevels[item] == topLevel && hasContent) {
+                blockCount++
+            }
+            hasContent = true
+        }
+        return blockCount + (hasContent ? 1 : 0) > 1
     }
 
     // Text of the first non-empty cell of the table's first row (typically the heading of the row). Word stores the

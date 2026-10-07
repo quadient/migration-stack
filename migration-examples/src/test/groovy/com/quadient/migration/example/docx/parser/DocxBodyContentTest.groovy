@@ -23,7 +23,7 @@ import static com.quadient.migration.example.Utils.mockMigration
 class DocxBodyContentTest {
 
     @Test
-    void "column layout before a generated section block is scoped to that block"() {
+    void "column layout before one generated section block is scoped to that block"() {
         // given: a continuous section starts between two heading-derived blocks
         def migration = mockMigration()
         def body = new DocxBodyContent(migration, 'sample', 'sample_page1')
@@ -41,6 +41,27 @@ class DocxBodyContentTest {
         DocumentObject columnBlock = blockCaptor.allValues.find { it.id == 'sample_page1_section2' }
         assert columnBlock.content[0] instanceof ColumnLayout
         assert (columnBlock.content[0] as ColumnLayout).applyTo == ColumnApplyTo.ThisBlockOnly
+    }
+
+    @Test
+    void "column layout before several generated section blocks stays whole-template in the first block"() {
+        // given: Word's two-column section covers several heading-derived document-object blocks
+        def migration = mockMigration()
+        def body = new DocxBodyContent(migration, 'sample', 'sample_page1')
+        body.add(new ColumnLayout(2, Size.ofPoints(17), null, ColumnApplyTo.WholeTemplate))
+        body.add(new ParagraphBuilder().string('First section').build(), 1)
+        body.add(new ParagraphBuilder().string('Second section').build(), 1)
+
+        // when
+        def content = body.sectionBlocks()
+
+        // then: it is followed by content while retaining WholeTemplate for the following generated block
+        assert content*.id == ['sample_page1_section1', 'sample_page1_section2']
+        def blockCaptor = ArgumentCaptor.forClass(DocumentObject)
+        verify(migration.documentObjectRepository, times(2)).upsert(blockCaptor.capture())
+        DocumentObject firstColumnBlock = blockCaptor.allValues.find { it.id == 'sample_page1_section1' }
+        assert firstColumnBlock.content[0] instanceof ColumnLayout
+        assert (firstColumnBlock.content[0] as ColumnLayout).applyTo == ColumnApplyTo.WholeTemplate
     }
 
     @Test
