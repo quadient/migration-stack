@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Fixed
 - More robust column layout handling for DOCX parser
+- Hyperlink with specified font now deployed correctly to Interactive output
 
 ## [17.0.31] - 2026-10-06
 

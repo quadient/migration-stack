@@ -119,6 +119,35 @@ class TextStyleImplTest extends Specification {
                     <FixedWidth>0.007</FixedWidth>""")
     }
 
+    def "existing font reference replaces font object"() {
+        given:
+        TextStyle textStyle = new TextStyleImpl()
+                .setFont(new FontImpl())
+                .setExistingFont("Fonts.Aptos")
+
+        when:
+        textStyle.export(exporter)
+
+        then:
+        exporter.buildString().count("<FontId>") == 1
+        exporter.buildString().contains("<FontId>Fonts.Aptos</FontId>")
+    }
+
+    def "font object replaces existing font reference"() {
+        given:
+        TextStyle textStyle = new TextStyleImpl()
+                .setExistingFont("Fonts.Aptos")
+                .setFont(new FontImpl())
+
+        when:
+        textStyle.export(exporter)
+
+        then:
+        exporter.buildString().count("<FontId>") == 1
+        exporter.buildString().contains("<FontId>SR_1</FontId>")
+        !exporter.buildString().contains("Fonts.Aptos")
+    }
+
     def "def italic TextStyle"() {
         when:
         TextStyleImpl textStyle = new TextStyleImpl().seItalic(true)

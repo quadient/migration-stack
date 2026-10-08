@@ -26,6 +26,7 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
     private final boolean isVisible = true;
     private FillStyle fillStyle;
     private Font font;
+    private String existingFontId;
     private SubFont subFont;
     private BorderStyle borderStyle;
     private Variable urlLink;
@@ -115,6 +116,8 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
         }
         if (font != null) {
             exporter.addElementWithIface("FontId", font);
+        } else if (existingFontId != null) {
+            exporter.addElementWithStringData("FontId", existingFontId);
         }
         if (subFont != null) {
             exporter.addElementWithStringData("SubFont", subFont.getName());
@@ -163,6 +166,14 @@ public class TextStyleImpl extends NodeImpl<TextStyle> implements TextStyle {
     @Override
     public TextStyleImpl setFont(Font font) {
         this.font = font;
+        this.existingFontId = null;
+        return this;
+    }
+
+    @Override
+    public TextStyleImpl setExistingFont(String id) {
+        this.existingFontId = id;
+        this.font = null;
         return this;
     }
 

@@ -6,6 +6,7 @@ import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
+import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
@@ -160,6 +161,52 @@ class InteractiveDocumentObjectBuilderTest {
         paragraph["Id"].stringValue().shouldBeEqualTo("ParagraphStyles.${paraStyle.nameOrId()}")
         val text = paragraph["T"]
         text["Id"].stringValue().shouldBeEqualTo("TextStyles.${textStyle.nameOrId()}")
+    }
+
+    @ParameterizedTest
+    @CsvSource("Aptos, Aptos", "Arial, Arial", "Times New Roman, Times New Roman", "NULL, Arial", nullValues = ["NULL"])
+    fun `hyperlinks reference existing fonts by node path`(
+        fontFamily: String?, expectedFontName: String
+    ) {
+        every { ipsService.gatherFontData(any()) } returns
+            "$expectedFontName,Regular,icm://Interactive/tenant/Resources/Fonts/font.ttf;"
+        val textStyle = aTextStyle(
+            "TS_Base", definition = aTextDef(fontFamily = fontFamily, bold = true, italic = true)
+        ).mock()
+        val block = DocumentObjectBuilder("1", Block).paragraph {
+            text {
+                styleRef(textStyle).content(
+                    listOf(StringValue("Before "), Hyperlink("https://www.example.com", "Link"), StringValue(" after"))
+                )
+            }
+        }.build()
+
+        val result = xmlMapper.readTree(subject.buildDocumentObject(block))
+        val styleId = result["TextStyle"].first {
+            it["Name"]?.stringValue() == "${textStyle.nameOrId()}_url_1"
+        }["Id"].stringValue()
+        val style = result["TextStyle"].last { it["Id"].stringValue() == styleId }
+
+        style["FontId"].stringValue().shouldBeEqualTo("Fonts.$expectedFontName")
+        style["SubFont"].stringValue().shouldBeEqualTo("Bold Italic")
+        style["Bold"].stringValue().shouldBeEqualTo("True")
+        style["Italic"].stringValue().shouldBeEqualTo("True")
+        style["AncestorId"].stringValue().shouldBeEqualTo("Def.TextStyleHyperlink")
+        result["Font"].shouldBeNull()
+    }
+
+    @Test
+    fun `hyperlink without base text style keeps inherited font`() {
+        val block = DocumentObjectBuilder("1", Block).paragraph {
+            text { content(listOf(Hyperlink("https://www.example.com", "Link"))) }
+        }.build()
+
+        val result = xmlMapper.readTree(subject.buildDocumentObject(block))
+        val styleId = result["TextStyle"].first { it["Name"]?.stringValue() == "text_url_1" }["Id"].stringValue()
+        val style = result["TextStyle"].last { it["Id"].stringValue() == styleId }
+
+        style["FontId"].shouldBeNull()
+        result["Font"].shouldBeNull()
     }
 
     @Test
@@ -1253,6 +1300,18 @@ class InteractiveDocumentObjectBuilderTest {
         val unknownFont = fonts.last { it["Id"].stringValue() == unknownId }
         unknownFont["SubFont"].shouldBeNull()
 
+        for (textStyle in textStyles) {
+            val styleId = layout["TextStyle"].first {
+                it["Name"]?.stringValue() == textStyle.nameOrId()
+            }["Id"].stringValue()
+            val fontId = if (textStyle.definition.fontFamily == "Arial") {
+                "Def.Font"
+            } else {
+                fonts.first { it["Name"]?.stringValue() == textStyle.definition.fontFamily }["Id"].stringValue()
+            }
+            layout["TextStyle"].last { it["Id"].stringValue() == styleId }["FontId"].stringValue()
+                .shouldBeEqualTo(fontId)
+        }
         layout["TextStyle"].last { it["FontId"]?.stringValue() == tahomaId }["SubFont"].stringValue()
             .shouldBeEqualTo("Italic")
     }

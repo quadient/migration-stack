@@ -913,6 +913,8 @@ abstract class InspireDocumentObjectBuilder(
         if (baseTextStyleModel != null) {
             val definition = baseTextStyleModel.resolve().definition
             applyTextStyleProperties(layout, hyperlinkStyle, definition)
+            val font = requireNotNull(hyperlinkStyle.font) { "Hyperlink text style must have a resolved font." }
+            hyperlinkStyle.setExistingFont("Fonts.${font.name}")
         }
 
         return hyperlinkStyle

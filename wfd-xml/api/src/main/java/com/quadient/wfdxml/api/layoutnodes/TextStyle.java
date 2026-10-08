@@ -11,6 +11,8 @@ public interface TextStyle extends Node<TextStyle> {
 
     TextStyle setFont(Font font);
 
+    TextStyle setExistingFont(String id);
+
     TextStyle setSubFont(SubFont subFont);
 
     TextStyle setFontSize(double sizeInPoints);

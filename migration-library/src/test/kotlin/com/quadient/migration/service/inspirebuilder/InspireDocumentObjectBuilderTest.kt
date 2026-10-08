@@ -196,6 +196,11 @@ class InspireDocumentObjectBuilderTest {
 
         hyperlinkStyleContent["Type"].stringValue().shouldBeEqualTo("Delta")
         hyperlinkStyleContent["AncestorId"].stringValue().shouldBeEqualTo("Def.TextStyleHyperlink")
+        hyperlinkStyleContent["FontId"].stringValue().shouldBeEqualTo("Fonts.Calibri")
+        val fontId = result["Font"].first { it["Name"]?.stringValue() == "Calibri" }["Id"].stringValue()
+        val baseStyleId = result["TextStyle"].first { it["Name"]?.stringValue() == textStyle.name }["Id"].stringValue()
+        result["TextStyle"].last { it["Id"].stringValue() == baseStyleId }["FontId"].stringValue()
+            .shouldBeEqualTo(fontId)
         val inheritFlags = hyperlinkStyleContent["InheritFlag"]
 
         inheritFlags.size().shouldBeEqualTo(TextStyleInheritFlag.entries.size - 2)
