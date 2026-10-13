@@ -10,6 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+### Fixed
+
+## [17.0.32] - 2026-10-13
+
+### Added
+
+### Changed
+
 - DOCX header/footer areas now reference separate internal blocks containing their original content.
 
 ### Fixed
@@ -512,7 +520,8 @@ path.
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.31...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.32...HEAD
+[17.0.32]: https://github.com/quadient/migration-stack/compare/v17.0.31...v17.0.32
 [17.0.31]: https://github.com/quadient/migration-stack/compare/v17.0.30...v17.0.31
 [17.0.30]: https://github.com/quadient/migration-stack/compare/v17.0.29...v17.0.30
 [17.0.29]: https://github.com/quadient/migration-stack/compare/v17.0.28...v17.0.29
