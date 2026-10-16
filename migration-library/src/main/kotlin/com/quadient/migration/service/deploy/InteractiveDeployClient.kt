@@ -85,7 +85,7 @@ open class InteractiveDeployClient(
     variableStructureRepository: VariableStructureRepository,
     baseTemplateRepository: BaseTemplateRepository,
     documentObjectBuilder: InspireDocumentObjectBuilder,
-    private val baseTemplateBuilder: InspireBaseTemplateBuilder,
+    protected val baseTemplateBuilder: InspireBaseTemplateBuilder,
     ipsService: IpsService,
     storage: Storage,
 ) : DeployClient(

@@ -161,6 +161,28 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
             .executeRetrying()
     }
 
+    fun createBaseTemplateDraft(
+        name: String,
+        targetFolder: IcmPath?,
+        templateStructure: BaseTemplateStructure,
+        styleDefinitionPath: IcmPath? = null,
+        dataDefinitionPath: IcmPath? = null,
+    ): HttpResult<CreateDraftResult, ApiBadRequestException> {
+        logger.debug("Creating base template draft to {}/{}.wfd", targetFolder, name)
+        val structure = json.encodeToString(templateStructure)
+        return createRequest("/baseTemplateDraft")
+            .postMultipartForm {
+                addFormDataPart("createFolder", "true")
+                addFormDataPart("holder", evolveConfig.holder)
+                addFormDataPart("name", name)
+                addFormDataPart("templateStructure", null, structure.toRequestBody("application/json".toMediaType()))
+                addNonEmptyFormDataPart("folder", targetFolder?.toString())
+                addNonEmptyFormDataPart("styleDefinitionPath", styleDefinitionPath?.toString())
+                addNonEmptyFormDataPart("dataDefinitionPath", dataDefinitionPath?.toString())
+            }
+            .executeRetrying()
+    }
+
     fun setCategorization(request: CategorizationUpdateDto): HttpResult<Unit, ApiBadRequestException> {
         logger.debug("Setting categorization for {}", request.path)
         val body = json.encodeToString(request)
@@ -233,6 +255,72 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
             successDecoder = { it.readBytes() },
             failureDecoder = { it },
         )
+    }
+
+    fun fileExists(path: IcmPath) = fileExists(path.toString())
+    fun fileExists(path: String): HttpResult<Boolean, String> {
+        logger.debug("Checking whether file {} exists", path)
+        val body = buildJsonObject {
+            put("pipelineName", "exists")
+            putJsonArray("steps") {
+                addJsonObject {
+                    put("name", "Resource Exists")
+                    put("isRetryProcessingEnabled", false)
+                    put("failureNotificationEnabled", false)
+                    put("continueOnFailure", false)
+                    putJsonObject("module") {
+                        put("modulePath", "Public Modules/Integration/Resource Exists")
+                        putJsonArray("approvedCapabilities") {}
+                        putJsonArray("inputParameters") {
+                            addJsonObject {
+                                put("parameterId", "source")
+                                put("value", path.substringBeforeLast('/'))
+                            }
+                            addJsonObject {
+                                put("parameterId", "mask")
+                                put("value", path.substringAfterLast('/'))
+                            }
+                            addJsonObject {
+                                put("parameterId", "extension")
+                                put("value", "")
+                            }
+                            addJsonObject {
+                                put("parameterId", "resourceRequired")
+                                put("value", "Enabled")
+                            }
+                        }
+                        putJsonArray("outputParametersMapping") {}
+                    }
+                }
+            }
+            putJsonArray("onErrorSteps") {}
+            putJsonArray("variables") {}
+            put("createWorkingFolder", true)
+            put("useDraftResources", false)
+            put("retryStepProcessingMode", "Disabled")
+        }
+
+        val request = Request.Builder()
+            .url("$baseUrl/production/v7/onDemandDocument")
+            .header("Authorization", "Bearer ${evolveConfig.contentAuthorApiKey}")
+            .post(body.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+
+        val result = httpClient.newCall(request).executeRetrying(
+            delayMs = evolveConfig.apiRetryDelayMs,
+            successDecoder = { true },
+            failureDecoder = { it },
+        )
+
+        if (result is HttpResult.Failure && isResourceMissingError(result.error)) {
+            return HttpResult.Success(false)
+        }
+        return result
+    }
+
+    private fun isResourceMissingError(body: String): Boolean {
+        val error = runCatching { json.decodeFromString<OnDemandJobError>(body) }.getOrNull() ?: return false
+        return error.stepName == "Resource Exists" && error.errors.any { it.errorDetail == "The resource does not exist." }
     }
 
     private fun MultipartBody.Builder.addNonEmptyFormDataPart(name: String, value: String?) {
@@ -377,6 +465,18 @@ data class CreateDraftWithVFFResult(
     val guid: String,
     val path: String? = null,
     val url: String,
+)
+
+@Serializable
+data class OnDemandJobError(
+    val stepName: String? = null,
+    val errors: List<OnDemandJobErrorDetail> = emptyList(),
+)
+
+@Serializable
+data class OnDemandJobErrorDetail(
+    val errorMessage: String? = null,
+    val errorDetail: String? = null,
 )
 
 @Serializable

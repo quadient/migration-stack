@@ -109,6 +109,7 @@ data class EvolveConfig(
     val initialRuleStateId: String = "S_rule_scenario_assigned",
     val publishStyleDefinitionActionId: String? = null,
     val initialStyleDefinitionStateId: String = "S_company_styles_scenario_assigned",
+    val publishBaseTemplateActionId: String? = null,
 )
 
 data class IpsConfig(val host: String = "localhost", val port: Int = 30354, val timeoutSeconds: Int = 120)

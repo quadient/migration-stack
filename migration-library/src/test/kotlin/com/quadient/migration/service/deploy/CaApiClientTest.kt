@@ -270,6 +270,151 @@ class CaApiClientTest {
         multipartPartValue("folder").shouldBeNull()
     }
 
+    @Test
+    fun `createBaseTemplateDraft sends POST to correct endpoint with expected fields and returns Success`() {
+        mockSuccessResponse("""{"guid":"base-template-guid","url":"https://ca.example.com/authoring/?master-template-draft-id=base-template-guid"}""")
+        val structure = BaseTemplateStructure(
+            print = BaseTemplateStructurePrint(
+                units = BaseTemplateUnits.Millimeters,
+                pageOrder = BaseTemplateStructurePageOrder.Static,
+                pages = listOf(
+                    BaseTemplateStructurePage(
+                        displayName = "Page 1",
+                        width = 210.0,
+                        height = 297.0,
+                        areas = listOf(
+                            BaseTemplateStructureArea.Text(
+                                displayName = "Body", x = 20.0, y = 20.0, width = 170.0, height = 257.0, main = true, documentArea = true
+                            )
+                        ),
+                    )
+                ),
+            )
+        )
+
+        val result = subject.createBaseTemplateDraft(
+            name = "MyBaseTemplate",
+            targetFolder = IcmPath.from("folder"),
+            templateStructure = structure,
+            styleDefinitionPath = IcmPath.from("icm://Interactive/StandardPackage/CompanyStyles/Styles.jld"),
+            dataDefinitionPath = IcmPath.from("icm://Interactive/StandardPackage/DataDefinitions/Data.jdd"),
+        )
+
+        result.shouldBeOfInstance<HttpResult.Success<*, *>>()
+        (result as HttpResult.Success).response.guid.shouldBeEqualTo("base-template-guid")
+        requestSlot.captured.url.toString().shouldBeEqualTo("${evolveConfig.companyUrl}/authoring/api/system/v1/baseTemplateDraft")
+        requestSlot.captured.method.shouldBeEqualTo("POST")
+        requestSlot.captured.header("Authorization").shouldBeEqualTo("Bearer ${evolveConfig.contentAuthorApiKey}")
+        multipartPartValueString("createFolder").shouldBeEqualTo("true")
+        multipartPartValueString("name").shouldBeEqualTo("MyBaseTemplate")
+        multipartPartValueString("holder").shouldBeEqualTo(evolveConfig.holder)
+        multipartPartValueString("folder").shouldBeEqualTo("folder")
+        multipartPartValueString("styleDefinitionPath").shouldBeEqualTo("icm://Interactive/StandardPackage/CompanyStyles/Styles.jld")
+        multipartPartValueString("dataDefinitionPath").shouldBeEqualTo("icm://Interactive/StandardPackage/DataDefinitions/Data.jdd")
+        multipartPart("templateStructure")?.body?.contentType().toString().shouldBeEqualTo("application/json; charset=utf-8")
+        multipartPartValueString("templateStructure").shouldBeEqualTo(
+            """{"print":{"units":"mm","pageOrder":{"type":"Static"},"pages":[{"displayName":"Page 1","width":210.0,"height":297.0,"areas":[{"type":"text","displayName":"Body","x":20.0,"y":20.0,"width":170.0,"height":257.0,"main":true,"documentArea":true}]}]}}"""
+        )
+    }
+
+    @Test
+    fun `createBaseTemplateDraft omits optional fields when not set`() {
+        mockSuccessResponse("""{"guid":"base-template-guid","url":"https://ca.example.com/draft"}""")
+        val structure = BaseTemplateStructure(
+            print = BaseTemplateStructurePrint(BaseTemplateUnits.Millimeters, BaseTemplateStructurePageOrder.Static, emptyList())
+        )
+
+        subject.createBaseTemplateDraft("MyBaseTemplate", null, structure)
+
+        multipartPartNames(requestSlot.captured).shouldBeEqualTo(listOf("createFolder", "holder", "name", "templateStructure"))
+    }
+
+    @Test
+    fun `createBaseTemplateDraft serializes all area variants and page selections with type discriminators`() {
+        mockSuccessResponse("""{"guid":"base-template-guid","url":"https://ca.example.com/draft"}""")
+        val logo = "map://interactive/Resources/Images/Logo.png"
+        val structure = BaseTemplateStructure(
+            print = BaseTemplateStructurePrint(
+                units = BaseTemplateUnits.Millimeters,
+                pageOrder = BaseTemplateStructurePageOrder.Dynamic(BaseTemplateStructurePageSelection.Specific("First")),
+                pages = listOf(
+                    BaseTemplateStructurePage(
+                        displayName = "First",
+                        width = 210.0,
+                        height = 297.0,
+                        areas = listOf(
+                            BaseTemplateStructureArea.ObjectGroup(
+                                x = 0.0, y = 0.0, width = 210.0, height = 40.0,
+                                areas = listOf(
+                                    BaseTemplateStructureArea.Shape(
+                                        x = 0.0, y = 0.0, width = 210.0, height = 40.0, shape = ShapeType.Rectangle, fillColor = "Fill"
+                                    ),
+                                    BaseTemplateStructureArea.Image(
+                                        x = 150.0, y = 8.0, width = 45.0, height = 24.0,
+                                        image = BaseTemplateStructureImageReference(logo),
+                                        pdfTaggingType = PdfFigureTag.Figure,
+                                        defaultAlternativeText = listOf(
+                                            BaseTemplateStructureTextOrVariablePart.Text("Logo of "),
+                                            BaseTemplateStructureTextOrVariablePart.Variable("Data.ClientID"),
+                                        ),
+                                        languageAlternativeText = listOf(
+                                            mapOf("de" to listOf(BaseTemplateStructureTextOrVariablePart.Text("Firmenlogo")))
+                                        ),
+                                    ),
+                                ),
+                            ),
+                            BaseTemplateStructureArea.VariableImage(
+                                x = 20.0, y = 225.0, width = 170.0, height = 30.0,
+                                variableImageLocation = listOf(BaseTemplateStructureTextOrVariablePart.Text(logo)),
+                                resolution = BaseTemplateStructureImageResolution(300.0, ImageResolutionUnit.PixelsPerInch),
+                            ),
+                            BaseTemplateStructureArea.Text(
+                                x = 20.0, y = 95.0, width = 170.0, height = 160.0,
+                                main = true, documentArea = true, verticalAlignment = TextVerticalAlign.Top,
+                            ),
+                        ),
+                        nextPage = BaseTemplateStructurePageSelection.Dynamic(
+                            conditions = listOf(
+                                BaseTemplateStructurePageCondition("First", BaseTemplateStructurePageConditionRule.Overflow)
+                            ),
+                            defaultPage = "First",
+                        ),
+                    )
+                ),
+            ),
+            channels = listOf(BaseTemplateChannel.Print),
+        )
+
+        subject.createBaseTemplateDraft("MyBaseTemplate", null, structure)
+
+        multipartPartValueString("templateStructure").shouldBeEqualTo(
+            """{"print":{"units":"mm","pageOrder":{"type":"Dynamic","startPage":{"type":"Specific","page":"First"}},"pages":[{"displayName":"First","width":210.0,"height":297.0,"areas":[""" +
+                """{"type":"objectGroup","x":0.0,"y":0.0,"width":210.0,"height":40.0,"areas":[""" +
+                """{"type":"shape","x":0.0,"y":0.0,"width":210.0,"height":40.0,"shape":"Rectangle","fillColor":"Fill"},""" +
+                """{"type":"image","x":150.0,"y":8.0,"width":45.0,"height":24.0,"image":{"location":"$logo"},"pdfTaggingType":"Figure",""" +
+                """"defaultAlternativeText":[{"type":"Text","text":"Logo of "},{"type":"Variable","variableId":"Data.ClientID"}],""" +
+                """"languageAlternativeText":[{"de":[{"type":"Text","text":"Firmenlogo"}]}]}]},""" +
+                """{"type":"variableImage","x":20.0,"y":225.0,"width":170.0,"height":30.0,"variableImageLocation":[{"type":"Text","text":"$logo"}],""" +
+                """"resolution":{"value":300.0,"unit":"pixelsPerInch"}},""" +
+                """{"type":"text","x":20.0,"y":95.0,"width":170.0,"height":160.0,"main":true,"documentArea":true,"verticalAlignment":"Top"}],""" +
+                """"nextPage":{"type":"Dynamic","conditions":[{"page":"First","rule":{"type":"Overflow"}}],"defaultPage":"First"}}]},""" +
+                """"channels":["Print"]}"""
+        )
+    }
+
+    @Test
+    fun `createBaseTemplateDraft returns Failure on 400 response`() {
+        mockFailureResponse(400)
+        val structure = BaseTemplateStructure(
+            print = BaseTemplateStructurePrint(BaseTemplateUnits.Millimeters, BaseTemplateStructurePageOrder.Static, emptyList())
+        )
+
+        val result = subject.createBaseTemplateDraft("MyBaseTemplate", null, structure)
+
+        result.shouldBeOfInstance<HttpResult.Failure<*, *>>()
+        (result as HttpResult.Failure).error.detail.shouldBeEqualTo("Invalid input")
+    }
+
     @Nested
     inner class ExecuteActionTests {
 
@@ -444,18 +589,22 @@ class CaApiClientTest {
     }
 
     private fun multipartPartValue(partName: String): ByteArray? {
+        return multipartPart(partName)?.let { part ->
+            val buffer = okio.Buffer()
+            part.body.writeTo(buffer)
+            buffer.readByteArray()
+        }
+    }
+
+    private fun multipartPart(partName: String): MultipartBody.Part? {
         val body = requestSlot.captured.body as MultipartBody
-        return body.parts.firstNotNullOfOrNull { part ->
-            val disposition = part.headers?.get("Content-Disposition") ?: return@firstNotNullOfOrNull null
+        return body.parts.firstOrNull { part ->
+            val disposition = part.headers?.get("Content-Disposition") ?: return@firstOrNull false
             val name = disposition.split(";").firstNotNullOfOrNull { segment ->
                 val trimmed = segment.trim()
                 if (trimmed.startsWith("name=")) trimmed.removePrefix("name=").trim('"') else null
             }
-            if (name == partName) {
-                val buffer = okio.Buffer()
-                part.body.writeTo(buffer)
-                buffer.readByteArray()
-            } else null
+            name == partName
         }
     }
 }

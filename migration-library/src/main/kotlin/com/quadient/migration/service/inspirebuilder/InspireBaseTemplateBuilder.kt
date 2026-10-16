@@ -53,8 +53,6 @@ class InspireBaseTemplateBuilder(
         }
         resolveArialFont(layout, icmDataCache)
 
-        val usages = baseTemplateRepository.findUsages(baseTemplate.id).filterIsInstance<DocumentObject>()
-
         var mainFlow: Flow? = null
         var mainFlowSize = -1.0
 
@@ -91,7 +89,7 @@ class InspireBaseTemplateBuilder(
 
         mainFlow?.let { layout.pages.setMainFlow(it) }
 
-        enrichFromDocumentObjects(baseTemplate, usages, layout)
+        enrichFromDocumentObjects(baseTemplate, layout)
 
         val baseTemplateXml = builder.build()
         val sourceBaseTemplatePath = if (projectConfig.sourceBaseTemplatePath.isNullOrBlank()) {
@@ -103,10 +101,11 @@ class InspireBaseTemplateBuilder(
         return enrichLayoutWithSourceBaseTemplate(icmDataCache, baseTemplateXml, sourceBaseTemplatePath)
     }
 
-    private fun enrichFromDocumentObjects(baseTemplate: BaseTemplate, usages: List<DocumentObject>, layout: Layout) {
+    fun findChannelModels(baseTemplate: BaseTemplate): BaseTemplateChannelModels {
         var emailModel: DocumentObject? = null
         var smsModel: DocumentObject? = null
 
+        val usages = baseTemplateRepository.findUsages(baseTemplate.id).filterIsInstance<DocumentObject>()
         for (usage in usages) {
             for (content in usage.content) {
                 val referenced = (content as? DocumentObjectRef)?.id?.let(documentObjectRepository::find) ?: continue
@@ -118,6 +117,11 @@ class InspireBaseTemplateBuilder(
             }
         }
 
+        return BaseTemplateChannelModels(emailModel, smsModel)
+    }
+
+    private fun enrichFromDocumentObjects(baseTemplate: BaseTemplate, layout: Layout) {
+        val (emailModel, smsModel) = findChannelModels(baseTemplate)
         if (emailModel == null && smsModel == null) return
 
         val resolvedVariableStructureId = baseTemplate.variableStructureRef?.id
@@ -150,3 +154,5 @@ class InspireBaseTemplateBuilder(
         }
     }
 }
+
+data class BaseTemplateChannelModels(val email: DocumentObject?, val sms: DocumentObject?)

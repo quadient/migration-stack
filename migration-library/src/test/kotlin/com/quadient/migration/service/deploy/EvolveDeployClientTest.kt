@@ -1,15 +1,23 @@
 package com.quadient.migration.service.deploy
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.core.read.ListAppender
 import com.quadient.migration.api.EvolveConfig
 import com.quadient.migration.api.InspireConfig
 import com.quadient.migration.api.MigConfig
 import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.builder.AttachmentBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.EmailObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.SmsObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.BaseTemplateRepository
@@ -34,6 +42,7 @@ import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBu
 import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
+import com.quadient.migration.service.inspirebuilder.BaseTemplateChannelModels
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
 import com.quadient.migration.service.ipsclient.IpsClientException
 import com.quadient.migration.service.ipsclient.IpsService
@@ -41,11 +50,15 @@ import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.ipsclient.Version
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
+import com.quadient.migration.shared.Position
+import com.quadient.migration.shared.Size
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aDeployedStatus
 import com.quadient.migration.tools.aErrorStatus
 import com.quadient.migration.tools.aProjectConfig
+import com.quadient.migration.tools.shouldBeEmpty
 import com.quadient.migration.tools.shouldBeEqualTo
+import com.quadient.migration.tools.shouldBeOfSize
 import com.quadient.migration.tools.shouldBeOfInstance
 import com.quadient.migration.tools.shouldStartWith
 import io.mockk.every
@@ -58,6 +71,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.slf4j.LoggerFactory
 import kotlin.uuid.Uuid
 
 class EvolveDeployClientTest {
@@ -91,6 +105,7 @@ class EvolveDeployClientTest {
         publishTemplateActionId = "publishTemplate",
         publishRuleActionId = "publishRule",
         publishStyleDefinitionActionId = "publishStyleDefinition",
+        publishBaseTemplateActionId = "publishBaseTemplate",
     )
 
     val migConfig = MigConfig(inspireConfig = InspireConfig(evolveConfig = evolveConfig))
@@ -287,6 +302,264 @@ class EvolveDeployClientTest {
         every { ipsService.deployStyleJld(any<String>(), any(), any<String>()) } returns OperationResult.Success
         every { caClient.createStyleDefinitionDraft(any(), any(), any()) } returns HttpResult.Success(styleDraftResult)
         every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Success(Unit)
+        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
+        every { statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
+    }
+
+    @Test
+    fun `deployBaseTemplates creates and publishes base template draft with mapped structure`() {
+        val baseTemplate = BaseTemplateBuilder("BT_1")
+            .name("Letter")
+            .addPage {
+                name("First")
+                pageSize(Size.ofMillimeters(210), Size.ofMillimeters(297))
+                addArea("Header") { position(mmPosition(10, 10, 190, 30)) }
+                addArea("Body") {
+                    position(mmPosition(10, 50, 190, 200))
+                    flowToNextPage(true)
+                }
+            }
+            .addPage { addArea("Overflow") }
+            .build()
+        mockBaseTemplatesToDeploy(baseTemplate)
+
+        val result = subject.deployBaseTemplates()
+
+        val expectedStructure = BaseTemplateStructure(
+            print = BaseTemplateStructurePrint(
+                units = BaseTemplateUnits.Millimeters,
+                pageOrder = BaseTemplateStructurePageOrder.Static,
+                pages = listOf(
+                    BaseTemplateStructurePage(
+                        displayName = "First",
+                        width = 210.0,
+                        height = 297.0,
+                        areas = listOf(
+                            BaseTemplateStructureArea.Text(
+                                displayName = "Header", x = 10.0, y = 10.0, width = 190.0, height = 30.0,
+                                documentArea = true, contentId = "Header", flowingToNextPage = false,
+                            ),
+                            BaseTemplateStructureArea.Text(
+                                displayName = "Body", x = 10.0, y = 50.0, width = 190.0, height = 200.0,
+                                main = true, documentArea = true, contentId = "Body", flowingToNextPage = true,
+                            ),
+                        ),
+                    ),
+                    BaseTemplateStructurePage(
+                        displayName = "Page 2",
+                        width = 210.0,
+                        height = 297.0,
+                        areas = listOf(
+                            BaseTemplateStructureArea.Text(
+                                displayName = "Overflow", x = 15.0, y = 15.0, width = 180.0, height = 267.0,
+                                documentArea = true, contentId = "Overflow", flowingToNextPage = false,
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        )
+        result.errors.shouldBeEmpty()
+        result.deployed.shouldBeOfSize(1)
+        verifyOrder {
+            caClient.createBaseTemplateDraft("Letter", "defaultFolder".toIcmPath(), expectedStructure, styleDefinitionPath, null)
+            caClient.executeAction("publishBaseTemplate", draftGuid, ObjectType.BaseTemplateDraft)
+        }
+        verify { statusTrackingRepository.deployed("BT_1", any<Uuid>(), any(), ResourceType.BaseTemplate, letterBaseTemplatePath, projectConfig.inspireOutput) }
+    }
+
+    @Test
+    fun `deployBaseTemplates places area without position 15mm from custom page edges`() {
+        val baseTemplate = BaseTemplateBuilder("BT_1")
+            .name("Letter")
+            .addPage {
+                name("First")
+                pageSize(Size.ofMillimeters(216), Size.ofMillimeters(279))
+                addArea("Body")
+            }
+            .build()
+        mockBaseTemplatesToDeploy(baseTemplate)
+
+        val result = subject.deployBaseTemplates()
+
+        val expectedStructure = BaseTemplateStructure(
+            print = BaseTemplateStructurePrint(
+                units = BaseTemplateUnits.Millimeters,
+                pageOrder = BaseTemplateStructurePageOrder.Static,
+                pages = listOf(
+                    BaseTemplateStructurePage(
+                        displayName = "First",
+                        width = 216.0,
+                        height = 279.0,
+                        areas = listOf(
+                            BaseTemplateStructureArea.Text(
+                                displayName = "Body", x = 15.0, y = 15.0, width = 186.0, height = 249.0,
+                                main = true, documentArea = true, contentId = "Body", flowingToNextPage = false,
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        )
+        result.errors.shouldBeEmpty()
+        verify { caClient.createBaseTemplateDraft("Letter", "defaultFolder".toIcmPath(), expectedStructure, styleDefinitionPath, null) }
+    }
+
+    @Test
+    fun `deployBaseTemplates omits style definition when it is not deployed in Evolve`() {
+        mockBaseTemplatesToDeploy(aLetterBaseTemplate())
+        every { caClient.fileExists(styleDefinitionPath) } returns HttpResult.Success(false)
+
+        val result = subject.deployBaseTemplates()
+
+        result.errors.shouldBeEmpty()
+        verify { caClient.createBaseTemplateDraft("Letter", "defaultFolder".toIcmPath(), any(), null, null) }
+    }
+
+    @Test
+    fun `deployBaseTemplates records error and does not publish when createBaseTemplateDraft fails`() {
+        mockBaseTemplatesToDeploy(aLetterBaseTemplate())
+        val error = ApiBadRequestException(status = 400, title = "Bad Request", detail = "Invalid structure")
+        every { caClient.createBaseTemplateDraft(any(), any(), any(), any(), any()) } returns HttpResult.Failure(error)
+
+        val result = subject.deployBaseTemplates()
+
+        val message = "Failed to deploy base template 'Letter' to $letterBaseTemplatePath: CA API error 400: Bad Request - Invalid structure"
+        result.errors.shouldBeEqualTo(mutableListOf(DeploymentError("BT_1", message)))
+        verify { statusTrackingRepository.error("BT_1", any<Uuid>(), any(), ResourceType.BaseTemplate, letterBaseTemplatePath, projectConfig.inspireOutput, message) }
+        verify(exactly = 0) { caClient.executeAction(any(), any(), any()) }
+    }
+
+    @Test
+    fun `deployBaseTemplates records error when publish action fails`() {
+        mockBaseTemplatesToDeploy(aLetterBaseTemplate())
+        val error = ApiBadRequestException(status = 500, title = "Server Error", detail = "Action failed")
+        every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Failure(error)
+
+        val result = subject.deployBaseTemplates()
+
+        result.errors.shouldBeEqualTo(
+            mutableListOf(
+                DeploymentError("BT_1", "Failed to deploy base template 'Letter' to $letterBaseTemplatePath: CA API error 500: Server Error - Action failed")
+            )
+        )
+        result.deployed.shouldBeEmpty()
+    }
+
+    @Test
+    fun `deployBaseTemplates records error when target folder is absolute`() {
+        val baseTemplate = BaseTemplateBuilder("BT_1").name("Letter").targetFolder("icm://Interactive/tenant/BaseTemplates")
+            .addPage { addArea("Body") }
+            .build()
+        mockBaseTemplatesToDeploy(baseTemplate)
+
+        val result = subject.deployBaseTemplates()
+
+        result.errors.single().message.shouldBeEqualTo(
+            "Failed to deploy base template 'Letter' to icm://Interactive/tenant/BaseTemplates/Letter.wfd: " +
+                "TargetFolder 'icm://Interactive/tenant/BaseTemplates' for base template 'BT_1' cannot be absolute for Evolve output"
+        )
+        verify(exactly = 0) { caClient.createBaseTemplateDraft(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `deployBaseTemplates records error when base template has no areas`() {
+        mockBaseTemplatesToDeploy(BaseTemplateBuilder("BT_1").name("Letter").addPage { name("Empty") }.build())
+
+        val result = subject.deployBaseTemplates()
+
+        result.errors.single().message.shouldBeEqualTo(
+            "Failed to deploy base template 'Letter' to $letterBaseTemplatePath: Base template 'BT_1' must contain at least one area to be deployed to Evolve output"
+        )
+        verify(exactly = 0) { caClient.createBaseTemplateDraft(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `deployBaseTemplates throws when publishBaseTemplateActionId is not set`() {
+        val configWithoutPublishId = MigConfig(inspireConfig = InspireConfig(evolveConfig = evolveConfig.copy(publishBaseTemplateActionId = null)))
+
+        val exception = assertThrows<IllegalStateException> { createSubject(migConfig = configWithoutPublishId).deployBaseTemplates() }
+
+        exception.message.shouldBeEqualTo("publishBaseTemplateActionId must be set in migration-config to deploy base templates to Evolve output")
+        verify(exactly = 0) { caClient.createBaseTemplateDraft(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `deployBaseTemplates warns that email and sms channels are skipped when base template needs them`() {
+        val baseTemplate = aLetterBaseTemplate()
+        mockBaseTemplatesToDeploy(baseTemplate)
+        every { baseTemplateBuilder.findChannelModels(baseTemplate) } returns BaseTemplateChannelModels(
+            email = EmailObjectBuilder("Email_1").build(),
+            sms = SmsObjectBuilder("Sms_1").build(),
+        )
+
+        val (result, warnings) = captureWarnings { subject.deployBaseTemplates() }
+
+        result.errors.shouldBeEmpty()
+        result.deployed.shouldBeOfSize(1)
+        warnings.shouldBeEqualTo(
+            listOf("Base template 'Letter' should contain Email and SMS channels, but base template channels are not supported in Evolve output. Skipping Email and SMS channels.")
+        )
+    }
+
+    @Test
+    fun `deployBaseTemplates warns that sms channel is skipped when base template needs it`() {
+        val baseTemplate = aLetterBaseTemplate()
+        mockBaseTemplatesToDeploy(baseTemplate)
+        every { baseTemplateBuilder.findChannelModels(baseTemplate) } returns BaseTemplateChannelModels(
+            email = null,
+            sms = SmsObjectBuilder("Sms_1").build(),
+        )
+
+        val (result, warnings) = captureWarnings { subject.deployBaseTemplates() }
+
+        result.deployed.shouldBeOfSize(1)
+        warnings.shouldBeEqualTo(
+            listOf("Base template 'Letter' should contain SMS channel, but base template channels are not supported in Evolve output. Skipping SMS channel.")
+        )
+    }
+
+    @Test
+    fun `deployBaseTemplates does not warn about channels when base template does not need them`() {
+        mockBaseTemplatesToDeploy(aLetterBaseTemplate())
+
+        val (result, warnings) = captureWarnings { subject.deployBaseTemplates() }
+
+        result.deployed.shouldBeOfSize(1)
+        warnings.shouldBeEmpty()
+    }
+
+    private fun <T> captureWarnings(block: () -> T): Pair<T, List<String>> {
+        val logger = LoggerFactory.getLogger(EvolveDeployClient::class.java) as Logger
+        val appender = ListAppender<ILoggingEvent>().apply { start() }
+        logger.addAppender(appender)
+        try {
+            val result = block()
+            return result to appender.list.filter { it.level == Level.WARN }.map { it.formattedMessage }
+        } finally {
+            logger.detachAppender(appender)
+        }
+    }
+
+    private val letterBaseTemplatePath = "icm://Interactive/tenant/BaseTemplates/defaultFolder/Letter.wfd".toIcmPath()
+
+    private fun aLetterBaseTemplate() = BaseTemplateBuilder("BT_1").name("Letter").addPage { addArea("Body") }.build()
+
+    private fun mmPosition(x: Int, y: Int, width: Int, height: Int) =
+        Position(Size.ofMillimeters(x), Size.ofMillimeters(y), Size.ofMillimeters(width), Size.ofMillimeters(height))
+
+    private fun mockBaseTemplatesToDeploy(vararg baseTemplates: BaseTemplate) {
+        every { baseTemplateRepository.listAll() } returns baseTemplates.toList()
+        every { resourcePathProvider.getBaseTemplatePath(any<BaseTemplate>()) } answers {
+            InteractiveResourcePathProvider(projectConfig).getBaseTemplatePath(firstArg<BaseTemplate>())
+        }
+        every { resourcePathProvider.getStyleDefinitionPath() } returns styleDefinitionPath
+        every { caClient.fileExists(styleDefinitionPath) } returns HttpResult.Success(true)
+        every { caClient.createBaseTemplateDraft(any(), any(), any(), any(), any()) } returns
+            HttpResult.Success(CreateDraftResult(guid = draftGuid, url = "http://example.com"))
+        every { caClient.executeAction(any(), any(), any()) } returns HttpResult.Success(Unit)
+        every { baseTemplateBuilder.findChannelModels(any()) } returns BaseTemplateChannelModels(null, null)
+        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("id")
         every { statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("id")
     }

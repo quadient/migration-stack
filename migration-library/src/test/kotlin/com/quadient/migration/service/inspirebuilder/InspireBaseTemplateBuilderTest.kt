@@ -4,6 +4,9 @@ import com.quadient.migration.api.dto.migrationmodel.EmailOptions
 import com.quadient.migration.api.dto.migrationmodel.SmsOptions
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.EmailObjectBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.SmsObjectBuilder
 import com.quadient.migration.api.repository.BaseTemplateRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.VariableRepository
@@ -348,6 +351,46 @@ class InspireBaseTemplateBuilderTest {
         // then
         result["SMSRoot"].shouldBeNull()
         result["ECRoot"].shouldBeNull()
+    }
+
+    @Test
+    fun `findChannelModels returns email and sms document objects referenced by base template usages`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+        val email = EmailObjectBuilder("Email_1").build()
+        val sms = SmsObjectBuilder("Sms_1").build()
+        val block = DocumentObjectBuilder("B_1", DocumentObjectType.Block).build()
+        val emailTemplate = DocumentObjectBuilder("T_1", DocumentObjectType.Template)
+            .documentObjectRef(block)
+            .documentObjectRef(email)
+            .build()
+        val smsTemplate = DocumentObjectBuilder("T_2", DocumentObjectType.Template).documentObjectRef(sms).build()
+        every { baseTemplateRepository.findUsages(baseTemplate.id) } returns listOf(emailTemplate, smsTemplate)
+        every { documentObjectRepository.find(block.id) } returns block
+        every { documentObjectRepository.find(email.id) } returns email
+        every { documentObjectRepository.find(sms.id) } returns sms
+
+        // when
+        val result = subject.findChannelModels(baseTemplate)
+
+        // then
+        result.shouldBeEqualTo(BaseTemplateChannelModels(email, sms))
+    }
+
+    @Test
+    fun `findChannelModels returns no models when no usage references email or sms document objects`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+        val block = DocumentObjectBuilder("B_1", DocumentObjectType.Block).build()
+        val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template).documentObjectRef(block).build()
+        every { baseTemplateRepository.findUsages(baseTemplate.id) } returns listOf(template)
+        every { documentObjectRepository.find(block.id) } returns block
+
+        // when
+        val result = subject.findChannelModels(baseTemplate)
+
+        // then
+        result.shouldBeEqualTo(BaseTemplateChannelModels(null, null))
     }
 
     @Test

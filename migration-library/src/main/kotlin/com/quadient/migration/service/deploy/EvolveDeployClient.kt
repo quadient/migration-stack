@@ -3,6 +3,7 @@ package com.quadient.migration.service.deploy
 import com.quadient.migration.api.MigConfig
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
+import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
@@ -27,6 +28,7 @@ import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
+import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
 import com.quadient.migration.service.ipsclient.IpsClientException
@@ -95,6 +97,9 @@ class EvolveDeployClient(
 ) {
     private companion object {
         val STYLE_DEFINITION_MASTER = "icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd".toIcmPath()
+        const val A4_WIDTH_MM = 210.0
+        const val A4_HEIGHT_MM = 297.0
+        const val DEFAULT_AREA_PADDING_MM = 15.0
     }
 
     init {
@@ -427,7 +432,134 @@ class EvolveDeployClient(
     }
 
     override fun deployBaseTemplates(): DeploymentResult {
-        error("Base template deployment is not currently supported in Evolve output")
+        val publishActionId = checkNotNull(evolveConfig.publishBaseTemplateActionId) {
+            "publishBaseTemplateActionId must be set in migration-config to deploy base templates to Evolve output"
+        }
+        val styleDefinitionPath = findDeployedStyleDefinition()
+        val tracker = ResultTrackerImpl(statusTrackingRepository, projectConfig.inspireOutput)
+
+        val baseTemplates = baseTemplateRepository.listAll()
+        logger.info("Found ${baseTemplates.size} base template(s) in the repository.")
+
+        for (baseTemplate in baseTemplates) {
+            val targetPath = resourcePathProvider.getBaseTemplatePath(baseTemplate)
+
+            if (!shouldDeployObject(baseTemplate.id, ResourceType.BaseTemplate, targetPath, tracker.deploymentResult)) {
+                logger.info("Skipping deployment of '${baseTemplate.id}' as it is not marked for deployment.")
+                continue
+            }
+
+            val fileNameError = validateFileName(resourcePathProvider.getBaseTemplateFileName(baseTemplate), ResourceType.BaseTemplate, baseTemplate.id)
+            if (fileNameError != null) {
+                logger.error(fileNameError)
+                tracker.errorBaseTemplate(baseTemplate.id, targetPath, fileNameError)
+                continue
+            }
+
+            when (val result = deployBaseTemplate(baseTemplate, styleDefinitionPath, publishActionId)) {
+                is OperationResult.Success -> {
+                    logger.debug("Deployment of base template '${baseTemplate.nameOrId()}' to $targetPath is successful.")
+                    tracker.deployedBaseTemplate(baseTemplate.id, targetPath)
+                }
+
+                is OperationResult.Failure -> {
+                    val message = "Failed to deploy base template '${baseTemplate.nameOrId()}' to $targetPath: ${result.message}"
+                    logger.error(message)
+                    tracker.errorBaseTemplate(baseTemplate.id, targetPath, message)
+                }
+            }
+        }
+
+        runPostProcessors(tracker.deploymentResult)
+
+        return tracker.deploymentResult
+    }
+
+    private fun deployBaseTemplate(baseTemplate: BaseTemplate, styleDefinitionPath: IcmPath?, publishActionId: String): OperationResult {
+        val targetFolder = baseTemplate.targetFolder?.toIcmPath()
+        if (targetFolder?.isAbsolute() == true) {
+            return OperationResult.Failure("TargetFolder '$targetFolder' for base template '${baseTemplate.id}' cannot be absolute for Evolve output")
+        }
+
+        val templateStructure = baseTemplate.toTemplateStructure()
+            ?: return OperationResult.Failure("Base template '${baseTemplate.id}' must contain at least one area to be deployed to Evolve output")
+
+        warnAboutSkippedChannels(baseTemplate)
+
+        val result = caClient.createBaseTemplateDraft(
+            name = resourcePathProvider.getBaseTemplateFileName(baseTemplate).removeSuffix(".wfd"),
+            targetFolder = resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder),
+            templateStructure = templateStructure,
+            styleDefinitionPath = styleDefinitionPath,
+        )
+        if (result !is HttpResult.Success) {
+            return result.toOperationResult()
+        }
+
+        return caClient.executeAction(publishActionId, result.response.guid, ObjectType.BaseTemplateDraft).toOperationResult()
+    }
+
+    private fun warnAboutSkippedChannels(baseTemplate: BaseTemplate) {
+        val (emailModel, smsModel) = baseTemplateBuilder.findChannelModels(baseTemplate)
+        val skippedChannels = listOfNotNull(emailModel?.let { "Email" }, smsModel?.let { "SMS" })
+        if (skippedChannels.isEmpty()) return
+
+        val channels = skippedChannels.joinToString(" and ") + if (skippedChannels.size > 1) " channels" else " channel"
+        logger.warn("Base template '${baseTemplate.nameOrId()}' should contain $channels, but base template channels are not supported in Evolve output. Skipping $channels.")
+    }
+
+    private fun findDeployedStyleDefinition(): IcmPath? {
+        val path = resourcePathProvider.getStyleDefinitionPath()
+        val result = caClient.fileExists(path)
+        if (result is HttpResult.Success && result.response) {
+            return path
+        }
+
+        logger.warn("Style definition '$path' was not found in Evolve, base templates are deployed without it. Deploy styles first to use them in base templates.")
+        return null
+    }
+
+    private fun BaseTemplate.toTemplateStructure(): BaseTemplateStructure? {
+        val pageSizes = pages.map { page ->
+            (page.pageWidth?.toMillimeters() ?: A4_WIDTH_MM) to (page.pageHeight?.toMillimeters() ?: A4_HEIGHT_MM)
+        }
+        val areasByPage = pages.mapIndexed { index, page ->
+            val (pageWidth, pageHeight) = pageSizes[index]
+            page.areas.map { area ->
+                BaseTemplateStructureArea.Text(
+                    displayName = area.interactiveFlowName,
+                    x = area.position?.x?.toMillimeters() ?: DEFAULT_AREA_PADDING_MM,
+                    y = area.position?.y?.toMillimeters() ?: DEFAULT_AREA_PADDING_MM,
+                    width = area.position?.width?.toMillimeters() ?: (pageWidth - 2 * DEFAULT_AREA_PADDING_MM),
+                    height = area.position?.height?.toMillimeters() ?: (pageHeight - 2 * DEFAULT_AREA_PADDING_MM),
+                    documentArea = true,
+                    contentId = area.interactiveFlowName,
+                    flowingToNextPage = area.flowToNextPage,
+                )
+            }
+        }
+
+        val mainArea = areasByPage.firstOrNull()?.maxByOrNull { it.width * it.height }
+            ?: areasByPage.firstNotNullOfOrNull { it.firstOrNull() }
+            ?: return null
+
+        val structurePages = pages.mapIndexed { index, page ->
+            val (pageWidth, pageHeight) = pageSizes[index]
+            BaseTemplateStructurePage(
+                displayName = page.name ?: "Page ${index + 1}",
+                width = pageWidth,
+                height = pageHeight,
+                areas = areasByPage[index].map { if (it === mainArea) it.copy(main = true) else it },
+            )
+        }
+
+        return BaseTemplateStructure(
+            print = BaseTemplateStructurePrint(
+                units = BaseTemplateUnits.Millimeters,
+                pageOrder = BaseTemplateStructurePageOrder.Static,
+                pages = structurePages,
+            )
+        )
     }
 
     private fun HttpResult<*, ApiBadRequestException>.toOperationResult(): OperationResult = when (this) {

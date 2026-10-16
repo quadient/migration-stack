@@ -26,3 +26,4 @@ port = 30354
 # initialRuleStateId = "S_rule_scenario_assigned"
 # publishStyleDefinitionActionId = "A_company_styles_scenario_scenario_senior_template_designer_publish"
 # initialStyleDefinitionStateId = "S_company_styles_scenario_assigned"
+# publishBaseTemplateActionId = "A_base_template_draft_scenario_senior_template_designer_publish"
