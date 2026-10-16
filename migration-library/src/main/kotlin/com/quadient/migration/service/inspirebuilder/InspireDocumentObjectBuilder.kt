@@ -745,7 +745,18 @@ abstract class InspireDocumentObjectBuilder(
 
         }
 
+        columnLayout?.let {
+            flow.addParagraph().setParagraphStyle(getOrCreateColumnLayoutParagraphStyle(layout))
+                .addText().appendSection(buildWfdXmlSection(it, layout))
+        }
+
         return flow
+    }
+
+    private fun getOrCreateColumnLayoutParagraphStyle(layout: Layout): WfdXmlParagraphStyle {
+        val name = "__Migration_ColumnLayoutCarrier"
+        return findParagraphStyleByName(layout, name)
+            ?: layout.addParagraphStyle().setName(name).setIgnoreEmptyLines(true)
     }
 
     abstract fun buildDocumentObjectRef(

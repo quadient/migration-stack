@@ -47,7 +47,7 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
     private DataImpl data;
     private PagesImpl pages;
 
-    private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images", "TextStyles", "Colors", "FillStyles", "BorderStyles", "Pages", "Others", "FlowObjects", "EmailComponents");
+    private final List<String> layoutDeltaAllowedGroups = List.of("Flows", "Tables", "RowSets", "Cells", "Data", "Images", "TextStyles", "ParagraphStyles", "Colors", "FillStyles", "BorderStyles", "Pages", "Others", "FlowObjects", "EmailComponents");
     private final List<String> styleLayoutDeltaAllowedGroups = List.of("TextStyles", "FillStyles", "ParagraphStyles", "Colors", "Fonts");
 
     public LayoutImpl() {
@@ -403,9 +403,9 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
         children = children.stream()
                 .filter(child -> layoutDeltaAllowedGroups.contains(child.getName()))
                 .map(child -> {
-                    if (child.getName().equals("TextStyles") && child instanceof Tree<?> textStylesNode) {
-                        textStylesNode.children = textStylesNode.children.stream().filter(textStyleChild -> !textStyleChild.getName().equals("Normal")).toList();
-                        return textStylesNode;
+                    if ((child.getName().equals("TextStyles") || child.getName().equals("ParagraphStyles")) && child instanceof Tree<?> stylesNode) {
+                        stylesNode.children = stylesNode.children.stream().filter(styleChild -> !styleChild.getName().equals("Normal")).toList();
+                        return stylesNode;
                     }
                     if (child.getName().equals("Pages") && child instanceof Tree<?> pagesNode) {
                         pagesNode.children = pagesNode.children.stream().filter(c -> false).toList();

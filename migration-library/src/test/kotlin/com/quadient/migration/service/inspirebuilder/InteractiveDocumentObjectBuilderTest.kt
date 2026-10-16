@@ -118,6 +118,22 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `standalone column layout uses a local paragraph style in interactive output`() {
+        val block = DocumentObjectBuilder("columns", Block).columnLayout().build()
+
+        val result = xmlMapper.readTree(subject.buildDocumentObject(block))
+        val section = result["Section"].last()
+        val styleId = result["ParaStyle"].first {
+            it["Name"]?.stringValue() == "__Migration_ColumnLayoutCarrier"
+        }["Id"].stringValue()
+        result["ParaStyle"].last { it["Id"].stringValue() == styleId }["IgnoreEmptyLines"]
+            .stringValue().shouldBeEqualTo("True")
+        val carrier = result["Flow"].last { it["FlowContent"] != null }
+        carrier["FlowContent"]["P"]["Id"].stringValue().shouldBeEqualTo(styleId)
+        carrier["FlowContent"]["P"]["T"]["O"]["Id"].stringValue().shouldBeEqualTo(section["Id"].stringValue())
+    }
+
+    @Test
     fun `build of simple block with string and var ref that is not part of structure results in single flow with one paragraph and text`() {
         // given
         val variable = VariableBuilder("var1").name("varName1").dataType(DataType.String).build().mock()

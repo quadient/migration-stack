@@ -927,6 +927,62 @@ class InspireDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `column layout before document object refs creates a styled section carrier in order`() {
+        val first = mockObj(DocumentObjectBuilder("first", Block).string("First").build())
+        val second = mockObj(DocumentObjectBuilder("second", Block).string("Second").build())
+        val block = mockObj(DocumentObjectBuilder("B_1", Block)
+            .columnLayout { numberOfColumns(3).applyTo(ColumnApplyTo.WholeTemplate) }
+            .documentObjectRef(first.id)
+            .documentObjectRef(second.id)
+            .build())
+
+        val result = xmlMapper.readTree(subject.buildDocumentObject(block))["Layout"]["Layout"]
+        val section = result["Section"].last()
+        section["Column"].size().shouldBeEqualTo(3)
+        section["AutoFinish"].stringValue().shouldBeEqualTo("False")
+
+        val mainFlowId = result["FlowArea"].last()["FlowId"].stringValue()
+        val mainFlow = result["Flow"].last { it["Id"].stringValue() == mainFlowId }
+        val refs = mainFlow["FlowContent"]["P"]["T"]["O"]
+        refs.size().shouldBeEqualTo(3)
+        val carrier = result["Flow"].last { it["Id"].stringValue() == refs[0]["Id"].stringValue() }
+        val paragraph = carrier["FlowContent"]["P"]
+        paragraph["T"]["O"]["Id"].stringValue().shouldBeEqualTo(section["Id"].stringValue())
+        val style = result["ParaStyle"].last { it["Id"].stringValue() == paragraph["Id"].stringValue() }
+        style["IgnoreEmptyLines"].stringValue().shouldBeEqualTo("True")
+        val firstFlow = result["Flow"].first { it["Name"]?.stringValue() == first.id }
+        val secondFlow = result["Flow"].first { it["Name"]?.stringValue() == second.id }
+        refs[1]["Id"].stringValue().shouldBeEqualTo(firstFlow["Id"].stringValue())
+        refs[2]["Id"].stringValue().shouldBeEqualTo(secondFlow["Id"].stringValue())
+    }
+
+    @Test
+    fun `section carriers reuse a single local paragraph style`() {
+        val ref = mockObj(DocumentObjectBuilder("ref", Block).string("Referenced").build())
+        val block = mockObj(DocumentObjectBuilder("B_1", Block)
+            .columnLayout { applyTo(ColumnApplyTo.WholeTemplate) }
+            .documentObjectRef(ref.id)
+            .columnLayout { numberOfColumns(3).applyTo(ColumnApplyTo.WholeTemplate) }
+            .documentObjectRef(ref.id)
+            .build())
+
+        val result = xmlMapper.readTree(subject.buildDocumentObject(block))["Layout"]["Layout"]
+        val generatedName = "__Migration_ColumnLayoutCarrier"
+        val generatedStyles = result["ParaStyle"].filter { it["Name"]?.stringValue() == generatedName }
+        generatedStyles.size.shouldBeEqualTo(1)
+        val styleId = generatedStyles.single()["Id"].stringValue()
+        result["ParaStyle"].last { it["Id"].stringValue() == styleId }["IgnoreEmptyLines"]
+            .stringValue().shouldBeEqualTo("True")
+        val mainFlowId = result["FlowArea"].last()["FlowId"].stringValue()
+        val mainFlow = result["Flow"].last { it["Id"].stringValue() == mainFlowId }
+        val refs = mainFlow["FlowContent"]["P"]["T"]["O"]
+        for (index in listOf(0, 2)) {
+            val carrier = result["Flow"].last { it["Id"].stringValue() == refs[index]["Id"].stringValue() }
+            carrier["FlowContent"]["P"]["Id"].stringValue().shouldBeEqualTo(styleId)
+        }
+    }
+
+    @Test
     fun `buildDocumentObject with empty column layout creates section with default values`() {
         // given
         val block = mockObj(
