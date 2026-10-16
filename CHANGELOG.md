@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Fixed
 
+- listing files and dependencies from icm not working with spaces in file path
+
 ## [17.0.32] - 2026-10-13
 
 ### Added

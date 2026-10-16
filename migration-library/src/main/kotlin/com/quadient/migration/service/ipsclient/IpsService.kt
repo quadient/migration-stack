@@ -538,7 +538,7 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     override fun listFiles(path: String, extension: String? ): FileList {
         val resultLocation = "memory://${UUID.randomUUID()}"
 
-        val args = mutableListOf("-f", resultLocation, "-dirInput", path)
+        val args = mutableListOf("-f", resultLocation, "-dirInput", "\"${path}\"")
         if (extension != null) {
             args.add("-extensionInput")
             args.add(extension)
@@ -559,7 +559,7 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     override fun listDependencies(path: String): List<String> {
         val resultLocation = "memory://${UUID.randomUUID()}"
         try {
-            val result = runWfd("listDependencies.wfd", listOf("-f", resultLocation, "-pathInput", path))
+            val result = runWfd("listDependencies.wfd", listOf("-f", resultLocation, "-pathInput", "\"${path}\""))
             if (result !is OperationResult.Success) {
                 throw IpsClientException("Failed to list dependencies of file: $path")
             }
