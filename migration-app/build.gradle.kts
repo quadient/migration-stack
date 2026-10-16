@@ -34,6 +34,12 @@ application {
     mainClass = "io.ktor.server.netty.EngineMain"
 }
 
+ktor {
+    fatJar {
+        allowZip64 = true
+    }
+}
+
 tasks {
     register<JavaExec>("runServer") {
         mainClass = "io.ktor.server.netty.EngineMain"
