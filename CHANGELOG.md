@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+- deployStyles with interactive output no longer deploys a wfd file, instead it
+- reuses the StyleDefinition.wfd provided by StandardPackage
+
 ### Fixed
 
 - Listing files and dependencies from icm not working with spaces in file path

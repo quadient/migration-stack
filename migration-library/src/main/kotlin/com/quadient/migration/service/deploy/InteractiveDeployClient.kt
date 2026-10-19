@@ -55,6 +55,7 @@ import com.quadient.migration.shared.IcmFileMetadata
 import com.quadient.migration.shared.IcmMetadata
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.MetadataValue
+import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.partitionByType
 import kotlin.time.Clock
 import org.jetbrains.exposed.v1.core.and
@@ -112,6 +113,10 @@ open class InteractiveDeployClient(
     ipsService,
     storage,
 ) {
+    private companion object {
+        val STYLE_DEFINITION_MASTER = "icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd".toIcmPath()
+    }
+
     init {
         addPostProcessor { deploymentResult ->
             val allowedTypes = listOf(
@@ -429,37 +434,29 @@ open class InteractiveDeployClient(
         val deploymentTimestamp = Clock.System.now()
 
         val outputPathJld = resourcePathProvider.getStyleDefinitionPath()
-        val outputPathWfd = outputPathJld.extension(".wfd")
-
-        val xml2wfdResult = ipsService.xml2wfd(
-            documentObjectBuilder.buildStyles(emptyList(), emptyList()),
-            outputPathWfd
-        )
-
-        when (xml2wfdResult) {
-            is OperationResult.Success -> {
-                logger.debug("Deployment of $outputPathWfd is successful. Will deploy style $outputPathJld next.")
-            }
-
-            is OperationResult.Failure -> {
-                logger.error("Failed to deploy $outputPathWfd. Will not attempt to deploy style $outputPathJld.")
-                return
-            }
-        }
 
         val textStyles = textStyleRepository.listAll().filter { it.targetId == null }
         val paragraphStyles = paragraphStyleRepository.listAll().filter { it.targetId == null }
 
-        val styleLayoutDeltaXml = documentObjectBuilder.buildStyleLayoutDelta(
-            textStyles = textStyles,
-            paragraphStyles = paragraphStyles
-        )
+        val editResult = run {
+            val masterExists = runCatching { ipsService.fileExists(STYLE_DEFINITION_MASTER) }.getOrElse {
+                return@run OperationResult.Failure("Failed to check existence of '$STYLE_DEFINITION_MASTER': ${it.message}")
+            }
+            if (!masterExists) {
+                return@run OperationResult.Failure("Style definition master '$STYLE_DEFINITION_MASTER' does not exist.")
+            }
 
-        val editResult = ipsService.deployStyleJld(
-            baseTemplate = outputPathWfd,
-            xmlContent = styleLayoutDeltaXml,
-            outputPath = outputPathJld,
-        )
+            val styleLayoutDeltaXml = documentObjectBuilder.buildStyleLayoutDelta(
+                textStyles = textStyles,
+                paragraphStyles = paragraphStyles
+            )
+
+            ipsService.deployStyleJld(
+                baseTemplate = STYLE_DEFINITION_MASTER,
+                xmlContent = styleLayoutDeltaXml,
+                outputPath = outputPathJld,
+            )
+        }
 
         when (editResult) {
             OperationResult.Success -> {
@@ -470,7 +467,7 @@ open class InteractiveDeployClient(
                         deploymentId = deploymentId,
                         timestamp = deploymentTimestamp,
                         resourceType = ResourceType.TextStyle,
-                        icmPath = outputPathWfd,
+                        icmPath = outputPathJld,
                         output = projectConfig.inspireOutput
                     )
                 }
@@ -480,23 +477,23 @@ open class InteractiveDeployClient(
                         deploymentId = deploymentId,
                         timestamp = deploymentTimestamp,
                         resourceType = ResourceType.ParagraphStyle,
-                        icmPath = outputPathWfd,
+                        icmPath = outputPathJld,
                         output = projectConfig.inspireOutput
                     )
                 }
             }
 
             is OperationResult.Failure -> {
-                logger.error("Failed to deploy $outputPathJld.")
+                logger.error("Failed to deploy $outputPathJld: ${editResult.message}")
                 textStyles.forEach {
                     statusTrackingRepository.error(
                         it.id,
                         deploymentId,
                         deploymentTimestamp,
                         ResourceType.TextStyle,
-                        outputPathWfd,
+                        icmPath = outputPathJld,
                         projectConfig.inspireOutput,
-                        ""
+                        editResult.message
                     )
                 }
                 paragraphStyles.forEach {
@@ -505,19 +502,19 @@ open class InteractiveDeployClient(
                         deploymentId,
                         deploymentTimestamp,
                         ResourceType.ParagraphStyle,
-                        outputPathWfd,
+                        icmPath = outputPathJld,
                         projectConfig.inspireOutput,
-                        ""
+                        editResult.message
                     )
                 }
                 return
             }
         }
 
-        val approvalResult = ipsService.setProductionApprovalState(listOf(outputPathWfd, outputPathJld))
+        val approvalResult = ipsService.setProductionApprovalState(listOf(outputPathJld))
         when (approvalResult) {
-            is OperationResult.Failure -> logger.error("Failed to set production approval state to $outputPathWfd and $outputPathJld.")
-            OperationResult.Success -> logger.debug("Setting of production approval state to $outputPathWfd and $outputPathJld is successful.")
+            is OperationResult.Failure -> logger.error("Failed to set production approval state to $outputPathJld.")
+            OperationResult.Success -> logger.debug("Setting of production approval state to $outputPathJld is successful.")
         }
     }
 

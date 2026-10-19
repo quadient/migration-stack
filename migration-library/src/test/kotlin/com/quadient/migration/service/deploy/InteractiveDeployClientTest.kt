@@ -17,6 +17,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.BaseTemplateRepository
@@ -50,6 +51,7 @@ import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
+import com.quadient.migration.service.ipsclient.IpsClientException
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTargetDir
@@ -483,90 +485,109 @@ class InteractiveDeployClientTest {
     }
 
     @Test
-    fun `deployStyles creates style definition and sets production approval state`() {
+    fun `deployStyles creates style definition from standard style definition and sets production approval state`() {
         // given
-        every { documentObjectBuilder.buildStyles(any(), any()) } returns "<xml />"
-        every { documentObjectBuilder.buildStyleLayoutDelta(any(), any()) } returns "<xml />"
+        val textStyle = TextStyleBuilder("ts1").build()
+        val paragraphStyle = ParagraphStyleBuilder("ps1").build()
+        val styleDefinitionMaster = "icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd".toIcmPath()
+        val definitionPath =
+            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld".toIcmPath()
 
-        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
-        every {
-            statusTrackingRepository.deployed(
-                any(), any<Uuid>(), any(), any(), any(), any()
-            )
-        } returns aDeployedStatus("id")
-        every { textStyleRepository.listAll() } returns emptyList()
-        every { paragraphStyleRepository.listAll() } returns emptyList()
-        every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Success
+        every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPath
+        every { textStyleRepository.listAll() } returns listOf(textStyle)
+        every { paragraphStyleRepository.listAll() } returns listOf(paragraphStyle)
+        every { documentObjectBuilder.buildStyleLayoutDelta(any(), any()) } returns "<xml />"
+        every { ipsService.fileExists(any<IcmPath>()) } returns true
         every { ipsService.deployStyleJld(any<IcmPath>(), any(), any<IcmPath>()) } returns OperationResult.Success
         every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
-
-        val definitionPathJld =
-            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld"
-        val definitionPathWfd = definitionPathJld.replace(".jld", ".wfd")
-
-        every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
-
-        // when
-        subject().deployStyles()
-
-        // then
-        verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd.toIcmPath())) }
-        verify { ipsService.deployStyleJld(any(), eq("<xml />"), eq(definitionPathJld.toIcmPath())) }
-        verify { ipsService.setProductionApprovalState(eq(listOf(definitionPathWfd.toIcmPath(), definitionPathJld.toIcmPath()))) }
-    }
-
-    @Test
-    fun `deployStyles does not continue when wfd creation fails`() {
-        // given
-        every { documentObjectBuilder.buildStyles(any(), any()) } returns "<xml />"
-
-        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any()) } returns Active()
         every {
-            statusTrackingRepository.deployed(
-                any(), any<Uuid>(), any(), any(), any(), any()
-            )
+            statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any())
         } returns aDeployedStatus("id")
-        every { textStyleRepository.listAll() } returns emptyList()
-        every { paragraphStyleRepository.listAll() } returns emptyList()
-        every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Failure("Problem")
-
-        val definitionPathJld =
-            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld"
-        val definitionPathWfd = definitionPathJld.replace(".jld", ".wfd")
-
-        every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
 
         // when
         subject().deployStyles()
 
         // then
-        verify { ipsService.xml2wfd(eq("<xml />"), eq(definitionPathWfd.toIcmPath())) }
-        verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
+        verify { ipsService.fileExists(styleDefinitionMaster) }
+        verify { documentObjectBuilder.buildStyleLayoutDelta(listOf(textStyle), listOf(paragraphStyle)) }
+        verify { ipsService.deployStyleJld(styleDefinitionMaster, "<xml />", definitionPath) }
+        verify { ipsService.setProductionApprovalState(listOf(definitionPath)) }
+        verify { statusTrackingRepository.deployed("ts1", any<Uuid>(), any(), ResourceType.TextStyle, definitionPath, config.inspireOutput) }
+        verify { statusTrackingRepository.deployed("ps1", any<Uuid>(), any(), ResourceType.ParagraphStyle, definitionPath, config.inspireOutput) }
+        verify(exactly = 0) { ipsService.xml2wfd(any(), any<IcmPath>()) }
     }
 
     @Test
     fun `deployStyles records error status when style jld deployment fails`() {
         // given
-        val textStyle = TextStyleBuilder("ts1").build()
-        every { documentObjectBuilder.buildStyles(any(), any()) } returns "<xml />"
+        val definitionPath =
+            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld".toIcmPath()
+
+        every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPath
+        every { textStyleRepository.listAll() } returns listOf(TextStyleBuilder("ts1").build())
+        every { paragraphStyleRepository.listAll() } returns listOf(ParagraphStyleBuilder("ps1").build())
         every { documentObjectBuilder.buildStyleLayoutDelta(any(), any()) } returns "<xml />"
-        every { textStyleRepository.listAll() } returns listOf(textStyle)
-        every { paragraphStyleRepository.listAll() } returns emptyList()
-        every { ipsService.xml2wfd(any(), any<IcmPath>()) } returns OperationResult.Success
+        every { ipsService.fileExists(any<IcmPath>()) } returns true
         every { ipsService.deployStyleJld(any<IcmPath>(), any(), any<IcmPath>()) } returns OperationResult.Failure("Problem")
         every {
             statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any())
-        } returns aErrorStatus("ts1")
-
-        val definitionPathJld =
-            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld"
-        every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPathJld.toIcmPath()
+        } returns aErrorStatus("id")
 
         // when
         subject().deployStyles()
 
         // then
-        verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, any(), any(), "") }
+        verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, definitionPath, config.inspireOutput, "Problem") }
+        verify { statusTrackingRepository.error("ps1", any<Uuid>(), any(), ResourceType.ParagraphStyle, definitionPath, config.inspireOutput, "Problem") }
+        verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
+    }
+
+    @Test
+    fun `deployStyles records error status when standard style definition does not exist`() {
+        // given
+        val definitionPath =
+            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld".toIcmPath()
+
+        every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPath
+        every { textStyleRepository.listAll() } returns listOf(TextStyleBuilder("ts1").build())
+        every { paragraphStyleRepository.listAll() } returns listOf(ParagraphStyleBuilder("ps1").build())
+        every { ipsService.fileExists(any<IcmPath>()) } returns false
+        every {
+            statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any())
+        } returns aErrorStatus("id")
+
+        // when
+        subject().deployStyles()
+
+        // then
+        val message = "Style definition master 'icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd' does not exist."
+        verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, definitionPath, config.inspireOutput, message) }
+        verify { statusTrackingRepository.error("ps1", any<Uuid>(), any(), ResourceType.ParagraphStyle, definitionPath, config.inspireOutput, message) }
+        verify(exactly = 0) { ipsService.deployStyleJld(any<IcmPath>(), any(), any<IcmPath>()) }
+        verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
+    }
+
+    @Test
+    fun `deployStyles records error status when standard style definition existence check fails`() {
+        // given
+        val definitionPath =
+            "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld".toIcmPath()
+
+        every { resourcePathProvider.getStyleDefinitionPath() } returns definitionPath
+        every { textStyleRepository.listAll() } returns listOf(TextStyleBuilder("ts1").build())
+        every { paragraphStyleRepository.listAll() } returns emptyList()
+        every { ipsService.fileExists(any<IcmPath>()) } throws IpsClientException("IPS unreachable")
+        every {
+            statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any())
+        } returns aErrorStatus("id")
+
+        // when
+        subject().deployStyles()
+
+        // then
+        val message = "Failed to check existence of 'icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd': IPS unreachable"
+        verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, definitionPath, config.inspireOutput, message) }
+        verify(exactly = 0) { ipsService.deployStyleJld(any<IcmPath>(), any(), any<IcmPath>()) }
         verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
     }
 
