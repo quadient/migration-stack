@@ -77,7 +77,7 @@ class PostProcessImpl(
                     ResourceType.Attachment -> attachmentRepository.find(info.id)
                     ResourceType.TextStyle -> textStyleRepository.find(info.id)
                     ResourceType.ParagraphStyle -> paragraphStyleRepository.find(info.id)
-                    ResourceType.BaseTemplate -> null
+                    ResourceType.BaseTemplate, ResourceType.VariableStructure -> null
                 }
                 if (obj == null) {
                     val msg = "Failed to run '$name' post processor, '${info.type}' with id '${info.id}' at path '${info.targetPath}'."

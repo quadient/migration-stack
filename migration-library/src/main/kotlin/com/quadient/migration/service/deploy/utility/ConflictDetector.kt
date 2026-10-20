@@ -13,6 +13,7 @@ import com.quadient.migration.api.repository.DisplayRuleRepository
 import com.quadient.migration.api.repository.DocumentObjectRepository
 import com.quadient.migration.api.repository.ImageRepository
 import com.quadient.migration.api.repository.StatusTrackingRepository
+import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.migration.data.Deployed
 import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.ipsclient.OperationResult
@@ -27,6 +28,7 @@ class ConflictDetectorImpl(
     private val imageRepository: ImageRepository,
     private val attachmentRepository: AttachmentRepository,
     private val displayRuleRepository: DisplayRuleRepository,
+    private val variableStructureRepository: VariableStructureRepository,
     private val statusTrackingRepository: StatusTrackingRepository,
     private val resourcePathProvider: ResourcePathProvider,
     private val output: InspireOutput,
@@ -105,6 +107,9 @@ class ConflictDetectorImpl(
 
             ResourceType.TextStyle -> resourcePathProvider.getStyleDefinitionPath()
             ResourceType.ParagraphStyle -> resourcePathProvider.getStyleDefinitionPath()
+            ResourceType.VariableStructure -> resourcePathProvider.getDataDefinitionPath(
+                variableStructureRepository.findOrFail(item.id)
+            )
             ResourceType.BaseTemplate -> null
         }
     }.getOrNull()

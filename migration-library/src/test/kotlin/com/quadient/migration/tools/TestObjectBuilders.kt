@@ -526,7 +526,7 @@ fun aErrorStatus(
 private val statusRepo = StatusTrackingRepository(ProjectName(aProjectConfig().name))
 fun aDocumentObjectRepository() = DocumentObjectRepository(ProjectName(aProjectConfig().name), statusRepo)
 fun aVariableRepository() = VariableRepository(ProjectName(aProjectConfig().name))
-fun aVariableStructureRepository() = VariableStructureRepository(ProjectName(aProjectConfig().name))
+fun aVariableStructureRepository() = VariableStructureRepository(ProjectName(aProjectConfig().name), statusRepo)
 fun aParaStyleRepository() = ParagraphStyleRepository(ProjectName(aProjectConfig().name), statusRepo)
 fun aTextStyleRepository() = TextStyleRepository(ProjectName(aProjectConfig().name), statusRepo)
 fun aDisplayRuleRepository() = DisplayRuleRepository(ProjectName(aProjectConfig().name), statusRepo)

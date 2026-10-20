@@ -25,12 +25,51 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.NullAndEmptySource
+import org.junit.jupiter.params.provider.ValueSource
 
 class ResourcePathProviderTest {
 
     @Nested
     inner class InteractiveResourcePathProviderTest {
         private fun aSubject(config: ProjectConfig) = InteractiveResourcePathProvider(config)
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = [" "])
+        fun `base template source defaults to the configured tenant`(sourcePath: String?) {
+            val config = aProjectConfig(interactiveTenant = "customTenant", sourceBaseTemplatePath = sourcePath)
+
+            aSubject(config).getSourceBaseTemplatePath().toString()
+                .shouldBeEqualTo("icm://Interactive/customTenant/Sources/SourceTemplate.wfd")
+        }
+
+        @Test
+        fun `base template source uses the absolute configured path unchanged`() {
+            val path = "icm://OtherFolder/Custom.wfd"
+            val config = aProjectConfig(interactiveTenant = "customTenant", sourceBaseTemplatePath = path)
+
+            aSubject(config).getSourceBaseTemplatePath().toString().shouldBeEqualTo(path)
+        }
+
+        @Test
+        fun `base template source must be absolute`() {
+            val config = aProjectConfig(sourceBaseTemplatePath = "Sources/Custom.wfd")
+
+            val exception = assertThrows<IllegalArgumentException> { aSubject(config).getSourceBaseTemplatePath() }
+
+            exception.message.shouldBeEqualTo("The configured source base template path 'Sources/Custom.wfd' is not absolute.")
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = [" ", "icm://OtherFolder/Custom.wfd", "Sources/Custom.wfd"])
+        fun `data definition source always uses the configured tenant and ignores the override`(sourcePath: String?) {
+            val config = aProjectConfig(interactiveTenant = "customTenant", sourceBaseTemplatePath = sourcePath)
+
+            aSubject(config).getDataDefinitionSourceTemplatePath().toString()
+                .shouldBeEqualTo("icm://Interactive/customTenant/Sources/SourceTemplate.wfd")
+        }
 
         @ParameterizedTest
         @CsvSource(

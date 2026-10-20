@@ -27,6 +27,7 @@ import com.quadient.migration.tools.shouldBeNull
 import com.quadient.migration.tools.shouldNotBeNull
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import tools.jackson.databind.JsonNode
@@ -44,7 +45,6 @@ class InspireBaseTemplateBuilderTest {
     private val variableStructureRepository = mockk<VariableStructureRepository>()
     private val refInheritanceService = RefInheritanceServiceImpl(documentObjectRepository)
     private val subject = InspireBaseTemplateBuilder(
-        config,
         icmDataCache,
         resourcePathProvider,
         baseTemplateRepository,
@@ -70,6 +70,33 @@ class InspireBaseTemplateBuilderTest {
         every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Fonts/arial.ttf;"
         every { baseTemplateRepository.findUsages(any()) } returns emptyList()
         every { documentObjectRepository.listAll() } returns emptyList()
+    }
+
+    @Test
+    fun `base templates default to the tenant source template path`() {
+        subject.buildBaseTemplate(BaseTemplateBuilder("BT_1").build())
+        verify {
+            ipsService.wfd2xml(IcmPath.from("icm://Interactive/${config.interactiveTenant}/Sources/SourceTemplate.wfd"))
+        }
+    }
+
+    @Test
+    fun `base templates use the configured source template override`() {
+        val customPath = IcmPath.from("icm://Custom/Source.wfd")
+        val customConfig = config.copy(sourceBaseTemplatePath = customPath.toString())
+        val customPaths = InteractiveResourcePathProvider(customConfig)
+        val subject = InspireBaseTemplateBuilder(
+            InteractiveIcmDataCache(ipsService, customPaths),
+            customPaths,
+            baseTemplateRepository,
+            documentObjectRepository,
+            InspireVariableStructureBuilder(variableRepository, variableStructureRepository, customConfig),
+            refInheritanceService,
+        )
+
+        subject.buildBaseTemplate(BaseTemplateBuilder("BT_1").build())
+
+        verify { ipsService.wfd2xml(customPath) }
     }
 
     @Test

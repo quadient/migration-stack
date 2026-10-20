@@ -7,6 +7,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.VariableStructureTable
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.tools.concat
 import kotlin.time.Clock
 import kotlin.time.toJavaInstant
@@ -19,8 +20,10 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import kotlin.collections.map
 
-class VariableStructureRepository(projectName: ProjectName) :
-    Repository<VariableStructure>(VariableStructureTable, projectName.name) {
+class VariableStructureRepository(
+    projectName: ProjectName,
+    private val statusTrackingRepository: StatusTrackingRepository,
+) : Repository<VariableStructure>(VariableStructureTable, projectName.name) {
 
     override fun fromDb(row: ResultRow): VariableStructure {
         return VariableStructure(
@@ -48,6 +51,10 @@ class VariableStructureRepository(projectName: ProjectName) :
             val existingItem = table.selectAll().where(filter(dto.id)).firstOrNull()?.let(::fromDb)
 
             val now = Clock.System.now()
+
+            if (existingItem == null) {
+                statusTrackingRepository.active(dto.id, ResourceType.VariableStructure)
+            }
 
             table.upsertReturning(table.id, table.projectName) {
                 it[VariableStructureTable.id] = dto.id
@@ -78,6 +85,10 @@ class VariableStructureRepository(projectName: ProjectName) :
             var index = 1
             dtos.forEach { dto ->
                 val existingItem = find(dto.id)
+
+                if (existingItem == null) {
+                    statusTrackingRepository.active(dto.id, ResourceType.VariableStructure)
+                }
 
                 stmt.setString(index++, dto.id)
                 stmt.setString(index++, this@VariableStructureRepository.projectName)

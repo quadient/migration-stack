@@ -31,6 +31,7 @@ import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTrackerImpl
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
+import com.quadient.migration.service.inspirebuilder.InspireVariableStructureBuilder
 import com.quadient.migration.service.ipsclient.IpsClientException
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
@@ -70,6 +71,7 @@ class EvolveDeployClient(
     baseTemplateBuilder: InspireBaseTemplateBuilder,
     ipsService: IpsService,
     storage: Storage,
+    variableStructureBuilder: InspireVariableStructureBuilder,
 ) : InteractiveDeployClient(
     projectConfig,
     resourcePathProvider,
@@ -94,6 +96,7 @@ class EvolveDeployClient(
     baseTemplateBuilder,
     ipsService,
     storage,
+    variableStructureBuilder,
 ) {
     private companion object {
         val STYLE_DEFINITION_MASTER = "icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd".toIcmPath()

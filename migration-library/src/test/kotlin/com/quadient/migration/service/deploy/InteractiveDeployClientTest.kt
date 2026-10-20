@@ -1,5 +1,7 @@
 package com.quadient.migration.service.deploy
 
+import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
+
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.dto.migrationmodel.Attachment
 import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
@@ -51,6 +53,7 @@ import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
+import com.quadient.migration.service.inspirebuilder.InspireVariableStructureBuilder
 import com.quadient.migration.service.ipsclient.IpsClientException
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
@@ -121,16 +124,17 @@ class InteractiveDeployClientTest {
     val tenant = config.interactiveTenant
     val postProcess = PostProcessImpl(ipsService, documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, textStyleRepository, paragraphStyleRepository)
     val resourcePathProvider = mockk<InteractiveResourcePathProvider>()
-    val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, config.inspireOutput)
+    val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, variableStructureRepository, statusTrackingRepository, resourcePathProvider, config.inspireOutput)
     val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, config.inspireOutput)
     val deployOrder = DeployOrderImpl(documentObjectRepository)
     val refInheritanceService = RefInheritanceServiceImpl(documentObjectRepository)
 
-    private fun subject(selectedDocumentObjects: List<String> = emptyList()) = InteractiveDeployClient(
+    private fun subject(selectedDocumentObjects: List<String> = emptyList(), output: InspireOutput = InspireOutput.Interactive) = InteractiveDeployClient(
         aProjectConfig(
             targetDefaultFolder = "defaultFolder",
             baseTemplatePath = "icm://Interactive/tenant/BaseTemplates/templ.wfd",
             selectedDocumentObjects = selectedDocumentObjects,
+            output = output,
         ),
         resourcePathProvider,
         metadataValidator,
@@ -154,6 +158,7 @@ class InteractiveDeployClientTest {
         baseTemplateBuilder,
         ipsService,
         storage,
+        InspireVariableStructureBuilder(variableRepository, variableStructureRepository, config),
     )
 
     @BeforeEach
@@ -166,6 +171,10 @@ class InteractiveDeployClientTest {
         every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
         every { documentObjectRepository.find(any()) } returns null
         every { documentObjectRepository.listAll() } returns emptyList()
+        every { variableStructureRepository.findOrFail(any()) } answers {
+            variableStructureRepository.listAll().first { it.id == firstArg<String>() }
+        }
+        every { statusTrackingRepository.listAll() } returns emptyList()
         every { resourcePathProvider.getBaseTemplateFullPath(any(), any()) } answers {
             InteractiveResourcePathProvider(config).getBaseTemplateFullPath(firstArg(), secondArg())
         }
@@ -174,6 +183,53 @@ class InteractiveDeployClientTest {
         every { resourcePathProvider.getAttachmentFileName(any()) } answers { callOriginal() }
         every { resourcePathProvider.getDisplayRuleFileName(any()) } answers { callOriginal() }
         every { resourcePathProvider.getBaseTemplateFileName(any()) } answers { callOriginal() }
+    }
+
+    @Test
+    fun `data definitions deploy one jdd per structure and record failures independently`() {
+        val first = VariableStructureBuilder("first").name("Customers").build()
+        val second = VariableStructureBuilder("second").build()
+        val third = VariableStructureBuilder("third").build()
+        val realPaths = InteractiveResourcePathProvider(config.copy(sourceBaseTemplatePath = "icm://Custom/Source.wfd"))
+        every { variableStructureRepository.listAll() } returns listOf(third, first, second)
+        every { statusTrackingRepository.findLastEventRelevantToOutput(any(), ResourceType.VariableStructure, InspireOutput.Interactive) } returns Active()
+        every { resourcePathProvider.getDataDefinitionPath(any()) } answers { realPaths.getDataDefinitionPath(firstArg()) }
+        every { resourcePathProvider.getDataDefinitionSourceTemplatePath() } returns realPaths.getDataDefinitionSourceTemplatePath()
+        every { statusTrackingRepository.deployed(any(), any<Uuid>(), any(), any(), any(), any(), any()) } returns aDeployedStatus("first")
+        every { statusTrackingRepository.error(any(), any<Uuid>(), any(), any(), any(), any(), any(), any()) } returns aErrorStatus("second")
+        every { ipsService.deployDataDefinition(any(), any(), realPaths.getDataDefinitionPath(first)) } returns OperationResult.Success
+        every { ipsService.deployDataDefinition(any(), any(), realPaths.getDataDefinitionPath(second)) } returns OperationResult.Failure("export failed")
+        every { ipsService.deployDataDefinition(any(), any(), realPaths.getDataDefinitionPath(third)) } throws
+            Exception("unexpected export failure")
+
+        val result = subject().deployDataDefinitions()
+
+        result.deployed.shouldBeEqualTo(mutableListOf(DeploymentInfo("first", ResourceType.VariableStructure, realPaths.getDataDefinitionPath(first))))
+        result.errors.shouldBeEqualTo(mutableListOf(
+            DeploymentError("third", "unexpected export failure"),
+            DeploymentError("second", "export failed"),
+        ))
+        verify { ipsService.deployDataDefinition(IcmPath.from("icm://Interactive/$tenant/Sources/SourceTemplate.wfd"), match { it.contains("Def.SystemVariables") }, realPaths.getDataDefinitionPath(first)) }
+        verify(exactly = 0) { resourcePathProvider.getSourceBaseTemplatePath() }
+        verify { ipsService.setProductionApprovalState(listOf(realPaths.getDataDefinitionPath(first))) }
+    }
+
+    @Test
+    fun `already deployed data definitions are skipped`() {
+        val structure = VariableStructureBuilder("deployed").name("Customers").build()
+        val realPaths = InteractiveResourcePathProvider(config)
+        val path = realPaths.getDataDefinitionPath(structure)
+        every { variableStructureRepository.listAll() } returns listOf(structure)
+        every { resourcePathProvider.getDataDefinitionPath(any()) } answers { realPaths.getDataDefinitionPath(firstArg()) }
+        every { statusTrackingRepository.findLastEventRelevantToOutput(structure.id, ResourceType.VariableStructure, InspireOutput.Interactive) } returns
+            Deployed(Uuid.random(), Clock.System.now(), InspireOutput.Interactive, path)
+
+        val result = subject().deployDataDefinitions()
+
+        result.deployed.shouldBeEmpty()
+        result.errors.shouldBeEmpty()
+        verify(exactly = 0) { resourcePathProvider.getDataDefinitionSourceTemplatePath() }
+        verify(exactly = 0) { ipsService.deployDataDefinition(any(), any(), any()) }
     }
 
     @Test

@@ -30,7 +30,7 @@ data class DeploymentInfo(
 )
 
 enum class ResourceType {
-    DocumentObject, Image, Attachment, TextStyle, ParagraphStyle, DisplayRule, BaseTemplate
+    DocumentObject, Image, Attachment, TextStyle, ParagraphStyle, DisplayRule, BaseTemplate, VariableStructure
 }
 
 data class DeploymentError(val id: String, val message: String)
@@ -54,6 +54,8 @@ interface ResultTracker {
     fun errorDisplayRule(id: String, path: IcmPath, message: String)
     fun deployedBaseTemplate(id: String, targetPath: IcmPath)
     fun errorBaseTemplate(id: String, targetPath: IcmPath?, message: String)
+    fun deployedDataDefinition(id: String, targetPath: IcmPath)
+    fun errorDataDefinition(id: String, targetPath: IcmPath?, message: String)
 }
 
 class ResultTrackerImpl(
@@ -63,6 +65,20 @@ class ResultTrackerImpl(
     override val deploymentId: Uuid = Uuid.random(),
     override val timestamp: Instant = Clock.System.now(),
 ) : ResultTracker{
+    override fun deployedDataDefinition(id: String, targetPath: IcmPath) {
+        statusTrackingRepository?.deployed(
+            id, deploymentId, timestamp, ResourceType.VariableStructure, targetPath, inspireOutput
+        )
+        deploymentResult.deployed.add(DeploymentInfo(id, ResourceType.VariableStructure, targetPath))
+    }
+
+    override fun errorDataDefinition(id: String, targetPath: IcmPath?, message: String) {
+        statusTrackingRepository?.error(
+            id, deploymentId, timestamp, ResourceType.VariableStructure, targetPath, inspireOutput, message
+        )
+        deploymentResult.errors.add(DeploymentError(id, message))
+    }
+
     constructor(
         statusTrackingRepository: StatusTrackingRepository?,
         inspireOutput: InspireOutput,

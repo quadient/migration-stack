@@ -12,6 +12,7 @@ import com.quadient.migration.api.repository.VariableStructureRepository
 import com.quadient.wfdxml.api.layoutnodes.SheetNameType
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.module.Layout
+import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.internal.data.WorkFlowTreeDefinition
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeOptionality
 import com.quadient.wfdxml.internal.layoutnodes.data.WorkFlowTreeEnums.NodeType.SUB_TREE
@@ -22,6 +23,20 @@ class InspireVariableStructureBuilder(
     private val variableStructureRepository: VariableStructureRepository,
     private val projectConfig: ProjectConfig,
 ) {
+    fun buildDataDefinition(variableStructure: VariableStructure): String {
+        val builder = WfdXmlBuilder()
+        val layout = builder.addLayout()
+        val variableStructureModel = initVariableStructure(layout, variableStructure.id)
+        for ((id, pathData) in variableStructureModel.structure) {
+            val variable = variableRepository.findOrFail(id)
+            val path = pathData.path.resolve(variableStructureModel, variableRepository::findOrFail)
+                ?.takeIf { it.isNotBlank() }
+                ?: error("Variable '$id' has no resolvable path in structure '${variableStructureModel.id}'")
+            getOrCreateVariable(layout.data, pathData.name ?: variable.nameOrId(), variable, path)
+        }
+        return builder.buildDataDefinitionLayoutDelta()
+    }
+
     fun initVariableStructure(layout: Layout, variableStructureId: String?): VariableStructure {
         val variableStructureId = variableStructureId ?: projectConfig.defaultVariableStructure
 

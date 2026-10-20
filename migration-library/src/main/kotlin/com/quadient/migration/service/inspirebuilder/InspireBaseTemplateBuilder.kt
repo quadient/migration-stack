@@ -1,6 +1,5 @@
 package com.quadient.migration.service.inspirebuilder
 
-import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
@@ -13,7 +12,6 @@ import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
-import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.logger
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
@@ -23,7 +21,6 @@ import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentPlaceHolder
 import com.quadient.wfdxml.api.module.Layout
 
 class InspireBaseTemplateBuilder(
-    private val projectConfig: ProjectConfig,
     private val icmDataCache: IcmDataCache,
     private val resourcePathProvider: ResourcePathProvider,
     private val baseTemplateRepository: BaseTemplateRepository,
@@ -92,13 +89,7 @@ class InspireBaseTemplateBuilder(
         enrichFromDocumentObjects(baseTemplate, layout)
 
         val baseTemplateXml = builder.build()
-        val sourceBaseTemplatePath = if (projectConfig.sourceBaseTemplatePath.isNullOrBlank()) {
-            IcmPath.root().join("Interactive").join("StandardPackage").join("Sources").join("SourceTemplate.wfd")
-        } else {
-            projectConfig.sourceBaseTemplatePath.toIcmPath()
-        }
-
-        return enrichLayoutWithSourceBaseTemplate(icmDataCache, baseTemplateXml, sourceBaseTemplatePath)
+        return enrichLayoutWithSourceBaseTemplate(icmDataCache, baseTemplateXml, resourcePathProvider.getSourceBaseTemplatePath())
     }
 
     fun findChannelModels(baseTemplate: BaseTemplate): BaseTemplateChannelModels {

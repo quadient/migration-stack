@@ -80,6 +80,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class DesignerDocumentObjectBuilderTest {
     val documentObjectRepository = mockk<DocumentObjectRepository>()
@@ -921,6 +922,17 @@ class DesignerDocumentObjectBuilderTest {
         val layout = result["Layout"]["Layout"]
         val contentFlow = getFlowAreaContentFlow(layout)
         contentFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("Text")
+    }
+
+    @Test
+    fun `source base template must be absolute`() {
+        val block = aDocObj("B_1", Block, listOf(aParagraph(aText("Text")))).mock()
+        val subject = aSubject(config.copy(sourceBaseTemplatePath = "Sources/Custom.wfd"))
+
+        val exception = assertThrows<IllegalArgumentException> { subject.buildDocumentObject(block) }
+
+        exception.message.shouldBeEqualTo("The configured source base template path 'Sources/Custom.wfd' is not absolute.")
+        verify(exactly = 0) { ipsService.wfd2xml(any<IcmPath>()) }
     }
 
     @Test
