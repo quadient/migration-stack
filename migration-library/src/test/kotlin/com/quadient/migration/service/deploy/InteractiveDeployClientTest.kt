@@ -489,7 +489,7 @@ class InteractiveDeployClientTest {
         // given
         val textStyle = TextStyleBuilder("ts1").build()
         val paragraphStyle = ParagraphStyleBuilder("ps1").build()
-        val styleDefinitionMaster = "icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd".toIcmPath()
+        val styleDefinitionMaster = "icm://Interactive/${config.interactiveTenant}/CompanyStyles/StyleDefinition.wfd".toIcmPath()
         val definitionPath =
             "icm://Interactive/${config.interactiveTenant}/CompanyStyles/defaultFolder/${config.name}Styles.jld".toIcmPath()
 
@@ -560,7 +560,7 @@ class InteractiveDeployClientTest {
         subject().deployStyles()
 
         // then
-        val message = "Style definition master 'icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd' does not exist."
+        val message = "Style definition master 'icm://Interactive/tenant/CompanyStyles/StyleDefinition.wfd' does not exist."
         verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, definitionPath, config.inspireOutput, message) }
         verify { statusTrackingRepository.error("ps1", any<Uuid>(), any(), ResourceType.ParagraphStyle, definitionPath, config.inspireOutput, message) }
         verify(exactly = 0) { ipsService.deployStyleJld(any<IcmPath>(), any(), any<IcmPath>()) }
@@ -585,7 +585,7 @@ class InteractiveDeployClientTest {
         subject().deployStyles()
 
         // then
-        val message = "Failed to check existence of 'icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd': IPS unreachable"
+        val message = "Failed to check existence of 'icm://Interactive/tenant/CompanyStyles/StyleDefinition.wfd': IPS unreachable"
         verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, definitionPath, config.inspireOutput, message) }
         verify(exactly = 0) { ipsService.deployStyleJld(any<IcmPath>(), any(), any<IcmPath>()) }
         verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
