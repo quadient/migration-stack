@@ -113,9 +113,8 @@ open class InteractiveDeployClient(
     ipsService,
     storage,
 ) {
-    private companion object {
-        val STYLE_DEFINITION_MASTER = "icm://Interactive/StandardPackage/CompanyStyles/StyleDefinition.wfd".toIcmPath()
-    }
+    private val styleDefinitionMaster =
+        "icm://Interactive/${projectConfig.interactiveTenant}/CompanyStyles/StyleDefinition.wfd".toIcmPath()
 
     init {
         addPostProcessor { deploymentResult ->
@@ -439,11 +438,11 @@ open class InteractiveDeployClient(
         val paragraphStyles = paragraphStyleRepository.listAll().filter { it.targetId == null }
 
         val editResult = run {
-            val masterExists = runCatching { ipsService.fileExists(STYLE_DEFINITION_MASTER) }.getOrElse {
-                return@run OperationResult.Failure("Failed to check existence of '$STYLE_DEFINITION_MASTER': ${it.message}")
+            val masterExists = runCatching { ipsService.fileExists(styleDefinitionMaster) }.getOrElse {
+                return@run OperationResult.Failure("Failed to check existence of '$styleDefinitionMaster': ${it.message}")
             }
             if (!masterExists) {
-                return@run OperationResult.Failure("Style definition master '$STYLE_DEFINITION_MASTER' does not exist.")
+                return@run OperationResult.Failure("Style definition master '$styleDefinitionMaster' does not exist.")
             }
 
             val styleLayoutDeltaXml = documentObjectBuilder.buildStyleLayoutDelta(
@@ -452,7 +451,7 @@ open class InteractiveDeployClient(
             )
 
             ipsService.deployStyleJld(
-                baseTemplate = STYLE_DEFINITION_MASTER,
+                baseTemplate = styleDefinitionMaster,
                 xmlContent = styleLayoutDeltaXml,
                 outputPath = outputPathJld,
             )
