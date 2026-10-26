@@ -5,7 +5,7 @@ import { CircleCheckBig, CircleX, LoaderCircle } from "lucide-react";
 export function StatusBadge({ runStatus }: { runStatus: RunStatus }) {
     if (runStatus === "RUNNING") {
         return (
-            <Badge className="h-6 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300">
+            <Badge className="h-6 bg-status-running-soft text-status-running">
                 <>
                     <LoaderCircle className="animate-spin" />
                     Running
@@ -14,7 +14,7 @@ export function StatusBadge({ runStatus }: { runStatus: RunStatus }) {
         );
     } else if (runStatus === "SUCCESS") {
         return (
-            <Badge className="h-6 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300">
+            <Badge className="h-6 bg-status-ok-soft text-status-ok">
                 <>
                     <CircleCheckBig />
                     Success
@@ -23,7 +23,7 @@ export function StatusBadge({ runStatus }: { runStatus: RunStatus }) {
         );
     } else if (runStatus === "ERROR") {
         return (
-            <Badge className="h-6 bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-300">
+            <Badge className="h-6 bg-status-fail-soft text-status-fail">
                 <>
                     <CircleX />
                     Error

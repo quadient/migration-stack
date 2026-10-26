@@ -12,12 +12,29 @@ export default tseslint.config([
         extends: [
             js.configs.recommended,
             tseslint.configs.recommended,
-            reactHooks.configs["recommended-latest"],
+            reactHooks.configs.flat.recommended,
             reactRefresh.configs.vite,
         ],
         languageOptions: {
             ecmaVersion: 2020,
             globals: globals.browser,
+        },
+        rules: {
+            "react-refresh/only-export-components": [
+                "error",
+                {
+                    allowConstantExport: true,
+                    allowCompoundComponents: true,
+                    allowExportNames: ["badgeVariants", "buttonVariants"],
+                },
+            ],
+        },
+    },
+    {
+        files: ["src/components/ui/**/*.{ts,tsx}"],
+        rules: {
+            "react-hooks/purity": "off",
+            "react-refresh/only-export-components": "off",
         },
     },
 ]);

@@ -36,8 +36,8 @@ class ScriptJobService(val settings: SettingsService, val fileStorageService: Fi
         })
     }
 
-    fun create(id: ScriptId): Job.Running {
-        return Job.Running(JobId(UUID.randomUUID()), id, mutableListOf(), Instant.now()).also { store(it) }
+    fun create(id: ScriptId, runId: RunId): Job.Running {
+        return Job.Running(JobId(UUID.randomUUID()), id, mutableListOf(), Instant.now(), runId).also { store(it) }
     }
 
     fun store(job: Job) {
@@ -96,6 +96,7 @@ sealed interface Job {
     val scriptId: ScriptId
     val logs: MutableList<String>
     val lastUpdated: Instant
+    val runId: RunId
 
     fun appendLog(message: String) {
         this.logs += message
@@ -109,14 +110,15 @@ sealed interface Job {
         override val id: JobId,
         override val scriptId: ScriptId,
         override val logs: MutableList<String>,
-        override val lastUpdated: Instant
+        override val lastUpdated: Instant,
+        override val runId: RunId,
     ) : Job {
         fun error(error: String): Error {
-            return Error(id, scriptId, logs, error, Instant.now())
+            return Error(id, scriptId, logs, error, Instant.now(), runId)
         }
 
         fun success(): Success {
-            return Success(id, scriptId, logs, Instant.now())
+            return Success(id, scriptId, logs, Instant.now(), runId)
         }
     }
 
@@ -124,7 +126,8 @@ sealed interface Job {
         override val id: JobId,
         override val scriptId: ScriptId,
         override val logs: MutableList<String>,
-        override val lastUpdated: Instant
+        override val lastUpdated: Instant,
+        override val runId: RunId,
     ) : Job
 
     data class Error @JsonCreator constructor(
@@ -132,12 +135,19 @@ sealed interface Job {
         override val scriptId: ScriptId,
         override val logs: MutableList<String>,
         val error: String,
-        override val lastUpdated: Instant
+        override val lastUpdated: Instant,
+        override val runId: RunId,
     ) : Job
 }
 
 @JvmInline
 value class JobId @JsonCreator constructor(val id: UUID) {
+    @JsonValue
+    override fun toString(): String = id.toString()
+}
+
+@JvmInline
+value class RunId @JsonCreator constructor(val id: UUID) {
     @JsonValue
     override fun toString(): String = id.toString()
 }

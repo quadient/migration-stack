@@ -6,13 +6,12 @@ import com.quadient.migration.service.GroovyService
 import com.quadient.migration.service.ScriptDiscoveryService
 import com.quadient.migration.service.ScriptJobService
 import com.quadient.migration.service.SettingsService
-import io.ktor.server.application.*
 import io.ktor.server.config.*
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 
-fun appModules(env: ApplicationEnvironment) = module {
-    single<ApplicationConfig> { env.config }
+fun appModules(config: ApplicationConfig) = module {
+    single<ApplicationConfig> { config }
     singleOf(::SettingsService)
     singleOf(::ScriptDiscoveryService)
     singleOf(::GroovyService)

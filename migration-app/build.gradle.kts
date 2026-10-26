@@ -31,7 +31,7 @@ group = "com.quadient.migration"
 version = "17.0.32"
 
 application {
-    mainClass = "io.ktor.server.netty.EngineMain"
+    mainClass = "com.quadient.migration.ApplicationKt"
 }
 
 ktor {
@@ -42,7 +42,8 @@ ktor {
 
 tasks {
     register<JavaExec>("runServer") {
-        mainClass = "io.ktor.server.netty.EngineMain"
+        mainClass = "com.quadient.migration.ApplicationKt"
+        args("serve")
         classpath = sourceSets["main"].runtimeClasspath
         group = "application"
         workingDir = project.rootDir
@@ -76,6 +77,9 @@ dependencies {
 
     implementation(libs.groovy.all)
     implementation(libs.stately.concurrent.collections)
+
+    // CLI
+    implementation(libs.clikt)
 
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
@@ -117,16 +121,18 @@ tasks {
         finalizedBy("buildFrontend", "copyScripts", "copyDist")
     }
 
-    register<Copy>("copyScripts") {
+    register<Sync>("copyScripts") {
         from("${rootProject.rootDir.parent}/migration-examples/src/main/groovy/com/quadient/migration/example") {
             include("**/*.groovy")
+            into("com/quadient/migration/example")
         }
-        into("$workDir/modules/com/quadient/migration/example")
+        into("$workDir/modules")
     }
 
     register<Copy>("copyDist") {
         from("dist")
         into(workDir)
+        doLast { File(workDir, "libs").mkdirs() }
     }
 
     register<Exec>("installFrontendDependencies") {
@@ -161,6 +167,9 @@ tasks {
 
     register<Zip>("buildDistZip") {
         from(workDir) {
+            into("migration-app-${project.version}")
+        }
+        from("README.md") {
             into("migration-app-${project.version}")
         }
         archiveFileName = "migration-app-${project.version}.zip"

@@ -25,6 +25,7 @@ type SettingsDialogProps = {
     sourceFormats: string[] | undefined;
     loadedSettings: Settings;
     setLoadedSettings: (value: ((prev: Settings) => Settings) | Settings) => void;
+    onSaved: () => void;
 };
 
 export default function SettingsDialog({
@@ -32,6 +33,7 @@ export default function SettingsDialog({
     sourceFormats,
     loadedSettings,
     setLoadedSettings,
+    onSaved,
 }: SettingsDialogProps) {
     const [open, setOpen] = useState(false);
     const [settings, setSettings] = useState(loadedSettings);
@@ -53,7 +55,7 @@ export default function SettingsDialog({
                             <TabsTrigger value="connections">Connections</TabsTrigger>
                             <TabsTrigger value="advanced">Advanced</TabsTrigger>
                         </TabsList>
-                        <ScrollArea className="h-[500px] pr-4">
+                        <ScrollArea className="h-125 pr-4">
                             <TabsContent value="project">
                                 <ProjectSettingsForm
                                     settings={settings}
@@ -79,7 +81,7 @@ export default function SettingsDialog({
                                 type={"submit"}
                                 onClick={() => {
                                     setOpen(false);
-                                    return onSaveChanges(settings, setLoadedSettings);
+                                    return onSaveChanges(settings, setLoadedSettings, onSaved);
                                 }}
                             >
                                 Save Changes
@@ -141,6 +143,7 @@ function FileUploadButton({
 async function onSaveChanges(
     settings: Settings | null,
     setLoadedSettings: (value: ((prev: Settings) => Settings) | Settings) => void,
+    onSaved: () => void,
 ): Promise<void> {
     if (!settings) return;
 
@@ -153,10 +156,11 @@ async function onSaveChanges(
         throw new Error("Failed to save settings");
     } else {
         setLoadedSettings(settings);
+        onSaved();
     }
 }
 
-function detectConfigType(uploadedSettings: Record<string, any>, currentSettings: Settings): keyof Settings | null {
+function detectConfigType(uploadedSettings: Record<string, unknown>, currentSettings: Settings): keyof Settings | null {
     const uploadedSettingsKeys = Object.keys(uploadedSettings);
     const currentProjectKeys = Object.keys(currentSettings.projectConfig);
     const currentMigrationKeys = Object.keys(currentSettings.migrationConfig);
@@ -169,7 +173,7 @@ function detectConfigType(uploadedSettings: Record<string, any>, currentSettings
     return null;
 }
 
-function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
     const result: T = { ...target };
 
     for (const key in source) {
@@ -187,7 +191,10 @@ function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>)
             targetValue !== null &&
             targetValue !== undefined
         ) {
-            result[key] = deepMerge(targetValue, sourceValue);
+            result[key] = deepMerge(
+                targetValue as Record<string, unknown>,
+                sourceValue as Record<string, unknown>,
+            ) as T[Extract<keyof T, string>];
         } else {
             result[key] = sourceValue as T[Extract<keyof T, string>];
         }

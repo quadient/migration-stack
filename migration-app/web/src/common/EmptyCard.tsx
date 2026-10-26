@@ -6,7 +6,7 @@ export function EmptyCard({ icon: Icon, message }: { icon: LucideIcon; message: 
         <Card className="w-full max-w-sm min-w-75 h-75 justify-center p-10">
             <CardContent className="flex flex-col items-center">
                 <div className="bg-muted rounded-full p-5">
-                    <Icon className="w-12 h-12 text-gray-400" />
+                    <Icon className="w-12 h-12 text-muted-foreground" />
                 </div>
                 <div className="text-center text-muted-foreground pt-2">{message}</div>
             </CardContent>
