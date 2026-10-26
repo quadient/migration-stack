@@ -3,6 +3,7 @@ package com.quadient.migration.example.docx.util
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.Paragraph
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphBuilder
 import com.quadient.migration.shared.Size
 import groovy.transform.Field
 import org.apache.poi.xwpf.usermodel.XWPFTableCell
@@ -61,4 +62,9 @@ private static List textValues(Paragraph paragraph) {
     return (paragraph.content ?: [])
             .findAll { it instanceof Paragraph.Text }
             .collectMany { (it as Paragraph.Text).content ?: [] }
+}
+
+static ParagraphBuilder.TextBuilder styledText(String styleId) {
+    ParagraphBuilder.TextBuilder builder = new ParagraphBuilder.TextBuilder()
+    return styleId ? builder.styleRef(styleId) : builder
 }

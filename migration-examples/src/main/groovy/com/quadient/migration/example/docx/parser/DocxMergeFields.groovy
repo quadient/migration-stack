@@ -25,6 +25,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import static com.quadient.migration.example.docx.util.DocxUtils.sha256Hex
+import static com.quadient.migration.example.docx.util.DocxUtils.styledText
 
 interface FieldPart {}
 
@@ -278,9 +279,8 @@ private static void emitBranch(Migration migration, FieldParseState state, List<
     parts.each { FieldPart part ->
         if (part instanceof FieldTextPart) {
             if (part.text && !(blockLevel && part.text.isBlank())) {
-                textBuilders.add(new ParagraphBuilder.TextBuilder()
+                textBuilders.add(styledText(part.styleId)
                         .string(part.text)
-                        .styleRef(part.styleId)
                         .displayRuleRef(upsertDisplayRule(migration, path, fileName)))
             }
         } else if (part instanceof FieldTablePart) {
@@ -302,9 +302,8 @@ private static void emitNestedField(Migration migration, FieldParseState state, 
         String variableId = extractMergeFieldName(instruction)
         if (variableId) {
             ensureVariable(migration, variableId, fileName)
-            textBuilders.add(new ParagraphBuilder.TextBuilder()
+            textBuilders.add(styledText(field.styleId)
                     .variableRef(variableId)
-                    .styleRef(field.styleId)
                     .displayRuleRef(upsertDisplayRule(migration, path, fileName)))
         }
         return
@@ -333,8 +332,7 @@ private static void addFirstMatch(Migration migration, List<ParagraphBuilder.Tex
                 field.condition()
         )
     }
-    textBuilders.add(new ParagraphBuilder.TextBuilder()
-            .styleRef((fields.first().trueContent.first() as FieldTextPart).styleId)
+    textBuilders.add(styledText((fields.first().trueContent.first() as FieldTextPart).styleId)
             .firstMatch(new FirstMatch(cases, [])))
 }
 
@@ -361,17 +359,15 @@ static void addMergeField(Migration migration, List<ParagraphBuilder.TextBuilder
         return
     }
     ensureVariable(migration, variableId, fileName)
-    textBuilders.add(new ParagraphBuilder.TextBuilder()
-            .variableRef(variableId)
-            .styleRef(textStyleId))
+    textBuilders.add(styledText(textStyleId)
+            .variableRef(variableId))
 }
 
 static void addSystemField(Migration migration, List<ParagraphBuilder.TextBuilder> textBuilders, String fileName,
                            String variableId, String textStyleId) {
     ensureVariable(migration, variableId, fileName)
-    textBuilders.add(new ParagraphBuilder.TextBuilder()
-            .variableRef(variableId)
-            .styleRef(textStyleId))
+    textBuilders.add(styledText(textStyleId)
+            .variableRef(variableId))
 }
 
 private static void ensureVariable(Migration migration, String variableId, String fileName) {

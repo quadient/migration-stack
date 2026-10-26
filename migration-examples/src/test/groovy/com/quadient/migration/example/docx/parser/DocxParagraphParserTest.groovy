@@ -5,6 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.example.docx.util.DocxUtils
 import org.apache.poi.xwpf.usermodel.XWPFDocument
+import org.apache.poi.xwpf.usermodel.XWPFParagraph
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STFldCharType
@@ -58,6 +59,47 @@ class DocxParagraphParserTest {
             assert parsed.content.collect { it.content*.value.join() } == ['Hello world', '!', ' Again']
             assert DocxUtils.extractParagraphText(parsed) == 'Hello world! Again'
         }
+    }
+
+    @Test
+    void "untagged inline content control keeps its text with a captured style"() {
+        // given: a plain-text content control without tag or title, showing bold placeholder text
+        new XWPFDocument().withCloseable { doc ->
+            doc.createStyles()
+            def ctp = doc.createParagraph().CTP
+            ctp.addNewR().addNewT().stringValue = 'Name: '
+            def sdtRun = ctp.addNewSdt().addNewSdtContent().addNewR()
+            sdtRun.addNewRPr().addNewB()
+            sdtRun.addNewT().stringValue = 'Click here'
+            def paragraph = new XWPFParagraph(ctp, doc)
+
+            // when
+            def parsed = DocxParagraphParser.parseParagraph(mockMigration(), paragraph, 'sample')
+
+            // then: the control text is literal content with its own (bold) text style
+            assert parsed.content.collect { it.content*.value.join() } == ['Name: ', 'Click here']
+            assert parsed.content.every { it.styleRef != null }
+            assert parsed.content[0].styleRef.id != parsed.content[1].styleRef.id
+        }
+    }
+
+    @Test
+    void "a missing text style leaves content unstyled instead of failing"() {
+        // given: a text style id that could not be resolved (dynamic Groovy cannot pick a styleRef overload for null)
+        def migration = mockMigration(docxVariablePatterns: [/<<(\w+)>>/])
+        def content = []
+
+        // when: every text builder path receives the null style
+        DocxVariablePatterns.addText(migration, content, 'Dear <<Name>>,', null, 'sample')
+        DocxVariablePatterns.addVariable(migration, content, 'Tag', null, 'sample')
+        DocxMergeFields.addMergeField(migration, content, 'sample', ' MERGEFIELD Policy ', null)
+        DocxMergeFields.addSystemField(migration, content, 'sample', 'systemDate', null)
+
+        // then: all content is kept, just without a style
+        def built = content*.build()
+        assert built.collect { it.content[0] instanceof VariableRef ? it.content[0].id : it.content[0].value } ==
+                ['Dear ', 'Name', ',', 'Tag', 'Policy', 'systemDate']
+        assert built.every { it.styleRef == null }
     }
 
     @Test
