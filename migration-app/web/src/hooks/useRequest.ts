@@ -1,15 +1,22 @@
-import React, { type DependencyList } from "react";
+import React from "react";
 
 export type UseRequestProps<T> = {
     url: string;
     onSuccess: (data: T) => void;
     onError: (error: unknown) => void;
     requestInit?: RequestInit;
-    deps?: DependencyList;
     condition?: boolean;
 };
 
-export function useRequest<T>({ url, onSuccess, onError, requestInit, deps, condition }: UseRequestProps<T>): void {
+export function useRequest<T>({ url, onSuccess, onError, requestInit, condition }: UseRequestProps<T>): void {
+    const onSuccessEvent = React.useEffectEvent(onSuccess);
+    const onErrorEvent = React.useEffectEvent(onError);
+    const buildInit = React.useEffectEvent((signal: AbortSignal): RequestInit => ({
+        ...requestInit,
+        method: requestInit?.method || "GET",
+        signal,
+    }));
+
     React.useEffect(() => {
         if (condition === false) {
             return;
@@ -17,34 +24,29 @@ export function useRequest<T>({ url, onSuccess, onError, requestInit, deps, cond
 
         let cancelled = false;
         const controller = new AbortController();
-        const init: RequestInit = requestInit ?? {};
-        init.signal = controller.signal;
-        if (!init.method) {
-            init.method = "GET";
-        }
 
-        fetch(url, init)
+        fetch(url, buildInit(controller.signal))
             .then((result) => {
                 if (cancelled) return;
                 result
                     .json()
                     .then((json) => {
                         if (cancelled) return;
-                        onSuccess(json as T);
+                        onSuccessEvent(json as T);
                     })
                     .catch((err) => {
                         if (cancelled) return;
-                        onError(err);
+                        onErrorEvent(err);
                     });
             })
             .catch((err) => {
                 if (cancelled) return;
-                onError(err);
+                onErrorEvent(err);
             });
 
         return () => {
             controller.abort();
             cancelled = true;
         };
-    }, [url, ...(deps ?? [])]);
+    }, [url, condition]);
 }

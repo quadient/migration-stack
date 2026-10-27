@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory
 
 import java.util.regex.Pattern
 
+import static com.quadient.migration.example.docx.util.DocxUtils.styledText
+
 /**
  * Converts project-configured, text-based variable markers (for example ${Name} or <<Name>>) to variable references.
  * Each regular expression must contain one capturing group: group 1 becomes the variable name.
@@ -45,7 +47,7 @@ class DocxVariablePatterns {
             }
             addLiteral(textBuilders, text.substring(offset, match.start), styleId)
             ensureVariable(migration, match.variableId, fileName)
-            textBuilders.add(new ParagraphBuilder.TextBuilder().variableRef(match.variableId).styleRef(styleId))
+            textBuilders.add(styledText(styleId).variableRef(match.variableId))
             offset = match.end
         }
         addLiteral(textBuilders, text.substring(offset), styleId)
@@ -55,9 +57,7 @@ class DocxVariablePatterns {
                             String styleId, String fileName) {
         if (!variableId) return
         ensureVariable(migration, variableId, fileName)
-        ParagraphBuilder.TextBuilder builder = new ParagraphBuilder.TextBuilder().variableRef(variableId)
-        if (styleId) builder.styleRef(styleId)
-        textBuilders.add(builder)
+        textBuilders.add(styledText(styleId).variableRef(variableId))
     }
 
     private static List<Pattern> configuredPatterns(Migration migration) {
@@ -80,7 +80,7 @@ class DocxVariablePatterns {
 
     private static void addLiteral(List<ParagraphBuilder.TextBuilder> textBuilders, String text, String styleId) {
         if (text) {
-            textBuilders.add(new ParagraphBuilder.TextBuilder().string(text).styleRef(styleId))
+            textBuilders.add(styledText(styleId).string(text))
         }
     }
 

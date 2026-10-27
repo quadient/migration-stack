@@ -11,12 +11,16 @@ import org.apache.poi.xwpf.usermodel.XWPFRun
 import org.apache.poi.xwpf.usermodel.XWPFSDT
 import org.apache.poi.xwpf.usermodel.IRunElement
 import org.apache.xmlbeans.XmlObject
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTR
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtPr
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtRun
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSimpleField
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 import static com.quadient.migration.example.docx.style.DocxParagraphStyles.captureParagraphStyle
 import static com.quadient.migration.example.docx.style.DocxTextStyles.captureTextStyle
+import static com.quadient.migration.example.docx.util.DocxUtils.styledText
 
 @Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
@@ -58,7 +62,7 @@ class ParagraphContentCollector {
             if (url && displayText) {
                 flushText()
                 flushFields()
-                textBuilders.add(new ParagraphBuilder.TextBuilder().hyperlink(url, displayText, null).styleRef(styleId))
+                textBuilders.add(styledText(styleId).hyperlink(url, displayText, null))
                 return
             }
         }
@@ -95,10 +99,10 @@ class ParagraphContentCollector {
         DocxMergeFields.handleFieldChildren(migration, fieldChildren, styleId, fieldState, textBuilders, fileName)
     }
 
-    void addContentControl(XWPFSDT control, String styleId) {
+    void addContentControl(XWPFSDT control, String styleId, CTSdtPr sdtPr = null) {
         flushText()
         flushFields()
-        if (!DocxContentControls.addInline(migration, textBuilders, control, styleId, fileName)) {
+        if (!DocxContentControls.addInline(migration, textBuilders, control, styleId, fileName, sdtPr)) {
             appendText(control.content.text, styleId)
         }
     }
@@ -158,11 +162,15 @@ static Paragraph parseFlowParagraph(Migration migration, XWPFParagraph paragraph
     String paragraphStyleId = paragraph.styleID ?: "unknown"
     ParagraphContentCollector collector = new ParagraphContentCollector(migration, fileName, excludedImageEmbedIds, fieldState)
 
+    int sdtIndex = 0
     paragraph.getIRuns().each { IRunElement run ->
         if (run instanceof XWPFRun) {
             collector.addRun(run as XWPFRun, captureTextStyle(migration, run as XWPFRun, fileName, paragraphStyleId, context))
         } else if (run instanceof XWPFSDT) {
-            collector.addContentControl(run as XWPFSDT, null)
+            CTSdtRun ctSdt = sdtIndex < paragraph.CTP.sizeOfSdtArray() ? paragraph.CTP.getSdtArray(sdtIndex) : null
+            sdtIndex++
+            collector.addContentControl(run as XWPFSDT, contentControlTextStyle(migration, paragraph, ctSdt, fileName, paragraphStyleId, context),
+                    ctSdt?.sdtPr)
         }
     }
 
@@ -171,6 +179,17 @@ static Paragraph parseFlowParagraph(Migration migration, XWPFParagraph paragraph
         return null
     }
     return buildParagraph(migration, paragraph, fileName, context, content)
+}
+
+private static String contentControlTextStyle(Migration migration, XWPFParagraph paragraph, CTSdtRun ctSdt, String fileName,
+                                              String paragraphStyleId, String context) {
+    CTR firstRun = ctSdt?.sdtContent?.RList?.find()
+    if (ctSdt?.sdtPr?.isSetShowingPlcHdr()) {
+        firstRun = CTR.Factory.newInstance()
+        if (ctSdt.sdtPr.isSetRPr()) firstRun.addNewRPr().set(ctSdt.sdtPr.RPr)
+    }
+    XWPFRun run = new XWPFRun(firstRun ?: CTR.Factory.newInstance(), paragraph)
+    return captureTextStyle(migration, run, fileName, paragraphStyleId, context)
 }
 
 static void warnUnterminatedField(FieldParseState fieldState, String location) {

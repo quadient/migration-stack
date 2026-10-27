@@ -12,6 +12,7 @@ import io.ktor.server.routing.*
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.serialization.Serializable
 import org.koin.ktor.ext.inject
+import java.util.UUID
 
 fun Application.scriptsModule() {
     val settingsService by inject<SettingsService>()
@@ -30,12 +31,22 @@ fun Application.scriptsModule() {
 
             route("/runs") {
                 post {
-                    val body = call.receive<RunScriptRequest>()
-                    val scripts = scriptDiscoveryService.getScripts()
-                    val script = scripts.firstOrNull { it.id == body.id }
+                    val body = call.receive<RunScriptsRequest>()
+                    if (body.ids.isEmpty()) {
+                        call.respondText("No scripts to run", status = HttpStatusCode.BadRequest)
+                        return@post
+                    }
 
-                    if (script == null) {
-                        call.respondText("Script not found", status = HttpStatusCode.NotFound)
+                    val scripts = scriptDiscoveryService.getScripts()
+                    val queue = body.ids.map { id ->
+                        scripts.firstOrNull { it.id == id } ?: run {
+                            call.respondText("Script $id not found", status = HttpStatusCode.NotFound)
+                            return@post
+                        }
+                    }
+
+                    stdinNotSupportedError(queue)?.let {
+                        call.respondText(it, status = HttpStatusCode.BadRequest)
                         return@post
                     }
 
@@ -47,29 +58,33 @@ fun Application.scriptsModule() {
 
                         return@post
                     }) {
-
-                        val job = scriptJobService.create(script.id)
-                        call.response.header("job-id", job.id.toString())
                         call.respondOutputStream(contentType = ContentType.Text.Plain) {
                             val writer = this.bufferedWriter()
+                            val runId = RunId(UUID.randomUUID())
 
-                            val result = logging.capture(script.id.toString(), {
-                                job.appendLog(it)
-                                writer.tryWriteLine(it)
-                            }) {
-                                groovyService.dispatchScript(script, settingsService.getSettings())
-                            }
+                            for (script in queue) {
+                                val job = scriptJobService.create(script.id, runId)
+                                writer.tryWriteLine("id=${job.id};moduleId=${script.id};runId=$runId;result=running")
 
-                            when (result) {
-                                is RunScriptResult.Ok -> {
-                                    writer.tryWriteLine("id=${job.id};result=success\n")
-                                    scriptJobService.store(job.success())
+                                val result = logging.capture(script.id.toString(), {
+                                    job.appendLog(it)
+                                    writer.tryWriteLine(it)
+                                }) {
+                                    groovyService.dispatchScript(script, settingsService.getSettings())
                                 }
 
-                                is RunScriptResult.Err -> {
-                                    val message = result.ex.message ?: "Unknown error"
-                                    writer.tryWriteLine("id=${job.id};result=error;error=$message\n")
-                                    scriptJobService.store(job.error(message))
+                                when (result) {
+                                    is RunScriptResult.Ok -> {
+                                        writer.tryWriteLine("id=${job.id};result=success")
+                                        scriptJobService.store(job.success())
+                                    }
+
+                                    is RunScriptResult.Err -> {
+                                        val message = result.ex.message ?: "Unknown error"
+                                        writer.tryWriteLine("id=${job.id};result=error;error=$message")
+                                        scriptJobService.store(job.error(message))
+                                        break
+                                    }
                                 }
                             }
 
@@ -90,6 +105,11 @@ fun Application.scriptsModule() {
                         return@post
                     }
 
+                    stdinNotSupportedError(listOf(script))?.let {
+                        call.respondText(it, status = HttpStatusCode.BadRequest)
+                        return@post
+                    }
+
                     semaphore.withPermitOrElse(onUnavailable = {
                         call.respondText(
                             "Another script module is currently running, please try again later.",
@@ -98,7 +118,7 @@ fun Application.scriptsModule() {
 
                         return@post
                     }) {
-                        val job = scriptJobService.create(script.id)
+                        val job = scriptJobService.create(script.id, RunId(UUID.randomUUID()))
                         val (result, logs) = logging.capture(script.id.toString()) {
                             groovyService.dispatchScript(script, settingsService.getSettings())
                         }
@@ -152,8 +172,26 @@ fun Application.scriptsModule() {
     }
 }
 
+// TODO remove when these modules get supported/reworked
+private fun stdinNotSupportedError(scripts: List<ScriptMetadata>): String? {
+    val names = scripts.filter { it.needsStdin }.map { it.displayName ?: it.filename }.distinct()
+    if (names.isEmpty()) {
+        return null
+    }
+    return "Modules that need user input cannot be executed from the app yet: ${
+        names.joinToString(
+            prefix = "[",
+            postfix = "]",
+            separator = ", "
+        )
+    }"
+}
+
 @Serializable
 data class RunScriptRequest(val id: ScriptId)
+
+@Serializable
+data class RunScriptsRequest(val ids: List<ScriptId>)
 
 @Serializable
 data class RunScriptResponse(val jobId: String, val result: ScriptResult, val logs: List<String>, val error: String?)

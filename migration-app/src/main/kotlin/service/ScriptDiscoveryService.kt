@@ -1,8 +1,9 @@
 package com.quadient.migration.service
 
-import com.quadient.migration.getScriptDir
+import com.quadient.migration.getModulesDir
+import com.quadient.migration.loadGradleOnlyModules
 import com.quadient.migration.log
-import io.ktor.server.config.ApplicationConfig
+import io.ktor.server.config.*
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.Serializable
@@ -25,56 +26,63 @@ class ScriptDiscoveryService(val cfg: ApplicationConfig) {
             }
         }
 
-        val scripts = File(cfg.getScriptDir()).walk().filter { it.isFile && it.extension == "groovy" }
-                .onEach { log.trace("Parsing groovy file: ${it.name}") }.map {
-                    LoadedScriptFile(it.name, it.absolutePath, it.useLines { lines ->
-                        lines.takeWhile { line ->
-                                line.startsWith("//") || line.startsWith("package ") || line.isBlank()
-                            }.map { line -> line.removePrefix("//!").trim() }.filter { line -> !line.startsWith("//") }
-                            .toList()
-                    })
-                }.mapNotNull { (filename, absolutePath, input) ->
-                    val lines = input.filter { !it.isBlank() }
+        try {
+            return discoverScripts().also { _scripts = it }
+        } finally {
+            semaphore.release()
+        }
+    }
 
-                    if (lines.count() <= 3 || (lines[0].startsWith("package") && lines[1] != "---")) {
-                        log.trace("Skipping script '$filename' without frontmatter")
+    private fun discoverScripts(): List<ScriptMetadata> {
+        val loadGradleOnly = cfg.loadGradleOnlyModules()
+        return File(cfg.getModulesDir()).walk().filter { it.isFile && it.extension == "groovy" }
+            .onEach { log.trace("Parsing groovy file: ${it.name}") }.map {
+                LoadedScriptFile(it.name, it.absolutePath, it.useLines { lines ->
+                    lines.takeWhile { line ->
+                        line.startsWith("//") || line.startsWith("package ") || line.isBlank()
+                    }.map { line -> line.removePrefix("//!").trim() }.filter { line -> !line.startsWith("//") }
+                        .toList()
+                })
+            }.mapNotNull { (filename, absolutePath, input) ->
+                val lines = input.filter { !it.isBlank() }
+
+                if (lines.count() <= 3 || (lines[0].startsWith("package") && lines[1] != "---")) {
+                    log.trace("Skipping script '$filename' without frontmatter")
+                    return@mapNotNull null
+                }
+
+                if (lines[lines.count() - 1].startsWith("package") && lines[lines.count() - 2] != "---") {
+                    log.trace("Skipping script '$filename' without frontmatter")
+                    return@mapNotNull null
+                }
+
+                log.trace("Parsing script module frontmatter: {}", lines)
+                val (pkg, rest) = when {
+                    lines.firstOrNull()?.startsWith("package ") ?: false -> {
+                        lines.first().removePrefix("package ") to lines.drop(1)
+                    }
+
+                    lines.lastOrNull()?.startsWith("package ") ?: false -> {
+                        lines.last().removePrefix("package ") to lines.dropLast(1)
+                    }
+
+                    else -> {
+                        log.error("Invalid frontmatter, missing package declaration: ${lines.firstOrNull()}")
                         return@mapNotNull null
                     }
+                }
 
-                    if (lines[lines.count() - 1].startsWith("package") && lines[lines.count() - 2] != "---") {
-                        log.trace("Skipping script '$filename' without frontmatter")
-                        return@mapNotNull null
-                    }
+                if (rest.firstOrNull() != "---" && rest.lastOrNull() != "---") {
+                    log.error("Invalid frontmatter fences: ${rest.joinToString("\n")}")
+                    return@mapNotNull null
+                }
 
-                    log.trace("Parsing script module frontmatter: {}", lines)
-                    val (pkg, rest) = when {
-                        lines.firstOrNull()?.startsWith("package ") ?: false -> {
-                            lines.first().removePrefix("package ") to lines.drop(1)
-                        }
-
-                        lines.lastOrNull()?.startsWith("package ") ?: false -> {
-                            lines.last().removePrefix("package ") to lines.dropLast(1)
-                        }
-
-                        else -> {
-                            log.error("Invalid frontmatter, missing package declaration: ${lines.firstOrNull()}")
-                            return@mapNotNull null
-                        }
-                    }
-
-                    if (rest.firstOrNull() != "---" && rest.lastOrNull() != "---") {
-                        log.error("Invalid frontmatter fences: ${rest.joinToString("\n")}")
-                        return@mapNotNull null
-                    }
-
-                    log.debug("Successfully parsed script module $filename")
-                    ScriptMetadata.fromString(rest.drop(1).dropLast(1), filename, absolutePath, pkg)
-                }.filter { it.target == ScriptMetadata.Target.All || it.target == ScriptMetadata.Target.App }
-                .toList()
-
-        _scripts = scripts
-        semaphore.release()
-        return scripts
+                log.debug("Successfully parsed script module $filename")
+                ScriptMetadata.fromString(rest.drop(1).dropLast(1), filename, absolutePath, pkg)
+            }.filter {
+                loadGradleOnly || it.target == ScriptMetadata.Target.All || it.target == ScriptMetadata.Target.App
+            }
+            .toList()
     }
 
     data class LoadedScriptFile(val filename: String, val absolutePath: String, val content: List<String>)
@@ -85,6 +93,8 @@ class ScriptDiscoveryService(val cfg: ApplicationConfig) {
 value class ScriptId(val value: String) {
     override fun toString(): String = value
 }
+
+fun String.toScriptId(): ScriptId = ScriptId(this)
 
 @Serializable
 data class ScriptMetadata(

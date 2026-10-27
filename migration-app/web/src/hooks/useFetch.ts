@@ -1,4 +1,4 @@
-import React, { type DependencyList } from "react";
+import React from "react";
 
 export type SuccessFetchResult<T> = {
     data: T;
@@ -6,7 +6,7 @@ export type SuccessFetchResult<T> = {
     status: "ok";
 };
 
-export type UseFetchResult<T> =
+export type UseFetchResult<T> = (
     | {
           status: "error";
           error: unknown;
@@ -14,23 +14,28 @@ export type UseFetchResult<T> =
     | {
           status: "loading";
       }
-    | SuccessFetchResult<T>;
+    | SuccessFetchResult<T>
+) & { refetch: () => void };
 
-export function useFetch<T>(url: string, requestInit?: RequestInit, deps?: DependencyList): UseFetchResult<T> {
+export function useFetch<T>(url: string, requestInit?: RequestInit): UseFetchResult<T> {
     const [status, setStatus] = React.useState("loading");
     const [error, setError] = React.useState<unknown | null>(undefined);
     const [data, setData] = React.useState<T | undefined>(undefined);
+    const [fetchCount, setFetchCount] = React.useState(0);
+
+    const buildInit = React.useEffectEvent((signal: AbortSignal): RequestInit => ({
+        ...requestInit,
+        method: requestInit?.method || "GET",
+        signal,
+    }));
+
+    const refetch = React.useCallback(() => setFetchCount((count) => count + 1), []);
 
     React.useEffect(() => {
         let cancelled = false;
         const controller = new AbortController();
-        const init: RequestInit = requestInit ?? {};
-        init.signal = controller.signal;
-        if (!init.method) {
-            init.method = "GET";
-        }
 
-        fetch(url, init)
+        fetch(url, buildInit(controller.signal))
             .then((result) => {
                 if (cancelled) {
                     return;
@@ -64,7 +69,7 @@ export function useFetch<T>(url: string, requestInit?: RequestInit, deps?: Depen
             controller.abort();
             cancelled = true;
         };
-    }, [url, ...(deps ?? [])]);
+    }, [url, fetchCount]);
 
-    return { data, setData, error, status } as UseFetchResult<T>;
+    return { data, setData, error, status, refetch } as UseFetchResult<T>;
 }

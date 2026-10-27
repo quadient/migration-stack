@@ -11,7 +11,9 @@ fun ApplicationConfig.getEnv() = when (propertyOrNull("ktor.development")?.getAs
     null -> Env.DEV
 }
 
-fun ApplicationConfig.getScriptDir() = tryGetString("scripts-dir") ?: "modules"
+fun ApplicationConfig.getModulesDir() = tryGetString("modules-dir") ?: "modules"
+fun ApplicationConfig.getLibsDir() = tryGetString("libs-dir") ?: "libs"
 fun ApplicationConfig.getFeDir() = tryGetString("fe-dir") ?: "web"
 fun ApplicationConfig.getAppDataDir() = tryGetString("app-data-dir") ?: Path("data", "app").toString()
 fun ApplicationConfig.getModulesDataDir() = tryGetString("modules-data-dir") ?: Path("data", "modules").toString()
+fun ApplicationConfig.loadGradleOnlyModules() = tryGetString("load-gradle-only-modules")?.toBoolean() ?: false

@@ -9,16 +9,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 
 - Support base template deployment in evolve
+- Reworked migration-app, it now serves as a replacement for Gradle task runner
 
 ### Changed
 
-- deployStyles with interactive output no longer deploys a wfd file, instead it
-- reuses the StyleDefinition.wfd provided by StandardPackage
+- deployStyles with interactive output no longer deploys a wfd file, instead it uses the default StyleDefinition.wfd
 
 ### Fixed
 
 - Listing files and dependencies from icm not working with spaces in file path
 - Column layout is now applied properly when followed by standalone blocks/flows
+- DOCX content controls parsing handles more cases and no longer fails when text style is missing
 
 ## [17.0.32] - 2026-10-13
 

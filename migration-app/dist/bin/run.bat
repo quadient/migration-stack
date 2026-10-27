@@ -12,5 +12,5 @@ IF ERRORLEVEL 1 (
     exit /b 1
 )
 
-java -jar app.jar -config=application.conf
+java -jar app.jar --config application.conf %*
 popd

@@ -9,6 +9,6 @@ SCRIPT_PATH=$(
 )
 APP_PATH=$(dirname "$SCRIPT_PATH")
 
-pushd "$APP_PATH" || exit
+pushd "$APP_PATH" > /dev/null || exit
 
-java -jar app.jar -config=application.conf
+java -jar app.jar --config application.conf "$@"

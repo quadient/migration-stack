@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormProps) {
     const migrationConfig = settings.migrationConfig;
 
-    const updateMigrationConfig = (key: keyof MigrationConfig, value: any) => {
+    const updateMigrationConfig = (key: keyof MigrationConfig, value: unknown) => {
         setSettings((prev) => ({
             ...prev,
             migrationConfig: {
@@ -21,7 +21,7 @@ export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormPr
         }));
     };
 
-    const updateDbConfig = (key: keyof DbConfig, value: any) => {
+    const updateDbConfig = (key: keyof DbConfig, value: unknown) => {
         setSettings((prev) => ({
             ...prev,
             migrationConfig: {
@@ -34,7 +34,7 @@ export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormPr
         }));
     };
 
-    const updateIpsConfig = (key: keyof IpsConfig, value: any) => {
+    const updateIpsConfig = (key: keyof IpsConfig, value: unknown) => {
         setSettings((prev) => ({
             ...prev,
             migrationConfig: {

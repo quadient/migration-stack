@@ -48,7 +48,7 @@ export type ProjectConfig = {
     selectedDocumentObjectsFile?: string;
     selectedDocumentObjects?: string[];
     subProjectId?: string;
-    context: Record<string, any>;
+    context: Record<string, unknown>;
 };
 
 export type PathsConfig = {

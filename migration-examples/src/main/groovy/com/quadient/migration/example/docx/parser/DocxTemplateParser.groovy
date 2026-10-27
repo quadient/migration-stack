@@ -19,6 +19,8 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument
 import org.apache.poi.xwpf.usermodel.XWPFParagraph
 import org.apache.poi.xwpf.usermodel.XWPFTable
 import org.apache.poi.xwpf.usermodel.XWPFSDT
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBody
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSdtPr
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -75,6 +77,12 @@ private static String resolveTargetFolder(Migration migration, String relativePa
     return [defaultTargetFolder, subfolder].findAll().join('/')
 }
 
+private static CTSdtPr blockSdtPr(XWPFDocument doc, XWPFSDT control) {
+    int index = doc.bodyElements.findAll { it instanceof XWPFSDT }.findIndexOf { it.is(control) }
+    CTBody body = doc.document.body
+    return index >= 0 && index < body.sizeOfSdtArray() ? body.getSdtArray(index).sdtPr : null
+}
+
 static List<DocumentObject> parsePages(Migration migration, File docxFile, DocumentObjectBuilder templateBuilder, String fileName) {
     XWPFDocument doc = new XWPFDocument(new FileInputStream(docxFile))
     try {
@@ -104,7 +112,7 @@ static List<DocumentObject> parsePages(Migration migration, File docxFile, Docum
                             body.add(paragraph, headingLevel(elem))
                         }
                     } else if (elem instanceof XWPFSDT) {
-                        Paragraph paragraph = DocxContentControls.parseBlock(migration, elem as XWPFSDT, fileName)
+                        Paragraph paragraph = DocxContentControls.parseBlock(migration, elem as XWPFSDT, fileName, blockSdtPr(doc, elem as XWPFSDT))
                         if (paragraph != null) body.add(paragraph)
                     } else if (elem instanceof XWPFTable) {
                         if (fieldState.depth > 0) {

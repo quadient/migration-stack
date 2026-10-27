@@ -206,10 +206,10 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                         <Input
                             value={JSON.stringify(settings.projectConfig.context)}
                             onChange={(e) => {
-                                let value = e.target.value;
-                                let parsed: Record<string, any> = {};
+                                const value = e.target.value;
+                                let parsed: Record<string, unknown> = {};
                                 try {
-                                    parsed = (value.trim() === "" ? {} : JSON.parse(value)) as Record<string, any>;
+                                    parsed = (value.trim() === "" ? {} : JSON.parse(value)) as Record<string, unknown>;
                                     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
                                         console.warn("Invalid context value", value);
                                         return;

@@ -1,6 +1,8 @@
 package com.quadient.migration
 
+import com.github.ajalt.clikt.command.main
 import com.quadient.migration.api.Migration
+import com.quadient.migration.cli.migrationApp
 import com.quadient.migration.dto.StatisticsResponse
 import com.quadient.migration.route.jobModule
 import com.quadient.migration.route.rootModule
@@ -9,7 +11,6 @@ import com.quadient.migration.service.Settings
 import com.quadient.migration.service.SettingsService
 import io.ktor.serialization.jackson3.*
 import io.ktor.server.application.*
-import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
@@ -18,9 +19,7 @@ import org.koin.ktor.ext.inject
 import org.koin.ktor.plugin.Koin
 import org.koin.logger.slf4jLogger
 
-fun main(args: Array<String>) {
-    EngineMain.main(args)
-}
+suspend fun main(args: Array<String>) = migrationApp().main(args)
 
 fun Application.module() {
     install(ContentNegotiation) {
@@ -28,7 +27,7 @@ fun Application.module() {
     }
     install(Koin) {
         slf4jLogger()
-        modules(appModules(environment))
+        modules(appModules(environment.config))
     }
 
     val env = environment.config.getEnv()
