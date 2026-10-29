@@ -18,8 +18,8 @@ import java.sql.Connection
 import java.sql.DriverManager
 
 /**
- * Integration test for V18 migration that backfills an Active status tracking record
- * for every existing variable structure.
+ * Integration test for V18 migration that adds the target folder to variable structures
+ * and backfills an Active status tracking record for every existing variable structure.
  */
 class V18MigrationTest {
 
@@ -71,6 +71,34 @@ class V18MigrationTest {
                     .executeQuery("SELECT count(*) FROM status_tracking WHERE resource_type = 'VariableStructure'")
                 rs.next()
                 assertEquals(2, rs.getInt(1))
+            }
+        }
+    }
+
+    @Test
+    fun `V18 migration adds nullable target folder to variable structures`() {
+        PostgreSQLContainer(POSTGRES_CONTAINER).use { postgres ->
+            postgres.start()
+
+            migrate(postgres, "17")
+            connection(postgres).use { conn -> insertVariableStructure(conn, "vs1", "test") }
+
+            migrate(postgres, "18")
+
+            connection(postgres).use { conn ->
+                conn.createStatement().executeUpdate("UPDATE variable_structure SET target_folder = 'folder' WHERE id = 'vs1'")
+                val rs = conn.createStatement().executeQuery(
+                    "SELECT target_folder FROM variable_structure WHERE id = 'vs1'"
+                )
+                rs.next()
+                assertEquals("folder", rs.getString(1))
+
+                insertVariableStructure(conn, "vs2", "test")
+                val rs2 = conn.createStatement().executeQuery(
+                    "SELECT target_folder FROM variable_structure WHERE id = 'vs2'"
+                )
+                rs2.next()
+                assertNull(rs2.getString(1))
             }
         }
     }

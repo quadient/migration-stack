@@ -34,7 +34,8 @@ class VariableStructureRepository(
             created = row[VariableStructureTable.created],
             structure = row[VariableStructureTable.structure],
             originLocations = row[VariableStructureTable.originLocations],
-            languageVariable = row[VariableStructureTable.languageVariable]?.let { VariableRef(it) }
+            languageVariable = row[VariableStructureTable.languageVariable]?.let { VariableRef(it) },
+            targetFolder = row[VariableStructureTable.targetFolder],
         )
     }
 
@@ -66,6 +67,7 @@ class VariableStructureRepository(
                 it[VariableStructureTable.lastUpdated] = now
                 it[VariableStructureTable.structure] = dto.structure
                 it[VariableStructureTable.languageVariable] = dto.languageVariable?.id
+                it[VariableStructureTable.targetFolder] = dto.targetFolder
             }.first()
         }
     }
@@ -75,7 +77,7 @@ class VariableStructureRepository(
 
         val columns = listOf(
             "id", "project_name", "name", "origin_locations", "custom_fields",
-            "created", "last_updated", "structure", "language_variable"
+            "created", "last_updated", "structure", "language_variable", "target_folder"
         )
         val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
@@ -99,6 +101,7 @@ class VariableStructureRepository(
                 stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
                 stmt.setObject(index++, Json.encodeToString(dto.structure), Types.OTHER)
                 stmt.setString(index++, dto.languageVariable?.id)
+                stmt.setString(index++, dto.targetFolder)
             }
 
             stmt.executeUpdate()

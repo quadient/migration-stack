@@ -164,10 +164,21 @@ class DesignerResourcePathProvider(private val projectConfig: ProjectConfig) : R
 }
 
 open class InteractiveResourcePathProvider(private val projectConfig: ProjectConfig) : ResourcePathProvider {
-    override fun getDataDefinitionPath(variableStructure: VariableStructure): IcmPath = IcmPath.root()
-        .join("Interactive").join(projectConfig.interactiveTenant).join("DataDefinitions")
-        .join(resolveTargetDir(projectConfig.defaultTargetFolder))
-        .join("${variableStructure.nameOrId()}.jdd")
+    override fun getDataDefinitionPath(variableStructure: VariableStructure): IcmPath {
+        val fileName = "${variableStructure.nameOrId()}.jdd"
+
+        val targetFolder = variableStructure.targetFolder?.let { IcmPath.from(it) }
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName)
+        }
+
+        return IcmPath.root()
+            .join("Interactive")
+            .join(projectConfig.interactiveTenant)
+            .join("DataDefinitions")
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
+            .join(fileName)
+    }
 
     override fun getDataDefinitionSourceTemplatePath(): IcmPath = IcmPath.root()
         .join("Interactive").join(projectConfig.interactiveTenant).join("Sources").join("SourceTemplate.wfd")

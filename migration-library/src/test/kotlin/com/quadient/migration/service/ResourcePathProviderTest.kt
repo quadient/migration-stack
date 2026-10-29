@@ -8,6 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
+import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.DocumentObjectType
@@ -69,6 +70,24 @@ class ResourcePathProviderTest {
 
             aSubject(config).getDataDefinitionSourceTemplatePath().toString()
                 .shouldBeEqualTo("icm://Interactive/customTenant/Sources/SourceTemplate.wfd")
+        }
+
+        @ParameterizedTest
+        @CsvSource(
+            // name     ,targetFolder   ,defaultTargetFolder,expected
+            "           ,               ,                   ,icm://Interactive/tenant/DataDefinitions/VS_1.jdd",
+            "null       ,null           ,null               ,icm://Interactive/tenant/DataDefinitions/VS_1.jdd",
+            "struct     ,               ,                   ,icm://Interactive/tenant/DataDefinitions/struct.jdd",
+            "           ,relative       ,                   ,icm://Interactive/tenant/DataDefinitions/relative/VS_1.jdd",
+            "           ,               ,default            ,icm://Interactive/tenant/DataDefinitions/default/VS_1.jdd",
+            "           ,subDir         ,shouldIgnore       ,icm://Interactive/tenant/DataDefinitions/subDir/VS_1.jdd",
+            "struct     ,icm://absolute/,shouldIgnore       ,icm://absolute/struct.jdd",
+        )
+        fun `data definition path`(name: String?, targetFolder: String?, defaultTargetFolder: String?, expected: String) {
+            val config = aProjectConfig(targetDefaultFolder = defaultTargetFolder.nullToNull(), interactiveTenant = "tenant")
+            val structure = VariableStructureBuilder("VS_1").name(name.nullToNull()).targetFolder(targetFolder.nullToNull()).build()
+
+            aSubject(config).getDataDefinitionPath(structure).toString().shouldBeEqualTo(expected)
         }
 
         @ParameterizedTest

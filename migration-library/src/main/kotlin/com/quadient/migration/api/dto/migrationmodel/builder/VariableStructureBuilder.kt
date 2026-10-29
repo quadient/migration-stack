@@ -3,12 +3,15 @@ package com.quadient.migration.api.dto.migrationmodel.builder
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.dto.migrationmodel.builder.components.HasTargetFolder
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.shared.VariableRefPath
 
-class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, VariableStructureBuilder>(id) {
+class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, VariableStructureBuilder>(id),
+    HasTargetFolder<VariableStructureBuilder> {
+    override var targetFolder: String? = null
     var structure = mutableMapOf<String, VariablePathData>()
     var languageVariable: VariableRef? = null
 
@@ -144,7 +147,8 @@ class VariableStructureBuilder(id: String) : DtoBuilderBase<VariableStructure, V
             originLocations = originLocations,
             customFields = customFields,
             structure = structure,
-            languageVariable = languageVariable
+            languageVariable = languageVariable,
+            targetFolder = targetFolder,
         )
     }
 }

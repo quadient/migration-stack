@@ -12,6 +12,7 @@ data class VariableStructure @JvmOverloads constructor(
     val languageVariable: VariableRef?,
     override var created: Instant? = null,
     override var lastUpdated: Instant? = null,
+    var targetFolder: String? = null,
 ) : MigrationObject, RefValidatable {
     override fun collectRefs(): Set<Ref> {
         return structure.keys.map { VariableRef(it) }.toSet()

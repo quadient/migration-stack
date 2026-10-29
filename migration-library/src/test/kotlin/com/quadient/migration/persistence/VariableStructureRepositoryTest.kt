@@ -48,7 +48,7 @@ class VariableStructureRepositoryTest {
     @Test
     fun `roundtrip is correct`() {
         val dto = VariableStructureBuilder("id").customFields(mutableMapOf("f1" to "val1"))
-            .originLocations(listOf("test1", "test2")).addVariable("var1", "Data.Test.Value")
+            .originLocations(listOf("test1", "test2")).targetFolder("folder").addVariable("var1", "Data.Test.Value")
             .addVariable("var2", "Data.Test.Value2").build()
 
         repo.upsert(dto)
@@ -67,6 +67,7 @@ class VariableStructureRepositoryTest {
             .name("Variable Structure 1")
             .customFields(mutableMapOf("field1" to "value1"))
             .originLocations(listOf("origin1"))
+            .targetFolder("folder1")
             .addVariable("var1", "Data.Test.Value1")
             .addVariable("var2", "Data.Test.Value2")
             .build()
