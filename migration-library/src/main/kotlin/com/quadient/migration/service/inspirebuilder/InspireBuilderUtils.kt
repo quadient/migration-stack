@@ -55,19 +55,24 @@ fun removeValueFromVariablePath(path: String): String {
     }.joinToString(".")
 }
 
-sealed class VariablePathPart(val name: String) {
+sealed class VariablePathPart(val name: String, val dataType: DataTypeModel) {
     val children = mutableMapOf<String, VariablePathPart>()
 }
 
-class ArrayVariable(name: String) : VariablePathPart(name)
-class SubtreeVariable(name: String) : VariablePathPart(name)
+class ArrayVariable(name: String) : VariablePathPart(name, DataTypeModel.Array)
+class SubtreeVariable(name: String) : VariablePathPart(name, DataTypeModel.SubTree)
+class LeafVariable(name: String, dataType: DataTypeModel) : VariablePathPart(name, dataType)
 
-fun buildVariableTree(paths: List<String>): Map<String, VariablePathPart> {
+fun buildVariableTree(
+    paths: List<String>, variableTypes: Map<String, DataTypeModel> = emptyMap(),
+): Map<String, VariablePathPart> {
     val root = mutableMapOf<String, VariablePathPart>()
+    val normalizedTypes = variableTypes.mapKeys { (path, _) -> removeValueFromVariablePath(path) }
 
     for (path in paths) {
         val parts = path.split(".")
         var currentMap = root
+        val currentPath = mutableListOf<String>()
 
         var i = 0
         while (i < parts.size) {
@@ -78,11 +83,20 @@ fun buildVariableTree(paths: List<String>): Map<String, VariablePathPart> {
                 continue
             }
 
+            currentPath.add(part)
             val isArray = (i + 1 < parts.size && parts[i + 1].lowercase() == "value")
             val variable = currentMap.getOrPut(part) {
-                if (isArray) ArrayVariable(part) else SubtreeVariable(part)
+                when (val type = normalizedTypes[currentPath.joinToString(".")]) {
+                    DataTypeModel.Array -> ArrayVariable(part)
+                    DataTypeModel.SubTree -> SubtreeVariable(part)
+                    null -> if (isArray) ArrayVariable(part) else SubtreeVariable(part)
+                    else -> LeafVariable(part, type)
+                }
             }
 
+            require(variable !is LeafVariable || i == parts.lastIndex) {
+                "Leaf variable '${variable.name}' cannot contain child variables"
+            }
             currentMap = variable.children
             i++
         }

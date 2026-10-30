@@ -9,6 +9,7 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Image
 import com.quadient.migration.api.dto.migrationmodel.LiteralBaseTemplatePath
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.service.inspirebuilder.appendExtensionIfMissing
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.DocumentObjectType
@@ -18,6 +19,13 @@ import com.quadient.migration.shared.orDefault
 import com.quadient.migration.shared.toIcmPath
 
 interface ResourcePathProvider {
+    fun getDataDefinitionPath(variableStructure: VariableStructure): IcmPath =
+        error("Data definition deployment is supported only for Interactive output.")
+    fun getDataDefinitionSourceTemplatePath(): IcmPath =
+        error("Data definition deployment is supported only for Interactive output.")
+    fun getSourceBaseTemplatePath(): IcmPath =
+        error("Interactive base template source paths are not supported for Designer output.")
+
     fun getDocumentObjectFileName(documentObject: DocumentObject): String
     fun getDocumentObjectPath(documentObject: DocumentObject): IcmPath
 
@@ -156,6 +164,34 @@ class DesignerResourcePathProvider(private val projectConfig: ProjectConfig) : R
 }
 
 open class InteractiveResourcePathProvider(private val projectConfig: ProjectConfig) : ResourcePathProvider {
+    override fun getDataDefinitionPath(variableStructure: VariableStructure): IcmPath {
+        val fileName = "${variableStructure.nameOrId()}.jdd"
+
+        val targetFolder = variableStructure.targetFolder?.let { IcmPath.from(it) }
+        if (targetFolder?.isAbsolute() == true) {
+            return targetFolder.join(fileName)
+        }
+
+        return IcmPath.root()
+            .join("Interactive")
+            .join(projectConfig.interactiveTenant)
+            .join("DataDefinitions")
+            .join(resolveTargetDir(projectConfig.defaultTargetFolder, targetFolder))
+            .join(fileName)
+    }
+
+    override fun getDataDefinitionSourceTemplatePath(): IcmPath = IcmPath.root()
+        .join("Interactive").join(projectConfig.interactiveTenant).join("Sources").join("SourceTemplate.wfd")
+
+    override fun getSourceBaseTemplatePath(): IcmPath {
+        val configuredPath = projectConfig.sourceBaseTemplatePath?.takeIf { it.isNotBlank() }?.toIcmPath()
+        require(configuredPath == null || configuredPath.isAbsolute()) {
+            "The configured source base template path '$configuredPath' is not absolute."
+        }
+        return configuredPath
+            ?: IcmPath.root().join("Interactive").join(projectConfig.interactiveTenant).join("Sources").join("SourceTemplate.wfd")
+    }
+
     override fun getDocumentObjectFileName(documentObject: DocumentObject): String {
         val ext = when (documentObject.type) {
             DocumentObjectType.Snippet -> "jsd"

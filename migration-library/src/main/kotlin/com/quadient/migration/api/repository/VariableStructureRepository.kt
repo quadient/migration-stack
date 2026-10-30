@@ -7,6 +7,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.persistence.table.DocumentObjectTable
 import com.quadient.migration.persistence.table.VariableStructureTable
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.tools.concat
 import kotlin.time.Clock
 import kotlin.time.toJavaInstant
@@ -19,8 +20,10 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsertReturning
 import kotlin.collections.map
 
-class VariableStructureRepository(projectName: ProjectName) :
-    Repository<VariableStructure>(VariableStructureTable, projectName.name) {
+class VariableStructureRepository(
+    projectName: ProjectName,
+    private val statusTrackingRepository: StatusTrackingRepository,
+) : Repository<VariableStructure>(VariableStructureTable, projectName.name) {
 
     override fun fromDb(row: ResultRow): VariableStructure {
         return VariableStructure(
@@ -31,7 +34,8 @@ class VariableStructureRepository(projectName: ProjectName) :
             created = row[VariableStructureTable.created],
             structure = row[VariableStructureTable.structure],
             originLocations = row[VariableStructureTable.originLocations],
-            languageVariable = row[VariableStructureTable.languageVariable]?.let { VariableRef(it) }
+            languageVariable = row[VariableStructureTable.languageVariable]?.let { VariableRef(it) },
+            targetFolder = row[VariableStructureTable.targetFolder],
         )
     }
 
@@ -49,6 +53,10 @@ class VariableStructureRepository(projectName: ProjectName) :
 
             val now = Clock.System.now()
 
+            if (existingItem == null) {
+                statusTrackingRepository.active(dto.id, ResourceType.VariableStructure)
+            }
+
             table.upsertReturning(table.id, table.projectName) {
                 it[VariableStructureTable.id] = dto.id
                 it[VariableStructureTable.projectName] = this@VariableStructureRepository.projectName
@@ -59,6 +67,7 @@ class VariableStructureRepository(projectName: ProjectName) :
                 it[VariableStructureTable.lastUpdated] = now
                 it[VariableStructureTable.structure] = dto.structure
                 it[VariableStructureTable.languageVariable] = dto.languageVariable?.id
+                it[VariableStructureTable.targetFolder] = dto.targetFolder
             }.first()
         }
     }
@@ -68,7 +77,7 @@ class VariableStructureRepository(projectName: ProjectName) :
 
         val columns = listOf(
             "id", "project_name", "name", "origin_locations", "custom_fields",
-            "created", "last_updated", "structure", "language_variable"
+            "created", "last_updated", "structure", "language_variable", "target_folder"
         )
         val sql = createSql(columns, dtos.size)
         val now = Clock.System.now()
@@ -79,6 +88,10 @@ class VariableStructureRepository(projectName: ProjectName) :
             dtos.forEach { dto ->
                 val existingItem = find(dto.id)
 
+                if (existingItem == null) {
+                    statusTrackingRepository.active(dto.id, ResourceType.VariableStructure)
+                }
+
                 stmt.setString(index++, dto.id)
                 stmt.setString(index++, this@VariableStructureRepository.projectName)
                 stmt.setString(index++, dto.name)
@@ -88,6 +101,7 @@ class VariableStructureRepository(projectName: ProjectName) :
                 stmt.setTimestamp(index++, java.sql.Timestamp.from(now.toJavaInstant()))
                 stmt.setObject(index++, Json.encodeToString(dto.structure), Types.OTHER)
                 stmt.setString(index++, dto.languageVariable?.id)
+                stmt.setString(index++, dto.targetFolder)
             }
 
             stmt.executeUpdate()

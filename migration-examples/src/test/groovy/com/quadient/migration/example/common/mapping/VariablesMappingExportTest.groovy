@@ -43,7 +43,7 @@ class VariablesMappingExportTest {
         when(migration.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure("",
                 ["overridden": new VariablePathData("override/path", "overridden name"),
                  "refVar"    : new VariablePathData(new VariableRefPath("full"), "ref name")],
-                new VariableRef("full")))
+                new VariableRef("full"), null))
 
         VariablesExport.run(migration, mappingFile)
 

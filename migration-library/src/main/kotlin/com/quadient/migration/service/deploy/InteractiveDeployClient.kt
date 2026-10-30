@@ -1,6 +1,7 @@
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.ProjectConfig
+import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Attachment
@@ -44,6 +45,7 @@ import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.deploy.utility.ProgressReporterImpl
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
 import com.quadient.migration.service.inspirebuilder.InspireBaseTemplateBuilder
+import com.quadient.migration.service.inspirebuilder.InspireVariableStructureBuilder
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.OperationResult
 import com.quadient.migration.service.resolveTarget
@@ -89,6 +91,7 @@ open class InteractiveDeployClient(
     protected val baseTemplateBuilder: InspireBaseTemplateBuilder,
     ipsService: IpsService,
     storage: Storage,
+    private val inspireVariableStructureBuilder: InspireVariableStructureBuilder,
 ) : DeployClient(
     projectConfig,
     metadataValidator,
@@ -194,6 +197,55 @@ open class InteractiveDeployClient(
 
     override fun shouldIncludeDependency(documentObject: DocumentObject): Boolean {
         return documentObject.internal != true && !documentObject.skip.skipped
+    }
+
+    override fun deployDataDefinitions(): DeploymentResult {
+        check(projectConfig.inspireOutput == InspireOutput.Interactive) {
+            "Data definition deployment is supported only for Interactive output."
+        }
+        val tracker = ResultTrackerImpl(statusTrackingRepository, projectConfig.inspireOutput)
+        val definitions = variableStructureRepository.listAll()
+        logger.info("Found ${definitions.size} data definition(s) in the repository.")
+
+        for (structure in definitions) {
+            val targetPath = resourcePathProvider.getDataDefinitionPath(structure)
+
+            if (!shouldDeployObject(structure.id, ResourceType.VariableStructure, targetPath, tracker.deploymentResult)) {
+                logger.info("Skipping deployment of '${structure.id}' as it is not marked for deployment.")
+                continue
+            }
+
+            val fileNameError = validateFileName(
+                structure.nameOrId(), ResourceType.VariableStructure, structure.id
+            )
+            if (fileNameError != null) {
+                logger.error(fileNameError)
+                tracker.errorDataDefinition(structure.id, targetPath, fileNameError)
+                continue
+            }
+
+            try {
+                val wfdXml = inspireVariableStructureBuilder.buildDataDefinition(structure)
+                when (val result = ipsService.deployDataDefinition(
+                    resourcePathProvider.getDataDefinitionSourceTemplatePath(), wfdXml, targetPath
+                )) {
+                    OperationResult.Success -> {
+                        logger.debug("Deployment of data definition '${structure.nameOrId()}' to $targetPath is successful.")
+                        tracker.deployedDataDefinition(structure.id, targetPath)
+                    }
+                    is OperationResult.Failure -> {
+                        logger.error("Failed to deploy data definition '${structure.nameOrId()}' to $targetPath: ${result.message}")
+                        tracker.errorDataDefinition(structure.id, targetPath, result.message)
+                    }
+                }
+            } catch (e: Exception) {
+                val message = "Failed to deploy data definition '${structure.nameOrId()}' to $targetPath."
+                logger.error(message, e)
+                tracker.errorDataDefinition(structure.id, targetPath, e.message ?: message)
+            }
+        }
+        runPostProcessors(tracker.deploymentResult)
+        return tracker.deploymentResult
     }
 
     override fun deployBaseTemplates(): DeploymentResult {

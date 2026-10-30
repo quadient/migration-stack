@@ -1,5 +1,5 @@
 //! ---
-//! displayName: Export Variable Structure
+//! displayName: Export Variables
 //! category: Mapping
 //! description: Creates a CSV report with variable structure from the migration project. The export is interactive, prompting the user to select or enter a variable structure to export.
 //! target: gradle

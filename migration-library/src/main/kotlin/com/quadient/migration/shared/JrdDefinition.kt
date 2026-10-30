@@ -7,12 +7,12 @@ import tools.jackson.databind.SerializationContext
 import tools.jackson.databind.annotation.JsonSerialize
 import tools.jackson.databind.json.JsonMapper
 import tools.jackson.databind.ser.std.StdSerializer
-import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.service.inspirebuilder.ArrayVariable
 import com.quadient.migration.service.inspirebuilder.InspireDocumentObjectBuilder
+import com.quadient.migration.service.inspirebuilder.LeafVariable
 import com.quadient.migration.service.inspirebuilder.SubtreeVariable
 import com.quadient.migration.service.inspirebuilder.VariablePathPart
 import com.quadient.migration.service.inspirebuilder.buildVariableTree
@@ -350,6 +350,7 @@ fun treeToNode(
             nodePath = currentPath, varType = when (part) {
                 is ArrayVariable -> "Array"
                 is SubtreeVariable -> "Subtree"
+                is LeafVariable -> part.dataType.toInteractiveDataType()
             }
         )
 

@@ -105,7 +105,7 @@ class DesignerDeployClientTest {
     val ipsService = mockk<IpsService>()
     val storage = mockk<Storage>()
     val resourcePathProvider = mockk<DesignerResourcePathProvider>()
-    val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
+    val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, variableStructureRepository, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
     val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
     val deployOrder = DeployOrderImpl(documentObjectRepository)
     val refInheritanceService = RefInheritanceServiceImpl(documentObjectRepository)
@@ -134,6 +134,12 @@ class DesignerDeployClientTest {
         ipsService,
         storage
     )
+
+    @Test
+    fun `Designer data definition deployment is unsupported`() {
+        assertThrows<IllegalStateException> { subject().deployDataDefinitions() }
+        verify(exactly = 0) { variableStructureRepository.listAll() }
+    }
 
     @BeforeEach
     fun setupAll() {

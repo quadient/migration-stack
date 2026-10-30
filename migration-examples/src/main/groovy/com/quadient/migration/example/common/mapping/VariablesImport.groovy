@@ -1,5 +1,5 @@
 //! ---
-//! displayName: Import Variable Structure
+//! displayName: Import Variables
 //! category: Mapping
 //! description: Imports variable structure from specified CSV files. The import is interactive, prompting the user to select variable structure CSV to import.
 //! target: gradle
@@ -44,6 +44,9 @@ static void run(Migration migration, Path path) {
     if (existingStructure == null) {
         migration.variableStructureRepository.upsert(new VariableStructureBuilder(structureId).build())
     }
+
+    if (structureMapping.name == null) structureMapping.name = existingStructure?.name
+    if (structureMapping.targetFolder == null) structureMapping.targetFolder = existingStructure?.targetFolder
 
     def languageVariableFound = false
     def mappings = new HashMap<String, MappingItem>()

@@ -1,6 +1,5 @@
 package com.quadient.migration.service.inspirebuilder
 
-import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.BaseTemplate
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
@@ -13,7 +12,6 @@ import com.quadient.migration.service.ResourcePathProvider
 import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.IcmPath
-import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.logger
 import com.quadient.wfdxml.WfdXmlBuilder
 import com.quadient.wfdxml.api.layoutnodes.Flow
@@ -23,7 +21,6 @@ import com.quadient.wfdxml.api.layoutnodes.email.EmailComponentPlaceHolder
 import com.quadient.wfdxml.api.module.Layout
 
 class InspireBaseTemplateBuilder(
-    private val projectConfig: ProjectConfig,
     private val icmDataCache: IcmDataCache,
     private val resourcePathProvider: ResourcePathProvider,
     private val baseTemplateRepository: BaseTemplateRepository,
@@ -51,6 +48,12 @@ class InspireBaseTemplateBuilder(
         if (resolvedStyleDefinitionPath != null) {
             root.setExternalStylesLayout(resolvedStyleDefinitionPath.toString())
         }
+
+        val usages = baseTemplateRepository.findUsages(baseTemplate.id).filterIsInstance<DocumentObject>()
+        val channelModels = findChannelModels(usages)
+        val variableStructureId = resolveVariableStructureId(baseTemplate, usages, channelModels)
+        resolveDataDefinitionPath(baseTemplate, variableStructureId)?.let { root.setDataDefinition(it.toString()) }
+
         resolveArialFont(layout, icmDataCache)
 
         var mainFlow: Flow? = null
@@ -89,23 +92,20 @@ class InspireBaseTemplateBuilder(
 
         mainFlow?.let { layout.pages.setMainFlow(it) }
 
-        enrichFromDocumentObjects(baseTemplate, layout)
+        enrichFromDocumentObjects(channelModels, variableStructureId, layout)
 
         val baseTemplateXml = builder.build()
-        val sourceBaseTemplatePath = if (projectConfig.sourceBaseTemplatePath.isNullOrBlank()) {
-            IcmPath.root().join("Interactive").join("StandardPackage").join("Sources").join("SourceTemplate.wfd")
-        } else {
-            projectConfig.sourceBaseTemplatePath.toIcmPath()
-        }
-
-        return enrichLayoutWithSourceBaseTemplate(icmDataCache, baseTemplateXml, sourceBaseTemplatePath)
+        return enrichLayoutWithSourceBaseTemplate(icmDataCache, baseTemplateXml, resourcePathProvider.getSourceBaseTemplatePath())
     }
 
     fun findChannelModels(baseTemplate: BaseTemplate): BaseTemplateChannelModels {
+        return findChannelModels(baseTemplateRepository.findUsages(baseTemplate.id).filterIsInstance<DocumentObject>())
+    }
+
+    private fun findChannelModels(usages: List<DocumentObject>): BaseTemplateChannelModels {
         var emailModel: DocumentObject? = null
         var smsModel: DocumentObject? = null
 
-        val usages = baseTemplateRepository.findUsages(baseTemplate.id).filterIsInstance<DocumentObject>()
         for (usage in usages) {
             for (content in usage.content) {
                 val referenced = (content as? DocumentObjectRef)?.id?.let(documentObjectRepository::find) ?: continue
@@ -120,16 +120,45 @@ class InspireBaseTemplateBuilder(
         return BaseTemplateChannelModels(emailModel, smsModel)
     }
 
-    private fun enrichFromDocumentObjects(baseTemplate: BaseTemplate, layout: Layout) {
-        val (emailModel, smsModel) = findChannelModels(baseTemplate)
+    private fun resolveVariableStructureId(
+        baseTemplate: BaseTemplate, usages: List<DocumentObject>, channelModels: BaseTemplateChannelModels,
+    ): String? {
+        baseTemplate.variableStructureRef?.id?.let { return it }
+
+        val candidates = listOfNotNull(channelModels.email, channelModels.sms) + usages
+        if (candidates.isEmpty()) return null
+        return refInheritanceService.apply(candidates).firstNotNullOfOrNull { it.variableStructureRef?.id }
+    }
+
+    private fun resolveDataDefinitionPath(baseTemplate: BaseTemplate, variableStructureId: String?): IcmPath? {
+        val variableStructure = variableStructureBuilder.findVariableStructure(variableStructureId)
+        if (variableStructure == null) {
+            if (variableStructureId != null) {
+                logger.warn("Variable structure '$variableStructureId' of base template '${baseTemplate.nameOrId()}' not found, data definition is not linked.")
+            }
+            return null
+        }
+
+        val path = resourcePathProvider.getDataDefinitionPath(variableStructure)
+        val exists = try {
+            icmDataCache.fileExists(path)
+        } catch (e: Exception) {
+            throw RuntimeException("Failed to check for data definition existence", e)
+        }
+        if (!exists) {
+            logger.warn("Data definition '$path' of base template '${baseTemplate.nameOrId()}' does not exist, data definition is not linked.")
+            return null
+        }
+        return path
+    }
+
+    private fun enrichFromDocumentObjects(
+        channelModels: BaseTemplateChannelModels, variableStructureId: String?, layout: Layout,
+    ) {
+        val (emailModel, smsModel) = channelModels
         if (emailModel == null && smsModel == null) return
 
-        val resolvedVariableStructureId = baseTemplate.variableStructureRef?.id
-            ?: listOfNotNull(emailModel, smsModel).firstNotNullOfOrNull {
-                refInheritanceService.apply(listOf(it)).first().variableStructureRef?.id
-            }
-
-        val variableStructure = variableStructureBuilder.initVariableStructure(layout, resolvedVariableStructureId)
+        val variableStructure = variableStructureBuilder.initVariableStructure(layout, variableStructureId)
 
         if (smsModel != null) {
             val smsFlow = layout.addFlow().setSectionFlow(true).setWebEditingType(SECTION)

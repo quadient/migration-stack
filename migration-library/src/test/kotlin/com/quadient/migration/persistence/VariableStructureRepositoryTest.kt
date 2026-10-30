@@ -1,6 +1,12 @@
 package com.quadient.migration.persistence
 
 import com.quadient.migration.Postgres
+import com.quadient.migration.api.InspireOutput
+import com.quadient.migration.api.ProjectName
+import com.quadient.migration.api.repository.StatusTrackingRepository
+import com.quadient.migration.data.Active
+import com.quadient.migration.service.deploy.utility.ResourceType
+import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.tools.aVariableStructureRepository
 import com.quadient.migration.tools.shouldBeEqualTo
@@ -10,11 +16,39 @@ import org.junit.jupiter.api.Test
 @Postgres
 class VariableStructureRepositoryTest {
     private val repo = aVariableStructureRepository()
+    private val statusRepo = StatusTrackingRepository(ProjectName(aProjectConfig().name))
+
+    @Test
+    fun `upsert creates active status only for new variable structure`() {
+        val dto = VariableStructureBuilder("vs-status").addVariable("var1", "Data.Test.Value").build()
+
+        repo.upsert(dto)
+        repo.upsert(dto)
+
+        val events = statusRepo.findEventsRelevantToOutput("vs-status", ResourceType.VariableStructure, InspireOutput.Interactive)
+        events.shouldBeOfSize(1)
+        (events.first() is Active).shouldBeEqualTo(true)
+    }
+
+    @Test
+    fun `upsertBatch creates active status only for new variable structures`() {
+        val struct1 = VariableStructureBuilder("vs-batch1").addVariable("var1", "Data.Test.Value").build()
+        val struct2 = VariableStructureBuilder("vs-batch2").addVariable("var2", "Data.Test.Value").build()
+
+        repo.upsertBatch(listOf(struct1, struct2))
+        repo.upsertBatch(listOf(struct1, struct2))
+
+        for (id in listOf("vs-batch1", "vs-batch2")) {
+            val events = statusRepo.findEventsRelevantToOutput(id, ResourceType.VariableStructure, InspireOutput.Interactive)
+            events.shouldBeOfSize(1)
+            (events.first() is Active).shouldBeEqualTo(true)
+        }
+    }
 
     @Test
     fun `roundtrip is correct`() {
         val dto = VariableStructureBuilder("id").customFields(mutableMapOf("f1" to "val1"))
-            .originLocations(listOf("test1", "test2")).addVariable("var1", "Data.Test.Value")
+            .originLocations(listOf("test1", "test2")).targetFolder("folder").addVariable("var1", "Data.Test.Value")
             .addVariable("var2", "Data.Test.Value2").build()
 
         repo.upsert(dto)
@@ -33,6 +67,7 @@ class VariableStructureRepositoryTest {
             .name("Variable Structure 1")
             .customFields(mutableMapOf("field1" to "value1"))
             .originLocations(listOf("origin1"))
+            .targetFolder("folder1")
             .addVariable("var1", "Data.Test.Value1")
             .addVariable("var2", "Data.Test.Value2")
             .build()

@@ -3,6 +3,8 @@ package com.quadient.migration.service.inspirebuilder
 import com.quadient.migration.api.dto.migrationmodel.EmailOptions
 import com.quadient.migration.api.dto.migrationmodel.SmsOptions
 import com.quadient.migration.api.dto.migrationmodel.StringValue
+import com.quadient.migration.api.dto.migrationmodel.VariableStructure
+import com.quadient.migration.api.dto.migrationmodel.VariableStructureRef
 import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.EmailObjectBuilder
@@ -22,11 +24,13 @@ import com.quadient.migration.shared.millimeters
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aDocumentObjectRef
+import com.quadient.migration.tools.model.aVariableStructure
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
 import com.quadient.migration.tools.shouldNotBeNull
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import tools.jackson.databind.JsonNode
@@ -44,7 +48,6 @@ class InspireBaseTemplateBuilderTest {
     private val variableStructureRepository = mockk<VariableStructureRepository>()
     private val refInheritanceService = RefInheritanceServiceImpl(documentObjectRepository)
     private val subject = InspireBaseTemplateBuilder(
-        config,
         icmDataCache,
         resourcePathProvider,
         baseTemplateRepository,
@@ -70,6 +73,35 @@ class InspireBaseTemplateBuilderTest {
         every { ipsService.gatherFontData(any()) } returns "Arial,Regular,icm://Fonts/arial.ttf;"
         every { baseTemplateRepository.findUsages(any()) } returns emptyList()
         every { documentObjectRepository.listAll() } returns emptyList()
+        every { documentObjectRepository.find(any()) } returns null
+        every { variableStructureRepository.find(any()) } returns null
+    }
+
+    @Test
+    fun `base templates default to the tenant source template path`() {
+        subject.buildBaseTemplate(BaseTemplateBuilder("BT_1").build())
+        verify {
+            ipsService.wfd2xml(IcmPath.from("icm://Interactive/${config.interactiveTenant}/Sources/SourceTemplate.wfd"))
+        }
+    }
+
+    @Test
+    fun `base templates use the configured source template override`() {
+        val customPath = IcmPath.from("icm://Custom/Source.wfd")
+        val customConfig = config.copy(sourceBaseTemplatePath = customPath.toString())
+        val customPaths = InteractiveResourcePathProvider(customConfig)
+        val subject = InspireBaseTemplateBuilder(
+            InteractiveIcmDataCache(ipsService, customPaths),
+            customPaths,
+            baseTemplateRepository,
+            documentObjectRepository,
+            InspireVariableStructureBuilder(variableRepository, variableStructureRepository, customConfig),
+            refInheritanceService,
+        )
+
+        subject.buildBaseTemplate(BaseTemplateBuilder("BT_1").build())
+
+        verify { ipsService.wfd2xml(customPath) }
     }
 
     @Test
@@ -97,6 +129,101 @@ class InspireBaseTemplateBuilderTest {
 
         // then
         result["Root"]["ExternalStylesLayout"].shouldBeNull()
+    }
+
+    @Test
+    fun `buildBaseTemplate links data definition of explicitly referenced variable structure`() {
+        // given
+        val variableStructure = aVariableStructure("VS_1", name = "Structure")
+        val dataDefinitionPath = givenDeployedDataDefinition(variableStructure)
+        val baseTemplate = BaseTemplateBuilder("BT_1").variableStructureRef("VS_1").build()
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["Root"]["DataDefinition"].stringValue().shouldBeEqualTo("VCSLocation,$dataDefinitionPath")
+    }
+
+    @Test
+    fun `buildBaseTemplate links data definition of variable structure inherited from template usage`() {
+        // given
+        val variableStructure = aVariableStructure("VS_1", name = "Structure")
+        val dataDefinitionPath = givenDeployedDataDefinition(variableStructure)
+        val baseTemplate = BaseTemplateBuilder("BT_1").build()
+        val template = aDocObj("T_1", DocumentObjectType.Template).copy(variableStructureRef = VariableStructureRef("VS_1"))
+        every { baseTemplateRepository.findUsages(baseTemplate.id) } returns listOf(template)
+        every { documentObjectRepository.find(template.id) } returns template
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["Root"]["DataDefinition"].stringValue().shouldBeEqualTo("VCSLocation,$dataDefinitionPath")
+    }
+
+    @Test
+    fun `buildBaseTemplate prefers explicitly referenced variable structure over usages`() {
+        // given
+        val variableStructure = aVariableStructure("VS_1", name = "Structure")
+        val dataDefinitionPath = givenDeployedDataDefinition(variableStructure)
+        givenDeployedDataDefinition(aVariableStructure("VS_2", name = "Other"))
+        val baseTemplate = BaseTemplateBuilder("BT_1").variableStructureRef("VS_1").build()
+        val template = aDocObj("T_1", DocumentObjectType.Template).copy(variableStructureRef = VariableStructureRef("VS_2"))
+        every { baseTemplateRepository.findUsages(baseTemplate.id) } returns listOf(template)
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["Root"]["DataDefinition"].stringValue().shouldBeEqualTo("VCSLocation,$dataDefinitionPath")
+    }
+
+    @Test
+    fun `buildBaseTemplate links data definition of default variable structure`() {
+        // given
+        val customConfig = config.copy(defaultVariableStructure = "VS_1")
+        val subject = InspireBaseTemplateBuilder(
+            icmDataCache,
+            resourcePathProvider,
+            baseTemplateRepository,
+            documentObjectRepository,
+            InspireVariableStructureBuilder(variableRepository, variableStructureRepository, customConfig),
+            refInheritanceService,
+        )
+        val dataDefinitionPath = givenDeployedDataDefinition(aVariableStructure("VS_1", name = "Structure"))
+
+        // when
+        val result = subject.buildBaseTemplate(BaseTemplateBuilder("BT_1").build())
+            .let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["Root"]["DataDefinition"].stringValue().shouldBeEqualTo("VCSLocation,$dataDefinitionPath")
+    }
+
+    @Test
+    fun `buildBaseTemplate does not link data definition when it is not deployed`() {
+        // given
+        every { variableStructureRepository.find("VS_1") } returns aVariableStructure("VS_1", name = "Structure")
+        val baseTemplate = BaseTemplateBuilder("BT_1").variableStructureRef("VS_1").build()
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["Root"]["DataDefinition"].shouldBeNull()
+    }
+
+    @Test
+    fun `buildBaseTemplate does not link data definition when variable structure does not exist`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").variableStructureRef("VS_missing").build()
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["Root"]["DataDefinition"].shouldBeNull()
     }
 
     @Test
@@ -404,6 +531,13 @@ class InspireBaseTemplateBuilderTest {
         // then
         result["Page"].shouldBeNull()
         result["Flow"].shouldBeNull()
+    }
+
+    private fun givenDeployedDataDefinition(variableStructure: VariableStructure): IcmPath {
+        val path = resourcePathProvider.getDataDefinitionPath(variableStructure)
+        every { variableStructureRepository.find(variableStructure.id) } returns variableStructure
+        every { ipsService.fileExists(path) } returns true
+        return path
     }
 
     private fun sheetNameScript(result: JsonNode, index: Int): String {
