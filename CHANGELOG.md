@@ -10,10 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - Support base template deployment in evolve
 - Reworked migration-app, it now serves as a replacement for Gradle task runner
+- DeployDataDefinitions task that deploys data definitions based on the variable structures to Interactive
+- VariableStructuresExport/Import task that allows to modify variable structure data including name and target folder
 
 ### Changed
 
-- deployStyles with interactive output no longer deploys a wfd file, instead it uses the default StyleDefinition.wfd
+- DeployStyles with interactive output no longer deploys a wfd file, instead it uses the default StyleDefinition.wfd
+- DeployBaseTemplates task links base templates to their corresponding data definitions if available
 
 ### Fixed
 
