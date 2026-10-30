@@ -31,6 +31,10 @@ class InspireVariableStructureBuilder(
         return builder.buildDataDefinitionLayoutDelta()
     }
 
+    fun findVariableStructure(variableStructureId: String?): VariableStructure? {
+        return (variableStructureId ?: projectConfig.defaultVariableStructure)?.let { variableStructureRepository.find(it) }
+    }
+
     fun initVariableStructure(layout: Layout, variableStructureId: String?): VariableStructure {
         val variableStructureId = variableStructureId ?: projectConfig.defaultVariableStructure
 
