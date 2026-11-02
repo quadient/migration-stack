@@ -2,11 +2,37 @@ package com.quadient.wfdxml
 
 import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.module.Layout
+import groovy.xml.XmlParser
 import spock.lang.Specification
 
 import static com.quadient.wfdxml.utils.AssertXml.assertXmlFileEquals
 
 class WfdXmlBuilderTest extends Specification {
+    def "data definition delta requires a layout"() {
+        when:
+        new WfdXmlBuilder().buildDataDefinitionLayoutDelta()
+
+        then:
+        thrown(IllegalStateException)
+    }
+
+    def "data definition exports only variables without changing the workflow"() {
+        given:
+        def builder = new WfdXmlBuilder()
+        def layout = builder.addLayout()
+        layout.addRoot()
+        layout.addFlow().setName("DocumentContent").setType(Flow.Type.SIMPLE)
+        layout.addPage()
+        layout.data.addVariable().setName("CustomerName")
+
+        when:
+        Node xml = new XmlParser().parseText(builder.buildDataDefinitionLayoutDelta())
+
+        then:
+        xml.name() == "Layout"
+        xml.children().size() > 30
+        xml.children().every { it.name() == "Variable" }
+    }
 
     def "empty workflow have correct xml declaration with version 1 and encoding UTF-8"() {
         given:

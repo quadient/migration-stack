@@ -115,6 +115,9 @@ sealed class DeployClient(
 
     abstract fun deployBaseTemplates(): DeploymentResult
 
+    open fun deployDataDefinitions(): DeploymentResult =
+        error("Data definition deployment is supported only for Interactive output.")
+
     fun deployDocumentObjects() = deployDocumentObjects(false)
     fun deployDocumentObjects(skipDependencies: Boolean): DeploymentResult {
         val documentObjects = if (projectConfig.getDocumentObjectsToProcess().isNotEmpty()) {

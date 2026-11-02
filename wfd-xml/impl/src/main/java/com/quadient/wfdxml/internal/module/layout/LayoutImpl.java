@@ -393,6 +393,17 @@ public class LayoutImpl extends WorkFlowModuleImpl<Layout> implements Layout {
         exporter.endElement();
     }
 
+    public void exportDataDefinitionLayoutDelta(XmlExporter exporter) {
+        for (DefNode defNode : defNodes.values()) {
+            exporter.getIdRegister().setObjectId(defNode.node, defNode.xmlId);
+        }
+
+        exporter.beginElement("Layout");
+        new ForwardReferencesExporter(this, defNodes, exporter).exportForwardReferences(data, true);
+        exportTree(data, exporter);
+        exporter.endElement();
+    }
+
     public void exportLayoutDelta(XmlExporter exporter) {
         for (DefNode defNode : defNodes.values()) {
             exporter.getIdRegister().setObjectId(defNode.node, defNode.xmlId);

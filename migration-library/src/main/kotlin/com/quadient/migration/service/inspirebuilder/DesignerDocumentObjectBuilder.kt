@@ -162,10 +162,14 @@ class DesignerDocumentObjectBuilder(
         }
 
         val documentObjectXml = builder.build()
-        return if (projectConfig.sourceBaseTemplatePath.isNullOrBlank()) {
+        val sourceBaseTemplatePath = projectConfig.sourceBaseTemplatePath?.takeIf { it.isNotBlank() }?.toIcmPath()
+        require(sourceBaseTemplatePath == null || sourceBaseTemplatePath.isAbsolute()) {
+            "The configured source base template path '$sourceBaseTemplatePath' is not absolute."
+        }
+        return if (sourceBaseTemplatePath == null) {
             documentObjectXml
         } else {
-            enrichLayoutWithSourceBaseTemplate(icmDataCache, documentObjectXml, projectConfig.sourceBaseTemplatePath.toIcmPath())
+            enrichLayoutWithSourceBaseTemplate(icmDataCache, documentObjectXml, sourceBaseTemplatePath)
         }
     }
 

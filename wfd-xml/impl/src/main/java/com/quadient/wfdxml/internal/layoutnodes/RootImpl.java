@@ -12,6 +12,7 @@ public class RootImpl implements Root, XmlExportable {
 
     private boolean allowRuntimeModifications = false;
     private String externalStylesLayoutVcsLocation = null;
+    private String dataDefinitionVcsLocation = null;
     private String subject = null;
     private final List<Node<?>> lockedWebNodes = new ArrayList<>();
 
@@ -24,6 +25,12 @@ public class RootImpl implements Root, XmlExportable {
     @Override
     public Root setExternalStylesLayout(String vcsLocation) {
         this.externalStylesLayoutVcsLocation = vcsLocation;
+        return this;
+    }
+
+    @Override
+    public Root setDataDefinition(String vcsLocation) {
+        this.dataDefinitionVcsLocation = vcsLocation;
         return this;
     }
 
@@ -51,6 +58,9 @@ public class RootImpl implements Root, XmlExportable {
         }
         if (externalStylesLayoutVcsLocation != null) {
             exporter.addElementWithStringData("ExternalStylesLayout", "VCSLocation," + externalStylesLayoutVcsLocation);
+        }
+        if (dataDefinitionVcsLocation != null) {
+            exporter.addElementWithStringData("DataDefinition", "VCSLocation," + dataDefinitionVcsLocation);
         }
         if (subject != null) {
             exporter.addElementWithStringData("Subject", subject);

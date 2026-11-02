@@ -90,8 +90,9 @@ sealed class MappingItem {
 
     data class VariableStructure(
         override var name: String?,
-        val mappings: MutableMap<String, VariablePathData>?,
+        var mappings: MutableMap<String, VariablePathData>?,
         var languageVariable: VariableRef?,
+        var targetFolder: String? = null,
     ) : MappingItem()
 
     data class DisplayRule(
@@ -225,7 +226,8 @@ sealed class MappingItem {
                 MappingItemEntity.VariableStructure(
                     name = this.name,
                     mappings = mappings,
-                    languageVariable = this.languageVariable?.let { VariableEntityRef(it.id) }
+                    languageVariable = this.languageVariable?.let { VariableEntityRef(it.id) },
+                    targetFolder = this.targetFolder,
                 )
             }
 

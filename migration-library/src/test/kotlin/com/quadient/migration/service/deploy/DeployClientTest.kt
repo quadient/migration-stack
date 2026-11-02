@@ -88,7 +88,7 @@ class DeployClientTest {
     val projectConfig = aProjectConfig(output = InspireOutput.Designer)
     val postProcess = PostProcessImpl(ipsService, documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, textStyleRepository, paragraphStyleRepository)
     val resourcePathProvider = DesignerResourcePathProvider(projectConfig)
-    val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
+    val conflictDetector = ConflictDetectorImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, variableStructureRepository, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
     val progressReporter = ProgressReporterImpl(documentObjectRepository, imageRepository, attachmentRepository, displayRuleRepository, documentObjectBuilder, statusTrackingRepository, resourcePathProvider, InspireOutput.Designer)
     val deployOrder = DeployOrderImpl(documentObjectRepository)
     val refInheritanceService = RefInheritanceServiceImpl(documentObjectRepository)

@@ -1,13 +1,35 @@
 package com.quadient.migration.service.inspirebuilder
 
 import com.quadient.migration.shared.Color
+import com.quadient.migration.shared.DataType
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeNull
 import com.quadient.migration.tools.shouldNotBeNull
 import com.quadient.wfdxml.WfdXmlBuilder
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class InspireBuilderUtilsTest {
+    @Test
+    fun `variable tree retains inferred arrays and deduplicates shared parents`() {
+        val tree = buildVariableTree(listOf("Clients.Value.Address", "Clients.Value.Address"))
+
+        tree.size.shouldBeEqualTo(1)
+        tree.getValue("Clients").dataType.shouldBeEqualTo(DataType.Array)
+        tree.getValue("Clients").children.keys.toList().shouldBeEqualTo(listOf("Address"))
+        tree.getValue("Clients").children.getValue("Address").dataType.shouldBeEqualTo(DataType.SubTree)
+    }
+
+    @Test
+    fun `variable tree rejects leaf parents regardless of path order`() {
+        val paths = listOf("Parent", "Parent.Child")
+        val types = mapOf("Parent" to DataType.String, "Parent.Child" to DataType.Integer)
+
+        for (orderedPaths in listOf(paths, paths.reversed())) {
+            assertThrows<IllegalArgumentException> { buildVariableTree(orderedPaths, types) }
+        }
+    }
+
     @Test
     fun `getTextStyleByName returns null for non-existent style`() {
         // given

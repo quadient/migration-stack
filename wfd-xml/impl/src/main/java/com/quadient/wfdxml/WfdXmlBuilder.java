@@ -79,6 +79,14 @@ public class WfdXmlBuilder {
         return exporter.buildString();
     }
 
+    public String buildDataDefinitionLayoutDelta() {
+        XmlExporter exporter = new XmlExporter();
+        LayoutImpl layout = modules.stream().filter(LayoutImpl.class::isInstance).map(LayoutImpl.class::cast)
+                .findFirst().orElseThrow(() -> new IllegalStateException("No layout module found"));
+        layout.exportDataDefinitionLayoutDelta(exporter);
+        return exporter.buildString();
+    }
+
     public String buildLayoutDelta() {
         XmlExporter exporter = new XmlExporter();
 

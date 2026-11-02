@@ -239,12 +239,15 @@ sealed class MappingItemEntity {
         override var name: String?,
         val mappings: MutableMap<String, VariablePathData>?,
         val languageVariable: VariableEntityRef? = null,
+        val targetFolder: String? = null,
     ) : MappingItemEntity() {
         fun apply(item: VariableStructureModel): VariableStructureModel {
             return item.copy(
                 name = name,
                 structure = mappings ?: mutableMapOf(),
-                languageVariable = languageVariable?.let { VariableRef(it.id) })
+                languageVariable = languageVariable?.let { VariableRef(it.id) },
+                targetFolder = targetFolder,
+            )
         }
     }
 
@@ -472,7 +475,9 @@ sealed class MappingItemEntity {
                 MappingItem.VariableStructure(
                     name = this.name,
                     mappings = this.mappings ?: mutableMapOf(),
-                    languageVariable = this.languageVariable?.let { VariableRef(it.id) })
+                    languageVariable = this.languageVariable?.let { VariableRef(it.id) },
+                    targetFolder = this.targetFolder,
+                )
             }
 
             is DisplayRule -> MappingItem.DisplayRule(

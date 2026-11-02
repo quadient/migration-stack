@@ -45,6 +45,10 @@ public class ForwardReferencesExporter {
         exportTree(layout, useExisting);
     }
 
+    public void exportForwardReferences(Tree tree, Boolean useExisting) {
+        exportTree(tree, useExisting);
+    }
+
     private void exportTree(Tree tree, Boolean useExisting) {
         for (Object c : tree.children) {
             NodeImpl child = (NodeImpl) c;

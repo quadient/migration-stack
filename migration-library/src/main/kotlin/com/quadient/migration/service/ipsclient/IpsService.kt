@@ -1,6 +1,5 @@
 package com.quadient.migration.service.ipsclient
 
-import com.quadient.migration.api.FileEntry
 import com.quadient.migration.api.FileList
 import tools.jackson.dataformat.xml.XmlMapper
 import tools.jackson.module.kotlin.KotlinModule
@@ -95,6 +94,12 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
     ): OperationResult {
         return deployJld(baseTemplate, moduleName, xmlContent) {
             wfId -> client.extractJld(wfId, outputPath, type)
+        }
+    }
+
+    fun deployDataDefinition(sourceTemplatePath: IcmPath, xmlContent: String, outputPath: IcmPath): OperationResult {
+        return deployJld(sourceTemplatePath.toString(), "DocumentLayout", xmlContent) { workflowId ->
+            client.extractDataDefinition(workflowId, outputPath.toString())
         }
     }
 

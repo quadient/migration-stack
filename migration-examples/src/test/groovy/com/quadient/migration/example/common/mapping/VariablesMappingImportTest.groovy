@@ -5,6 +5,7 @@ import com.quadient.migration.api.dto.migrationmodel.CustomFieldMap
 import com.quadient.migration.api.dto.migrationmodel.MappingItem
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
+import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
 import com.quadient.migration.example.Utils
 import com.quadient.migration.shared.DataType
 import com.quadient.migration.shared.VariablePathData
@@ -68,7 +69,7 @@ class VariablesMappingImportTest {
                          "withPathEmpty"        : new VariablePathData("newPath", null),
                          "withVariableRef"      : new VariablePathData(new VariableRefPath("referencedVar"), null),
                          "withVariableRefLegacy": new VariablePathData(new VariableRefPath("legacyRef"), null),]
-                        , null))
+                        , null, null))
         verify(migration.mappingRepository, times(1)).applyVariableStructureMapping("test")
     }
 
@@ -135,7 +136,7 @@ class VariablesMappingImportTest {
                         ["unchanged" : new VariablePathData("", null),
                          "kept"      : new VariablePathData("", null),
                          "overridden": new VariablePathData("", "Overridden in structure")],
-                        null))
+                        null, null))
     }
 
     @Test
@@ -164,7 +165,53 @@ class VariablesMappingImportTest {
                 ["unchanged" : new VariablePathData("", null),
                  "kept"      : new VariablePathData("", null),
                  "overridden": new VariablePathData("", "Overridden in structure")],
-                new VariableRef("overridden")))
+                new VariableRef("overridden"), null))
+    }
+
+    @Test
+    void keepsStructureNameAndTargetFolderFromObjectWhenNotMapped() {
+        def migration = Utils.mockMigration()
+        Path mappingFile = Paths.get(dir.path, "testProject-variable-structure-test.csv")
+        def input = """\
+            id,name,data_type,inspire_path,inspire_name,originLocations
+            var1,,String,path,,[]
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+
+        givenExistingVariable(migration, "var1", null, DataType.String, null)
+        when(migration.mappingRepository.getVariableMapping("var1")).thenReturn(new MappingItem.Variable(null, DataType.String))
+        when(migration.variableStructureRepository.find("test"))
+                .thenReturn(new VariableStructureBuilder("test").name("structName").targetFolder("structFolder").build())
+        when(migration.mappingRepository.getVariableStructureMapping("test"))
+                .thenReturn(new MappingItem.VariableStructure(null, [:], null, null))
+
+        VariablesImport.run(migration, mappingFile)
+
+        verify(migration.mappingRepository, times(1)).upsert("test",
+                new MappingItem.VariableStructure("structName", ["var1": new VariablePathData("path", null)], null, "structFolder"))
+    }
+
+    @Test
+    void keepsStructureNameAndTargetFolderFromExistingMapping() {
+        def migration = Utils.mockMigration()
+        Path mappingFile = Paths.get(dir.path, "testProject-variable-structure-test.csv")
+        def input = """\
+            id,name,data_type,inspire_path,inspire_name,originLocations
+            var1,,String,path,,[]
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+
+        givenExistingVariable(migration, "var1", null, DataType.String, null)
+        when(migration.mappingRepository.getVariableMapping("var1")).thenReturn(new MappingItem.Variable(null, DataType.String))
+        when(migration.variableStructureRepository.find("test"))
+                .thenReturn(new VariableStructureBuilder("test").name("objectName").targetFolder("objectFolder").build())
+        when(migration.mappingRepository.getVariableStructureMapping("test"))
+                .thenReturn(new MappingItem.VariableStructure("mappedName", [:], null, "mappedFolder"))
+
+        VariablesImport.run(migration, mappingFile)
+
+        verify(migration.mappingRepository, times(1)).upsert("test",
+                new MappingItem.VariableStructure("mappedName", ["var1": new VariablePathData("path", null)], null, "mappedFolder"))
     }
 
     static void givenExistingVariable(Migration mig, String id, String name, DataType dataType, String inspirePath = null) {
@@ -183,6 +230,6 @@ class VariablesMappingImportTest {
         }
 
         when(mig.mappingRepository.getVariableMapping(variableId)).thenReturn(new MappingItem.Variable(name, dataType))
-        when(mig.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure(null, mappings, new VariableRef("empty")))
+        when(mig.mappingRepository.getVariableStructureMapping(any())).thenReturn(new MappingItem.VariableStructure(null, mappings, new VariableRef("empty"), null))
     }
 }

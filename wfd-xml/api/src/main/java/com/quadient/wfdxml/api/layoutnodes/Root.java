@@ -7,6 +7,7 @@ import java.util.List;
 public interface Root {
     Root setAllowRuntimeModifications(boolean allowRuntimeModifications);
     Root setExternalStylesLayout(String vcsLocation);
+    Root setDataDefinition(String vcsLocation);
     Root setSubject(String subject);
 
     Root addLockedWebNode(Node<?> node);
