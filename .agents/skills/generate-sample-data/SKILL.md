@@ -21,9 +21,13 @@ with plausible values. Two helpers live next to this file:
 `SKILL_DIR` below = the directory of this file (`.agents/skills/generate-sample-data`). Write intermediate
 files to the scratchpad directory, not into the repo.
 
+`EXAMPLES_DIR` below = the migration examples project directory – the one with `src/main/resources/` holding
+`migration-config.toml`. Depending on where you are scoped it is the working directory itself or its
+`migration-examples/` subdirectory.
+
 ## 1. Resolve the current project
 
-All config lives in `migration-examples/src/main/resources/`.
+All config lives in `EXAMPLES_DIR/src/main/resources/`.
 
 1. Project config file: `--project-config` argument if given, else the first non-empty line not starting with
    `#` in `active-project-config` (no extension), else `project-config.toml`.
@@ -54,11 +58,14 @@ shell in use (e.g. `$env:PGPASSWORD`, `gradlew.bat` in PowerShell/cmd). Use the 
      -v proj='<project>' -v vs='<structureId>' < "$SKILL_DIR/variable-structure.sql" > "$SCRATCH/structure.json"
    ```
 4. **Gradle CSV export** (uses the project's own JDBC connection – works whenever the migration scripts work,
-   no psql needed). From the repo root:
+   no psql needed). Run the `VariablesExport` task of the `EXAMPLES_DIR` project with the nearest Gradle
+   wrapper, e.g.:
    ```bash
+   ./gradlew VariablesExport -PscriptArgs="--variable-structure-id <structureId>"
+   # or, as a subproject of a parent build:
    ./gradlew :migration-examples:VariablesExport -PscriptArgs="--variable-structure-id <structureId>"
    ```
-   The CSV lands in `migration-examples/mapping/` and its name ends with `<structureId>.csv` (take the newest
+   The CSV lands in `EXAMPLES_DIR/mapping/` and its name ends with `<structureId>.csv` (take the newest
    match). Rows without `inspire_path` are not in the structure and are ignored by the script. Caveat: if the
    project config selects specific document objects, the export may contain only their variables.
 5. **User-provided CSV** in the same `VariablesExport` format – ask for it if everything above fails, and
@@ -109,5 +116,5 @@ node "$SKILL_DIR/sample-data.mjs" "$SCRATCH/structure.json" --values "$SCRATCH/v
   --top-array-size 3 --array-size 3 --out "<output>"
 ```
 
-Default output: `migration-examples/sample-data/<project>_<structureId>.json` (git-ignored) unless the user
+Default output: `EXAMPLES_DIR/sample-data/<project>_<structureId>.json` (git-ignored) unless the user
 named a path. Show the user the path, a short excerpt, and any warnings.
