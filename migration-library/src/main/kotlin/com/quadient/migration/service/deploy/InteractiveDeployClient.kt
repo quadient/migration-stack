@@ -472,7 +472,7 @@ open class InteractiveDeployClient(
                         tracker.errorDocumentObject(it.id, targetPath, it.type, editResult.message)
                     }
                 }
-            } catch (e: IllegalStateException) {
+            } catch (e: Exception) {
                 tracker.errorDocumentObject(it.id, targetPath, it.type, e.message ?: "")
             }
         }
