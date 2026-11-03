@@ -20,17 +20,17 @@ class DocxContentControlsTest {
     @Test
     void "content-control tag becomes a string variable reference"() {
         def source = CTSdtRun.Factory.newInstance()
-        source.addNewSdtPr().addNewTag().val = 'F_SINIESTRO'
+        source.addNewSdtPr().addNewTag().val = 'CUSTOMER_ID'
         def document = new XWPFDocument()
         def control = new XWPFSDT(source, document)
         def migration = mockMigration()
         def content = [] as List<ParagraphBuilder.TextBuilder>
 
         assert DocxContentControls.addInline(migration, content, control, null, 'sample.docx')
-        assert content[0].content[0].id == 'F_SINIESTRO'
+        assert content[0].content[0].id == 'CUSTOMER_ID'
         def captor = ArgumentCaptor.forClass(Variable)
         verify(migration.variableRepository).upsert(captor.capture())
-        assert captor.value.id == 'F_SINIESTRO'
+        assert captor.value.id == 'CUSTOMER_ID'
         document.close()
     }
 
@@ -58,15 +58,15 @@ class DocxContentControlsTest {
             def migration = mockMigration()
 
             // when
-            def parsed = DocxParagraphParser.parseParagraph(migration, new XWPFParagraph(ctp, doc), 'PO192')
+            def parsed = DocxParagraphParser.parseParagraph(migration, new XWPFParagraph(ctp, doc), 'letter')
 
             // then: the placeholder is replaced by a styled variable reference, the surrounding text is kept
             assert parsed.content.collect { it.content[0] instanceof VariableRef ? it.content[0].id : it.content[0].value } ==
-                    ['For ', 'PO192_ContentControl_-160470844', ' years']
+                    ['For ', 'letter_ContentControl_-160470844', ' years']
             assert parsed.content.every { it.styleRef != null }
             def captor = ArgumentCaptor.forClass(Variable)
             verify(migration.variableRepository).upsert(captor.capture())
-            assert captor.value.name == 'PO192_ContentControl_-160470844'
+            assert captor.value.name == 'letter_ContentControl_-160470844'
 
             // and: the variable is styled by the control's own formatting, not the grey placeholder run
             def styleCaptor = ArgumentCaptor.forClass(TextStyle)

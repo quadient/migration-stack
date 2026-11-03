@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 - DeployStyles with interactive output no longer deploys a wfd file, instead it uses the default StyleDefinition.wfd
 - DeployBaseTemplates task links base templates to their corresponding data definitions if available
+- DOCX variable names parsing is now compatible with Inspire naming notation
 
 ### Fixed
 

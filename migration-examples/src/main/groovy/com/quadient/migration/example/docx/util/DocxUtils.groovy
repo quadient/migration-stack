@@ -44,6 +44,11 @@ static String calculateSHA(LinkedHashMap attributes) {
     return sha256Hex(attributes.values().collect { it.toString() }.join()).toUpperCase()
 }
 
+static String variableName(String variableId) {
+    String name = variableId.substring(variableId.lastIndexOf('.') + 1).trim()
+    return name ?: variableId
+}
+
 static boolean isHorizontallyMergedCell(XWPFTableCell cell) {
     return cell.CTTc.tcPr?.HMerge?.val?.toString() == "continue"
 }

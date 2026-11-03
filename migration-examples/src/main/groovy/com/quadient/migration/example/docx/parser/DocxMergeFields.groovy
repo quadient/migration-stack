@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory
 
 import static com.quadient.migration.example.docx.util.DocxUtils.sha256Hex
 import static com.quadient.migration.example.docx.util.DocxUtils.styledText
+import static com.quadient.migration.example.docx.util.DocxUtils.variableName
 
 interface FieldPart {}
 
@@ -373,7 +374,7 @@ static void addSystemField(Migration migration, List<ParagraphBuilder.TextBuilde
 private static void ensureVariable(Migration migration, String variableId, String fileName) {
     if (migration.variableRepository.find(variableId) == null) {
         migration.variableRepository.upsert(new VariableBuilder(variableId)
-                .name(variableId)
+                .name(variableName(variableId))
                 .originLocations([fileName])
                 .dataType(DataType.String)
                 .build())

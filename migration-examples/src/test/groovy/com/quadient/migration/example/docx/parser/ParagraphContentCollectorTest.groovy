@@ -67,9 +67,9 @@ class ParagraphContentCollectorTest {
         instruction(paragraph.createRun(), " IF ")
         fieldCharacter(paragraph.createRun(), STFldCharType.BEGIN)
         def mergeInstructionAndEnd = paragraph.createRun()
-        instruction(mergeInstructionAndEnd, " MERGEFIELD GmpPayable ")
+        instruction(mergeInstructionAndEnd, " MERGEFIELD InsuranceIncluded ")
         fieldCharacter(mergeInstructionAndEnd, STFldCharType.END)
-        instruction(paragraph.createRun(), ' = "Y" "GMP applies" "" ')
+        instruction(paragraph.createRun(), ' = "Y" "Insurance included" "" ')
         fieldCharacter(paragraph.createRun(), STFldCharType.END)
 
         // when
@@ -78,7 +78,7 @@ class ParagraphContentCollectorTest {
         def textBuilders = collector.finish()
 
         // then
-        assert textBuilders[0].build().content[0].value == "GMP applies"
+        assert textBuilders[0].build().content[0].value == "Insurance included"
         verify(migration.displayRuleRepository).upsert(any())
 
         document.close()
@@ -110,7 +110,7 @@ class ParagraphContentCollectorTest {
 
     @Test
     void "collector emits recognized Word system fields as migration variables rather than their cached values"() {
-        // given: page fields plus DATE and TIME from the GF documents
+        // given: page fields plus DATE and TIME as found in localized documents
         def migration = mockMigration()
         def document = new XWPFDocument()
         def paragraph = document.createParagraph()
@@ -177,7 +177,7 @@ class ParagraphContentCollectorTest {
         def document = new XWPFDocument()
         def paragraph = document.createParagraph()
         appendEqualityIfField(paragraph, "PaymentFrequency", "4", "quarterly")
-        appendEqualityIfField(paragraph, "GmpPayable", '"Y"', "GMP applies")
+        appendEqualityIfField(paragraph, "InsuranceIncluded", '"Y"', "Insurance included")
 
         // when
         def collector = new ParagraphContentCollector(migration, "sample")
@@ -186,7 +186,7 @@ class ParagraphContentCollectorTest {
 
         // then
         def texts = textBuilders*.build()
-        assert texts.collect { it.content[0].value } == ["quarterly", "GMP applies"]
+        assert texts.collect { it.content[0].value } == ["quarterly", "Insurance included"]
         assert texts*.displayRuleRef*.id.every { it.startsWith("docx_if_") }
         assert texts.collect { it.content[0] }.every { !(it instanceof FirstMatch) }
 

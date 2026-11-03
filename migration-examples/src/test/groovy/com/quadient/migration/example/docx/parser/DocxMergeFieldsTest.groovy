@@ -38,18 +38,18 @@ class DocxMergeFieldsTest {
         // given
         def conditional = field(
                 text(" if "),
-                field(text(" MERGEFIELD GmpPayable ")),
-                text(' = "Y" "GMP applies" "No GMP" ')
+                field(text(" MERGEFIELD InsuranceIncluded ")),
+                text(' = "Y" "Insurance included" "No insurance" ')
         )
 
         // when
         def result = DocxMergeFields.parseIfField(conditional)
 
         // then
-        assert result.variableId == "GmpPayable"
+        assert result.variableId == "InsuranceIncluded"
         assert result.rightOperand == '"Y"'
-        assert result.trueContent*.text == ["GMP applies"]
-        assert result.falseContent*.text == ["No GMP"]
+        assert result.trueContent*.text == ["Insurance included"]
+        assert result.falseContent*.text == ["No insurance"]
     }
 
     @Test
@@ -57,15 +57,15 @@ class DocxMergeFieldsTest {
         // given
         def conditional = field(
                 text(" IF "),
-                field(text(" MERGEFIELD GmpPayable ")),
-                text(' = "Y" "GMP applies" \\* MERGEFORMAT ')
+                field(text(" MERGEFIELD InsuranceIncluded ")),
+                text(' = "Y" "Insurance included" \\* MERGEFORMAT ')
         )
 
         // when
         def result = DocxMergeFields.parseIfField(conditional)
 
         // then
-        assert result.trueContent*.text == ["GMP applies"]
+        assert result.trueContent*.text == ["Insurance included"]
         assert result.falseContent.isEmpty()
     }
 
@@ -89,10 +89,10 @@ class DocxMergeFieldsTest {
     @Test
     void "parseIfField keeps nested fields as branch content and accepts a bare nested field branch"() {
         // given
-        def nestedIf = field(text(" IF "), field(text(" MERGEFIELD Ben01Increase ")), text(' = "FIX0" "" "no fixed increase" '))
+        def nestedIf = field(text(" IF "), field(text(" MERGEFIELD Item01Discount ")), text(' = "NONE" "" "discount applies" '))
         def conditional = field(
                 text(" if "),
-                field(text(' MERGEFIELD PensionCommencementDate \\@"YYYYMMDD"')),
+                field(text(' MERGEFIELD StartDate \\@"YYYYMMDD"')),
                 text(' > "20250401" '),
                 nestedIf,
                 text(" ")
@@ -102,7 +102,7 @@ class DocxMergeFieldsTest {
         def result = DocxMergeFields.parseIfField(conditional)
 
         // then
-        assert result.variableId == "PensionCommencementDate"
+        assert result.variableId == "StartDate"
         assert result.operator == ">"
         assert result.rightOperand == '"20250401"'
         assert result.trueContent == [nestedIf]
@@ -115,7 +115,7 @@ class DocxMergeFieldsTest {
         def conditional = field(
                 text(" "),
                 text("if"),
-                field(text(" MERGEFIELD TempPensionPayable ")),
+                field(text(" MERGEFIELD DiscountApplies ")),
                 text(' = "Y" "yes" "no" ')
         )
 
@@ -123,7 +123,7 @@ class DocxMergeFieldsTest {
         def result = DocxMergeFields.parseIfField(conditional)
 
         // then
-        assert result.variableId == "TempPensionPayable"
+        assert result.variableId == "DiscountApplies"
         assert result.trueContent*.text == ["yes"]
         assert result.falseContent*.text == ["no"]
     }
@@ -161,7 +161,7 @@ class DocxMergeFieldsTest {
     void "parseConditions preserves quoted strings and inverts the operator of an else condition"() {
         // when
         def definition = DocxMergeFields.parseConditions([new IfCondition(
-                variableId: "GmpPayable",
+                variableId: "InsuranceIncluded",
                 operator: "=",
                 rightOperand: '"Y"',
                 negated: true
@@ -180,8 +180,8 @@ class DocxMergeFieldsTest {
     void "parseConditions ANDs the conditions of a nested IF path into one flat group"() {
         // when
         def definition = DocxMergeFields.parseConditions([
-                new IfCondition(variableId: "PensionCommencementDate", operator: ">", rightOperand: '"20250401"'),
-                new IfCondition(variableId: "Ben01Increase", operator: "=", rightOperand: '"FIX0"', negated: true),
+                new IfCondition(variableId: "StartDate", operator: ">", rightOperand: '"20250401"'),
+                new IfCondition(variableId: "Item01Discount", operator: "=", rightOperand: '"NONE"', negated: true),
         ])
 
         // then
@@ -222,8 +222,8 @@ class DocxMergeFieldsTest {
             "MERGEFIELD Name \\* MERGEFORMAT|Name",
             "MERGEFIELD \"Full Name\" \\* MERGEFORMAT|Full Name",
             "MERGEFIELD \"Full Name\"|Full Name",
-            "MERGEFIELD TotalBenefitAmount\\#,0.00|TotalBenefitAmount",
-            "MERGEFIELD TotalBenefitAmount \\# ,0.00|TotalBenefitAmount",
+            "MERGEFIELD TotalAmount\\#,0.00|TotalAmount",
+            "MERGEFIELD TotalAmount \\# ,0.00|TotalAmount",
     ], delimiterString = '|')
     void "extractMergeFieldName extracts the field name, unquoting and stripping switches"(String instruction, String expectedName) {
         assert DocxMergeFields.extractMergeFieldName(instruction) == expectedName

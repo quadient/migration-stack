@@ -2,6 +2,7 @@ package com.quadient.migration.example.docx.parser
 
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.Hyperlink
+import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.example.docx.util.DocxUtils
 import org.apache.poi.xwpf.usermodel.XWPFDocument
@@ -138,7 +139,11 @@ class DocxParagraphParserTest {
 
             assert parsed.content.collect { it.content[0] instanceof VariableRef ? it.content[0].id : it.content[0].value } ==
                     ['Dear ', 'customer.name', ', reference ', 'PolicyNumber', '.']
-            verify(migration.variableRepository, times(2)).upsert(any())
+            def variableCaptor = ArgumentCaptor.forClass(Variable)
+            verify(migration.variableRepository, times(2)).upsert(variableCaptor.capture())
+            // dotted source paths stay in the id, but the name keeps only the last segment
+            assert variableCaptor.allValues.collect { [it.id, it.name] } ==
+                    [['customer.name', 'name'], ['PolicyNumber', 'PolicyNumber']]
         }
     }
 
@@ -156,19 +161,19 @@ class DocxParagraphParserTest {
         instruction(paragraph.createRun(), " if ")
         fieldCharacter(paragraph.createRun(), STFldCharType.BEGIN)
         instruction(paragraph.createRun(), " ")
-        instruction(paragraph.createRun(), "MERGEFIELD BEN0")
+        instruction(paragraph.createRun(), "MERGEFIELD Item0")
         instruction(paragraph.createRun(), "2")
-        instruction(paragraph.createRun(), "EscWording ")
+        instruction(paragraph.createRun(), "Wording ")
         fieldCharacter(paragraph.createRun(), STFldCharType.SEPARATE)
-        instruction(paragraph.createRun(), "No increase will apply")
+        instruction(paragraph.createRun(), "No discount")
         fieldCharacter(paragraph.createRun(), STFldCharType.END)
         instruction(paragraph.createRun(), ' = "')
-        instruction(paragraph.createRun(), 'No increase will apply')
-        instruction(paragraph.createRun(), '" "Pension will not increase" "')
-        instruction(paragraph.createRun(), '1 April each year')
+        instruction(paragraph.createRun(), 'No discount')
+        instruction(paragraph.createRun(), '" "Full price applies" "')
+        instruction(paragraph.createRun(), 'Discount applies yearly')
         instruction(paragraph.createRun(), '"')
         fieldCharacter(paragraph.createRun(), STFldCharType.SEPARATE)
-        paragraph.createRun().setText("1 April each year")
+        paragraph.createRun().setText("Discount applies yearly")
         fieldCharacter(paragraph.createRun(), STFldCharType.END)
 
         // when
@@ -176,13 +181,13 @@ class DocxParagraphParserTest {
 
         // then
         assert parsedParagraph.content.collect { it.content[0].value } ==
-                ["Pension will not increase", "1 April each year"]
+                ["Full price applies", "Discount applies yearly"]
         assert parsedParagraph.content*.displayRuleRef*.id.every { it.startsWith("docx_if_") }
         def ruleCaptor = ArgumentCaptor.forClass(DisplayRule)
         verify(displayRules, times(2)).upsert(ruleCaptor.capture())
         assert ruleCaptor.allValues*.name as Set == [
-                'BEN02EscWording = "No increase will apply"',
-                'BEN02EscWording <> "No increase will apply"'
+                'Item02Wording = "No discount"',
+                'Item02Wording <> "No discount"'
         ] as Set
         verify(variables).upsert(any())
 
@@ -199,21 +204,21 @@ class DocxParagraphParserTest {
         document.createStyles()
         def cell = document.createTable(1, 1).getRow(0).getCell(0)
         def first = cell.paragraphs[0]
-        // Mirrors Word output: IF «PCD» > "20250401" «IF «Increase» = "FIX0" "" "«IF «Element» = "PRE88GMP" "" "¶text"»"»
+        // Mirrors Word output: IF «StartDate» > "20250401" «IF «Discount» = "NONE" "" "«IF «Category» = "BASIC" "" "¶text"»"»
         fieldCharacter(first.createRun(), STFldCharType.BEGIN)
         instruction(first.createRun(), " if ")
-        appendMergeField(first, ' MERGEFIELD PensionCommencementDate \\@"YYYYMMDD"')
+        appendMergeField(first, ' MERGEFIELD StartDate \\@"YYYYMMDD"')
         instruction(first.createRun(), ' > "20250401" ')
         fieldCharacter(first.createRun(), STFldCharType.BEGIN)
         instruction(first.createRun(), " IF ")
-        appendMergeField(first, " MERGEFIELD Ben01Increase ", "C(0:3)7F")
-        instruction(first.createRun(), ' = "FIX0" "" "')
+        appendMergeField(first, " MERGEFIELD Item01Discount ", "PCT10")
+        instruction(first.createRun(), ' = "NONE" "" "')
         fieldCharacter(first.createRun(), STFldCharType.BEGIN)
         instruction(first.createRun(), " if ")
-        appendMergeField(first, " MERGEFIELD Ben01Element ", "POS88GMP")
-        instruction(first.createRun(), ' = "PRE88GMP" "" "')
+        appendMergeField(first, " MERGEFIELD Item01Category ", "PREMIUM")
+        instruction(first.createRun(), ' = "BASIC" "" "')
         def second = cell.addParagraph()
-        instruction(second.createRun(), "Your first increase will reflect the number of months")
+        instruction(second.createRun(), "Your first payment covers the remaining months")
         // The closing quote (with the space before it) sits in a differently formatted run, as in the sample.
         def closingQuote = second.createRun()
         closingQuote.bold = true
@@ -232,10 +237,10 @@ class DocxParagraphParserTest {
         // then
         assert parsedFirst == null
         assert state.depth == 0
-        assert parsedSecond.content.collect { it.content[0].value } == ["Your first increase will reflect the number of months "]
+        assert parsedSecond.content.collect { it.content[0].value } == ["Your first payment covers the remaining months "]
         def ruleCaptor = ArgumentCaptor.forClass(DisplayRule)
         verify(displayRules).upsert(ruleCaptor.capture())
-        assert ruleCaptor.value.name == 'PensionCommencementDate > "20250401" AND Ben01Increase <> "FIX0" AND Ben01Element <> "PRE88GMP"'
+        assert ruleCaptor.value.name == 'StartDate > "20250401" AND Item01Discount <> "NONE" AND Item01Category <> "BASIC"'
         assert parsedSecond.content[0].displayRuleRef.id == ruleCaptor.value.id
         assert ruleCaptor.value.definition.group.items.size() == 3
 

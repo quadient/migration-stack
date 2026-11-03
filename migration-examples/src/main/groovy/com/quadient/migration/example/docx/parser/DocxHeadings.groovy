@@ -19,7 +19,7 @@ static final Pattern BODY_STYLE_NAME = ~/(?i)body|normal|text|list|table|toc|cap
 
 /**
  * Returns the 1-based heading level of a paragraph, or null when it is ordinary text. The paragraph's style chain is
- * walked from the most specific style upwards: a heading-like style name decides first (e.g. "SLR HDR2" or "1. SLR
+ * walked from the most specific style upwards: a heading-like style name decides first (e.g. "Custom HDR2" or "1. Custom
  * HDR1", which have no outline level of their own), then a style's outline level. Outline levels set directly on a
  * paragraph are ignored, as they typically stem from copied formatting rather than from document structure.
  */

@@ -169,7 +169,7 @@ class DocxHeaderFooters {
             }
         }
         // Last-resort handling for a header/footer part whose inline drawing is not surfaced by POI's run API.
-        // It is safe only when the document contains exactly one image, which is the package shape of 01CVRPG0222.
+        // It is safe only when the document contains exactly one image, a package shape seen in real documents.
         if (areas.isEmpty() && doc.allPictures.size() == 1 && source.paragraphs.any { paragraph ->
             paragraph.runs.any { it.CTR.xmlText().contains('<w:drawing') }
         }) {
@@ -299,7 +299,7 @@ class DocxHeaderFooters {
             it.packagePart.partName.name == relationship.targetURI.path
         }
         // Some DOCX producers leave POI unable to bind a header relationship even though the document has a
-        // single embedded image. This fallback covers that unambiguous package shape (including 01CVRPG0222).
+        // single embedded image. This fallback covers that unambiguous package shape.
         return data ?: (doc.allPictures.size() == 1 ? doc.allPictures[0] : null)
     }
 

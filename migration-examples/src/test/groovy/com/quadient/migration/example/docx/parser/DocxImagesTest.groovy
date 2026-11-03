@@ -108,7 +108,7 @@ class DocxImagesTest {
                 <v:imagedata r:id="${embedId}"/>
             </v:shape>""")
             def titleRun = paragraph.createRun()
-            titleRun.setText('DATOS COTIZACIÓN')
+            titleRun.setText('QUOTE DETAILS')
             def collector = new ParagraphContentCollector(migration, 'sample')
 
             // when
@@ -118,7 +118,7 @@ class DocxImagesTest {
 
             // then
             assert content[0].content[0].id == 'sample_img_1'
-            assert content[1].content[0].value == 'DATOS COTIZACIÓN'
+            assert content[1].content[0].value == 'QUOTE DETAILS'
         }
     }
 
@@ -137,7 +137,7 @@ class DocxImagesTest {
                 <v:imagedata r:id="${embedId}"/>
             </v:shape>""")
             imageParagraph.createRun().setText('            ')
-            cell.addParagraph().createRun().setText('        DATOS  TOMADOR')
+            cell.addParagraph().createRun().setText('        HOLDER  DETAILS')
 
             // when
             def parsed = DocxTableParser.parseTable(migration, table, 'sample')
@@ -146,7 +146,7 @@ class DocxImagesTest {
             // then: one paragraph contains the icon, one natural space, and the title
             assert content.size() == 1
             assert content[0].content[0].content[0].id == 'sample_img_1'
-            assert content[0].content[1].content[0].value == ' DATOS  TOMADOR'
+            assert content[0].content[1].content[0].value == ' HOLDER  DETAILS'
         }
     }
 
@@ -156,7 +156,7 @@ class DocxImagesTest {
         def migration = mockMigration()
         new XWPFDocument().withCloseable { document ->
             def run = document.createParagraph().createRun()
-            setVml(run, '<v:shape style="position:absolute;width:15.35pt;height:16pt" coordsize="243,265" path="m0,0l243,0,243,265,0,265xe" fillcolor="#016557" stroked="f"/>')
+            setVml(run, '<v:shape style="position:absolute;width:15.35pt;height:16pt" coordsize="243,265" path="m0,0l243,0,243,265,0,265xe" fillcolor="#336699" stroked="f"/>')
             List builders = []
 
             // when
@@ -171,7 +171,7 @@ class DocxImagesTest {
             String svg = new String(write.arguments[1] as byte[], 'UTF-8')
             assert svg.contains('viewBox="0 0 243 265"')
             assert svg.contains('d="M 0 0 L 243 0 L 243 265 L 0 265 Z"')
-            assert svg.contains('fill="#016557" stroke="none"')
+            assert svg.contains('fill="#336699" stroke="none"')
         }
     }
 

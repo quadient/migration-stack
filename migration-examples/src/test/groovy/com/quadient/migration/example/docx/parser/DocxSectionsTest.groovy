@@ -24,20 +24,20 @@ class DocxSectionsTest {
         def document = new XWPFDocument()
         document.createStyles()
         addStyle(document, "Heading1", "heading 1", null, 0)
-        addStyle(document, "SLRHDR1", "SLR HDR1", "Heading1", null)
-        addStyle(document, "1SLRHDR1", "1. SLR HDR1", "SLRHDR1", null)
+        addStyle(document, "CustomHDR1", "Custom HDR1", "Heading1", null)
+        addStyle(document, "1CustomHDR1", "1. Custom HDR1", "CustomHDR1", null)
         addStyle(document, "TOCHeading", "TOC Heading", "Heading1", 9)
-        addStyle(document, "SLRBody", "SLR Body", "Heading1", null)
-        addStyle(document, "SLRURL", "SLR URL", "SLRBody", null)
+        addStyle(document, "CustomBody", "Custom Body", "Heading1", null)
+        addStyle(document, "CustomURL", "Custom URL", "CustomBody", null)
 
         // when / then
         assert DocxHeadings.headingLevel(paragraph(document, "Heading1", "About us")) == 1
-        assert DocxHeadings.headingLevel(paragraph(document, "SLRHDR1", "About us")) == 1
-        assert DocxHeadings.headingLevel(paragraph(document, "1SLRHDR1", "About us")) == 1
+        assert DocxHeadings.headingLevel(paragraph(document, "CustomHDR1", "About us")) == 1
+        assert DocxHeadings.headingLevel(paragraph(document, "1CustomHDR1", "About us")) == 1
         assert DocxHeadings.headingLevel(paragraph(document, "TOCHeading", "Contents")) == null
-        assert DocxHeadings.headingLevel(paragraph(document, "SLRBody", "Body based on a heading")) == null
-        assert DocxHeadings.headingLevel(paragraph(document, "SLRURL", "www.example.com")) == null
-        assert DocxHeadings.headingLevel(paragraph(document, "SLRHDR1", "   ")) == null
+        assert DocxHeadings.headingLevel(paragraph(document, "CustomBody", "Body based on a heading")) == null
+        assert DocxHeadings.headingLevel(paragraph(document, "CustomURL", "www.example.com")) == null
+        assert DocxHeadings.headingLevel(paragraph(document, "CustomHDR1", "   ")) == null
         assert DocxHeadings.headingLevel(paragraph(document, null, "Body text")) == null
 
         XWPFParagraph copiedFormatting = paragraph(document, null, "Body text with a direct outline level")
@@ -49,7 +49,7 @@ class DocxSectionsTest {
 
     @ParameterizedTest
     @CsvSource([
-            "SLRHDR2, SLR HDR2, 2",
+            "CustomHDR2, Custom HDR2, 2",
             "Heading3, heading 3, 3",
             "Title, Title, 1",
             "Subtitle, Subtitle, 2",
@@ -129,14 +129,14 @@ class DocxSectionsTest {
 
     @Test
     void "block names are shortened at a word boundary and fall back when empty"() {
-        assert DocxBlocks.blockName("  Your   lifetime allowance ", "table", "x") == "Your lifetime allowance table"
-        assert DocxBlocks.blockName("Explanation of the technical words", null, "x") == "Explanation of the technical words"
+        assert DocxBlocks.blockName("  Your   account summary ", "table", "x") == "Your account summary table"
+        assert DocxBlocks.blockName("Explanation of the terms used", null, "x") == "Explanation of the terms used"
         assert DocxBlocks.blockName("", "table", "fallback") == "fallback"
         assert DocxBlocks.blockName(null, null, "fallback") == "fallback"
-        String longText = "If you need more support or would like this information in Braille, large print or audio, please call"
+        String longText = "If you have any questions about this letter or would like it in another format, please call us"
         String name = DocxBlocks.blockName(longText, null, "x")
         assert name.length() <= 60
-        assert name == "If you need more support or would like this information in"
+        assert name == "If you have any questions about this letter or would like"
     }
 
     private static Paragraph paragraph(String text) {

@@ -25,7 +25,7 @@ import static com.quadient.migration.example.Utils.mockMigration
 class DocxAnchoredAreasTest {
     @Test
     void "legacy VML text box becomes a positioned area with parsed merge fields"() {
-        // given: the VML w:pict/v:shape form used by KB47 - Velkommen til GF Grænsen_Følgebrev.docx
+        // given: the VML w:pict/v:shape form used by legacy Word documents
         new XWPFDocument().withCloseable { document ->
             document.createStyles()
             def paragraph = document.createParagraph()

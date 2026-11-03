@@ -42,7 +42,7 @@ class StyleChainResolverTest {
 
     @Test
     void "East Asian-only run font does not replace an inherited Latin font"() {
-        // given: the BodyText/Times New Roman split stored by 01CVRPG0222.docx
+        // given: the BodyText/Times New Roman split stored by some Word documents
         new XWPFDocument().withCloseable { doc ->
             doc.createStyles()
             def bodyText = style(doc, 'BodyText', null)

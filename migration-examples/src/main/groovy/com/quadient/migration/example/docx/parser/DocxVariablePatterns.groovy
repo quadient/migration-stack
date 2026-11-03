@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory
 import java.util.regex.Pattern
 
 import static com.quadient.migration.example.docx.util.DocxUtils.styledText
+import static com.quadient.migration.example.docx.util.DocxUtils.variableName
 
 /**
  * Converts project-configured, text-based variable markers (for example ${Name} or <<Name>>) to variable references.
@@ -87,7 +88,7 @@ class DocxVariablePatterns {
     private static void ensureVariable(Migration migration, String variableId, String fileName) {
         if (migration.variableRepository.find(variableId) == null) {
             migration.variableRepository.upsert(new VariableBuilder(variableId)
-                    .name(variableId)
+                    .name(variableName(variableId))
                     .originLocations([fileName])
                     .dataType(DataType.String)
                     .build())

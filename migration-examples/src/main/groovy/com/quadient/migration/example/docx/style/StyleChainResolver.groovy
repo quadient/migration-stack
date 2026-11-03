@@ -56,7 +56,7 @@ static String resolveFontName(CTRPr rPr) {
 }
 
 // Word font slots are script-specific. A direct East Asian override must not replace an inherited Latin font for
-// English text (as in 01CVRPG0222.docx); use it only when the complete style chain lacks ascii/hAnsi data.
+// English text (as in some Word documents); use it only when the complete style chain lacks ascii/hAnsi data.
 static String resolveEffectiveFontName(List<CTRPr> chain) {
     String latinFont = resolveFirst(chain, StyleChainResolver.&resolveFontName)
     if (latinFont) {
