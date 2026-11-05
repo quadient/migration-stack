@@ -1,16 +1,11 @@
 package com.quadient.migration.service.deploy
 
 import com.quadient.migration.api.InspireOutput
-import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.StatusTracking
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
-import com.quadient.migration.api.dto.migrationmodel.ImageRef
-import com.quadient.migration.api.dto.migrationmodel.Paragraph
-import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.data.StatusEvent
-import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ParagraphStyleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.TextStyleBuilder
 import com.quadient.migration.api.repository.AttachmentRepository
@@ -40,6 +35,7 @@ import com.quadient.migration.service.deploy.utility.DeployOrderImpl
 import com.quadient.migration.service.deploy.utility.RefInheritanceServiceImpl
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.shared.IcmFileMetadata
+import com.quadient.migration.shared.DocumentObjectType.Block
 import com.quadient.migration.shared.IcmMetadata
 import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.MetadataValue
@@ -49,7 +45,6 @@ import com.quadient.migration.tools.aDeployedStatus
 import com.quadient.migration.tools.aDeployedStatusEvent
 import com.quadient.migration.tools.aErrorStatusEvent
 import com.quadient.migration.tools.aProjectConfig
-import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aAttachment
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.shouldBeEqualTo
@@ -126,8 +121,12 @@ class DeployClientTest {
 
     @Test
     fun `write metadata post processor`() {
-        val doc1 = aBlock(id = "doc1", metadata = listOf(IcmMetadata("docMeta", listOf(MetadataPrimitive.Str("v1")))))
-        val doc2 = aBlock(id = "doc2", metadata = listOf(IcmMetadata("docMeta", listOf(MetadataPrimitive.Str("v2")))))
+        val doc1 = DocumentObjectBuilder("doc1", Block)
+            .metadata(IcmMetadata("docMeta", listOf(MetadataPrimitive.Str("v1"))))
+            .build()
+        val doc2 = DocumentObjectBuilder("doc2", Block)
+            .metadata(IcmMetadata("docMeta", listOf(MetadataPrimitive.Str("v2"))))
+            .build()
         val img1 = aImage(id = "img2", metadata = listOf(IcmMetadata("imgMeta", listOf(MetadataPrimitive.Str("v3")))))
         val img2 = aImage(id = "img2", metadata = listOf(IcmMetadata("imgMeta", listOf(MetadataPrimitive.Str("v4")))))
 
@@ -555,19 +554,13 @@ class DeployClientTest {
         events: List<StatusEvent> = listOf(),
     ) {
         externalObjects.add(
-            aBlock(id = id, internal = false, content = deps.map {
-                DocumentObjectRef(
-                    it, null
-                )
-            } + imageDeps.map { ImageRef(it) } + attachmentDeps.map { AttachmentRef(it) } + textStyles.map {
-                Paragraph(
-                    listOf(
-                        Paragraph.Text(
-                            emptyList(), TextStyleRef(it), null
-                        )
-                    ), null, null
-                )
-            } + paragraphStyles.map { Paragraph(emptyList(), ParagraphStyleRef(it), null) })
+            DocumentObjectBuilder(id, Block).apply {
+                deps.forEach { documentObjectRef(it) }
+                imageDeps.forEach { imageRef(it) }
+                attachmentDeps.forEach { attachmentRef(it) }
+                textStyles.forEach { styleId -> paragraph { text { styleRef(styleId) } } }
+                paragraphStyles.forEach { styleId -> paragraph { styleRef(styleId) } }
+            }.build()
         )
         every { documentObjectRepository.list(any<Op<Boolean>>()) } returns externalObjects
         every {
@@ -584,8 +577,10 @@ class DeployClientTest {
     }
 
     private fun givenDocumentObject(id: String, deps: List<String> = listOf()) {
-        every { documentObjectRepository.find(id) } returns aBlock(
-            id = id, internal = true, content = deps.map { DocumentObjectRef(it, null) })
+        every { documentObjectRepository.find(id) } returns DocumentObjectBuilder(id, Block)
+            .internal(true)
+            .apply { deps.forEach { documentObjectRef(it) } }
+            .build()
     }
 }
 

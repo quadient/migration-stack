@@ -5,14 +5,10 @@ import tools.jackson.module.kotlin.KotlinModule
 import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectConfig
 import com.quadient.migration.api.dto.migrationmodel.Attachment
-import com.quadient.migration.api.dto.migrationmodel.AttachmentRef
 import com.quadient.migration.api.dto.migrationmodel.DisplayRule
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
-import com.quadient.migration.api.dto.migrationmodel.Hyperlink
-import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
-import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
 import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
@@ -137,9 +133,15 @@ class InspireDocumentObjectBuilderTest {
     @Test
     fun `buildDocumentObject with hyperlink creates text style with URL variable and alternate text`() {
         // given
-        val hyperlink = Hyperlink("https://www.example.com", "Click here", "Link to example website")
-        val textContent = listOf(StringValue("Visit our site: "), hyperlink, StringValue(" for more info"))
-        val block = mockObj(aBlock("B_1", listOf(aParagraph(aText(textContent)))))
+        val block = mockObj(
+            DocumentObjectBuilder("B_1", Block).paragraph {
+                text {
+                    string("Visit our site: ")
+                    hyperlink("https://www.example.com", "Click here", "Link to example website")
+                    string(" for more info")
+                }
+            }.build()
+        )
 
         // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
@@ -170,19 +172,14 @@ class InspireDocumentObjectBuilderTest {
         )
 
         val block = mockObj(
-            aBlock(
-                "B_1", listOf(
-                    aParagraph(
-                        aText(
-                            listOf(
-                                StringValue("Some text before link. "),
-                                Hyperlink("https://www.example.com", "Link text"),
-                                StringValue(" Some text after link.")
-                            ), TextStyleRef(textStyle.id)
-                        )
-                    )
-                )
-            )
+            DocumentObjectBuilder("B_1", Block).paragraph {
+                text {
+                    styleRef(textStyle)
+                    string("Some text before link. ")
+                    hyperlink("https://www.example.com", "Link text")
+                    string(" Some text after link.")
+                }
+            }.build()
         )
 
         // when
@@ -214,7 +211,9 @@ class InspireDocumentObjectBuilderTest {
         // given
         val attachment = mockAttachment(aAttachment("Attachment_1", name = "document", sourcePath = "C:/attachments/document.pdf"))
         val block = mockObj(
-            aBlock("B_1", listOf(aParagraph(aText(listOf(StringValue("See attached: "), AttachmentRef(attachment.id))))))
+            DocumentObjectBuilder("B_1", Block)
+                .paragraph { text { string("See attached: ").attachmentRef(attachment) } }
+                .build()
         )
 
         // when
@@ -236,7 +235,7 @@ class InspireDocumentObjectBuilderTest {
         // given
         val attachment = mockAttachment(aAttachment("Attachment_1", skip = SkipOptions(true, "Attachment not available", "Missing source")))
         val block = mockObj(
-            aBlock("B_1", listOf(aParagraph(aText(listOf(AttachmentRef(attachment.id))))))
+            DocumentObjectBuilder("B_1", Block).paragraph { text { attachmentRef(attachment) } }.build()
         )
 
         // when
@@ -254,17 +253,9 @@ class InspireDocumentObjectBuilderTest {
         // given
         val attachment = mockAttachment(aAttachment("Attachment_", skip = SkipOptions(true, null, "Not needed")))
         val block = mockObj(
-            aBlock(
-                "B_1", listOf(
-                    aParagraph(
-                        aText(
-                            listOf(
-                                StringValue("Text "), AttachmentRef(attachment.id), StringValue(" more text")
-                            )
-                        )
-                    )
-                )
-            )
+            DocumentObjectBuilder("B_1", Block)
+                .paragraph { text { string("Text ").attachmentRef(attachment).string(" more text") } }
+                .build()
         )
 
         // when
@@ -1295,8 +1286,8 @@ class InspireDocumentObjectBuilderTest {
         val flow = getFlowAreaContentFlow(result)
         flow["Type"].stringValue().shouldBeEqualTo("Language")
         flow["Condition"].size().shouldBeEqualTo(2)
-        flow["Condition"][0]["Value"].stringValue().shouldBeEqualTo("en")
-        flow["Condition"][1]["Value"].stringValue().shouldBeEqualTo("de")
+        flow["Condition"][0]["Value"].stringValue().shouldBeEqualTo("de")
+        flow["Condition"][1]["Value"].stringValue().shouldBeEqualTo("en")
         flow["Default"].stringValue().shouldNotBeNull()
     }
 

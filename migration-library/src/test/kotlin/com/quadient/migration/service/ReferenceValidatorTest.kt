@@ -4,7 +4,8 @@ import com.quadient.migration.Postgres
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyleRef
 import com.quadient.migration.api.dto.migrationmodel.TextStyleRef
-import com.quadient.migration.shared.DocumentObjectType
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.shared.DocumentObjectType.Block
 import com.quadient.migration.tools.aBlockDto
 import com.quadient.migration.tools.aBaseTemplateRepository
 import com.quadient.migration.tools.aDisplayRuleRepository
@@ -17,7 +18,6 @@ import com.quadient.migration.tools.aTextStyle
 import com.quadient.migration.tools.aTextStyleRepository
 import com.quadient.migration.tools.aVariableRepository
 import com.quadient.migration.tools.aVariableStructureRepository
-import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.shouldBeEmpty
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfSize
@@ -53,7 +53,7 @@ class ReferenceValidatorTest {
 
     @Test
     fun `validates leaf block`() {
-        val input = aBlock(id = "1", type = DocumentObjectType.Block)
+        val input = DocumentObjectBuilder("1", Block).build()
 
         val result = subject.validate(input, mutableSetOf())
 
@@ -64,9 +64,7 @@ class ReferenceValidatorTest {
     @Test
     fun `validates block with missing ref`() {
         val missingRef = DocumentObjectRef("obj1")
-        val input = aBlock(
-            id = "1", type = DocumentObjectType.Block, content = listOf(missingRef)
-        )
+        val input = DocumentObjectBuilder("1", Block).documentObjectRef(missingRef).build()
 
         val result = subject.validate(input, mutableSetOf())
 
@@ -81,9 +79,7 @@ class ReferenceValidatorTest {
         val blockRef2 = DocumentObjectRef("obj2")
         val blockRef11 = DocumentObjectRef("obj11")
         val blockRef21 = DocumentObjectRef("obj21")
-        val input = aBlock(
-            id = "1", type = DocumentObjectType.Block, content = listOf(blockRef1, blockRef2)
-        )
+        val input = DocumentObjectBuilder("1", Block).documentObjectRef(blockRef1).documentObjectRef(blockRef2).build()
         docRepo.upsert(aBlockDto("obj2"))
         docRepo.upsert(aBlockDto("obj11"))
         docRepo.upsert(aBlockDto("obj21"))
@@ -110,9 +106,7 @@ class ReferenceValidatorTest {
         val blockRef11 = DocumentObjectRef("obj11")
         val blockRef21 = DocumentObjectRef("obj21")
         val missingVarRef = DocumentObjectRef("obj111")
-        val input = aBlock(
-            id = "1", type = DocumentObjectType.Block, content = listOf(blockRef1, blockRef2)
-        )
+        val input = DocumentObjectBuilder("1", Block).documentObjectRef(blockRef1).documentObjectRef(blockRef2).build()
 
         docRepo.upsert(aBlockDto("obj2"))
         docRepo.upsert(aBlockDto("obj21"))
@@ -147,7 +141,7 @@ class ReferenceValidatorTest {
                 "block1", content = listOf(missingRef)
             )
         )
-        val input = aBlock(id = "1", type = DocumentObjectType.Block, content = listOf(blockRef1))
+        val input = DocumentObjectBuilder("1", Block).documentObjectRef(blockRef1).build()
 
         val result = subject.validate(input, mutableSetOf())
 

@@ -12,13 +12,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Reworked migration-app, it now serves as a replacement for Gradle task runner
 - DeployDataDefinitions task that deploys data definitions based on the variable structures to Interactive
 - VariableStructuresExport/Import task that allows to modify variable structure data including name and target folder
-- GenerateSampleData task that prints the field tree of a variable structure and generates sample JSON data matching it, with the generate-sample-data agent skill on top of it
+- GenerateSampleData task that prints the field tree of a variable structure and generates sample JSON data matching it,
+  with the generate-sample-data agent skill on top of it
 
 ### Changed
 
 - DeployStyles with interactive output no longer deploys a wfd file, instead it uses the default StyleDefinition.wfd
 - DeployBaseTemplates task links base templates to their corresponding data definitions if available
 - DOCX variable names parsing is now compatible with Inspire naming notation
+- Template languages for select by language blocks are collected also from external document objects
 
 ### Fixed
 

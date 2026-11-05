@@ -9,7 +9,6 @@ import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.VariableStructureBuilder
-import com.quadient.migration.service.inspirebuilder.InteractiveDocumentObjectBuilder
 import com.quadient.migration.shared.AttachmentType
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.DocumentObjectType.Template
@@ -18,7 +17,6 @@ import com.quadient.migration.shared.ImageType
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.model.aAttachment
-import com.quadient.migration.tools.model.aDocObj
 import com.quadient.migration.tools.model.aImage
 import com.quadient.migration.tools.shouldBeEqualTo
 import org.junit.jupiter.api.Nested
@@ -151,9 +149,12 @@ class ResourcePathProviderTest {
                 interactiveTenant = "tenant"
             )
             val pathTestSubject = aSubject(config)
-            val image = aDocObj("T_1", type = Template, targetFolder = targetFolder.nullToNull())
+            val documentObject = DocumentObjectBuilder("T_1", Template)
+                .name("T_1name")
+                .targetFolder(targetFolder.nullToNull())
+                .build()
 
-            val path = pathTestSubject.getDocumentObjectPath(image)
+            val path = pathTestSubject.getDocumentObjectPath(documentObject)
 
             path.toString().shouldBeEqualTo(expected)
         }
@@ -364,9 +365,12 @@ class ResourcePathProviderTest {
                 targetDefaultFolder = defaultTargetFolder.nullToNull(),
             )
             val pathTestSubject = aSubject(config)
-            val image = aDocObj("T_1", type = DocumentObjectType.Template, targetFolder = targetFolder.nullToNull())
+            val documentObject = DocumentObjectBuilder("T_1", Template)
+                .name("T_1name")
+                .targetFolder(targetFolder.nullToNull())
+                .build()
 
-            val path = pathTestSubject.getDocumentObjectPath(image)
+            val path = pathTestSubject.getDocumentObjectPath(documentObject)
 
             path.toString().shouldBeEqualTo(expected)
         }

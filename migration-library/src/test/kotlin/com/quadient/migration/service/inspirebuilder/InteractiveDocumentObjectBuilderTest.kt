@@ -8,14 +8,12 @@ import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.Hyperlink
 import com.quadient.migration.api.dto.migrationmodel.Image
-import com.quadient.migration.api.dto.migrationmodel.ImageRef
 import com.quadient.migration.api.dto.migrationmodel.ParagraphStyle
 import com.quadient.migration.api.dto.migrationmodel.StringValue
 import com.quadient.migration.api.dto.migrationmodel.Tab
 import com.quadient.migration.api.dto.migrationmodel.Tabs
 import com.quadient.migration.api.dto.migrationmodel.TextStyle
 import com.quadient.migration.api.dto.migrationmodel.Variable
-import com.quadient.migration.api.dto.migrationmodel.VariableRef
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
@@ -60,16 +58,9 @@ import com.quadient.migration.shared.TabType
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.shared.centimeters
 import com.quadient.migration.shared.millimeters
-import com.quadient.migration.tools.model.aBlock
 import com.quadient.migration.tools.model.aDisplayRule
-import com.quadient.migration.tools.model.aParagraph
 import com.quadient.migration.tools.aProjectConfig
-import com.quadient.migration.tools.model.aDocObj
-import com.quadient.migration.tools.model.aDocumentObjectRef
 import com.quadient.migration.tools.model.aImage
-import com.quadient.migration.tools.model.aSelectByLanguage
-import com.quadient.migration.tools.model.aTemplate
-import com.quadient.migration.tools.model.aText
 import com.quadient.migration.tools.model.aTextDef
 import com.quadient.migration.tools.model.aTextStyle
 import com.quadient.migration.tools.model.aVariable
@@ -806,10 +797,13 @@ class InteractiveDocumentObjectBuilderTest {
     fun `build template with two blocks referencing same image results in single image definition`() {
         // given
         val image = aImage("Dog").mock()
-        val block1 = aBlock("1", listOf(ImageRef(image.id)), internal = true).mock()
-        val block2 = aBlock("2", listOf(ImageRef(image.id)), internal = true).mock()
+        val block1 = DocumentObjectBuilder("B_1", Block).imageRef(image).internal(true).build().mock()
+        val block2 = DocumentObjectBuilder("B_2", Block).imageRef(image).internal(true).build().mock()
 
-        val template = aTemplate("3", listOf(aDocumentObjectRef(block1.id), aDocumentObjectRef(block2.id)))
+        val template = DocumentObjectBuilder("T_1", Template)
+            .documentObjectRef(block1)
+            .documentObjectRef(block2)
+            .build()
 
         // when
         val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
@@ -825,9 +819,10 @@ class InteractiveDocumentObjectBuilderTest {
             aImage("Cat", imageType = ImageType.Unknown, skip = SkipOptions(true, "Cat placeholder", null)).mock()
         val dogImage = aImage("Dog", sourcePath = "", skip = SkipOptions(true, "Dog placeholder", null)).mock()
 
-        val block = aBlock(
-            "1", listOf(ImageRef(catImage.id), aParagraph(aText(ImageRef(dogImage.id))))
-        )
+        val block = DocumentObjectBuilder("B_1", Block)
+            .imageRef(catImage)
+            .paragraph { text { imageRef(dogImage) } }
+            .build()
 
         // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
@@ -1343,11 +1338,9 @@ class InteractiveDocumentObjectBuilderTest {
         ).mock()
         val config = aProjectConfig(defaultVariableStructure = variableStructureB.id)
 
-        val block = aDocObj(
-            "B_1", Block, listOf(
-                aParagraph(aText(listOf(StringValue("Text"), VariableRef(variable.id))))
-            )
-        ).mock()
+        val block = DocumentObjectBuilder("B_1", Block)
+            .paragraph { text { string("Text").variableRef(variable) } }
+            .build().mock()
 
         // when
         val subject = aSubject(config)
@@ -1363,22 +1356,17 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `multiple select by languages always contain all languages`() {
         // given
-        val block = aBlock(
-            "1", listOf(
-                aSelectByLanguage(
-                    mapOf(
-                        "en" to listOf(aParagraph("en")),
-                        "de" to listOf(aParagraph("de")),
-                        "es" to listOf(aParagraph("es"))
-                    )
-                ), aSelectByLanguage(
-                    mapOf(
-                        "ru" to listOf(aParagraph("ru")),
-                        "fi" to listOf(aParagraph("fi")),
-                    )
-                )
-            )
-        )
+        val block = DocumentObjectBuilder("B_1", Block)
+            .selectByLanguage {
+                case { language("en").paragraph { string("en") } }
+                case { language("de").paragraph { string("de") } }
+                case { language("es").paragraph { string("es") } }
+            }
+            .selectByLanguage {
+                case { language("ru").paragraph { string("ru") } }
+                case { language("fi").paragraph { string("fi") } }
+            }
+            .build()
 
         // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
@@ -1419,15 +1407,12 @@ class InteractiveDocumentObjectBuilderTest {
     @Test
     fun `select by language default case references default language case if available`() {
         // given
-        val block = aBlock(
-            "1", listOf(
-                aSelectByLanguage(
-                    mapOf(
-                        "en_us" to listOf(aParagraph("en_us")), "de" to listOf(aParagraph("de"))
-                    )
-                )
-            )
-        )
+        val block = DocumentObjectBuilder("B_1", Block)
+            .selectByLanguage {
+                case { language("en_us").paragraph { string("en_us") } }
+                case { language("de").paragraph { string("de") } }
+            }
+            .build()
 
         // when
         val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
@@ -1447,6 +1432,63 @@ class InteractiveDocumentObjectBuilderTest {
 
         enContent.shouldBeEqualTo("en_us")
         deContent.shouldBeEqualTo("de")
+    }
+
+    @Test
+    fun `select by language contains languages of referenced external document objects`() {
+        // given
+        val nestedExternalBlock = DocumentObjectBuilder("nested", Block)
+            .selectByLanguage { case { language("fr").paragraph { string("fr") } } }
+            .build().mock()
+        val externalBlock = DocumentObjectBuilder("external", Block)
+            .selectByLanguage {
+                case { language("en_us").paragraph { string("en_us") } }
+                case { language("es").paragraph { string("es") } }
+            }
+            .documentObjectRef(nestedExternalBlock)
+            .build().mock()
+        val block = DocumentObjectBuilder("B_1", Block)
+            .selectByLanguage {
+                case { language("en_us").paragraph { string("en_us") } }
+                case { language("de").paragraph { string("de") } }
+            }
+            .documentObjectRef(externalBlock)
+            .build()
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val languageFlow = result["Flow"].single { it["Type"]?.stringValue() == "Language" }
+        languageFlow["Condition"].toList().map { it["Value"].stringValue() }.shouldBeEqualTo(listOf("en_us", "de", "es", "fr"))
+    }
+
+    @Test
+    fun `language collection ignores skipped references and handles circular references`() {
+        // given
+        val skippedBlock = DocumentObjectBuilder("skipped", Block)
+            .selectByLanguage { case { language("es").paragraph { string("es") } } }
+            .skip()
+            .build().mock()
+        val circularBlock = DocumentObjectBuilder("circular", Block)
+            .selectByLanguage { case { language("fr").paragraph { string("fr") } } }
+            .documentObjectRef("B_1")
+            .build().mock()
+        val block = DocumentObjectBuilder("B_1", Block)
+            .selectByLanguage {
+                case { language("en_us").paragraph { string("en_us") } }
+                case { language("de").paragraph { string("de") } }
+            }
+            .documentObjectRef(skippedBlock)
+            .documentObjectRef(circularBlock)
+            .build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val languageFlow = result["Flow"].single { it["Type"]?.stringValue() == "Language" }
+        languageFlow["Condition"].toList().map { it["Value"].stringValue() }.shouldBeEqualTo(listOf("en_us", "de", "fr"))
     }
 
     @Test

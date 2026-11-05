@@ -143,6 +143,7 @@ abstract class InspireDocumentObjectBuilder(
 
     protected fun collectLanguages(documentObject: DocumentObject): List<String> {
         val languages = mutableSetOf<String>()
+        val visitedDocumentObjectIds = mutableSetOf(documentObject.id)
 
         fun List<TableRow>.flattenRows(): List<Table.Row> =
             flatMap { row ->
@@ -155,6 +156,13 @@ abstract class InspireDocumentObjectBuilder(
         fun Table.allRows(): List<Table.Row> = (rows + header + firstHeader + footer + lastFooter).flattenRows()
 
         fun collectLanguagesFromContent(content: List<DocumentContent>) {
+            fun collectLanguagesFromReference(ref: DocumentObjectRef) {
+                if (!visitedDocumentObjectIds.add(ref.id)) return
+                val referencedObject = documentObjectRepository.findOrFail(ref.id)
+                if (referencedObject.skip.skipped) return
+                collectLanguagesFromContent(referencedObject.content)
+            }
+
             for (item in content) {
                 when (item) {
                     is SelectByLanguage -> item.cases.forEach { languages.add(it.language) }
@@ -169,12 +177,7 @@ abstract class InspireDocumentObjectBuilder(
                     is Table -> item.allRows()
                         .forEach { row -> row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) } }
 
-                    is DocumentObjectRef -> {
-                        val documentObject = documentObjectRepository.findOrFail(item.id)
-                        if (shouldIncludeInternalDependency(documentObject)) {
-                            collectLanguagesFromContent(documentObject.content)
-                        }
-                    }
+                    is DocumentObjectRef -> collectLanguagesFromReference(item)
 
                     is Paragraph -> item.content.forEach { textModel ->
                         textModel.content.forEach { textContent ->
@@ -187,12 +190,7 @@ abstract class InspireDocumentObjectBuilder(
                                 is Table -> textContent.allRows()
                                     .forEach { row -> row.cells.forEach { cell -> collectLanguagesFromContent(cell.content) } }
 
-                                is DocumentObjectRef -> {
-                                    val documentObject = documentObjectRepository.findOrFail(textContent.id)
-                                    if (shouldIncludeInternalDependency(documentObject)) {
-                                        collectLanguagesFromContent(documentObject.content)
-                                    }
-                                }
+                                is DocumentObjectRef -> collectLanguagesFromReference(textContent)
 
                                 is Code39Barcode -> {}
                                 is QrCode -> {}
@@ -231,7 +229,8 @@ abstract class InspireDocumentObjectBuilder(
 
         collectLanguagesFromContent(documentObject.content)
 
-        return languages.toList()
+        val defaultLanguage = projectConfig.defaultLanguage
+        return languages.sortedWith(compareBy<String> { it != defaultLanguage }.thenBy { it })
     }
 
     protected open fun wrapSuccessFlowInConditionFlow(
