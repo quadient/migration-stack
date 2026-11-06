@@ -1411,11 +1411,11 @@ class InteractiveDocumentObjectBuilderTest {
         val firstLanguageFlow = languageFlows[0]
         val firstSubFlows = firstLanguageFlow["Condition"].associate { it["Value"]?.stringValue() to it[""].stringValue() }
         firstSubFlows.count().shouldBeEqualTo(5)
-        flowDefinitions.wrappedCaseText(firstSubFlows["en"])
+        flowDefinitions.caseText(firstSubFlows["en"])
             .shouldBeEqualTo("en")
-        flowDefinitions.wrappedCaseText(firstSubFlows["de"])
+        flowDefinitions.caseText(firstSubFlows["de"])
             .shouldBeEqualTo("de")
-        flowDefinitions.wrappedCaseText(firstSubFlows["es"])
+        flowDefinitions.caseText(firstSubFlows["es"])
             .shouldBeEqualTo("es")
 
         flowDefinitions.last { it["Id"]?.stringValue() == firstSubFlows["ru"] }["FlowContent"]["P"].shouldBeNull()
@@ -1431,7 +1431,7 @@ class InteractiveDocumentObjectBuilderTest {
         val secondSubFlows =
             secondLanguageFlow["Condition"].associate { it["Value"]?.stringValue() to it[""].stringValue() }
         secondSubFlows.count().shouldBeEqualTo(5)
-        flowDefinitions.wrappedCaseText(secondSubFlows["fi"])
+        flowDefinitions.caseText(secondSubFlows["fi"])
             .shouldBeEqualTo("fi")
         flowDefinitions.last { it["Id"]?.stringValue() == secondSubFlows["en"] }["FlowContent"]["P"].shouldBeNull()
     }
@@ -1458,30 +1458,27 @@ class InteractiveDocumentObjectBuilderTest {
         defaultFlowId.shouldBeEqualTo(subFlows["en_us"])
 
         val enContent =
-            flowDefinitions.wrappedCaseText(subFlows["en_us"])
+            flowDefinitions.caseText(subFlows["en_us"])
         val deContent =
-            flowDefinitions.wrappedCaseText(subFlows["de"])
+            flowDefinitions.caseText(subFlows["de"])
 
         enContent.shouldBeEqualTo("en_us")
         deContent.shouldBeEqualTo("de")
     }
 
     @Test
-    fun `select by language case containing only repeated content is wrapped in section flow`() {
+    fun `select by language case containing only nested repeated content is wrapped in section flow`() {
         // given
-        val itemsVar = VariableBuilder("items").name("Items").dataType(DataType.Array).build().mock()
-        val itemNameVar = VariableBuilder("itemName").name("ItemName").dataType(DataType.String).build().mock()
-        val variableStructure = VariableStructureBuilder("VS_1")
-            .addVariable(itemsVar.id, "Data")
-            .addVariable(itemNameVar.id, itemsVar)
-            .build().mock()
+        val (itemsVar, itemNameVar, variableStructure) = sblRepeatedContentVariables()
         val template = DocumentObjectBuilder("T_1", Template)
             .variableStructureRef(variableStructure.id)
             .selectByLanguage {
                 case { language("en_us").paragraph { string("en_us") } }
                 case {
                     language("de")
-                    repeatedContent(itemsVar) { paragraph { text { variableRef(itemNameVar.id) } } }
+                    repeatedContent(itemsVar) {
+                        repeatedContent(itemsVar) { paragraph { text { variableRef(itemNameVar.id) } } }
+                    }
                 }
             }
             .build().mock()
@@ -1502,9 +1499,95 @@ class InteractiveDocumentObjectBuilderTest {
         val repeatedFlowId = deCaseFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
         val repeatedFlow = flowDefinitions.findFlowDefinition(repeatedFlowId)
         repeatedFlow["Type"].stringValue().shouldBeEqualTo("Repeated")
-        repeatedFlowId.shouldNotBeEqualTo(subFlows["de"])
+        repeatedFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
 
-        flowDefinitions.wrappedCaseText(subFlows["en_us"]).shouldBeEqualTo("en_us")
+        flowDefinitions.caseText(subFlows["en_us"]).shouldBeEqualTo("en_us")
+    }
+
+    @Test
+    fun `select by language case containing repeated content with final content only is not wrapped`() {
+        // given
+        val (itemsVar, itemNameVar, variableStructure) = sblRepeatedContentVariables()
+        val template = DocumentObjectBuilder("T_1", Template)
+            .variableStructureRef(variableStructure.id)
+            .selectByLanguage {
+                case { language("en_us").paragraph { string("en_us") } }
+                case {
+                    language("de")
+                    repeatedContent(itemsVar) { paragraph { text { variableRef(itemNameVar.id) } } }
+                }
+            }
+            .build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val flowDefinitions = result["Flow"]
+        val languageFlow = flowDefinitions.find { it["Type"]?.stringValue() == "Language" }!!
+        val subFlows = languageFlow["Condition"].associate { it["Value"]?.stringValue() to it[""].stringValue() }
+
+        val deCaseFlow = flowDefinitions.findFlowDefinition(subFlows["de"])
+        deCaseFlow["Type"].stringValue().shouldBeEqualTo("Repeated")
+        deCaseFlow["SectionFlow"].stringValue().shouldBeEqualTo("False")
+
+        flowDefinitions.caseText(subFlows["en_us"]).shouldBeEqualTo("en_us")
+    }
+
+    @Test
+    fun `repeated content containing select by language with repeated content case is section and case is not wrapped`() {
+        // given
+        val ordersVar = VariableBuilder("orders").name("Orders").dataType(DataType.Array).build().mock()
+        val itemsVar = VariableBuilder("items").name("Items").dataType(DataType.Array).build().mock()
+        val itemNameVar = VariableBuilder("itemName").name("ItemName").dataType(DataType.String).build().mock()
+        val variableStructure = VariableStructureBuilder("VS_1")
+            .addVariable(ordersVar.id, "Data")
+            .addVariable(itemsVar.id, ordersVar)
+            .addVariable(itemNameVar.id, itemsVar)
+            .build().mock()
+        val template = DocumentObjectBuilder("T_1", Template)
+            .variableStructureRef(variableStructure.id)
+            .repeatedContent(ordersVar) {
+                selectByLanguage {
+                    case { language("en_us").paragraph { string("en_us") } }
+                    case {
+                        language("de")
+                        repeatedContent(itemsVar) { paragraph { text { variableRef(itemNameVar.id) } } }
+                    }
+                }
+            }
+            .build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val flowDefinitions = result["Flow"]
+        val languageFlow = flowDefinitions.find { it["Type"]?.stringValue() == "Language" }!!
+        val languageFlowId = languageFlow["Id"].stringValue()
+
+        val outerRepeatedFlow = flowDefinitions.filter { it["Type"]?.stringValue() == "Repeated" }
+            .single { it["FlowContent"]?.get("P")?.get("T")?.get("O")?.get("Id")?.stringValue() == languageFlowId }
+        outerRepeatedFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
+        outerRepeatedFlow["WebEditingType"].stringValue().shouldBeEqualTo("Section")
+
+        val subFlows = languageFlow["Condition"].associate { it["Value"]?.stringValue() to it[""].stringValue() }
+        val deCaseFlow = flowDefinitions.findFlowDefinition(subFlows["de"])
+        deCaseFlow["Type"].stringValue().shouldBeEqualTo("Repeated")
+        deCaseFlow["SectionFlow"].stringValue().shouldBeEqualTo("False")
+        deCaseFlow["FlowContent"]["P"]["T"]["O"].shouldNotBeNull()
+
+        flowDefinitions.caseText(subFlows["en_us"]).shouldBeEqualTo("en_us")
+    }
+
+    private fun sblRepeatedContentVariables(): Triple<Variable, Variable, VariableStructure> {
+        val itemsVar = VariableBuilder("items").name("Items").dataType(DataType.Array).build().mock()
+        val itemNameVar = VariableBuilder("itemName").name("ItemName").dataType(DataType.String).build().mock()
+        val variableStructure = VariableStructureBuilder("VS_1")
+            .addVariable(itemsVar.id, "Data")
+            .addVariable(itemNameVar.id, itemsVar)
+            .build().mock()
+        return Triple(itemsVar, itemNameVar, variableStructure)
     }
 
     @Test
@@ -2089,14 +2172,8 @@ class InteractiveDocumentObjectBuilderTest {
     private fun JsonNode.findFlowDefinition(flowId: String?) =
         this.last { it["Id"]?.stringValue() == flowId }
 
-    private fun JsonNode.wrappedCaseText(caseFlowId: String?): String {
-        val caseFlow = findFlowDefinition(caseFlowId)
-        caseFlow["Type"].stringValue().shouldBeEqualTo("Simple")
-        caseFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
-        caseFlow["WebEditingType"].stringValue().shouldBeEqualTo("Section")
-        val contentFlowId = caseFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
-        return findFlowDefinition(contentFlowId)["FlowContent"]["P"]["T"][""].stringValue()
-    }
+    private fun JsonNode.caseText(caseFlowId: String?): String =
+        findFlowDefinition(caseFlowId)["FlowContent"]["P"]["T"][""].stringValue()
 
     private fun DocumentObject.mock(): DocumentObject {
         val id = this.id
