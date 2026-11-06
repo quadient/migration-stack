@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Listing files and dependencies from icm not working with spaces in file path
 - Column layout is now applied properly when followed by standalone blocks/flows
 - DOCX content controls parsing handles more cases and no longer fails when text style is missing
+- Select by language cases contain section flows to render properly in Interactive output
 
 ## [17.0.32] - 2026-10-13
 

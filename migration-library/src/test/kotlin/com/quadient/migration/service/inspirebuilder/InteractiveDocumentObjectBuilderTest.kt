@@ -80,6 +80,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import tools.jackson.databind.JsonNode
 import kotlin.collections.emptyList
 
 class InteractiveDocumentObjectBuilderTest {
@@ -1379,11 +1380,11 @@ class InteractiveDocumentObjectBuilderTest {
         val firstLanguageFlow = languageFlows[0]
         val firstSubFlows = firstLanguageFlow["Condition"].associate { it["Value"]?.stringValue() to it[""].stringValue() }
         firstSubFlows.count().shouldBeEqualTo(5)
-        flowDefinitions.last { it["Id"]?.stringValue() == firstSubFlows["en"] }["FlowContent"]["P"]["T"][""].stringValue()
+        flowDefinitions.wrappedCaseText(firstSubFlows["en"])
             .shouldBeEqualTo("en")
-        flowDefinitions.last { it["Id"]?.stringValue() == firstSubFlows["de"] }["FlowContent"]["P"]["T"][""].stringValue()
+        flowDefinitions.wrappedCaseText(firstSubFlows["de"])
             .shouldBeEqualTo("de")
-        flowDefinitions.last { it["Id"]?.stringValue() == firstSubFlows["es"] }["FlowContent"]["P"]["T"][""].stringValue()
+        flowDefinitions.wrappedCaseText(firstSubFlows["es"])
             .shouldBeEqualTo("es")
 
         flowDefinitions.last { it["Id"]?.stringValue() == firstSubFlows["ru"] }["FlowContent"]["P"].shouldBeNull()
@@ -1399,7 +1400,7 @@ class InteractiveDocumentObjectBuilderTest {
         val secondSubFlows =
             secondLanguageFlow["Condition"].associate { it["Value"]?.stringValue() to it[""].stringValue() }
         secondSubFlows.count().shouldBeEqualTo(5)
-        flowDefinitions.last { it["Id"]?.stringValue() == secondSubFlows["fi"] }["FlowContent"]["P"]["T"][""].stringValue()
+        flowDefinitions.wrappedCaseText(secondSubFlows["fi"])
             .shouldBeEqualTo("fi")
         flowDefinitions.last { it["Id"]?.stringValue() == secondSubFlows["en"] }["FlowContent"]["P"].shouldBeNull()
     }
@@ -1426,12 +1427,53 @@ class InteractiveDocumentObjectBuilderTest {
         defaultFlowId.shouldBeEqualTo(subFlows["en_us"])
 
         val enContent =
-            flowDefinitions.findLast { it["Id"]?.stringValue() == subFlows["en_us"] }!!["FlowContent"]["P"]["T"][""].stringValue()
+            flowDefinitions.wrappedCaseText(subFlows["en_us"])
         val deContent =
-            flowDefinitions.findLast { it["Id"]?.stringValue() == subFlows["de"] }!!["FlowContent"]["P"]["T"][""].stringValue()
+            flowDefinitions.wrappedCaseText(subFlows["de"])
 
         enContent.shouldBeEqualTo("en_us")
         deContent.shouldBeEqualTo("de")
+    }
+
+    @Test
+    fun `select by language case containing only repeated content is wrapped in section flow`() {
+        // given
+        val itemsVar = VariableBuilder("items").name("Items").dataType(DataType.Array).build().mock()
+        val itemNameVar = VariableBuilder("itemName").name("ItemName").dataType(DataType.String).build().mock()
+        val variableStructure = VariableStructureBuilder("VS_1")
+            .addVariable(itemsVar.id, "Data")
+            .addVariable(itemNameVar.id, itemsVar)
+            .build().mock()
+        val template = DocumentObjectBuilder("T_1", Template)
+            .variableStructureRef(variableStructure.id)
+            .selectByLanguage {
+                case { language("en_us").paragraph { string("en_us") } }
+                case {
+                    language("de")
+                    repeatedContent(itemsVar) { paragraph { text { variableRef(itemNameVar.id) } } }
+                }
+            }
+            .build().mock()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val flowDefinitions = result["Flow"]
+        val languageFlow = flowDefinitions.find { it["Type"]?.stringValue() == "Language" }!!
+        val subFlows = languageFlow["Condition"].associate { it["Value"]?.stringValue() to it[""].stringValue() }
+
+        val deCaseFlow = flowDefinitions.findFlowDefinition(subFlows["de"])
+        deCaseFlow["Type"].stringValue().shouldBeEqualTo("Simple")
+        deCaseFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
+        deCaseFlow["WebEditingType"].stringValue().shouldBeEqualTo("Section")
+
+        val repeatedFlowId = deCaseFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        val repeatedFlow = flowDefinitions.findFlowDefinition(repeatedFlowId)
+        repeatedFlow["Type"].stringValue().shouldBeEqualTo("Repeated")
+        repeatedFlowId.shouldNotBeEqualTo(subFlows["de"])
+
+        flowDefinitions.wrappedCaseText(subFlows["en_us"]).shouldBeEqualTo("en_us")
     }
 
     @Test
@@ -1763,10 +1805,10 @@ class InteractiveDocumentObjectBuilderTest {
         conditionFlow["Condition"][""].stringValue().shouldBeEqualTo(wrapperFlowId)
     }
 
-    private fun ecGridContent(result: tools.jackson.databind.JsonNode): tools.jackson.databind.JsonNode =
+    private fun ecGridContent(result: JsonNode): JsonNode =
         result["ECGrid"].toList().first { it["ColumnsCount"] != null }
 
-    private fun ecContentForGrid(result: tools.jackson.databind.JsonNode, id: String): tools.jackson.databind.JsonNode =
+    private fun ecContentForGrid(result: JsonNode, id: String): JsonNode =
         result["ECContent"].toList().first { it["Id"]?.stringValue() == id && it["ContentId"] != null }
 
     @Test
@@ -2011,6 +2053,18 @@ class InteractiveDocumentObjectBuilderTest {
             .shouldBeEqualTo("NumberTo")
         result["Variable"].last { it["Id"].stringValue() == variableId }["Script"].stringValue()
             .shouldBeEqualTo("return '+1234567890';")
+    }
+
+    private fun JsonNode.findFlowDefinition(flowId: String?) =
+        this.last { it["Id"]?.stringValue() == flowId }
+
+    private fun JsonNode.wrappedCaseText(caseFlowId: String?): String {
+        val caseFlow = findFlowDefinition(caseFlowId)
+        caseFlow["Type"].stringValue().shouldBeEqualTo("Simple")
+        caseFlow["SectionFlow"].stringValue().shouldBeEqualTo("True")
+        caseFlow["WebEditingType"].stringValue().shouldBeEqualTo("Section")
+        val contentFlowId = caseFlow["FlowContent"]["P"]["T"]["O"]["Id"].stringValue()
+        return findFlowDefinition(contentFlowId)["FlowContent"]["P"]["T"][""].stringValue()
     }
 
     private fun DocumentObject.mock(): DocumentObject {

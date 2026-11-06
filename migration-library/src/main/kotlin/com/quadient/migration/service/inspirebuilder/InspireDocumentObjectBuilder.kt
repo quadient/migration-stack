@@ -1765,25 +1765,29 @@ abstract class InspireDocumentObjectBuilder(
 
         val defaultLanguage = projectConfig.defaultLanguage
 
+        fun addCaseFlow(caseName: String?) = layout.addFlow().setType(Flow.Type.SIMPLE).setSectionFlow(true)
+            .setWebEditingType(SECTION).also { flow -> caseName?.let { flow.setDisplayName(it) } }
+
         val caseFlows = model.cases.associate {
-            val caseName = "Case ${it.language}"
             val contentFlow = buildDocumentContentAsSingleFlow(
                 layout, variableStructure, it.content, null, null, languages
-            ).setDisplayName(caseName)
-            it.language to contentFlow
+            )
+            val caseFlow = addCaseFlow("Case ${it.language}")
+                .also { caseFlow -> caseFlow.addParagraph().addText().appendFlow(contentFlow) }
+            it.language to caseFlow
         }
 
         var defaultLanguageFlow: Flow? = null
         for (language in languages) {
-            val contentFlow: Flow = caseFlows[language] ?: layout.addFlow().setType(Flow.Type.SIMPLE).setDisplayName("Case $language")
-            languageFlow.addLineForSelectByInlineCondition(language, contentFlow)
+            val caseFlow: Flow = caseFlows[language] ?: addCaseFlow("Case $language")
+            languageFlow.addLineForSelectByInlineCondition(language, caseFlow)
 
             if (language == defaultLanguage) {
-                defaultLanguageFlow = contentFlow
+                defaultLanguageFlow = caseFlow
             }
         }
 
-        languageFlow.setDefaultFlow(defaultLanguageFlow ?: layout.addFlow().setType(Flow.Type.SIMPLE))
+        languageFlow.setDefaultFlow(defaultLanguageFlow ?: addCaseFlow(null))
 
         return languageFlow
     }
