@@ -207,29 +207,22 @@ class InteractiveDocumentObjectBuilder(
         documentObjectRef: DocumentObjectRef,
         languages: List<String>,
         isInline: Boolean,
-    ): Flow? {
-        val flow = getFlowByName(layout, documentModel.nameOrId()) ?: if (documentModel.internal == true) {
+    ): Flow {
+        val isInternal = documentModel.internal == true
+
+        val contentFlow = getFlowByName(layout, documentModel.nameOrId()) ?: if (isInternal) {
             buildDocumentContentAsSingleFlow(
-                layout,
-                variableStructure,
-                documentModel.content,
-                documentModel.nameOrId(),
-                documentModel.displayRuleRef?.let { DisplayRuleRef(it.id) },
-                languages,
-                isInline,
+                layout, variableStructure, documentModel.content, documentModel.nameOrId(), null, languages, isInline,
             )
         } else {
             layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)
                 .setLocation(resourcePathProvider.getDocumentObjectPath(documentModel).toString())
         }
 
-        if (documentObjectRef.displayRuleRef != null) {
-            val displayRule = displayRuleRepository.findOrFail(documentObjectRef.displayRuleRef.id)
+        val ownDisplayRuleId = if (isInternal) documentModel.displayRuleRef?.id else null
+        val flow = wrapInDisplayRule(layout, variableStructure, ownDisplayRuleId, contentFlow)
 
-            return wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule, flow)
-        }
-
-        return flow
+        return wrapInDisplayRule(layout, variableStructure, documentObjectRef.displayRuleRef?.id, flow)
     }
 
     override fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean {

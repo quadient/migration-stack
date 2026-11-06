@@ -254,6 +254,13 @@ abstract class InspireDocumentObjectBuilder(
         )
     }
 
+    protected fun wrapInDisplayRule(
+        layout: Layout, variableStructure: VariableStructure, displayRuleId: String?, flow: Flow
+    ): Flow {
+        val displayRule = displayRuleId?.let { displayRuleRepository.findOrFail(it) } ?: return flow
+        return wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule, flow)
+    }
+
     protected open fun buildConditionRow(
         layout: Layout,
         variableStructure: VariableStructure,
@@ -765,7 +772,7 @@ abstract class InspireDocumentObjectBuilder(
         documentObjectRef: DocumentObjectRef,
         languages: List<String>,
         isInline: Boolean = false,
-    ): Flow?
+    ): Flow
 
     private fun buildDocumentObjectRefOrPlaceholder(
         layout: Layout,

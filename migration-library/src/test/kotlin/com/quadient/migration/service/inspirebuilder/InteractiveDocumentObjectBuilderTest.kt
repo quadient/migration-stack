@@ -908,6 +908,37 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `internal block with display rule used twice keeps display rule on both usages`() {
+        // given
+        val rule = DisplayRuleBuilder("R_1").comparison { value("C").equals().value("C") }.build().mock()
+        val innerBlock =
+            DocumentObjectBuilder("B_1", Block).string("Text").internal(true).displayRuleRef(rule).build().mock()
+        val template = DocumentObjectBuilder("T_1", Template)
+            .documentObjectRef(innerBlock)
+            .documentObjectRef(innerBlock)
+            .build()
+
+        // when
+        val result = subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }
+
+        // then
+        val mainFlow = result["Flow"].first { it["Id"].stringValue() == "Def.MainFlow" }
+        val usageFlowRefs = mainFlow["FlowContent"]["P"]["T"]["O"]
+        val usageFlowIds = (0 until usageFlowRefs.size()).map { usageFlowRefs[it]["Id"].stringValue() }
+        usageFlowIds.size.shouldBeEqualTo(2)
+
+        val contentFlowIds = usageFlowIds.map { usageFlowId ->
+            val condFlow = result["Flow"].last { it["Id"].stringValue() == usageFlowId }
+            condFlow["Type"].stringValue().shouldBeEqualTo("Condition")
+            condFlow["Condition"][""].stringValue()
+        }
+        contentFlowIds.distinct().size.shouldBeEqualTo(1)
+
+        val innerFlow = result["Flow"].last { it["Id"].stringValue() == contentFlowIds.first() }
+        innerFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("Text")
+    }
+
+    @Test
     fun `variable string content is wrapped in paragraph`() {
         val subject = aSubject(aProjectConfig(defaultVariableStructure = "VS_1"))
 

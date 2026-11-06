@@ -226,40 +226,29 @@ class DesignerDocumentObjectBuilder(
         documentObjectRef: DocumentObjectRef,
         languages: List<String>,
         isInline: Boolean,
-    ): Flow? {
-        val flow = getFlowByName(layout, documentModel.nameOrId())
-            ?: if (documentModel.type == DocumentObjectType.Snippet) {
-                buildDocumentContentAsSingleFlow(
-                    layout,
-                    variableStructure,
-                    documentModel.content,
-                    documentModel.nameOrId(),
-                    documentModel.displayRuleRef?.let { DisplayRuleRef(it.id) },
-                    languages,
-                    isInline = true
-                )
-            } else if (documentModel.internal == true) {
-                buildDocumentContentAsSingleFlow(
-                    layout,
-                    variableStructure,
-                    documentModel.content,
-                    documentModel.nameOrId(),
-                    documentModel.displayRuleRef?.let { DisplayRuleRef(it.id) },
-                    languages,
-                    isInline,
-                )
-            } else {
-                layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)
-                    .setLocation(resourcePathProvider.getDocumentObjectPath(documentModel).toString())
-            }
+    ): Flow {
+        val isSnippet = documentModel.type == DocumentObjectType.Snippet
+        val isInlined = isSnippet || documentModel.internal == true
 
-        if (documentObjectRef.displayRuleRef != null) {
-            val displayRule = displayRuleRepository.findOrFail(documentObjectRef.displayRuleRef.id)
-
-            return wrapSuccessFlowInConditionFlow(layout, variableStructure, displayRule, flow)
+        val contentFlow = getFlowByName(layout, documentModel.nameOrId()) ?: if (isInlined) {
+            buildDocumentContentAsSingleFlow(
+                layout,
+                variableStructure,
+                documentModel.content,
+                documentModel.nameOrId(),
+                null,
+                languages,
+                isInline = isSnippet || isInline,
+            )
+        } else {
+            layout.addFlow().setName(documentModel.nameOrId()).setType(Flow.Type.DIRECT_EXTERNAL)
+                .setLocation(resourcePathProvider.getDocumentObjectPath(documentModel).toString())
         }
 
-        return flow
+        val ownDisplayRuleId = if (isInlined) documentModel.displayRuleRef?.id else null
+        val flow = wrapInDisplayRule(layout, variableStructure, ownDisplayRuleId, contentFlow)
+
+        return wrapInDisplayRule(layout, variableStructure, documentObjectRef.displayRuleRef?.id, flow)
     }
 
     private fun buildPage(

@@ -700,6 +700,32 @@ class DesignerDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `internal block with display rule used twice keeps display rule on both usages`() {
+        // given
+        val rule = DisplayRuleBuilder("R_1").comparison { value("C").equals().value("C") }.build().mock()
+        val innerBlock =
+            DocumentObjectBuilder("B_inner", Block).string("Text").internal(true).displayRuleRef(rule).build().mock()
+        val block = DocumentObjectBuilder("B_1", Block)
+            .documentObjectRef(innerBlock)
+            .documentObjectRef(innerBlock)
+            .build()
+            .mock()
+
+        // when
+        val result = subject.buildDocumentObject(block).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        val conditionFlows = result["Flow"].filter { it["Type"]?.stringValue() == "InlCond" }
+        conditionFlows.size.shouldBeEqualTo(2)
+
+        val contentFlowIds = conditionFlows.map { it["Condition"][""].stringValue() }
+        contentFlowIds.distinct().size.shouldBeEqualTo(1)
+
+        val innerFlow = result["Flow"].last { it["Id"].stringValue() == contentFlowIds.first() }
+        innerFlow["FlowContent"]["P"]["T"][""].stringValue().shouldBeEqualTo("Text")
+    }
+
+    @Test
     fun `buildDocumentObject creates multiple times used variable only once`() {
         // given
         val variable = aVariable("V_1").mock()

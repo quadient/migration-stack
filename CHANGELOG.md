@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Column layout is now applied properly when followed by standalone blocks/flows
 - DOCX content controls parsing handles more cases and no longer fails when text style is missing
 - Select by language cases contain section flows to render properly in Interactive output
+- Multiple usages of internal document object with display rule now correctly applies the rule condition on all of them
 
 ## [17.0.32] - 2026-10-13
 
