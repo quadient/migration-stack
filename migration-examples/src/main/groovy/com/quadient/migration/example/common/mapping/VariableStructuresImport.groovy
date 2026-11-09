@@ -2,7 +2,6 @@
 //! displayName: Import Variable Structures
 //! category: Mapping
 //! description: Imports variable structure details (name and target folder of the deployed data definition) from CSV files into the migration project, applying any updates made to the columns during editing.
-//! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping
 

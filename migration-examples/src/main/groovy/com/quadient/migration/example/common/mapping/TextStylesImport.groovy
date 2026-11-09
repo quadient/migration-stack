@@ -2,7 +2,6 @@
 //! displayName: Import Text Styles
 //! category: Mapping
 //! description: Imports text style definitions from CSV files into the migration project, applying any updates made to the columns during editing.
-//! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping
 

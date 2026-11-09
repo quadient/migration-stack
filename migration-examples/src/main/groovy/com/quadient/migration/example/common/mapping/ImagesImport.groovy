@@ -2,7 +2,6 @@
 //! displayName: Import Images
 //! category: Mapping
 //! description: Imports images details from CSV files into the migration project, applying any updates made to the columns during editing.
-//! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping
 

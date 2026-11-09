@@ -13,6 +13,7 @@ import ModuleDetailSection from "@/sections/moduleDetailSection/ModuleDetailSect
 import { useFetch } from "@/hooks/useFetch.ts";
 import { executeModules } from "@/common/executeModules.ts";
 import ErrorDialog from "@/dialogs/error/ErrorDialog.tsx";
+import InputRequestDialog from "@/dialogs/input/InputRequestDialog.tsx";
 import { useFavorites } from "@/hooks/useFavorites.ts";
 import { useSavedSequences } from "@/hooks/useSavedSequences.ts";
 import { useModuleSelection } from "@/hooks/useModuleSelection.ts";
@@ -106,6 +107,7 @@ export default function App() {
                 error={executeError}
                 onClose={() => setExecuteError(undefined)}
             />
+            <InputRequestDialog />
             <SidebarResizeHandle
                 onResize={(width) => setSidebarWidth(clampSidebarWidth(width))}
                 onResizingChange={onSidebarResizingChange}

@@ -2,7 +2,6 @@
 //! displayName: Export Tables
 //! category: Mapping
 //! description: Export tables from document objects. Outputs one CSV row per table, in document order. Edit the action and PDF properties, then re-import.
-//! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping
 

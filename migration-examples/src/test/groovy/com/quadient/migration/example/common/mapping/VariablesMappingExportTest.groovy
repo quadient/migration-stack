@@ -8,6 +8,7 @@ import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.example.Utils
 import com.quadient.migration.shared.DataType
+import com.quadient.migration.example.common.util.UserInput
 import com.quadient.migration.shared.DocumentObjectType
 import com.quadient.migration.shared.VariablePathData
 import com.quadient.migration.shared.VariableRefPath
@@ -99,5 +100,22 @@ refVar,,String,\$full,ref name,,[]\n"""
 referenced,,String,,,,[]\n"""
 
         Assertions.assertEquals(expectedResult, text.replaceAll("\\r\\n|\\r", "\n"))
+    }
+
+    @Test
+    void reasksWithReasonWhenIdHasForbiddenCharacters() {
+        def messages = []
+        def answers = ["a/b", "ok-id"]
+        def input = [chooseOrType: { String message, List<String> options, String defaultValue ->
+            messages << message
+            answers.removeAt(0)
+        }] as UserInput
+
+        def result = VariablesExport.askForVariableStructureId(input, ["existing"], "default-1")
+
+        Assertions.assertEquals("ok-id", result)
+        Assertions.assertEquals(2, messages.size())
+        Assertions.assertFalse(messages[0].contains("Invalid id."))
+        Assertions.assertTrue(messages[1].startsWith("Invalid id. Please avoid using these characters"))
     }
 }

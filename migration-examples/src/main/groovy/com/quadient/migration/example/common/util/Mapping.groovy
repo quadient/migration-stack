@@ -7,7 +7,6 @@ import com.quadient.migration.api.repository.MappingRepository
 import org.slf4j.Logger
 
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
 
@@ -34,87 +33,62 @@ static String namePrefix(String projectName, String subProjectId) {
     return subProjectId ? "${projectName}-${subProjectId}" : projectName
 }
 
-Path getVariablesMappingPath(String[] args, String projectName, String subProjectId) {
-    def variablesMappingDir = Paths.get("mapping").toFile()
-    def csvFiles = variablesMappingDir.listFiles()?.findAll {
+Path getVariablesMappingPath(Binding binding, String projectName, String subProjectId) {
+    def csvFiles = PathUtil.dataDirPath(binding, "mapping").toFile().listFiles()?.findAll {
         it.name.startsWith(variableStructureFileNamePrefix(projectName, subProjectId)) && it.name.toLowerCase().endsWith(".csv")
     } ?: []
 
     if (csvFiles.isEmpty()) {
-        println "No CSV files found in mapping with matching pattern '${variableStructureFileNamePrefix(projectName, subProjectId)}<id>.csv'."
-        System.exit(1)
+        throw new IllegalStateException("No CSV files found in mapping with matching pattern '${variableStructureFileNamePrefix(projectName, subProjectId)}<id>.csv'.")
     }
 
-    File selectedFile = null
-    def argUserInput = (getValueOfArg("--variable-structure-id", args as List<String>)).orElseGet { null }
+    def argUserInput = (getValueOfArg("--variable-structure-id", binding.variables["args"] as List<String>)).orElseGet { null }
     if (argUserInput) {
         def fileName = variableStructureFileNameFromId(argUserInput, projectName, subProjectId)
         File csvFile = csvFiles.find { (it as File).name.equalsIgnoreCase(fileName) } as File
-        if (csvFile) {
-            selectedFile = csvFile
-            println "Selected file: ${selectedFile.name}"
-        } else {
-            println "CSV file '${fileName}' not found in mapping. Please provide a valid file name."
-            System.exit(1)
+        if (!csvFile) {
+            throw new IllegalStateException("CSV file '${fileName}' not found in mapping. Please provide a valid file name.")
         }
-    } else if (csvFiles.size() == 1) {
-        selectedFile = csvFiles.first() as File
-        println "Selected file: ${selectedFile.name}"
-    } else {
-        selectedFile = promptForFileSelection(csvFiles)
+        println "Selected file: ${csvFile.name}"
+        return csvFile.toPath()
     }
 
-    return selectedFile.toPath()
+    return selectFile(UserInput.from(binding), "Select the variable structure CSV file to import", csvFiles).toPath()
 }
 
-Path getLayoutMappingPath(String projectName, String subProjectId) {
-    def mappingDir = Paths.get("mapping").toFile()
+Path getLayoutMappingPath(Binding binding, String projectName, String subProjectId) {
     def pattern = layoutFileNamePattern(projectName, subProjectId)
-    def csvFiles = mappingDir.listFiles()?.findAll {
+    def csvFiles = PathUtil.dataDirPath(binding, "mapping").toFile().listFiles()?.findAll {
         it.name.toLowerCase().contains(pattern) && it.name.toLowerCase().endsWith(".csv")
     } ?: []
 
     if (csvFiles.isEmpty()) {
-        println "No CSV files found in mapping with matching pattern '*${pattern}*.csv'."
-        System.exit(1)
+        throw new IllegalStateException("No CSV files found in mapping with matching pattern '*${pattern}*.csv'.")
     }
 
-    File selectedFile
-    if (csvFiles.size() == 1) {
-        selectedFile = csvFiles.first() as File
-        println "Selected file: ${selectedFile.name}"
-    } else {
-        selectedFile = promptForFileSelection(csvFiles)
-    }
-
-    return selectedFile.toPath()
+    return selectFile(UserInput.from(binding), "Select the layout CSV file to import", csvFiles).toPath()
 }
 
 static String layoutFileNamePattern(String projectName, String subProjectId) {
     return "${namePrefix(projectName, subProjectId)}-layout".toLowerCase()
 }
 
-private static File promptForFileSelection(List<File> csvFiles) {
-    println "Available CSV files for import:"
-    csvFiles.eachWithIndex { file, i -> println "${i + 1}) ${file.name}" }
-    println "Select a number of the CSV file to import:"
-
-    while (true) {
-        def userInput = System.in.newReader().readLine().trim()
-        if (userInput.isInteger()) {
-            def idx = userInput.toInteger() - 1
-            if (idx >= 0 && idx < csvFiles.size()) {
-                def selectedFile = csvFiles[idx]
-                println "Selected file: ${selectedFile.name}"
-                return selectedFile
-            }
-        }
-        println "Invalid selection. Please enter a valid number:"
+private static File selectFile(UserInput input, String message, List<File> csvFiles) {
+    def selectedFile = csvFiles.first()
+    if (csvFiles.size() > 1) {
+        def selectedName = input.choose(message, csvFiles*.name)
+        selectedFile = csvFiles.find { it.name == selectedName }
     }
+    println "Selected file: ${selectedFile.name}"
+    return selectedFile
 }
 
 static String variableStructureFileNamePrefix(String projectName, String subProjectId) {
     return "${namePrefix(projectName, subProjectId)}-variable-structure-"
+}
+
+static Path variableStructureCsvPath(Binding binding, String id, String projectName, String subProjectId) {
+    return PathUtil.dataDirPath(binding, "mapping", variableStructureFileNameFromId(id, projectName, subProjectId))
 }
 
 static String variableStructureFileNameFromId(String id, String projectName, String subProjectId) {

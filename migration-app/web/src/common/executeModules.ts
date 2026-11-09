@@ -1,4 +1,6 @@
 import type { Job, RunStatus } from "@/types/job.ts";
+import type { InputRequest } from "@/types/inputRequest.ts";
+import { clearInputRequest, showInputRequest } from "@/common/inputRequests.ts";
 
 type SetJobs = (value: ((prev: Job[]) => Job[]) | Job[]) => void;
 
@@ -11,11 +13,12 @@ type Marker = {
     jobId: string;
     moduleId: string | undefined;
     runId: string | undefined;
-    result: "running" | "success" | "error";
+    result: "running" | "success" | "error" | "input";
+    request: string | undefined;
 };
 
 const MARKER_PATTERN =
-    /^id=([0-9a-f-]{36});(?:moduleId=([^;]+);)?(?:runId=([0-9a-f-]{36});)?result=(running|success|error)/;
+    /^id=([0-9a-f-]{36});(?:moduleId=([^;]+);)?(?:runId=([0-9a-f-]{36});)?result=(running|success|error|input)(?:;request=(.*))?/;
 
 export async function executeModules(
     moduleIds: string[],
@@ -54,7 +57,13 @@ export async function executeModules(
                 };
                 setJobs((prev) => [...prev, newJob]);
                 onJobStarted?.(index, newJob);
+            } else if (currentJobId && marker?.jobId === currentJobId && marker.result === "input") {
+                if (marker.request) {
+                    const request = JSON.parse(marker.request) as Omit<InputRequest, "jobId">;
+                    showInputRequest({ ...request, jobId: currentJobId });
+                }
             } else if (currentJobId && marker?.jobId === currentJobId) {
+                clearInputRequest();
                 const jobId = currentJobId;
                 const status: RunStatus = marker.result === "success" ? "SUCCESS" : "ERROR";
                 setJobs((prev) =>
@@ -79,7 +88,13 @@ function parseMarker(line: string): Marker | undefined {
     if (!match) {
         return undefined;
     }
-    return { jobId: match[1], moduleId: match[2], runId: match[3], result: match[4] as Marker["result"] };
+    return {
+        jobId: match[1],
+        moduleId: match[2],
+        runId: match[3],
+        result: match[4] as Marker["result"],
+        request: match[5],
+    };
 }
 
 async function* readLines(stream: ReadableStream<Uint8Array>) {

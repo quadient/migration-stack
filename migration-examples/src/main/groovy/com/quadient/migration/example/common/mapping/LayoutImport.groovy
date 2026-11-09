@@ -2,7 +2,6 @@
 //! displayName: Import Layout
 //! category: Mapping
 //! description: Imports areas with modified interactive flow names to their respective pages and templates. The import is interactive, prompting the user to select the layout CSV to import if more than one matching file is found.
-//! target: gradle
 //! stdin: true
 //! ---
 package com.quadient.migration.example.common.mapping
@@ -27,7 +26,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 @Field static Logger log = LoggerFactory.getLogger(this.class.name)
 
 def migration = initMigration(this.binding)
-def areasFile = new Mapping().getLayoutMappingPath(migration.projectConfig.name, migration.projectConfig.subProjectId)
+def areasFile = new Mapping().getLayoutMappingPath(this.binding, migration.projectConfig.name, migration.projectConfig.subProjectId)
 
 run(migration, areasFile)
 

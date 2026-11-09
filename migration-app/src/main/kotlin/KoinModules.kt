@@ -3,6 +3,7 @@ package com.quadient.migration
 import com.quadient.migration.logging.Logging
 import com.quadient.migration.service.FileStorageService
 import com.quadient.migration.service.GroovyService
+import com.quadient.migration.service.PendingAnswers
 import com.quadient.migration.service.ScriptDiscoveryService
 import com.quadient.migration.service.ScriptJobService
 import com.quadient.migration.service.SettingsService
@@ -18,4 +19,5 @@ fun appModules(config: ApplicationConfig) = module {
     singleOf(::Logging)
     singleOf(::ScriptJobService)
     singleOf(::FileStorageService)
+    singleOf(::PendingAnswers)
 }

@@ -2,7 +2,6 @@
 //! displayName: Export Variables
 //! category: Mapping
 //! description: Creates a CSV report with variable structure from the migration project. The export is interactive, prompting the user to select or enter a variable structure to export.
-//! target: gradle
 //! stdin: true
 //! ---
 package com.quadient.migration.example.common.mapping
@@ -12,71 +11,38 @@ import com.quadient.migration.api.dto.migrationmodel.Variable
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.example.common.util.Csv
 import com.quadient.migration.example.common.util.Mapping
+import com.quadient.migration.example.common.util.UserInput
 import com.quadient.migration.shared.LiteralPath
 import com.quadient.migration.shared.VariableRefPath
 
+import groovy.transform.Field
+
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 import static com.quadient.migration.example.common.util.ScriptArgs.getValueOfArg
+
+@Field static final String FORBIDDEN_ID_CHARS = /[\\\/:\*\?"<>\|]/
+@Field static final String INVALID_ID_MESSAGE = "Invalid id. Please avoid using these characters: \\ / : * ? \" < > |"
 
 def migration = initMigration(this.binding)
 
 def argUserInput = (getValueOfArg("--variable-structure-id", this.binding.variables["args"] as List<String>)).orElseGet { null }
 
-def forbiddenChars = /[\\\/:\*\?"<>\|]/
-
 def variableStructures = migration.variableStructureRepository.listAll()
-def defaultVariableId = constructDefaultId(variableStructures)
 
-if (!argUserInput) {
-    if (variableStructures.isEmpty()) {
-        println "No existing variable structures found."
-        println "Type an id of new variable structure (leave empty for: ${defaultVariableId}):"
-    } else {
-        println "Existing variable structures for export:"
-        variableStructures.eachWithIndex { variableStructure, i -> println "${i + 1}) ${variableStructure.id}" }
-        println "Either select a number of an existing variable structure, or type an id for a new variable structure (leave empty for: ${defaultVariableId}):"
-    }
+def variableStructureId = argUserInput
+if (variableStructureId && variableStructureId =~ FORBIDDEN_ID_CHARS) {
+    throw new IllegalArgumentException(INVALID_ID_MESSAGE)
 }
-
-def variableStructureId
-def selectedVariableStructure
-def userInput
-
-while (true) {
-    userInput = argUserInput ?: System.in.newReader().readLine().trim()
-    if (!userInput) {
-        variableStructureId = defaultVariableId
-        println "No input provided. Generated new variable structure : $variableStructureId"
-        break
-    } else if (userInput.isInteger()) {
-        def i = userInput.toInteger() - 1
-        if (i < 0 || i >= variableStructures.size()) {
-            println "Invalid selection. Please enter a valid number:"
-            continue
-        }
-        selectedVariableStructure = variableStructures[i]
-        variableStructureId = selectedVariableStructure.id
-        println "Selected variable structure: $variableStructureId"
-        break
-    } else {
-        if (userInput =~ forbiddenChars) {
-            println "Invalid id. Please avoid using these characters: \\ / : * ? \" < > |"
-            continue
-        }
-        variableStructureId = userInput
-        break
-    }
+if (!variableStructureId) {
+    variableStructureId = askForVariableStructureId(UserInput.from(this.binding), variableStructures*.id, constructDefaultId(variableStructures))
 }
+println "Selected variable structure: $variableStructureId"
 
-def fileName = Mapping.variableStructureFileNameFromId(variableStructureId, migration.projectConfig.name, migration.projectConfig.subProjectId)
-def exportFile = Paths.get("mapping", fileName)
+def exportFile = Mapping.variableStructureCsvPath(this.binding, variableStructureId, migration.projectConfig.name, migration.projectConfig.subProjectId)
 
-def file = exportFile.toFile()
-
-run(migration, file.toPath())
+run(migration, exportFile)
 
 static void run(Migration migration, Path filePath) {
     List<Variable> variables = Mapping.collectSelectedOrAll(migration, Variable) { migration.variableRepository.listAll() }
@@ -116,6 +82,15 @@ static String serializeVariablePath(path) {
     if (path instanceof VariableRefPath) return "\$${path.variableId}"
     if (path instanceof LiteralPath) return path.path
     return path.toString()
+}
+
+static String askForVariableStructureId(UserInput input, List<String> existingIds, String defaultId) {
+    def question = "Select an existing variable structure or type an id for a new one"
+    def answer = input.chooseOrType(question, existingIds, defaultId)
+    while (answer =~ FORBIDDEN_ID_CHARS) {
+        answer = input.chooseOrType("$INVALID_ID_MESSAGE\n$question", existingIds, defaultId)
+    }
+    return answer
 }
 
 static String constructDefaultId(List<VariableStructure> variableStructures) {

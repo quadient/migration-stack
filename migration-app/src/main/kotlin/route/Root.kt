@@ -122,10 +122,10 @@ private suspend fun Application.tryBuildFe(call: RoutingCall): Error? {
 }
 
 private fun RoutingRequest.toStaticFile(feDir: String) = File(
-    if (this.uri == "/") {
+    if (this.path() == "/") {
         "$feDir/index.html"
     } else {
-        "$feDir${this.uri}"
+        "$feDir${this.path()}"
     }
 )
 

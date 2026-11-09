@@ -8,13 +8,13 @@ package com.quadient.migration.example.docx.report
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.example.common.util.Csv
+import com.quadient.migration.example.common.util.PathUtil
 import java.nio.file.Path
-import java.nio.file.Paths
 
 import static com.quadient.migration.example.common.util.InitMigration.initMigration
 
 def migration = initMigration(this.binding)
-Path dstFile = Paths.get("report", "${migration.projectConfig.name}-docx-complexity-report.csv")
+Path dstFile = PathUtil.dataDirPath(this.binding, "report", "${migration.projectConfig.name}-docx-complexity-report.csv")
 
 run(migration, dstFile)
 

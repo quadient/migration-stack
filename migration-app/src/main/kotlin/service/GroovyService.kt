@@ -13,12 +13,21 @@ import java.io.File
 import java.io.Writer
 
 class GroovyService(val fileStorageService: FileStorageService, val config: ApplicationConfig) {
-    suspend fun dispatchScript(script: ScriptMetadata, settings: Settings, args: List<String> = emptyList()) =
-        withContext(Dispatchers.IO) {
-            runScript(script, settings, args)
-        }
+    suspend fun dispatchScript(
+        script: ScriptMetadata,
+        settings: Settings,
+        args: List<String> = emptyList(),
+        input: Any? = null,
+    ) = withContext(Dispatchers.IO) {
+        runScript(script, settings, args, input)
+    }
 
-    fun runScript(script: ScriptMetadata, settings: Settings, args: List<String> = emptyList()): RunScriptResult {
+    fun runScript(
+        script: ScriptMetadata,
+        settings: Settings,
+        args: List<String> = emptyList(),
+        input: Any? = null,
+    ): RunScriptResult {
         return try {
             log.debug("Running script: ${script.path}")
             val migration = Migration(settings.migrationConfig, settings.projectConfig)
@@ -28,6 +37,9 @@ class GroovyService(val fileStorageService: FileStorageService, val config: Appl
             binding.setVariable("args", args.toTypedArray())
             binding.setVariable("out", LogWriter())
             binding.setVariable("DATA_DIR", fileStorageService.getStoragePath(StorageType.Modules).toString())
+            if (input != null) {
+                binding.setVariable("input", input)
+            }
 
             val path = File(script.path)
 

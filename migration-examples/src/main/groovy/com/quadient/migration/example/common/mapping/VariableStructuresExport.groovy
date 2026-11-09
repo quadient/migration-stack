@@ -2,7 +2,6 @@
 //! displayName: Export Variable Structures
 //! category: Mapping
 //! description: Creates a CSV file with variable structure details (name and target folder of the deployed data definition) from the migration project. The generated CSV columns can be updated and later imported back into the database using a dedicated import task.
-//! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping
 

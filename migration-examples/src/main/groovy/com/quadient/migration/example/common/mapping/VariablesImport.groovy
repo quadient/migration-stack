@@ -2,7 +2,6 @@
 //! displayName: Import Variables
 //! category: Mapping
 //! description: Imports variable structure from specified CSV files. The import is interactive, prompting the user to select variable structure CSV to import.
-//! target: gradle
 //! stdin: true
 //! ---
 package com.quadient.migration.example.common.mapping
@@ -30,7 +29,7 @@ import static com.quadient.migration.example.common.util.InitMigration.initMigra
 
 def migration = initMigration(this.binding)
 
-def selectedFilePath = new Mapping().getVariablesMappingPath(this.binding.variables["args"], migration.projectConfig.name, migration.projectConfig.subProjectId)
+def selectedFilePath = new Mapping().getVariablesMappingPath(this.binding, migration.projectConfig.name, migration.projectConfig.subProjectId)
 run(migration, selectedFilePath)
 
 static void run(Migration migration, Path path) {

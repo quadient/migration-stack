@@ -2,7 +2,6 @@
 //! displayName: Import Tables
 //! category: Mapping
 //! description: Import table mapping from CSV. Computes and stores fingerprints, then applies pdfTaggingRule and pdfAlternateText changes. Fingerprint mismatches are logged as errors and skipped.
-//! target: gradle
 //! ---
 package com.quadient.migration.example.common.mapping
 

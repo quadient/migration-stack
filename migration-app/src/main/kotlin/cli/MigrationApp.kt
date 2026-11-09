@@ -11,6 +11,7 @@ import io.ktor.server.config.ApplicationConfig
 import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.config.mergeWith
 import io.ktor.server.netty.EngineMain
+import java.io.InputStream
 import org.koin.core.Koin
 import org.koin.dsl.koinApplication
 
@@ -42,7 +43,12 @@ class MigrationApp : SuspendingCliktCommand(name = "migration-app") {
 }
 
 internal fun startServer(cli: CliContext, port: Int? = null) {
+    detachServerStdin()
     val ktorArgs = listOfNotNull("-config=${cli.configPath}", port?.let { "-port=$it" }) +
         cli.configOverrides.map { (key, value) -> "-P:$key=$value" }
     EngineMain.main(ktorArgs.toTypedArray())
+}
+
+internal fun detachServerStdin() {
+    System.setIn(InputStream.nullInputStream())
 }

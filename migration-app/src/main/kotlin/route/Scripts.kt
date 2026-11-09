@@ -1,5 +1,6 @@
 package com.quadient.migration.route
 
+import com.quadient.migration.getScriptInputTimeout
 import com.quadient.migration.logging.Logging
 import com.quadient.migration.service.*
 import com.quadient.migration.tryWriteLine
@@ -20,6 +21,8 @@ fun Application.scriptsModule() {
     val groovyService by inject<GroovyService>()
     val scriptJobService by inject<ScriptJobService>()
     val logging by inject<Logging>()
+    val pendingAnswers by inject<PendingAnswers>()
+    val inputTimeout = environment.config.getScriptInputTimeout()
 
     val semaphore = Semaphore(1)
 
@@ -45,11 +48,6 @@ fun Application.scriptsModule() {
                         }
                     }
 
-                    stdinNotSupportedError(queue)?.let {
-                        call.respondText(it, status = HttpStatusCode.BadRequest)
-                        return@post
-                    }
-
                     semaphore.withPermitOrElse(onUnavailable = {
                         call.respondText(
                             "Another script module is currently running, please try again later.",
@@ -66,11 +64,14 @@ fun Application.scriptsModule() {
                                 val job = scriptJobService.create(script.id, runId)
                                 writer.tryWriteLine("id=${job.id};moduleId=${script.id};runId=$runId;result=running")
 
+                                val input = AppUserInput(job.id, pendingAnswers, inputTimeout) {
+                                    writer.tryWriteLine(it.toStreamMarker(job.id))
+                                }
                                 val result = logging.capture(script.id.toString(), {
                                     job.appendLog(it)
                                     writer.tryWriteLine(it)
                                 }) {
-                                    groovyService.dispatchScript(script, settingsService.getSettings())
+                                    groovyService.dispatchScript(script, settingsService.getSettings(), input = input)
                                 }
 
                                 when (result) {

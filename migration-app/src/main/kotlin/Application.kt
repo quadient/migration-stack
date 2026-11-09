@@ -4,6 +4,7 @@ import com.github.ajalt.clikt.command.main
 import com.quadient.migration.api.Migration
 import com.quadient.migration.cli.migrationApp
 import com.quadient.migration.dto.StatisticsResponse
+import com.quadient.migration.route.jobInputModule
 import com.quadient.migration.route.jobModule
 import com.quadient.migration.route.rootModule
 import com.quadient.migration.route.scriptsModule
@@ -71,6 +72,7 @@ fun Application.module() {
     }
 
     jobModule()
+    jobInputModule()
     scriptsModule()
     rootModule()
 
