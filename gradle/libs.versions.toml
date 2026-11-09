@@ -1,11 +1,11 @@
 [versions]
 # common
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 koin = "4.2.2"
-koin-compiler-plugin = "1.2.1"
+koin-compiler-plugin = "1.2.3"
 slf4j = "2.0.20"
-logback = "1.6.5"
-jackson = "3.2.3"
+logback = "1.6.6"
+jackson = "3.3.0"
 junit-jupiter = "6.1.3"
 testcontainers = "2.0.5"
 mockito = "5.24.0"
@@ -14,25 +14,25 @@ kotlinx-datetime = "0.8.0"
 owasp-dependencycheck = "13.0.0"
 
 # library
-postgres = "42.7.13"
-flyway = "13.9.0"
-exposed = "1.5.0"
-kotlinx-serialization = "1.11.0"
+postgres = "42.7.14"
+flyway = "13.12.1"
+exposed = "1.6.1"
+kotlinx-serialization = "1.12.0"
 ktoml = "0.7.1"
-mockk = "1.14.11"
-okhttp = "5.5.0"
+mockk = "1.14.12"
+okhttp = "5.5.1"
 
 # app
 koin-ktor = "4.2.2"
-ktor = "3.6.0"
+ktor = "3.6.1"
 stately = "2.1.0"
-clikt = "5.0.1"
+clikt = "5.1.0"
 
 # examples
-poi-ooxml = "5.5.1"
+poi-ooxml = "6.0.0"
 
 # wfd-xml
-spock = "2.4-groovy-5.0"
+spock = "2.5-groovy-6.0"
 xmlunit = "2.14.0"
 cglib = "3.3.0"
 release = "3.2.0"
