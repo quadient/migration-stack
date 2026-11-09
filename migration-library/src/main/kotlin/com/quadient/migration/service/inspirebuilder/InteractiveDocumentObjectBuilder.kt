@@ -6,6 +6,7 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
+import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.BaseTemplateRepository
@@ -196,8 +197,21 @@ class InteractiveDocumentObjectBuilder(
             }
         }
 
+        addLanguageFallbackFlowIfMissing(layout, variableStructure, languages)
+
         logger.debug("Successfully built document object '${documentObject.nameOrId()}'")
         return builder.buildLayoutDelta()
+    }
+
+    private fun addLanguageFallbackFlowIfMissing(layout: Layout, variableStructure: VariableStructure, languages: List<String>) {
+        if (languages.none { it != projectConfig.defaultLanguage }) return
+        if (hasFlowOfType(layout, Flow.Type.SELECT_BY_LANGUAGE)) return
+
+        buildSelectByLanguage(layout, variableStructure, SelectByLanguage(emptyList()), LANGUAGE_FALLBACK_FLOW_NAME, languages)
+    }
+
+    companion object {
+        const val LANGUAGE_FALLBACK_FLOW_NAME = "LanguageFallbackFlow"
     }
 
     override fun buildDocumentObjectRef(
