@@ -1648,7 +1648,7 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
-    fun `languages used only in external document objects are registered by unreferenced language fallback flow`() {
+    fun `languages used only in external document objects are registered by language fallback flow in main flow`() {
         // given
         val externalBlock = DocumentObjectBuilder("external", Block)
             .selectByLanguage {
@@ -1675,8 +1675,8 @@ class InteractiveDocumentObjectBuilderTest {
         }
         languageFlow["Default"].stringValue().shouldBeEqualTo(cases["en_us"])
 
-        val otherFlowsContent = flows.filter { it["Id"].stringValue() != languageFlowId }.joinToString { it.toString() }
-        otherFlowsContent.contains("\"$languageFlowId\"").shouldBeEqualTo(false)
+        val mainFlowContent = flows.last { it["Id"].stringValue() == "Def.MainFlow" }.toString()
+        mainFlowContent.contains("\"$languageFlowId\"").shouldBeEqualTo(true)
     }
 
     @Test

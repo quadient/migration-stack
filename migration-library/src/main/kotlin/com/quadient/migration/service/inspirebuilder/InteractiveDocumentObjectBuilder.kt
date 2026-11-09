@@ -24,6 +24,7 @@ import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Flow.WebEditingType.SECTION
 import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
+import com.quadient.wfdxml.api.layoutnodes.flow.Text as WfdXmlText
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
@@ -173,10 +174,12 @@ class InteractiveDocumentObjectBuilder(
             variableStructureBuilder.addEmailMetadataToPages(layout, usedEmailModel, variableStructure)
         }
 
+        val interactiveFlowTexts = mutableMapOf<String, WfdXmlText>()
         interactiveFlowsWithContent.forEach {
             val interactiveFlowText =
                 layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).setWebEditingType(SECTION)
                     .addParagraph().addText()
+            interactiveFlowTexts[it.key] = interactiveFlowText
 
             val flowName = if (hasMultipleFlows && it.key != mainFlowId) {
                 val interactiveFlowName =
@@ -197,17 +200,23 @@ class InteractiveDocumentObjectBuilder(
             }
         }
 
-        addLanguageFallbackFlowIfMissing(layout, variableStructure, languages)
+        buildLanguageFallbackFlowIfMissing(layout, variableStructure, languages)?.let { fallbackFlow ->
+            (interactiveFlowTexts[mainFlowId] ?: interactiveFlowTexts.values.firstOrNull())?.appendFlow(fallbackFlow)
+        }
 
         logger.debug("Successfully built document object '${documentObject.nameOrId()}'")
         return builder.buildLayoutDelta()
     }
 
-    private fun addLanguageFallbackFlowIfMissing(layout: Layout, variableStructure: VariableStructure, languages: List<String>) {
-        if (languages.none { it != projectConfig.defaultLanguage }) return
-        if (hasFlowOfType(layout, Flow.Type.SELECT_BY_LANGUAGE)) return
+    private fun buildLanguageFallbackFlowIfMissing(
+        layout: Layout, variableStructure: VariableStructure, languages: List<String>
+    ): Flow? {
+        if (languages.none { it != projectConfig.defaultLanguage }) return null
+        if (hasFlowOfType(layout, Flow.Type.SELECT_BY_LANGUAGE)) return null
 
-        buildSelectByLanguage(layout, variableStructure, SelectByLanguage(emptyList()), LANGUAGE_FALLBACK_FLOW_NAME, languages)
+        return buildSelectByLanguage(
+            layout, variableStructure, SelectByLanguage(emptyList()), LANGUAGE_FALLBACK_FLOW_NAME, languages
+        )
     }
 
     companion object {
