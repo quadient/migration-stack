@@ -34,6 +34,7 @@ import com.quadient.migration.service.deploy.utility.DeploymentError
 import com.quadient.migration.service.deploy.utility.DeploymentResult
 import com.quadient.migration.service.deploy.utility.MetadataValidatorImpl
 import com.quadient.migration.service.deploy.utility.FileNameValidator
+import com.quadient.migration.service.deploy.utility.JldLanguages
 import com.quadient.migration.service.deploy.utility.PostProcessImpl
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.service.deploy.utility.ResultTracker
@@ -173,14 +174,55 @@ open class InteractiveDeployClient(
     }
 
     override fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult {
+        val baseTemplate = resourcePathProvider.getBaseTemplateFullPath(obj.baseTemplate, baseTemplateRepository::findOrFail)
         val runCommandType = obj.type.toRunCommandType()
-        return ipsService.deployJld(
-            baseTemplate = resourcePathProvider.getBaseTemplateFullPath(obj.baseTemplate,baseTemplateRepository::findOrFail),
-            type = runCommandType,
-            moduleName = "DocumentLayout",
-            xmlContent = wfdXml,
-            outputPath = targetPath
-        )
+
+        val languages = documentObjectBuilder.collectLanguages(obj)
+        if (languages.none { it != projectConfig.defaultLanguage }) {
+            return ipsService.deployJld(
+                baseTemplate = baseTemplate,
+                type = runCommandType,
+                moduleName = "DocumentLayout",
+                xmlContent = wfdXml,
+                outputPath = targetPath
+            )
+        }
+
+        return deployJldWithLanguages(baseTemplate, runCommandType, wfdXml, targetPath, languages)
+    }
+
+    /**
+     * Extracts the JLD to IPS memory, registers [languages] in it (see [JldLanguages]) and uploads it to [targetPath].
+     */
+    private fun deployJldWithLanguages(
+        baseTemplate: IcmPath, runCommandType: String, wfdXml: String, targetPath: IcmPath, languages: List<String>
+    ): OperationResult {
+        val memoryLocation = "memory://${Uuid.random()}"
+        try {
+            val deployResult = ipsService.deployJld(
+                baseTemplate = baseTemplate,
+                type = runCommandType,
+                moduleName = "DocumentLayout",
+                xmlContent = wfdXml,
+                outputPath = memoryLocation
+            )
+            if (deployResult is OperationResult.Failure) {
+                return deployResult
+            }
+
+            val jld = runCatching { ipsService.download(memoryLocation).toString(Charsets.UTF_8) }.getOrElse {
+                return OperationResult.Failure("Failed to download extracted JLD from '$memoryLocation': ${it.message}")
+            }
+            val jldWithLanguages = runCatching { JldLanguages.addLanguages(jld, languages) }.getOrElse {
+                return OperationResult.Failure("Failed to register languages $languages in JLD for '$targetPath': ${it.message}")
+            }
+
+            return ipsService.tryUpload(targetPath, jldWithLanguages.toByteArray(Charsets.UTF_8))
+        } finally {
+            runCatching { ipsService.delete(memoryLocation) }.onFailure {
+                logger.error("Failed to delete extracted JLD from '$memoryLocation': ${it.message}")
+            }
+        }
     }
 
     override fun uploadImage(img: Image, targetPath: IcmPath, data: ByteArray): OperationResult {

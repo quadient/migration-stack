@@ -174,12 +174,13 @@ class InteractiveDocumentObjectBuilder(
             variableStructureBuilder.addEmailMetadataToPages(layout, usedEmailModel, variableStructure)
         }
 
-        val interactiveFlowTexts = mutableMapOf<String, WfdXmlText>()
+        // Language fallback flow approach, replaced by registering languages in the deployed JLD (see JldLanguages).
+        // val interactiveFlowTexts = mutableMapOf<String, WfdXmlText>()
         interactiveFlowsWithContent.forEach {
             val interactiveFlowText =
                 layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).setWebEditingType(SECTION)
                     .addParagraph().addText()
-            interactiveFlowTexts[it.key] = interactiveFlowText
+            // interactiveFlowTexts[it.key] = interactiveFlowText
 
             val flowName = if (hasMultipleFlows && it.key != mainFlowId) {
                 val interactiveFlowName =
@@ -200,28 +201,28 @@ class InteractiveDocumentObjectBuilder(
             }
         }
 
-        buildLanguageFallbackFlowIfMissing(layout, variableStructure, languages)?.let { fallbackFlow ->
-            (interactiveFlowTexts[mainFlowId] ?: interactiveFlowTexts.values.firstOrNull())?.appendFlow(fallbackFlow)
-        }
+        // buildLanguageFallbackFlowIfMissing(layout, variableStructure, languages)?.let { fallbackFlow ->
+        //     (interactiveFlowTexts[mainFlowId] ?: interactiveFlowTexts.values.firstOrNull())?.appendFlow(fallbackFlow)
+        // }
 
         logger.debug("Successfully built document object '${documentObject.nameOrId()}'")
         return builder.buildLayoutDelta()
     }
 
-    private fun buildLanguageFallbackFlowIfMissing(
-        layout: Layout, variableStructure: VariableStructure, languages: List<String>
-    ): Flow? {
-        if (languages.none { it != projectConfig.defaultLanguage }) return null
-        if (hasFlowOfType(layout, Flow.Type.SELECT_BY_LANGUAGE)) return null
-
-        return buildSelectByLanguage(
-            layout, variableStructure, SelectByLanguage(emptyList()), LANGUAGE_FALLBACK_FLOW_NAME, languages
-        )
-    }
-
-    companion object {
-        const val LANGUAGE_FALLBACK_FLOW_NAME = "LanguageFallbackFlow"
-    }
+    // private fun buildLanguageFallbackFlowIfMissing(
+    //     layout: Layout, variableStructure: VariableStructure, languages: List<String>
+    // ): Flow? {
+    //     if (languages.none { it != projectConfig.defaultLanguage }) return null
+    //     if (hasFlowOfType(layout, Flow.Type.SELECT_BY_LANGUAGE)) return null
+    //
+    //     return buildSelectByLanguage(
+    //         layout, variableStructure, SelectByLanguage(emptyList()), LANGUAGE_FALLBACK_FLOW_NAME, languages
+    //     )
+    // }
+    //
+    // companion object {
+    //     const val LANGUAGE_FALLBACK_FLOW_NAME = "LanguageFallbackFlow"
+    // }
 
     override fun buildDocumentObjectRef(
         documentModel: DocumentObject,

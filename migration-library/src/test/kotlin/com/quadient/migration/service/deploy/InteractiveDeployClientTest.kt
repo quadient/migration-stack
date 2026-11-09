@@ -89,6 +89,7 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
+import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
 import kotlin.time.Clock
@@ -167,6 +168,7 @@ class InteractiveDeployClientTest {
             val documentObject = firstArg<DocumentObject>()
             (documentObject.internal ?: false) || documentObject.type == DocumentObjectType.Page
         }
+        every { documentObjectBuilder.collectLanguages(any()) } returns emptyList()
         every { ipsService.writeMetadata(any()) } just runs
         every { ipsService.setProductionApprovalState(any<List<IcmPath>>()) } returns OperationResult.Success
         every { documentObjectRepository.find(any()) } returns null
@@ -962,6 +964,50 @@ class InteractiveDeployClientTest {
         result.errors.shouldBeEqualTo(listOf(DeploymentError("B_2", "Not found"), DeploymentError("B_1", "Inner block not found")))
 
         verify(exactly = 1) { ipsService.deployJld(any<IcmPath>(), any(), any(), any(), "icm://${template.nameOrId()}".toIcmPath()) }
+    }
+
+    @Test
+    fun `document object using non-default languages has them registered in the uploaded jld`() {
+        // given
+        val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template).build()
+        val targetPath = "icm://T_1.jld".toIcmPath()
+        val memoryLocation = slot<String>()
+        val uploadedJld = slot<ByteArray>()
+        every { documentObjectBuilder.collectLanguages(template) } returns listOf("en_us", "es")
+        every { ipsService.deployJld(any<IcmPath>(), any(), any(), any(), capture(memoryLocation)) } returns OperationResult.Success
+        every { ipsService.download(any<String>()) } returns
+            """{"InteractivePlusJsonDefinition":{"CustomProperties":{"Languages":["en_us"]}}}""".toByteArray()
+        every { ipsService.delete(any<String>()) } returns true
+        every { ipsService.tryUpload(targetPath, capture(uploadedJld)) } returns OperationResult.Success
+
+        // when
+        val result = subject().uploadDocumentObject(template, targetPath, "<xml/>")
+
+        // then
+        result.shouldBeEqualTo(OperationResult.Success)
+        memoryLocation.captured.startsWith("memory://").shouldBeEqualTo(true)
+        verify(exactly = 1) { ipsService.download(memoryLocation.captured) }
+        verify(exactly = 1) { ipsService.delete(memoryLocation.captured) }
+        uploadedJld.captured.toString(Charsets.UTF_8).shouldBeEqualTo(
+            """{"InteractivePlusJsonDefinition":{"CustomProperties":{"Languages":["en_us","es"]}}}"""
+        )
+    }
+
+    @Test
+    fun `document object using only default language is extracted directly to target path`() {
+        // given
+        val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template).build()
+        val targetPath = "icm://T_1.jld".toIcmPath()
+        every { documentObjectBuilder.collectLanguages(template) } returns listOf("en_us")
+        every { ipsService.deployJld(any<IcmPath>(), any(), any(), any(), targetPath) } returns OperationResult.Success
+
+        // when
+        val result = subject().uploadDocumentObject(template, targetPath, "<xml/>")
+
+        // then
+        result.shouldBeEqualTo(OperationResult.Success)
+        verify(exactly = 0) { ipsService.download(any<String>()) }
+        verify(exactly = 0) { ipsService.tryUpload(any<IcmPath>(), any()) }
     }
 
     @Test

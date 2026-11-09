@@ -141,7 +141,7 @@ abstract class InspireDocumentObjectBuilder(
 
     abstract fun shouldIncludeInternalDependency(documentObject: DocumentObject): Boolean
 
-    protected fun collectLanguages(documentObject: DocumentObject): List<String> {
+    fun collectLanguages(documentObject: DocumentObject): List<String> {
         val languages = mutableSetOf<String>()
         val visitedDocumentObjectIds = mutableSetOf(documentObject.id)
 

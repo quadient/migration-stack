@@ -1647,6 +1647,7 @@ class InteractiveDocumentObjectBuilderTest {
         languageFlow["Condition"].toList().map { it["Value"].stringValue() }.shouldBeEqualTo(listOf("en_us", "de", "fr"))
     }
 
+    /* Language fallback flow approach, replaced by registering languages in the deployed JLD (see JldLanguagesTest).
     @Test
     fun `languages used only in external document objects are registered by language fallback flow in main flow`() {
         // given
@@ -1714,6 +1715,7 @@ class InteractiveDocumentObjectBuilderTest {
         // then
         result["Flow"].none { it["Type"]?.stringValue() == "Language" }.shouldBeEqualTo(true)
     }
+    */
 
     @Test
     fun `does not allow snippets with content other than variable string content`() {
