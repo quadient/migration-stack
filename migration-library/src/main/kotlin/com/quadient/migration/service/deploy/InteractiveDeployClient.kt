@@ -59,6 +59,12 @@ import com.quadient.migration.shared.MetadataPrimitive
 import com.quadient.migration.shared.MetadataValue
 import com.quadient.migration.shared.toIcmPath
 import com.quadient.migration.tools.partitionByType
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.time.Clock
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -173,14 +179,46 @@ open class InteractiveDeployClient(
     }
 
     override fun uploadDocumentObject(obj: DocumentObject, targetPath: IcmPath, wfdXml: String): OperationResult {
+        val baseTemplate = resourcePathProvider.getBaseTemplateFullPath(obj.baseTemplate, baseTemplateRepository::findOrFail)
         val runCommandType = obj.type.toRunCommandType()
-        return ipsService.deployJld(
-            baseTemplate = resourcePathProvider.getBaseTemplateFullPath(obj.baseTemplate,baseTemplateRepository::findOrFail),
-            type = runCommandType,
-            moduleName = "DocumentLayout",
-            xmlContent = wfdXml,
-            outputPath = targetPath
-        )
+
+        val languages = documentObjectBuilder.collectLanguages(obj)
+        if (languages.none { it != projectConfig.defaultLanguage }) {
+            return ipsService.deployJld(
+                baseTemplate = baseTemplate,
+                type = runCommandType,
+                moduleName = "DocumentLayout",
+                xmlContent = wfdXml,
+                outputPath = targetPath
+            )
+        }
+
+        val jld = runCatching { ipsService.extractJld(baseTemplate, runCommandType, wfdXml).toString(Charsets.UTF_8) }
+            .getOrElse { return OperationResult.Failure(it.message ?: "Failed to extract JLD for '$targetPath'.") }
+        val jldWithLanguages = runCatching { addLanguagesToJld(jld, languages) }.getOrElse {
+            return OperationResult.Failure("Failed to register languages $languages in JLD for '$targetPath': ${it.message}")
+        }
+
+        return ipsService.tryUpload(targetPath, jldWithLanguages.toByteArray(Charsets.UTF_8))
+    }
+
+    internal fun addLanguagesToJld(jld: String, languages: List<String>): String {
+        val definitionKey = "InteractivePlusJsonDefinition"
+        val customPropertiesKey = "CustomProperties"
+        val languagesKey = "Languages"
+
+        val root = Json.parseToJsonElement(jld.removePrefix("﻿")).jsonObject
+        val definition = root[definitionKey] as? JsonObject
+            ?: throw IllegalArgumentException("JLD does not contain '$definitionKey'.")
+        val customProperties = definition[customPropertiesKey] as? JsonObject ?: JsonObject(emptyMap())
+
+        val registered = (customProperties[languagesKey] as? JsonArray)?.map { it.jsonPrimitive.content } ?: emptyList()
+        val merged = (registered + languages).distinct()
+        if (merged == registered) return jld
+
+        val updatedCustomProperties = JsonObject(customProperties + (languagesKey to JsonArray(merged.map(::JsonPrimitive))))
+        val updatedDefinition = JsonObject(definition + (customPropertiesKey to updatedCustomProperties))
+        return Json.encodeToString(JsonObject.serializer(), JsonObject(root + (definitionKey to updatedDefinition)))
     }
 
     override fun uploadImage(img: Image, targetPath: IcmPath, data: ByteArray): OperationResult {

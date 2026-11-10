@@ -97,6 +97,26 @@ class IpsService(private val config: IpsConfig) : Closeable, IcmClient {
         }
     }
 
+    fun extractJld(baseTemplate: IcmPath, type: String, xmlContent: String): ByteArray {
+        val memoryLocation = "memory://${UUID.randomUUID()}"
+        try {
+            val deployResult = deployJld(baseTemplate, type, "DocumentLayout", xmlContent, memoryLocation)
+            if (deployResult is OperationResult.Failure) {
+                throw IpsClientException(deployResult.message)
+            }
+
+            return try {
+                download(memoryLocation)
+            } catch (e: Exception) {
+                throw IpsClientException("Failed to download deployed JLD from '$memoryLocation': ${e.message}", e)
+            }
+        } finally {
+            runCatching { delete(memoryLocation) }.onFailure {
+                logger.error("Failed to delete deployed JLD from '$memoryLocation': ${it.message}")
+            }
+        }
+    }
+
     fun deployDataDefinition(sourceTemplatePath: IcmPath, xmlContent: String, outputPath: IcmPath): OperationResult {
         return deployJld(sourceTemplatePath.toString(), "DocumentLayout", xmlContent) { workflowId ->
             client.extractDataDefinition(workflowId, outputPath.toString())
