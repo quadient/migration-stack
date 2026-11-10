@@ -176,86 +176,66 @@ class EvolveDeployClient(
         val baseTemplatePath = resourcePathProvider.getBaseTemplateFullPath(obj.baseTemplate, baseTemplateRepository::findOrFail)
         baseTemplateCopyFailures[baseTemplatePath]?.let { return it }
 
-        val ipsMemLocation = "memory://${UUID.randomUUID()}"
-        try {
-            val runCommandType = obj.type.toRunCommandType()
-            val deployResult = ipsService.deployJld(
-                baseTemplate = baseTemplatePath,
-                type = runCommandType,
-                moduleName = "DocumentLayout",
-                xmlContent = wfdXml,
-                outputPath = ipsMemLocation
-            )
+        val jld = runCatching { ipsService.extractJld(baseTemplatePath, obj.type.toRunCommandType(), wfdXml) }.getOrElse {
+            return OperationResult.Failure(it.message ?: "Failed to extract JLD for '$targetPath'.")
+        }
 
-            if (deployResult is OperationResult.Failure) {
-                return deployResult
-            }
+        val targetFolder = obj.targetFolder?.toIcmPath()
+        if (targetFolder?.isAbsolute() == true) {
+            return OperationResult.Failure("TargetFolder '$targetFolder' for document object '${obj.id}' cannot be absolute for Evolve output")
+        }
+        val resolvedFolder = resolveTargetDir(projectConfig.defaultTargetFolder, obj.targetFolder?.toIcmPath())
 
-            val jld = runCatching { ipsService.download(ipsMemLocation) }.getOrElse {
-                return OperationResult.Failure("Failed to download deployed JLD from '$ipsMemLocation': ${it.message}")
-            }
+        return when (obj.type) {
+            DocumentObjectType.Template, DocumentObjectType.Page -> {
+                val result = caClient.createTemplateDraft(
+                    obj.nameOrId(),
+                    resolvedFolder,
+                    baseTemplatePath,
+                    jld
+                )
 
-            val targetFolder = obj.targetFolder?.toIcmPath()
-            if (targetFolder?.isAbsolute() == true) {
-                return OperationResult.Failure("TargetFolder '$targetFolder' for document object '${obj.id}' cannot be absolute for Evolve output")
-            }
-            val resolvedFolder = resolveTargetDir(projectConfig.defaultTargetFolder, obj.targetFolder?.toIcmPath())
-
-            return when (obj.type) {
-                DocumentObjectType.Template, DocumentObjectType.Page -> {
-                    val result = caClient.createTemplateDraft(
-                        obj.nameOrId(),
-                        resolvedFolder,
-                        baseTemplatePath,
-                        jld
-                    )
-
-                    if (result !is HttpResult.Success) {
-                        return result.toOperationResult()
-                    }
-
-                    val publishResult = caClient.executeAction(
-                        evolveConfig.publishTemplateActionId,
-                        result.response.draft.guid,
-                        ObjectType.TemplateDraft,
-                    )
-                    if (publishResult !is HttpResult.Success) {
-                        return publishResult.toOperationResult()
-                    }
-
-                    if (canCategorize) {
-                        obj.metadata.filterIsInstance<Categorization>().executeHttp(targetPath)
-                    } else {
-                        publishResult
-                    }.toOperationResult()
+                if (result !is HttpResult.Success) {
+                    return result.toOperationResult()
                 }
 
-                DocumentObjectType.Snippet -> OperationResult.Failure("Snippets are not currently supported in Evolve output")
-                else -> {
-                    val result = caClient.createBlockDraft(obj.nameOrId(), resolvedFolder, baseTemplatePath, jld)
-                    if (result !is HttpResult.Success) {
-                        return result.toOperationResult()
-                    }
-                    val publishResult = caClient.executeAction(
-                        evolveConfig.publishBlockActionId,
-                        result.response.draft.guid,
-                        ObjectType.BlockDraft,
-                    )
-
-                    if (publishResult !is HttpResult.Success) {
-                        return publishResult.toOperationResult()
-                    }
-
-                    if (canCategorize) {
-                        obj.metadata.filterIsInstance<Categorization>().executeHttp(targetPath)
-                    } else {
-                        publishResult
-                    }.toOperationResult()
+                val publishResult = caClient.executeAction(
+                    evolveConfig.publishTemplateActionId,
+                    result.response.draft.guid,
+                    ObjectType.TemplateDraft,
+                )
+                if (publishResult !is HttpResult.Success) {
+                    return publishResult.toOperationResult()
                 }
+
+                if (canCategorize) {
+                    obj.metadata.filterIsInstance<Categorization>().executeHttp(targetPath)
+                } else {
+                    publishResult
+                }.toOperationResult()
             }
-        } finally {
-            runCatching { ipsService.delete(ipsMemLocation) }.getOrElse {
-                logger.error("Failed to delete deployed JLD from '$ipsMemLocation': ${it.message}")
+
+            DocumentObjectType.Snippet -> OperationResult.Failure("Snippets are not currently supported in Evolve output")
+            else -> {
+                val result = caClient.createBlockDraft(obj.nameOrId(), resolvedFolder, baseTemplatePath, jld)
+                if (result !is HttpResult.Success) {
+                    return result.toOperationResult()
+                }
+                val publishResult = caClient.executeAction(
+                    evolveConfig.publishBlockActionId,
+                    result.response.draft.guid,
+                    ObjectType.BlockDraft,
+                )
+
+                if (publishResult !is HttpResult.Success) {
+                    return publishResult.toOperationResult()
+                }
+
+                if (canCategorize) {
+                    obj.metadata.filterIsInstance<Categorization>().executeHttp(targetPath)
+                } else {
+                    publishResult
+                }.toOperationResult()
             }
         }
     }

@@ -85,6 +85,10 @@ import com.quadient.migration.tools.model.aText
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeEmpty
 import com.quadient.migration.tools.shouldBeOfSize
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -971,13 +975,10 @@ class InteractiveDeployClientTest {
         // given
         val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template).build()
         val targetPath = "icm://T_1.jld".toIcmPath()
-        val memoryLocation = slot<String>()
         val uploadedJld = slot<ByteArray>()
         every { documentObjectBuilder.collectLanguages(template) } returns listOf("en_us", "es")
-        every { ipsService.deployJld(any<IcmPath>(), any(), any(), any(), capture(memoryLocation)) } returns OperationResult.Success
-        every { ipsService.download(any<String>()) } returns
+        every { ipsService.extractJld(any(), any(), "<xml/>") } returns
             """{"InteractivePlusJsonDefinition":{"CustomProperties":{"Languages":["en_us"]}}}""".toByteArray()
-        every { ipsService.delete(any<String>()) } returns true
         every { ipsService.tryUpload(targetPath, capture(uploadedJld)) } returns OperationResult.Success
 
         // when
@@ -985,9 +986,7 @@ class InteractiveDeployClientTest {
 
         // then
         result.shouldBeEqualTo(OperationResult.Success)
-        memoryLocation.captured.startsWith("memory://").shouldBeEqualTo(true)
-        verify(exactly = 1) { ipsService.download(memoryLocation.captured) }
-        verify(exactly = 1) { ipsService.delete(memoryLocation.captured) }
+        verify(exactly = 0) { ipsService.deployJld(any<IcmPath>(), any(), any(), any(), any<IcmPath>()) }
         uploadedJld.captured.toString(Charsets.UTF_8).shouldBeEqualTo(
             """{"InteractivePlusJsonDefinition":{"CustomProperties":{"Languages":["en_us","es"]}}}"""
         )
@@ -1006,8 +1005,79 @@ class InteractiveDeployClientTest {
 
         // then
         result.shouldBeEqualTo(OperationResult.Success)
-        verify(exactly = 0) { ipsService.download(any<String>()) }
+        verify(exactly = 0) { ipsService.extractJld(any(), any(), any()) }
         verify(exactly = 0) { ipsService.tryUpload(any<IcmPath>(), any()) }
+    }
+
+    @Test
+    fun `document object upload fails when jld extraction fails`() {
+        // given
+        val template = DocumentObjectBuilder("T_1", DocumentObjectType.Template).build()
+        val targetPath = "icm://T_1.jld".toIcmPath()
+        every { documentObjectBuilder.collectLanguages(template) } returns listOf("en_us", "es")
+        every { ipsService.extractJld(any(), any(), any()) } throws IpsClientException("IPS deploy failed")
+
+        // when
+        val result = subject().uploadDocumentObject(template, targetPath, "<xml/>")
+
+        // then
+        result.shouldBeEqualTo(OperationResult.Failure("IPS deploy failed"))
+        verify(exactly = 0) { ipsService.tryUpload(any<IcmPath>(), any()) }
+    }
+
+    @Nested
+    inner class AddLanguagesToJld {
+        private fun registeredLanguages(jld: String) =
+            Json.parseToJsonElement(jld).jsonObject["InteractivePlusJsonDefinition"]!!.jsonObject["CustomProperties"]!!
+                .jsonObject["Languages"]!!.jsonArray.map { it.jsonPrimitive.content }
+
+        @Test
+        fun `appends missing languages after the detected ones`() {
+            val jld = """{"InteractivePlusJsonDefinition":{"Type":"Template","Nodes":[],"CustomProperties":{"Languages":["en_us"]}}}"""
+
+            val result = subject().addLanguagesToJld(jld, listOf("en_us", "de", "es"))
+
+            registeredLanguages(result).shouldBeEqualTo(listOf("en_us", "de", "es"))
+        }
+
+        @Test
+        fun `creates custom properties when they are missing and keeps other content intact`() {
+            val jld = """{"InteractivePlusJsonDefinition":{"Type":"Template","Nodes":[{"Width":0.00338666666666667,"Script":"a < b"}]}}"""
+
+            val result = subject().addLanguagesToJld(jld, listOf("en_us", "es"))
+
+            result.shouldBeEqualTo(
+                """{"InteractivePlusJsonDefinition":{"Type":"Template","Nodes":[{"Width":0.00338666666666667,"Script":"a < b"}],"CustomProperties":{"Languages":["en_us","es"]}}}"""
+            )
+        }
+
+        @Test
+        fun `keeps other custom properties`() {
+            val jld = """{"InteractivePlusJsonDefinition":{"CustomProperties":{"Other":true,"Languages":["en_us"]}}}"""
+
+            val result = subject().addLanguagesToJld(jld, listOf("es"))
+
+            result.shouldBeEqualTo("""{"InteractivePlusJsonDefinition":{"CustomProperties":{"Other":true,"Languages":["en_us","es"]}}}""")
+        }
+
+        @Test
+        fun `returns original jld when all languages are already registered`() {
+            val jld = """{ "InteractivePlusJsonDefinition": { "CustomProperties": { "Languages": ["en_us", "es"] } } }"""
+
+            subject().addLanguagesToJld(jld, listOf("es", "en_us")).shouldBeEqualTo(jld)
+        }
+
+        @Test
+        fun `handles byte order mark`() {
+            val jld = "﻿" + """{"InteractivePlusJsonDefinition":{}}"""
+
+            registeredLanguages(subject().addLanguagesToJld(jld, listOf("es"))).shouldBeEqualTo(listOf("es"))
+        }
+
+        @Test
+        fun `fails when the jld has no interactive definition`() {
+            assertThrows<IllegalArgumentException> { subject().addLanguagesToJld("""{"Other":{}}""", listOf("es")) }
+        }
     }
 
     @Test

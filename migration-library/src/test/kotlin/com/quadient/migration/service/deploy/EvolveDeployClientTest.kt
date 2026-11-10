@@ -176,7 +176,7 @@ class EvolveDeployClientTest {
             val documentObject = firstArg<com.quadient.migration.api.dto.migrationmodel.DocumentObject>()
             (documentObject.internal ?: false) || documentObject.type == DocumentObjectType.Page
         }
-        every { ipsService.deployJld(any<IcmPath>(), any<String>(), any<String>(), any<String>(), any<String>()) } returns OperationResult.Success
+        every { ipsService.extractJld(any(), any(), any()) } returns jld
         every { ipsService.download(any<String>()) } returns jld
         every { ipsService.delete(any<String>()) } returns true
         every { ipsService.listDependencies(any<IcmPath>()) } returns emptyList()
@@ -598,7 +598,7 @@ class EvolveDeployClientTest {
             mutableListOf(DeploymentError("T1", "Failed to download '$baseTemplatePath' from Evolve: File not found"))
         )
         verify(exactly = 0) { ipsService.tryUpload(any<IcmPath>(), any()) }
-        verify(exactly = 0) { ipsService.deployJld(any<IcmPath>(), any<String>(), any<String>(), any<String>(), any<String>()) }
+        verify(exactly = 0) { ipsService.extractJld(any(), any(), any()) }
         verify(exactly = 0) { ipsService.listDependencies(any<IcmPath>()) }
         verify(exactly = 0) { ipsService.setProductionApprovalState(any<List<IcmPath>>()) }
     }
@@ -646,7 +646,7 @@ class EvolveDeployClientTest {
         result.errors.shouldBeEqualTo(
             mutableListOf(DeploymentError("T1", "Failed to download '$image' from Evolve: File not found"))
         )
-        verify(exactly = 0) { ipsService.deployJld(any<IcmPath>(), any<String>(), any<String>(), any<String>(), any<String>()) }
+        verify(exactly = 0) { ipsService.extractJld(any(), any(), any()) }
     }
 
     @Test
@@ -699,7 +699,7 @@ class EvolveDeployClientTest {
         val result = subject.deployDocumentObjects()
 
         result.errors.shouldBeEqualTo(mutableListOf())
-        verify(exactly = 1) { ipsService.deployJld(baseTemplatePath, any<String>(), any<String>(), any<String>(), any<String>()) }
+        verify(exactly = 1) { ipsService.extractJld(baseTemplatePath, any(), any()) }
     }
 
     @Test
@@ -714,7 +714,7 @@ class EvolveDeployClientTest {
         result.errors.shouldBeEqualTo(
             mutableListOf(DeploymentError("T1", "Failed to list dependencies of base template '$baseTemplatePath': IPS failure"))
         )
-        verify(exactly = 0) { ipsService.deployJld(any<IcmPath>(), any<String>(), any<String>(), any<String>(), any<String>()) }
+        verify(exactly = 0) { ipsService.extractJld(any(), any(), any()) }
     }
 
     @Test
@@ -883,27 +883,15 @@ class EvolveDeployClientTest {
     }
 
     @Test
-    fun `uploadDocumentObject returns Failure when IPS deployJld fails`() {
+    fun `uploadDocumentObject returns Failure when IPS JLD extraction fails`() {
         val block = DocumentObjectBuilder("B1", DocumentObjectType.Block).build()
         val targetPath = "icm://Interactive/tenant/B1.jld".toIcmPath()
-        every { ipsService.deployJld(any<IcmPath>(), any<String>(), any<String>(), any<String>(), any<String>()) } returns OperationResult.Failure("IPS deploy failed")
+        every { ipsService.extractJld(any(), any(), any()) } throws IpsClientException("IPS deploy failed")
 
         val result = subject.uploadDocumentObject(block, targetPath, "<xml/>")
 
         result.shouldBeOfInstance<OperationResult.Failure>()
         (result as OperationResult.Failure).message.shouldBeEqualTo("IPS deploy failed")
-    }
-
-    @Test
-    fun `uploadDocumentObject returns Failure when JLD download fails`() {
-        val block = DocumentObjectBuilder("B1", DocumentObjectType.Block).build()
-        val targetPath = "icm://Interactive/tenant/B1.jld".toIcmPath()
-        every { ipsService.download(any<String>()) } throws RuntimeException("download error")
-
-        val result = subject.uploadDocumentObject(block, targetPath, "<xml/>")
-
-        result.shouldBeOfInstance<OperationResult.Failure>()
-        (result as OperationResult.Failure).message.shouldStartWith("Failed to download deployed JLD")
     }
 
     @Test
