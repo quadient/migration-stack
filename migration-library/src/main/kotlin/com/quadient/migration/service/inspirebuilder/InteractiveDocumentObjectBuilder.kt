@@ -6,7 +6,6 @@ import com.quadient.migration.api.dto.migrationmodel.DisplayRuleRef
 import com.quadient.migration.api.dto.migrationmodel.DocumentContent
 import com.quadient.migration.api.dto.migrationmodel.DocumentObject
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
-import com.quadient.migration.api.dto.migrationmodel.SelectByLanguage
 import com.quadient.migration.api.dto.migrationmodel.VariableStructure
 import com.quadient.migration.api.repository.AttachmentRepository
 import com.quadient.migration.api.repository.BaseTemplateRepository
@@ -24,7 +23,6 @@ import com.quadient.wfdxml.api.layoutnodes.Flow
 import com.quadient.wfdxml.api.layoutnodes.Flow.WebEditingType.SECTION
 import com.quadient.wfdxml.api.layoutnodes.Image as WfdXmlImage
 import com.quadient.wfdxml.api.layoutnodes.data.DataType
-import com.quadient.wfdxml.api.layoutnodes.flow.Text as WfdXmlText
 import com.quadient.wfdxml.api.layoutnodes.data.VariableKind
 import com.quadient.wfdxml.api.module.Layout
 import com.quadient.wfdxml.internal.layoutnodes.data.DataImpl
@@ -174,13 +172,10 @@ class InteractiveDocumentObjectBuilder(
             variableStructureBuilder.addEmailMetadataToPages(layout, usedEmailModel, variableStructure)
         }
 
-        // Language fallback flow approach, replaced by registering languages in the deployed JLD (see JldLanguages).
-        // val interactiveFlowTexts = mutableMapOf<String, WfdXmlText>()
         interactiveFlowsWithContent.forEach {
             val interactiveFlowText =
                 layout.addFlow().setId(it.key).setType(Flow.Type.SIMPLE).setSectionFlow(true).setWebEditingType(SECTION)
                     .addParagraph().addText()
-            // interactiveFlowTexts[it.key] = interactiveFlowText
 
             val flowName = if (hasMultipleFlows && it.key != mainFlowId) {
                 val interactiveFlowName =
@@ -201,28 +196,9 @@ class InteractiveDocumentObjectBuilder(
             }
         }
 
-        // buildLanguageFallbackFlowIfMissing(layout, variableStructure, languages)?.let { fallbackFlow ->
-        //     (interactiveFlowTexts[mainFlowId] ?: interactiveFlowTexts.values.firstOrNull())?.appendFlow(fallbackFlow)
-        // }
-
         logger.debug("Successfully built document object '${documentObject.nameOrId()}'")
         return builder.buildLayoutDelta()
     }
-
-    // private fun buildLanguageFallbackFlowIfMissing(
-    //     layout: Layout, variableStructure: VariableStructure, languages: List<String>
-    // ): Flow? {
-    //     if (languages.none { it != projectConfig.defaultLanguage }) return null
-    //     if (hasFlowOfType(layout, Flow.Type.SELECT_BY_LANGUAGE)) return null
-    //
-    //     return buildSelectByLanguage(
-    //         layout, variableStructure, SelectByLanguage(emptyList()), LANGUAGE_FALLBACK_FLOW_NAME, languages
-    //     )
-    // }
-    //
-    // companion object {
-    //     const val LANGUAGE_FALLBACK_FLOW_NAME = "LanguageFallbackFlow"
-    // }
 
     override fun buildDocumentObjectRef(
         documentModel: DocumentObject,

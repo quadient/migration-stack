@@ -116,12 +116,6 @@ fun getFlowByName(layout: Layout, flowName: String?): Flow? {
     return flowGroup.children.find { (it as FlowImpl).name == flowName } as? Flow
 }
 
-fun hasFlowOfType(layout: Layout, type: Flow.Type): Boolean {
-    val flowGroup =
-        (layout as LayoutImpl).children.find { it.name == "Flows" } as Group
-    return flowGroup.children.any { (it as FlowImpl).type == type }
-}
-
 fun getFontByName(layout: Layout, fontName: String): Font? {
     val fontGroup = (layout as LayoutImpl).children.find { it.name == "Fonts" } as Group
     return fontGroup.children.find { (it as FontImpl).name == fontName } as? Font

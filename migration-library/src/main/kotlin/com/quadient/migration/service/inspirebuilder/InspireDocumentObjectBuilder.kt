@@ -1750,7 +1750,7 @@ abstract class InspireDocumentObjectBuilder(
         return firstMatchFlow
     }
 
-    protected fun buildSelectByLanguage(
+    private fun buildSelectByLanguage(
         layout: Layout,
         variableStructure: VariableStructure,
         model: SelectByLanguage,
