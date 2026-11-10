@@ -3,6 +3,7 @@ package com.quadient.migration.service
 import com.quadient.migration.api.Migration
 import com.quadient.migration.getLibsDir
 import com.quadient.migration.getModulesDir
+import com.quadient.migration.getModulesResourcesDir
 import com.quadient.migration.log
 import groovy.lang.Binding
 import groovy.lang.GroovyShell
@@ -43,7 +44,7 @@ class GroovyService(val fileStorageService: FileStorageService, val config: Appl
 
             val path = File(script.path)
 
-            withScriptClassLoader(config.getLibsDir(), config.getModulesDir()) { classLoader ->
+            withScriptClassLoader(config.getLibsDir(), config.getModulesDir(), config.getModulesResourcesDir()) { classLoader ->
                 GroovyShell(classLoader, binding).evaluate(path)
             }
 

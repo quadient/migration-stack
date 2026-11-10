@@ -9,6 +9,7 @@ class AppConfigOverrides : OptionGroup(
     help = "Override values of the app config file, applies to every command",
 ) {
     private val modulesDir by option("--modules-dir", help = "Directory with the modules")
+    private val modulesResourcesDir by option("--modules-resources-dir", help = "Directory with resource files the modules load from the classpath")
     private val libsDir by option("--libs-dir", help = "Directory with additional libraries (.jar files) to be used by modules during execution")
     private val appDataDir by option("--app-data-dir", help = "Directory for app data like settings and job history")
     private val modulesDataDir by option("--modules-data-dir", help = "Directory for data written by the modules")
@@ -19,6 +20,7 @@ class AppConfigOverrides : OptionGroup(
 
     fun toMap(): Map<String, String> = listOfNotNull(
         modulesDir?.let { "modules-dir" to it },
+        modulesResourcesDir?.let { "modules-resources-dir" to it },
         libsDir?.let { "libs-dir" to it },
         appDataDir?.let { "app-data-dir" to it },
         modulesDataDir?.let { "modules-data-dir" to it },

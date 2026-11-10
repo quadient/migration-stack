@@ -52,7 +52,10 @@ tasks {
 
 dependencies {
     implementation("com.quadient:migration-library")
-    implementation("com.quadient:migration-examples")
+
+    implementation(libs.groovy.toml)
+    implementation(libs.poi.ooxml)
+    implementation(libs.poi.ooxml.full)
 
     implementation(libs.koin.ktor)
     implementation(libs.koin.logger.slf4j)
@@ -98,6 +101,7 @@ dependencies {
         
         implementation("com.fasterxml.jackson.core:jackson-databind:2.21.5")
         implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.21.5")
+        implementation("org.apache.logging.log4j:log4j-api:2.26.1")
     }
 }
 
@@ -118,7 +122,7 @@ tasks {
     }
 
     buildFatJar {
-        finalizedBy("buildFrontend", "copyScripts", "copyDist")
+        finalizedBy("buildFrontend", "copyScripts", "copyScriptResources", "copyDist")
     }
 
     register<Sync>("copyScripts") {
@@ -127,6 +131,13 @@ tasks {
             into("com/quadient/migration/example")
         }
         into("$workDir/modules")
+    }
+
+    register<Sync>("copyScriptResources") {
+        from("${rootProject.rootDir.parent}/migration-examples/src/main/resources") {
+            include("exampleResources/**")
+        }
+        into("$workDir/resources")
     }
 
     register<Copy>("copyDist") {
@@ -176,6 +187,6 @@ tasks {
         destinationDirectory = File(distDir)
         group = "distribution"
 
-        dependsOn("buildFatJar", "copyDist", "copyScripts", "buildFrontend", "copyFrontend")
+        dependsOn("buildFatJar", "copyDist", "copyScripts", "copyScriptResources", "buildFrontend", "copyFrontend")
     }
 }

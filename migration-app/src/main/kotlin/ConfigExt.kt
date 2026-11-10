@@ -14,6 +14,7 @@ fun ApplicationConfig.getEnv() = when (propertyOrNull("ktor.development")?.getAs
 }
 
 fun ApplicationConfig.getModulesDir() = tryGetString("modules-dir") ?: "modules"
+fun ApplicationConfig.getModulesResourcesDir() = tryGetString("modules-resources-dir") ?: "resources"
 fun ApplicationConfig.getLibsDir() = tryGetString("libs-dir") ?: "libs"
 fun ApplicationConfig.getFeDir() = tryGetString("fe-dir") ?: "web"
 fun ApplicationConfig.getAppDataDir() = tryGetString("app-data-dir") ?: Path("data", "app").toString()
