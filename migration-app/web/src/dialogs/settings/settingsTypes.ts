@@ -25,7 +25,28 @@ export type DbConfig = {
 
 export type InspireConfig = {
     ipsConfig: IpsConfig;
+    evolveConfig: EvolveConfig | null;
 };
+
+export type EvolveConfig = {
+    apiRetryDelayMs?: number;
+    callTimeoutMs?: number;
+    contentAuthorApiKey: string;
+    companyUrl: string;
+    holder: string;
+    holderType: string;
+    publishBlockActionId: string;
+    initialBlockStateId?: string;
+    publishTemplateActionId: string;
+    initialTemplateStateId?: string;
+    publishRuleActionId: string;
+    initialRuleStateId?: string;
+    publishStyleDefinitionActionId?: string;
+    initialStyleDefinitionStateId?: string;
+    publishBaseTemplateActionId?: string;
+};
+
+export const holderTypeOptions = ["userName", "userGroup"];
 
 export type IpsConfig = {
     host: string;

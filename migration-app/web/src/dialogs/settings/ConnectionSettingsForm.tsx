@@ -7,6 +7,7 @@ import {
     type SettingsFormProps,
 } from "@/dialogs/settings/settingsTypes.ts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EvolveSettingsForm } from "@/dialogs/settings/EvolveSettingsForm.tsx";
 
 export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormProps) {
     const migrationConfig = settings.migrationConfig;
@@ -143,6 +144,7 @@ export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormPr
                     </div>
                 </CardContent>
             </Card>
+            <EvolveSettingsForm settings={settings} setSettings={setSettings} />
         </div>
     );
 }

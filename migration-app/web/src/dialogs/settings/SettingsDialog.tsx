@@ -41,7 +41,7 @@ export default function SettingsDialog({
     return (
         <Dialog modal open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>Settings</DialogTitle>
                     <DialogDescription className="text-muted-foreground">

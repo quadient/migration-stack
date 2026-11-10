@@ -188,7 +188,7 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                                     ...prev,
                                     projectConfig: {
                                         ...prev.projectConfig,
-                                        selectedDocumentObjects: value || undefined,
+                                        selectedDocumentObjects: value.length > 0 ? value : undefined,
                                     },
                                 }));
                             }}
