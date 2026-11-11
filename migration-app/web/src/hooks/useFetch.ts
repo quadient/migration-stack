@@ -17,7 +17,7 @@ export type UseFetchResult<T> = (
     | SuccessFetchResult<T>
 ) & { refetch: () => void };
 
-export function useFetch<T>(url: string, requestInit?: RequestInit): UseFetchResult<T> {
+export function useFetch<T>(url: string, requestInit?: RequestInit, refreshKey?: string): UseFetchResult<T> {
     const [status, setStatus] = React.useState("loading");
     const [error, setError] = React.useState<unknown | null>(undefined);
     const [data, setData] = React.useState<T | undefined>(undefined);
@@ -69,7 +69,7 @@ export function useFetch<T>(url: string, requestInit?: RequestInit): UseFetchRes
             controller.abort();
             cancelled = true;
         };
-    }, [url, fetchCount]);
+    }, [url, fetchCount, refreshKey]);
 
     return { data, setData, error, status, refetch } as UseFetchResult<T>;
 }
