@@ -1,6 +1,7 @@
 package com.quadient.migration.persistence
 
 import com.quadient.migration.Postgres
+import com.quadient.migration.api.InspireOutput
 import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.DocumentObjectRef
 import com.quadient.migration.shared.GridAlignment
@@ -14,6 +15,7 @@ import com.quadient.migration.api.dto.migrationmodel.builder.TableBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.GridLayoutBuilder
 import com.quadient.migration.api.repository.StatusTrackingRepository
 import com.quadient.migration.data.Active
+import com.quadient.migration.data.Deployed
 import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.Color
 import com.quadient.migration.shared.DocumentObjectType
@@ -28,6 +30,8 @@ import com.quadient.migration.tools.shouldBeOfSize
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
+import kotlin.time.Clock
+import kotlin.uuid.Uuid
 
 @Postgres
 class DocumentObjectRepositoryTest {
@@ -173,6 +177,50 @@ class DocumentObjectRepositoryTest {
 
         result?.statusEvents?.shouldBeOfSize(1)
         assertInstanceOf(Active::class.java, result?.statusEvents?.last())
+    }
+
+    @Test
+    fun `upsert does not duplicate active status when internal object changing to external is already active`() {
+        val input = aBlockDto("alreadyActive", internal = true, content = listOf())
+        repo.upsert(input)
+        statusRepo.active(input.id, ResourceType.DocumentObject, mapOf("reason" to "Manual"))
+
+        input.internal = false
+        repo.upsert(input)
+        val result = statusRepo.find(input.id, ResourceType.DocumentObject)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
+    }
+
+    @Test
+    fun `upsertBatch does not duplicate active status when internal object changing to external is already active`() {
+        val input = aBlockDto("alreadyActiveBatch", internal = true, content = listOf())
+        repo.upsertBatch(listOf(input))
+        statusRepo.active(input.id, ResourceType.DocumentObject, mapOf("reason" to "Manual"))
+
+        input.internal = false
+        repo.upsertBatch(listOf(input))
+        val result = statusRepo.find(input.id, ResourceType.DocumentObject)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
+    }
+
+    @Test
+    fun `upsert keeps previous status when internal object changing to external was already tracked`() {
+        val input = aBlockDto("previouslyDeployed", internal = false, content = listOf())
+        repo.upsert(input)
+        statusRepo.deployed(input.id, Uuid.random(), Clock.System.now(), ResourceType.DocumentObject, null, InspireOutput.Interactive)
+        input.internal = true
+        repo.upsert(input)
+
+        input.internal = false
+        repo.upsert(input)
+        val result = statusRepo.find(input.id, ResourceType.DocumentObject)
+
+        result?.statusEvents?.shouldBeOfSize(2)
+        assertInstanceOf(Deployed::class.java, result?.statusEvents?.last())
     }
 
     @Test

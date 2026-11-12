@@ -23,7 +23,7 @@ class DocumentObjectsMappingExportTest {
 
         when(migration.documentObjectRepository.listAll()).thenReturn([
                 new DocumentObjectBuilder("empty", DocumentObjectType.Block).build(),
-                new DocumentObjectBuilder("should not be listed because internal", DocumentObjectType.Block).internal(true).build(),
+                new DocumentObjectBuilder("internal", DocumentObjectType.Block).internal(true).build(),
                 new DocumentObjectBuilder("full", DocumentObjectType.Page)
                         .name("full")
                         .originLocations(["foo", "bar"])
@@ -44,12 +44,14 @@ class DocumentObjectsMappingExportTest {
         ])
 
         when(migration.statusTrackingRepository.findLastEventRelevantToOutput(any(), any(), any())).thenReturn(new Active())
+        when(migration.statusTrackingRepository.findLastEventRelevantToOutput(eq("internal"), any(), any())).thenReturn(null)
 
         DocumentObjectsExport.run(migration, mappingFile)
 
         def expected = """\
             id,name,type,internal,baseTemplate,targetFolder,variableStructureId,status,skip,skipPlaceholder,skipReason,originalName (read-only),originLocations (read-only)
             empty,,Block,false,,,,Active,false,,,,[]
+            internal,,Block,true,,,,,false,,,,[]
             full,full,Page,false,tmpl.wfd,someDir,struct,Active,true,placeholder,reason,,[foo; bar]
             overridden empty,,Block,false,,,,Active,false,,,,[]
             overridden full,full,Page,false,\$tmplRef,someDir,struct,Active,false,,,originalFull,[foo; bar]

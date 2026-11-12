@@ -66,11 +66,7 @@ class DocumentObjectRepository(projectName: ProjectName, private val statusTrack
                     else -> require(dto.options == null || dto.options !is PageOptions)
                 }
 
-                if ((existingItem == null && dto.internal != true) || (dto.internal == false && existingItem?.internal == true)) {
-                    statusTrackingRepository.active(
-                        dto.id, ResourceType.DocumentObject, mapOf("type" to dto.type.toString())
-                    )
-                }
+                trackStatus(dto, existingItem)
 
                 stmt.setString(index++, dto.id)
                 stmt.setString(index++, this@DocumentObjectRepository.projectName)
@@ -108,11 +104,7 @@ class DocumentObjectRepository(projectName: ProjectName, private val statusTrack
 
             val now = Clock.System.now()
 
-            if ((existingItem == null && dto.internal != true) || (dto.internal == false && existingItem?.internal == true)) {
-                statusTrackingRepository.active(
-                    dto.id, ResourceType.DocumentObject, mapOf("type" to dto.type.toString())
-                )
-            }
+            trackStatus(dto, existingItem)
 
             table.upsertReturning(table.id, table.projectName) {
                 it[DocumentObjectTable.id] = dto.id
@@ -135,6 +127,15 @@ class DocumentObjectRepository(projectName: ProjectName, private val statusTrack
                 it[DocumentObjectTable.skip] = dto.skip
                 it[DocumentObjectTable.subject] = dto.subject
             }.first()
+        }
+    }
+
+    private fun trackStatus(dto: DocumentObject, existingItem: DocumentObject?) {
+        val data = mapOf("type" to dto.type.toString())
+        if (existingItem == null && dto.internal != true) {
+            statusTrackingRepository.active(dto.id, ResourceType.DocumentObject, data)
+        } else if (dto.internal == false && existingItem?.internal == true) {
+            statusTrackingRepository.activeIfUntracked(dto.id, ResourceType.DocumentObject, data)
         }
     }
 

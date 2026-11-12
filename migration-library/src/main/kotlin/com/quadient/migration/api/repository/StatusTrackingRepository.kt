@@ -41,6 +41,12 @@ class StatusTrackingRepository(projectName: ProjectName) {
         return transaction { upsert(id, resourceType, Active(data = data)) }
     }
 
+    fun activeIfUntracked(id: String, resourceType: ResourceType, data: Map<String, String> = emptyMap()): StatusTracking? {
+        return transaction {
+            if (internalRepository.find(id, resourceType) != null) null else active(id, resourceType, data)
+        }
+    }
+
     fun error(
         id: String,
         deploymentId: Uuid,

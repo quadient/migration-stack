@@ -72,10 +72,11 @@ static void run(Migration migration, Path documentObjFilePath) {
         existingMapping.variableStructureRef = varStructureRef
 
         def csvStatus = values.get("status")
-        if (status != null && csvStatus == "Active" && status.class.simpleName != "Active") {
+        if ((csvStatus == null || csvStatus == "") && status == null) {
             migration.statusTrackingRepository.active(existingDocObject.id, ResourceType.DocumentObject, [reason: "Manual"])
-        }
-        if (status != null && csvStatus == "Deployed" && status.class.simpleName != "Deployed") {
+        } else if (csvStatus == "Active" && status?.class?.simpleName != "Active") {
+            migration.statusTrackingRepository.active(existingDocObject.id, ResourceType.DocumentObject, [reason: "Manual"])
+        } else if (csvStatus == "Deployed" && status?.class?.simpleName != "Deployed") {
             migration.statusTrackingRepository.deployed(existingDocObject.id, deploymentId, now, ResourceType.DocumentObject, null, output, [reason: "Manual"])
         }
 

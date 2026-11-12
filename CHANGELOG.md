@@ -21,13 +21,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - DeployBaseTemplates task links base templates to their corresponding data definitions if available
 - DOCX variable names parsing is now compatible with Inspire naming notation
 - Template languages for select by language blocks are collected also from external document objects
+- Internal document objects are now included in mapping, so they can be converted to external, among other things
 
 ### Fixed
 
 - Listing files and dependencies from icm not working with spaces in file path
+- Converting an internal document object or display rule to external no longer changes its tracked status, it is set to
+  active only when it has no status tracked yet (no more duplicate active statuses)
 - Column layout is now applied properly when followed by standalone blocks/flows
 - DOCX content controls parsing handles more cases and no longer fails when text style is missing
-- Select by language cases containing repeated content with nested structural content are wrapped in section flows to render properly in Interactive output
+- Select by language cases containing repeated content with nested structural content are wrapped in section flows 
+  to render properly in Interactive output
 - Multiple usages of internal document object with display rule now correctly applies the rule condition on all of them
 
 ## [17.0.32] - 2026-10-13

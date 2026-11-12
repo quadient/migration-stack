@@ -71,9 +71,7 @@ class DisplayRuleRepository(projectName: ProjectName, private val statusTracking
             dtos.forEach { dto ->
                 val existingItem = find(dto.id)
 
-                if ((existingItem == null && dto.internal != true) || (dto.internal == false && existingItem?.internal == true)) {
-                    statusTrackingRepository.active(dto.id, ResourceType.DisplayRule)
-                }
+                trackStatus(dto, existingItem)
 
                 stmt.setString(index++, dto.id)
                 stmt.setString(index++, this@DisplayRuleRepository.projectName)
@@ -102,9 +100,7 @@ class DisplayRuleRepository(projectName: ProjectName, private val statusTracking
 
             val now = Clock.System.now()
 
-            if ((existingItem == null && dto.internal != true) || (dto.internal == false && existingItem?.internal == true)) {
-                statusTrackingRepository.active(dto.id, ResourceType.DisplayRule)
-            }
+            trackStatus(dto, existingItem)
 
             table.upsertReturning(table.id, table.projectName) {
                 it[DisplayRuleTable.id] = dto.id
@@ -123,6 +119,14 @@ class DisplayRuleRepository(projectName: ProjectName, private val statusTracking
                 it[DisplayRuleTable.variableStructureRef] = dto.variableStructureRef?.id
                 it[DisplayRuleTable.metadata] = dto.metadata
             }.first()
+        }
+    }
+
+    private fun trackStatus(dto: DisplayRule, existingItem: DisplayRule?) {
+        if (existingItem == null && !dto.internal) {
+            statusTrackingRepository.active(dto.id, ResourceType.DisplayRule)
+        } else if (!dto.internal && existingItem?.internal == true) {
+            statusTrackingRepository.activeIfUntracked(dto.id, ResourceType.DisplayRule)
         }
     }
 }

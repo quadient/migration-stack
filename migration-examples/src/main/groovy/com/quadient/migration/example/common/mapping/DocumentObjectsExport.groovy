@@ -23,7 +23,6 @@ run(migration, docObjPath)
 
 static void run(Migration migration, Path documentObjectsDstPath) {
     List<DocumentObject> objects = Mapping.collectSelectedOrAll(migration, DocumentObject) { migration.documentObjectRepository.listAll() }
-        .findAll { !it.internal }
 
     documentObjectsDstPath.toFile().createParentDirectories()
 
@@ -43,7 +42,7 @@ static void run(Migration migration, Path documentObjectsDstPath) {
             builder.append("," + Csv.serialize(obj.baseTemplate))
             builder.append("," + Csv.serialize(obj.targetFolder))
             builder.append("," + Csv.serialize(obj.variableStructureRef?.id))
-            builder.append("," + Csv.serialize(status.class.simpleName))
+            builder.append("," + Csv.serialize(status?.class?.simpleName))
             builder.append("," + Csv.serialize(obj.skip.skipped))
             builder.append("," + Csv.serialize(obj.skip.placeholder))
             builder.append("," + Csv.serialize(obj.skip.reason))

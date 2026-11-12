@@ -1,18 +1,25 @@
 package com.quadient.migration.persistence
 
 import com.quadient.migration.Postgres
+import com.quadient.migration.api.ProjectName
 import com.quadient.migration.api.dto.migrationmodel.builder.DisplayRuleBuilder
+import com.quadient.migration.api.repository.StatusTrackingRepository
+import com.quadient.migration.data.Active
+import com.quadient.migration.service.deploy.utility.ResourceType
 import com.quadient.migration.shared.DisplayRuleDefinition
 import com.quadient.migration.shared.Group
 import com.quadient.migration.shared.GroupOp
 import com.quadient.migration.tools.aDisplayRuleRepository
+import com.quadient.migration.tools.aProjectConfig
 import com.quadient.migration.tools.shouldBeEqualTo
 import com.quadient.migration.tools.shouldBeOfSize
+import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 
 @Postgres
 class DisplayRuleRepositoryTest {
     private val repo = aDisplayRuleRepository()
+    private val statusRepo = StatusTrackingRepository(ProjectName(aProjectConfig().name))
 
     @Test
     fun `roundtrip is correct`() {
@@ -100,5 +107,47 @@ class DisplayRuleRepositoryTest {
 
         updatedBlock1.name.shouldBeEqualTo("Updated Rule 1")
         updatedBlock2.name.shouldBeEqualTo("Updated Rule 2")
+    }
+
+    @Test
+    fun `upsert tracks active status for rules that changed from internal to external`() {
+        val rule = DisplayRuleBuilder("untracked").internal(true).build()
+        repo.upsert(rule)
+        statusRepo.find(rule.id, ResourceType.DisplayRule).shouldBeEqualTo(null)
+
+        rule.internal = false
+        repo.upsert(rule)
+        val result = statusRepo.find(rule.id, ResourceType.DisplayRule)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
+    }
+
+    @Test
+    fun `upsert does not duplicate active status when internal rule changing to external is already active`() {
+        val rule = DisplayRuleBuilder("alreadyActive").internal(true).build()
+        repo.upsert(rule)
+        statusRepo.active(rule.id, ResourceType.DisplayRule, mapOf("reason" to "Manual"))
+
+        rule.internal = false
+        repo.upsert(rule)
+        val result = statusRepo.find(rule.id, ResourceType.DisplayRule)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
+    }
+
+    @Test
+    fun `upsertBatch does not duplicate active status when internal rule changing to external is already active`() {
+        val rule = DisplayRuleBuilder("alreadyActiveBatch").internal(true).build()
+        repo.upsertBatch(listOf(rule))
+        statusRepo.active(rule.id, ResourceType.DisplayRule, mapOf("reason" to "Manual"))
+
+        rule.internal = false
+        repo.upsertBatch(listOf(rule))
+        val result = statusRepo.find(rule.id, ResourceType.DisplayRule)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
     }
 }
