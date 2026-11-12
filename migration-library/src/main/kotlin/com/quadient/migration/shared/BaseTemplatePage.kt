@@ -3,10 +3,11 @@ package com.quadient.migration.shared
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class BaseTemplateArea(
+data class BaseTemplateArea @JvmOverloads constructor(
     var interactiveFlowName: String,
     var position: Position? = null,
     var flowToNextPage: Boolean = false,
+    var name: String? = null,
 )
 
 @Serializable

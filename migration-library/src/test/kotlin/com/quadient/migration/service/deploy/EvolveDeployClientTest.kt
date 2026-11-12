@@ -409,6 +409,46 @@ class EvolveDeployClientTest {
     }
 
     @Test
+    fun `deployBaseTemplates uses area name as display name and keeps interactive flow name as content id`() {
+        val baseTemplate = BaseTemplateBuilder("BT_1")
+            .name("Letter")
+            .addPage {
+                name("First")
+                pageSize(Size.ofMillimeters(210), Size.ofMillimeters(297))
+                addArea("Body") {
+                    name("Main body")
+                    position(mmPosition(10, 50, 190, 200))
+                }
+            }
+            .build()
+        mockBaseTemplatesToDeploy(baseTemplate)
+
+        val result = subject.deployBaseTemplates()
+
+        val expectedStructure = BaseTemplateStructure(
+            print = BaseTemplateStructurePrint(
+                units = BaseTemplateUnits.Millimeters,
+                pageOrder = BaseTemplateStructurePageOrder.Static,
+                pages = listOf(
+                    BaseTemplateStructurePage(
+                        displayName = "First",
+                        width = 210.0,
+                        height = 297.0,
+                        areas = listOf(
+                            BaseTemplateStructureArea.Text(
+                                displayName = "Main body", x = 10.0, y = 50.0, width = 190.0, height = 200.0,
+                                main = true, documentArea = true, contentId = "Body", flowingToNextPage = false,
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        )
+        result.errors.shouldBeEmpty()
+        verify { caClient.createBaseTemplateDraft("Letter", "defaultFolder".toIcmPath(), expectedStructure, styleDefinitionPath, null) }
+    }
+
+    @Test
     fun `deployBaseTemplates omits style definition when it is not deployed in Evolve`() {
         mockBaseTemplatesToDeploy(aLetterBaseTemplate())
         every { caClient.fileExists(styleDefinitionPath) } returns HttpResult.Success(false)

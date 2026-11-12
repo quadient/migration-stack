@@ -73,7 +73,8 @@ class InspireBaseTemplateBuilder(
                     .setWebEditingType(SECTION)
                 layout.pages.addInteractiveFlow(flow, Pages.InteractiveFlowType.NORMAL)
 
-                val flowArea = wfdPage.addFlowArea().setName("${area.interactiveFlowName}Area").setFlow(flow)
+                val areaName = area.name?.takeIf { it.isNotBlank() } ?: "${area.interactiveFlowName}Area"
+                val flowArea = wfdPage.addFlowArea().setName(areaName).setFlow(flow)
                     .setFlowToNextPage(area.flowToNextPage)
 
                 var areaSize = -1.0

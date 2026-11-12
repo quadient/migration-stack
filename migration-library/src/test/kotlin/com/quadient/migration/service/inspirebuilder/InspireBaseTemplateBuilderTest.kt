@@ -293,6 +293,28 @@ class InspireBaseTemplateBuilderTest {
     }
 
     @Test
+    fun `buildBaseTemplate uses area name for flow area and keeps interactive flow name for the flow`() {
+        // given
+        val baseTemplate = BaseTemplateBuilder("BT_1").addPage {
+            name("Page 1")
+            addArea("Body") { name("Main body") }
+            addArea("Footer") { name("  ") }
+        }.build()
+
+        // when
+        val result = subject.buildBaseTemplate(baseTemplate).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        fun flowAreaNameOf(flowName: String): String {
+            val flowId = result["Flow"].first { it["Name"]?.stringValue() == flowName }["Id"].stringValue()
+            val flowAreaId = result["FlowArea"].first { it["FlowId"]?.stringValue() == flowId }["Id"].stringValue()
+            return result["FlowArea"].first { it["Id"].stringValue() == flowAreaId && it["Name"] != null }["Name"].stringValue()
+        }
+        flowAreaNameOf("Body").shouldBeEqualTo("Main body")
+        flowAreaNameOf("Footer").shouldBeEqualTo("FooterArea")
+    }
+
+    @Test
     fun `buildBaseTemplate with multiple pages and areas creates one interactive flow per area`() {
         // given
         val baseTemplate = BaseTemplateBuilder("BT_1")

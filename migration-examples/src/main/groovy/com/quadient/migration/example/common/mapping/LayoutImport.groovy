@@ -1,7 +1,7 @@
 //! ---
 //! displayName: Import Layout
 //! category: Mapping
-//! description: Imports areas with modified interactive flow names to their respective pages and templates. The import is interactive, prompting the user to select the layout CSV to import if more than one matching file is found.
+//! description: Imports areas with modified interactive flow names and area names to their respective pages and templates. The import is interactive, prompting the user to select the layout CSV to import if more than one matching file is found.
 //! stdin: true
 //! ---
 package com.quadient.migration.example.common.mapping
@@ -69,6 +69,10 @@ static void run(Migration migration, Path path) {
         def flowToNextPage = Csv.deserialize(values.get("flowToNextPage"), Boolean.class)
         areaMapping.flowToNextPage[areaIndex] = flowToNextPage ?: false
 
+        if (columnNames.contains("areaName")) {
+            areaMapping.areaNames[areaIndex] = Csv.deserialize(values.get("areaName"), String.class)
+        }
+
         def baseTemplateTargetId = Csv.deserialize(values.get("baseTemplateTargetId"), String.class)
         if (columnNames.contains("baseTemplateTargetId")) {
             [pageId, templateId].each { documentObjectIdForTarget ->
@@ -121,10 +125,12 @@ private static void assignAreaToBaseTemplateDraft(Map<String, BaseTemplateDraft>
     def height = Csv.deserialize(values.get("height"), Size.class)
     def position = (x != null && y != null && width != null && height != null) ? new Position(x, y, width, height) : null
     def flowToNextPage = Csv.deserialize(values.get("flowToNextPage"), Boolean.class) ?: false
+    def areaName = Csv.deserialize(values.get("areaName"), String.class)
 
     pageDraft.areasByIndex[areaIndex] = new BaseTemplateBuilder.Area(interactiveFlowName)
             .position(position)
             .flowToNextPage(flowToNextPage)
+            .name(areaName)
 }
 
 private static void applyDocumentObjectTargetIdMappings(Migration migration, Map<String, String> docObjectsToTargetIds) {

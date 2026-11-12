@@ -20,10 +20,11 @@ sealed class MappingItem {
         var skip: SkipOptions? = null,
     ) : MappingItem()
 
-    data class Area(
+    data class Area @JvmOverloads constructor(
         override var name: String?,
         var areas: MutableMap<Int, String?>,
         var flowToNextPage: MutableMap<Int, Boolean> = mutableMapOf(),
+        var areaNames: MutableMap<Int, String?> = mutableMapOf(),
     ) : MappingItem()
 
     data class Image(
@@ -140,7 +141,7 @@ sealed class MappingItem {
             }
 
             is MappingItem.Area -> MappingItemEntity.Area(
-                name = this.name, areas = this.areas, flowToNextPage = this.flowToNextPage
+                name = this.name, areas = this.areas, flowToNextPage = this.flowToNextPage, areaNames = this.areaNames
             )
 
             is MappingItem.BaseTemplate -> MappingItemEntity.BaseTemplate(

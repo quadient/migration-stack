@@ -87,10 +87,11 @@ sealed class MappingItemEntity {
     data class Area(
         override val name: String?,
         val areas: MutableMap<Int, String?>,
-        val flowToNextPage: MutableMap<Int, Boolean> = mutableMapOf()
+        val flowToNextPage: MutableMap<Int, Boolean> = mutableMapOf(),
+        val areaNames: MutableMap<Int, String?> = mutableMapOf(),
     ) : MappingItemEntity() {
         fun apply(item: DocumentObjectModel): DocumentObjectModel {
-            if (areas.isEmpty() && flowToNextPage.isEmpty()) {
+            if (areas.isEmpty() && flowToNextPage.isEmpty() && areaNames.isEmpty()) {
                 return item
             }
 
@@ -100,7 +101,8 @@ sealed class MappingItemEntity {
                     val idx = areaIndex++
                     contentItem.copy(
                         interactiveFlowName = if (areas.containsKey(idx)) areas[idx] else contentItem.interactiveFlowName,
-                        flowToNextPage = if (flowToNextPage.containsKey(idx)) (flowToNextPage[idx] ?: false) else false
+                        flowToNextPage = if (flowToNextPage.containsKey(idx)) (flowToNextPage[idx] ?: false) else false,
+                        name = if (areaNames.containsKey(idx)) areaNames[idx] else contentItem.name,
                     )
                 } else {
                     contentItem
@@ -388,7 +390,9 @@ sealed class MappingItemEntity {
                 )
             }
 
-            is Area -> MappingItem.Area(name = this.name, areas = this.areas)
+            is Area -> MappingItem.Area(
+                name = this.name, areas = this.areas, flowToNextPage = this.flowToNextPage, areaNames = this.areaNames
+            )
 
             is BaseTemplate -> MappingItem.BaseTemplate(
                 name = this.name,

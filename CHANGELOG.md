@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - DOCX variable names parsing is now compatible with Inspire naming notation
 - Template languages for select by language blocks are collected also from external document objects
 - Internal document objects are now included in mapping, so they can be converted to external, among other things
+- Layout mapping includes editable area names for both standard and base template areas
 
 ### Fixed
 

@@ -30,6 +30,10 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.verify
+import com.quadient.migration.api.dto.migrationmodel.Area
+import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
+import com.quadient.migration.shared.DocumentObjectType
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import kotlin.time.Clock
 
@@ -177,5 +181,38 @@ class MappingRepositoryTest {
         repo.applyBaseTemplateMapping("baseTemplateId")
 
         verify(exactly = 0) { baseTemplateRepository.upsert(any()) }
+    }
+
+    @Test
+    fun `area mapping persists area names and flowToNextPage and applies names`() {
+        val page = DocumentObjectBuilder("pageId", DocumentObjectType.Page)
+            .area { name("Header"); interactiveFlowName("flow1") }
+            .area { name("Body") }
+            .build()
+        every { documentObjectRepository.find("pageId") } returns page
+        every { documentObjectRepository.upsert(any()) } just runs
+
+        repo.upsert(
+            "pageId",
+            MappingItem.Area(
+                name = null,
+                areas = mutableMapOf(0 to "flow1", 1 to null),
+                flowToNextPage = mutableMapOf(0 to true),
+                areaNames = mutableMapOf(0 to "Renamed header", 1 to null),
+            )
+        )
+
+        val stored = repo.getAreaMapping("pageId")
+        assertEquals(mutableMapOf(0 to "Renamed header", 1 to null), stored.areaNames)
+        assertEquals(mutableMapOf(0 to true), stored.flowToNextPage)
+
+        repo.applyAreaMapping("pageId")
+
+        verify {
+            documentObjectRepository.upsert(match {
+                val areas = it.content.filterIsInstance<Area>()
+                areas.map { a -> a.name } == listOf("Renamed header", null) && areas[0].flowToNextPage
+            })
+        }
     }
 }

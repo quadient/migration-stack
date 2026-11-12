@@ -110,6 +110,7 @@ class BaseTemplateBuilder(id: String) : DtoBuilderBase<BaseTemplate, BaseTemplat
     class Area(val interactiveFlowName: String) : HasPosition<Area> {
         override var position: Position? = null
         var flowToNextPage: Boolean = false; private set
+        var name: String? = null; private set
 
         /**
          * Set whether the flow area should flow to the next page.
@@ -118,11 +119,19 @@ class BaseTemplateBuilder(id: String) : DtoBuilderBase<BaseTemplate, BaseTemplat
          */
         fun flowToNextPage(flowToNextPage: Boolean) = apply { this.flowToNextPage = flowToNextPage }
 
+        /**
+         * Set the display name of the area. When not set, a name derived from the interactive flow name is used.
+         * @param name Display name of the area.
+         * @return The [Area] instance for method chaining.
+         */
+        fun name(name: String?) = apply { this.name = name }
+
         fun build(): BaseTemplateArea {
             return BaseTemplateArea(
                 interactiveFlowName = interactiveFlowName,
                 position = position,
                 flowToNextPage = flowToNextPage,
+                name = name,
             )
         }
     }

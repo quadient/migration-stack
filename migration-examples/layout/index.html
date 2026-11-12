@@ -509,6 +509,7 @@
  * @property {number} h
  * @property {boolean} flowToNextPage
  * @property {string} interactiveFlowName
+ * @property {string} areaName
  * @property {string} contentPreview
  * @property {number|null} containedIn
  */
@@ -520,6 +521,7 @@
  * @property {number[]} areaIndices
  * @property {Position} position
  * @property {string} name
+ * @property {string} areaName Name of the first named area in the draft, empty when none of its areas has a name
  */
 
 /**
@@ -784,6 +786,7 @@ function parseCsvToLayoutData(text) {
                     x, y, w, h,
                     flowToNextPage: col(row, 'flowToNextPage') === 'true',
                     interactiveFlowName: col(row, 'interactiveFlowName') || '',
+                    areaName: col(row, 'areaName') || '',
                     contentPreview: col(row, 'contentPreview') || '',
                 },
                 lineIndex: lineIndices[idx],
@@ -791,7 +794,7 @@ function parseCsvToLayoutData(text) {
             };
         }).filter(a => a != null);
         rawAreasWithLine.sort((a, b) => a.areaIndex - b.areaIndex);
-        const rawAreas = /** @type {{x:number,y:number,w:number,h:number,flowToNextPage:boolean,interactiveFlowName:string,contentPreview:string}[]} */ (
+        const rawAreas = /** @type {{x:number,y:number,w:number,h:number,flowToNextPage:boolean,interactiveFlowName:string,areaName:string,contentPreview:string}[]} */ (
             rawAreasWithLine.map(a => a.area)
         );
 
@@ -1192,6 +1195,8 @@ function computeBaseTemplateData(data, viewModel, analysis) {
             const groupLeadersInOrder = [];
             /** @type {Map<string, {draft: BaseTemplateAreaDraft, page: PageEntry}>} */
             const draftByGroupLeader = new Map();
+            /** @type {Map<string, string>} */
+            const areaNameByGroupLeader = new Map();
             pageGroup.pageIndices.forEach(pageIndex => {
                 const page = data.pages[pageIndex];
                 const identityKey = pageIdentityKey(page, pageIndex);
@@ -1202,6 +1207,9 @@ function computeBaseTemplateData(data, viewModel, analysis) {
                         draftByGroupLeader.set(groupLeader, { draft, page });
                         groupLeadersInOrder.push(groupLeader);
                     }
+                    if (draft.areaName && !areaNameByGroupLeader.has(groupLeader)) {
+                        areaNameByGroupLeader.set(groupLeader, draft.areaName);
+                    }
                 });
             });
 
@@ -1209,11 +1217,12 @@ function computeBaseTemplateData(data, viewModel, analysis) {
                 const { draft, page } = /** @type {{draft: BaseTemplateAreaDraft, page: PageEntry}} */ (draftByGroupLeader.get(groupLeader));
                 const flowName = /** @type {string} */ (flowNameByGroupLeader.get(groupLeader));
                 const flowToNextPage = draft.areaIndices.some(areaIndex => page.areas[areaIndex]?.flowToNextPage);
+                const areaName = areaNameByGroupLeader.get(groupLeader) ?? "";
 
                 baseRows.push([
                     baseTemplateId, baseTemplateName, basePageId, basePageName,
                     "Base", "",
-                    flowName, String(flowToNextPage), String(areaGroupIndex),
+                    flowName, areaName, String(flowToNextPage), String(areaGroupIndex),
                     `${draft.position.x}mm`, `${draft.position.y}mm`, `${draft.position.w}mm`, `${draft.position.h}mm`,
                     pageWidthMm, pageHeightMm,
                     "",
@@ -1285,9 +1294,9 @@ async function saveCsv() {
         const byLogicalName = {
             templateId: baseRow[0], templateName: baseRow[1], pageId: baseRow[2], pageName: baseRow[3],
             type: baseRow[4], baseTemplateTargetId: baseRow[5],
-            interactiveFlowName: baseRow[6], flowToNextPage: baseRow[7], areaIndex: baseRow[8],
-            x: baseRow[9], y: baseRow[10], width: baseRow[11], height: baseRow[12],
-            pageWidth: baseRow[13], pageHeight: baseRow[14], contentPreview: baseRow[15],
+            interactiveFlowName: baseRow[6], areaName: baseRow[7], flowToNextPage: baseRow[8], areaIndex: baseRow[9],
+            x: baseRow[10], y: baseRow[11], width: baseRow[12], height: baseRow[13],
+            pageWidth: baseRow[14], pageHeight: baseRow[15], contentPreview: baseRow[16],
         };
         const row = headers.map(h => byLogicalName[normalizeHeaderName(h)] ?? "");
         rows.push(row);
@@ -1438,7 +1447,7 @@ function render(data) {
  * @returns {string}
  */
 function areaTip(ar, idx) {
-    const name = areaLabel(ar.contentPreview) || `area_${idx}`;
+    const name = areaLabel(ar) || `area_${idx}`;
     return `${name}\nw ${ar.w}mm · h ${ar.h}mm · x ${ar.x}mm · y ${ar.y}mm`
         + (ar.flowToNextPage ? " · [↓]" : "")
         + (ar.interactiveFlowName ? ` · flow:${ar.interactiveFlowName}` : "");
@@ -1520,7 +1529,7 @@ function buildPageSvg(page, baseTemplateAreaDrafts) {
         svg.appendChild(rect);
 
         if (rw > 12 && rh > 8) {
-            const name = areaLabel(a.contentPreview) || `area_${i}`;
+            const name = areaLabel(a) || `area_${i}`;
             const txt = svgEl("text", {x: rx + 2, y: ry + 9, "font-size": 6.5, fill: "#222", "pointer-events": "none"});
             txt.textContent = name.length > 28 ? name.slice(-28) : name;
             svg.appendChild(txt);
@@ -2269,6 +2278,7 @@ function groupByProximity(areas, groupingGap) {
         const y = Math.min(...subset.map(area => area.y));
         const x2 = Math.max(...subset.map(area => area.x + area.w));
         const y2 = Math.max(...subset.map(area => area.y + area.h));
+        const areaName = areaIndices.map(idx => areas[idx].areaName).find(Boolean);
         const previewSource = areaIndices.map(idx => areas[idx].contentPreview).find(Boolean);
         return {
             areaIndices,
@@ -2278,7 +2288,8 @@ function groupByProximity(areas, groupingGap) {
                 w: roundTo(x2 - x, 2),
                 h: roundTo(y2 - y, 2),
             },
-            name: parseFlowNameFromPreview(previewSource) || `Area ${draftIndex + 1}`,
+            name: areaName || parseFlowNameFromPreview(previewSource) || `Area ${draftIndex + 1}`,
+            areaName: areaName || '',
         };
     });
 }
@@ -2497,10 +2508,13 @@ function svgDim(mm, scale) {
 }
 
 /**
- * @param {string} preview
+ * Label for an area: its name when available, otherwise the first content preview chunk.
+ * @param {AreaEntry} area
  * @returns {string}
  */
-function areaLabel(preview) {
+function areaLabel(area) {
+    if (area.areaName) return area.areaName.slice(0, 40);
+    const preview = area.contentPreview;
     if (!preview) return "";
     const firstChunk = preview.split(";")[0];
     return firstChunk.slice(0, 40);

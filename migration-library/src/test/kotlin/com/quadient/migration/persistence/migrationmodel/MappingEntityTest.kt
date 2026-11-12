@@ -169,6 +169,58 @@ class MappingEntityTest {
                 )
             )
         }
+
+        @Test
+        fun `maps area names and keeps names of areas missing from the mapping`() {
+            val mapping = MappingItemEntity.Area(
+                name = null,
+                areas = mutableMapOf(),
+                areaNames = mutableMapOf(0 to "Renamed", 1 to null),
+            )
+            val block = aBlockDto(
+                "doc1", content = listOf(
+                    AreaBuilder().name("Header").build(),
+                    AreaBuilder().name("Body").build(),
+                    AreaBuilder().name("Footer").build(),
+                )
+            )
+
+            val result = mapping.apply(block)
+
+            result.content.shouldBeEqualTo(
+                listOf(
+                    AreaBuilder().name("Renamed").build(),
+                    AreaBuilder().build(),
+                    AreaBuilder().name("Footer").build(),
+                )
+            )
+        }
+
+        @Test
+        fun `area mapping keeps flowToNextPage and area names through dto conversion`() {
+            val entity = MappingItemEntity.Area(
+                name = null,
+                areas = mutableMapOf(0 to "flow"),
+                flowToNextPage = mutableMapOf(0 to true),
+                areaNames = mutableMapOf(0 to "Header"),
+            )
+
+            entity.toDto().toDb().shouldBeEqualTo(entity)
+        }
+
+        @Test
+        fun `area mapping stored before area names were introduced is still readable`() {
+            val json = kotlinx.serialization.json.Json
+            val stored = json.encodeToString<MappingItemEntity>(
+                MappingItemEntity.Area(name = null, areas = mutableMapOf(0 to "flow"), flowToNextPage = mutableMapOf(0 to true))
+            )
+            assertEquals(false, stored.contains("areaNames"), "Rows stored before area names must not contain the key: $stored")
+
+            val entity = json.decodeFromString<MappingItemEntity>(stored) as MappingItemEntity.Area
+
+            entity.areaNames.shouldBeEqualTo(mutableMapOf())
+            entity.areas.shouldBeEqualTo(mutableMapOf(0 to "flow"))
+        }
     }
 
     @Nested

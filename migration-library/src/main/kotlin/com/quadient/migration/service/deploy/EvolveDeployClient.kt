@@ -510,7 +510,7 @@ class EvolveDeployClient(
             val (pageWidth, pageHeight) = pageSizes[index]
             page.areas.map { area ->
                 BaseTemplateStructureArea.Text(
-                    displayName = area.interactiveFlowName,
+                    displayName = area.name?.takeIf { it.isNotBlank() } ?: area.interactiveFlowName,
                     x = area.position?.x?.toMillimeters() ?: DEFAULT_AREA_PADDING_MM,
                     y = area.position?.y?.toMillimeters() ?: DEFAULT_AREA_PADDING_MM,
                     width = area.position?.width?.toMillimeters() ?: (pageWidth - 2 * DEFAULT_AREA_PADDING_MM),

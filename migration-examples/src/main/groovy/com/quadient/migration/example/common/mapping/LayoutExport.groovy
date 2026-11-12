@@ -1,7 +1,7 @@
 //! ---
 //! displayName: Export Layout
 //! category: Mapping
-//! description: Export areas assigned to the appropriate pages and templates. Allows user to modify interactive flow name
+//! description: Export areas assigned to the appropriate pages and templates. Allows user to modify interactive flow name and area name
 //! ---
 package com.quadient.migration.example.common.mapping
 
@@ -47,6 +47,7 @@ static void run(Migration migration, Path path) {
             Mapping.displayHeader("type", false),
             Mapping.displayHeader("baseTemplateTargetId", false),
             Mapping.displayHeader("interactiveFlowName", false),
+            Mapping.displayHeader("areaName", false),
             Mapping.displayHeader("flowToNextPage", false),
             Mapping.displayHeader("areaIndex", false),
             Mapping.displayHeader("x", false),
@@ -110,6 +111,7 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     builder.append("Standard,")
     builder.append(Csv.serialize(page?.baseTemplate ?: template?.baseTemplate) + ",")
     builder.append(Csv.serialize(area.interactiveFlowName) + ",")
+    builder.append(Csv.serialize(area.name) + ",")
     builder.append(Csv.serialize(area.flowToNextPage) + ",")
     builder.append(Csv.serialize(idx) + ",")
     builder.append(Csv.serialize(area.position.x) + ",")
@@ -134,6 +136,7 @@ static String buildBaseTemplateArea(BaseTemplate baseTemplate, String pageId, Ba
     builder.append("Base,")
     builder.append(Csv.serialize(null) + ",")
     builder.append(Csv.serialize(area.interactiveFlowName) + ",")
+    builder.append(Csv.serialize(area.name) + ",")
     builder.append(Csv.serialize(area.flowToNextPage) + ",")
     builder.append(Csv.serialize(idx) + ",")
     builder.append(Csv.serialize(area.position?.x) + ",")
