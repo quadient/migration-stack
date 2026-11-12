@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - VariableStructuresExport/Import task that allows to modify variable structure data including name and target folder
 - GenerateSampleData task that prints the field tree of a variable structure and generates sample JSON data matching it,
   with the generate-sample-data agent skill on top of it
+- ActivateWithoutDependencies task that activates only the selected document objects, without their dependencies
 
 ### Changed
 
@@ -23,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Template languages for select by language blocks are collected also from external document objects
 - Internal document objects are now included in mapping, so they can be converted to external, among other things
 - Layout mapping includes editable area names for both standard and base template areas
+- Activate task with selected document objects now activates the selected document objects together with all their
+  dependencies, consistently with other tasks
 
 ### Fixed
 

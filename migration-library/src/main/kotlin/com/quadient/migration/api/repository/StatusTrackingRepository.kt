@@ -47,6 +47,13 @@ class StatusTrackingRepository(projectName: ProjectName) {
         }
     }
 
+    fun activeIfNotActive(id: String, resourceType: ResourceType, data: Map<String, String> = emptyMap()): StatusTracking? {
+        return transaction {
+            val lastEvent = internalRepository.find(id, resourceType)?.statusEvents?.lastOrNull()
+            if (lastEvent is Active) null else active(id, resourceType, data)
+        }
+    }
+
     fun error(
         id: String,
         deploymentId: Uuid,
