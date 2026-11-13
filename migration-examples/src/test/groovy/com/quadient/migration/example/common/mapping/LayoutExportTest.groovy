@@ -241,6 +241,27 @@ class LayoutExportTest {
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
 
+    @Test
+    void exportAreaWithoutPosition() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        when(migration.mappingRepository.getAreaMapping(any())).thenReturn(new MappingItem.Area(null, [:], [:]))
+        def positionlessArea = new AreaBuilder().interactiveFlowName("no position flow").build()
+        when((migration.documentObjectRepository as DocumentObjectRepository).list(any())).thenReturn([
+            new DocumentObjectBuilder("tmpl", DocumentObjectType.Template)
+                    .content([positionlessArea, createArea("positioned flow")])
+                    .build(),
+        ])
+
+        LayoutExport.run(migration, mappingFile)
+
+        def expected = """\
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            tmpl,,,,Standard,,no position flow,,false,0,,,,,,,
+            tmpl,,,,Standard,,positioned flow,,false,1,0mm,0mm,0mm,0mm,,,
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+    }
+
     static Area createArea(String flowName, Boolean flowToNextPage = false, List<DocumentContent> content = null, String name = null) {
         def areaBuilder = new AreaBuilder()
                 .position(new Position(Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0), Size.ofMillimeters(0)))
