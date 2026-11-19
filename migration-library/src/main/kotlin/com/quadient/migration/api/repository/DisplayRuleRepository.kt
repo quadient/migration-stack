@@ -123,9 +123,9 @@ class DisplayRuleRepository(projectName: ProjectName, private val statusTracking
     }
 
     private fun trackStatus(dto: DisplayRule, existingItem: DisplayRule?) {
-        if (existingItem == null && !dto.internal) {
+        if (existingItem == null) {
             statusTrackingRepository.active(dto.id, ResourceType.DisplayRule)
-        } else if (!dto.internal && existingItem?.internal == true) {
+        } else {
             statusTrackingRepository.activeIfUntracked(dto.id, ResourceType.DisplayRule)
         }
     }

@@ -110,10 +110,20 @@ class DisplayRuleRepositoryTest {
     }
 
     @Test
-    fun `upsert tracks active status for rules that changed from internal to external`() {
-        val rule = DisplayRuleBuilder("untracked").internal(true).build()
+    fun `upsert tracks active status for new internal rules`() {
+        val rule = DisplayRuleBuilder("newInternal").internal(true).build()
         repo.upsert(rule)
-        statusRepo.find(rule.id, ResourceType.DisplayRule).shouldBeEqualTo(null)
+
+        val result = statusRepo.find(rule.id, ResourceType.DisplayRule)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
+    }
+
+    @Test
+    fun `upsert keeps single active status for rules that changed from internal to external`() {
+        val rule = DisplayRuleBuilder("internalToExternal").internal(true).build()
+        repo.upsert(rule)
 
         rule.internal = false
         repo.upsert(rule)
@@ -124,28 +134,27 @@ class DisplayRuleRepositoryTest {
     }
 
     @Test
-    fun `upsert does not duplicate active status when internal rule changing to external is already active`() {
-        val rule = DisplayRuleBuilder("alreadyActive").internal(true).build()
-        repo.upsert(rule)
-        statusRepo.active(rule.id, ResourceType.DisplayRule, mapOf("reason" to "Manual"))
+    fun `upsertBatch tracks active status for found and mutated rule that changed from internal to external`() {
+        repo.upsertBatch(listOf(DisplayRuleBuilder("foundAndMutatedBatch").internal(true).build()))
 
-        rule.internal = false
-        repo.upsert(rule)
-        val result = statusRepo.find(rule.id, ResourceType.DisplayRule)
+        val found = repo.findOrFail("foundAndMutatedBatch")
+        found.internal = false
+        repo.upsertBatch(listOf(found))
+        val result = statusRepo.find(found.id, ResourceType.DisplayRule)
 
         result?.statusEvents?.shouldBeOfSize(1)
         assertInstanceOf(Active::class.java, result?.statusEvents?.last())
     }
 
     @Test
-    fun `upsertBatch does not duplicate active status when internal rule changing to external is already active`() {
-        val rule = DisplayRuleBuilder("alreadyActiveBatch").internal(true).build()
-        repo.upsertBatch(listOf(rule))
-        statusRepo.active(rule.id, ResourceType.DisplayRule, mapOf("reason" to "Manual"))
+    fun `upsertBatch tracks active status for existing untracked internal rule changed to external via find`() {
+        repo.upsertBatch(listOf(DisplayRuleBuilder("legacyUntracked").internal(true).build()))
+        statusRepo.deleteAll() // simulates internal rule persisted before internal rules were tracked
 
-        rule.internal = false
-        repo.upsertBatch(listOf(rule))
-        val result = statusRepo.find(rule.id, ResourceType.DisplayRule)
+        val found = repo.findOrFail("legacyUntracked")
+        found.internal = false
+        repo.upsertBatch(listOf(found))
+        val result = statusRepo.find(found.id, ResourceType.DisplayRule)
 
         result?.statusEvents?.shouldBeOfSize(1)
         assertInstanceOf(Active::class.java, result?.statusEvents?.last())

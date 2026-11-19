@@ -167,7 +167,29 @@ class DocumentObjectRepositoryTest {
     }
 
     @Test
-    fun `upsert tracks active status for objects that changed from internal to external`() {
+    fun `upsert tracks active status for new internal objects`() {
+        val input = aBlockDto("newInternal", internal = true, content = listOf())
+        repo.upsert(input)
+
+        val result = statusRepo.find(input.id, ResourceType.DocumentObject)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
+    }
+
+    @Test
+    fun `upsertBatch tracks active status for new internal objects`() {
+        val input = aBlockDto("newInternalBatch", internal = true, content = listOf())
+        repo.upsertBatch(listOf(input))
+
+        val result = statusRepo.find(input.id, ResourceType.DocumentObject)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
+    }
+
+    @Test
+    fun `upsert keeps single active status for objects that changed from internal to external`() {
         val input = aBlockDto("blockarstarst", internal = true, content = listOf())
         repo.upsert(input)
 
@@ -180,28 +202,40 @@ class DocumentObjectRepositoryTest {
     }
 
     @Test
-    fun `upsert does not duplicate active status when internal object changing to external is already active`() {
-        val input = aBlockDto("alreadyActive", internal = true, content = listOf())
-        repo.upsert(input)
-        statusRepo.active(input.id, ResourceType.DocumentObject, mapOf("reason" to "Manual"))
+    fun `upsert tracks active status for found and mutated object that changed from internal to external`() {
+        repo.upsert(aBlockDto("foundAndMutated", internal = true, content = listOf()))
 
-        input.internal = false
-        repo.upsert(input)
-        val result = statusRepo.find(input.id, ResourceType.DocumentObject)
+        val found = repo.findOrFail("foundAndMutated")
+        found.internal = false
+        repo.upsert(found)
+        val result = statusRepo.find(found.id, ResourceType.DocumentObject)
 
         result?.statusEvents?.shouldBeOfSize(1)
         assertInstanceOf(Active::class.java, result?.statusEvents?.last())
     }
 
     @Test
-    fun `upsertBatch does not duplicate active status when internal object changing to external is already active`() {
-        val input = aBlockDto("alreadyActiveBatch", internal = true, content = listOf())
-        repo.upsertBatch(listOf(input))
-        statusRepo.active(input.id, ResourceType.DocumentObject, mapOf("reason" to "Manual"))
+    fun `upsertBatch tracks active status for found and mutated object that changed from internal to external`() {
+        repo.upsertBatch(listOf(aBlockDto("foundAndMutatedBatch", internal = true, content = listOf())))
 
-        input.internal = false
-        repo.upsertBatch(listOf(input))
-        val result = statusRepo.find(input.id, ResourceType.DocumentObject)
+        val found = repo.findOrFail("foundAndMutatedBatch")
+        found.internal = false
+        repo.upsertBatch(listOf(found))
+        val result = statusRepo.find(found.id, ResourceType.DocumentObject)
+
+        result?.statusEvents?.shouldBeOfSize(1)
+        assertInstanceOf(Active::class.java, result?.statusEvents?.last())
+    }
+
+    @Test
+    fun `upsert tracks active status for existing untracked internal object changed to external via find`() {
+        repo.upsert(aBlockDto("legacyUntracked", internal = true, content = listOf()))
+        statusRepo.deleteAll() // simulates internal object persisted before internal objects were tracked
+
+        val found = repo.findOrFail("legacyUntracked")
+        found.internal = false
+        repo.upsert(found)
+        val result = statusRepo.find(found.id, ResourceType.DocumentObject)
 
         result?.statusEvents?.shouldBeOfSize(1)
         assertInstanceOf(Active::class.java, result?.statusEvents?.last())

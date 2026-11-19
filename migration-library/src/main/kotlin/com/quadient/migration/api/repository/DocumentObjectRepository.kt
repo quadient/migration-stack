@@ -132,9 +132,9 @@ class DocumentObjectRepository(projectName: ProjectName, private val statusTrack
 
     private fun trackStatus(dto: DocumentObject, existingItem: DocumentObject?) {
         val data = mapOf("type" to dto.type.toString())
-        if (existingItem == null && dto.internal != true) {
+        if (existingItem == null) {
             statusTrackingRepository.active(dto.id, ResourceType.DocumentObject, data)
-        } else if (dto.internal == false && existingItem?.internal == true) {
+        } else {
             statusTrackingRepository.activeIfUntracked(dto.id, ResourceType.DocumentObject, data)
         }
     }
