@@ -92,11 +92,11 @@ static String serialize(Object obj, Size.Unit unitOverride) {
     switch (obj) {
         case null: return ""
         case String: {
-            def result = obj.replace("\"", "\"\"")
-            if (result.contains(",") || result.contains("\n") || result.contains("\r")) {
-                result = "\"" + result + "\""
+            // Doubled quotes are only unescaped inside a quoted field, so a value containing a quote must be quoted too
+            if (obj.contains(",") || obj.contains("\"") || obj.contains("\n") || obj.contains("\r")) {
+                return "\"" + obj.replace("\"", "\"\"") + "\""
             }
-            return result
+            return obj
         }
         case Uuid: return obj.toString()
         case Instant: return obj.toString()

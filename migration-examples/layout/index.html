@@ -57,7 +57,20 @@
 
         .status {
             font-size: 13px;
+            color: var(--muted);
+        }
+
+        .status.error {
             color: #c00;
+        }
+
+        .status.ok {
+            color: #2a7a2a;
+        }
+
+        body.drag-over {
+            outline: 3px dashed #6b9fd4;
+            outline-offset: -12px;
         }
 
         /* Layout: split view */
@@ -395,8 +408,8 @@
 
 <div class="toolbar">
     <button id="similarity-btn" disabled>Show similarity</button>
-    <button id="select-all">Select all</button>
-    <button id="select-none">Deselect all</button>
+    <button id="select-all" disabled>Select all</button>
+    <button id="select-none" disabled>Deselect all</button>
     <div class="toolbar-sep"></div>
     <label class="toolbar-control" title="Page card display size">
         Page size: <input type="range" id="card-size" min="180" max="700" step="10" value="400"/>
@@ -450,7 +463,16 @@
  * @typedef {Object} LayoutData
  * @property {PageEntry[]} pages
  * @property {TemplateEntry[]} templates
- * @property {({pageIndex: number, areaIndex: number}|null)[]} [rowMap]
+ */
+
+/**
+ * The loaded layout CSV, kept so it can be written back losslessly (including columns the viewer
+ * doesn't use).
+ * @typedef {Object} CsvDocument
+ * @property {string[]} headers         header cells as in the file (incl. " (read-only)" suffixes)
+ * @property {string[][]} standardRows  non-Base data rows, padded to the header length
+ * @property {number[]} standardRowLines 1-based file line of each standard row, for error messages
+ * @property {string} fileName
  */
 
 /**
@@ -493,7 +515,8 @@
  * @property {string|null} templateName
  * @property {number|null} templatePageIndex
  * @property {AreaEntry[]} areas
-*/
+ * @property {string[][]} sourceRows    - the CsvDocument row of each area (same order as areas)
+ */
 
 /**
  * @typedef {Object} PageSizeEntry
@@ -584,6 +607,8 @@ const PALETTE = [
 const PAGE_REF_MM = 210;
 const DEFAULT_PROXIMITY_GAP_MM = 5.3;
 const PAD = 10;
+/** Characters (and the whitespace around them) not allowed in Inspire object names. */
+const INSPIRE_ILLEGAL_NAME_CHARS = /\s*:+\s*/g;
 /** @type {Settings} */
 const settings = {
     canvasW: 400,
@@ -626,28 +651,50 @@ const scheduleRender = debounce(() => { if (currentData) render(currentData); },
 const scheduleRefreshCards = debounce(refreshOpenPageGroups, 80);
 
 /**
- * Parses one RFC-4180 CSV line into an array of field strings.
- * @param {string} line
- * @returns {string[]}
+ * Parses CSV text (RFC 4180) into records. Quoted fields may contain commas, doubled quotes and
+ * line breaks. As in Csv.groovy's split, a quote opens a quoted field only at the very start of a
+ * field; anywhere else it is kept literally. A leading byte order mark (added by Excel) is ignored
+ * and blank lines are skipped.
+ * @param {string} text
+ * @returns {{cells: string[], line: number}[]} records with the 1-based line they start on
  */
-function parseCsvLine(line) {
-    const cols = [];
-    let i = 0, field = '', inQuotes = false;
-    while (i < line.length) {
-        const c = line[i];
+function parseCsv(text) {
+    /** @type {{cells: string[], line: number}[]} */
+    const records = [];
+    /** @type {string[]} */
+    let cells = [];
+    let field = "", inQuotes = false, wasQuoted = false;
+    let line = 1, recordLine = 1;
+    const endField = () => { cells.push(field); field = ""; wasQuoted = false; };
+    const endRecord = () => {
+        endField();
+        if (cells.length > 1 || cells[0] !== "") records.push({cells, line: recordLine});
+        cells = [];
+    };
+
+    let i = text.charCodeAt(0) === 0xFEFF ? 1 : 0;
+    for (; i < text.length; i++) {
+        const c = text[i];
         if (inQuotes) {
-            if (c === '"' && line[i + 1] === '"') { field += '"'; i++; }
+            if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
             else if (c === '"') { inQuotes = false; }
-            else { field += c; }
+            else { if (c === "\n") line++; field += c; }
+        } else if (c === ",") {
+            endField();
+        } else if (c === "\r" || c === "\n") {
+            if (c === "\r" && text[i + 1] === "\n") i++;
+            endRecord();
+            line++;
+            recordLine = line;
+        } else if (c === '"' && field === "" && !wasQuoted) {
+            inQuotes = true;
+            wasQuoted = true;
         } else {
-            if (c === ',') { cols.push(field); field = ''; }
-            else if (c === '"') { inQuotes = true; }
-            else { field += c; }
+            field += c;
         }
-        i++;
     }
-    cols.push(field);
-    return cols;
+    if (field !== "" || cells.length || wasQuoted) endRecord();
+    return records;
 }
 
 /**
@@ -703,30 +750,53 @@ function computeContainment(areas) {
 }
 
 /**
- * Parses the layout CSV produced by LayoutExport.groovy into a LayoutData object.
- * Templates and templatePageIndex are derived from row order; containedIn is computed from geometry.
+ * Reads the layout CSV into a {@link CsvDocument}. "Base" rows are dropped here; they are
+ * regenerated from the current grouping on export.
  * @param {string} text
+ * @param {string} fileName
+ * @returns {CsvDocument}
+ */
+function readCsvDocument(text, fileName) {
+    const [headerRecord, ...dataRecords] = parseCsv(text);
+    if (!headerRecord) throw new Error("The file is empty.");
+    const headers = headerRecord.cells;
+    const typeIdx = columnIndex(headers, "type");
+
+    /** @type {string[][]} */
+    const standardRows = [];
+    /** @type {number[]} */
+    const standardRowLines = [];
+    dataRecords.forEach(({cells, line}) => {
+        if (typeIdx >= 0 && (cells[typeIdx] ?? "").trim().toLowerCase() === "base") return;
+        while (cells.length < headers.length) cells.push("");
+        standardRows.push(cells);
+        standardRowLines.push(line);
+    });
+    return {headers, standardRows, standardRowLines, fileName};
+}
+
+/**
+ * Builds the LayoutData from the standard rows of a layout CSV produced by LayoutExport.groovy.
+ * Templates and templatePageIndex are derived from row order; containedIn is computed from geometry.
+ * Every page keeps references to its source rows so the export can write values back to them.
+ * @param {CsvDocument} doc
  * @returns {LayoutData}
  */
-function parseCsvToLayoutData(text) {
-    const lines = text.split(/\r?\n/);
-    if (!lines.length) return { pages: [], templates: [], rowMap: [] };
-
-    // Parse headers, stripping the " (read-only)" suffix added by Mapping.displayHeader
-    const headers = parseCsvLine(lines[0]).map(h => {
-        const s = h.trim();
-        return s.endsWith(' (read-only)') ? s.slice(0, -' (read-only)'.length) : s;
+function buildLayoutData(doc) {
+    /** @type {Map<string, number>} */
+    const indexByName = new Map();
+    doc.headers.forEach((header, idx) => {
+        const name = normalizeHeaderName(header);
+        if (!indexByName.has(name)) indexByName.set(name, idx);
     });
 
     /** @param {string[]} row @param {string} name @returns {string} */
-    const col = (row, name) => { const idx = headers.indexOf(name); return idx >= 0 ? (row[idx] ?? '') : ''; };
+    const col = (row, name) => { const idx = indexByName.get(name); return idx != null ? (row[idx] ?? '') : ''; };
 
-    /** @type {Map<string, {meta: {pageId:string|null,pageName:string|null,templateId:string|null,templateName:string|null,pageWidth:string,pageHeight:string}, rows:string[][], lineIndices:number[]}>} */
+    /** @type {Map<string, {meta: {pageId:string|null,pageName:string|null,templateId:string|null,templateName:string|null,pageWidth:string,pageHeight:string}, rows:string[][], lines:number[]}>} */
     const pageMap = new Map();
-    for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue;
-        const row = parseCsvLine(lines[i]);
-        if (col(row, 'type').trim().toLowerCase() === 'base') continue;
+    for (let i = 0; i < doc.standardRows.length; i++) {
+        const row = doc.standardRows[i];
 
         const pageId = col(row, 'pageId') || null;
         const templateId = col(row, 'templateId') || null;
@@ -748,11 +818,11 @@ function parseCsvToLayoutData(text) {
                     pageHeight: col(row, 'pageHeight'),
                 },
                 rows: [],
-                lineIndices: [],
+                lines: [],
             });
         }
         pageMap.get(pageKey).rows.push(row);
-        pageMap.get(pageKey).lineIndices.push(i);
+        pageMap.get(pageKey).lines.push(doc.standardRowLines[i]);
     }
 
     /** @type {Map<string, number>} */
@@ -768,10 +838,8 @@ function parseCsvToLayoutData(text) {
 
     /** @type {PageEntry[]} */
     const pages = [];
-    /** @type {({pageIndex: number, areaIndex: number}|null)[]} */
-    const rowMap = new Array(lines.length).fill(null);
-    for (const [pageKey, { meta, rows, lineIndices }] of pageMap) {
-        const rawAreasWithLine = rows.map((row, idx) => {
+    for (const [pageKey, { meta, rows, lines }] of pageMap) {
+        const rawAreasWithRow = rows.map((row, idx) => {
             const x = parseSizeMm(col(row, 'x'));
             const y = parseSizeMm(col(row, 'y'));
             const w = parseSizeMm(col(row, 'width'));
@@ -779,7 +847,7 @@ function parseCsvToLayoutData(text) {
             if (x == null || y == null || w == null || h == null) return null;
             const areaIndex = Number(col(row, 'areaIndex').trim());
             if (Number.isNaN(areaIndex)) {
-                throw new Error(`Row ${lineIndices[idx] + 1} is missing a valid areaIndex value.`);
+                throw new Error(`Row on line ${lines[idx]} is missing a valid areaIndex value.`);
             }
             return {
                 area: {
@@ -789,20 +857,17 @@ function parseCsvToLayoutData(text) {
                     areaName: col(row, 'areaName') || '',
                     contentPreview: col(row, 'contentPreview') || '',
                 },
-                lineIndex: lineIndices[idx],
+                row,
                 areaIndex,
             };
         }).filter(a => a != null);
-        rawAreasWithLine.sort((a, b) => a.areaIndex - b.areaIndex);
+        rawAreasWithRow.sort((a, b) => a.areaIndex - b.areaIndex);
         const rawAreas = /** @type {{x:number,y:number,w:number,h:number,flowToNextPage:boolean,interactiveFlowName:string,areaName:string,contentPreview:string}[]} */ (
-            rawAreasWithLine.map(a => a.area)
+            rawAreasWithRow.map(a => a.area)
         );
 
         const containment = computeContainment(rawAreas);
         const areas = /** @type {AreaEntry[]} */ (rawAreas.map((a, idx) => ({ ...a, containedIn: containment[idx] })));
-
-        const pageIndex = pages.length;
-        rawAreasWithLine.forEach((a, areaIndex) => { rowMap[a.lineIndex] = { pageIndex, areaIndex }; });
 
         const pw = parseSizeMm(meta.pageWidth);
         const ph = parseSizeMm(meta.pageHeight);
@@ -814,21 +879,17 @@ function parseCsvToLayoutData(text) {
             templateName: meta.templateName,
             templatePageIndex: pageIndexMap.get(pageKey) ?? null,
             areas,
+            sourceRows: rawAreasWithRow.map(a => a.row),
         }));
     }
 
-    return { pages, templates: deriveTemplates(pages), rowMap };
+    return { pages, templates: deriveTemplates(pages) };
 }
 
-// Raw CSV state kept alongside the parsed LayoutData so the file can be re-serialized
+// The loaded CSV, kept alongside the parsed LayoutData so the file can be re-serialized
 // losslessly (including columns/rows the viewer doesn't otherwise use) for saving back to disk.
-/** @type {string[]|null} */
-let currentCsvHeaders = null;
-/** @type {string[][]|null} */
-let currentCsvRows = null;
-let currentFileName = "layout.csv";
-/** @type {({pageIndex: number, areaIndex: number}|null)[]} */
-let currentRowMap = [];
+/** @type {CsvDocument|null} */
+let currentCsv = null;
 
 const saveCsvBtn = /** @type {HTMLButtonElement} */ (document.getElementById("save-csv"));
 
@@ -837,28 +898,25 @@ const saveCsvBtn = /** @type {HTMLButtonElement} */ (document.getElementById("sa
  */
 async function loadFile(file) {
     try {
-        statusEl.textContent = "";
-        const text = await file.text();
-
-        const lines = text.split(/\r?\n/);
-        if (lines.length && lines[0].trim() !== "") {
-            currentCsvHeaders = parseCsvLine(lines[0]);
-            const typeIdx = currentCsvHeaders.map(h => normalizeHeaderName(h)).indexOf("type");
-            currentCsvRows = lines.slice(1).map(parseCsvLine)
-                .filter(row => typeIdx < 0 || (row[typeIdx] ?? "").trim().toLowerCase() !== "base");
-        } else {
-            currentCsvHeaders = null;
-            currentCsvRows = null;
-        }
-        currentFileName = file.name || "layout.csv";
-        saveCsvBtn.disabled = !currentCsvHeaders;
-
-        const layoutData = parseCsvToLayoutData(text);
-        currentRowMap = layoutData.rowMap ?? [];
+        setStatus("");
+        const doc = readCsvDocument(await file.text(), file.name || "layout.csv");
+        const layoutData = buildLayoutData(doc);
+        currentCsv = doc;
+        saveCsvBtn.disabled = false;
         render(layoutData);
     } catch (err) {
-        statusEl.textContent = "Error: " + /** @type {Error} */ (err).message;
+        setStatus("Error: " + /** @type {Error} */ (err).message, "error");
     }
+}
+
+/**
+ * @param {string} message
+ * @param {"ok"|"error"} [kind]
+ */
+function setStatus(message, kind) {
+    statusEl.textContent = message;
+    statusEl.classList.toggle("ok", kind === "ok");
+    statusEl.classList.toggle("error", kind === "error");
 }
 
 fileInput.addEventListener("change", () => {
@@ -866,13 +924,34 @@ fileInput.addEventListener("change", () => {
     if (file) loadFile(file);
 });
 
+/**
+ * Header name without the " (read-only)" suffix added by Mapping.displayHeader.
+ * @param {string} header
+ * @returns {string}
+ */
 function normalizeHeaderName(header) {
     const s = (header ?? "").trim();
-    return s.endsWith(" (read-only)") ? s.slice(0, -" (read-only)".length) : s;
+    return s.endsWith(" (read-only)") ? s.slice(0, -" (read-only)".length).trim() : s;
 }
 
+/**
+ * @param {string[]} headers
+ * @param {string} logicalName
+ * @returns {number} -1 when the column is missing
+ */
+function columnIndex(headers, logicalName) {
+    return headers.findIndex(h => normalizeHeaderName(h) === logicalName);
+}
+
+/**
+ * Returns the index of the given column, inserting it (before contentPreview) when missing.
+ * @param {string[]} headers
+ * @param {string[][]} rows
+ * @param {string} logicalName
+ * @returns {number}
+ */
 function ensureCsvColumn(headers, rows, logicalName) {
-    const idx = headers.findIndex(h => normalizeHeaderName(h) === logicalName);
+    const idx = columnIndex(headers, logicalName);
     if (idx >= 0) return idx;
     const insertIdx = headers.findIndex(h => normalizeHeaderName(h) === "contentPreview");
     const at = insertIdx >= 0 ? insertIdx : headers.length;
@@ -881,6 +960,10 @@ function ensureCsvColumn(headers, rows, logicalName) {
     return at;
 }
 
+/**
+ * @param {string} field
+ * @returns {string}
+ */
 function csvEscapeField(field) {
     const s = field ?? "";
     if (/[",\r\n]/.test(s)) {
@@ -889,6 +972,11 @@ function csvEscapeField(field) {
     return s;
 }
 
+/**
+ * @param {string[]} headers
+ * @param {string[][]} rows
+ * @returns {string}
+ */
 function serializeCsv(headers, rows) {
     const lines = [headers.map(csvEscapeField).join(",")];
     for (const row of rows) {
@@ -1139,7 +1227,7 @@ function assignFlowNamesToLinkedGroups(templateGroups, data, baseTemplateAreaDra
                     const groupLeader = linkedAreaGroups.groupLeaderOf(btAreaDraftGroupKey(pageIdentityKey(page, pageIndex), draftIndex));
                     if (flowNameByGroupLeader.has(groupLeader)) return;
 
-                    const baseFlowName = `${draft.name}Flow`;
+                    const baseFlowName = inspireSafeName(`${draft.name}Flow`);
                     let flowName = baseFlowName;
                     let dedupCounter = 2;
                     while (usedFlowNames.has(flowName)) {
@@ -1164,10 +1252,11 @@ function assignFlowNamesToLinkedGroups(templateGroups, data, baseTemplateAreaDra
  * @param {LayoutData} data
  * @param {ViewModel} viewModel
  * @param {LayoutAnalysis} analysis
- * @returns {{baseRows: string[][], overridesByPageIndex: Map<number, {flowNames: (string|null)[], targetId: string}>}}
+ * @returns {{baseRows: Record<string, string>[], overridesByPageIndex: Map<number, {flowNames: (string|null)[], targetId: string}>}}
+ *   baseRows are keyed by logical column name; missing columns are written empty
  */
 function computeBaseTemplateData(data, viewModel, analysis) {
-    /** @type {string[][]} */
+    /** @type {Record<string, string>[]} */
     const baseRows = [];
     /** @type {Map<number, {flowNames: (string|null)[], targetId: string}>} */
     const overridesByPageIndex = new Map();
@@ -1181,7 +1270,7 @@ function computeBaseTemplateData(data, viewModel, analysis) {
 
     viewModel.templateGroups.forEach((templateGroup, templateGroupIndex) => {
         const baseTemplateId = `bt-${templateGroupIndex + 1}`;
-        const baseTemplateName = `${templateGroup.templateNames[0]}BaseTemplate`;
+        const baseTemplateName = inspireSafeName(`${templateGroup.templateNames[0]}BaseTemplate`);
 
         templateGroup.pageGroups.forEach((pageGroup, pageGroupIndex) => {
             const basePageId = `page-${pageGroupIndex + 1}`;
@@ -1219,14 +1308,23 @@ function computeBaseTemplateData(data, viewModel, analysis) {
                 const flowToNextPage = draft.areaIndices.some(areaIndex => page.areas[areaIndex]?.flowToNextPage);
                 const areaName = areaNameByGroupLeader.get(groupLeader) ?? "";
 
-                baseRows.push([
-                    baseTemplateId, baseTemplateName, basePageId, basePageName,
-                    "Base", "",
-                    flowName, areaName, String(flowToNextPage), String(areaGroupIndex),
-                    `${draft.position.x}mm`, `${draft.position.y}mm`, `${draft.position.w}mm`, `${draft.position.h}mm`,
-                    pageWidthMm, pageHeightMm,
-                    "",
-                ]);
+                baseRows.push({
+                    templateId: baseTemplateId,
+                    templateName: baseTemplateName,
+                    pageId: basePageId,
+                    pageName: basePageName,
+                    type: "Base",
+                    interactiveFlowName: flowName,
+                    areaName,
+                    flowToNextPage: String(flowToNextPage),
+                    areaIndex: String(areaGroupIndex),
+                    x: `${draft.position.x}mm`,
+                    y: `${draft.position.y}mm`,
+                    width: `${draft.position.w}mm`,
+                    height: `${draft.position.h}mm`,
+                    pageWidth: pageWidthMm,
+                    pageHeight: pageHeightMm,
+                });
             });
 
             pageGroup.pageIndices.forEach(pageIndex => {
@@ -1250,17 +1348,20 @@ function computeBaseTemplateData(data, viewModel, analysis) {
 }
 
 async function saveCsv() {
-    if (!currentCsvHeaders || !currentCsvRows) {
-        statusEl.textContent = "No CSV loaded to save.";
+    if (!currentCsv) {
+        setStatus("No CSV loaded to save.", "error");
         return;
     }
     if (!currentData || !currentViewModel || !currentAnalysis) {
-        statusEl.textContent = "No layout data loaded to save.";
+        setStatus("No layout data loaded to save.", "error");
         return;
     }
 
-    const headers = [...currentCsvHeaders];
-    const rows = currentCsvRows.map(row => [...row]);
+    const headers = [...currentCsv.headers];
+    // Copies of the loaded rows, looked up by the original row the areas reference.
+    /** @type {Map<string[], string[]>} */
+    const copyBySourceRow = new Map(currentCsv.standardRows.map(row => [row, [...row]]));
+    const rows = [...copyBySourceRow.values()];
 
     const typeIdx = ensureCsvColumn(headers, rows, "type");
     const targetIdIdx = ensureCsvColumn(headers, rows, "baseTemplateTargetId");
@@ -1268,18 +1369,16 @@ async function saveCsv() {
 
     const { baseRows, overridesByPageIndex } = computeBaseTemplateData(currentData, currentViewModel, currentAnalysis);
 
-    currentRowMap.forEach((entry, lineIndex) => {
-        if (!entry) return;
-        const rowIdx = lineIndex - 1;
-        const row = rows[rowIdx];
-        if (!row) return;
-
-        const override = overridesByPageIndex.get(entry.pageIndex);
+    currentData.pages.forEach((page, pageIndex) => {
+        const override = overridesByPageIndex.get(pageIndex);
         if (!override) return;
-
-        row[targetIdIdx] = override.targetId;
-        const flowName = override.flowNames[entry.areaIndex];
-        if (flowName != null) row[flowNameIdx] = flowName;
+        page.sourceRows.forEach((sourceRow, areaIndex) => {
+            const row = copyBySourceRow.get(sourceRow);
+            if (!row) return;
+            row[targetIdIdx] = override.targetId;
+            const flowName = override.flowNames[areaIndex];
+            if (flowName != null) row[flowNameIdx] = flowName;
+        });
     });
 
     for (let i = rows.length - 1; i >= 0; i--) {
@@ -1291,33 +1390,26 @@ async function saveCsv() {
     }
 
     baseRows.forEach(baseRow => {
-        const byLogicalName = {
-            templateId: baseRow[0], templateName: baseRow[1], pageId: baseRow[2], pageName: baseRow[3],
-            type: baseRow[4], baseTemplateTargetId: baseRow[5],
-            interactiveFlowName: baseRow[6], areaName: baseRow[7], flowToNextPage: baseRow[8], areaIndex: baseRow[9],
-            x: baseRow[10], y: baseRow[11], width: baseRow[12], height: baseRow[13],
-            pageWidth: baseRow[14], pageHeight: baseRow[15], contentPreview: baseRow[16],
-        };
-        const row = headers.map(h => byLogicalName[normalizeHeaderName(h)] ?? "");
-        rows.push(row);
+        rows.push(headers.map(h => baseRow[normalizeHeaderName(h)] ?? ""));
     });
 
     const text = serializeCsv(headers, rows);
+    const fileName = currentCsv.fileName;
 
     if (typeof window.showSaveFilePicker === "function") {
         try {
             const handle = await window.showSaveFilePicker({
-                suggestedName: currentFileName,
+                suggestedName: fileName,
                 types: [{ description: "CSV file", accept: { "text/csv": [".csv"] } }],
             });
             const writable = await handle.createWritable();
             await writable.write(text);
             await writable.close();
-            statusEl.textContent = `Saved ${handle.name}`;
+            setStatus(`Saved ${handle.name}`, "ok");
             return;
         } catch (err) {
             if (/** @type {Error} */ (err).name === "AbortError") return;
-            statusEl.textContent = "Error saving file: " + /** @type {Error} */ (err).message;
+            setStatus("Error saving file: " + /** @type {Error} */ (err).message, "error");
             return;
         }
     }
@@ -1326,19 +1418,26 @@ async function saveCsv() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = currentFileName;
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    statusEl.textContent = `Downloaded ${currentFileName}`;
+    setStatus(`Downloaded ${fileName}`, "ok");
 }
 
 saveCsvBtn.addEventListener("click", () => { saveCsv(); });
 
-document.body.addEventListener("dragover", e => e.preventDefault());
+document.body.addEventListener("dragover", e => {
+    e.preventDefault();
+    document.body.classList.add("drag-over");
+});
+document.body.addEventListener("dragleave", e => {
+    if (e.relatedTarget == null) document.body.classList.remove("drag-over");
+});
 document.body.addEventListener("drop", e => {
     e.preventDefault();
+    document.body.classList.remove("drag-over");
     const file = e.dataTransfer?.files[0];
     if (file) loadFile(file);
 });
@@ -1746,7 +1845,7 @@ function renderTemplateGroupItem(group, groupIndex, pageMatrix, pageNumberMap, d
         .join("");
     return `<div class="tg-header">`
         + `<div class="tg-header-row1">`
-        + `<input type="checkbox" ${isTemplateGroupSelected(group) ? "checked" : ""} data-group-key="${group.key}"/>`
+        + `<input type="checkbox" ${isTemplateGroupSelected(group) ? "checked" : ""} data-group-key="${htmlEsc(group.key)}"/>`
         + `${renderTemplateBadges(group, groupIndex)}`
         + `</div>`
         + `</div>`
@@ -2409,38 +2508,59 @@ function buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatri
 }
 
 /**
- * Agglomerative grouping with configurable linkage strategy.
- * - single:   merge if ANY pair exceeds threshold (loose)
- * - average:  merge if AVERAGE of all pairs exceeds threshold (default)
- * - complete: merge if ALL pairs exceed threshold (strict)
+ * Agglomerative grouping that always merges the two most similar groups first, until no pair of
+ * groups reaches the threshold. The similarity of two groups depends on the linkage strategy:
+ * - single:   the best pair of members (loose)
+ * - average:  the average of all member pairs (default)
+ * - complete: the worst pair of members (strict)
+ * The result does not depend on the order of `indices` except for ties, which go to the earlier
+ * groups. Members and groups are returned in `indices` order.
  * @param {number[]} indices
  * @param {number[][]} matrix
  * @param {Settings} activeSettings
  * @returns {number[][]}
  */
 function groupPages(indices, matrix, activeSettings) {
-    /** @type {number[][]} */
-    let pageGroups = indices.map(i => [i]);
-    let changed = true;
-    while (changed) {
-        changed = false;
-        outer: for (let i = 0; i < pageGroups.length; i++) {
-            for (let j = i + 1; j < pageGroups.length; j++) {
-                const scores = pageGroups[i].flatMap(a => pageGroups[j].map(b => matrix[a]?.[b] ?? 0));
-                const linkScore =
-                    activeSettings.groupStrategy === "single"   ? Math.max(...scores) :
-                    activeSettings.groupStrategy === "complete" ? Math.min(...scores) :
-                    scores.reduce((s, v) => s + v, 0) / scores.length; // average
-                if (linkScore >= activeSettings.groupThreshold) {
-                    pageGroups[i].push(...pageGroups[j]);
-                    pageGroups.splice(j, 1);
-                    changed = true;
-                    break outer;
-                }
+    const {groupStrategy, groupThreshold} = activeSettings;
+    const count = indices.length;
+    /** @type {(number[]|null)[]} */
+    const groups = indices.map(i => [i]);
+    // linkage[a][b]: similarity between groups a and b, updated in place when groups merge.
+    const linkage = indices.map(a => Float64Array.from(indices, b => matrix[a]?.[b] ?? 0));
+
+    for (;;) {
+        let bestA = -1, bestB = -1, best = -Infinity;
+        for (let a = 0; a < count; a++) {
+            if (!groups[a]) continue;
+            const row = linkage[a];
+            for (let b = a + 1; b < count; b++) {
+                if (groups[b] && row[b] > best) { best = row[b]; bestA = a; bestB = b; }
             }
         }
+        if (bestA < 0 || best < groupThreshold) break;
+
+        const groupA = /** @type {number[]} */ (groups[bestA]);
+        const groupB = /** @type {number[]} */ (groups[bestB]);
+        for (let k = 0; k < count; k++) {
+            if (!groups[k] || k === bestA || k === bestB) continue;
+            const scoreA = linkage[bestA][k], scoreB = linkage[bestB][k];
+            const merged =
+                groupStrategy === "single"   ? Math.max(scoreA, scoreB) :
+                groupStrategy === "complete" ? Math.min(scoreA, scoreB) :
+                (scoreA * groupA.length + scoreB * groupB.length) / (groupA.length + groupB.length);
+            linkage[bestA][k] = merged;
+            linkage[k][bestA] = merged;
+        }
+        groupA.push(...groupB);
+        groups[bestB] = null;
     }
-    return pageGroups;
+
+    const positionOf = new Map(indices.map((index, position) => [index, position]));
+    /** @param {number} x @param {number} y */
+    const byPosition = (x, y) => /** @type {number} */ (positionOf.get(x)) - /** @type {number} */ (positionOf.get(y));
+    return /** @type {number[][]} */ (groups.filter(Boolean))
+        .map(group => group.sort(byPosition))
+        .sort((x, y) => byPosition(x[0], y[0]));
 }
 
 /**
@@ -2525,7 +2645,23 @@ function areaLabel(area) {
  * @returns {string}
  */
 function htmlEsc(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+/**
+ * Makes a generated name valid for Inspire by replacing characters it does not allow in object
+ * names (with surrounding whitespace) by "_", e.g. "Orphan: Page 1" -> "Orphan_Page 1", and
+ * line breaks/tabs by a space. Extend INSPIRE_ILLEGAL_NAME_CHARS when more illegal characters are found.
+ * @param {string} name
+ * @returns {string}
+ */
+function inspireSafeName(name) {
+    return name.replace(INSPIRE_ILLEGAL_NAME_CHARS, "_").replace(/\s+/g, " ").trim();
 }
 
 /**
