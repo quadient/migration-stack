@@ -477,7 +477,7 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     fun buildTextStyles(layout: Layout, textStyleModels: List<TextStyle>) {
-        resolveArialFont(layout, icmDataCache)
+        resolveDefaultFont(layout, icmDataCache)
 
         for (styleModel in textStyleModels) {
             if (styleModel.nameOrId().lowercase() in RESERVED_TEXT_STYLES) {
@@ -492,7 +492,7 @@ abstract class InspireDocumentObjectBuilder(
     }
 
     private fun applyTextStyleProperties(layout: Layout, textStyle: WfdXmlTextStyle, definition: TextStyleDefinition) {
-        val fontFamily = definition.fontFamily ?: "Arial"
+        val fontFamily = definition.fontFamily ?: icmDataCache.defaultFontName
 
         val font = getFontByName(layout, fontFamily) ?: layout.addFont().setName(fontFamily).setFontName(fontFamily)
         textStyle.setFont(font)

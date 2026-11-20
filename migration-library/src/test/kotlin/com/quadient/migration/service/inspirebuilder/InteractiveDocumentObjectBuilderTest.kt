@@ -35,6 +35,8 @@ import com.quadient.migration.api.repository.ParagraphStyleRepository
 import com.quadient.migration.api.repository.TextStyleRepository
 import com.quadient.migration.api.repository.VariableRepository
 import com.quadient.migration.api.repository.VariableStructureRepository
+import com.quadient.migration.service.EvolveIcmDataCache
+import com.quadient.migration.service.EvolveResourcePathProvider
 import com.quadient.migration.service.InteractiveIcmDataCache
 import com.quadient.migration.service.InteractiveResourcePathProvider
 import com.quadient.migration.service.ipsclient.IpsService
@@ -1360,6 +1362,70 @@ class InteractiveDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `evolve style definition uses Arimo as default font and keeps Arial as separate font`() {
+        // given
+        val evolveSubject = anEvolveSubject()
+        every { ipsService.gatherFontData(any()) } returns
+            "Arimo,Regular,icm://Interactive/tenant/Resources/Fonts/Arimo-Regular.ttf;" +
+            "Arial,Regular,icm://Interactive/tenant/Resources/Fonts/arial.ttf;"
+
+        val textStyles = listOf(
+            aTextStyle("ts1", definition = aTextDef(fontFamily = null)),
+            aTextStyle("ts2", definition = aTextDef(fontFamily = "Arial")),
+        )
+
+        // when
+        val result = evolveSubject.buildStyleLayoutDelta(textStyles, emptyList())
+
+        // then
+        val layout = xmlMapper.readTree(result.trimIndent())
+        val fonts = layout["Font"]
+
+        val defFont = fonts.last { it["Id"].stringValue() == "Def.Font" }
+        defFont["FontName"].stringValue().shouldBeEqualTo("Arimo")
+        defFont["SubFont"]["FontLocation"].stringValue()
+            .shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/Arimo-Regular.ttf")
+
+        val arialId = fonts.first { it["Name"]?.stringValue() == "Arial" }["Id"].stringValue()
+        arialId.shouldNotBeEqualTo("Def.Font")
+        val arialFont = fonts.last { it["Id"].stringValue() == arialId }
+        arialFont["FontName"].stringValue().shouldBeEqualTo("Arial")
+        arialFont["SubFont"]["FontLocation"].stringValue()
+            .shouldBeEqualTo("VCSLocation,icm://Interactive/tenant/Resources/Fonts/arial.ttf")
+
+        fun fontIdOf(textStyle: TextStyle): String {
+            val styleId = layout["TextStyle"].first {
+                it["Name"]?.stringValue() == textStyle.nameOrId()
+            }["Id"].stringValue()
+            return layout["TextStyle"].last { it["Id"].stringValue() == styleId }["FontId"].stringValue()
+        }
+        fontIdOf(textStyles[0]).shouldBeEqualTo("Def.Font")
+        fontIdOf(textStyles[1]).shouldBeEqualTo(arialId)
+    }
+
+    @Test
+    fun `evolve hyperlink without font family references Arimo font`() {
+        // given
+        val evolveSubject = anEvolveSubject()
+        every { ipsService.gatherFontData(any()) } returns
+            "Arimo,Regular,icm://Interactive/tenant/Resources/Fonts/Arimo-Regular.ttf;"
+        val textStyle = aTextStyle("TS_Base", definition = aTextDef(fontFamily = null)).mock()
+        val block = DocumentObjectBuilder("1", Block).paragraph {
+            text { styleRef(textStyle).content(listOf(Hyperlink("https://www.example.com", "Link"))) }
+        }.build()
+
+        // when
+        val result = xmlMapper.readTree(evolveSubject.buildDocumentObject(block))
+
+        // then
+        val styleId = result["TextStyle"].first {
+            it["Name"]?.stringValue() == "${textStyle.nameOrId()}_url_1"
+        }["Id"].stringValue()
+        result["TextStyle"].last { it["Id"].stringValue() == styleId }["FontId"].stringValue()
+            .shouldBeEqualTo("Fonts.Arimo")
+    }
+
+    @Test
     fun `block with unassigned variable structure uses the one specified in project config`() {
         val variable = aVariable("V_1").mock()
         val variableStructureA = aVariableStructure(
@@ -2216,6 +2282,24 @@ class InteractiveDocumentObjectBuilderTest {
         val id = this.id
         every { paragraphStyleRepository.findOrFail(id) } returns this
         return this
+    }
+
+    private fun anEvolveSubject(): InteractiveDocumentObjectBuilder {
+        val evolvePathProvider = EvolveResourcePathProvider(config)
+        return InteractiveDocumentObjectBuilder(
+            documentObjectRepository,
+            textStyleRepository,
+            paragraphStyleRepository,
+            variableRepository,
+            InspireVariableStructureBuilder(variableRepository, variableStructureRepository, config),
+            displayRuleRepository,
+            imageRepository,
+            attachmentRepository,
+            config,
+            evolvePathProvider,
+            EvolveIcmDataCache(ipsService, evolvePathProvider),
+            baseTemplateRepository,
+        )
     }
 
     private fun aSubject(config: ProjectConfig) = InteractiveDocumentObjectBuilder(

@@ -257,11 +257,12 @@ fun toScriptStringLiteral(value: String): String = "'${
     value.replace("\\", "\\\\").replace("\"", "\\\"").replace("'", "\\'")
 }'"
 
-fun resolveArialFont(layout: Layout, icmDataCache: IcmDataCache) {
-    val arialFont = getFontByName(layout, "Arial")
-    require(arialFont != null) { "Layout must contain Arial font." }
-    arialFont.setName("Arial").setFontName("Arial")
-    upsertSubFont(icmDataCache, arialFont, isBold = false, isItalic = false)
+fun resolveDefaultFont(layout: Layout, icmDataCache: IcmDataCache): Font {
+    val defaultFont = requireNotNull((layout as LayoutImpl).defTextStyle.font) { "Layout must contain default font." }
+    val defaultFontName = icmDataCache.defaultFontName
+    defaultFont.setName(defaultFontName).setFontName(defaultFontName)
+    upsertSubFont(icmDataCache, defaultFont, isBold = false, isItalic = false)
+    return defaultFont
 }
 
 fun upsertSubFont(icmDataCache: IcmDataCache, font: Font, isBold: Boolean, isItalic: Boolean): SubFont? {

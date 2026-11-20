@@ -2883,5 +2883,40 @@ class IcmDataCacheTest {
         result.paragraphStyleDisplayNamesToNames["compactParagraphStyle"].shouldBeEqualTo("iiicompactParagraphStyle")
         result.paragraphStyleDisplayNamesToNames["spaceParagraphStyle"].shouldBeEqualTo("iiispaceParagraphStyle")
         result.paragraphStyleDisplayNamesToNames["alignRightParagraphStyle"].shouldBeEqualTo("iiialignRightParagraphStyle")
+        result.defaultFontName.shouldBeEqualTo("Arimo")
+    }
+
+    @Test
+    fun `evolve default font name is read from style definition`() {
+        // given
+        every { resourcePathProvider.getStyleDefinitionPath() } returns "".toIcmPath()
+        every { ipsService.fileExists(any<IcmPath>()) } returns true
+        every { ipsService.wfd2xml(any<IcmPath>()) } returns inputStyleDefinition.replace(
+            """<Id Name="Arimo">Def.Font</Id>
+        <Name>Arimo</Name>""",
+            """<Id Name="Liberation Sans">Def.Font</Id>
+        <Name>Liberation Sans</Name>"""
+        )
+
+        // then
+        subject.defaultFontName.shouldBeEqualTo("Liberation Sans")
+    }
+
+    @Test
+    fun `evolve default font name falls back to Arimo when style definition does not exist`() {
+        // given
+        every { resourcePathProvider.getStyleDefinitionPath() } returns "".toIcmPath()
+        every { ipsService.fileExists(any<IcmPath>()) } returns false
+
+        // then
+        subject.defaultFontName.shouldBeEqualTo("Arimo")
+    }
+
+    @Test
+    fun `non-evolve default font name is Arial`() {
+        InteractiveIcmDataCache(ipsService, mockk<InteractiveResourcePathProvider>()).defaultFontName
+            .shouldBeEqualTo("Arial")
+        DesignerIcmDataCache(ipsService, mockk<DesignerResourcePathProvider>()).defaultFontName
+            .shouldBeEqualTo("Arial")
     }
 }

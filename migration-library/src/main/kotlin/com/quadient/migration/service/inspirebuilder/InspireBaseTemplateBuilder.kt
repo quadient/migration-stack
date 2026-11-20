@@ -54,7 +54,7 @@ class InspireBaseTemplateBuilder(
         val variableStructureId = resolveVariableStructureId(baseTemplate, usages, channelModels)
         resolveDataDefinitionPath(baseTemplate, variableStructureId)?.let { root.setDataDefinition(it.toString()) }
 
-        resolveArialFont(layout, icmDataCache)
+        resolveDefaultFont(layout, icmDataCache)
 
         var mainFlow: Flow? = null
         var mainFlowSize = -1.0

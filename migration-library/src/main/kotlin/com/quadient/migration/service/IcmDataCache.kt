@@ -14,6 +14,8 @@ import tools.jackson.databind.node.ArrayNode
 import tools.jackson.dataformat.xml.XmlMapper
 import tools.jackson.module.kotlin.KotlinModule
 
+private const val DEF_FONT_ID = "Def.Font"
+
 abstract class IcmDataCache(
     private val ipsService: IpsService,
     private val resourcePathProvider: ResourcePathProvider
@@ -27,6 +29,8 @@ abstract class IcmDataCache(
     val font: Map<FontKey, String> by lazy {
         fontDataStringToMap(ipsService.gatherFontData(resourcePathProvider.getFontRootFolder()))
     }
+
+    open val defaultFontName: String = "Arial"
 
     fun wfd2Xml(path: IcmPath): String {
         return wfd2XmlCache.getOrPut(path) {
@@ -65,7 +69,15 @@ abstract class IcmDataCache(
             parseStyleDisplayNamesToNames(layoutXmlTree, "TextStyle"),
             parseStyleDisplayNamesToNames(layoutXmlTree, "ParaStyle"),
             parseStyleDisplayNamesToNames(layoutXmlTree, "TableStyle"),
+            parseDefaultFontName(layoutXmlTree),
         )
+    }
+
+    private fun parseDefaultFontName(layoutXmlTree: JsonNode): String? {
+        val fontNode = layoutXmlTree["Font"] ?: return null
+        val fontNodeList = if (fontNode is ArrayNode) fontNode.toList() else listOf(fontNode)
+        val defFontNode = fontNodeList.firstOrNull { it["Id"]?.xmlText() == DEF_FONT_ID } ?: return null
+        return (defFontNode["Name"]?.xmlText() ?: defFontNode["Id"]?.get("Name")?.xmlText())?.takeIf { it.isNotBlank() }
     }
 
     private fun parseStyleDisplayNamesToNames(layoutXmlTree: JsonNode, nodeTag: String): Map<String, String> {
@@ -152,6 +164,7 @@ abstract class IcmDataCache(
         val textStyleDisplayNamesToNames: Map<String, String>,
         val paragraphStyleDisplayNamesToNames: Map<String, String>,
         val tableStyleDisplayNamesToName: Map<String, String>,
+        val defaultFontName: String? = null,
     )
 
     data class BaseTemplateData(
@@ -178,4 +191,6 @@ class InteractiveIcmDataCache(ipsService: IpsService, resourcePathProvider: Inte
     IcmDataCache(ipsService, resourcePathProvider)
 
 class EvolveIcmDataCache(ipsService: IpsService, resourcePathProvider: EvolveResourcePathProvider) :
-    IcmDataCache(ipsService, resourcePathProvider)
+    IcmDataCache(ipsService, resourcePathProvider) {
+    override val defaultFontName: String by lazy { styleDefinitionData?.defaultFontName ?: "Arimo" }
+}
