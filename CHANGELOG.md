@@ -8,8 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.33] - 2026-11-20
+
+### Added
+
 - Support base template deployment in evolve
-- Reworked migration-app, it now serves as a replacement for Gradle task runner
+- Extended migration-app, it now also contains task runner that serves as an alternative to Gradle 
 - DeployDataDefinitions task that deploys data definitions based on the variable structures to Interactive
 - VariableStructuresExport/Import task that allows to modify variable structure data including name and target folder
 - GenerateSampleData task that prints the field tree of a variable structure and generates sample JSON data matching it,
@@ -547,7 +555,8 @@ path.
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.32...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.33...HEAD
+[17.0.33]: https://github.com/quadient/migration-stack/compare/v17.0.32...v17.0.33
 [17.0.32]: https://github.com/quadient/migration-stack/compare/v17.0.31...v17.0.32
 [17.0.31]: https://github.com/quadient/migration-stack/compare/v17.0.30...v17.0.31
 [17.0.30]: https://github.com/quadient/migration-stack/compare/v17.0.29...v17.0.30
