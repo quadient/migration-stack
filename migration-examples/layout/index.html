@@ -231,6 +231,38 @@
 
         .page-card svg {
             display: block;
+            background: #fff;
+        }
+
+        .page-svg.selectable .area-rect {
+            cursor: pointer;
+        }
+
+        /* Every card has a footer of the same fixed height, so nothing moves when areas are selected. */
+        .card-footer {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            height: 28px;
+            padding: 0 6px;
+            border-top: 1px solid var(--line);
+            background: var(--bg);
+            overflow: hidden;
+        }
+
+        .card-footer .hint {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-footer button {
+            flex-shrink: 0;
+            padding: 2px 6px;
+            border-radius: 5px;
+            font-size: 11px;
+            background: #fff;
         }
 
         .page-card.representative {
@@ -374,7 +406,6 @@
  * @typedef {Object} LayoutAnalysis
  * @property {Similarity} similarity
  * @property {BaseTemplateAreaDraft[][]} pageBaseTemplateAreaDrafts
- * @property {number} proximityGap
  */
 
 /**
@@ -447,7 +478,6 @@
  * @typedef {Object} BaseTemplateModel
  * @property {string} id
  * @property {string} name
- * @property {string} templateGroupKey
  * @property {BaseTemplatePageModel[]} pages one per page group
  */
 
@@ -460,8 +490,8 @@
  * @property {number} representativePageIndex the page whose area drafts define the base areas
  * @property {boolean} representativeIsManual   chosen by the user rather than computed
  * @property {BaseAreaModel[]} areas
- * @property {Map<number, (number|null)[]>} baseAreaByDraft for every page of the group: the base
- *   area index each of its area drafts maps to
+ * @property {Map<number, (number|null)[]>} baseAreaByArea for every page of the group: the base
+ *   area index each of its areas maps to
  */
 
 /**
@@ -477,6 +507,8 @@
  * to a new grouping (e.g. after a threshold change), see reconcileDecisions.
  * @typedef {Object} Decisions
  * @property {Map<string, number>} representativeByPageGroup page group key -> representative page index
+ * @property {Map<string, number[][]>} areaGroupsByPage page key (see renderUnitKey) -> the page's areas
+ *   grouped into drafts by the user (merge/split); replaces the computed proximity grouping of that page
  */
 
 /**
@@ -505,13 +537,13 @@
  * @typedef {Object} Settings
  * @property {number} canvasW
  * @property {number} groupThreshold
- * @property {number} proximityGap
  * @property {"single"|"average"|"complete"} groupStrategy
  */
 
 /**
  * @typedef {Object} UiState
  * @property {Set<string>} openPageGroups
+ * @property {{pageIndex: number, areaIndices: Set<number>}|null} areaSelection areas selected on one page card, for merge/split
  */
 
 /**
@@ -519,21 +551,28 @@
  * @property {TemplateLevel} templateLevel
  * @property {PageLevel} pageLevel
  * @property {TemplateGroup[]} templateGroups
- * @property {Record<string, TemplateEntry>} templateById
  * @property {Record<string, PageGroup>} pageGroupByKey
  * @property {Map<number, string>} pageNumberMap
  * @property {Set<string>} pageGroupKeys
  */
 
-/** @type {string[]} */
-const PALETTE = [
-    "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
-    "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
-    "#aecbeb", "#ffcfa1", "#f4a59d", "#b0dbd8", "#a8d5a2",
+/**
+ * One color per base area of a base page; an area is drawn in the color of the base area it
+ * belongs to, so areas sharing a color are merged into one base area. Dark enough for labels.
+ * @type {string[]}
+ */
+const BASE_AREA_COLORS = [
+    "#4e79a7", "#f28e2b", "#e15759", "#499894", "#59a14f",
+    "#b6992d", "#b07aa1", "#d37295", "#9d7660", "#79706e",
 ];
+/** Areas that belong to no base area (the base page has no areas). */
+const NO_BASE_AREA_COLOR = "#999";
+/** Gap in px between a base area's frame and the areas it contains. */
+const FRAME_GAP = 4;
 
 const PAGE_REF_MM = 210;
-const DEFAULT_PROXIMITY_GAP_MM = 5.3;
+/** Areas closer than this vertically are proposed as one base area. */
+const PROXIMITY_GAP_MM = 5.3;
 const PAD = 10;
 /** Characters (and the whitespace around them) not allowed in Inspire object names. */
 const INSPIRE_ILLEGAL_NAME_CHARS = /\s*:+\s*/g;
@@ -541,7 +580,6 @@ const INSPIRE_ILLEGAL_NAME_CHARS = /\s*:+\s*/g;
 const settings = {
     canvasW: 400,
     groupThreshold: 0.60,
-    proximityGap: DEFAULT_PROXIMITY_GAP_MM,
     groupStrategy: "average",
 };
 
@@ -552,7 +590,9 @@ let currentAnalysis = null;
 /** @type {ViewModel|null} */
 let currentViewModel = null;
 /** @type {Decisions} */
-let decisions = {representativeByPageGroup: new Map()};
+let decisions = emptyDecisions();
+/** @type {BaseTemplateAreaDraft[][]} area drafts of every page: manual area groups or the computed ones */
+let currentAreaDrafts = [];
 /** @type {BaseTemplateModel[]} */
 let currentBaseTemplates = [];
 /** @type {Map<number, {baseTemplate: BaseTemplateModel, basePage: BaseTemplatePageModel}>} */
@@ -560,6 +600,7 @@ let currentBasePageByPage = new Map();
 /** @type {UiState} */
 let uiState = {
     openPageGroups: new Set(),
+    areaSelection: null,
 };
 
 const statusEl = /** @type {HTMLElement} */ (document.getElementById("status"));
@@ -971,51 +1012,48 @@ function defaultRepresentative(pageIndices, pageMatrix) {
 }
 
 /**
- * Maps every draft of a page to a base area. Drafts are first paired one-to-one with the
- * closest base areas; drafts left over (the page has more drafts than the base page has areas)
- * go to their closest base area, so every standard area always ends up in an existing flow.
- * @param {BaseTemplateAreaDraft[]} drafts
+ * Maps every area of a page to the base area it lies in: the one covering the largest part of
+ * it, or, when it overlaps none, the geometrically closest one. Every standard area therefore
+ * ends up in an existing flow of the base template.
+ * @param {AreaEntry[]} areas
  * @param {BaseTemplateAreaDraft[]} baseDrafts
- * @returns {(number|null)[]} base area index per draft; null only when there are no base areas
+ * @returns {(number|null)[]} base area index per area; null only when there are no base areas
  */
-function matchDraftsToBaseAreas(drafts, baseDrafts) {
-    /** @type {(number|null)[]} */
-    const result = drafts.map(() => null);
-    if (!baseDrafts.length) return result;
-
-    /** @type {{distance: number, draftIndex: number, baseIndex: number}[]} */
-    const candidates = [];
-    drafts.forEach((draft, draftIndex) => baseDrafts.forEach((base, baseIndex) => {
-        candidates.push({distance: geometryDistance(draft.position, base.position, true), draftIndex, baseIndex});
-    }));
-    candidates.sort((a, b) => a.distance - b.distance);
-
-    const usedBase = new Set();
-    candidates.forEach(({draftIndex, baseIndex}) => {
-        if (result[draftIndex] != null || usedBase.has(baseIndex)) return;
-        result[draftIndex] = baseIndex;
-        usedBase.add(baseIndex);
+function mapAreasToBaseAreas(areas, baseDrafts) {
+    return areas.map(area => {
+        if (!baseDrafts.length) return null;
+        let best = 0, bestCoverage = 0, bestDistance = Infinity;
+        baseDrafts.forEach((base, baseIndex) => {
+            const p = base.position;
+            const overlapW = Math.min(area.x + area.w, p.x + p.w) - Math.max(area.x, p.x);
+            const overlapH = Math.min(area.y + area.h, p.y + p.h) - Math.max(area.y, p.y);
+            const coverage = overlapW > 0 && overlapH > 0 ? (overlapW * overlapH) / Math.max(area.w * area.h, 0.01) : 0;
+            const distance = geometryDistance(area, p, true);
+            if (coverage > bestCoverage || (coverage === bestCoverage && coverage === 0 && distance < bestDistance)) {
+                best = baseIndex;
+                bestCoverage = coverage;
+                bestDistance = distance;
+            }
+        });
+        return best;
     });
-    candidates.forEach(({draftIndex, baseIndex}) => {
-        if (result[draftIndex] == null) result[draftIndex] = baseIndex;
-    });
-    return result;
 }
 
 /**
- * Picks the name of a base area's interactive flow, in order of preference:
- * 1. the interactiveFlowName most used by the standard areas mapped to it (ties: representative first),
- * 2. the area name of the representative draft, 3. a name derived from its content preview.
- * Generated names (2, 3) get a "Flow" suffix. The result is Inspire-safe and unique in `usedNames`.
- * @param {AreaEntry[]} mappedAreas standard areas mapped to the base area, representative's first
+ * Picks the name of a base area's interactive flow from its representative draft, in order of
+ * preference: 1. the interactiveFlowName most used by the draft's areas, 2. the draft's area name,
+ * 3. a name derived from its content preview. Names of other pages are not used: their areas may
+ * be mapped to the base area only because nothing fits better. Generated names (2, 3) get a "Flow"
+ * suffix. The result is Inspire-safe and unique in `usedNames`.
+ * @param {AreaEntry[]} draftAreas the representative draft's areas
  * @param {BaseTemplateAreaDraft} representativeDraft
  * @param {Set<string>} usedNames names already used in the same base template; the result is added
  * @returns {string}
  */
-function chooseFlowName(mappedAreas, representativeDraft, usedNames) {
+function chooseFlowName(draftAreas, representativeDraft, usedNames) {
     /** @type {Map<string, number>} */
     const counts = new Map();
-    mappedAreas.forEach(area => {
+    draftAreas.forEach(area => {
         const name = area.interactiveFlowName.trim();
         if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
     });
@@ -1032,11 +1070,11 @@ function chooseFlowName(mappedAreas, representativeDraft, usedNames) {
 /**
  * @param {LayoutData} data
  * @param {ViewModel} viewModel
- * @param {LayoutAnalysis} analysis
+ * @param {BaseTemplateAreaDraft[][]} areaDrafts area drafts of every page (manual or computed)
  * @param {Decisions} decisions
  * @returns {BaseTemplateModel[]}
  */
-function buildBaseTemplates(data, viewModel, analysis, decisions) {
+function buildBaseTemplates(data, viewModel, areaDrafts, decisions) {
     const pageMatrix = viewModel.pageLevel.matrix;
     return viewModel.templateGroups.map((templateGroup, templateGroupIndex) => {
         const usedFlowNames = new Set();
@@ -1044,26 +1082,19 @@ function buildBaseTemplates(data, viewModel, analysis, decisions) {
             const manual = decisions.representativeByPageGroup.get(pageGroup.key);
             const representativePageIndex = manual ?? defaultRepresentative(pageGroup.pageIndices, pageMatrix);
             const representative = data.pages[representativePageIndex];
-            const baseDrafts = analysis.pageBaseTemplateAreaDrafts[representativePageIndex] ?? [];
+            const baseDrafts = areaDrafts[representativePageIndex] ?? [];
 
+            // The representative's areas belong to the base area made from their draft; the areas
+            // of the other pages go to the base area they lie in.
+            /** @type {(number|null)[]} */
+            const representativeMapping = new Array(representative.areas.length).fill(null);
+            baseDrafts.forEach((draft, baseIndex) => draft.areaIndices.forEach(areaIndex => { representativeMapping[areaIndex] = baseIndex; }));
             /** @type {Map<number, (number|null)[]>} */
-            const baseAreaByDraft = new Map();
+            const baseAreaByArea = new Map();
             pageGroup.pageIndices.forEach(pageIndex => {
-                baseAreaByDraft.set(pageIndex, pageIndex === representativePageIndex
-                    ? baseDrafts.map((_, i) => i)
-                    : matchDraftsToBaseAreas(analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? [], baseDrafts));
-            });
-
-            // Standard areas mapped to each base area, the representative's own first.
-            /** @type {AreaEntry[][]} */
-            const mappedAreas = baseDrafts.map(() => []);
-            const orderedPages = [representativePageIndex, ...pageGroup.pageIndices.filter(i => i !== representativePageIndex)];
-            orderedPages.forEach(pageIndex => {
-                const drafts = analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? [];
-                /** @type {(number|null)[]} */ (baseAreaByDraft.get(pageIndex)).forEach((baseIndex, draftIndex) => {
-                    if (baseIndex == null) return;
-                    drafts[draftIndex].areaIndices.forEach(areaIndex => mappedAreas[baseIndex].push(data.pages[pageIndex].areas[areaIndex]));
-                });
+                baseAreaByArea.set(pageIndex, pageIndex === representativePageIndex
+                    ? representativeMapping
+                    : mapAreasToBaseAreas(data.pages[pageIndex].areas, baseDrafts));
             });
 
             return {
@@ -1073,19 +1104,18 @@ function buildBaseTemplates(data, viewModel, analysis, decisions) {
                 pageSize: representative.pageSize,
                 representativePageIndex,
                 representativeIsManual: manual != null,
-                areas: baseDrafts.map((draft, i) => ({
-                    flowName: chooseFlowName(mappedAreas[i], draft, usedFlowNames),
+                areas: baseDrafts.map(draft => ({
+                    flowName: chooseFlowName(draft.areaIndices.map(areaIndex => representative.areas[areaIndex]), draft, usedFlowNames),
                     areaName: draft.areaName,
                     flowToNextPage: draft.areaIndices.some(areaIndex => representative.areas[areaIndex]?.flowToNextPage),
                     position: draft.position,
                 })),
-                baseAreaByDraft,
+                baseAreaByArea,
             };
         });
         return {
             id: `bt-${templateGroupIndex + 1}`,
             name: inspireSafeName(`${templateGroup.templateNames[0]}BaseTemplate`),
-            templateGroupKey: templateGroup.key,
             pages,
         };
     });
@@ -1100,31 +1130,29 @@ function indexBasePagesByPage(baseTemplates) {
     /** @type {Map<number, {baseTemplate: BaseTemplateModel, basePage: BaseTemplatePageModel}>} */
     const result = new Map();
     baseTemplates.forEach(baseTemplate => baseTemplate.pages.forEach(basePage => {
-        basePage.baseAreaByDraft.forEach((_, pageIndex) => result.set(pageIndex, {baseTemplate, basePage}));
+        basePage.baseAreaByArea.forEach((_, pageIndex) => result.set(pageIndex, {baseTemplate, basePage}));
     }));
     return result;
 }
 
 /**
- * Flow name of the base area each draft of a page maps to ("" when the base page has no areas).
+ * Flow name of the base area each area of a page maps to ("" when the base page has no areas).
  * @param {BaseTemplatePageModel} basePage
  * @param {number} pageIndex
  * @returns {string[]}
  */
-function draftFlowNames(basePage, pageIndex) {
-    return (basePage.baseAreaByDraft.get(pageIndex) ?? []).map(baseIndex => baseIndex == null ? "" : basePage.areas[baseIndex].flowName);
+function areaFlowNames(basePage, pageIndex) {
+    return (basePage.baseAreaByArea.get(pageIndex) ?? []).map(baseIndex => baseIndex == null ? "" : basePage.areas[baseIndex].flowName);
 }
 
 /**
  * Builds the "Base" CSV rows of the base templates and, per page, the baseTemplateTargetId and
  * interactiveFlowName of each of its areas.
  * @param {BaseTemplateModel[]} baseTemplates
- * @param {LayoutData} data
- * @param {LayoutAnalysis} analysis
  * @returns {{baseRows: Record<string, string>[], overridesByPageIndex: Map<number, {flowNames: string[], targetId: string}>}}
  *   baseRows are keyed by logical column name; missing columns are written empty
  */
-function buildExportData(baseTemplates, data, analysis) {
+function buildExportData(baseTemplates) {
     /** @type {Record<string, string>[]} */
     const baseRows = [];
     /** @type {Map<number, {flowNames: string[], targetId: string}>} */
@@ -1150,15 +1178,8 @@ function buildExportData(baseTemplates, data, analysis) {
             pageHeight: size ? `${size.h}mm` : "",
         }));
 
-        basePage.baseAreaByDraft.forEach((_, pageIndex) => {
-            const page = data.pages[pageIndex];
-            const flowNameByDraft = draftFlowNames(basePage, pageIndex);
-            /** @type {string[]} */
-            const flowNames = new Array(page.areas.length).fill("");
-            (analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []).forEach((draft, draftIndex) => {
-                draft.areaIndices.forEach(areaIndex => { flowNames[areaIndex] = flowNameByDraft[draftIndex]; });
-            });
-            overridesByPageIndex.set(pageIndex, {flowNames, targetId: `$${baseTemplate.id}`});
+        basePage.baseAreaByArea.forEach((_, pageIndex) => {
+            overridesByPageIndex.set(pageIndex, {flowNames: areaFlowNames(basePage, pageIndex), targetId: `$${baseTemplate.id}`});
         });
     }));
 
@@ -1206,7 +1227,7 @@ async function saveCsv() {
     const targetIdIdx = ensureCsvColumn(headers, rows, "baseTemplateTargetId");
     const flowNameIdx = ensureCsvColumn(headers, rows, "interactiveFlowName");
 
-    const { baseRows, overridesByPageIndex } = buildExportData(currentBaseTemplates, currentData, currentAnalysis);
+    const { baseRows, overridesByPageIndex } = buildExportData(currentBaseTemplates);
 
     currentData.pages.forEach((page, pageIndex) => {
         const override = overridesByPageIndex.get(pageIndex);
@@ -1323,12 +1344,13 @@ document.querySelectorAll("input[type='range']").forEach(input => {
  */
 function render(data) {
     const dataChanged = currentData !== data;
-    currentAnalysis = ensureAnalysis(data, currentAnalysis, settings);
+    currentAnalysis = ensureAnalysis(data, currentAnalysis);
     currentData = data;
     currentViewModel = buildViewModel(data, currentAnalysis, settings);
     uiState = reconcileUiState(uiState, currentViewModel, dataChanged);
     decisions = reconcileDecisions(decisions, currentViewModel, dataChanged);
-    currentBaseTemplates = buildBaseTemplates(data, currentViewModel, currentAnalysis, decisions);
+    currentAreaDrafts = effectiveAreaDrafts(data, currentAnalysis, decisions);
+    currentBaseTemplates = buildBaseTemplates(data, currentViewModel, currentAreaDrafts, decisions);
     currentBasePageByPage = indexBasePagesByPage(currentBaseTemplates);
 
     document.getElementById("app").hidden = false;
@@ -1349,66 +1371,86 @@ function areaTip(ar, idx) {
 }
 
 /**
+ * Draws a page: its areas and, as red frames, the base areas of its base page (on the
+ * representative they are made from its own areas, on other pages they are laid over them).
  * @param {PageEntry} page
- * @param {BaseTemplateAreaDraft[]} baseTemplateAreaDrafts
- * @param {string[]} draftFlowNames flow name of the base area each draft maps to
+ * @param {BaseAreaModel[]} baseAreas
+ * @param {(number|null)[]} baseAreaByArea index of the base area each area of the page maps to
  * @param {boolean} isRepresentative the page defines its base page's areas
+ * @param {Set<number>} selectedAreas indices of the selected areas, drawn highlighted
+ * @param {((areaIndex: number|null, additive: boolean) => void)|null} onAreaClick called with null
+ *   for clicks outside areas; null when the areas cannot be selected
  * @returns {SVGElement|null}
  */
-function buildPageSvg(page, baseTemplateAreaDrafts, draftFlowNames, isRepresentative) {
+function buildPageSvg(page, baseAreas, baseAreaByArea, isRepresentative, selectedAreas, onAreaClick) {
     const areas = page.areas;
     if (!areas.length) return null;
 
-    const maxX2 = Math.max(...areas.map(a => a.x + a.w));
-    const maxY2 = Math.max(...areas.map(a => a.y + a.h));
+    const maxX2 = Math.max(...areas.map(a => a.x + a.w), ...baseAreas.map(b => b.position.x + b.position.w));
+    const maxY2 = Math.max(...areas.map(a => a.y + a.h), ...baseAreas.map(b => b.position.y + b.position.h));
     const scale = (settings.canvasW - 2 * PAD) / Math.max(maxX2, 210);
     const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
-    const svg = svgEl("svg", {width: settings.canvasW, height: svgH, style: "background:#fff;cursor:default"});
+    const svg = svgEl("svg", {width: settings.canvasW, height: svgH, class: "page-svg" + (onAreaClick ? " selectable" : "")});
     svg.appendChild(svgTitle(pageCardTooltip(page)));
-    const draftIndexByArea = new Map();
-    baseTemplateAreaDrafts.forEach((draft, draftIndex) => {
-        draft.areaIndices.forEach(areaIndex => draftIndexByArea.set(areaIndex, draftIndex));
-    });
+    if (onAreaClick) {
+        // Clicks on an area select it; clicks anywhere else on the drawing clear the selection.
+        svg.addEventListener("click", e => {
+            const target = /** @type {Element} */ (e.target);
+            const areaIndex = target.getAttribute("data-area-index");
+            onAreaClick(areaIndex == null ? null : Number(areaIndex), e.ctrlKey || e.metaKey || e.shiftKey);
+        });
+    }
 
-    /** @param {number} draftIndex */
-    const draftTip = draftIndex => {
-        const p = baseTemplateAreaDrafts[draftIndex].position;
-        const flowName = draftFlowNames[draftIndex] || "(no base area)";
-        return (isRepresentative ? `Base area ${flowName}` : `Mapped to base area ${flowName}`)
-            + `\nw ${p.w}mm · h ${p.h}mm · x ${p.x}mm · y ${p.y}mm`;
+    /** @param {number} baseIndex */
+    const baseAreaTip = baseIndex => {
+        const {flowName, position: p} = baseAreas[baseIndex];
+        return `Base area ${flowName}\nw ${p.w}mm · h ${p.h}mm · x ${p.x}mm · y ${p.y}mm`;
     };
 
-    baseTemplateAreaDrafts.forEach((draft, draftIndex) => {
-        const p = draft.position;
-        const tip = draftTip(draftIndex);
-        const gx = svgPos(p.x, scale), gy = svgPos(p.y, scale),
-            gw = svgDim(p.w, scale), gh = svgDim(p.h, scale);
+    /** @param {number|null|undefined} baseIndex */
+    const baseAreaColor = baseIndex => baseIndex == null ? NO_BASE_AREA_COLOR : BASE_AREA_COLORS[baseIndex % BASE_AREA_COLORS.length];
+
+    baseAreas.forEach((baseArea, baseIndex) => {
+        const p = baseArea.position;
+        const color = baseAreaColor(baseIndex);
+        // The frame stands a little outside the areas, so it does not coincide with their borders;
+        // towards a neighbouring base area it stands at most halfway, so the two frames do not cross.
+        const gap = frameGaps(baseAreas, baseIndex, scale);
+        const gx = svgPos(p.x, scale) - gap.left, gy = svgPos(p.y, scale) - gap.top,
+            gw = svgDim(p.w, scale) + gap.left + gap.right, gh = svgDim(p.h, scale) + gap.top + gap.bottom;
 
         const bg = svgEl("rect", {
             x: gx, y: gy, width: gw, height: gh,
             fill: "transparent", stroke: "none", "pointer-events": "all"
         });
-        bg.appendChild(svgTitle(tip));
+        bg.appendChild(svgTitle(baseAreaTip(baseIndex)));
         svg.appendChild(bg);
 
         const border = svgEl("rect", {
-            x: gx, y: gy, width: gw, height: gh,
-            fill: "none", stroke: "#e00", "stroke-width": isRepresentative ? 2 : 1.5, "stroke-dasharray": isRepresentative ? "none" : "5,3",
+            x: gx, y: gy, width: gw, height: gh, rx: 3,
+            fill: "none", stroke: color, "stroke-width": 1.3, "stroke-dasharray": "5,3",
             "pointer-events": "none"
         });
         svg.appendChild(border);
 
+        // The label goes above the frame; when another base area is right above, there is no room
+        // there, so it goes inside the frame's top-right corner (the area's own label is top-left).
+        const labelInside = gap.top < FRAME_GAP;
         const label = svgEl("text", {
-            x: gx + 2, y: gy - 2,
-            "font-size": 7, fill: "#e00", "font-weight": "bold", "pointer-events": "none"
+            x: labelInside ? gx + gw - 3 : gx + 2, y: labelInside ? gy + 9 : gy - 2,
+            "text-anchor": labelInside ? "end" : "start",
+            "font-size": 7, fill: color, "font-weight": "bold", "pointer-events": "none"
         });
-        const labelText = (isRepresentative ? "" : "→ ") + (draftFlowNames[draftIndex] ?? "");
-        label.textContent = labelText.length > 28 ? labelText.slice(0, 28) : labelText;
+        label.textContent = baseArea.flowName.length > 28 ? baseArea.flowName.slice(0, 28) : baseArea.flowName;
         svg.appendChild(label);
     });
 
-    areas.forEach((a, i) => {
-        const color = PALETTE[i % PALETTE.length];
+    // Larger areas first, so smaller (often overlapping or nested) areas stay on top and clickable.
+    const drawOrder = areas.map((_, i) => i).sort((m, n) => (areas[n].w * areas[n].h) - (areas[m].w * areas[m].h));
+    drawOrder.forEach(i => {
+        const a = areas[i];
+        const color = baseAreaColor(baseAreaByArea[i]);
+        const isSelected = selectedAreas.has(i);
         const isRoot = a.containedIn == null;
         const rx = svgPos(a.x, scale), ry = svgPos(a.y, scale),
             rw = svgDim(a.w, scale), rh = svgDim(a.h, scale);
@@ -1420,18 +1462,21 @@ function buildPageSvg(page, baseTemplateAreaDrafts, draftFlowNames, isRepresenta
                 && o.y < a.y + a.h && o.y + o.h > a.y)
             .sort((m, n) => (m.o.w * m.o.h) - (n.o.w * n.o.h));
 
-        const draftIndex = draftIndexByArea.get(i);
-        const draftLine = draftIndex != null ? draftTip(draftIndex) + "\n\n" : "";
-        const tip = draftLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
+        const baseIndex = baseAreaByArea[i];
+        const baseLine = baseIndex != null ? (isRepresentative ? "" : "Goes to: ") + baseAreaTip(baseIndex) + "\n\n" : "";
+        const tip = baseLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
 
         const rect = svgEl("rect", {
             x: rx, y: ry, width: rw, height: rh,
-            fill: color, "fill-opacity": "0.32", stroke: color,
-            "stroke-width": isRoot ? "1.5" : "1",
-            "stroke-dasharray": isRoot ? "none" : "3,2"
+            fill: color, "fill-opacity": "0.25", stroke: color,
+            "stroke-width": isRoot ? "1.2" : "1",
+            "stroke-dasharray": isRoot ? "none" : "3,2",
+            class: "area-rect",
+            "data-area-index": i,
         });
-        rect.appendChild(svgTitle(tip));
+        rect.appendChild(svgTitle(tip + (onAreaClick ? "\n\nClick to select, Ctrl/Shift+click to add to or remove from the selection." : "")));
         svg.appendChild(rect);
+        if (isSelected) drawSelectionMark(svg, rx, ry, rw, rh);
 
         if (rw > 12 && rh > 8) {
             const name = areaLabel(a) || `area_${i}`;
@@ -1442,6 +1487,58 @@ function buildPageSvg(page, baseTemplateAreaDrafts, draftFlowNames, isRepresenta
     });
 
     return svg;
+}
+
+/**
+ * How far (px) a base area's frame stands outside its areas on each side: FRAME_GAP, but at most
+ * half the distance to a neighbouring base area on that side, so adjacent frames meet instead of
+ * crossing. Base areas that overlap the frame's area do not limit it.
+ * @param {BaseAreaModel[]} baseAreas
+ * @param {number} baseIndex
+ * @param {number} scale px per mm
+ * @returns {{top: number, right: number, bottom: number, left: number}}
+ */
+function frameGaps(baseAreas, baseIndex, scale) {
+    const gap = {top: FRAME_GAP, right: FRAME_GAP, bottom: FRAME_GAP, left: FRAME_GAP};
+    const a = baseAreas[baseIndex].position;
+    baseAreas.forEach((other, otherIndex) => {
+        if (otherIndex === baseIndex) return;
+        const b = other.position;
+        const overlapsX = b.x < a.x + a.w && b.x + b.w > a.x;
+        const overlapsY = b.y < a.y + a.h && b.y + b.h > a.y;
+        if (overlapsX && overlapsY) return;
+        /** @param {number} distanceMm */
+        const half = distanceMm => Math.max(0, distanceMm * scale / 2);
+        if (overlapsX && b.y + b.h <= a.y) gap.top = Math.min(gap.top, half(a.y - (b.y + b.h)));
+        if (overlapsX && b.y >= a.y + a.h) gap.bottom = Math.min(gap.bottom, half(b.y - (a.y + a.h)));
+        if (overlapsY && b.x + b.w <= a.x) gap.left = Math.min(gap.left, half(a.x - (b.x + b.w)));
+        if (overlapsY && b.x >= a.x + a.w) gap.right = Math.min(gap.right, half(b.x - (a.x + a.w)));
+    });
+    return gap;
+}
+
+/**
+ * Marks a selected area: a blue halo just outside its border and a check badge in its bottom-right
+ * corner. The area keeps its own colors, so it stays recognizable.
+ * @param {SVGElement} svg
+ * @param {number} x
+ * @param {number} y
+ * @param {number} w
+ * @param {number} h
+ */
+function drawSelectionMark(svg, x, y, w, h) {
+    const color = "#2f7de1";
+    svg.appendChild(svgEl("rect", {
+        x: x - 2, y: y - 2, width: w + 4, height: h + 4, rx: 3,
+        fill: "none", stroke: color, "stroke-width": 2, "pointer-events": "none",
+    }));
+    const cx = x + w - 5, cy = y + h - 5;
+    svg.appendChild(svgEl("circle", {cx, cy, r: 4.5, fill: color, stroke: "#fff", "stroke-width": 1, "pointer-events": "none"}));
+    svg.appendChild(svgEl("path", {
+        d: `M ${cx - 2.2} ${cy} L ${cx - 0.6} ${cy + 1.6} L ${cx + 2.2} ${cy - 1.6}`,
+        fill: "none", stroke: "#fff", "stroke-width": 1.3, "stroke-linecap": "round", "stroke-linejoin": "round",
+        "pointer-events": "none",
+    }));
 }
 
 /**
@@ -1662,15 +1759,118 @@ function buildPageCard(pageIndex) {
     }
     wrap.appendChild(header);
 
+    // Only the representative's areas can be merged or split: its area groups define the base
+    // areas, the other pages' areas just go to the base area they lie in.
+    const selectedAreas = isRepresentative && uiState.areaSelection?.pageIndex === pageIndex
+        ? uiState.areaSelection.areaIndices
+        : new Set();
     const svg = buildPageSvg(
         page,
-        currentAnalysis.pageBaseTemplateAreaDrafts[pageIndex] ?? [],
-        base ? draftFlowNames(base.basePage, pageIndex) : [],
+        base?.basePage.areas ?? [],
+        base?.basePage.baseAreaByArea.get(pageIndex) ?? [],
         isRepresentative,
+        selectedAreas,
+        isRepresentative ? (areaIndex, additive) => selectArea(pageIndex, areaIndex, additive) : null,
     );
     if (svg) wrap.appendChild(svg);
+    wrap.appendChild(isRepresentative ? buildAreaActions(pageIndex, selectedAreas) : buildFollowerFooter());
     return wrap;
 }
+
+/**
+ * Footer of a page that is not the representative: its areas cannot be edited, they go to the
+ * base area they lie in. Same height as the representative's action bar, so cards line up.
+ * @returns {HTMLElement}
+ */
+function buildFollowerFooter() {
+    const footer = document.createElement("div");
+    footer.className = "card-footer";
+    const info = document.createElement("span");
+    info.className = "hint";
+    info.textContent = "Areas follow the ★ page";
+    info.title = "Each area goes to the base area (red frame) it lies in. Merge and split areas on the representative page.";
+    footer.appendChild(info);
+    return footer;
+}
+
+/**
+ * The merge/split bar of the representative page card. Always shown with the same buttons, which
+ * are enabled when they apply, so selecting areas does not move anything.
+ * @param {number} pageIndex
+ * @param {Set<number>} selectedAreas
+ * @returns {HTMLElement}
+ */
+function buildAreaActions(pageIndex, selectedAreas) {
+    const page = currentData.pages[pageIndex];
+    const isEdited = decisions.areaGroupsByPage.has(renderUnitKey(page, pageIndex));
+
+    const bar = document.createElement("div");
+    bar.className = "card-footer";
+    const {canMerge, canSplit} = describeAreaSelection(currentAreaDrafts[pageIndex] ?? [], selectedAreas);
+
+    /**
+     * @param {string} label
+     * @param {string} title
+     * @param {boolean} enabled
+     * @param {() => void} onClick
+     */
+    const addButton = (label, title, enabled, onClick) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        button.title = title;
+        button.disabled = !enabled;
+        button.addEventListener("click", onClick);
+        bar.appendChild(button);
+    };
+
+    const info = document.createElement("span");
+    info.className = "hint";
+    info.textContent = selectedAreas.size ? `${selectedAreas.size} selected` : isEdited ? "edited" : "select areas";
+    info.title = "Click an area to select it, Ctrl/Shift+click to select more, then merge or split them. Click outside the areas or press Esc to clear the selection.";
+    bar.appendChild(info);
+
+    addButton("Merge", "Join the selected areas (with the rest of their base areas) into one base area.\nSelect areas of at least two base areas.",
+        canMerge, () => editAreaGroups(pageIndex, "merge"));
+    addButton("Split", "Give each selected area a base area of its own.\nSelect an area that shares its base area with others.",
+        canSplit, () => editAreaGroups(pageIndex, "split"));
+    addButton("Reset", "Discard the merges and splits of this page and use the computed grouping again.",
+        isEdited, () => resetAreaGroups(pageIndex));
+    return bar;
+}
+
+/**
+ * Updates the area selection after a click on a page drawing: a plain click selects only that
+ * area (or clears the selection when it was the only one selected), a Ctrl/Shift click adds the
+ * area to the selection or removes it, a click outside areas clears the selection. Selecting on
+ * another page starts a new selection.
+ * @param {number} pageIndex
+ * @param {number|null} areaIndex
+ * @param {boolean} additive
+ */
+function selectArea(pageIndex, areaIndex, additive) {
+    const current = uiState.areaSelection?.pageIndex === pageIndex ? uiState.areaSelection.areaIndices : new Set();
+    /** @type {Set<number>} */
+    let next;
+    if (areaIndex == null) {
+        next = new Set();
+    } else if (additive) {
+        next = new Set(current);
+        if (next.has(areaIndex)) next.delete(areaIndex); else next.add(areaIndex);
+    } else {
+        next = current.size === 1 && current.has(areaIndex) ? new Set() : new Set([areaIndex]);
+    }
+    const hadSelection = uiState.areaSelection != null;
+    uiState.areaSelection = next.size ? {pageIndex, areaIndices: next} : null;
+    if (hadSelection || uiState.areaSelection) refreshOpenPageGroups();
+}
+
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && uiState.areaSelection) {
+        uiState.areaSelection = null;
+        refreshOpenPageGroups();
+    }
+});
 
 // Event delegation for page-group toggle
 document.getElementById("template-groups").addEventListener("click", (e) => {
@@ -1795,21 +1995,13 @@ function setPageGroupOpen(pageGroupEl, open) {
 /**
  * @param {LayoutData} data
  * @param {LayoutAnalysis|null} previousAnalysis
- * @param {Settings} activeSettings
  * @returns {LayoutAnalysis}
  */
-function ensureAnalysis(data, previousAnalysis, activeSettings) {
-    const sameData = currentData === data && previousAnalysis != null;
-    const similarity = sameData
-        ? previousAnalysis.similarity
-        : buildSimilarity(data);
-    const pageBaseTemplateAreaDrafts = sameData && previousAnalysis.proximityGap === activeSettings.proximityGap
-        ? previousAnalysis.pageBaseTemplateAreaDrafts
-        : buildBaseTemplateAreaDrafts(data.pages, activeSettings.proximityGap);
+function ensureAnalysis(data, previousAnalysis) {
+    if (currentData === data && previousAnalysis != null) return previousAnalysis;
     return {
-        similarity,
-        pageBaseTemplateAreaDrafts,
-        proximityGap: activeSettings.proximityGap,
+        similarity: buildSimilarity(data),
+        pageBaseTemplateAreaDrafts: buildBaseTemplateAreaDrafts(data.pages, PROXIMITY_GAP_MM),
     };
 }
 
@@ -1844,7 +2036,7 @@ function buildViewModel(data, analysis, activeSettings) {
         });
     });
 
-    return {templateLevel, pageLevel, templateGroups, templateById, pageGroupByKey, pageNumberMap, pageGroupKeys};
+    return {templateLevel, pageLevel, templateGroups, pageGroupByKey, pageNumberMap, pageGroupKeys};
 }
 
 /**
@@ -1854,12 +2046,103 @@ function buildViewModel(data, analysis, activeSettings) {
  * @returns {UiState}
  */
 function reconcileUiState(previousState, viewModel, dataChanged) {
-    if (dataChanged) return {openPageGroups: new Set()};
+    if (dataChanged) return {openPageGroups: new Set(), areaSelection: null};
     return {
         openPageGroups: new Set(
             [...previousState.openPageGroups].filter(key => viewModel.pageGroupKeys.has(key))
         ),
+        areaSelection: previousState.areaSelection,
     };
+}
+
+/** @returns {Decisions} */
+function emptyDecisions() {
+    return {representativeByPageGroup: new Map(), areaGroupsByPage: new Map()};
+}
+
+/**
+ * Area drafts of every page: the user's area groups where the page has them, otherwise the
+ * computed proximity grouping.
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis} analysis
+ * @param {Decisions} decisions
+ * @returns {BaseTemplateAreaDraft[][]}
+ */
+function effectiveAreaDrafts(data, analysis, decisions) {
+    return data.pages.map((page, pageIndex) => {
+        const manual = decisions.areaGroupsByPage.get(renderUnitKey(page, pageIndex));
+        return manual ? draftsFromAreaGroups(page.areas, manual) : (analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []);
+    });
+}
+
+/**
+ * Merges the drafts that contain any of the selected areas into one draft.
+ * @param {number[][]} areaGroups
+ * @param {Set<number>} selected
+ * @returns {number[][]}
+ */
+function mergeAreaGroups(areaGroups, selected) {
+    const touched = areaGroups.filter(group => group.some(areaIndex => selected.has(areaIndex)));
+    const untouched = areaGroups.filter(group => !touched.includes(group));
+    return [...untouched, touched.flat()];
+}
+
+/**
+ * Takes the selected areas out of their drafts, each into a draft of its own.
+ * @param {number[][]} areaGroups
+ * @param {Set<number>} selected
+ * @returns {number[][]}
+ */
+function splitAreaGroups(areaGroups, selected) {
+    const remaining = areaGroups
+        .map(group => group.filter(areaIndex => !selected.has(areaIndex)))
+        .filter(group => group.length);
+    return [...remaining, ...[...selected].map(areaIndex => [areaIndex])];
+}
+
+/**
+ * What merge and split would do with the selection: merging needs areas of at least two drafts,
+ * splitting needs a selected area that shares its draft with another area.
+ * @param {BaseTemplateAreaDraft[]} drafts
+ * @param {Set<number>} selected
+ * @returns {{canMerge: boolean, canSplit: boolean}}
+ */
+function describeAreaSelection(drafts, selected) {
+    const touched = drafts.filter(draft => draft.areaIndices.some(areaIndex => selected.has(areaIndex)));
+    return {
+        canMerge: touched.length >= 2,
+        canSplit: touched.some(draft => draft.areaIndices.length > 1),
+    };
+}
+
+/**
+ * Applies a merge or split of the selected areas of a page and stores the result as the page's
+ * manual area groups. Every occurrence of the same page (shared by several templates) changes.
+ * @param {number} pageIndex
+ * @param {"merge"|"split"} operation
+ */
+function editAreaGroups(pageIndex, operation) {
+    const selection = uiState.areaSelection;
+    if (!currentData || !selection || selection.pageIndex !== pageIndex || !selection.areaIndices.size) return;
+    const page = currentData.pages[pageIndex];
+    const groups = (currentAreaDrafts[pageIndex] ?? []).map(draft => [...draft.areaIndices]);
+    const edited = operation === "merge"
+        ? mergeAreaGroups(groups, selection.areaIndices)
+        : splitAreaGroups(groups, selection.areaIndices);
+    decisions.areaGroupsByPage.set(renderUnitKey(page, pageIndex), edited);
+    uiState.areaSelection = null;
+    render(currentData);
+}
+
+/**
+ * Drops the user's area groups of a page, so the computed grouping applies again.
+ * @param {number} pageIndex
+ */
+function resetAreaGroups(pageIndex) {
+    if (!currentData) return;
+    decisions.areaGroupsByPage.delete(renderUnitKey(currentData.pages[pageIndex], pageIndex));
+    uiState.areaSelection = null;
+    render(currentData);
 }
 
 /**
@@ -1873,7 +2156,7 @@ function reconcileUiState(previousState, viewModel, dataChanged) {
  * @returns {Decisions}
  */
 function reconcileDecisions(previous, viewModel, dataChanged) {
-    if (dataChanged) return {representativeByPageGroup: new Map()};
+    if (dataChanged) return emptyDecisions();
 
     /** @type {Map<number, string>} */
     const pageGroupKeyByPage = new Map();
@@ -1886,7 +2169,8 @@ function reconcileDecisions(previous, viewModel, dataChanged) {
         const key = pageGroupKeyByPage.get(pageIndex);
         if (key != null && !representativeByPageGroup.has(key)) representativeByPageGroup.set(key, pageIndex);
     });
-    return {representativeByPageGroup};
+    // Area groups belong to a page, not to a grouping, so they always carry over.
+    return {representativeByPageGroup, areaGroupsByPage: previous.areaGroupsByPage};
 }
 
 /**
@@ -2017,8 +2301,8 @@ function templatePageOrder(page) {
 }
 
 /**
- * Vertical sweep grouping: areas whose Y ranges overlap or are within
- * the proximity gap of each other are placed in the same base template area draft.
+ * Automatic area grouping, a vertical sweep: areas whose Y ranges overlap or are within the
+ * proximity gap of each other end up in the same base template area draft.
  * @param {AreaEntry[]} areas
  * @param {number} groupingGap
  * @returns {BaseTemplateAreaDraft[]}
@@ -2042,27 +2326,42 @@ function groupByProximity(areas, groupingGap) {
         }
     });
     groupedIndices.push(current);
+    return draftsFromAreaGroups(areas, groupedIndices);
+}
 
-    return groupedIndices.map((areaIndices, draftIndex) => {
-        const subset = areaIndices.map(index => areas[index]);
-        const x = Math.min(...subset.map(area => area.x));
-        const y = Math.min(...subset.map(area => area.y));
-        const x2 = Math.max(...subset.map(area => area.x + area.w));
-        const y2 = Math.max(...subset.map(area => area.y + area.h));
-        const areaName = areaIndices.map(idx => areas[idx].areaName).find(Boolean);
-        const previewSource = areaIndices.map(idx => areas[idx].contentPreview).find(Boolean);
-        return {
-            areaIndices,
-            position: {
-                x: roundTo(x, 2),
-                y: roundTo(y, 2),
-                w: roundTo(x2 - x, 2),
-                h: roundTo(y2 - y, 2),
-            },
-            name: areaName || parseFlowNameFromPreview(previewSource) || `Area ${draftIndex + 1}`,
-            areaName: areaName || '',
-        };
-    });
+/**
+ * Builds area drafts from groups of area indices (computed or edited by the user), ordered top
+ * to bottom, then left to right. Each draft spans the bounding box of its areas.
+ * @param {AreaEntry[]} areas
+ * @param {number[][]} areaGroups
+ * @returns {BaseTemplateAreaDraft[]}
+ */
+function draftsFromAreaGroups(areas, areaGroups) {
+    return areaGroups
+        .filter(group => group.length)
+        .map(group => [...group].sort((a, b) => a - b))
+        .map(areaIndices => {
+            const subset = areaIndices.map(index => areas[index]);
+            const x = Math.min(...subset.map(area => area.x));
+            const y = Math.min(...subset.map(area => area.y));
+            return {areaIndices, x, y, x2: Math.max(...subset.map(area => area.x + area.w)), y2: Math.max(...subset.map(area => area.y + area.h))};
+        })
+        .sort((a, b) => a.y - b.y || a.x - b.x)
+        .map(({areaIndices, x, y, x2, y2}, draftIndex) => {
+            const areaName = areaIndices.map(idx => areas[idx].areaName).find(Boolean);
+            const previewSource = areaIndices.map(idx => areas[idx].contentPreview).find(Boolean);
+            return {
+                areaIndices,
+                position: {
+                    x: roundTo(x, 2),
+                    y: roundTo(y, 2),
+                    w: roundTo(x2 - x, 2),
+                    h: roundTo(y2 - y, 2),
+                },
+                name: areaName || parseFlowNameFromPreview(previewSource) || `Area ${draftIndex + 1}`,
+                areaName: areaName || '',
+            };
+        });
 }
 
 /**
