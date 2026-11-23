@@ -584,7 +584,7 @@ class EvolveDeployClient(
         val data = when (val result = caClient.downloadFile(path)) {
             is HttpResult.Success if result.response.isEmpty() -> return OperationResult.Failure("Failed to download '$path' from Evolve: empty response. Does the file exist?")
             is HttpResult.Success -> result.response
-            is HttpResult.Failure -> return OperationResult.Failure("Failed to download '$path' from Evolve: ${result.error}")
+            is HttpResult.Failure -> return OperationResult.Failure("Failed to download '$path' from Evolve: status='${result.error.status}' message=${result.error.error}")
             is HttpResult.Exception -> return OperationResult.Failure("Failed to download '$path' from Evolve: ${result.cause.message}")
         }
 

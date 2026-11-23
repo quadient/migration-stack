@@ -219,11 +219,11 @@ class EvolveDeployClientTest {
     @Test
     fun `deployStyles records error status when standard style definition download fails`() {
         mockStylesToDeploy()
-        every { caClient.downloadFile(styleDefinitionBaseTemplatePath) } returns HttpResult.Failure("File not found")
+        every { caClient.downloadFile(styleDefinitionBaseTemplatePath) } returns HttpResult.Failure(StringErrorWithStatus(404, "File not found"))
 
         subject.deployStyles()
 
-        val message = "Failed to download '$styleDefinitionBaseTemplatePath' from Evolve: File not found"
+        val message = "Failed to download '$styleDefinitionBaseTemplatePath' from Evolve: status='404' message=File not found"
         verify { statusTrackingRepository.error("ts1", any<Uuid>(), any(), ResourceType.TextStyle, styleDefinitionPath, projectConfig.inspireOutput, message) }
         verify { statusTrackingRepository.error("ps1", any<Uuid>(), any(), ResourceType.ParagraphStyle, styleDefinitionPath, projectConfig.inspireOutput, message) }
         verify(exactly = 0) { ipsService.tryUpload(any<IcmPath>(), any()) }
@@ -630,12 +630,12 @@ class EvolveDeployClientTest {
     @Test
     fun `deployDocumentObjects records error and skips JLD deployment when base template copy fails`() {
         mockDocumentObjectsToDeploy(DocumentObjectBuilder("T1", DocumentObjectType.Template).build())
-        every { caClient.downloadFile(baseTemplatePath) } returns HttpResult.Failure("File not found")
+        every { caClient.downloadFile(baseTemplatePath) } returns HttpResult.Failure(StringErrorWithStatus(404, "File not found"))
 
         val result = subject.deployDocumentObjects()
 
         result.errors.shouldBeEqualTo(
-            mutableListOf(DeploymentError("T1", "Failed to download '$baseTemplatePath' from Evolve: File not found"))
+            mutableListOf(DeploymentError("T1", "Failed to download '$baseTemplatePath' from Evolve: status='404' message=File not found"))
         )
         verify(exactly = 0) { ipsService.tryUpload(any<IcmPath>(), any()) }
         verify(exactly = 0) { ipsService.extractJld(any(), any(), any()) }
@@ -677,14 +677,14 @@ class EvolveDeployClientTest {
         val image = "icm://Interactive/tenant/Images/logo.jpg".toIcmPath()
         mockDocumentObjectsToDeploy(DocumentObjectBuilder("T1", DocumentObjectType.Template).build())
         every { caClient.downloadFile(baseTemplatePath) } returns HttpResult.Success(byteArrayOf(4, 5, 6))
-        every { caClient.downloadFile(image) } returns HttpResult.Failure("File not found")
+        every { caClient.downloadFile(image) } returns HttpResult.Failure(StringErrorWithStatus(404, "File not found"))
         every { ipsService.tryUpload(baseTemplatePath, any()) } returns OperationResult.Success
         every { ipsService.listDependencies(baseTemplatePath) } returns listOf(image.toString())
 
         val result = subject.deployDocumentObjects()
 
         result.errors.shouldBeEqualTo(
-            mutableListOf(DeploymentError("T1", "Failed to download '$image' from Evolve: File not found"))
+            mutableListOf(DeploymentError("T1", "Failed to download '$image' from Evolve: status='404' message=File not found"))
         )
         verify(exactly = 0) { ipsService.extractJld(any(), any(), any()) }
     }
@@ -720,7 +720,7 @@ class EvolveDeployClientTest {
         val image = "icm://Interactive/tenant/Images/logo.jpg".toIcmPath()
         mockDocumentObjectsToDeploy(DocumentObjectBuilder("T1", DocumentObjectType.Template).build())
         every { caClient.downloadFile(baseTemplatePath) } returns HttpResult.Success(byteArrayOf(4, 5, 6))
-        every { caClient.downloadFile(image) } returns HttpResult.Failure("File not found")
+        every { caClient.downloadFile(image) } returns HttpResult.Failure(StringErrorWithStatus(404, "File not found"))
         every { ipsService.tryUpload(baseTemplatePath, any()) } returns OperationResult.Success
         every { ipsService.listDependencies(baseTemplatePath) } returns listOf(image.toString())
 
