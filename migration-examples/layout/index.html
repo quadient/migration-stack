@@ -23,12 +23,87 @@
             background: #fff;
         }
 
+        /* A fixed bar across the top; the page and the inspector start below it. */
+        :root {
+            --toolbar-height: 40px;
+        }
+
+        body {
+            padding-top: calc(var(--toolbar-height) + 4px);
+            margin-top: 12px;
+        }
+
         .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 20;
+            height: var(--toolbar-height);
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 8px;
             align-items: center;
-            margin-bottom: 12px;
+            padding: 0 12px 0 16px;
+            background: #fff;
+            border-bottom: 1px solid var(--line);
+            white-space: nowrap;
+        }
+
+        .toolbar button {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .toolbar .icon-btn {
+            padding: 0;
+            width: 28px;
+            height: 28px;
+        }
+
+        .toolbar > * {
+            flex-shrink: 0;
+        }
+
+        /* The file name and status give way first when the bar gets narrow. */
+        .toolbar > .file-name, .toolbar > .status {
+            flex-shrink: 1;
+            min-width: 0;
+        }
+
+        .toolbar .file-name {
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .toolbar .status {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 12px;
+        }
+
+        #file {
+            display: none;
+        }
+
+        @media (max-width: 1000px) {
+            .toolbar {
+                gap: 6px;
+            }
+
+            .toolbar-sep {
+                display: none;
+            }
+
+            .toolbar-control input[type="range"] {
+                width: 56px;
+            }
         }
 
         button, input[type="file"] {
@@ -63,6 +138,185 @@
             outline-offset: -12px;
         }
 
+        /* Inspector: a full-height sidebar on the right; the page makes room for it when open. */
+        :root {
+            --inspector-width: 360px;
+        }
+
+        body {
+            transition: margin-right 0.2s ease;
+        }
+
+        body:not(.inspector-hidden) {
+            margin-right: calc(var(--inspector-width) + 24px);
+        }
+
+        .inspector {
+            position: fixed;
+            top: var(--toolbar-height);
+            right: 0;
+            bottom: 0;
+            width: var(--inspector-width);
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border-left: 1px solid var(--line);
+            box-shadow: -2px 0 8px rgba(0, 0, 0, 0.04);
+            font-size: 13px;
+            transition: transform 0.2s ease;
+            z-index: 10;
+        }
+
+        body.inspector-hidden .inspector {
+            transform: translateX(100%);
+            box-shadow: none;
+        }
+
+        .icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: none;
+            color: var(--muted);
+        }
+
+        .icon-btn:hover {
+            background: #f0f0f0;
+            color: var(--fg);
+        }
+
+        .icon-btn.active {
+            color: #2f7de1;
+        }
+
+        .insp-body {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 20px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .insp-kind {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+        }
+
+        .insp-position-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .insp-position-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 10px 12px;
+        }
+
+        .insp-number {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .insp-number input {
+            width: 100%;
+            min-width: 0;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font: inherit;
+            font-size: 13px;
+            color: var(--fg);
+        }
+
+        .insp-number input:focus {
+            outline: none;
+            border-color: #2f7de1;
+            box-shadow: 0 0 0 2px #dbe8f8;
+        }
+
+        .insp-number input.edited {
+            border-color: #2f7de1;
+        }
+
+        .insp-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 4px 0;
+        }
+
+        .insp-label {
+            width: 104px;
+            flex-shrink: 0;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .insp-field {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 6px;
+            position: relative;
+        }
+
+        .insp-field .insp-reset {
+            position: absolute;
+            top: -4px;
+            right: 0;
+        }
+
+        .insp-field input {
+            flex: 1;
+            min-width: 0;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font: inherit;
+        }
+
+        .insp-field input:focus {
+            outline: none;
+            border-color: #2f7de1;
+            box-shadow: 0 0 0 2px #dbe8f8;
+        }
+
+        .insp-field input.edited {
+            border-color: #2f7de1;
+        }
+
+        .insp-reset {
+            width: 26px;
+            height: 26px;
+        }
+
+        .name-link {
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .name-link:hover {
+            background: #eef4fc;
+        }
+
+        .name-link.inspected {
+            background: #dbe8f8;
+        }
+
         /* Template groups */
         .template-groups {
             list-style: none;
@@ -92,9 +346,23 @@
             gap: 4px 10px;
         }
 
-        .tg-title > .hint {
+        /* Right side of the header: the closest-group hint and, behind a separator, the fix toggle. */
+        .tg-side {
             margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
             flex-shrink: 0;
+        }
+
+        .tg-side .lock-mark {
+            min-width: 46px;
+        }
+
+        .tg-side .hint {
+            padding-right: 10px;
+            border-right: 1px solid #ddd;
+            line-height: 18px;
         }
 
         .tg-templates {
@@ -353,11 +621,49 @@
             margin-right: 3px;
         }
 
+        .lock-mark {
+            flex-shrink: 0;
+            padding: 0 6px;
+            border: 1px solid #e0a800;
+            border-radius: 4px;
+            background: #fff8e1;
+            color: #8a6d00;
+            font-size: 11px;
+            line-height: 18px;
+        }
+
+        .lock-mark.differs {
+            background: #e0a800;
+            color: #fff;
+        }
+
+        .lock-mark:hover {
+            border-color: #b08400;
+        }
+
+        .lock-mark.unfixed {
+            border: 1px dashed #ccc;
+            background: none;
+            color: #999;
+        }
+
+        .lock-mark.unfixed:hover {
+            border-color: #e0a800;
+            color: #8a6d00;
+        }
+
+        /* A fixed square with the glyph centred, so the star sits in the middle of the line, not on its baseline. */
         .rep-mark.pinned {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 15px;
+            height: 15px;
             background: #e0a800;
             color: #fff;
             border-radius: 3px;
-            padding: 0 2px;
+            font-size: 11px;
+            line-height: 1;
         }
 
         .rep-mark.unused, .edit-mark.unused {
@@ -388,8 +694,8 @@
         .toolbar-control {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 13px;
+            gap: 5px;
+            font-size: 12px;
             color: var(--muted);
         }
 
@@ -398,7 +704,7 @@
             border: none;
             background: none;
             cursor: pointer;
-            width: 80px;
+            width: 72px;
             accent-color: #6b9fd4;
         }
 
@@ -410,17 +716,17 @@
         }
 
         .toolbar-control select {
-            padding: 4px 6px;
+            padding: 3px 4px;
             border: 1px solid #ccc;
             border-radius: 6px;
             background: var(--bg);
-            font-size: 13px;
+            font-size: 12px;
             cursor: pointer;
         }
 
         .toolbar-sep {
             width: 1px;
-            height: 24px;
+            height: 20px;
             background: #ddd;
             margin: 0 4px;
         }
@@ -456,13 +762,22 @@
     <button id="recalculate-all" disabled>Recalculate all</button>
     <div class="toolbar-sep"></div>
     <input type="file" id="file" accept=".csv"/>
+    <button id="open-file" title="Open a layout CSV (or drop it on the page)">Open CSV…</button>
+    <span class="file-name" id="file-name"></span>
     <button id="save-csv" disabled title="Save the loaded CSV, optionally with edits, back to disk">Export</button>
     <div class="status" id="status"></div>
+    <button id="toggle-inspector" class="icon-btn" title="Show or hide the inspector"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><line x1="10" y1="2.5" x2="10" y2="13.5"/></svg></button>
 </div>
 
 <div id="app" hidden>
-    <ul class="template-groups" id="template-groups"></ul>
+    <div class="app-main">
+        <ul class="template-groups" id="template-groups"></ul>
+    </div>
 </div>
+
+<aside class="inspector" id="inspector">
+    <div class="insp-body" id="inspector-body"></div>
+</aside>
 
 <script type="module">
 // @ts-check
@@ -480,6 +795,8 @@
  * @property {string[]} headers         header cells as in the file (incl. " (read-only)" suffixes)
  * @property {string[][]} standardRows  non-Base data rows, padded to the header length
  * @property {number[]} standardRowLines 1-based file line of each standard row, for error messages
+ * @property {string[][]} baseRows      "Base" data rows, padded to the header length; read to restore
+ *   the base templates, regenerated on export
  * @property {string} fileName
  */
 
@@ -523,6 +840,7 @@
  * @property {number|null} templatePageIndex
  * @property {AreaEntry[]} areas
  * @property {string[][]} sourceRows    - the CsvDocument row of each area (same order as areas)
+ * @property {string} baseTemplateTargetId - as loaded (first non-empty value of its rows), e.g. "$bt-1"
  */
 
 /**
@@ -559,6 +877,10 @@
  * @typedef {Object} BaseTemplateModel
  * @property {string} id
  * @property {string} name
+ * @property {NameSource} nameSource
+ * @property {string} proposedName the name without the user's edit (loaded or derived)
+ * @property {NameDecision|null} nameDecision the user's name, when it applies
+ * @property {string} templateGroupKey
  * @property {BaseTemplatePageModel[]} pages one per page group
  */
 
@@ -566,6 +888,9 @@
  * @typedef {Object} BaseTemplatePageModel
  * @property {string} id
  * @property {string} name
+ * @property {NameSource} nameSource
+ * @property {string} proposedName the name without the user's edit (loaded or derived)
+ * @property {NameDecision|null} nameDecision the user's name, when it applies
  * @property {string} pageGroupKey
  * @property {PageSizeEntry|null} pageSize
  * @property {number} representativePageIndex the page whose area drafts define the base areas
@@ -578,8 +903,28 @@
  */
 
 /**
+ * Where a name comes from: set by the user, loaded from the file, or derived by the tool.
+ * @typedef {"edited"|"loaded"|"derived"} NameSource
+ */
+
+/**
+ * A name the user gave a base template or base page. It belongs to the group with the most of its
+ * pages, so it survives regrouping (see assignNameDecisions).
+ * @typedef {Object} NameDecision
+ * @property {number[]} pageIndices the pages of the group when it was named
+ * @property {string} name
+ */
+
+/**
  * @typedef {Object} BaseAreaModel
  * @property {string} flowName
+ * @property {"edited"|"data"|"generated"} flowNameSource edited in the tool, an interactiveFlowName
+ *   of the representative's areas (e.g. from the file), or generated from the area
+ * @property {string} proposedFlowName the flow name without the user's edit
+ * @property {number[]} areaIndices the representative's areas forming the base area
+ * @property {Position} proposedPosition the bounding box of those areas
+ * @property {boolean} positionEdited the position was set by the user
+ * @property {string} positionKey key of the position decision (see draftKey)
  * @property {string} areaName
  * @property {boolean} flowToNextPage
  * @property {Position} position
@@ -594,6 +939,21 @@
  *   page group contains several of them, the earliest one is used
  * @property {Map<string, number[][]>} areaGroupsByPage page key (see renderUnitKey) -> the page's areas
  *   grouped into drafts by the user (merge/split); replaces the computed proximity grouping of that page
+ * @property {LockedGroup[]} lockedGroups template groups fixed regardless of threshold and strategy
+ *   (restored from a loaded file); the other templates are grouped among themselves
+ * @property {NameDecision[]} baseTemplateNames
+ * @property {NameDecision[]} basePageNames
+ * @property {Map<string, string>} flowNameByArea "pageKey#areaIndex" (see renderUnitKey) -> the
+ *   interactive flow name the user gave the base area made from this area
+ * @property {Map<string, Position>} positionByDraft "pageKey#areaIndices" (see draftKey) -> the
+ *   position the user gave the base area made from these areas of a representative
+ */
+
+/**
+ * @typedef {Object} LockedGroup
+ * @property {string[]} templateIds
+ * @property {number[][]} pageGroups fixed page groups; pages of the templates in none of them are
+ *   grouped among themselves
  */
 
 /**
@@ -608,6 +968,7 @@
  * @typedef {Object} PageGroup
  * @property {string} key
  * @property {number[]} pageIndices
+ * @property {boolean} locked a fixed page group of a locked template group
  */
 
 /**
@@ -616,6 +977,8 @@
  * @property {string[]} templateIds
  * @property {string[]} templateNames
  * @property {PageGroup[]} pageGroups - sorted page clusters with stable membership-based keys
+ * @property {LockedGroup|null} locked the decision fixing this group, null when computed
+ * @property {boolean} matchesComputed the computation alone would form the same group
  */
 
 /**
@@ -629,6 +992,8 @@
  * @typedef {Object} UiState
  * @property {Set<string>} openPageGroups
  * @property {{pageIndex: number, areaIndices: Set<number>}|null} areaSelection areas selected on one page card, for merge/split
+ * @property {{kind: "template"|"page", key: string}|null} inspected the base template (template
+ *   group key) or base page (page group key) shown in the inspector; the area selection goes first
  */
 
 /**
@@ -685,6 +1050,7 @@ let currentBasePageByPage = new Map();
 let uiState = {
     openPageGroups: new Set(),
     areaSelection: null,
+    inspected: null,
 };
 
 const statusEl = /** @type {HTMLElement} */ (document.getElementById("status"));
@@ -804,8 +1170,8 @@ function computeContainment(areas) {
 }
 
 /**
- * Reads the layout CSV into a {@link CsvDocument}. "Base" rows are dropped here; they are
- * regenerated from the current grouping on export.
+ * Reads the layout CSV into a {@link CsvDocument}. "Base" rows are kept apart from the standard
+ * rows: they restore the base templates on load and are regenerated from the model on export.
  * @param {string} text
  * @param {string} fileName
  * @returns {CsvDocument}
@@ -820,13 +1186,18 @@ function readCsvDocument(text, fileName) {
     const standardRows = [];
     /** @type {number[]} */
     const standardRowLines = [];
+    /** @type {string[][]} */
+    const baseRows = [];
     dataRecords.forEach(({cells, line}) => {
-        if (typeIdx >= 0 && (cells[typeIdx] ?? "").trim().toLowerCase() === "base") return;
         while (cells.length < headers.length) cells.push("");
+        if (typeIdx >= 0 && (cells[typeIdx] ?? "").trim().toLowerCase() === "base") {
+            baseRows.push(cells);
+            return;
+        }
         standardRows.push(cells);
         standardRowLines.push(line);
     });
-    return {headers, standardRows, standardRowLines, fileName};
+    return {headers, standardRows, standardRowLines, baseRows, fileName};
 }
 
 /**
@@ -934,6 +1305,7 @@ function buildLayoutData(doc) {
             templatePageIndex: pageIndexMap.get(pageKey) ?? null,
             areas,
             sourceRows: rawAreasWithRow.map(a => a.row),
+            baseTemplateTargetId: rows.map(row => col(row, 'baseTemplateTargetId').trim()).find(Boolean) ?? '',
         }));
     }
 
@@ -944,6 +1316,8 @@ function buildLayoutData(doc) {
 // losslessly (including columns/rows the viewer doesn't otherwise use) for saving back to disk.
 /** @type {CsvDocument|null} */
 let currentCsv = null;
+/** Ids and names of the base templates of the loaded file, kept for its pages. @type {LoadedIdentity} */
+let loadedIdentity = emptyIdentity();
 
 const saveCsvBtn = /** @type {HTMLButtonElement} */ (document.getElementById("save-csv"));
 
@@ -954,10 +1328,15 @@ async function loadFile(file) {
     try {
         setStatus("");
         const doc = readCsvDocument(await file.text(), file.name || "layout.csv");
+        const fileNameEl = /** @type {HTMLElement} */ (document.getElementById("file-name"));
+        fileNameEl.textContent = doc.fileName;
+        fileNameEl.title = doc.fileName;
         const layoutData = buildLayoutData(doc);
         currentCsv = doc;
         saveCsvBtn.disabled = false;
-        render(layoutData);
+        const report = render(layoutData, parseLoadedBaseTemplates(doc));
+        const message = report ? describeRestoreReport(report) : "";
+        if (message) setStatus(message, report && (report.unmatchedPages.length || report.inexactBasePages.length) ? undefined : "ok");
     } catch (err) {
         setStatus("Error: " + /** @type {Error} */ (err).message, "error");
     }
@@ -969,10 +1348,12 @@ async function loadFile(file) {
  */
 function setStatus(message, kind) {
     statusEl.textContent = message;
+    statusEl.title = message;
     statusEl.classList.toggle("ok", kind === "ok");
     statusEl.classList.toggle("error", kind === "error");
 }
 
+document.getElementById("open-file")?.addEventListener("click", () => fileInput.click());
 fileInput.addEventListener("change", () => {
     const [file] = /** @type {FileList} */ (fileInput.files);
     if (file) loadFile(file);
@@ -1165,13 +1546,29 @@ function uniqueName(base, usedNames) {
  * @param {ViewModel} viewModel
  * @param {BaseTemplateAreaDraft[][]} areaDrafts area drafts of every page (manual or computed)
  * @param {Decisions} decisions
+ * @param {LoadedIdentity} identity base templates of the loaded file, whose ids and names are kept
  * @returns {BaseTemplateModel[]}
  */
-function buildBaseTemplates(data, viewModel, areaDrafts, decisions) {
+function buildBaseTemplates(data, viewModel, areaDrafts, decisions, identity) {
     const pageMatrix = viewModel.pageLevel.matrix;
     /** @type {Set<string>} */
     const usedTemplateNames = new Set();
-    return viewModel.templateGroups.map((templateGroup, templateGroupIndex) => {
+    // New ids never reuse the id of a loaded base template, which may already exist in the DB.
+    const reservedIds = new Set(identity.baseTemplateIds);
+    let nextId = 1;
+    const newId = () => {
+        while (reservedIds.has(`bt-${nextId}`)) nextId++;
+        reservedIds.add(`bt-${nextId}`);
+        return `bt-${nextId}`;
+    };
+    const {templateByGroup, pageByPageGroup} = assignLoadedIdentity(viewModel.templateGroups, identity);
+    const templateNameByGroup = assignNameDecisions(
+        viewModel.templateGroups.map(group => ({group, pageIndices: group.pageGroups.flatMap(pageGroup => pageGroup.pageIndices)})),
+        decisions.baseTemplateNames);
+    const pageNameByPageGroup = assignNameDecisions(
+        viewModel.templateGroups.flatMap(group => group.pageGroups).map(group => ({group, pageIndices: group.pageIndices})),
+        decisions.basePageNames);
+    return viewModel.templateGroups.map(templateGroup => {
         const usedFlowNames = new Set();
         /** @type {Set<string>} */
         const usedPageNames = new Set();
@@ -1180,7 +1577,12 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions) {
             const computedRepresentativePageIndex = defaultRepresentative(pageGroup.pageIndices, pageMatrix);
             const representativePageIndex = pins[0] ?? computedRepresentativePageIndex;
             const representative = data.pages[representativePageIndex];
-            const baseDrafts = areaDrafts[representativePageIndex] ?? [];
+            const representativeKey = renderUnitKey(representative, representativePageIndex);
+            // The user's positions replace the bounding boxes of the drafts.
+            const baseDrafts = (areaDrafts[representativePageIndex] ?? []).map(draft => {
+                const position = decisions.positionByDraft.get(draftKey(representativeKey, draft.areaIndices));
+                return position ? {...draft, position} : draft;
+            });
 
             // The representative's areas belong to the base area made from their draft; the areas
             // of the other pages go to the base area they lie in.
@@ -1195,33 +1597,70 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions) {
                     : mapAreasToBaseAreas(data.pages[pageIndex].areas, baseDrafts));
             });
 
+            const loadedPage = pageByPageGroup.get(pageGroup);
+            const pageNameDecision = pageNameByPageGroup.get(pageGroup) ?? null;
+            const proposedPageName = loadedPage?.name ?? inspireSafeName(representative.pageName ?? `Page ${pageGroupIndex + 1}`);
+            /** @param {number} areaIndex */
+            const editedFlowName = areaIndex => decisions.flowNameByArea.get(`${representativeKey}#${areaIndex}`);
             return {
                 id: `page-${pageGroupIndex + 1}`,
-                name: uniqueName(inspireSafeName(representative.pageName ?? `Page ${pageGroupIndex + 1}`), usedPageNames),
+                name: uniqueName(pageNameDecision?.name ?? proposedPageName, usedPageNames),
+                nameSource: pageNameDecision ? "edited" : loadedPage ? "loaded" : "derived",
+                proposedName: proposedPageName,
+                nameDecision: pageNameDecision,
                 pageGroupKey: pageGroup.key,
                 pageSize: representative.pageSize,
                 representativePageIndex,
                 representativeIsManual: pins.length > 0,
                 computedRepresentativePageIndex,
                 unusedPins: pins.slice(1),
-                areas: baseDrafts.map(draft => ({
-                    flowName: chooseFlowName(draft.areaIndices.map(areaIndex => representative.areas[areaIndex]), draft, usedFlowNames),
+                areas: baseDrafts.map(draft => {
+                    const draftAreas = draft.areaIndices.map(areaIndex => representative.areas[areaIndex]);
+                    const edited = draft.areaIndices.map(editedFlowName).find(Boolean);
+                    const proposedFlowName = chooseFlowName(draftAreas, draft, new Set());
+                    return {
+                    flowName: uniqueName(edited ?? proposedFlowName, usedFlowNames),
+                    flowNameSource: edited ? "edited" : draftAreas.some(area => area.interactiveFlowName.trim()) ? "data" : "generated",
+                    proposedFlowName,
+                    areaIndices: draft.areaIndices,
+                    proposedPosition: (areaDrafts[representativePageIndex] ?? []).find(d => d.areaIndices === draft.areaIndices)?.position ?? draft.position,
+                    positionEdited: decisions.positionByDraft.has(draftKey(representativeKey, draft.areaIndices)),
+                    positionKey: draftKey(representativeKey, draft.areaIndices),
                     areaName: draft.areaName,
                     flowToNextPage: draft.areaIndices.some(areaIndex => representative.areas[areaIndex]?.flowToNextPage),
                     position: draft.position,
-                })),
+                    };
+                }),
                 baseAreaByArea,
             };
         });
-        // Named after the template of the first base page's representative.
+        // A loaded base template keeps its id and name (see assignLoadedIdentity); otherwise the
+        // base template is named after the template of the first base page's representative.
+        const loaded = templateByGroup.get(templateGroup);
         const firstRepresentative = pages.length ? data.pages[pages[0].representativePageIndex] : null;
         const templateName = firstRepresentative?.templateName ?? templateGroup.templateNames[0];
+        const templateNameDecision = templateNameByGroup.get(templateGroup) ?? null;
+        const proposedTemplateName = loaded?.name ?? inspireSafeName(`${templateName}BaseTemplate`);
         return {
-            id: `bt-${templateGroupIndex + 1}`,
-            name: uniqueName(inspireSafeName(`${templateName}BaseTemplate`), usedTemplateNames),
+            id: loaded?.id ?? newId(),
+            name: uniqueName(templateNameDecision?.name ?? proposedTemplateName, usedTemplateNames),
+            nameSource: templateNameDecision ? "edited" : loaded ? "loaded" : "derived",
+            proposedName: proposedTemplateName,
+            nameDecision: templateNameDecision,
+            templateGroupKey: templateGroup.key,
             pages,
         };
     });
+}
+
+/**
+ * Key of a draft (a group of a page's areas) for decisions about the base area made from it.
+ * @param {string} pageKey see renderUnitKey
+ * @param {number[]} areaIndices sorted
+ * @returns {string}
+ */
+function draftKey(pageKey, areaIndices) {
+    return `${pageKey}#${areaIndices.join(",")}`;
 }
 
 /**
@@ -1287,6 +1726,346 @@ function buildExportData(baseTemplates) {
     }));
 
     return {baseRows, overridesByPageIndex};
+}
+
+// ─── Loaded base templates ──────────────────────────────────────────────────────────────────
+//
+// A file exported earlier (by this tool, or by LayoutExport after LayoutImport) holds "Base"
+// rows and, on the standard rows, the baseTemplateTargetId and interactiveFlowName written by
+// the export. Everything the tool decided can be derived from them, so nothing tool-specific
+// has to be stored in the DB:
+// - the base page of a page: the base page of its target base template that has its flow names
+//   (flow names are unique within a base template),
+// - the representative: the page whose areas, grouped by flow name, span exactly the base areas
+//   (base areas are made from the representative's area groups),
+// - the area groups of the representative: its areas grouped by flow name.
+// They are restored as manual decisions (pinned representative, area groups), and the ids and
+// names of the loaded base templates are kept.
+
+/**
+ * @typedef {Object} LoadedBaseTemplate
+ * @property {string} id
+ * @property {string} name
+ * @property {LoadedBasePage[]} pages
+ */
+
+/**
+ * @typedef {Object} LoadedBasePage
+ * @property {string} name
+ * @property {{flowName: string, position: Position}[]} areas in areaIndex order
+ */
+
+/**
+ * @typedef {Object} LoadedIdentity
+ * @property {Map<number, {baseTemplate: LoadedBaseTemplate, basePage: LoadedBasePage}>} basePageByPage
+ *   the loaded base page each page belonged to
+ * @property {Set<string>} baseTemplateIds ids of all loaded base templates
+ * @property {Map<LoadedBasePage, number>} representativeByBasePage the page restored as representative
+ */
+
+/**
+ * @typedef {Object} RestoreReport
+ * @property {number} loadedBaseTemplates base templates in the file
+ * @property {number} baseTemplates loaded base templates used by at least one page
+ * @property {number} basePages
+ * @property {string[]} unmatchedPages pages whose target or flow names match no loaded base page
+ * @property {string[]} inexactBasePages base pages whose areas no page spans exactly
+ */
+
+/** @returns {LoadedIdentity} */
+function emptyIdentity() {
+    return {basePageByPage: new Map(), baseTemplateIds: new Set(), representativeByBasePage: new Map()};
+}
+
+/**
+ * Reads the base templates from the "Base" rows: grouped by templateId, then by pageId (in the
+ * order of the file), areas ordered by areaIndex.
+ * @param {CsvDocument} doc
+ * @returns {LoadedBaseTemplate[]}
+ */
+function parseLoadedBaseTemplates(doc) {
+    /** @param {string[]} row @param {string} name */
+    const get = (row, name) => { const i = columnIndex(doc.headers, name); return i >= 0 ? (row[i] ?? "").trim() : ""; };
+    /** @type {Map<string, {id: string, name: string, pages: Map<string, {name: string, areas: {index: number, flowName: string, position: Position}[]}>}>} */
+    const byId = new Map();
+    doc.baseRows.forEach(row => {
+        const id = get(row, "templateId");
+        if (!id) return;
+        if (!byId.has(id)) byId.set(id, {id, name: get(row, "templateName") || id, pages: new Map()});
+        const template = /** @type {NonNullable<ReturnType<typeof byId.get>>} */ (byId.get(id));
+        const pageKey = get(row, "pageId") || id;
+        if (!template.pages.has(pageKey)) template.pages.set(pageKey, {name: get(row, "pageName") || pageKey, areas: []});
+        const [x, y, w, h] = ["x", "y", "width", "height"].map(name => parseSizeMm(get(row, name)));
+        if (x == null || y == null || w == null || h == null) return;
+        /** @type {NonNullable<ReturnType<typeof template.pages.get>>} */ (template.pages.get(pageKey)).areas.push({
+            index: Number(get(row, "areaIndex")) || 0,
+            flowName: get(row, "interactiveFlowName"),
+            position: {x, y, w, h},
+        });
+    });
+    return [...byId.values()].map(template => ({
+        id: template.id,
+        name: template.name,
+        pages: [...template.pages.values()].map(page => ({
+            name: page.name,
+            areas: page.areas.sort((a, b) => a.index - b.index).map(({flowName, position}) => ({flowName, position})),
+        })),
+    }));
+}
+
+/**
+ * Groups the areas of a page by interactive flow name; areas without one get a group each.
+ * @param {AreaEntry[]} areas
+ * @returns {number[][]}
+ */
+function areaGroupsByFlowName(areas) {
+    /** @type {Map<string, number[]>} */
+    const byName = new Map();
+    /** @type {number[][]} */
+    const unnamed = [];
+    areas.forEach((area, areaIndex) => {
+        const name = area.interactiveFlowName.trim();
+        if (!name) { unnamed.push([areaIndex]); return; }
+        if (!byName.has(name)) byName.set(name, []);
+        /** @type {number[]} */ (byName.get(name)).push(areaIndex);
+    });
+    return [...byName.values(), ...unnamed];
+}
+
+/**
+ * How far the areas of a page, grouped by flow name, are from forming the base areas. Structural:
+ * base areas without areas plus areas whose flow is not a base area. Geometric: how far the
+ * bounding boxes of the flow-name groups are from the base area positions (0 when they match; a
+ * difference means the user moved or resized the base area).
+ * @param {AreaEntry[]} areas
+ * @param {LoadedBasePage} basePage
+ * @returns {{structural: number, geometric: number}}
+ */
+function representativeMismatch(areas, basePage) {
+    const baseFlowNames = new Set(basePage.areas.map(area => area.flowName));
+    let structural = areas.filter(area => !baseFlowNames.has(area.interactiveFlowName.trim())).length;
+    let geometric = 0;
+    basePage.areas.forEach(baseArea => {
+        const own = areas.filter(area => area.interactiveFlowName.trim() === baseArea.flowName);
+        if (!own.length) { structural += 1; return; }
+        const x = Math.min(...own.map(area => area.x)), y = Math.min(...own.map(area => area.y));
+        const box = {x, y, w: Math.max(...own.map(area => area.x + area.w)) - x, h: Math.max(...own.map(area => area.y + area.h)) - y};
+        geometric += geometryDistance(box, baseArea.position, true);
+    });
+    return {structural, geometric};
+}
+
+/**
+ * Restores the decisions behind the loaded base templates (see the section comment) and the
+ * identity (ids, names) to keep.
+ * @param {LayoutData} data
+ * @param {LoadedBaseTemplate[]} loaded
+ * @param {LayoutAnalysis} analysis
+ * @returns {{decisions: Decisions, identity: LoadedIdentity, report: RestoreReport}}
+ */
+function restoreFromLoaded(data, loaded, analysis) {
+    const decisions = emptyDecisions();
+    const identity = emptyIdentity();
+    /** @type {RestoreReport} */
+    const report = {loadedBaseTemplates: loaded.length, baseTemplates: 0, basePages: 0, unmatchedPages: [], inexactBasePages: []};
+    if (!loaded.length) return {decisions, identity, report};
+    loaded.forEach(baseTemplate => identity.baseTemplateIds.add(baseTemplate.id));
+    const loadedById = new Map(loaded.map(baseTemplate => [baseTemplate.id, baseTemplate]));
+
+    data.pages.forEach((page, pageIndex) => {
+        const target = page.baseTemplateTargetId;
+        if (!target.startsWith("$") && !target.startsWith("@")) return; // none, or a literal Inspire path
+        const baseTemplate = loadedById.get(target.slice(1));
+        const flowNames = new Set(page.areas.map(area => area.interactiveFlowName.trim()).filter(Boolean));
+        /** @type {LoadedBasePage|null} */
+        let best = null, bestCount = 0;
+        baseTemplate?.pages.forEach(basePage => {
+            const count = basePage.areas.filter(area => flowNames.has(area.flowName)).length;
+            if (count > bestCount) { best = basePage; bestCount = count; }
+        });
+        if (!baseTemplate || !best) { report.unmatchedPages.push(pageName(page)); return; }
+        identity.basePageByPage.set(pageIndex, {baseTemplate, basePage: best});
+    });
+
+    /** @type {Map<LoadedBasePage, number[]>} */
+    const pagesByBasePage = new Map();
+    identity.basePageByPage.forEach(({basePage}, pageIndex) => {
+        if (!pagesByBasePage.has(basePage)) pagesByBasePage.set(basePage, []);
+        /** @type {number[]} */ (pagesByBasePage.get(basePage)).push(pageIndex);
+    });
+    pagesByBasePage.forEach((pageIndices, basePage) => {
+        let representative = pageIndices[0], best = {structural: Infinity, geometric: Infinity};
+        pageIndices.forEach(pageIndex => {
+            const mismatch = representativeMismatch(data.pages[pageIndex].areas, basePage);
+            if (mismatch.structural < best.structural || (mismatch.structural === best.structural && mismatch.geometric < best.geometric)) {
+                representative = pageIndex;
+                best = mismatch;
+            }
+        });
+        if (best.structural) report.inexactBasePages.push(basePage.name);
+        decisions.pinnedRepresentatives.push(representative);
+        identity.representativeByBasePage.set(basePage, representative);
+        const page = data.pages[representative];
+        const groups = areaGroupsByFlowName(page.areas);
+        const computed = (analysis.pageBaseTemplateAreaDrafts[representative] ?? []).map(draft => draft.areaIndices);
+        if (!sameAreaGroups(groups, computed)) decisions.areaGroupsByPage.set(renderUnitKey(page, representative), groups);
+        // A base area whose position differs from the bounding box of its areas was moved or
+        // resized by the user: keep its position.
+        draftsFromAreaGroups(page.areas, groups).forEach(draft => {
+            const flowName = page.areas[draft.areaIndices[0]].interactiveFlowName.trim();
+            const loadedArea = flowName ? basePage.areas.find(area => area.flowName === flowName) : null;
+            if (!loadedArea) return;
+            const differs = /** @type {(keyof Position)[]} */ (["x", "y", "w", "h"])
+                .some(side => Math.abs(loadedArea.position[side] - draft.position[side]) > 0.01);
+            if (differs) {
+                const p = loadedArea.position;
+                decisions.positionByDraft.set(draftKey(renderUnitKey(page, representative), draft.areaIndices),
+                    {x: roundTo(p.x, 2), y: roundTo(p.y, 2), w: roundTo(p.w, 2), h: roundTo(p.h, 2)});
+            }
+        });
+    });
+
+    decisions.lockedGroups = lockedGroupsFromLoaded(data, identity);
+
+    report.baseTemplates = new Set([...identity.basePageByPage.values()].map(({baseTemplate}) => baseTemplate)).size;
+    report.basePages = pagesByBasePage.size;
+    return {decisions, identity, report};
+}
+
+/**
+ * The grouping of the loaded file: a template belongs to the loaded base template most of its
+ * pages target; within it, pages with the same loaded base page form a page group. Templates
+ * without a loaded base template are left to the computation.
+ * @param {LayoutData} data
+ * @param {LoadedIdentity} identity
+ * @returns {LockedGroup[]}
+ */
+function lockedGroupsFromLoaded(data, identity) {
+    /** @type {Map<LoadedBaseTemplate, {templateIds: string[], pagesByBasePage: Map<LoadedBasePage, number[]>}>} */
+    const byBaseTemplate = new Map();
+    data.templates.forEach(template => {
+        /** @type {Map<LoadedBaseTemplate, number>} */
+        const counts = new Map();
+        template.pageIndices.forEach(pageIndex => {
+            const loaded = identity.basePageByPage.get(pageIndex)?.baseTemplate;
+            if (loaded) counts.set(loaded, (counts.get(loaded) ?? 0) + 1);
+        });
+        /** @type {LoadedBaseTemplate|null} */
+        let baseTemplate = null, best = 0;
+        counts.forEach((count, loaded) => { if (count > best) { baseTemplate = loaded; best = count; } });
+        if (!baseTemplate) return;
+        if (!byBaseTemplate.has(baseTemplate)) byBaseTemplate.set(baseTemplate, {templateIds: [], pagesByBasePage: new Map()});
+        const group = /** @type {NonNullable<ReturnType<typeof byBaseTemplate.get>>} */ (byBaseTemplate.get(baseTemplate));
+        group.templateIds.push(template.templateId);
+        template.pageIndices.forEach(pageIndex => {
+            const loaded = identity.basePageByPage.get(pageIndex);
+            if (loaded?.baseTemplate !== baseTemplate) return; // e.g. a shared page stored with another base template
+            if (!group.pagesByBasePage.has(loaded.basePage)) group.pagesByBasePage.set(loaded.basePage, []);
+            /** @type {number[]} */ (group.pagesByBasePage.get(loaded.basePage)).push(pageIndex);
+        });
+    });
+    return [...byBaseTemplate.values()].map(({templateIds, pagesByBasePage}) => ({templateIds, pageGroups: [...pagesByBasePage.values()]}));
+}
+
+/**
+ * @param {RestoreReport} report
+ * @returns {string} "" when the file had no base templates
+ */
+function describeRestoreReport(report) {
+    if (!report.loadedBaseTemplates) return "";
+    const parts = [`Restored ${report.baseTemplates} base template(s) with ${report.basePages} base page(s) from the file`];
+    const unused = report.loadedBaseTemplates - report.baseTemplates;
+    if (unused) parts.push(`${unused} base template(s) in the file are used by no page`);
+    if (report.unmatchedPages.length) {
+        parts.push(`${report.unmatchedPages.length} page(s) match no base page of the file and are grouped as computed: ${report.unmatchedPages.slice(0, 5).join(", ")}${report.unmatchedPages.length > 5 ? ", ..." : ""}`);
+    }
+    if (report.inexactBasePages.length) {
+        parts.push(`the flows of ${report.inexactBasePages.join(", ")} match no page exactly; the closest page is used`);
+    }
+    return parts.join("; ");
+}
+
+/**
+ * Assigns the user's names to groups: each name goes to the group holding most of the pages it
+ * was given with, each group gets one name at most; the largest overlaps are served first.
+ * @template G
+ * @param {{group: G, pageIndices: number[]}[]} groups
+ * @param {NameDecision[]} names
+ * @returns {Map<G, NameDecision>}
+ */
+function assignNameDecisions(groups, names) {
+    /** @type {{group: G, name: NameDecision, weight: number}[]} */
+    const claims = [];
+    names.forEach(name => {
+        const pages = new Set(name.pageIndices);
+        groups.forEach(({group, pageIndices}) => {
+            const weight = pageIndices.filter(pageIndex => pages.has(pageIndex)).length;
+            if (weight) claims.push({group, name, weight});
+        });
+    });
+    claims.sort((a, b) => b.weight - a.weight);
+    /** @type {Map<G, NameDecision>} */
+    const result = new Map();
+    const taken = new Set();
+    claims.forEach(({group, name}) => {
+        if (result.has(group) || taken.has(name)) return;
+        result.set(group, name);
+        taken.add(name);
+    });
+    return result;
+}
+
+/**
+ * Decides which template group and page group keep the id and name of which loaded base
+ * template and base page, each loaded one going to one group at most. A group's claim on a
+ * loaded one is the number of its pages that belonged to it, far more when it contains the
+ * restored representative; the strongest claims are served first.
+ * @param {TemplateGroup[]} templateGroups
+ * @param {LoadedIdentity} identity
+ * @returns {{templateByGroup: Map<TemplateGroup, LoadedBaseTemplate>, pageByPageGroup: Map<PageGroup, LoadedBasePage>}}
+ */
+function assignLoadedIdentity(templateGroups, identity) {
+    /** @type {Set<number>} */
+    const representatives = new Set(identity.representativeByBasePage.values());
+    /**
+     * @template G, L
+     * @param {{group: G, pageIndices: number[]}[]} groups
+     * @param {(pageIndex: number) => L|undefined} loadedOf
+     * @returns {Map<G, L>}
+     */
+    const assign = (groups, loadedOf) => {
+        /** @type {{group: G, loaded: L, weight: number}[]} */
+        const claims = [];
+        groups.forEach(({group, pageIndices}) => {
+            /** @type {Map<L, number>} */
+            const weights = new Map();
+            pageIndices.forEach(pageIndex => {
+                const loaded = loadedOf(pageIndex);
+                if (loaded == null) return;
+                weights.set(loaded, (weights.get(loaded) ?? 0) + (representatives.has(pageIndex) ? 1000 : 1));
+            });
+            weights.forEach((weight, loaded) => claims.push({group, loaded, weight}));
+        });
+        claims.sort((x, y) => y.weight - x.weight); // stable: earlier groups win ties
+        /** @type {Map<G, L>} */
+        const result = new Map();
+        const taken = new Set();
+        claims.forEach(({group, loaded}) => {
+            if (result.has(group) || taken.has(loaded)) return;
+            result.set(group, loaded);
+            taken.add(loaded);
+        });
+        return result;
+    };
+    const pageGroups = templateGroups.flatMap(templateGroup => templateGroup.pageGroups);
+    return {
+        templateByGroup: assign(
+            templateGroups.map(group => ({group, pageIndices: group.pageGroups.flatMap(pageGroup => pageGroup.pageIndices)})),
+            pageIndex => identity.basePageByPage.get(pageIndex)?.baseTemplate),
+        pageByPageGroup: assign(
+            pageGroups.map(group => ({group, pageIndices: group.pageIndices})),
+            pageIndex => identity.basePageByPage.get(pageIndex)?.basePage),
+    };
 }
 
 /**
@@ -1476,23 +2255,36 @@ document.querySelectorAll("input[type='range']").forEach(input => {
 });
 
 /**
+ * Renders the data. New data starts with the decisions restored from its base templates
+ * (`loaded`); otherwise the current decisions are kept, as they are kept by page.
  * @param {LayoutData} data
+ * @param {LoadedBaseTemplate[]} [loaded] base templates of the file, for new data
+ * @returns {RestoreReport|null} for new data, what was restored
  */
-function render(data) {
+function render(data, loaded = []) {
     const dataChanged = currentData !== data;
     currentAnalysis = ensureAnalysis(data, currentAnalysis);
     currentData = data;
-    currentViewModel = buildViewModel(data, currentAnalysis, settings);
+    /** @type {RestoreReport|null} */
+    let report = null;
+    if (dataChanged) {
+        const restored = restoreFromLoaded(data, loaded, currentAnalysis);
+        decisions = restored.decisions;
+        loadedIdentity = restored.identity;
+        report = restored.report;
+    }
+    currentViewModel = buildViewModel(data, currentAnalysis, settings, decisions.lockedGroups);
     uiState = reconcileUiState(uiState, currentViewModel, dataChanged);
-    decisions = reconcileDecisions(decisions, dataChanged);
     currentAreaDrafts = effectiveAreaDrafts(data, currentAnalysis, decisions);
-    currentBaseTemplates = buildBaseTemplates(data, currentViewModel, currentAreaDrafts, decisions);
+    currentBaseTemplates = buildBaseTemplates(data, currentViewModel, currentAreaDrafts, decisions, loadedIdentity);
     currentBasePageByPage = indexBasePagesByPage(currentBaseTemplates);
 
     document.getElementById("app").hidden = false;
     renderTemplateGroups(data);
     reopenPageGroups(uiState.openPageGroups);
     renderDecisionSummary();
+    renderInspector();
+    return report;
 }
 
 /**
@@ -1708,15 +2500,42 @@ function renderTemplateBadges(group) {
 }
 
 /**
- * A base template or base page name. All names are derived for now (from the representative
- * pages), so they are shown as proposals; `source` says where the name comes from.
- * @param {string} name
- * @param {string} source
- * @param {string} className
+ * The fix toggle of a template group. A computed group shows a faint "fix": clicking it makes the
+ * group a decision that threshold and strategy no longer change. A fixed group (fixed here or
+ * loaded from the file) shows "fixed", highlighted when the computation would group its templates
+ * differently; clicking it releases the group.
+ * @param {TemplateGroup} group
+ * @param {number} groupIndex
  * @returns {string}
  */
-function renderDerivedName(name, source, className) {
-    return `<span class="${className} derived" title="${htmlEsc(`Proposed name, derived from ${source}`)}">${htmlEsc(name)}</span>`;
+function renderLockMark(group, groupIndex) {
+    if (!group.locked) {
+        return `<button type="button" class="lock-mark unfixed" data-action="toggle-fix" data-group-index="${groupIndex}" `
+            + `title="Computed group: threshold and strategy may change it.\nClick to fix it as it is.">fix</button>`;
+    }
+    const title = (group.matchesComputed
+        ? "Fixed group; the computation forms the same group."
+        : "Fixed group; threshold and strategy would group these templates differently.")
+        + "\nThe threshold and strategy do not change it. Click to release it and group its templates as computed.";
+    return `<button type="button" class="lock-mark${group.matchesComputed ? "" : " differs"}" data-action="toggle-fix" data-group-index="${groupIndex}" title="${htmlEsc(title)}">fixed</button>`;
+}
+
+/**
+ * A base template or base page name: taken from the loaded file, or derived from the
+ * representative pages and then shown as a proposal; `source` says what it is derived from.
+ * @param {string} name
+ * @param {NameSource} nameSource
+ * @param {string} source
+ * @param {string} className
+ * @param {string} attributes extra HTML attributes (data-action etc.)
+ * @returns {string}
+ */
+function renderName(name, nameSource, source, className, attributes) {
+    const title = nameSource === "edited" ? "Name set by you"
+        : nameSource === "loaded" ? "Name from the loaded file"
+        : `Proposed name, derived from ${source}`;
+    return `<span class="${className} name-link${nameSource === "derived" ? " derived" : ""}" ${attributes} `
+        + `title="${htmlEsc(title + "\nClick to show it in the inspector.")}">${htmlEsc(name)}</span>`;
 }
 
 /**
@@ -1794,7 +2613,9 @@ function renderPageGroupRow(pageGroup, data) {
     const cohesionTitle = cohesion !== null ? `Cohesion (least similar pair): ${cohesion.toFixed(2)}` : "Single page";
     const basePage = currentBasePageByPage.get(pageGroup.pageIndices[0])?.basePage;
     const nameHtml = basePage
-        ? renderDerivedName(basePage.name, `the representative page ${pageName(data.pages[basePage.representativePageIndex])}`, "pg-name")
+        ? renderName(basePage.name, basePage.nameSource, `the representative page ${pageName(data.pages[basePage.representativePageIndex])}`,
+            "pg-name" + (uiState.inspected?.kind === "page" && uiState.inspected.key === pageGroup.key ? " inspected" : ""),
+            `data-action="inspect-page" data-key="${htmlEsc(pageGroup.key)}"`)
         : "";
     return `<div class="page-group">`
         + `<div class="pg-row" data-action="toggle-preview">`
@@ -1895,9 +2716,11 @@ function renderTemplateGroupItem(group, groupIndex, data) {
         : "the first template of the group";
     return `<div class="tg-header">`
         + `<div class="tg-title">`
-        + (baseTemplate ? renderDerivedName(baseTemplate.name, source, "tg-name") : "")
+        + (baseTemplate ? renderName(baseTemplate.name, baseTemplate.nameSource, source,
+            "tg-name" + (uiState.inspected?.kind === "template" && uiState.inspected.key === group.key ? " inspected" : ""),
+            `data-action="inspect-template" data-key="${htmlEsc(group.key)}"`) : "")
         + `<span class="tg-templates" title="Templates of this base template">${renderTemplateBadges(group)}</span>`
-        + `${renderClosestGroupHint(groupIndex)}`
+        + `<span class="tg-side">${renderClosestGroupHint(groupIndex)}${renderLockMark(group, groupIndex)}</span>`
         + `</div>`
         + `</div>`
         + `<div class="page-groups">${pageGroupsHtml}</div>`;
@@ -2081,19 +2904,344 @@ function selectArea(pageIndex, areaIndex, additive) {
     }
     const hadSelection = uiState.areaSelection != null;
     uiState.areaSelection = next.size ? {pageIndex, areaIndices: next} : null;
-    if (hadSelection || uiState.areaSelection) refreshOpenPageGroups();
+    if (hadSelection || uiState.areaSelection) {
+        refreshOpenPageGroups();
+        renderInspector();
+    }
 }
 
 document.addEventListener("keydown", e => {
     if (e.key === "Escape" && uiState.areaSelection) {
         uiState.areaSelection = null;
         refreshOpenPageGroups();
+        renderInspector();
     }
 });
+
+// ─── Inspector ──────────────────────────────────────────────────────────────────────────────
+//
+// A panel showing the properties of what is selected: the areas selected on a representative page
+// (their base area), else the base template or base page whose name was clicked. Editable fields
+// show the proposed value as placeholder; an edited value is a decision with a reset next to it.
+
+const inspectorEl = /** @type {HTMLElement} */ (document.getElementById("inspector-body"));
+const toggleInspectorBtn = /** @type {HTMLButtonElement} */ (document.getElementById("toggle-inspector"));
+const INSPECTOR_HIDDEN_KEY = "layout-analysis.inspector-hidden";
+
+/** @param {boolean} hidden */
+function setInspectorHidden(hidden) {
+    document.body.classList.toggle("inspector-hidden", hidden);
+    toggleInspectorBtn.classList.toggle("active", !hidden);
+    try { localStorage.setItem(INSPECTOR_HIDDEN_KEY, hidden ? "1" : ""); } catch { /* storage unavailable */ }
+}
+toggleInspectorBtn.addEventListener("click", () => setInspectorHidden(!document.body.classList.contains("inspector-hidden")));
+
+setInspectorHidden((() => { try { return localStorage.getItem(INSPECTOR_HIDDEN_KEY) === "1"; } catch { return false; } })());
+renderInspector();
+
+/**
+ * Shows a base template or base page in the inspector (clearing the area selection) and opens
+ * the inspector if it was hidden.
+ * @param {"template"|"page"} kind
+ * @param {string} key template group key or page group key
+ */
+function inspectItem(kind, key) {
+    uiState.inspected = {kind, key};
+    if (uiState.areaSelection) {
+        uiState.areaSelection = null;
+        refreshOpenPageGroups();
+    }
+    if (document.body.classList.contains("inspector-hidden")) setInspectorHidden(false);
+    if (currentData) renderTemplateGroups(currentData);
+    reopenPageGroups(uiState.openPageGroups);
+    renderInspector();
+}
+
+/**
+ * An editable text field. Enter or leaving the field applies the value, Esc restores it. An empty
+ * value, or the proposed one, removes the user's value.
+ * @param {string} label
+ * @param {{value: string, proposed: string, edited: boolean, disabled?: boolean, onChange: (value: string) => void}} options
+ * @returns {HTMLElement}
+ */
+function inspectorTextField(label, {value, proposed, edited, disabled = false, onChange}) {
+    const row = document.createElement("label");
+    row.className = "insp-row insp-field";
+    const labelEl = document.createElement("span");
+    labelEl.className = "insp-label";
+    labelEl.textContent = label;
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = value;
+    input.placeholder = proposed;
+    input.disabled = disabled;
+    input.classList.toggle("edited", edited);
+    input.title = edited ? `Set by you. Proposed: ${proposed}` : "Proposed value; type to change it.";
+    input.addEventListener("keydown", e => {
+        e.stopPropagation();
+        if (e.key === "Enter") input.blur();
+        if (e.key === "Escape") { input.value = value; input.blur(); }
+    });
+    // Editing starts from the proposed value rather than an empty field.
+    input.addEventListener("focus", () => {
+        if (!input.value) { input.value = proposed; input.select(); }
+    });
+    input.addEventListener("change", () => {
+        const next = input.value.trim();
+        if (next === value || (!edited && next === proposed)) { input.value = value; return; }
+        onChange(next);
+    });
+    input.addEventListener("blur", () => { if (!edited && input.value.trim() === proposed) input.value = ""; });
+    row.append(labelEl, input);
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "icon-btn insp-reset";
+    reset.textContent = "↺";
+    reset.title = `Back to the proposed value: ${proposed}`;
+    reset.disabled = !edited || disabled;
+    reset.addEventListener("click", e => { e.preventDefault(); onChange(""); });
+    row.appendChild(reset);
+    return row;
+}
+
+/**
+ * @param {string} kind
+ * @returns {HTMLElement}
+ */
+function inspectorKind(kind) {
+    const el = document.createElement("div");
+    el.className = "insp-kind";
+    el.textContent = kind;
+    return el;
+}
+
+/**
+ * x, y, width and height of a base area in mm, as one decision: editing a value sets the whole
+ * position, the reset goes back to the bounding box of its areas.
+ * @param {BaseAreaModel} area
+ * @returns {HTMLElement}
+ */
+function inspectorPositionFields(area) {
+    const block = document.createElement("div");
+    block.className = "insp-position";
+    const head = document.createElement("div");
+    head.className = "insp-position-head";
+    const label = document.createElement("span");
+    label.className = "insp-label";
+    label.textContent = "Position (mm)";
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "icon-btn insp-reset";
+    reset.textContent = "↺";
+    reset.title = `Back to the bounding box of its areas: ${formatPosition(area.proposedPosition)}`;
+    reset.disabled = !area.positionEdited;
+    reset.addEventListener("click", () => setBaseAreaPosition(area, null));
+    head.append(label, reset);
+    const grid = document.createElement("div");
+    grid.className = "insp-position-grid";
+    /** @type {[keyof Position, string][]} */
+    const sides = [["x", "X"], ["y", "Y"], ["w", "Width"], ["h", "Height"]];
+    sides.forEach(([side, name]) => {
+        const field = document.createElement("label");
+        field.className = "insp-number";
+        const caption = document.createElement("span");
+        caption.textContent = name;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.step = "0.1";
+        input.min = "0";
+        input.value = formatMm(area.position[side]);
+        input.classList.toggle("edited", area.positionEdited);
+        input.title = area.positionEdited ? `Set by you. Bounding box of its areas: ${formatMm(area.proposedPosition[side])}` : "Bounding box of its areas; type to change it.";
+        input.addEventListener("keydown", e => {
+            e.stopPropagation();
+            if (e.key === "Enter") input.blur();
+            if (e.key === "Escape") { input.value = formatMm(area.position[side]); input.blur(); }
+        });
+        input.addEventListener("change", () => {
+            const value = Number(input.value);
+            if (input.value.trim() === "" || !Number.isFinite(value) || value < 0 || ((side === "w" || side === "h") && value === 0)) {
+                setStatus(`${name} must be ${side === "w" || side === "h" ? "greater than 0" : "0 or more"} mm.`, "error");
+                input.value = formatMm(area.position[side]);
+                return;
+            }
+            setBaseAreaPosition(area, {...area.position, [side]: roundTo(value, 2)});
+        });
+        field.append(caption, input);
+        grid.appendChild(field);
+    });
+    block.append(head, grid);
+    return block;
+}
+
+/**
+ * Sets (or with null, or the bounding box itself, removes) the user's position of a base area.
+ * @param {BaseAreaModel} area
+ * @param {Position|null} position
+ */
+function setBaseAreaPosition(area, position) {
+    const same = position && /** @type {(keyof Position)[]} */ (["x", "y", "w", "h"])
+        .every(side => Math.abs(position[side] - area.proposedPosition[side]) < 0.005);
+    if (position && !same) decisions.positionByDraft.set(area.positionKey, position);
+    else decisions.positionByDraft.delete(area.positionKey);
+    if (currentData) render(currentData);
+}
+
+/** @param {Position} position */
+function formatPosition(position) {
+    return `x ${formatMm(position.x)}, y ${formatMm(position.y)} · ${formatMm(position.w)} × ${formatMm(position.h)} mm`;
+}
+
+function renderInspector() {
+    inspectorEl.innerHTML = "";
+
+    if (currentData && uiState.areaSelection) {
+        renderAreaInspector(uiState.areaSelection.pageIndex, uiState.areaSelection.areaIndices);
+        return;
+    }
+    const inspected = uiState.inspected;
+    const baseTemplate = inspected && currentBaseTemplates.find(bt => inspected.kind === "template"
+        ? bt.templateGroupKey === inspected.key
+        : bt.pages.some(page => page.pageGroupKey === inspected.key));
+    if (inspected && baseTemplate) {
+        if (inspected.kind === "template") renderTemplateInspector(baseTemplate);
+        else renderPageInspector(baseTemplate, /** @type {BaseTemplatePageModel} */ (baseTemplate.pages.find(page => page.pageGroupKey === inspected.key)));
+        return;
+    }
+}
+
+/** @param {BaseTemplateModel} baseTemplate */
+function renderTemplateInspector(baseTemplate) {
+    inspectorEl.append(
+        inspectorKind("Base template"),
+        inspectorTextField("Name", {
+            value: baseTemplate.nameDecision ? baseTemplate.name : "",
+            proposed: baseTemplate.proposedName,
+            edited: baseTemplate.nameSource === "edited",
+            onChange: value => setBaseTemplateName(baseTemplate, value),
+        }),
+    );
+}
+
+/**
+ * @param {BaseTemplateModel} baseTemplate
+ * @param {BaseTemplatePageModel} basePage
+ */
+function renderPageInspector(baseTemplate, basePage) {
+    inspectorEl.append(
+        inspectorKind("Base page"),
+        inspectorTextField("Name", {
+            value: basePage.nameDecision ? basePage.name : "",
+            proposed: basePage.proposedName,
+            edited: basePage.nameSource === "edited",
+            onChange: value => setBasePageName(basePage, value),
+        }),
+    );
+}
+
+/**
+ * The base area of the selected areas. Editing needs areas of one base area; with several base
+ * areas selected the fields are disabled.
+ * @param {number} pageIndex
+ * @param {Set<number>} selected
+ */
+function renderAreaInspector(pageIndex, selected) {
+    const base = currentBasePageByPage.get(pageIndex);
+    const baseIndices = [...new Set([...selected].map(areaIndex => base?.basePage.baseAreaByArea.get(pageIndex)?.[areaIndex]))]
+        .filter(index => index != null);
+    if (!base || !baseIndices.length) return;
+    if (baseIndices.length > 1) {
+        // Several base areas: nothing to edit until the selection is one base area.
+        inspectorEl.append(inspectorKind(`${baseIndices.length} base areas`));
+        return;
+    }
+    const area = base.basePage.areas[/** @type {number} */ (baseIndices[0])];
+    inspectorEl.append(
+        inspectorKind("Base area"),
+        inspectorTextField("Flow name", {
+            value: area.flowNameSource === "edited" ? area.flowName : "",
+            proposed: area.proposedFlowName,
+            edited: area.flowNameSource === "edited",
+            onChange: value => setFlowName(base.baseTemplate, base.basePage, area, value),
+        }),
+        inspectorPositionFields(area),
+    );
+}
+
+/**
+ * Replaces (or, with an empty value or the proposed one, removes) the user's name of a group.
+ * @param {NameDecision[]} names
+ * @param {NameDecision|null} current
+ * @param {number[]} pageIndices
+ * @param {string} value
+ * @param {string} proposed
+ * @returns {NameDecision[]}
+ */
+function updateNameDecisions(names, current, pageIndices, value, proposed) {
+    const rest = names.filter(name => name !== current);
+    const name = value ? inspireSafeName(value) : "";
+    return name && name !== proposed ? [...rest, {pageIndices: [...pageIndices], name}] : rest;
+}
+
+/**
+ * @param {BaseTemplateModel} baseTemplate
+ * @param {string} value
+ */
+function setBaseTemplateName(baseTemplate, value) {
+    const pageIndices = baseTemplate.pages.flatMap(page => [...page.baseAreaByArea.keys()]);
+    decisions.baseTemplateNames = updateNameDecisions(decisions.baseTemplateNames, baseTemplate.nameDecision, pageIndices, value, baseTemplate.proposedName);
+    if (currentData) render(currentData);
+}
+
+/**
+ * @param {BaseTemplatePageModel} basePage
+ * @param {string} value
+ */
+function setBasePageName(basePage, value) {
+    decisions.basePageNames = updateNameDecisions(decisions.basePageNames, basePage.nameDecision, [...basePage.baseAreaByArea.keys()], value, basePage.proposedName);
+    if (currentData) render(currentData);
+}
+
+/**
+ * Sets the flow name of a base area on the representative's areas forming it (removing it with an
+ * empty value or the proposed one). Flow names must be unique within the base template.
+ * @param {BaseTemplateModel} baseTemplate
+ * @param {BaseTemplatePageModel} basePage
+ * @param {BaseAreaModel} area
+ * @param {string} value
+ */
+function setFlowName(baseTemplate, basePage, area, value) {
+    const name = value ? inspireSafeName(value) : "";
+    const takenBy = name && baseTemplate.pages.flatMap(page => page.areas).find(other => other !== area && other.flowName === name);
+    if (takenBy) {
+        setStatus(`The flow name "${name}" is already used by another base area of ${baseTemplate.name}.`, "error");
+        renderInspector();
+        return;
+    }
+    const representative = currentData.pages[basePage.representativePageIndex];
+    const key = renderUnitKey(representative, basePage.representativePageIndex);
+    area.areaIndices.forEach(areaIndex => {
+        if (name && name !== area.proposedFlowName) decisions.flowNameByArea.set(`${key}#${areaIndex}`, name);
+        else decisions.flowNameByArea.delete(`${key}#${areaIndex}`);
+    });
+    render(currentData);
+}
 
 // Event delegation for page-group toggle
 document.getElementById("template-groups").addEventListener("click", (e) => {
     const target = /** @type {HTMLElement} */ (e.target);
+    const inspect = /** @type {HTMLElement|null} */ (target.closest("[data-action='inspect-template'], [data-action='inspect-page']"));
+    if (inspect) {
+        inspectItem(inspect.dataset.action === "inspect-page" ? "page" : "template", inspect.dataset.key ?? "");
+        return;
+    }
+    const fixToggle = /** @type {HTMLElement|null} */ (target.closest("[data-action='toggle-fix']"));
+    if (fixToggle) {
+        const group = currentViewModel?.templateGroups[Number(fixToggle.dataset.groupIndex)];
+        if (group?.locked) unlockGroup(group);
+        else if (group) fixGroup(group);
+        return;
+    }
     const useComputed = /** @type {HTMLElement|null} */ (target.closest("[data-action='use-computed']"));
     if (useComputed) {
         const basePage = currentBasePageByPage.get(Number(useComputed.dataset.pageIndex))?.basePage;
@@ -2208,11 +3356,12 @@ function ensureAnalysis(data, previousAnalysis) {
  * @param {LayoutData} data
  * @param {LayoutAnalysis} analysis
  * @param {Settings} activeSettings
+ * @param {LockedGroup[]} lockedGroups
  * @returns {ViewModel}
  */
-function buildViewModel(data, analysis, activeSettings) {
+function buildViewModel(data, analysis, activeSettings, lockedGroups) {
     const {templateLevel, pageLevel} = analysis.similarity;
-    const templateGroups = computeTemplateGroups(data, templateLevel, pageLevel.matrix, activeSettings);
+    const templateGroups = computeTemplateGroups(data, templateLevel, pageLevel.matrix, activeSettings, lockedGroups);
     /** @type {Record<string, PageGroup>} */
     const pageGroupByKey = {};
     const pageGroupKeys = new Set();
@@ -2234,18 +3383,23 @@ function buildViewModel(data, analysis, activeSettings) {
  * @returns {UiState}
  */
 function reconcileUiState(previousState, viewModel, dataChanged) {
-    if (dataChanged) return {openPageGroups: new Set(), areaSelection: null};
+    if (dataChanged) return {openPageGroups: new Set(), areaSelection: null, inspected: null};
+    const inspected = previousState.inspected;
+    const inspectedExists = inspected?.kind === "page"
+        ? viewModel.pageGroupKeys.has(inspected.key)
+        : viewModel.templateGroups.some(group => group.key === inspected?.key);
     return {
         openPageGroups: new Set(
             [...previousState.openPageGroups].filter(key => viewModel.pageGroupKeys.has(key))
         ),
         areaSelection: previousState.areaSelection,
+        inspected: inspectedExists ? inspected : null,
     };
 }
 
 /** @returns {Decisions} */
 function emptyDecisions() {
-    return {pinnedRepresentatives: [], areaGroupsByPage: new Map()};
+    return {pinnedRepresentatives: [], areaGroupsByPage: new Map(), lockedGroups: [], baseTemplateNames: [], basePageNames: [], flowNameByArea: new Map(), positionByDraft: new Map()};
 }
 
 /**
@@ -2350,17 +3504,6 @@ function resetAreaGroups(pageIndex) {
 }
 
 /**
- * Decisions are kept by page, so they carry over to any grouping as they are; all of them are
- * dropped when other data was loaded.
- * @param {Decisions} previous
- * @param {boolean} dataChanged
- * @returns {Decisions}
- */
-function reconcileDecisions(previous, dataChanged) {
-    return dataChanged ? emptyDecisions() : previous;
-}
-
-/**
  * Makes the page the representative of its base page as a manual decision (a pin). This also
  * works for the computed representative, to keep it when the computation changes. Picking the
  * pinned representative again removes the pins of the group, so the computed one applies again.
@@ -2395,19 +3538,42 @@ function unpinGroup(basePage) {
  * @returns {{manual: number, differing: number}}
  */
 function describeDecisions() {
-    let differing = decisions.areaGroupsByPage.size;
+    let differing = decisions.areaGroupsByPage.size + decisions.positionByDraft.size
+        + currentViewModel.templateGroups.filter(group => group.locked && !group.matchesComputed).length;
     currentBaseTemplates.forEach(baseTemplate => baseTemplate.pages.forEach(basePage => {
         if (basePage.representativeIsManual && basePage.representativePageIndex !== basePage.computedRepresentativePageIndex) differing++;
         differing += basePage.unusedPins.length;
     }));
-    return {manual: decisions.pinnedRepresentatives.length + decisions.areaGroupsByPage.size, differing};
+    const names = decisions.baseTemplateNames.length + decisions.basePageNames.length + new Set(decisions.flowNameByArea.values()).size;
+    return {manual: decisions.pinnedRepresentatives.length + decisions.areaGroupsByPage.size + decisions.lockedGroups.length + names + decisions.positionByDraft.size, differing};
+}
+
+/**
+ * Fixes a computed template group as it is, with its page groups.
+ * @param {TemplateGroup} group
+ */
+function fixGroup(group) {
+    decisions.lockedGroups.push({templateIds: [...group.templateIds], pageGroups: group.pageGroups.map(pageGroup => [...pageGroup.pageIndices])});
+    if (currentData) render(currentData);
+}
+
+/**
+ * Releases a fixed template group: its templates are grouped by threshold and strategy again.
+ * Asks first when the computation groups them differently, as fixing again would not bring the
+ * group back.
+ * @param {TemplateGroup} group
+ */
+function unlockGroup(group) {
+    if (!group.matchesComputed && !confirm("Release this fixed group? Threshold and strategy group its templates differently, so fixing again will not bring this group back.")) return;
+    decisions.lockedGroups = decisions.lockedGroups.filter(locked => locked !== group.locked);
+    if (currentData) render(currentData);
 }
 
 /** Discards every manual decision, so the whole proposal is computed again. */
 function recalculateAll() {
     const {manual} = describeDecisions();
     if (!currentData || !manual) return;
-    if (!confirm(`Discard all ${manual} manual decision(s) (pinned representatives, merged/split areas) and use the computed proposal?`)) return;
+    if (!confirm(`Discard all ${manual} manual decision(s) (fixed groups, pinned representatives, merged/split areas, names, positions) and use the computed proposal?`)) return;
     decisions = emptyDecisions();
     uiState.areaSelection = null;
     render(currentData);
@@ -2664,16 +3830,43 @@ function sliderStepDecimals(slider) {
  * @param {TemplateLevel} templateLevel
  * @param {number[][]} pageMatrix
  * @param {Settings} activeSettings
+ * @param {LockedGroup[]} lockedGroups
  * @returns {TemplateGroup[]}
  */
-function computeTemplateGroups(data, templateLevel, pageMatrix, activeSettings) {
-    return groupPages(templateLevel.templates.map((_, i) => i), templateLevel.matrix, activeSettings)
-        .map(templateIndices => ({
-            key: templateGroupKey(templateIndices.map(i => templateLevel.templates[i].templateId)),
-            templateIds: templateIndices.map(i => templateLevel.templates[i].templateId),
-            templateNames: templateIndices.map(i => templateLevel.templates[i].templateName ?? templateLevel.templates[i].templateId),
-            pageGroups: buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings),
-        }));
+function computeTemplateGroups(data, templateLevel, pageMatrix, activeSettings, lockedGroups) {
+    const templates = templateLevel.templates;
+    /** @type {Map<string, number>} */
+    const indexById = new Map(templates.map((template, i) => [template.templateId, i]));
+    /** @type {{templateIndices: number[], locked: LockedGroup|null}[]} */
+    const groups = lockedGroups
+        .map(locked => ({
+            templateIndices: /** @type {number[]} */ (locked.templateIds.map(id => indexById.get(id)).filter(i => i != null)).sort((a, b) => a - b),
+            locked,
+        }))
+        .filter(group => group.templateIndices.length);
+    // Templates outside the fixed groups are grouped among themselves.
+    const lockedIndices = new Set(groups.flatMap(group => group.templateIndices));
+    const free = templates.map((_, i) => i).filter(i => !lockedIndices.has(i));
+    groupPages(free, templateLevel.matrix, activeSettings).forEach(templateIndices => groups.push({templateIndices, locked: null}));
+    groups.sort((a, b) => a.templateIndices[0] - b.templateIndices[0]);
+
+    // Which groups the computation alone would form, to show where fixed groups differ.
+    const computedKeys = new Set(lockedGroups.length
+        ? groupPages(templates.map((_, i) => i), templateLevel.matrix, activeSettings)
+            .map(templateIndices => templateGroupKey(templateIndices.map(i => templates[i].templateId)))
+        : []);
+
+    return groups.map(({templateIndices, locked}) => {
+        const key = templateGroupKey(templateIndices.map(i => templates[i].templateId));
+        return {
+            key,
+            templateIds: templateIndices.map(i => templates[i].templateId),
+            templateNames: templateIndices.map(i => templates[i].templateName ?? templates[i].templateId),
+            pageGroups: buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, locked?.pageGroups ?? []),
+            locked,
+            matchesComputed: !locked || computedKeys.has(key),
+        };
+    });
 }
 
 /**
@@ -2682,16 +3875,27 @@ function computeTemplateGroups(data, templateLevel, pageMatrix, activeSettings) 
  * @param {TemplateLevel} templateLevel
  * @param {number[][]} pageMatrix
  * @param {Settings} activeSettings
+ * @param {number[][]} lockedPageGroups fixed page groups (pages of other templates are ignored); the
+ *   remaining pages are grouped among themselves
  * @returns {PageGroup[]}
  */
-function buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings) {
+function buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, lockedPageGroups) {
     const pageIndices = templateIndices
         .flatMap(templateIndex => templateLevel.templates[templateIndex].pageIndices)
         .sort((a, b) => a - b);
-    return groupPages(pageIndices, pageMatrix, activeSettings)
-        .map(pg => pg.sort((a, b) => a - b))
-        .sort((a, b) => Math.min(...a) - Math.min(...b))
-        .map(pg => ({key: pageGroupKey(data, pg), pageIndices: pg}));
+    const own = new Set(pageIndices);
+    const locked = lockedPageGroups
+        .map(group => group.filter(pageIndex => own.has(pageIndex)))
+        .filter(group => group.length);
+    const lockedPages = new Set(locked.flat());
+    const free = pageIndices.filter(pageIndex => !lockedPages.has(pageIndex));
+    return [
+        ...locked.map(pg => ({pageIndices: pg, locked: true})),
+        ...groupPages(free, pageMatrix, activeSettings).map(pg => ({pageIndices: pg, locked: false})),
+    ]
+        .map(({pageIndices: pg, locked: isLocked}) => ({pageIndices: [...pg].sort((a, b) => a - b), locked: isLocked}))
+        .sort((a, b) => a.pageIndices[0] - b.pageIndices[0])
+        .map(({pageIndices: pg, locked: isLocked}) => ({key: pageGroupKey(data, pg), pageIndices: pg, locked: isLocked}));
 }
 
 /**
