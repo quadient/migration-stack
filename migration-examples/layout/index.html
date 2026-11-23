@@ -79,16 +79,61 @@
         }
 
         .tg-header {
-            padding: 10px 14px;
+            padding: 8px 14px;
             background: var(--bg);
             border-bottom: 1px solid var(--line);
+            font-size: 13px;
         }
 
-        .tg-header-row1 {
+        .tg-title {
             display: flex;
             align-items: center;
+            gap: 10px;
+        }
+
+        .tg-title > .hint {
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .tg-templates {
+            display: flex;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 4px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .template-tag:hover {
+            border-color: #6b9fd4;
+            color: var(--fg);
+        }
+
+        /* Pages of the template chip under the mouse. */
+        .page-tag.highlight {
+            background: #dbe8f8;
+        }
+
+        .tg-name {
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .template-tag {
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 11px;
+            color: var(--muted);
+            background: #fff;
+        }
+
+        /* A name the tool proposed (derived), as opposed to one the user set. */
+        /* A name the tool proposed (derived), as opposed to one the user set: underlined dotted,
+           like the dashed frames of the computed base areas. */
+        .derived {
+            text-decoration: underline dotted #aaa;
+            text-underline-offset: 3px;
         }
 
         .page-groups {
@@ -116,22 +161,30 @@
             background: #f5f8ff;
         }
 
-        .pg-num {
-            min-width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: #e8f0fe;
-            color: #4a7ab5;
+        .pg-head {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            font-weight: 700;
+            gap: 8px;
+            width: 200px;
             flex-shrink: 0;
-            margin-top: 1px;
-            margin-right: 4px;
-            border: 2px solid #a8c4e0;
-            transition: background 0.15s, color 0.15s;
+            min-width: 0;
+            font-size: 13px;
+            line-height: 22px;
+        }
+
+        .pg-name {
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
+
+        .pg-cohesion {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
         }
 
         .cohesion-dot {
@@ -139,12 +192,8 @@
             height: 8px;
             border-radius: 50%;
             flex-shrink: 0;
-            margin-top: 7px;
         }
 
-        .cohesion-value {
-            margin: 3px 0 0 -6px;
-        }
 
         .cohesion-high {
             background: #22c55e;
@@ -163,11 +212,11 @@
         }
 
         .pg-expand-icon {
-            margin-left: auto;
-            font-size: 11px;
+            width: 10px;
+            font-size: 9px;
+            line-height: 22px;
             color: var(--muted);
             flex-shrink: 0;
-            align-self: center;
         }
 
         .page-labels {
@@ -183,13 +232,14 @@
             border-radius: 4px;
             padding: 2px 7px;
             font-size: 12px;
+            white-space: nowrap;
         }
 
         .pg-cards {
             display: none;
             flex-wrap: wrap;
             gap: 16px;
-            padding: 10px 14px 14px 46px;
+            padding: 10px 14px 14px 36px;
             background: #fafbff;
             border-top: 1px dashed var(--line);
         }
@@ -299,9 +349,6 @@
 
         .rep-mark {
             color: #e0a800;
-        }
-
-        .rep-mark {
             margin-right: 3px;
         }
 
@@ -552,7 +599,6 @@
  * @property {PageLevel} pageLevel
  * @property {TemplateGroup[]} templateGroups
  * @property {Record<string, PageGroup>} pageGroupByKey
- * @property {Map<number, string>} pageNumberMap
  * @property {Set<string>} pageGroupKeys
  */
 
@@ -1060,7 +1106,16 @@ function chooseFlowName(draftAreas, representativeDraft, usedNames) {
     let existing = "", existingCount = 0;
     counts.forEach((count, name) => { if (count > existingCount) { existing = name; existingCount = count; } });
 
-    const base = inspireSafeName(existing || `${representativeDraft.name}Flow`);
+    return uniqueName(inspireSafeName(existing || `${representativeDraft.name}Flow`), usedNames);
+}
+
+/**
+ * `base`, or `base_2`, `base_3`... when already in `usedNames`; the result is added to `usedNames`.
+ * @param {string} base
+ * @param {Set<string>} usedNames
+ * @returns {string}
+ */
+function uniqueName(base, usedNames) {
     let name = base;
     for (let n = 2; usedNames.has(name); n++) name = `${base}_${n}`;
     usedNames.add(name);
@@ -1076,8 +1131,12 @@ function chooseFlowName(draftAreas, representativeDraft, usedNames) {
  */
 function buildBaseTemplates(data, viewModel, areaDrafts, decisions) {
     const pageMatrix = viewModel.pageLevel.matrix;
+    /** @type {Set<string>} */
+    const usedTemplateNames = new Set();
     return viewModel.templateGroups.map((templateGroup, templateGroupIndex) => {
         const usedFlowNames = new Set();
+        /** @type {Set<string>} */
+        const usedPageNames = new Set();
         const pages = templateGroup.pageGroups.map((pageGroup, pageGroupIndex) => {
             const manual = decisions.representativeByPageGroup.get(pageGroup.key);
             const representativePageIndex = manual ?? defaultRepresentative(pageGroup.pageIndices, pageMatrix);
@@ -1099,7 +1158,7 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions) {
 
             return {
                 id: `page-${pageGroupIndex + 1}`,
-                name: `Page ${pageGroupIndex + 1}`,
+                name: uniqueName(inspireSafeName(representative.pageName ?? `Page ${pageGroupIndex + 1}`), usedPageNames),
                 pageGroupKey: pageGroup.key,
                 pageSize: representative.pageSize,
                 representativePageIndex,
@@ -1113,9 +1172,12 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions) {
                 baseAreaByArea,
             };
         });
+        // Named after the template of the first base page's representative.
+        const firstRepresentative = pages.length ? data.pages[pages[0].representativePageIndex] : null;
+        const templateName = firstRepresentative?.templateName ?? templateGroup.templateNames[0];
         return {
             id: `bt-${templateGroupIndex + 1}`,
-            name: inspireSafeName(`${templateGroup.templateNames[0]}BaseTemplate`),
+            name: uniqueName(inspireSafeName(`${templateName}BaseTemplate`), usedTemplateNames),
             pages,
         };
     });
@@ -1292,6 +1354,20 @@ async function saveCsv() {
 }
 
 saveCsvBtn.addEventListener("click", () => { saveCsv(); });
+
+// Hovering a template chip highlights the pages of that template.
+/** @param {Event} e @param {boolean} on */
+function highlightTemplatePages(e, on) {
+    const chip = /** @type {HTMLElement|null} */ (/** @type {HTMLElement} */ (e.target).closest?.(".template-tag"));
+    const groupEl = chip?.closest("li");
+    if (!chip || !groupEl) return;
+    groupEl.querySelectorAll(".page-tag").forEach(tag => {
+        tag.classList.toggle("highlight", on && /** @type {HTMLElement} */ (tag).dataset.templateId === chip.dataset.templateId);
+    });
+}
+const templateGroupsEl = /** @type {HTMLElement} */ (document.getElementById("template-groups"));
+templateGroupsEl.addEventListener("mouseover", e => highlightTemplatePages(e, true));
+templateGroupsEl.addEventListener("mouseout", e => highlightTemplatePages(e, false));
 
 document.body.addEventListener("dragover", e => {
     e.preventDefault();
@@ -1564,13 +1640,22 @@ function renderTemplateGroups(data) {
 
 /**
  * @param {TemplateGroup} group
- * @param {number} groupIndex
  * @returns {string}
  */
-function renderTemplateBadges(group, groupIndex) {
-    return group.templateIds.map((id, idx) =>
-        `<code><strong>${templateGroupPrefix(groupIndex, group, idx)}.</strong> ${htmlEsc(group.templateNames[idx] ?? id)}</code>`
-    ).join("  ");
+function renderTemplateBadges(group) {
+    return group.templateIds.map((id, idx) => `<span class="template-tag" data-template-id="${htmlEsc(id)}">${htmlEsc(group.templateNames[idx] ?? id)}</span>`).join("");
+}
+
+/**
+ * A base template or base page name. All names are derived for now (from the representative
+ * pages), so they are shown as proposals; `source` says where the name comes from.
+ * @param {string} name
+ * @param {string} source
+ * @param {string} className
+ * @returns {string}
+ */
+function renderDerivedName(name, source, className) {
+    return `<span class="${className} derived" title="${htmlEsc(`Proposed name, derived from ${source}`)}">${htmlEsc(name)}</span>`;
 }
 
 /**
@@ -1585,7 +1670,8 @@ function renderClosestGroupHint(groupIndex) {
     if (!closest) return "";
     const title = "Average similarity of this group's templates to the templates of the most similar other group. "
         + "Groups merge when it reaches the threshold (with the average strategy).";
-    return `<span class="hint" title="${htmlEsc(title)}">closest group: ${closest.groupIndex + 1} (${closest.score.toFixed(2)})</span>`;
+    const name = currentBaseTemplates[closest.groupIndex]?.name ?? "";
+    return `<span class="hint" title="${htmlEsc(title)}">closest: ${htmlEsc(name)} (${closest.score.toFixed(2)})</span>`;
 }
 
 /**
@@ -1638,26 +1724,52 @@ function renderSimilarityHint(pageIndex) {
 
 /**
  * @param {PageGroup} pageGroup
- * @param {number} pageGroupIndex
  * @param {LayoutData} data
  * @returns {string}
  */
-function renderPageGroupRow(pageGroup, pageGroupIndex, data) {
-    const {pageLevel, pageNumberMap} = /** @type {ViewModel} */ (currentViewModel);
+function renderPageGroupRow(pageGroup, data) {
+    const {pageLevel} = /** @type {ViewModel} */ (currentViewModel);
     const cohesion = minPairScore(pageGroup.pageIndices, pageLevel.matrix);
     const cohesionTitle = cohesion !== null ? `Cohesion (least similar pair): ${cohesion.toFixed(2)}` : "Single page";
+    const basePage = currentBasePageByPage.get(pageGroup.pageIndices[0])?.basePage;
+    const nameHtml = basePage
+        ? renderDerivedName(basePage.name, `the representative page ${pageName(data.pages[basePage.representativePageIndex])}`, "pg-name")
+        : "";
     return `<div class="page-group">`
         + `<div class="pg-row" data-action="toggle-preview">`
-        + `<span class="pg-num">${pageGroupIndex + 1}</span>`
-        + `<span class="cohesion-dot ${cohesionClass(cohesion)}" title="${cohesionTitle}"></span>`
-        + (cohesion !== null ? `<span class="hint cohesion-value" title="${cohesionTitle}">${cohesion.toFixed(2)}</span>` : "")
-        + `<span class="page-labels">${pageGroup.pageIndices.map(pi =>
-            `<span class="page-tag">${representativeMark(pi)}<strong>${pageNumberMap.get(pi)}</strong> ${htmlEsc(pageName(data.pages[pi]))} ${renderSimilarityHint(pi)}</span>`
-        ).join("")}</span>`
         + `<span class="pg-expand-icon">&#9654;</span>`
+        + `<span class="pg-head">${nameHtml}`
+        + `<span class="pg-cohesion" title="${cohesionTitle}"><span class="cohesion-dot ${cohesionClass(cohesion)}"></span>`
+        + (cohesion !== null ? `<span class="hint">${cohesion.toFixed(2)}</span>` : "")
+        + `</span></span>`
+        + `<span class="page-labels">${pageGroup.pageIndices.map(pi =>
+            `<span class="page-tag" data-template-id="${htmlEsc(data.pages[pi].templateId ?? "")}" title="${htmlEsc(pageTagTooltip(data.pages[pi]))}">`
+            + `${representativeMark(pi)}${htmlEsc(pageTagLabel(data.pages[pi]))} ${renderSimilarityHint(pi)}</span>`
+        ).join("")}</span>`
         + `</div>`
         + `<div class="pg-cards"></div>`
         + `</div>`;
+}
+
+/**
+ * The page name, prefixed with its template name when the page name does not already contain
+ * it, so every page can be told apart and traced to its template.
+ * @param {PageEntry} page
+ * @returns {string}
+ */
+function pageTagLabel(page) {
+    const name = pageName(page);
+    const templateName = page.templateName ?? "";
+    return !templateName || name.includes(templateName) ? name : `${templateName} › ${name}`;
+}
+
+/**
+ * @param {PageEntry} page
+ * @returns {string}
+ */
+function pageTagTooltip(page) {
+    return `Template: ${page.templateName ?? "none (orphan page)"}
+Page: ${pageName(page)}`;
 }
 
 /**
@@ -1680,11 +1792,17 @@ function representativeMark(pageIndex) {
  */
 function renderTemplateGroupItem(group, groupIndex, data) {
     const pageGroupsHtml = group.pageGroups
-        .map((pageGroup, pageGroupIndex) => renderPageGroupRow(pageGroup, pageGroupIndex, data))
+        .map(pageGroup => renderPageGroupRow(pageGroup, data))
         .join("");
+    const baseTemplate = currentBaseTemplates[groupIndex];
+    const firstRepresentative = baseTemplate?.pages[0] ? data.pages[baseTemplate.pages[0].representativePageIndex] : null;
+    const source = firstRepresentative
+        ? `the template of the first page's representative (${firstRepresentative.templateName ?? pageName(firstRepresentative)})`
+        : "the first template of the group";
     return `<div class="tg-header">`
-        + `<div class="tg-header-row1">`
-        + `${renderTemplateBadges(group, groupIndex)}`
+        + `<div class="tg-title">`
+        + (baseTemplate ? renderDerivedName(baseTemplate.name, source, "tg-name") : "")
+        + `<span class="tg-templates" title="Templates of this base template">${renderTemplateBadges(group)}</span>`
         + `${renderClosestGroupHint(groupIndex)}`
         + `</div>`
         + `</div>`
@@ -1734,12 +1852,6 @@ function buildPageCard(pageIndex) {
     const title = document.createElement("span");
     title.className = "page-card-name";
     title.title = pageCardTooltip(page);
-    const pageNum = currentViewModel.pageNumberMap.get(pageIndex);
-    if (pageNum) {
-        const numSpan = document.createElement("strong");
-        numSpan.textContent = pageNum + " ";
-        title.appendChild(numSpan);
-    }
     title.appendChild(document.createTextNode(pageName(page)));
     header.appendChild(title);
 
@@ -1902,32 +2014,6 @@ function buildPageCards(preview, indices) {
 }
 
 /**
- * @param {number} index
- * @returns {string}
- */
-function indexToLetters(index) {
-    let result = "";
-    let n = index;
-    do {
-        result = String.fromCharCode(97 + (n % 26)) + result;
-        n = Math.floor(n / 26) - 1;
-    } while (n >= 0);
-    return result;
-}
-
-/**
- * @param {number} groupIndex
- * @param {TemplateGroup} group
- * @param {number} templateIndex - index within the group's templateIds
- * @returns {string}
- */
-function templateGroupPrefix(groupIndex, group, templateIndex) {
-    const num = groupIndex + 1;
-    const letter = group.templateIds.length > 1 ? indexToLetters(templateIndex) : "";
-    return `${num}${letter}`;
-}
-
-/**
  * @param {Set<string>} keys
  * @returns {void}
  */
@@ -2013,30 +2099,19 @@ function ensureAnalysis(data, previousAnalysis) {
  */
 function buildViewModel(data, analysis, activeSettings) {
     const {templateLevel, pageLevel} = analysis.similarity;
-    const templateById = Object.fromEntries(templateLevel.templates.map(t => [t.templateId, t]));
     const templateGroups = computeTemplateGroups(data, templateLevel, pageLevel.matrix, activeSettings);
     /** @type {Record<string, PageGroup>} */
     const pageGroupByKey = {};
-    const pageNumberMap = new Map();
     const pageGroupKeys = new Set();
 
-    templateGroups.forEach((group, groupIndex) => {
-        const groupTemplates = group.templateIds.map(id => templateById[id]).filter(Boolean);
-        groupTemplates.forEach((template, templateIndex) => {
-            const prefix = templateGroupPrefix(groupIndex, group, templateIndex);
-            template.pageIndices.forEach((pageIndex, pageOffset) => {
-                if (!pageNumberMap.has(pageIndex)) {
-                    pageNumberMap.set(pageIndex, `${prefix}.${pageOffset + 1}`);
-                }
-            });
-        });
+    templateGroups.forEach(group => {
         group.pageGroups.forEach(pageGroup => {
             pageGroupKeys.add(pageGroup.key);
             pageGroupByKey[pageGroup.key] = pageGroup;
         });
     });
 
-    return {templateLevel, pageLevel, templateGroups, pageGroupByKey, pageNumberMap, pageGroupKeys};
+    return {templateLevel, pageLevel, templateGroups, pageGroupByKey, pageGroupKeys};
 }
 
 /**
