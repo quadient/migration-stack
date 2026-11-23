@@ -210,6 +210,42 @@ class DesignerDocumentObjectBuilderTest {
     }
 
     @Test
+    fun `buildDocumentObject sets dynamic height on flow area`() {
+        // given
+        val page = DocumentObjectBuilder("P_1", Page)
+            .area {
+                position {
+                    left(60.millimeters())
+                    top(60.millimeters())
+                    width(100.millimeters())
+                    height(100.millimeters())
+                }
+                dynamicHeight(true)
+                string("dynamic")
+            }
+            .area {
+                position {
+                    left(60.millimeters())
+                    top(200.millimeters())
+                    width(100.millimeters())
+                    height(10.millimeters())
+                }
+                string("fixed")
+            }
+            .build()
+            .mock()
+        val template = DocumentObjectBuilder("T_1", Template).documentObjectRef(page).build().mock()
+
+        // when
+        val result =
+            subject.buildDocumentObject(template).let { xmlMapper.readTree(it.trimIndent()) }["Layout"]["Layout"]
+
+        // then
+        result["FlowArea"].filter { it["DynamicHeight"] != null }.map { it["DynamicHeight"].stringValue() }
+            .shouldBeEqualTo(listOf("True", "False"))
+    }
+
+    @Test
     fun `buildDocumentObject creates flow area with placeholder text in case of invalid image`() {
         // given
         val image = aImage("Img_1", sourcePath = null, skip = SkipOptions(true, "img placeholder", null)).mock()

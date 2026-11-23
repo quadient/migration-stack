@@ -479,6 +479,7 @@ Positioned or flow content container on a page object.
 - `position: Position?` - Absolute position (x, y, width, height)
 - `interactiveFlowName: String?` - Flow name in base template
 - `flowToNextPage: Boolean` - Whether content can flow to next page (default: false)
+- `dynamicHeight: Boolean` - Whether the flow area height adapts to its content (default: false)
 
 **Example:**
 

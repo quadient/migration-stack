@@ -184,7 +184,7 @@ class MappingRepositoryTest {
     }
 
     @Test
-    fun `area mapping persists area names and flowToNextPage and applies names`() {
+    fun `area mapping persists area names, flowToNextPage and dynamic height and applies them`() {
         val page = DocumentObjectBuilder("pageId", DocumentObjectType.Page)
             .area { name("Header"); interactiveFlowName("flow1") }
             .area { name("Body") }
@@ -199,19 +199,23 @@ class MappingRepositoryTest {
                 areas = mutableMapOf(0 to "flow1", 1 to null),
                 flowToNextPage = mutableMapOf(0 to true),
                 areaNames = mutableMapOf(0 to "Renamed header", 1 to null),
+                dynamicHeight = mutableMapOf(1 to true),
             )
         )
 
         val stored = repo.getAreaMapping("pageId")
         assertEquals(mutableMapOf(0 to "Renamed header", 1 to null), stored.areaNames)
         assertEquals(mutableMapOf(0 to true), stored.flowToNextPage)
+        assertEquals(mutableMapOf(1 to true), stored.dynamicHeight)
 
         repo.applyAreaMapping("pageId")
 
         verify {
             documentObjectRepository.upsert(match {
                 val areas = it.content.filterIsInstance<Area>()
-                areas.map { a -> a.name } == listOf("Renamed header", null) && areas[0].flowToNextPage
+                areas.map { a -> a.name } == listOf("Renamed header", null)
+                    && areas[0].flowToNextPage
+                    && areas.map { a -> a.dynamicHeight } == listOf(false, true)
             })
         }
     }

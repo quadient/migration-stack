@@ -705,6 +705,7 @@
                 <BorderStyleId></BorderStyleId>
                 <FlowingToNextPage>False</FlowingToNextPage>
                 <BorderType>Content</BorderType>
+                <DynamicHeight>False</DynamicHeight>
             </FlowArea>
             <FlowArea>
                 <Id>SR_18</Id>
@@ -721,6 +722,7 @@
                 <BorderStyleId></BorderStyleId>
                 <FlowingToNextPage>False</FlowingToNextPage>
                 <BorderType>Content</BorderType>
+                <DynamicHeight>False</DynamicHeight>
             </FlowArea>
             <ImageObject>
                 <Id>SR_19</Id>
@@ -926,6 +928,7 @@
                 <BorderStyleId></BorderStyleId>
                 <FlowingToNextPage>False</FlowingToNextPage>
                 <BorderType>Content</BorderType>
+                <DynamicHeight>False</DynamicHeight>
             </FlowArea>
             <Data>
                 <Id>Def.Data</Id>

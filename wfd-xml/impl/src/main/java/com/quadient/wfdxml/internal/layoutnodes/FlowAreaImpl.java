@@ -13,6 +13,7 @@ public class FlowAreaImpl extends LayoutObjectImpl<FlowArea> implements FlowArea
     private BorderType borderType = CONTENT_ONLY;
 
     private boolean flowingToNextPage = false;
+    private boolean dynamicHeight = false;
 
     public FlowAreaImpl() {
     }
@@ -74,6 +75,16 @@ public class FlowAreaImpl extends LayoutObjectImpl<FlowArea> implements FlowArea
         return this;
     }
 
+    public boolean isDynamicHeight() {
+        return dynamicHeight;
+    }
+
+    @Override
+    public FlowArea setDynamicHeight(boolean dynamicHeight) {
+        this.dynamicHeight = dynamicHeight;
+        return this;
+    }
+
     @Override
     public String getXmlElementName() {
         return "FlowArea";
@@ -85,6 +96,7 @@ public class FlowAreaImpl extends LayoutObjectImpl<FlowArea> implements FlowArea
         exporter.addElementWithIface("FlowId", flow)
                 .addElementWithIface("BorderStyleId", borderStyle)
                 .addElementWithBoolData("FlowingToNextPage", flowingToNextPage)
-                .addElementWithStringData("BorderType", convertBorderTypeToXmlName(borderType));
+                .addElementWithStringData("BorderType", convertBorderTypeToXmlName(borderType))
+                .addElementWithBoolData("DynamicHeight", dynamicHeight);
     }
 }

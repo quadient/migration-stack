@@ -94,6 +94,29 @@ class LayoutImportTest {
     }
 
     @Test
+    void importMapsDynamicHeight() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+
+        when(migration.mappingRepository.getAreaMapping("page1")).thenReturn(new MappingItem.Area(null, [:], [:]))
+        givenPageExists("page1", ["flow1", "flow2", "flow3"], [false, false, false])
+
+        def input = """\
+            templateId,templateName,pageId,pageName,type,interactiveFlowName,flowToNextPage,dynamicHeight,areaIndex,contentPreview (read-only)
+            ,,page1,,Standard,flow1,false,true,0,
+            ,,page1,,Standard,flow2,false,false,1,
+            ,,page1,,Standard,flow3,false,,2,
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+
+        LayoutImport.run(migration, mappingFile)
+
+        verify(migration.mappingRepository).upsertBatch([
+            "page1": new MappingItem.Area(null, [0: "flow1", 1: "flow2", 2: "flow3"], [0: false, 1: false, 2: false], [:], [0: true, 1: false, 2: false]),
+        ])
+        verify(migration.mappingRepository).applyAllAreaMappings()
+    }
+
+    @Test
     void importIsRobustToReorderedAndNonContiguousRows() {
         // Simulates a user sorting/filtering the exported CSV in Excel: rows for the same page are
         // no longer adjacent, and their relative order no longer matches the areaIndex column. The
@@ -227,10 +250,10 @@ class LayoutImportTest {
         when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, [], null))
 
         def input = """\
-            templateId,templateName,pageId,pageName,pageWidth,pageHeight,areaIndex,interactiveFlowName,areaName,flowToNextPage,x,y,width,height,type,baseTemplateTargetId,contentPreview
-            tmpl1,,page1,,,,0,flow1,,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
-            G1,Base template 1,G1-P1,Page group 1,210mm,297mm,1,G1-P1.Area2,"Address, main",true,1cm,30mm,190mm,50mm,Base,,
-            G1,Base template 1,G1-P1,Page group 1,210mm,297mm,0,G1-P1.Area1,,false,1cm,1cm,190mm,20mm,Base,,
+            templateId,templateName,pageId,pageName,pageWidth,pageHeight,areaIndex,interactiveFlowName,areaName,flowToNextPage,dynamicHeight,x,y,width,height,type,baseTemplateTargetId,contentPreview
+            tmpl1,,page1,,,,0,flow1,,false,false,0.0mm,0.0mm,0.0mm,0.0mm,Standard,\$G1,
+            G1,Base template 1,G1-P1,Page group 1,210mm,297mm,1,G1-P1.Area2,"Address, main",true,true,1cm,30mm,190mm,50mm,Base,,
+            G1,Base template 1,G1-P1,Page group 1,210mm,297mm,0,G1-P1.Area1,,false,false,1cm,1cm,190mm,20mm,Base,,
             """.stripIndent()
         mappingFile.toFile().write(input)
 
@@ -242,7 +265,7 @@ class LayoutImportTest {
 
         def created = new BaseTemplatePage("Page group 1", Size.ofMillimeters(210), Size.ofMillimeters(297), [
             new BaseTemplateArea("G1-P1.Area1", new Position(Size.ofCentimeters(1), Size.ofCentimeters(1), Size.ofMillimeters(190), Size.ofMillimeters(20)), false),
-            new BaseTemplateArea("G1-P1.Area2", new Position(Size.ofCentimeters(1), Size.ofMillimeters(30), Size.ofMillimeters(190), Size.ofMillimeters(50)), true, "Address, main"),
+            new BaseTemplateArea("G1-P1.Area2", new Position(Size.ofCentimeters(1), Size.ofMillimeters(30), Size.ofMillimeters(190), Size.ofMillimeters(50)), true, "Address, main", true),
         ])
         verify(migration.mappingRepository).upsertBatch([
             "G1": new MappingItem.BaseTemplate("Base template 1", null, [created], null)

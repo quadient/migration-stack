@@ -13,6 +13,7 @@ class AreaBuilder : DocumentContentBuilderBase<AreaBuilder>, HasName<AreaBuilder
     override var position: Position? = null
     var interactiveFlowName: String? = null; private set
     var flowToNextPage: Boolean = false; private set
+    var dynamicHeight: Boolean = false; private set
 
     /**
      * Set the name of Interactive flow defined in Base Template to which the content will flow.
@@ -30,6 +31,13 @@ class AreaBuilder : DocumentContentBuilderBase<AreaBuilder>, HasName<AreaBuilder
     fun flowToNextPage(flowToNextPage: Boolean) = apply { this.flowToNextPage = flowToNextPage }
 
     /**
+     * Set whether the flow area height adapts to its content.
+     * @param dynamicHeight Whether the flow area has dynamic height. Default is false.
+     * @return The [AreaBuilder] instance for method chaining.
+     */
+    fun dynamicHeight(dynamicHeight: Boolean) = apply { this.dynamicHeight = dynamicHeight }
+
+    /**
      * Builds the [Area] instance.
      * @return The constructed [Area] instance.
      */
@@ -40,6 +48,7 @@ class AreaBuilder : DocumentContentBuilderBase<AreaBuilder>, HasName<AreaBuilder
             interactiveFlowName = interactiveFlowName,
             flowToNextPage = flowToNextPage,
             name = name,
+            dynamicHeight = dynamicHeight,
         )
     }
 }

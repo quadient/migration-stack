@@ -76,6 +76,7 @@ class InspireBaseTemplateBuilder(
                 val areaName = area.name?.takeIf { it.isNotBlank() } ?: "${area.interactiveFlowName}Area"
                 val flowArea = wfdPage.addFlowArea().setName(areaName).setFlow(flow)
                     .setFlowToNextPage(area.flowToNextPage)
+                    .setDynamicHeight(area.dynamicHeight)
 
                 var areaSize = -1.0
                 area.position?.let {

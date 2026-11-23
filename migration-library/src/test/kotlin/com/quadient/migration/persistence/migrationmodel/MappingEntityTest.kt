@@ -197,12 +197,37 @@ class MappingEntityTest {
         }
 
         @Test
-        fun `area mapping keeps flowToNextPage and area names through dto conversion`() {
+        fun `maps dynamic height and keeps dynamic height of areas missing from the mapping`() {
+            val mapping = MappingItemEntity.Area(
+                name = null,
+                areas = mutableMapOf(),
+                dynamicHeight = mutableMapOf(0 to true, 1 to false),
+            )
+            val block = DocumentObjectBuilder("doc1", Block)
+                .area { }
+                .area { dynamicHeight(true) }
+                .area { dynamicHeight(true) }
+                .build()
+
+            val result = mapping.apply(block)
+
+            result.content.shouldBeEqualTo(
+                listOf(
+                    AreaBuilder().dynamicHeight(true).build(),
+                    AreaBuilder().build(),
+                    AreaBuilder().dynamicHeight(true).build(),
+                )
+            )
+        }
+
+        @Test
+        fun `area mapping keeps flowToNextPage, area names and dynamic height through dto conversion`() {
             val entity = MappingItemEntity.Area(
                 name = null,
                 areas = mutableMapOf(0 to "flow"),
                 flowToNextPage = mutableMapOf(0 to true),
                 areaNames = mutableMapOf(0 to "Header"),
+                dynamicHeight = mutableMapOf(0 to true),
             )
 
             entity.toDto().toDb().shouldBeEqualTo(entity)
@@ -219,6 +244,7 @@ class MappingEntityTest {
             val entity = json.decodeFromString<MappingItemEntity>(stored) as MappingItemEntity.Area
 
             entity.areaNames.shouldBeEqualTo(mutableMapOf())
+            entity.dynamicHeight.shouldBeEqualTo(mutableMapOf())
             entity.areas.shouldBeEqualTo(mutableMapOf(0 to "flow"))
         }
     }

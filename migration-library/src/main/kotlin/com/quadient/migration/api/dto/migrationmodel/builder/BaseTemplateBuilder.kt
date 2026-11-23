@@ -111,6 +111,7 @@ class BaseTemplateBuilder(id: String) : DtoBuilderBase<BaseTemplate, BaseTemplat
         override var position: Position? = null
         var flowToNextPage: Boolean = false; private set
         var name: String? = null; private set
+        var dynamicHeight: Boolean = false; private set
 
         /**
          * Set whether the flow area should flow to the next page.
@@ -118,6 +119,13 @@ class BaseTemplateBuilder(id: String) : DtoBuilderBase<BaseTemplate, BaseTemplat
          * @return The [Area] instance for method chaining.
          */
         fun flowToNextPage(flowToNextPage: Boolean) = apply { this.flowToNextPage = flowToNextPage }
+
+        /**
+         * Set whether the flow area height adapts to its content.
+         * @param dynamicHeight Whether the flow area has dynamic height. Default is false.
+         * @return The [Area] instance for method chaining.
+         */
+        fun dynamicHeight(dynamicHeight: Boolean) = apply { this.dynamicHeight = dynamicHeight }
 
         /**
          * Set the display name of the area. When not set, a name derived from the interactive flow name is used.
@@ -132,6 +140,7 @@ class BaseTemplateBuilder(id: String) : DtoBuilderBase<BaseTemplate, BaseTemplat
                 position = position,
                 flowToNextPage = flowToNextPage,
                 name = name,
+                dynamicHeight = dynamicHeight,
             )
         }
     }

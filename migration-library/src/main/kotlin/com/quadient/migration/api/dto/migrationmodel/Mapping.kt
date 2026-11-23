@@ -25,6 +25,7 @@ sealed class MappingItem {
         var areas: MutableMap<Int, String?>,
         var flowToNextPage: MutableMap<Int, Boolean> = mutableMapOf(),
         var areaNames: MutableMap<Int, String?> = mutableMapOf(),
+        var dynamicHeight: MutableMap<Int, Boolean> = mutableMapOf(),
     ) : MappingItem()
 
     data class Image(
@@ -141,7 +142,11 @@ sealed class MappingItem {
             }
 
             is MappingItem.Area -> MappingItemEntity.Area(
-                name = this.name, areas = this.areas, flowToNextPage = this.flowToNextPage, areaNames = this.areaNames
+                name = this.name,
+                areas = this.areas,
+                flowToNextPage = this.flowToNextPage,
+                areaNames = this.areaNames,
+                dynamicHeight = this.dynamicHeight,
             )
 
             is MappingItem.BaseTemplate -> MappingItemEntity.BaseTemplate(

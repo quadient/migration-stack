@@ -8,6 +8,7 @@ data class BaseTemplateArea @JvmOverloads constructor(
     var position: Position? = null,
     var flowToNextPage: Boolean = false,
     var name: String? = null,
+    var dynamicHeight: Boolean = false,
 )
 
 @Serializable
