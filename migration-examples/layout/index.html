@@ -88,7 +88,8 @@
         .tg-title {
             display: flex;
             align-items: center;
-            gap: 10px;
+            flex-wrap: wrap;
+            gap: 4px 10px;
         }
 
         .tg-title > .hint {
@@ -101,7 +102,7 @@
             flex-wrap: wrap;
             gap: 4px;
             flex: 1;
-            min-width: 0;
+            min-width: 240px;
         }
 
         .template-tag:hover {
@@ -352,6 +353,38 @@
             margin-right: 3px;
         }
 
+        .rep-mark.pinned {
+            background: #e0a800;
+            color: #fff;
+            border-radius: 3px;
+            padding: 0 2px;
+        }
+
+        .rep-mark.unused, .edit-mark.unused {
+            color: #bbb;
+        }
+
+        button.rep-mark.use-computed {
+            border: none;
+            background: none;
+            padding: 0;
+            font-size: inherit;
+            line-height: inherit;
+        }
+
+        button.rep-mark.use-computed:hover {
+            color: #b08400;
+        }
+
+        .edit-mark {
+            margin-left: 3px;
+            color: #2f7de1;
+        }
+
+        #recalculate-all.differs {
+            border-color: #e0a800;
+        }
+
         .toolbar-control {
             display: flex;
             align-items: center;
@@ -420,6 +453,7 @@
             <option value="complete">Complete (all pairs)</option>
         </select>
     </label>
+    <button id="recalculate-all" disabled>Recalculate all</button>
     <div class="toolbar-sep"></div>
     <input type="file" id="file" accept=".csv"/>
     <button id="save-csv" disabled title="Save the loaded CSV, optionally with edits, back to disk">Export</button>
@@ -536,6 +570,8 @@
  * @property {PageSizeEntry|null} pageSize
  * @property {number} representativePageIndex the page whose area drafts define the base areas
  * @property {boolean} representativeIsManual   chosen by the user rather than computed
+ * @property {number} computedRepresentativePageIndex the page the computation proposes
+ * @property {number[]} unusedPins pages of the group pinned as representative after the one used
  * @property {BaseAreaModel[]} areas
  * @property {Map<number, (number|null)[]>} baseAreaByArea for every page of the group: the base
  *   area index each of its areas maps to
@@ -550,10 +586,12 @@
  */
 
 /**
- * Decisions made by the user. They take priority over the computed proposal and are carried over
- * to a new grouping (e.g. after a threshold change), see reconcileDecisions.
+ * Decisions made by the user. They take priority over the computed proposal and are kept by page,
+ * not by group, so they survive a new grouping (e.g. after a threshold change); where the computed
+ * proposal now differs, the UI shows it and lets the user take it (see describeDecisions).
  * @typedef {Object} Decisions
- * @property {Map<string, number>} representativeByPageGroup page group key -> representative page index
+ * @property {number[]} pinnedRepresentatives pages pinned as representative, earliest first; when a
+ *   page group contains several of them, the earliest one is used
  * @property {Map<string, number[][]>} areaGroupsByPage page key (see renderUnitKey) -> the page's areas
  *   grouped into drafts by the user (merge/split); replaces the computed proximity grouping of that page
  */
@@ -1138,8 +1176,9 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions) {
         /** @type {Set<string>} */
         const usedPageNames = new Set();
         const pages = templateGroup.pageGroups.map((pageGroup, pageGroupIndex) => {
-            const manual = decisions.representativeByPageGroup.get(pageGroup.key);
-            const representativePageIndex = manual ?? defaultRepresentative(pageGroup.pageIndices, pageMatrix);
+            const pins = decisions.pinnedRepresentatives.filter(pageIndex => pageGroup.pageIndices.includes(pageIndex));
+            const computedRepresentativePageIndex = defaultRepresentative(pageGroup.pageIndices, pageMatrix);
+            const representativePageIndex = pins[0] ?? computedRepresentativePageIndex;
             const representative = data.pages[representativePageIndex];
             const baseDrafts = areaDrafts[representativePageIndex] ?? [];
 
@@ -1162,7 +1201,9 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions) {
                 pageGroupKey: pageGroup.key,
                 pageSize: representative.pageSize,
                 representativePageIndex,
-                representativeIsManual: manual != null,
+                representativeIsManual: pins.length > 0,
+                computedRepresentativePageIndex,
+                unusedPins: pins.slice(1),
                 areas: baseDrafts.map(draft => ({
                     flowName: chooseFlowName(draft.areaIndices.map(areaIndex => representative.areas[areaIndex]), draft, usedFlowNames),
                     areaName: draft.areaName,
@@ -1354,6 +1395,20 @@ async function saveCsv() {
 }
 
 saveCsvBtn.addEventListener("click", () => { saveCsv(); });
+const recalculateAllBtn = /** @type {HTMLButtonElement} */ (document.getElementById("recalculate-all"));
+recalculateAllBtn.addEventListener("click", () => recalculateAll());
+
+/** Shows the number of manual decisions, and how many differ from the computation, on the Recalculate all button. */
+function renderDecisionSummary() {
+    const {manual, differing} = describeDecisions();
+    recalculateAllBtn.disabled = manual === 0;
+    recalculateAllBtn.textContent = manual ? `Recalculate all (${manual})` : "Recalculate all";
+    recalculateAllBtn.classList.toggle("differs", differing > 0);
+    recalculateAllBtn.title = manual
+        ? `${manual} manual decision(s), ${differing} of them differ from what the computation proposes now.\n`
+            + "Click to discard all of them and use the computed proposal."
+        : "No manual decisions: everything shown is computed.";
+}
 
 // Hovering a template chip highlights the pages of that template.
 /** @param {Event} e @param {boolean} on */
@@ -1380,7 +1435,12 @@ document.body.addEventListener("drop", e => {
     e.preventDefault();
     document.body.classList.remove("drag-over");
     const file = e.dataTransfer?.files[0];
-    if (file) loadFile(file);
+    if (!file) return;
+    // Show the dropped file in the file input too (setting files does not fire "change").
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    fileInput.files = transfer.files;
+    loadFile(file);
 });
 
 document.getElementById("card-size").addEventListener("input", (e) => {
@@ -1424,7 +1484,7 @@ function render(data) {
     currentData = data;
     currentViewModel = buildViewModel(data, currentAnalysis, settings);
     uiState = reconcileUiState(uiState, currentViewModel, dataChanged);
-    decisions = reconcileDecisions(decisions, currentViewModel, dataChanged);
+    decisions = reconcileDecisions(decisions, dataChanged);
     currentAreaDrafts = effectiveAreaDrafts(data, currentAnalysis, decisions);
     currentBaseTemplates = buildBaseTemplates(data, currentViewModel, currentAreaDrafts, decisions);
     currentBasePageByPage = indexBasePagesByPage(currentBaseTemplates);
@@ -1432,6 +1492,7 @@ function render(data) {
     document.getElementById("app").hidden = false;
     renderTemplateGroups(data);
     reopenPageGroups(uiState.openPageGroups);
+    renderDecisionSummary();
 }
 
 /**
@@ -1744,7 +1805,7 @@ function renderPageGroupRow(pageGroup, data) {
         + `</span></span>`
         + `<span class="page-labels">${pageGroup.pageIndices.map(pi =>
             `<span class="page-tag" data-template-id="${htmlEsc(data.pages[pi].templateId ?? "")}" title="${htmlEsc(pageTagTooltip(data.pages[pi]))}">`
-            + `${representativeMark(pi)}${htmlEsc(pageTagLabel(data.pages[pi]))} ${renderSimilarityHint(pi)}</span>`
+            + `${representativeMark(pi)}${htmlEsc(pageTagLabel(data.pages[pi]))}${areaEditMark(pi)} ${renderSimilarityHint(pi)}</span>`
         ).join("")}</span>`
         + `</div>`
         + `<div class="pg-cards"></div>`
@@ -1773,15 +1834,48 @@ Page: ${pageName(page)}`;
 }
 
 /**
- * A star before the page tag of the representative page of its base page.
+ * The star before a page tag: ★ the representative (on gold when pinned by the user), a ☆ button
+ * on the computed representative when a pinned page is used instead, a grey ★ on a pinned page
+ * that is not used because an earlier pin is in the same group.
  * @param {number} pageIndex
  * @returns {string}
  */
 function representativeMark(pageIndex) {
     const basePage = currentBasePageByPage.get(pageIndex)?.basePage;
-    if (!basePage || basePage.representativePageIndex !== pageIndex) return "";
-    const how = basePage.representativeIsManual ? "chosen manually" : "most similar to the others";
-    return `<span class="rep-mark" title="Representative page (${how})">★</span>`;
+    if (!basePage) return "";
+    const computedName = pageName(currentData.pages[basePage.computedRepresentativePageIndex]);
+    if (basePage.representativePageIndex === pageIndex) {
+        if (!basePage.representativeIsManual) {
+            return `<span class="rep-mark" title="Representative page, computed: the most similar to the others">★</span>`;
+        }
+        const title = basePage.computedRepresentativePageIndex === pageIndex
+            ? "Representative page, pinned by you (also the computed one)"
+            : `Representative page, pinned by you.\nThe computation now proposes ${computedName} (☆).`;
+        return `<span class="rep-mark pinned" title="${htmlEsc(title)}">★</span>`;
+    }
+    if (basePage.unusedPins.includes(pageIndex)) {
+        return `<span class="rep-mark unused" title="Pinned as representative, but not used: another pinned page of this group was pinned earlier">★</span>`;
+    }
+    if (basePage.computedRepresentativePageIndex === pageIndex && basePage.representativeIsManual) {
+        return `<button type="button" class="rep-mark use-computed" data-action="use-computed" data-page-index="${pageIndex}" `
+            + `title="The computation proposes this page as the representative; a pinned page is used instead.\nClick to use this one (removes the pin).">☆</button>`;
+    }
+    return "";
+}
+
+/**
+ * A pencil after a page tag when the user merged or split the page's areas; grey while the page
+ * is not the representative (its edits are kept, but not used).
+ * @param {number} pageIndex
+ * @returns {string}
+ */
+function areaEditMark(pageIndex) {
+    if (!decisions.areaGroupsByPage.has(renderUnitKey(currentData.pages[pageIndex], pageIndex))) return "";
+    const used = currentBasePageByPage.get(pageIndex)?.basePage.representativePageIndex === pageIndex;
+    const title = used
+        ? "Areas merged/split by you"
+        : "Areas merged/split by you; not used while this page is not the representative";
+    return `<span class="edit-mark${used ? "" : " unused"}" title="${title}">✎</span>`;
 }
 
 /**
@@ -1885,23 +1979,36 @@ function buildPageCard(pageIndex) {
         isRepresentative ? (areaIndex, additive) => selectArea(pageIndex, areaIndex, additive) : null,
     );
     if (svg) wrap.appendChild(svg);
-    wrap.appendChild(isRepresentative ? buildAreaActions(pageIndex, selectedAreas) : buildFollowerFooter());
+    wrap.appendChild(isRepresentative ? buildAreaActions(pageIndex, selectedAreas) : buildFollowerFooter(pageIndex));
     return wrap;
 }
 
 /**
  * Footer of a page that is not the representative: its areas cannot be edited, they go to the
- * base area they lie in. Same height as the representative's action bar, so cards line up.
+ * base area they lie in. Area edits made while it was the representative are kept but not used;
+ * they can be discarded here. Same height as the representative's action bar, so cards line up.
+ * @param {number} pageIndex
  * @returns {HTMLElement}
  */
-function buildFollowerFooter() {
+function buildFollowerFooter(pageIndex) {
     const footer = document.createElement("div");
     footer.className = "card-footer";
     const info = document.createElement("span");
     info.className = "hint";
-    info.textContent = "Areas follow the ★ page";
-    info.title = "Each area goes to the base area (red frame) it lies in. Merge and split areas on the representative page.";
+    const hasEdits = decisions.areaGroupsByPage.has(renderUnitKey(currentData.pages[pageIndex], pageIndex));
+    info.textContent = hasEdits ? "Area edits kept, not used" : "Areas follow the ★ page";
+    info.title = hasEdits
+        ? "You merged or split areas of this page while it was the representative. They apply again when it becomes the representative."
+        : "Each area goes to the base area (dashed frame) it lies in. Merge and split areas on the representative page.";
     footer.appendChild(info);
+    if (hasEdits) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "Reset";
+        button.title = "Discard the merges and splits of this page.";
+        button.addEventListener("click", () => resetAreaGroups(pageIndex));
+        footer.appendChild(button);
+    }
     return footer;
 }
 
@@ -1987,6 +2094,12 @@ document.addEventListener("keydown", e => {
 // Event delegation for page-group toggle
 document.getElementById("template-groups").addEventListener("click", (e) => {
     const target = /** @type {HTMLElement} */ (e.target);
+    const useComputed = /** @type {HTMLElement|null} */ (target.closest("[data-action='use-computed']"));
+    if (useComputed) {
+        const basePage = currentBasePageByPage.get(Number(useComputed.dataset.pageIndex))?.basePage;
+        if (basePage) useComputedRepresentative(basePage);
+        return;
+    }
     const row = /** @type {HTMLElement|null} */ (target.closest("[data-action='toggle-preview']"));
     if (!row) return;
     togglePageCards(row);
@@ -2132,7 +2245,7 @@ function reconcileUiState(previousState, viewModel, dataChanged) {
 
 /** @returns {Decisions} */
 function emptyDecisions() {
-    return {representativeByPageGroup: new Map(), areaGroupsByPage: new Map()};
+    return {pinnedRepresentatives: [], areaGroupsByPage: new Map()};
 }
 
 /**
@@ -2204,9 +2317,25 @@ function editAreaGroups(pageIndex, operation) {
     const edited = operation === "merge"
         ? mergeAreaGroups(groups, selection.areaIndices)
         : splitAreaGroups(groups, selection.areaIndices);
-    decisions.areaGroupsByPage.set(renderUnitKey(page, pageIndex), edited);
+    const key = renderUnitKey(page, pageIndex);
+    if (sameAreaGroups(edited, (currentAnalysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []).map(draft => draft.areaIndices))) {
+        decisions.areaGroupsByPage.delete(key); // back to the computed grouping: no decision needed
+    } else {
+        decisions.areaGroupsByPage.set(key, edited);
+    }
     uiState.areaSelection = null;
     render(currentData);
+}
+
+/**
+ * @param {number[][]} a
+ * @param {number[][]} b
+ * @returns {boolean} whether both group the same areas together, in any order
+ */
+function sameAreaGroups(a, b) {
+    /** @param {number[][]} groups */
+    const normalize = groups => groups.map(group => [...group].sort((x, y) => x - y).join(",")).sort().join("|");
+    return normalize(a) === normalize(b);
 }
 
 /**
@@ -2221,48 +2350,67 @@ function resetAreaGroups(pageIndex) {
 }
 
 /**
- * Carries decisions over to the current grouping; all of them are dropped when other data was
- * loaded. A manually chosen representative stays the representative of whatever page group its
- * page ends up in (e.g. after a threshold change). When groups merge and several of their pages
- * were chosen, the earliest choice wins.
+ * Decisions are kept by page, so they carry over to any grouping as they are; all of them are
+ * dropped when other data was loaded.
  * @param {Decisions} previous
- * @param {ViewModel} viewModel
  * @param {boolean} dataChanged
  * @returns {Decisions}
  */
-function reconcileDecisions(previous, viewModel, dataChanged) {
-    if (dataChanged) return emptyDecisions();
-
-    /** @type {Map<number, string>} */
-    const pageGroupKeyByPage = new Map();
-    Object.values(viewModel.pageGroupByKey).forEach(pageGroup =>
-        pageGroup.pageIndices.forEach(pageIndex => pageGroupKeyByPage.set(pageIndex, pageGroup.key)));
-
-    /** @type {Map<string, number>} */
-    const representativeByPageGroup = new Map();
-    previous.representativeByPageGroup.forEach(pageIndex => {
-        const key = pageGroupKeyByPage.get(pageIndex);
-        if (key != null && !representativeByPageGroup.has(key)) representativeByPageGroup.set(key, pageIndex);
-    });
-    // Area groups belong to a page, not to a grouping, so they always carry over.
-    return {representativeByPageGroup, areaGroupsByPage: previous.areaGroupsByPage};
+function reconcileDecisions(previous, dataChanged) {
+    return dataChanged ? emptyDecisions() : previous;
 }
 
 /**
- * Makes the page the representative of its base page as a manual decision. This also works for
- * the computed representative, to keep it when the computation changes. Picking the current
- * manual representative again removes the decision, so the computed representative applies again.
+ * Makes the page the representative of its base page as a manual decision (a pin). This also
+ * works for the computed representative, to keep it when the computation changes. Picking the
+ * pinned representative again removes the pins of the group, so the computed one applies again.
  * @param {BaseTemplatePageModel} basePage
  * @param {number} pageIndex
  */
 function setRepresentative(basePage, pageIndex) {
-    const manualPick = decisions.representativeByPageGroup.get(basePage.pageGroupKey);
-    if (manualPick === pageIndex) {
-        decisions.representativeByPageGroup.delete(basePage.pageGroupKey);
-    } else {
-        decisions.representativeByPageGroup.set(basePage.pageGroupKey, pageIndex);
-    }
+    const unpin = basePage.representativeIsManual && basePage.representativePageIndex === pageIndex;
+    unpinGroup(basePage);
+    if (!unpin) decisions.pinnedRepresentatives.push(pageIndex);
     if (currentData) render(currentData);
+}
+
+/**
+ * Takes the computed representative of a base page: removes the pins of its group.
+ * @param {BaseTemplatePageModel} basePage
+ */
+function useComputedRepresentative(basePage) {
+    unpinGroup(basePage);
+    if (currentData) render(currentData);
+}
+
+/** @param {BaseTemplatePageModel} basePage */
+function unpinGroup(basePage) {
+    decisions.pinnedRepresentatives = decisions.pinnedRepresentatives.filter(pageIndex => !basePage.baseAreaByArea.has(pageIndex));
+}
+
+/**
+ * Counts the manual decisions and those that differ from what the computation proposes now: a
+ * pinned representative other than the computed one, a pin not used because an earlier pin is in
+ * the same group, and area groups that differ from the computed grouping.
+ * @returns {{manual: number, differing: number}}
+ */
+function describeDecisions() {
+    let differing = decisions.areaGroupsByPage.size;
+    currentBaseTemplates.forEach(baseTemplate => baseTemplate.pages.forEach(basePage => {
+        if (basePage.representativeIsManual && basePage.representativePageIndex !== basePage.computedRepresentativePageIndex) differing++;
+        differing += basePage.unusedPins.length;
+    }));
+    return {manual: decisions.pinnedRepresentatives.length + decisions.areaGroupsByPage.size, differing};
+}
+
+/** Discards every manual decision, so the whole proposal is computed again. */
+function recalculateAll() {
+    const {manual} = describeDecisions();
+    if (!currentData || !manual) return;
+    if (!confirm(`Discard all ${manual} manual decision(s) (pinned representatives, merged/split areas) and use the computed proposal?`)) return;
+    decisions = emptyDecisions();
+    uiState.areaSelection = null;
+    render(currentData);
 }
 
 /**
