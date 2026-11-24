@@ -851,6 +851,10 @@
 <script type="module">
 // @ts-check
 
+// ─── 1. Types ────────────────────────────────────────────────────────────────────────────────────
+//
+// The shapes of the data, from the parsed CSV to the view model and the user's decisions.
+
 /**
  * @typedef {Object} LayoutData
  * @property {PageEntry[]} pages
@@ -1075,6 +1079,41 @@
  */
 
 /**
+ * @typedef {Object} LoadedBaseTemplate
+ * @property {string} id
+ * @property {string} name
+ * @property {LoadedBasePage[]} pages
+ */
+
+/**
+ * @typedef {Object} LoadedBasePage
+ * @property {string} name
+ * @property {{flowName: string, position: Position}[]} areas in areaIndex order
+ */
+
+/**
+ * @typedef {Object} LoadedIdentity
+ * @property {Map<number, {baseTemplate: LoadedBaseTemplate, basePage: LoadedBasePage}>} basePageByPage
+ *   the loaded base page each page belonged to
+ * @property {Set<string>} baseTemplateIds ids of all loaded base templates
+ * @property {Map<LoadedBasePage, number>} representativeByBasePage the page restored as representative
+ */
+
+/**
+ * @typedef {Object} RestoreReport
+ * @property {number} loadedBaseTemplates base templates in the file
+ * @property {number} baseTemplates loaded base templates used by at least one page
+ * @property {number} basePages
+ * @property {string[]} unmatchedPages pages whose target or flow names match no loaded base page
+ * @property {string[]} inexactBasePages base pages whose areas no page spans exactly
+ */
+
+// ─── 2. Constants and state ──────────────────────────────────────────────────────────────────────
+//
+// Drawing constants, the analysis settings, and the state of the loaded file, the computed model,
+// the user's decisions and the UI. Elements the code works with are looked up once here.
+
+/**
  * One color per base area of a base page; an area is drawn in the color of the base area it
  * belongs to, so areas sharing a color are merged into one base area. Dark enough for labels.
  * @type {string[]}
@@ -1083,17 +1122,23 @@ const BASE_AREA_COLORS = [
     "#4e79a7", "#f28e2b", "#e15759", "#499894", "#59a14f",
     "#b6992d", "#b07aa1", "#d37295", "#9d7660", "#79706e",
 ];
+
 /** Areas that belong to no base area (the base page has no areas). */
 const NO_BASE_AREA_COLOR = "#999";
+
 /** Gap in px between a base area's frame and the areas it contains. */
 const FRAME_GAP = 4;
 
 const PAGE_REF_MM = 210;
+
 /** Areas closer than this vertically are proposed as one base area. */
 const PROXIMITY_GAP_MM = 5.3;
+
 const PAD = 10;
+
 /** Characters (and the whitespace around them) not allowed in Inspire object names. */
 const INSPIRE_ILLEGAL_NAME_CHARS = /\s*:+\s*/g;
+
 /** @type {Settings} */
 const settings = {
     canvasW: 400,
@@ -1103,18 +1148,25 @@ const settings = {
 
 /** @type {LayoutData|null} */
 let currentData = null;
+
 /** @type {LayoutAnalysis|null} */
 let currentAnalysis = null;
+
 /** @type {ViewModel|null} */
 let currentViewModel = null;
+
 /** @type {Decisions} */
 let decisions = emptyDecisions();
+
 /** @type {BaseTemplateAreaDraft[][]} area drafts of every page: manual area groups or the computed ones */
 let currentAreaDrafts = [];
+
 /** @type {BaseTemplateModel[]} */
 let currentBaseTemplates = [];
+
 /** @type {Map<number, {baseTemplate: BaseTemplateModel, basePage: BaseTemplatePageModel}>} */
 let currentBasePageByPage = new Map();
+
 /** @type {UiState} */
 let uiState = {
     openPageGroups: new Set(),
@@ -1123,21 +1175,48 @@ let uiState = {
 };
 
 const statusEl = /** @type {HTMLElement} */ (document.getElementById("status"));
+
 const fileInput = /** @type {HTMLInputElement} */ (document.getElementById("file"));
 
-/**
- * @param {() => void} fn
- * @param {number} ms
- * @returns {() => void}
- */
-function debounce(fn, ms) {
-    /** @type {ReturnType<typeof setTimeout>|undefined} */
-    let timer;
-    return () => { clearTimeout(timer); timer = setTimeout(fn, ms); };
-}
-
 const scheduleRender = debounce(() => { if (currentData) render(currentData); }, 150);
+
 const scheduleRefreshCards = debounce(refreshOpenPageGroups, 80);
+
+// The loaded CSV, kept alongside the parsed LayoutData so the file can be re-serialized
+// losslessly (including columns/rows the viewer doesn't otherwise use) for saving back to disk.
+/** @type {CsvDocument|null} */
+let currentCsv = null;
+
+/** Ids and names of the base templates of the loaded file, kept for its pages. @type {LoadedIdentity} */
+let loadedIdentity = emptyIdentity();
+
+const saveCsvBtn = /** @type {HTMLButtonElement} */ (document.getElementById("save-csv"));
+
+const recalculateAllBtn = /** @type {HTMLButtonElement} */ (document.getElementById("recalculate-all"));
+
+const templateGroupsEl = /** @type {HTMLElement} */ (document.getElementById("template-groups"));
+
+/**
+ * The template or page being dragged to another group, null when none (or a file is dragged).
+ * @type {{kind: "template", templateId: string, groupIndex: number} | {kind: "page", pageIndex: number, groupIndex: number} | {kind: "basePage", pageGroupKey: string, groupIndex: number} | null}
+ */
+let dragged = null;
+
+/** @type {HTMLElement|null} */
+let dropTargetEl = null;
+
+/** Where a reordered base page goes relative to the drop target. */
+let dropAfter = false;
+
+const inspectorEl = /** @type {HTMLElement} */ (document.getElementById("inspector-body"));
+
+const toggleInspectorBtn = /** @type {HTMLButtonElement} */ (document.getElementById("toggle-inspector"));
+
+const INSPECTOR_HIDDEN_KEY = "layout-analysis.inspector-hidden";
+
+// ─── 3. CSV reading and writing ──────────────────────────────────────────────────────────────────
+//
+// The layout CSV of LayoutExport / LayoutImport: parsing, column lookup and serialization.
 
 /**
  * Parses CSV text (RFC 4180) into records. Quoted fields may contain commas, doubled quotes and
@@ -1211,34 +1290,6 @@ function parseSizeMm(str) {
 }
 
 /**
- * Computes containment for each area: the index of its smallest enclosing area, or null.
- * @param {{x: number, y: number, w: number, h: number}[]} areas
- * @returns {(number|null)[]}
- */
-function computeContainment(areas) {
-    const tolerance = 0.7;
-    const containment = /** @type {(number|null)[]} */ (new Array(areas.length).fill(null));
-    for (let i = 0; i < areas.length; i++) {
-        const inner = areas[i];
-        const innerSize = inner.w * inner.h;
-        for (let j = 0; j < areas.length; j++) {
-            if (i === j) continue;
-            const outer = areas[j];
-            const outerSize = outer.w * outer.h;
-            if (outerSize <= innerSize) continue;
-            if (outer.x - tolerance <= inner.x && outer.y - tolerance <= inner.y
-                    && (inner.x + inner.w) <= (outer.x + outer.w) + tolerance
-                    && (inner.y + inner.h) <= (outer.y + outer.h) + tolerance) {
-                const cur = containment[i];
-                const curSize = cur != null ? areas[cur].w * areas[cur].h : Infinity;
-                if (curSize > outerSize) containment[i] = j;
-            }
-        }
-    }
-    return containment;
-}
-
-/**
  * Reads the layout CSV into a {@link CsvDocument}. "Base" rows are kept apart from the standard
  * rows: they restore the base templates on load and are regenerated from the model on export.
  * @param {string} text
@@ -1267,6 +1318,114 @@ function readCsvDocument(text, fileName) {
         standardRowLines.push(line);
     });
     return {headers, standardRows, standardRowLines, baseRows, fileName};
+}
+
+/**
+ * Header name without the " (read-only)" suffix added by Mapping.displayHeader.
+ * @param {string} header
+ * @returns {string}
+ */
+function normalizeHeaderName(header) {
+    const s = (header ?? "").trim();
+    return s.endsWith(" (read-only)") ? s.slice(0, -" (read-only)".length).trim() : s;
+}
+
+/**
+ * @param {string[]} headers
+ * @param {string} logicalName
+ * @returns {number} -1 when the column is missing
+ */
+function columnIndex(headers, logicalName) {
+    return headers.findIndex(h => normalizeHeaderName(h) === logicalName);
+}
+
+/**
+ * Returns the index of the given column, inserting it (before contentPreview) when missing.
+ * @param {string[]} headers
+ * @param {string[][]} rows
+ * @param {string} logicalName
+ * @returns {number}
+ */
+function ensureCsvColumn(headers, rows, logicalName) {
+    const idx = columnIndex(headers, logicalName);
+    if (idx >= 0) return idx;
+    const insertIdx = headers.findIndex(h => normalizeHeaderName(h) === "contentPreview");
+    const at = insertIdx >= 0 ? insertIdx : headers.length;
+    headers.splice(at, 0, logicalName);
+    rows.forEach(row => { row.splice(at, 0, ""); });
+    return at;
+}
+
+/**
+ * @param {string} field
+ * @returns {string}
+ */
+function csvEscapeField(field) {
+    const s = field ?? "";
+    if (/[",\r\n]/.test(s)) {
+        return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+}
+
+/**
+ * @param {string[]} headers
+ * @param {string[][]} rows
+ * @returns {string}
+ */
+function serializeCsv(headers, rows) {
+    const lines = [headers.map(csvEscapeField).join(",")];
+    for (const row of rows) {
+        lines.push(row.map(csvEscapeField).join(","));
+    }
+    return lines.join("\r\n") + "\r\n";
+}
+
+/**
+ * Derives a human-friendly interactive flow name from an area's content preview,
+ * e.g. "docRef: address" -> "address". Returns null if no usable name can be derived.
+ * @param {string} contentPreview
+ * @returns {string|null}
+ */
+function parseFlowNameFromPreview(contentPreview) {
+    if (!contentPreview) return null;
+    const first = contentPreview.split(";")[0]?.trim();
+    if (!first) return null;
+    const colonIdx = first.indexOf(": ");
+    const value = colonIdx === -1 ? first : first.slice(colonIdx + 2).trim();
+    return value || null;
+}
+
+// ─── 4. Layout data ──────────────────────────────────────────────────────────────────────────────
+//
+// Templates, pages and areas built from the standard rows, and the keys that identify them.
+
+/**
+ * Computes containment for each area: the index of its smallest enclosing area, or null.
+ * @param {{x: number, y: number, w: number, h: number}[]} areas
+ * @returns {(number|null)[]}
+ */
+function computeContainment(areas) {
+    const tolerance = 0.7;
+    const containment = /** @type {(number|null)[]} */ (new Array(areas.length).fill(null));
+    for (let i = 0; i < areas.length; i++) {
+        const inner = areas[i];
+        const innerSize = inner.w * inner.h;
+        for (let j = 0; j < areas.length; j++) {
+            if (i === j) continue;
+            const outer = areas[j];
+            const outerSize = outer.w * outer.h;
+            if (outerSize <= innerSize) continue;
+            if (outer.x - tolerance <= inner.x && outer.y - tolerance <= inner.y
+                    && (inner.x + inner.w) <= (outer.x + outer.w) + tolerance
+                    && (inner.y + inner.h) <= (outer.y + outer.h) + tolerance) {
+                const cur = containment[i];
+                const curSize = cur != null ? areas[cur].w * areas[cur].h : Infinity;
+                if (curSize > outerSize) containment[i] = j;
+            }
+        }
+    }
+    return containment;
 }
 
 /**
@@ -1381,136 +1540,76 @@ function buildLayoutData(doc) {
     return { pages, templates: deriveTemplates(pages) };
 }
 
-// The loaded CSV, kept alongside the parsed LayoutData so the file can be re-serialized
-// losslessly (including columns/rows the viewer doesn't otherwise use) for saving back to disk.
-/** @type {CsvDocument|null} */
-let currentCsv = null;
-/** Ids and names of the base templates of the loaded file, kept for its pages. @type {LoadedIdentity} */
-let loadedIdentity = emptyIdentity();
-
-const saveCsvBtn = /** @type {HTMLButtonElement} */ (document.getElementById("save-csv"));
-
 /**
- * @param {File} file
+ * @param {PageEntry[]} pages
+ * @returns {TemplateEntry[]}
  */
-async function loadFile(file) {
-    try {
-        setStatus("");
-        const doc = readCsvDocument(await file.text(), file.name || "layout.csv");
-        const fileNameEl = /** @type {HTMLElement} */ (document.getElementById("file-name"));
-        fileNameEl.textContent = doc.fileName;
-        fileNameEl.title = doc.fileName;
-        const layoutData = buildLayoutData(doc);
-        currentCsv = doc;
-        saveCsvBtn.disabled = false;
-        const report = render(layoutData, parseLoadedBaseTemplates(doc));
-        const message = report ? describeRestoreReport(report) : "";
-        if (message) setStatus(message, report && (report.unmatchedPages.length || report.inexactBasePages.length) ? undefined : "ok");
-    } catch (err) {
-        setStatus("Error: " + /** @type {Error} */ (err).message, "error");
-    }
+function deriveTemplates(pages) {
+    /** @type {Map<string, number[]>} */
+    const templatePages = new Map();
+    pages.forEach((page, pageIndex) => {
+        const key = page.templateId ?? `orphan:${page.pageId}`;
+        if (!templatePages.has(key)) templatePages.set(key, []);
+        templatePages.get(key).push(pageIndex);
+    });
+    return [...templatePages.entries()].map(([key, pageIndices]) => {
+        const sortedPageIndices = [...pageIndices].sort((a, b) => {
+            const pageA = pages[a];
+            const pageB = pages[b];
+            return templatePageOrder(pageA) - templatePageOrder(pageB) || a - b;
+        });
+        const first = pages[sortedPageIndices[0]];
+        const isOrphan = first.templateId == null;
+        return {
+            templateId: first.templateId ?? key,
+            templateName: isOrphan
+                ? `Orphan: ${first.pageName ?? first.pageId ?? "Unknown"}`
+                : (first.templateName ?? first.templateId ?? key),
+            pageIndices: sortedPageIndices,
+        };
+    });
 }
 
 /**
- * @param {string} message
- * @param {"ok"|"error"} [kind]
- */
-function setStatus(message, kind) {
-    statusEl.textContent = message;
-    statusEl.title = message;
-    statusEl.classList.toggle("ok", kind === "ok");
-    statusEl.classList.toggle("error", kind === "error");
-}
-
-document.getElementById("open-file")?.addEventListener("click", () => fileInput.click());
-fileInput.addEventListener("change", () => {
-    const [file] = /** @type {FileList} */ (fileInput.files);
-    if (file) loadFile(file);
-});
-
-/**
- * Header name without the " (read-only)" suffix added by Mapping.displayHeader.
- * @param {string} header
+ * @param {string[]} templateIds
  * @returns {string}
  */
-function normalizeHeaderName(header) {
-    const s = (header ?? "").trim();
-    return s.endsWith(" (read-only)") ? s.slice(0, -" (read-only)".length).trim() : s;
+function templateGroupKey(templateIds) {
+    return `tmpl:${[...templateIds].sort().join("|")}`;
 }
 
 /**
- * @param {string[]} headers
- * @param {string} logicalName
- * @returns {number} -1 when the column is missing
+ * @param {LayoutData} data
+ * @param {number[]} pageIndices
+ * @returns {string}
  */
-function columnIndex(headers, logicalName) {
-    return headers.findIndex(h => normalizeHeaderName(h) === logicalName);
+function pageGroupKey(data, pageIndices) {
+    return `pg:${pageIndices.map(i => renderUnitKey(data.pages[i], i)).sort().join("|")}`;
 }
 
 /**
- * Returns the index of the given column, inserting it (before contentPreview) when missing.
- * @param {string[]} headers
- * @param {string[][]} rows
- * @param {string} logicalName
+ * @param {PageEntry} page
+ * @param {number} pageIndex
+ * @returns {string}
+ */
+function renderUnitKey(page, pageIndex) {
+    if (page.pageId != null) return `page:${page.pageId}`;
+    if (page.templateId != null) return `virtual:${page.templateId}:${pageIndex}`;
+    return `index:${pageIndex}`;
+}
+
+/**
+ * @param {PageEntry} page
  * @returns {number}
  */
-function ensureCsvColumn(headers, rows, logicalName) {
-    const idx = columnIndex(headers, logicalName);
-    if (idx >= 0) return idx;
-    const insertIdx = headers.findIndex(h => normalizeHeaderName(h) === "contentPreview");
-    const at = insertIdx >= 0 ? insertIdx : headers.length;
-    headers.splice(at, 0, logicalName);
-    rows.forEach(row => { row.splice(at, 0, ""); });
-    return at;
+function templatePageOrder(page) {
+    return page.templatePageIndex ?? Number.MAX_SAFE_INTEGER;
 }
 
-/**
- * @param {string} field
- * @returns {string}
- */
-function csvEscapeField(field) {
-    const s = field ?? "";
-    if (/[",\r\n]/.test(s)) {
-        return '"' + s.replace(/"/g, '""') + '"';
-    }
-    return s;
-}
-
-/**
- * @param {string[]} headers
- * @param {string[][]} rows
- * @returns {string}
- */
-function serializeCsv(headers, rows) {
-    const lines = [headers.map(csvEscapeField).join(",")];
-    for (const row of rows) {
-        lines.push(row.map(csvEscapeField).join(","));
-    }
-    return lines.join("\r\n") + "\r\n";
-}
-
-/**
- * Derives a human-friendly interactive flow name from an area's content preview,
- * e.g. "docRef: address" -> "address". Returns null if no usable name can be derived.
- * @param {string} contentPreview
- * @returns {string|null}
- */
-function parseFlowNameFromPreview(contentPreview) {
-    if (!contentPreview) return null;
-    const first = contentPreview.split(";")[0]?.trim();
-    if (!first) return null;
-    const colonIdx = first.indexOf(": ");
-    const value = colonIdx === -1 ? first : first.slice(colonIdx + 2).trim();
-    return value || null;
-}
-
-// ─── Base template model ────────────────────────────────────────────────────────────────────
+// ─── 5. Similarity and grouping ──────────────────────────────────────────────────────────────────
 //
-// One base template per template group and one base page per page group. Each base page takes
-// its areas from a representative page: the page most similar to the rest of its group, unless
-// the user picked another one (a manual decision). The area drafts of every other page in the
-// group are matched to these base areas by geometry, which decides the interactiveFlowName
-// written to their standard rows.
+// How similar pages and templates are, and the proposed grouping: templates into template groups
+// (base templates), their pages into page groups (base pages). Fixed groups are kept as they are.
 
 /**
  * Geometric distance between two rectangles, in units where ~0.5 is "clearly different".
@@ -1528,6 +1627,431 @@ function geometryDistance(a, b, includeY) {
     const hRatio = Math.abs(Math.log(Math.max(a.h, 0.1) / Math.max(b.h, 0.1))) / Math.log(3);
     return Math.sqrt(xDist * xDist + yDist * yDist + wDist * wDist + hRatio * hRatio);
 }
+
+/**
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis|null} previousAnalysis
+ * @returns {LayoutAnalysis}
+ */
+function ensureAnalysis(data, previousAnalysis) {
+    if (currentData === data && previousAnalysis != null) return previousAnalysis;
+    return {
+        similarity: buildSimilarity(data),
+        pageBaseTemplateAreaDrafts: buildBaseTemplateAreaDrafts(data.pages, PROXIMITY_GAP_MM),
+    };
+}
+
+/**
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis} analysis
+ * @param {Settings} activeSettings
+ * @param {LockedGroup[]} lockedGroups
+ * @returns {ViewModel}
+ */
+function buildViewModel(data, analysis, activeSettings, lockedGroups) {
+    const {templateLevel, pageLevel} = analysis.similarity;
+    const templateGroups = computeTemplateGroups(data, templateLevel, pageLevel.matrix, activeSettings, lockedGroups);
+    /** @type {Record<string, PageGroup>} */
+    const pageGroupByKey = {};
+    const pageGroupKeys = new Set();
+
+    templateGroups.forEach(group => {
+        group.pageGroups.forEach(pageGroup => {
+            pageGroupKeys.add(pageGroup.key);
+            pageGroupByKey[pageGroup.key] = pageGroup;
+        });
+    });
+
+    return {templateLevel, pageLevel, templateGroups, pageGroupByKey, pageGroupKeys};
+}
+
+/**
+ * @param {LayoutData} data
+ * @returns {Similarity}
+ */
+function buildSimilarity(data) {
+    const pageMatrix = buildSymmetricMatrix(data.pages.length, (i, j) => pageSimilarity(data.pages[i].areas, data.pages[j].areas));
+    const templateLevel = {templates: data.templates, matrix: []};
+    templateLevel.matrix = buildSymmetricMatrix(data.templates.length, (i, j) =>
+        templateSimilarity(data.templates[i].pageIndices, data.templates[j].pageIndices, pageMatrix)
+    );
+    return {
+        pageLevel: {matrix: pageMatrix},
+        templateLevel,
+    };
+}
+
+/**
+ * @param {number} size
+ * @param {(i: number, j: number) => number} scoreFn
+ * @returns {number[][]}
+ */
+function buildSymmetricMatrix(size, scoreFn) {
+    /** @type {number[][]} */
+    const matrix = [];
+    for (let i = 0; i < size; i++) {
+        matrix[i] = [];
+        for (let j = 0; j < size; j++) {
+            if (i === j) matrix[i][j] = 1;
+            else if (j < i) matrix[i][j] = matrix[j][i];
+            else matrix[i][j] = roundTo(scoreFn(i, j), 3);
+        }
+    }
+    return matrix;
+}
+
+/**
+ * Compare two pages by greedy bipartite matching on area geometry.
+ * Each area is described by (x, width) normalized to page reference width and
+ * height with a log-ratio so a 3x difference scores about 1.0.
+ * @param {AreaEntry[]} areasA
+ * @param {AreaEntry[]} areasB
+ * @param {number} [matchThreshold]
+ * @returns {number}
+ */
+function pageSimilarity(areasA, areasB, matchThreshold = 0.5) {
+    if (!areasA.length || !areasB.length) return 0;
+
+    /** @type {{distance: number, indexA: number, indexB: number}[]} */
+    const areaMatches = [];
+    areasA.forEach((areaA, indexA) => {
+        areasB.forEach((areaB, indexB) => {
+            areaMatches.push({distance: geometryDistance(areaA, areaB, false), indexA, indexB});
+        });
+    });
+    areaMatches.sort((a, b) => a.distance - b.distance);
+
+    const matchedA = new Set();
+    const matchedB = new Set();
+    let total = 0;
+    areaMatches.forEach(match => {
+        if (matchedA.has(match.indexA) || matchedB.has(match.indexB)) return;
+        matchedA.add(match.indexA);
+        matchedB.add(match.indexB);
+        total += Math.max(0, 1 - match.distance / matchThreshold);
+    });
+    const slots = Math.max(areasA.length, areasB.length);
+    return slots > 0 ? total / slots : 0;
+}
+
+/**
+ * Compare two templates by positional page matching (page 1<->1, page 2<->2, ...).
+ * Unmatched pages contribute 0, penalizing different template lengths proportionally.
+ * @param {number[]} pagesA
+ * @param {number[]} pagesB
+ * @param {number[][]} pageMatrix
+ * @returns {number}
+ */
+function templateSimilarity(pagesA, pagesB, pageMatrix) {
+    const maxLen = Math.max(pagesA.length, pagesB.length);
+    if (maxLen === 0) return 0;
+    let total = 0;
+    for (let i = 0; i < Math.min(pagesA.length, pagesB.length); i++)
+        total += pageMatrix[pagesA[i]]?.[pagesB[i]] ?? 0;
+    return total / maxLen;
+}
+
+/**
+ * @param {LayoutData} data
+ * @param {TemplateLevel} templateLevel
+ * @param {number[][]} pageMatrix
+ * @param {Settings} activeSettings
+ * @param {LockedGroup[]} lockedGroups
+ * @returns {TemplateGroup[]}
+ */
+function computeTemplateGroups(data, templateLevel, pageMatrix, activeSettings, lockedGroups) {
+    const templates = templateLevel.templates;
+    /** @type {Map<string, number>} */
+    const indexById = new Map(templates.map((template, i) => [template.templateId, i]));
+    /** @type {{templateIndices: number[], locked: LockedGroup|null}[]} */
+    const groups = lockedGroups
+        .map(locked => ({
+            templateIndices: /** @type {number[]} */ (locked.templateIds.map(id => indexById.get(id)).filter(i => i != null)).sort((a, b) => a - b),
+            locked,
+        }))
+        .filter(group => group.templateIndices.length);
+    // Templates outside the fixed groups are grouped among themselves.
+    const lockedIndices = new Set(groups.flatMap(group => group.templateIndices));
+    const free = templates.map((_, i) => i).filter(i => !lockedIndices.has(i));
+    groupPages(free, templateLevel.matrix, activeSettings).forEach(templateIndices => groups.push({templateIndices, locked: null}));
+    groups.sort((a, b) => a.templateIndices[0] - b.templateIndices[0]);
+
+    // Which groups the computation alone would form, to show where fixed groups differ.
+    const computedKeys = new Set(lockedGroups.length
+        ? groupPages(templates.map((_, i) => i), templateLevel.matrix, activeSettings)
+            .map(templateIndices => templateGroupKey(templateIndices.map(i => templates[i].templateId)))
+        : []);
+
+    return groups.map(({templateIndices, locked}) => {
+        const key = templateGroupKey(templateIndices.map(i => templates[i].templateId));
+        const pageGroups = buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, locked?.pageGroups ?? []);
+        let matchesComputed = !locked || computedKeys.has(key);
+        if (locked && matchesComputed) {
+            // The same templates; are their pages also grouped and ordered as computed?
+            const order = (/** @type {PageGroup[]} */ list) => list.map(pageGroup => pageGroup.key).join("|");
+            matchesComputed = order(pageGroups) === order(buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, []));
+        }
+        return {
+            key,
+            templateIds: templateIndices.map(i => templates[i].templateId),
+            templateNames: templateIndices.map(i => templates[i].templateName ?? templates[i].templateId),
+            pageGroups,
+            locked,
+            matchesComputed,
+        };
+    });
+}
+
+/**
+ * @param {LayoutData} data
+ * @param {number[]} templateIndices
+ * @param {TemplateLevel} templateLevel
+ * @param {number[][]} pageMatrix
+ * @param {Settings} activeSettings
+ * @param {number[][]} lockedPageGroups fixed page groups in base page order (pages of other templates
+ *   are ignored); the remaining pages are grouped among themselves and follow them
+ * @returns {PageGroup[]}
+ */
+function buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, lockedPageGroups) {
+    const pageIndices = templateIndices
+        .flatMap(templateIndex => templateLevel.templates[templateIndex].pageIndices)
+        .sort((a, b) => a - b);
+    const own = new Set(pageIndices);
+    const locked = lockedPageGroups
+        .map(group => group.filter(pageIndex => own.has(pageIndex)))
+        .filter(group => group.length);
+    const lockedPages = new Set(locked.flat());
+    const free = pageIndices.filter(pageIndex => !lockedPages.has(pageIndex));
+    /** @param {number[]} pg */
+    const sorted = pg => [...pg].sort((a, b) => a - b);
+    // Fixed page groups keep their order (the order of the base pages); the others follow, by first page.
+    return [
+        ...locked.map(pg => ({pageIndices: sorted(pg), locked: true})),
+        ...groupPages(free, pageMatrix, activeSettings).map(pg => ({pageIndices: sorted(pg), locked: false}))
+            .sort((a, b) => a.pageIndices[0] - b.pageIndices[0]),
+    ].map(({pageIndices: pg, locked: isLocked}) => ({key: pageGroupKey(data, pg), pageIndices: pg, locked: isLocked}));
+}
+
+/**
+ * Agglomerative grouping that always merges the two most similar groups first, until no pair of
+ * groups reaches the threshold. The similarity of two groups depends on the linkage strategy:
+ * - single:   the best pair of members (loose)
+ * - average:  the average of all member pairs (default)
+ * - complete: the worst pair of members (strict)
+ * The result does not depend on the order of `indices` except for ties, which go to the earlier
+ * groups. Members and groups are returned in `indices` order.
+ * @param {number[]} indices
+ * @param {number[][]} matrix
+ * @param {Settings} activeSettings
+ * @returns {number[][]}
+ */
+function groupPages(indices, matrix, activeSettings) {
+    const {groupStrategy, groupThreshold} = activeSettings;
+    const count = indices.length;
+    /** @type {(number[]|null)[]} */
+    const groups = indices.map(i => [i]);
+    // linkage[a][b]: similarity between groups a and b, updated in place when groups merge.
+    const linkage = indices.map(a => Float64Array.from(indices, b => matrix[a]?.[b] ?? 0));
+
+    for (;;) {
+        let bestA = -1, bestB = -1, best = -Infinity;
+        for (let a = 0; a < count; a++) {
+            if (!groups[a]) continue;
+            const row = linkage[a];
+            for (let b = a + 1; b < count; b++) {
+                if (groups[b] && row[b] > best) { best = row[b]; bestA = a; bestB = b; }
+            }
+        }
+        if (bestA < 0 || best < groupThreshold) break;
+
+        const groupA = /** @type {number[]} */ (groups[bestA]);
+        const groupB = /** @type {number[]} */ (groups[bestB]);
+        for (let k = 0; k < count; k++) {
+            if (!groups[k] || k === bestA || k === bestB) continue;
+            const scoreA = linkage[bestA][k], scoreB = linkage[bestB][k];
+            const merged =
+                groupStrategy === "single"   ? Math.max(scoreA, scoreB) :
+                groupStrategy === "complete" ? Math.min(scoreA, scoreB) :
+                (scoreA * groupA.length + scoreB * groupB.length) / (groupA.length + groupB.length);
+            linkage[bestA][k] = merged;
+            linkage[k][bestA] = merged;
+        }
+        groupA.push(...groupB);
+        groups[bestB] = null;
+    }
+
+    const positionOf = new Map(indices.map((index, position) => [index, position]));
+    /** @param {number} x @param {number} y */
+    const byPosition = (x, y) => /** @type {number} */ (positionOf.get(x)) - /** @type {number} */ (positionOf.get(y));
+    return /** @type {number[][]} */ (groups.filter(Boolean))
+        .map(group => group.sort(byPosition))
+        .sort((x, y) => byPosition(x[0], y[0]));
+}
+
+/**
+ * @param {number[]} pageGroup
+ * @param {number[][]} matrix
+ * @returns {number|null}
+ */
+function minPairScore(pageGroup, matrix) {
+    if (pageGroup.length < 2) return null;
+    let min = 1;
+    for (let i = 0; i < pageGroup.length; i++)
+        for (let j = i + 1; j < pageGroup.length; j++)
+            min = Math.min(min, matrix[pageGroup[i]]?.[pageGroup[j]] ?? 0);
+    return min;
+}
+
+// ─── 6. Area drafts ──────────────────────────────────────────────────────────────────────────────
+//
+// The areas of a page grouped into drafts of base areas: by proximity, or as merged/split by the user.
+
+/**
+ * Area drafts of every page: the user's area groups where the page has them, otherwise the
+ * computed proximity grouping.
+ * @param {LayoutData} data
+ * @param {LayoutAnalysis} analysis
+ * @param {Decisions} decisions
+ * @returns {BaseTemplateAreaDraft[][]}
+ */
+function effectiveAreaDrafts(data, analysis, decisions) {
+    return data.pages.map((page, pageIndex) => {
+        const manual = decisions.areaGroupsByPage.get(renderUnitKey(page, pageIndex));
+        return manual ? draftsFromAreaGroups(page.areas, manual) : (analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []);
+    });
+}
+
+/**
+ * Merges the drafts that contain any of the selected areas into one draft.
+ * @param {number[][]} areaGroups
+ * @param {Set<number>} selected
+ * @returns {number[][]}
+ */
+function mergeAreaGroups(areaGroups, selected) {
+    const touched = areaGroups.filter(group => group.some(areaIndex => selected.has(areaIndex)));
+    const untouched = areaGroups.filter(group => !touched.includes(group));
+    return [...untouched, touched.flat()];
+}
+
+/**
+ * Takes the selected areas out of their drafts, each into a draft of its own.
+ * @param {number[][]} areaGroups
+ * @param {Set<number>} selected
+ * @returns {number[][]}
+ */
+function splitAreaGroups(areaGroups, selected) {
+    const remaining = areaGroups
+        .map(group => group.filter(areaIndex => !selected.has(areaIndex)))
+        .filter(group => group.length);
+    return [...remaining, ...[...selected].map(areaIndex => [areaIndex])];
+}
+
+/**
+ * What merge and split would do with the selection: merging needs areas of at least two drafts,
+ * splitting needs a selected area that shares its draft with another area.
+ * @param {BaseTemplateAreaDraft[]} drafts
+ * @param {Set<number>} selected
+ * @returns {{canMerge: boolean, canSplit: boolean}}
+ */
+function describeAreaSelection(drafts, selected) {
+    const touched = drafts.filter(draft => draft.areaIndices.some(areaIndex => selected.has(areaIndex)));
+    return {
+        canMerge: touched.length >= 2,
+        canSplit: touched.some(draft => draft.areaIndices.length > 1),
+    };
+}
+
+/**
+ * @param {number[][]} a
+ * @param {number[][]} b
+ * @returns {boolean} whether both group the same areas together, in any order
+ */
+function sameAreaGroups(a, b) {
+    /** @param {number[][]} groups */
+    const normalize = groups => groups.map(group => [...group].sort((x, y) => x - y).join(",")).sort().join("|");
+    return normalize(a) === normalize(b);
+}
+
+/**
+ * @param {PageEntry[]} pages
+ * @param {number} groupingGap
+ * @returns {BaseTemplateAreaDraft[][]}
+ */
+function buildBaseTemplateAreaDrafts(pages, groupingGap) {
+    return pages.map(page => groupByProximity(page.areas, groupingGap));
+}
+
+/**
+ * Automatic area grouping, a vertical sweep: areas whose Y ranges overlap or are within the
+ * proximity gap of each other end up in the same base template area draft.
+ * @param {AreaEntry[]} areas
+ * @param {number} groupingGap
+ * @returns {BaseTemplateAreaDraft[]}
+ */
+function groupByProximity(areas, groupingGap) {
+    if (!areas.length) return [];
+    const sortedIndices = areas.map((_, i) => i).sort((a, b) => areas[a].y - areas[b].y || areas[a].x - areas[b].x);
+    /** @type {number[][]} */
+    const groupedIndices = [];
+    let current = [sortedIndices[0]];
+    let curY2 = areas[sortedIndices[0]].y + areas[sortedIndices[0]].h;
+    sortedIndices.slice(1).forEach(idx => {
+        const area = areas[idx];
+        if (area.y <= curY2 + groupingGap) {
+            current.push(idx);
+            curY2 = Math.max(curY2, area.y + area.h);
+        } else {
+            groupedIndices.push(current);
+            current = [idx];
+            curY2 = area.y + area.h;
+        }
+    });
+    groupedIndices.push(current);
+    return draftsFromAreaGroups(areas, groupedIndices);
+}
+
+/**
+ * Builds area drafts from groups of area indices (computed or edited by the user), ordered top
+ * to bottom, then left to right. Each draft spans the bounding box of its areas.
+ * @param {AreaEntry[]} areas
+ * @param {number[][]} areaGroups
+ * @returns {BaseTemplateAreaDraft[]}
+ */
+function draftsFromAreaGroups(areas, areaGroups) {
+    return areaGroups
+        .filter(group => group.length)
+        .map(group => [...group].sort((a, b) => a - b))
+        .map(areaIndices => {
+            const subset = areaIndices.map(index => areas[index]);
+            const x = Math.min(...subset.map(area => area.x));
+            const y = Math.min(...subset.map(area => area.y));
+            return {areaIndices, x, y, x2: Math.max(...subset.map(area => area.x + area.w)), y2: Math.max(...subset.map(area => area.y + area.h))};
+        })
+        .sort((a, b) => a.y - b.y || a.x - b.x)
+        .map(({areaIndices, x, y, x2, y2}, draftIndex) => {
+            const areaName = areaIndices.map(idx => areas[idx].areaName).find(Boolean);
+            const previewSource = areaIndices.map(idx => areas[idx].contentPreview).find(Boolean);
+            return {
+                areaIndices,
+                position: {
+                    x: roundTo(x, 2),
+                    y: roundTo(y, 2),
+                    w: roundTo(x2 - x, 2),
+                    h: roundTo(y2 - y, 2),
+                },
+                name: areaName || parseFlowNameFromPreview(previewSource) || `Area ${draftIndex + 1}`,
+                areaName: areaName || '',
+            };
+        });
+}
+
+// ─── 7. Base template model ──────────────────────────────────────────────────────────────────────
+//
+// One base template per template group and one base page per page group. Each base page takes
+// its areas from a representative page: the page most similar to the rest of its group, unless
+// the user picked another one (a manual decision). The area drafts of every other page in the
+// group are matched to these base areas by geometry, which decides the interactiveFlowName
+// written to their standard rows.
 
 /**
  * The page most similar to all other pages of the group (highest summed similarity); ties go
@@ -1757,47 +2281,313 @@ function areaFlowNames(basePage, pageIndex) {
 }
 
 /**
- * Builds the "Base" CSV rows of the base templates and, per page, the baseTemplateTargetId and
- * interactiveFlowName of each of its areas.
+ * Pages used by several templates that ended up in different base templates. Their mapping is
+ * stored once per page, so the import keeps only the last base template.
  * @param {BaseTemplateModel[]} baseTemplates
- * @returns {{baseRows: Record<string, string>[], overridesByPageIndex: Map<number, {flowNames: string[], targetId: string}>}}
- *   baseRows are keyed by logical column name; missing columns are written empty
+ * @param {LayoutData} data
+ * @returns {string[]} one message per conflicting page
  */
-function buildExportData(baseTemplates) {
-    /** @type {Record<string, string>[]} */
-    const baseRows = [];
-    /** @type {Map<number, {flowNames: string[], targetId: string}>} */
-    const overridesByPageIndex = new Map();
-
-    baseTemplates.forEach(baseTemplate => baseTemplate.pages.forEach(basePage => {
-        const size = basePage.pageSize;
-        basePage.areas.forEach((area, areaIndex) => baseRows.push({
-            templateId: baseTemplate.id,
-            templateName: baseTemplate.name,
-            pageId: basePage.id,
-            pageName: basePage.name,
-            type: "Base",
-            interactiveFlowName: area.flowName,
-            areaName: area.areaName,
-            flowToNextPage: String(area.flowToNextPage),
-            areaIndex: String(areaIndex),
-            x: `${area.position.x}mm`,
-            y: `${area.position.y}mm`,
-            width: `${area.position.w}mm`,
-            height: `${area.position.h}mm`,
-            pageWidth: size ? `${size.w}mm` : "",
-            pageHeight: size ? `${size.h}mm` : "",
-        }));
-
-        basePage.baseAreaByArea.forEach((_, pageIndex) => {
-            overridesByPageIndex.set(pageIndex, {flowNames: areaFlowNames(basePage, pageIndex), targetId: `$${baseTemplate.id}`});
-        });
-    }));
-
-    return {baseRows, overridesByPageIndex};
+function findSharedPageConflicts(baseTemplates, data) {
+    /** @type {Map<string, Set<string>>} */
+    const baseTemplateIdsByPageId = new Map();
+    indexBasePagesByPage(baseTemplates).forEach(({baseTemplate}, pageIndex) => {
+        const pageId = data.pages[pageIndex].pageId;
+        if (pageId == null) return;
+        if (!baseTemplateIdsByPageId.has(pageId)) baseTemplateIdsByPageId.set(pageId, new Set());
+        /** @type {Set<string>} */ (baseTemplateIdsByPageId.get(pageId)).add(baseTemplate.id);
+    });
+    return [...baseTemplateIdsByPageId]
+        .filter(([, ids]) => ids.size > 1)
+        .map(([pageId, ids]) => `page ${pageId} is in ${[...ids].join(", ")}`);
 }
 
-// ─── Loaded base templates ──────────────────────────────────────────────────────────────────
+// ─── 8. Decisions ────────────────────────────────────────────────────────────────────────────────
+//
+// The user's manual decisions (see Decisions): each edit records one and renders again; each can be
+// reverted on its own or all at once with Recalculate all.
+
+/**
+ * Sets (or with null, or the bounding box itself, removes) the user's position of a base area.
+ * @param {BaseAreaModel} area
+ * @param {Position|null} position
+ */
+function setBaseAreaPosition(area, position) {
+    const same = position && /** @type {(keyof Position)[]} */ (["x", "y", "w", "h"])
+        .every(side => Math.abs(position[side] - area.proposedPosition[side]) < 0.005);
+    if (position && !same) decisions.positionByDraft.set(area.positionKey, position);
+    else decisions.positionByDraft.delete(area.positionKey);
+    if (currentData) render(currentData);
+}
+
+/**
+ * Replaces (or, with an empty value or the proposed one, removes) the user's name of a group.
+ * @param {NameDecision[]} names
+ * @param {NameDecision|null} current
+ * @param {number[]} pageIndices
+ * @param {string} value
+ * @param {string} proposed
+ * @returns {NameDecision[]}
+ */
+function updateNameDecisions(names, current, pageIndices, value, proposed) {
+    const rest = names.filter(name => name !== current);
+    const name = value ? inspireSafeName(value) : "";
+    return name && name !== proposed ? [...rest, {pageIndices: [...pageIndices], name}] : rest;
+}
+
+/**
+ * @param {BaseTemplateModel} baseTemplate
+ * @param {string} value
+ */
+function setBaseTemplateName(baseTemplate, value) {
+    const pageIndices = baseTemplate.pages.flatMap(page => [...page.baseAreaByArea.keys()]);
+    decisions.baseTemplateNames = updateNameDecisions(decisions.baseTemplateNames, baseTemplate.nameDecision, pageIndices, value, baseTemplate.proposedName);
+    if (currentData) render(currentData);
+}
+
+/**
+ * @param {BaseTemplatePageModel} basePage
+ * @param {string} value
+ */
+function setBasePageName(basePage, value) {
+    decisions.basePageNames = updateNameDecisions(decisions.basePageNames, basePage.nameDecision, [...basePage.baseAreaByArea.keys()], value, basePage.proposedName);
+    if (currentData) render(currentData);
+}
+
+/**
+ * Sets the flow name of a base area on the representative's areas forming it (removing it with an
+ * empty value or the proposed one). Flow names must be unique within the base template.
+ * @param {BaseTemplateModel} baseTemplate
+ * @param {BaseTemplatePageModel} basePage
+ * @param {BaseAreaModel} area
+ * @param {string} value
+ */
+function setFlowName(baseTemplate, basePage, area, value) {
+    const name = value ? inspireSafeName(value) : "";
+    const takenBy = name && baseTemplate.pages.flatMap(page => page.areas).find(other => other !== area && other.flowName === name);
+    if (takenBy) {
+        setStatus(`The flow name "${name}" is already used by another base area of ${baseTemplate.name}.`, "error");
+        renderInspector();
+        return;
+    }
+    const representative = currentData.pages[basePage.representativePageIndex];
+    const key = renderUnitKey(representative, basePage.representativePageIndex);
+    area.areaIndices.forEach(areaIndex => {
+        if (name && name !== area.proposedFlowName) decisions.flowNameByArea.set(`${key}#${areaIndex}`, name);
+        else decisions.flowNameByArea.delete(`${key}#${areaIndex}`);
+    });
+    render(currentData);
+}
+
+/** @returns {Decisions} */
+function emptyDecisions() {
+    return {pinnedRepresentatives: [], areaGroupsByPage: new Map(), lockedGroups: [], baseTemplateNames: [], basePageNames: [], flowNameByArea: new Map(), positionByDraft: new Map()};
+}
+
+/**
+ * Applies a merge or split of the selected areas of a page and stores the result as the page's
+ * manual area groups. Every occurrence of the same page (shared by several templates) changes.
+ * @param {number} pageIndex
+ * @param {"merge"|"split"} operation
+ */
+function editAreaGroups(pageIndex, operation) {
+    const selection = uiState.areaSelection;
+    if (!currentData || !selection || selection.pageIndex !== pageIndex || !selection.areaIndices.size) return;
+    const page = currentData.pages[pageIndex];
+    const groups = (currentAreaDrafts[pageIndex] ?? []).map(draft => [...draft.areaIndices]);
+    const edited = operation === "merge"
+        ? mergeAreaGroups(groups, selection.areaIndices)
+        : splitAreaGroups(groups, selection.areaIndices);
+    const key = renderUnitKey(page, pageIndex);
+    if (sameAreaGroups(edited, (currentAnalysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []).map(draft => draft.areaIndices))) {
+        decisions.areaGroupsByPage.delete(key); // back to the computed grouping: no decision needed
+    } else {
+        decisions.areaGroupsByPage.set(key, edited);
+    }
+    uiState.areaSelection = null;
+    render(currentData);
+}
+
+/**
+ * Drops the user's area groups of a page, so the computed grouping applies again.
+ * @param {number} pageIndex
+ */
+function resetAreaGroups(pageIndex) {
+    if (!currentData) return;
+    decisions.areaGroupsByPage.delete(renderUnitKey(currentData.pages[pageIndex], pageIndex));
+    uiState.areaSelection = null;
+    render(currentData);
+}
+
+/**
+ * Makes the page the representative of its base page as a manual decision (a pin). This also
+ * works for the computed representative, to keep it when the computation changes. Picking the
+ * pinned representative again removes the pins of the group, so the computed one applies again.
+ * @param {BaseTemplatePageModel} basePage
+ * @param {number} pageIndex
+ */
+function setRepresentative(basePage, pageIndex) {
+    const unpin = basePage.representativeIsManual && basePage.representativePageIndex === pageIndex;
+    unpinGroup(basePage);
+    if (!unpin) decisions.pinnedRepresentatives.push(pageIndex);
+    if (currentData) render(currentData);
+}
+
+/**
+ * Takes the computed representative of a base page: removes the pins of its group.
+ * @param {BaseTemplatePageModel} basePage
+ */
+function useComputedRepresentative(basePage) {
+    unpinGroup(basePage);
+    if (currentData) render(currentData);
+}
+
+/** @param {BaseTemplatePageModel} basePage */
+function unpinGroup(basePage) {
+    decisions.pinnedRepresentatives = decisions.pinnedRepresentatives.filter(pageIndex => !basePage.baseAreaByArea.has(pageIndex));
+}
+
+/**
+ * Counts the manual decisions and those that differ from what the computation proposes now: a
+ * pinned representative other than the computed one, a pin not used because an earlier pin is in
+ * the same group, and area groups that differ from the computed grouping.
+ * @returns {{manual: number, differing: number}}
+ */
+function describeDecisions() {
+    let differing = decisions.areaGroupsByPage.size + decisions.positionByDraft.size
+        + currentViewModel.templateGroups.filter(group => group.locked && !group.matchesComputed).length;
+    currentBaseTemplates.forEach(baseTemplate => baseTemplate.pages.forEach(basePage => {
+        if (basePage.representativeIsManual && basePage.representativePageIndex !== basePage.computedRepresentativePageIndex) differing++;
+        differing += basePage.unusedPins.length;
+    }));
+    const names = decisions.baseTemplateNames.length + decisions.basePageNames.length + new Set(decisions.flowNameByArea.values()).size;
+    return {manual: decisions.pinnedRepresentatives.length + decisions.areaGroupsByPage.size + decisions.lockedGroups.length + names + decisions.positionByDraft.size, differing};
+}
+
+/**
+ * Fixes a computed template group as it is, with its page groups.
+ * @param {TemplateGroup} group
+ */
+function fixGroup(group) {
+    decisions.lockedGroups.push({templateIds: [...group.templateIds], pageGroups: group.pageGroups.map(pageGroup => [...pageGroup.pageIndices])});
+    if (currentData) render(currentData);
+}
+
+/**
+ * Releases a fixed template group: its templates are grouped by threshold and strategy again.
+ * Asks first when the computation groups them differently, as fixing again would not bring the
+ * group back.
+ * @param {TemplateGroup} group
+ */
+function unlockGroup(group) {
+    if (!group.matchesComputed && !confirm("Release this fixed group? Threshold and strategy group its templates or pages differently, so fixing again will not bring this group back.")) return;
+    decisions.lockedGroups = decisions.lockedGroups.filter(locked => locked !== group.locked);
+    if (currentData) render(currentData);
+}
+
+/**
+ * Replaces the decisions fixing the given groups (computed groups have none) with new fixed groups.
+ * @param {TemplateGroup[]} groups
+ * @param {LockedGroup[]} lockedGroups
+ */
+function replaceLockedGroups(groups, lockedGroups) {
+    const old = new Set(groups.map(group => group.locked).filter(Boolean));
+    decisions.lockedGroups = decisions.lockedGroups.filter(locked => !old.has(locked))
+        .concat(lockedGroups.filter(locked => locked.templateIds.length));
+}
+
+/**
+ * Adds pages to page groups: each to the page group most similar to it (average over its pages)
+ * when that reaches the threshold, otherwise to a new page group of its own.
+ * @param {number[][]} pageGroups modified in place
+ * @param {number[]} pageIndices
+ * @returns {number[][]}
+ */
+function placePages(pageGroups, pageIndices) {
+    const matrix = /** @type {ViewModel} */ (currentViewModel).pageLevel.matrix;
+    pageIndices.forEach(pageIndex => {
+        let best = null, bestScore = -Infinity;
+        pageGroups.forEach(pageGroup => {
+            const score = pageGroup.reduce((sum, other) => sum + (matrix[pageIndex]?.[other] ?? 0), 0) / pageGroup.length;
+            if (score > bestScore) { bestScore = score; best = pageGroup; }
+        });
+        if (best && bestScore >= settings.groupThreshold) best.push(pageIndex);
+        else pageGroups.push([pageIndex]);
+    });
+    return pageGroups;
+}
+
+/**
+ * Moves a template, with all its pages, to another base template, or to a new one of its own when
+ * `to` is null. Both groups become fixed groups, so threshold and strategy no longer change them;
+ * the moved pages join the most similar base pages of the target.
+ * @param {string} templateId
+ * @param {TemplateGroup} from
+ * @param {TemplateGroup|null} to
+ */
+function moveTemplate(templateId, from, to) {
+    if (!currentData || from === to) return;
+    const template = currentData.templates.find(t => t.templateId === templateId);
+    if (!template) return;
+    const moved = new Set(template.pageIndices);
+    const fromLocked = {
+        templateIds: from.templateIds.filter(id => id !== templateId),
+        pageGroups: from.pageGroups.map(pageGroup => pageGroup.pageIndices.filter(pageIndex => !moved.has(pageIndex))).filter(pageGroup => pageGroup.length),
+    };
+    const toLocked = to
+        ? {templateIds: [...to.templateIds, templateId], pageGroups: placePages(to.pageGroups.map(pageGroup => [...pageGroup.pageIndices]), template.pageIndices)}
+        : {templateIds: [templateId], pageGroups: placePages([], template.pageIndices)};
+    replaceLockedGroups(to ? [from, to] : [from], [fromLocked, toLocked]);
+    const name = template.templateName ?? templateId;
+    render(currentData);
+    setStatus(to ? `Moved ${name} to another base template; both groups are fixed now.` : `Moved ${name} to a new base template; both groups are fixed now.`, "ok");
+}
+
+/**
+ * Moves a page to another base page of its base template, or to a new base page when `to` is
+ * null. The template group becomes a fixed group with these page groups.
+ * @param {number} pageIndex
+ * @param {TemplateGroup} group
+ * @param {PageGroup|null} to
+ */
+function movePage(pageIndex, group, to) {
+    if (!currentData) return;
+    const pageGroups = group.pageGroups.map(pageGroup => pageGroup.pageIndices.filter(other => other !== pageIndex));
+    if (to) pageGroups[group.pageGroups.indexOf(to)].push(pageIndex);
+    else pageGroups.push([pageIndex]);
+    replaceLockedGroups([group], [{templateIds: [...group.templateIds], pageGroups: pageGroups.filter(pageGroup => pageGroup.length)}]);
+    render(currentData);
+    setStatus(`Moved ${pageName(currentData.pages[pageIndex])} to ${to ? "another" : "a new"} base page; the group is fixed now.`, "ok");
+}
+
+/**
+ * Moves a base page before or after another one of its base template. The template group becomes a
+ * fixed group with this order.
+ * @param {TemplateGroup} group
+ * @param {PageGroup} moved
+ * @param {PageGroup} target
+ * @param {boolean} after
+ */
+function reorderBasePage(group, moved, target, after) {
+    if (!currentData || moved === target) return;
+    const order = group.pageGroups.filter(pageGroup => pageGroup !== moved);
+    order.splice(order.indexOf(target) + (after ? 1 : 0), 0, moved);
+    if (order.every((pageGroup, i) => pageGroup === group.pageGroups[i])) return;
+    replaceLockedGroups([group], [{templateIds: [...group.templateIds], pageGroups: order.map(pageGroup => [...pageGroup.pageIndices])}]);
+    render(currentData);
+    setStatus("Changed the order of the base pages; the group is fixed now.", "ok");
+}
+
+/** Discards every manual decision, so the whole proposal is computed again. */
+function recalculateAll() {
+    const {manual} = describeDecisions();
+    if (!currentData || !manual) return;
+    if (!confirm(`Discard all ${manual} manual decision(s) (fixed groups, pinned representatives, merged/split areas, names, positions) and use the computed proposal?`)) return;
+    decisions = emptyDecisions();
+    uiState.areaSelection = null;
+    render(currentData);
+}
+
+// ─── 9. Loaded base templates ────────────────────────────────────────────────────────────────────
 //
 // A file exported earlier (by this tool, or by LayoutExport after LayoutImport) holds "Base"
 // rows and, on the standard rows, the baseTemplateTargetId and interactiveFlowName written by
@@ -1810,36 +2600,6 @@ function buildExportData(baseTemplates) {
 // - the area groups of the representative: its areas grouped by flow name.
 // They are restored as manual decisions (pinned representative, area groups), and the ids and
 // names of the loaded base templates are kept.
-
-/**
- * @typedef {Object} LoadedBaseTemplate
- * @property {string} id
- * @property {string} name
- * @property {LoadedBasePage[]} pages
- */
-
-/**
- * @typedef {Object} LoadedBasePage
- * @property {string} name
- * @property {{flowName: string, position: Position}[]} areas in areaIndex order
- */
-
-/**
- * @typedef {Object} LoadedIdentity
- * @property {Map<number, {baseTemplate: LoadedBaseTemplate, basePage: LoadedBasePage}>} basePageByPage
- *   the loaded base page each page belonged to
- * @property {Set<string>} baseTemplateIds ids of all loaded base templates
- * @property {Map<LoadedBasePage, number>} representativeByBasePage the page restored as representative
- */
-
-/**
- * @typedef {Object} RestoreReport
- * @property {number} loadedBaseTemplates base templates in the file
- * @property {number} baseTemplates loaded base templates used by at least one page
- * @property {number} basePages
- * @property {string[]} unmatchedPages pages whose target or flow names match no loaded base page
- * @property {string[]} inexactBasePages base pages whose areas no page spans exactly
- */
 
 /** @returns {LoadedIdentity} */
 function emptyIdentity() {
@@ -2143,25 +2903,81 @@ function assignLoadedIdentity(templateGroups, identity) {
     };
 }
 
+// ─── 10. Load and export ─────────────────────────────────────────────────────────────────────────
+//
+// Opening a CSV, and saving it back with the Base rows and the targets and flow names of the pages.
+
 /**
- * Pages used by several templates that ended up in different base templates. Their mapping is
- * stored once per page, so the import keeps only the last base template.
- * @param {BaseTemplateModel[]} baseTemplates
- * @param {LayoutData} data
- * @returns {string[]} one message per conflicting page
+ * @param {File} file
  */
-function findSharedPageConflicts(baseTemplates, data) {
-    /** @type {Map<string, Set<string>>} */
-    const baseTemplateIdsByPageId = new Map();
-    indexBasePagesByPage(baseTemplates).forEach(({baseTemplate}, pageIndex) => {
-        const pageId = data.pages[pageIndex].pageId;
-        if (pageId == null) return;
-        if (!baseTemplateIdsByPageId.has(pageId)) baseTemplateIdsByPageId.set(pageId, new Set());
-        /** @type {Set<string>} */ (baseTemplateIdsByPageId.get(pageId)).add(baseTemplate.id);
-    });
-    return [...baseTemplateIdsByPageId]
-        .filter(([, ids]) => ids.size > 1)
-        .map(([pageId, ids]) => `page ${pageId} is in ${[...ids].join(", ")}`);
+async function loadFile(file) {
+    try {
+        setStatus("");
+        const doc = readCsvDocument(await file.text(), file.name || "layout.csv");
+        const fileNameEl = /** @type {HTMLElement} */ (document.getElementById("file-name"));
+        fileNameEl.textContent = doc.fileName;
+        fileNameEl.title = doc.fileName;
+        const layoutData = buildLayoutData(doc);
+        currentCsv = doc;
+        saveCsvBtn.disabled = false;
+        const report = render(layoutData, parseLoadedBaseTemplates(doc));
+        const message = report ? describeRestoreReport(report) : "";
+        if (message) setStatus(message, report && (report.unmatchedPages.length || report.inexactBasePages.length) ? undefined : "ok");
+    } catch (err) {
+        setStatus("Error: " + /** @type {Error} */ (err).message, "error");
+    }
+}
+
+/**
+ * @param {string} message
+ * @param {"ok"|"error"} [kind]
+ */
+function setStatus(message, kind) {
+    statusEl.textContent = message;
+    statusEl.title = message;
+    statusEl.classList.toggle("ok", kind === "ok");
+    statusEl.classList.toggle("error", kind === "error");
+}
+
+/**
+ * Builds the "Base" CSV rows of the base templates and, per page, the baseTemplateTargetId and
+ * interactiveFlowName of each of its areas.
+ * @param {BaseTemplateModel[]} baseTemplates
+ * @returns {{baseRows: Record<string, string>[], overridesByPageIndex: Map<number, {flowNames: string[], targetId: string}>}}
+ *   baseRows are keyed by logical column name; missing columns are written empty
+ */
+function buildExportData(baseTemplates) {
+    /** @type {Record<string, string>[]} */
+    const baseRows = [];
+    /** @type {Map<number, {flowNames: string[], targetId: string}>} */
+    const overridesByPageIndex = new Map();
+
+    baseTemplates.forEach(baseTemplate => baseTemplate.pages.forEach(basePage => {
+        const size = basePage.pageSize;
+        basePage.areas.forEach((area, areaIndex) => baseRows.push({
+            templateId: baseTemplate.id,
+            templateName: baseTemplate.name,
+            pageId: basePage.id,
+            pageName: basePage.name,
+            type: "Base",
+            interactiveFlowName: area.flowName,
+            areaName: area.areaName,
+            flowToNextPage: String(area.flowToNextPage),
+            areaIndex: String(areaIndex),
+            x: `${area.position.x}mm`,
+            y: `${area.position.y}mm`,
+            width: `${area.position.w}mm`,
+            height: `${area.position.h}mm`,
+            pageWidth: size ? `${size.w}mm` : "",
+            pageHeight: size ? `${size.h}mm` : "",
+        }));
+
+        basePage.baseAreaByArea.forEach((_, pageIndex) => {
+            overridesByPageIndex.set(pageIndex, {flowNames: areaFlowNames(basePage, pageIndex), targetId: `$${baseTemplate.id}`});
+        });
+    }));
+
+    return {baseRows, overridesByPageIndex};
 }
 
 async function saveCsv() {
@@ -2248,9 +3064,9 @@ async function saveCsv() {
     setStatus(`Downloaded ${fileName}${warning}`, resultKind);
 }
 
-saveCsvBtn.addEventListener("click", () => { saveCsv(); });
-const recalculateAllBtn = /** @type {HTMLButtonElement} */ (document.getElementById("recalculate-all"));
-recalculateAllBtn.addEventListener("click", () => recalculateAll());
+// ─── 11. List rendering ──────────────────────────────────────────────────────────────────────────
+//
+// The list of base templates (template groups) with their base pages (page groups).
 
 /** Shows the number of manual decisions, and how many differ from the computation, on the Recalculate all button. */
 function renderDecisionSummary() {
@@ -2274,206 +3090,6 @@ function highlightTemplatePages(e, on) {
         tag.classList.toggle("highlight", on && /** @type {HTMLElement} */ (tag).dataset.templateId === chip.dataset.templateId);
     });
 }
-const templateGroupsEl = /** @type {HTMLElement} */ (document.getElementById("template-groups"));
-templateGroupsEl.addEventListener("mouseover", e => highlightTemplatePages(e, true));
-templateGroupsEl.addEventListener("mouseout", e => highlightTemplatePages(e, false));
-
-/**
- * The template or page being dragged to another group, null when none (or a file is dragged).
- * @type {{kind: "template", templateId: string, groupIndex: number} | {kind: "page", pageIndex: number, groupIndex: number} | {kind: "basePage", pageGroupKey: string, groupIndex: number} | null}
- */
-let dragged = null;
-/** @type {HTMLElement|null} */
-let dropTargetEl = null;
-/** Where a reordered base page goes relative to the drop target. */
-let dropAfter = false;
-
-/**
- * @param {HTMLElement|null} el
- * @param {string} className "drop-target", or "drop-before"/"drop-after" for an insertion line
- */
-function setDropTarget(el, className = "drop-target") {
-    dropTargetEl?.classList.remove("drop-target", "drop-before", "drop-after");
-    dropTargetEl = el;
-    el?.classList.add(className);
-}
-
-/**
- * @param {string} className
- * @param {string} text
- * @param {"li"|"div"} tag
- * @returns {HTMLElement}
- */
-function createDropZone(className, text, tag) {
-    const zone = document.createElement(tag);
-    zone.className = "drop-zone " + className;
-    zone.textContent = text;
-    return zone;
-}
-
-templateGroupsEl.addEventListener("dragstart", e => {
-    const target = /** @type {HTMLElement} */ (e.target);
-    const chip = /** @type {HTMLElement|null} */ (target.closest?.(".template-tag, .page-tag, .pg-handle"));
-    const li = /** @type {HTMLElement|null} */ (chip?.closest("li"));
-    const group = currentViewModel?.templateGroups[Number(li?.dataset.groupIndex)];
-    if (!chip || !li || !group || !e.dataTransfer) return;
-    const groupIndex = Number(li.dataset.groupIndex);
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", chip.textContent ?? "");
-    if (chip.classList.contains("pg-handle")) {
-        const pageGroupEl = /** @type {HTMLElement} */ (chip.closest(".page-group"));
-        dragged = {kind: "basePage", pageGroupKey: pageGroupEl.dataset.pageGroupKey ?? "", groupIndex};
-        requestAnimationFrame(() => pageGroupEl.classList.add("dragging-source"));
-        return;
-    }
-    if (chip.classList.contains("template-tag")) {
-        dragged = {kind: "template", templateId: chip.dataset.templateId ?? "", groupIndex};
-        // A new base template only makes sense when the template does not stand alone already.
-        if (group.templateIds.length > 1) templateGroupsEl.appendChild(createDropZone("new-template", "Drop here for a new base template", "li"));
-    } else {
-        const pageIndex = Number(chip.dataset.pageIndex);
-        dragged = {kind: "page", pageIndex, groupIndex};
-        const own = group.pageGroups.find(pageGroup => pageGroup.pageIndices.includes(pageIndex));
-        if (own && own.pageIndices.length > 1) li.querySelector(".page-groups")?.appendChild(createDropZone("new-page", "Drop here for a new base page", "div"));
-    }
-    // Dim the source after the browser has taken its drag image.
-    requestAnimationFrame(() => chip.classList.add("dragging-source"));
-});
-
-/**
- * The element the dragged item would go to at this event, or null when it cannot be dropped here.
- * @param {DragEvent} e
- * @returns {HTMLElement|null}
- */
-function dropTargetAt(e) {
-    if (!dragged || !currentViewModel) return null;
-    const target = /** @type {HTMLElement} */ (e.target);
-    const li = /** @type {HTMLElement|null} */ (target.closest?.(".template-groups > li"));
-    if (!li) return null;
-    if (dragged.kind === "template") {
-        if (li.classList.contains("new-template")) return li;
-        return Number(li.dataset.groupIndex) !== dragged.groupIndex && li.dataset.groupIndex != null ? li : null;
-    }
-    if (Number(li.dataset.groupIndex) !== dragged.groupIndex) return null;
-    if (dragged.kind === "basePage") {
-        // Anywhere over the base template: the gap between base pages nearest to the pointer.
-        const rows = /** @type {HTMLElement[]} */ ([...li.querySelectorAll(".page-group")]);
-        const key = dragged.pageGroupKey;
-        const from = rows.findIndex(row => row.dataset.pageGroupKey === key);
-        let gap = 0, distance = Infinity;
-        for (let i = 0; i <= rows.length; i++) {
-            const y = i < rows.length ? rows[i].getBoundingClientRect().top : rows[rows.length - 1].getBoundingClientRect().bottom;
-            if (Math.abs(e.clientY - y) < distance) { distance = Math.abs(e.clientY - y); gap = i; }
-        }
-        if (gap === from || gap === from + 1) return null; // the order would not change
-        dropAfter = gap === rows.length;
-        return rows[dropAfter ? rows.length - 1 : gap];
-    }
-    const zone = /** @type {HTMLElement|null} */ (target.closest(".new-page"));
-    if (zone) return zone;
-    const pageGroupEl = /** @type {HTMLElement|null} */ (target.closest(".page-group"));
-    const pageGroup = pageGroupEl ? currentViewModel.pageGroupByKey[pageGroupEl.dataset.pageGroupKey ?? ""] : null;
-    const pageIndex = dragged.pageIndex;
-    return pageGroup && !pageGroup.pageIndices.includes(pageIndex) ? pageGroupEl : null;
-}
-
-templateGroupsEl.addEventListener("dragover", e => {
-    if (!dragged) return;
-    const el = dropTargetAt(e);
-    if (el && dragged.kind === "basePage") {
-        setDropTarget(el, dropAfter ? "drop-after" : "drop-before");
-    } else {
-        setDropTarget(el);
-    }
-    if (!el || !e.dataTransfer) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
-});
-
-templateGroupsEl.addEventListener("drop", e => {
-    if (!dragged || !currentViewModel) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const el = dropTargetAt(e);
-    const item = dragged;
-    const after = dropAfter;
-    const groups = currentViewModel.templateGroups;
-    const from = groups[item.groupIndex];
-    endDrag();
-    if (!el || !from) return;
-    if (item.kind === "basePage") {
-        const moved = currentViewModel.pageGroupByKey[item.pageGroupKey];
-        const target = currentViewModel.pageGroupByKey[el.dataset.pageGroupKey ?? ""];
-        if (moved && target) reorderBasePage(from, moved, target, after);
-    } else if (item.kind === "template") {
-        moveTemplate(item.templateId, from, el.classList.contains("new-template") ? null : groups[Number(el.dataset.groupIndex)]);
-    } else {
-        movePage(item.pageIndex, from, el.classList.contains("new-page") ? null : currentViewModel.pageGroupByKey[el.dataset.pageGroupKey ?? ""] ?? null);
-    }
-});
-
-function endDrag() {
-    dragged = null;
-    setDropTarget(null);
-    templateGroupsEl.querySelectorAll(".drop-zone").forEach(zone => zone.remove());
-    templateGroupsEl.querySelectorAll(".dragging-source").forEach(el => el.classList.remove("dragging-source"));
-}
-templateGroupsEl.addEventListener("dragend", endDrag);
-
-document.body.addEventListener("dragover", e => {
-    // Moving a template or page: not droppable outside its targets, and not a file.
-    if (dragged) { setDropTarget(null); return; }
-    e.preventDefault();
-    document.body.classList.add("drag-over");
-});
-document.body.addEventListener("dragleave", e => {
-    if (e.relatedTarget == null) document.body.classList.remove("drag-over");
-});
-document.body.addEventListener("drop", e => {
-    e.preventDefault();
-    if (dragged) return;
-    document.body.classList.remove("drag-over");
-    const file = e.dataTransfer?.files[0];
-    if (!file) return;
-    // Show the dropped file in the file input too (setting files does not fire "change").
-    const transfer = new DataTransfer();
-    transfer.items.add(file);
-    fileInput.files = transfer.files;
-    loadFile(file);
-});
-
-document.getElementById("card-size").addEventListener("input", (e) => {
-    settings.canvasW = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
-    /** @type {HTMLOutputElement} */ (document.getElementById("card-size-out")).value = String(settings.canvasW);
-    scheduleRefreshCards();
-});
-
-document.getElementById("threshold").addEventListener("input", (e) => {
-    settings.groupThreshold = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
-    /** @type {HTMLOutputElement} */ (document.getElementById("threshold-out")).value = settings.groupThreshold.toFixed(2);
-    scheduleRender();
-});
-
-document.getElementById("group-strategy").addEventListener("change", (e) => {
-    settings.groupStrategy = /** @type {"single"|"average"|"complete"} */ (/** @type {HTMLSelectElement} */ (e.target).value);
-    if (currentData) render(currentData);
-});
-
-document.querySelectorAll("input[type='range']").forEach(input => {
-    input.addEventListener("wheel", (e) => {
-        e.preventDefault();
-        const slider = /** @type {HTMLInputElement} */ (e.currentTarget);
-        const min = slider.min === "" ? 0 : parseFloat(slider.min);
-        const max = slider.max === "" ? 100 : parseFloat(slider.max);
-        const step = slider.step === "" || slider.step === "any" ? 1 : parseFloat(slider.step);
-        const current = parseFloat(slider.value);
-        const direction = e.deltaY < 0 ? 1 : -1;
-        const next = Math.min(max, Math.max(min, current + direction * step));
-        slider.value = String(roundTo(next, sliderStepDecimals(slider)));
-        slider.dispatchEvent(new Event("input", {bubbles: true}));
-    }, {passive: false});
-});
 
 /**
  * Renders the data. New data starts with the decisions restored from its base templates
@@ -2506,189 +3122,6 @@ function render(data, loaded = []) {
     renderDecisionSummary();
     renderInspector();
     return report;
-}
-
-/**
- * @param {AreaEntry} ar
- * @param {number} idx
- * @returns {string}
- */
-function areaTip(ar, idx) {
-    const name = areaLabel(ar) || `area_${idx}`;
-    return `${name}\nw ${ar.w}mm · h ${ar.h}mm · x ${ar.x}mm · y ${ar.y}mm`
-        + (ar.flowToNextPage ? " · [↓]" : "")
-        + (ar.interactiveFlowName ? ` · flow:${ar.interactiveFlowName}` : "");
-}
-
-/**
- * Draws a page: its areas and, as red frames, the base areas of its base page (on the
- * representative they are made from its own areas, on other pages they are laid over them).
- * @param {PageEntry} page
- * @param {BaseAreaModel[]} baseAreas
- * @param {(number|null)[]} baseAreaByArea index of the base area each area of the page maps to
- * @param {boolean} isRepresentative the page defines its base page's areas
- * @param {Set<number>} selectedAreas indices of the selected areas, drawn highlighted
- * @param {((areaIndex: number|null, additive: boolean) => void)|null} onAreaClick called with null
- *   for clicks outside areas; null when the areas cannot be selected
- * @returns {SVGElement|null}
- */
-function buildPageSvg(page, baseAreas, baseAreaByArea, isRepresentative, selectedAreas, onAreaClick) {
-    const areas = page.areas;
-    if (!areas.length) return null;
-
-    const maxX2 = Math.max(...areas.map(a => a.x + a.w), ...baseAreas.map(b => b.position.x + b.position.w));
-    const maxY2 = Math.max(...areas.map(a => a.y + a.h), ...baseAreas.map(b => b.position.y + b.position.h));
-    const scale = (settings.canvasW - 2 * PAD) / Math.max(maxX2, 210);
-    const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
-    const svg = svgEl("svg", {width: settings.canvasW, height: svgH, class: "page-svg" + (onAreaClick ? " selectable" : "")});
-    svg.appendChild(svgTitle(pageCardTooltip(page)));
-    if (onAreaClick) {
-        // Clicks on an area select it; clicks anywhere else on the drawing clear the selection.
-        svg.addEventListener("click", e => {
-            const target = /** @type {Element} */ (e.target);
-            const areaIndex = target.getAttribute("data-area-index");
-            onAreaClick(areaIndex == null ? null : Number(areaIndex), e.ctrlKey || e.metaKey || e.shiftKey);
-        });
-    }
-
-    /** @param {number} baseIndex */
-    const baseAreaTip = baseIndex => {
-        const {flowName, position: p} = baseAreas[baseIndex];
-        return `Base area ${flowName}\nw ${p.w}mm · h ${p.h}mm · x ${p.x}mm · y ${p.y}mm`;
-    };
-
-    /** @param {number|null|undefined} baseIndex */
-    const baseAreaColor = baseIndex => baseIndex == null ? NO_BASE_AREA_COLOR : BASE_AREA_COLORS[baseIndex % BASE_AREA_COLORS.length];
-
-    baseAreas.forEach((baseArea, baseIndex) => {
-        const p = baseArea.position;
-        const color = baseAreaColor(baseIndex);
-        // The frame stands a little outside the areas, so it does not coincide with their borders;
-        // towards a neighbouring base area it stands at most halfway, so the two frames do not cross.
-        const gap = frameGaps(baseAreas, baseIndex, scale);
-        const gx = svgPos(p.x, scale) - gap.left, gy = svgPos(p.y, scale) - gap.top,
-            gw = svgDim(p.w, scale) + gap.left + gap.right, gh = svgDim(p.h, scale) + gap.top + gap.bottom;
-
-        const bg = svgEl("rect", {
-            x: gx, y: gy, width: gw, height: gh,
-            fill: "transparent", stroke: "none", "pointer-events": "all"
-        });
-        bg.appendChild(svgTitle(baseAreaTip(baseIndex)));
-        svg.appendChild(bg);
-
-        const border = svgEl("rect", {
-            x: gx, y: gy, width: gw, height: gh, rx: 3,
-            fill: "none", stroke: color, "stroke-width": 1.3, "stroke-dasharray": "5,3",
-            "pointer-events": "none"
-        });
-        svg.appendChild(border);
-
-        // The label goes above the frame; when another base area is right above, there is no room
-        // there, so it goes inside the frame's top-right corner (the area's own label is top-left).
-        const labelInside = gap.top < FRAME_GAP;
-        const label = svgEl("text", {
-            x: labelInside ? gx + gw - 3 : gx + 2, y: labelInside ? gy + 9 : gy - 2,
-            "text-anchor": labelInside ? "end" : "start",
-            "font-size": 7, fill: color, "font-weight": "bold", "pointer-events": "none"
-        });
-        label.textContent = baseArea.flowName.length > 28 ? baseArea.flowName.slice(0, 28) : baseArea.flowName;
-        svg.appendChild(label);
-    });
-
-    // Larger areas first, so smaller (often overlapping or nested) areas stay on top and clickable.
-    const drawOrder = areas.map((_, i) => i).sort((m, n) => (areas[n].w * areas[n].h) - (areas[m].w * areas[m].h));
-    drawOrder.forEach(i => {
-        const a = areas[i];
-        const color = baseAreaColor(baseAreaByArea[i]);
-        const isSelected = selectedAreas.has(i);
-        const isRoot = a.containedIn == null;
-        const rx = svgPos(a.x, scale), ry = svgPos(a.y, scale),
-            rw = svgDim(a.w, scale), rh = svgDim(a.h, scale);
-
-        const overlapping = areas
-            .map((o, oi) => ({o, oi}))
-            .filter(({o, oi}) => oi !== i
-                && o.x < a.x + a.w && o.x + o.w > a.x
-                && o.y < a.y + a.h && o.y + o.h > a.y)
-            .sort((m, n) => (m.o.w * m.o.h) - (n.o.w * n.o.h));
-
-        const baseIndex = baseAreaByArea[i];
-        const baseLine = baseIndex != null ? (isRepresentative ? "" : "Goes to: ") + baseAreaTip(baseIndex) + "\n\n" : "";
-        const tip = baseLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
-
-        const rect = svgEl("rect", {
-            x: rx, y: ry, width: rw, height: rh,
-            fill: color, "fill-opacity": "0.25", stroke: color,
-            "stroke-width": isRoot ? "1.2" : "1",
-            "stroke-dasharray": isRoot ? "none" : "3,2",
-            class: "area-rect",
-            "data-area-index": i,
-        });
-        rect.appendChild(svgTitle(tip + (onAreaClick ? "\n\nClick to select, Ctrl/Shift+click to add to or remove from the selection." : "")));
-        svg.appendChild(rect);
-        if (isSelected) drawSelectionMark(svg, rx, ry, rw, rh);
-
-        if (rw > 12 && rh > 8) {
-            const name = areaLabel(a) || `area_${i}`;
-            const txt = svgEl("text", {x: rx + 2, y: ry + 9, "font-size": 6.5, fill: "#222", "pointer-events": "none"});
-            txt.textContent = name.length > 28 ? name.slice(-28) : name;
-            svg.appendChild(txt);
-        }
-    });
-
-    return svg;
-}
-
-/**
- * How far (px) a base area's frame stands outside its areas on each side: FRAME_GAP, but at most
- * half the distance to a neighbouring base area on that side, so adjacent frames meet instead of
- * crossing. Base areas that overlap the frame's area do not limit it.
- * @param {BaseAreaModel[]} baseAreas
- * @param {number} baseIndex
- * @param {number} scale px per mm
- * @returns {{top: number, right: number, bottom: number, left: number}}
- */
-function frameGaps(baseAreas, baseIndex, scale) {
-    const gap = {top: FRAME_GAP, right: FRAME_GAP, bottom: FRAME_GAP, left: FRAME_GAP};
-    const a = baseAreas[baseIndex].position;
-    baseAreas.forEach((other, otherIndex) => {
-        if (otherIndex === baseIndex) return;
-        const b = other.position;
-        const overlapsX = b.x < a.x + a.w && b.x + b.w > a.x;
-        const overlapsY = b.y < a.y + a.h && b.y + b.h > a.y;
-        if (overlapsX && overlapsY) return;
-        /** @param {number} distanceMm */
-        const half = distanceMm => Math.max(0, distanceMm * scale / 2);
-        if (overlapsX && b.y + b.h <= a.y) gap.top = Math.min(gap.top, half(a.y - (b.y + b.h)));
-        if (overlapsX && b.y >= a.y + a.h) gap.bottom = Math.min(gap.bottom, half(b.y - (a.y + a.h)));
-        if (overlapsY && b.x + b.w <= a.x) gap.left = Math.min(gap.left, half(a.x - (b.x + b.w)));
-        if (overlapsY && b.x >= a.x + a.w) gap.right = Math.min(gap.right, half(b.x - (a.x + a.w)));
-    });
-    return gap;
-}
-
-/**
- * Marks a selected area: a blue halo just outside its border and a check badge in its bottom-right
- * corner. The area keeps its own colors, so it stays recognizable.
- * @param {SVGElement} svg
- * @param {number} x
- * @param {number} y
- * @param {number} w
- * @param {number} h
- */
-function drawSelectionMark(svg, x, y, w, h) {
-    const color = "#2f7de1";
-    svg.appendChild(svgEl("rect", {
-        x: x - 2, y: y - 2, width: w + 4, height: h + 4, rx: 3,
-        fill: "none", stroke: color, "stroke-width": 2, "pointer-events": "none",
-    }));
-    const cx = x + w - 5, cy = y + h - 5;
-    svg.appendChild(svgEl("circle", {cx, cy, r: 4.5, fill: color, stroke: "#fff", "stroke-width": 1, "pointer-events": "none"}));
-    svg.appendChild(svgEl("path", {
-        d: `M ${cx - 2.2} ${cy} L ${cx - 0.6} ${cy + 1.6} L ${cx + 2.2} ${cy - 1.6}`,
-        fill: "none", stroke: "#fff", "stroke-width": 1.3, "stroke-linecap": "round", "stroke-linejoin": "round",
-        "pointer-events": "none",
-    }));
 }
 
 /**
@@ -2955,6 +3388,226 @@ function renderTemplateGroupItem(group, groupIndex, data) {
 }
 
 /**
+ * @param {UiState} previousState
+ * @param {ViewModel} viewModel
+ * @param {boolean} dataChanged
+ * @returns {UiState}
+ */
+function reconcileUiState(previousState, viewModel, dataChanged) {
+    if (dataChanged) return {openPageGroups: new Set(), areaSelection: null, inspected: null};
+    const inspected = previousState.inspected;
+    const inspectedExists = inspected?.kind === "page"
+        ? viewModel.pageGroupKeys.has(inspected.key)
+        : viewModel.templateGroups.some(group => group.key === inspected?.key);
+    return {
+        openPageGroups: new Set(
+            [...previousState.openPageGroups].filter(key => viewModel.pageGroupKeys.has(key))
+        ),
+        areaSelection: previousState.areaSelection,
+        inspected: inspectedExists ? inspected : null,
+    };
+}
+
+/**
+ * @param {number|null} score
+ * @returns {string}
+ */
+function cohesionClass(score) {
+    if (score === null) return "cohesion-solo";
+    if (score >= 0.75) return "cohesion-high";
+    if (score >= 0.50) return "cohesion-mid";
+    return "cohesion-low";
+}
+
+// ─── 12. Page cards and areas ────────────────────────────────────────────────────────────────────
+//
+// The page cards of an opened base page: the page drawing with its areas and the base area frames,
+// area selection (merge/split) and the representative controls.
+
+/**
+ * @param {AreaEntry} ar
+ * @param {number} idx
+ * @returns {string}
+ */
+function areaTip(ar, idx) {
+    const name = areaLabel(ar) || `area_${idx}`;
+    return `${name}\nw ${ar.w}mm · h ${ar.h}mm · x ${ar.x}mm · y ${ar.y}mm`
+        + (ar.flowToNextPage ? " · [↓]" : "")
+        + (ar.interactiveFlowName ? ` · flow:${ar.interactiveFlowName}` : "");
+}
+
+/**
+ * Draws a page: its areas and, as red frames, the base areas of its base page (on the
+ * representative they are made from its own areas, on other pages they are laid over them).
+ * @param {PageEntry} page
+ * @param {BaseAreaModel[]} baseAreas
+ * @param {(number|null)[]} baseAreaByArea index of the base area each area of the page maps to
+ * @param {boolean} isRepresentative the page defines its base page's areas
+ * @param {Set<number>} selectedAreas indices of the selected areas, drawn highlighted
+ * @param {((areaIndex: number|null, additive: boolean) => void)|null} onAreaClick called with null
+ *   for clicks outside areas; null when the areas cannot be selected
+ * @returns {SVGElement|null}
+ */
+function buildPageSvg(page, baseAreas, baseAreaByArea, isRepresentative, selectedAreas, onAreaClick) {
+    const areas = page.areas;
+    if (!areas.length) return null;
+
+    const maxX2 = Math.max(...areas.map(a => a.x + a.w), ...baseAreas.map(b => b.position.x + b.position.w));
+    const maxY2 = Math.max(...areas.map(a => a.y + a.h), ...baseAreas.map(b => b.position.y + b.position.h));
+    const scale = (settings.canvasW - 2 * PAD) / Math.max(maxX2, 210);
+    const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
+    const svg = svgEl("svg", {width: settings.canvasW, height: svgH, class: "page-svg" + (onAreaClick ? " selectable" : "")});
+    svg.appendChild(svgTitle(pageCardTooltip(page)));
+    if (onAreaClick) {
+        // Clicks on an area select it; clicks anywhere else on the drawing clear the selection.
+        svg.addEventListener("click", e => {
+            const target = /** @type {Element} */ (e.target);
+            const areaIndex = target.getAttribute("data-area-index");
+            onAreaClick(areaIndex == null ? null : Number(areaIndex), e.ctrlKey || e.metaKey || e.shiftKey);
+        });
+    }
+
+    /** @param {number} baseIndex */
+    const baseAreaTip = baseIndex => {
+        const {flowName, position: p} = baseAreas[baseIndex];
+        return `Base area ${flowName}\nw ${p.w}mm · h ${p.h}mm · x ${p.x}mm · y ${p.y}mm`;
+    };
+
+    /** @param {number|null|undefined} baseIndex */
+    const baseAreaColor = baseIndex => baseIndex == null ? NO_BASE_AREA_COLOR : BASE_AREA_COLORS[baseIndex % BASE_AREA_COLORS.length];
+
+    baseAreas.forEach((baseArea, baseIndex) => {
+        const p = baseArea.position;
+        const color = baseAreaColor(baseIndex);
+        // The frame stands a little outside the areas, so it does not coincide with their borders;
+        // towards a neighbouring base area it stands at most halfway, so the two frames do not cross.
+        const gap = frameGaps(baseAreas, baseIndex, scale);
+        const gx = svgPos(p.x, scale) - gap.left, gy = svgPos(p.y, scale) - gap.top,
+            gw = svgDim(p.w, scale) + gap.left + gap.right, gh = svgDim(p.h, scale) + gap.top + gap.bottom;
+
+        const bg = svgEl("rect", {
+            x: gx, y: gy, width: gw, height: gh,
+            fill: "transparent", stroke: "none", "pointer-events": "all"
+        });
+        bg.appendChild(svgTitle(baseAreaTip(baseIndex)));
+        svg.appendChild(bg);
+
+        const border = svgEl("rect", {
+            x: gx, y: gy, width: gw, height: gh, rx: 3,
+            fill: "none", stroke: color, "stroke-width": 1.3, "stroke-dasharray": "5,3",
+            "pointer-events": "none"
+        });
+        svg.appendChild(border);
+
+        // The label goes above the frame; when another base area is right above, there is no room
+        // there, so it goes inside the frame's top-right corner (the area's own label is top-left).
+        const labelInside = gap.top < FRAME_GAP;
+        const label = svgEl("text", {
+            x: labelInside ? gx + gw - 3 : gx + 2, y: labelInside ? gy + 9 : gy - 2,
+            "text-anchor": labelInside ? "end" : "start",
+            "font-size": 7, fill: color, "font-weight": "bold", "pointer-events": "none"
+        });
+        label.textContent = baseArea.flowName.length > 28 ? baseArea.flowName.slice(0, 28) : baseArea.flowName;
+        svg.appendChild(label);
+    });
+
+    // Larger areas first, so smaller (often overlapping or nested) areas stay on top and clickable.
+    const drawOrder = areas.map((_, i) => i).sort((m, n) => (areas[n].w * areas[n].h) - (areas[m].w * areas[m].h));
+    drawOrder.forEach(i => {
+        const a = areas[i];
+        const color = baseAreaColor(baseAreaByArea[i]);
+        const isSelected = selectedAreas.has(i);
+        const isRoot = a.containedIn == null;
+        const rx = svgPos(a.x, scale), ry = svgPos(a.y, scale),
+            rw = svgDim(a.w, scale), rh = svgDim(a.h, scale);
+
+        const overlapping = areas
+            .map((o, oi) => ({o, oi}))
+            .filter(({o, oi}) => oi !== i
+                && o.x < a.x + a.w && o.x + o.w > a.x
+                && o.y < a.y + a.h && o.y + o.h > a.y)
+            .sort((m, n) => (m.o.w * m.o.h) - (n.o.w * n.o.h));
+
+        const baseIndex = baseAreaByArea[i];
+        const baseLine = baseIndex != null ? (isRepresentative ? "" : "Goes to: ") + baseAreaTip(baseIndex) + "\n\n" : "";
+        const tip = baseLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
+
+        const rect = svgEl("rect", {
+            x: rx, y: ry, width: rw, height: rh,
+            fill: color, "fill-opacity": "0.25", stroke: color,
+            "stroke-width": isRoot ? "1.2" : "1",
+            "stroke-dasharray": isRoot ? "none" : "3,2",
+            class: "area-rect",
+            "data-area-index": i,
+        });
+        rect.appendChild(svgTitle(tip + (onAreaClick ? "\n\nClick to select, Ctrl/Shift+click to add to or remove from the selection." : "")));
+        svg.appendChild(rect);
+        if (isSelected) drawSelectionMark(svg, rx, ry, rw, rh);
+
+        if (rw > 12 && rh > 8) {
+            const name = areaLabel(a) || `area_${i}`;
+            const txt = svgEl("text", {x: rx + 2, y: ry + 9, "font-size": 6.5, fill: "#222", "pointer-events": "none"});
+            txt.textContent = name.length > 28 ? name.slice(-28) : name;
+            svg.appendChild(txt);
+        }
+    });
+
+    return svg;
+}
+
+/**
+ * How far (px) a base area's frame stands outside its areas on each side: FRAME_GAP, but at most
+ * half the distance to a neighbouring base area on that side, so adjacent frames meet instead of
+ * crossing. Base areas that overlap the frame's area do not limit it.
+ * @param {BaseAreaModel[]} baseAreas
+ * @param {number} baseIndex
+ * @param {number} scale px per mm
+ * @returns {{top: number, right: number, bottom: number, left: number}}
+ */
+function frameGaps(baseAreas, baseIndex, scale) {
+    const gap = {top: FRAME_GAP, right: FRAME_GAP, bottom: FRAME_GAP, left: FRAME_GAP};
+    const a = baseAreas[baseIndex].position;
+    baseAreas.forEach((other, otherIndex) => {
+        if (otherIndex === baseIndex) return;
+        const b = other.position;
+        const overlapsX = b.x < a.x + a.w && b.x + b.w > a.x;
+        const overlapsY = b.y < a.y + a.h && b.y + b.h > a.y;
+        if (overlapsX && overlapsY) return;
+        /** @param {number} distanceMm */
+        const half = distanceMm => Math.max(0, distanceMm * scale / 2);
+        if (overlapsX && b.y + b.h <= a.y) gap.top = Math.min(gap.top, half(a.y - (b.y + b.h)));
+        if (overlapsX && b.y >= a.y + a.h) gap.bottom = Math.min(gap.bottom, half(b.y - (a.y + a.h)));
+        if (overlapsY && b.x + b.w <= a.x) gap.left = Math.min(gap.left, half(a.x - (b.x + b.w)));
+        if (overlapsY && b.x >= a.x + a.w) gap.right = Math.min(gap.right, half(b.x - (a.x + a.w)));
+    });
+    return gap;
+}
+
+/**
+ * Marks a selected area: a blue halo just outside its border and a check badge in its bottom-right
+ * corner. The area keeps its own colors, so it stays recognizable.
+ * @param {SVGElement} svg
+ * @param {number} x
+ * @param {number} y
+ * @param {number} w
+ * @param {number} h
+ */
+function drawSelectionMark(svg, x, y, w, h) {
+    const color = "#2f7de1";
+    svg.appendChild(svgEl("rect", {
+        x: x - 2, y: y - 2, width: w + 4, height: h + 4, rx: 3,
+        fill: "none", stroke: color, "stroke-width": 2, "pointer-events": "none",
+    }));
+    const cx = x + w - 5, cy = y + h - 5;
+    svg.appendChild(svgEl("circle", {cx, cy, r: 4.5, fill: color, stroke: "#fff", "stroke-width": 1, "pointer-events": "none"}));
+    svg.appendChild(svgEl("path", {
+        d: `M ${cx - 2.2} ${cy} L ${cx - 0.6} ${cy + 1.6} L ${cx + 2.2} ${cy - 1.6}`,
+        fill: "none", stroke: "#fff", "stroke-width": 1.3, "stroke-linecap": "round", "stroke-linejoin": "round",
+        "pointer-events": "none",
+    }));
+}
+
+/**
  * The representative control of a page card. It lives in the card header, apart from the page
  * drawing, which is reserved for working with areas.
  * @param {BaseTemplatePageModel} basePage
@@ -3138,23 +3791,149 @@ function selectArea(pageIndex, areaIndex, additive) {
     }
 }
 
-document.addEventListener("keydown", e => {
-    if (e.key === "Escape" && uiState.areaSelection) {
-        uiState.areaSelection = null;
-        refreshOpenPageGroups();
-        renderInspector();
-    }
-});
+/**
+ * @param {HTMLElement} rowEl
+ */
+function togglePageCards(rowEl) {
+    const pageGroupEl = /** @type {HTMLElement} */ (rowEl.closest(".page-group"));
+    const preview = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-cards"));
+    setPageGroupOpen(pageGroupEl, !preview.classList.contains("open"));
+}
 
-// ─── Inspector ──────────────────────────────────────────────────────────────────────────────
+/**
+ * Populates a .pg-cards container with page card elements.
+ * @param {HTMLElement} preview
+ * @param {number[]} indices
+ */
+function buildPageCards(preview, indices) {
+    preview.innerHTML = "";
+    indices.forEach(pi => {
+        preview.appendChild(buildPageCard(pi));
+    });
+}
+
+/**
+ * @param {Set<string>} keys
+ * @returns {void}
+ */
+function reopenPageGroups(keys) {
+    document.querySelectorAll(".page-group").forEach(pgEl => {
+        const groupEl = /** @type {HTMLElement} */ (pgEl);
+        const key = groupEl.dataset.pageGroupKey ?? "";
+        if (!keys.has(key)) return;
+        if (!groupEl.querySelector(".pg-cards.open")) setPageGroupOpen(groupEl, true);
+    });
+}
+
+/**
+ * @param {HTMLElement} pageGroupEl
+ * @returns {number[]}
+ */
+function pageGroupIndices(pageGroupEl) {
+    if (!currentViewModel) return [];
+    const key = pageGroupEl.dataset.pageGroupKey ?? "";
+    return currentViewModel.pageGroupByKey[key]?.pageIndices ?? [];
+}
+
+/**
+ * @returns {void}
+ */
+function refreshOpenPageGroups() {
+    uiState.openPageGroups.forEach(key => refreshOpenPageCardsByKey(key));
+}
+
+/**
+ * @param {string} key
+ * @returns {void}
+ */
+function refreshOpenPageCardsByKey(key) {
+    if (!currentViewModel) return;
+    const indices = currentViewModel.pageGroupByKey[key]?.pageIndices;
+    if (!indices) return;
+    document.querySelectorAll(".page-group").forEach(pgEl => {
+        const groupEl = /** @type {HTMLElement} */ (pgEl);
+        if ((groupEl.dataset.pageGroupKey ?? "") !== key) return;
+        const preview = /** @type {HTMLElement|null} */ (groupEl.querySelector(".pg-cards.open"));
+        if (preview) buildPageCards(preview, indices);
+    });
+}
+
+/**
+ * @param {HTMLElement} pageGroupEl
+ * @param {boolean} open
+ * @returns {void}
+ */
+function setPageGroupOpen(pageGroupEl, open) {
+    const preview = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-cards"));
+    const icon = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-expand-icon"));
+    const key = pageGroupEl.dataset.pageGroupKey ?? "";
+    const indices = pageGroupIndices(pageGroupEl);
+
+    preview.classList.toggle("open", open);
+    if (open) uiState.openPageGroups.add(key);
+    else uiState.openPageGroups.delete(key);
+    icon.textContent = open ? "▼" : "▶";
+
+    if (open) buildPageCards(preview, indices);
+}
+
+/**
+ * @param {string} tag
+ * @param {Record<string, string|number>} attrs
+ * @returns {SVGElement}
+ */
+function svgEl(tag, attrs) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, String(v)));
+    return el;
+}
+
+/**
+ * @param {string} text
+ * @returns {SVGTitleElement}
+ */
+function svgTitle(text) {
+    const title = /** @type {SVGTitleElement} */ (document.createElementNS("http://www.w3.org/2000/svg", "title"));
+    title.textContent = text;
+    return title;
+}
+
+/**
+ * @param {number} mm
+ * @param {number} scale
+ * @returns {number}
+ */
+function svgPos(mm, scale) {
+    return Math.round((mm * scale + PAD) * 10) / 10;
+}
+
+/**
+ * @param {number} mm
+ * @param {number} scale
+ * @returns {number}
+ */
+function svgDim(mm, scale) {
+    return Math.round(mm * scale * 10) / 10;
+}
+
+/**
+ * Label for an area: its name when available, otherwise the first content preview chunk.
+ * @param {AreaEntry} area
+ * @returns {string}
+ */
+function areaLabel(area) {
+    if (area.areaName) return area.areaName.slice(0, 40);
+    const preview = area.contentPreview;
+    if (!preview) return "";
+    const firstChunk = preview.split(";")[0];
+    return firstChunk.slice(0, 40);
+}
+
+// ─── 13. Inspector ───────────────────────────────────────────────────────────────────────────────
 //
 // A panel showing the properties of what is selected: the areas selected on a representative page
 // (their base area), else the base template or base page whose name was clicked. Editable fields
 // show the proposed value as placeholder; an edited value is a decision with a reset next to it.
-
-const inspectorEl = /** @type {HTMLElement} */ (document.getElementById("inspector-body"));
-const toggleInspectorBtn = /** @type {HTMLButtonElement} */ (document.getElementById("toggle-inspector"));
-const INSPECTOR_HIDDEN_KEY = "layout-analysis.inspector-hidden";
 
 /** @param {boolean} hidden */
 function setInspectorHidden(hidden) {
@@ -3162,10 +3941,6 @@ function setInspectorHidden(hidden) {
     toggleInspectorBtn.classList.toggle("active", !hidden);
     try { localStorage.setItem(INSPECTOR_HIDDEN_KEY, hidden ? "1" : ""); } catch { /* storage unavailable */ }
 }
-toggleInspectorBtn.addEventListener("click", () => setInspectorHidden(!document.body.classList.contains("inspector-hidden")));
-
-setInspectorHidden((() => { try { return localStorage.getItem(INSPECTOR_HIDDEN_KEY) === "1"; } catch { return false; } })());
-renderInspector();
 
 /**
  * Shows a base template or base page in the inspector (clearing the area selection) and opens
@@ -3302,19 +4077,6 @@ function inspectorPositionFields(area) {
     return block;
 }
 
-/**
- * Sets (or with null, or the bounding box itself, removes) the user's position of a base area.
- * @param {BaseAreaModel} area
- * @param {Position|null} position
- */
-function setBaseAreaPosition(area, position) {
-    const same = position && /** @type {(keyof Position)[]} */ (["x", "y", "w", "h"])
-        .every(side => Math.abs(position[side] - area.proposedPosition[side]) < 0.005);
-    if (position && !same) decisions.positionByDraft.set(area.positionKey, position);
-    else decisions.positionByDraft.delete(area.positionKey);
-    if (currentData) render(currentData);
-}
-
 /** @param {Position} position */
 function formatPosition(position) {
     return `x ${formatMm(position.x)}, y ${formatMm(position.y)} · ${formatMm(position.w)} × ${formatMm(position.h)} mm`;
@@ -3396,734 +4158,91 @@ function renderAreaInspector(pageIndex, selected) {
     );
 }
 
+// ─── 14. Drag and drop ───────────────────────────────────────────────────────────────────────────
+//
+// Moving templates and pages to other groups and reordering base pages; the moves are decisions
+// (see Decisions). The listeners are in Event wiring, next to the one opening a dropped file.
+
 /**
- * Replaces (or, with an empty value or the proposed one, removes) the user's name of a group.
- * @param {NameDecision[]} names
- * @param {NameDecision|null} current
- * @param {number[]} pageIndices
- * @param {string} value
- * @param {string} proposed
- * @returns {NameDecision[]}
+ * @param {HTMLElement|null} el
+ * @param {string} className "drop-target", or "drop-before"/"drop-after" for an insertion line
  */
-function updateNameDecisions(names, current, pageIndices, value, proposed) {
-    const rest = names.filter(name => name !== current);
-    const name = value ? inspireSafeName(value) : "";
-    return name && name !== proposed ? [...rest, {pageIndices: [...pageIndices], name}] : rest;
+function setDropTarget(el, className = "drop-target") {
+    dropTargetEl?.classList.remove("drop-target", "drop-before", "drop-after");
+    dropTargetEl = el;
+    el?.classList.add(className);
 }
 
 /**
- * @param {BaseTemplateModel} baseTemplate
- * @param {string} value
+ * @param {string} className
+ * @param {string} text
+ * @param {"li"|"div"} tag
+ * @returns {HTMLElement}
  */
-function setBaseTemplateName(baseTemplate, value) {
-    const pageIndices = baseTemplate.pages.flatMap(page => [...page.baseAreaByArea.keys()]);
-    decisions.baseTemplateNames = updateNameDecisions(decisions.baseTemplateNames, baseTemplate.nameDecision, pageIndices, value, baseTemplate.proposedName);
-    if (currentData) render(currentData);
+function createDropZone(className, text, tag) {
+    const zone = document.createElement(tag);
+    zone.className = "drop-zone " + className;
+    zone.textContent = text;
+    return zone;
 }
 
 /**
- * @param {BaseTemplatePageModel} basePage
- * @param {string} value
+ * The element the dragged item would go to at this event, or null when it cannot be dropped here.
+ * @param {DragEvent} e
+ * @returns {HTMLElement|null}
  */
-function setBasePageName(basePage, value) {
-    decisions.basePageNames = updateNameDecisions(decisions.basePageNames, basePage.nameDecision, [...basePage.baseAreaByArea.keys()], value, basePage.proposedName);
-    if (currentData) render(currentData);
-}
-
-/**
- * Sets the flow name of a base area on the representative's areas forming it (removing it with an
- * empty value or the proposed one). Flow names must be unique within the base template.
- * @param {BaseTemplateModel} baseTemplate
- * @param {BaseTemplatePageModel} basePage
- * @param {BaseAreaModel} area
- * @param {string} value
- */
-function setFlowName(baseTemplate, basePage, area, value) {
-    const name = value ? inspireSafeName(value) : "";
-    const takenBy = name && baseTemplate.pages.flatMap(page => page.areas).find(other => other !== area && other.flowName === name);
-    if (takenBy) {
-        setStatus(`The flow name "${name}" is already used by another base area of ${baseTemplate.name}.`, "error");
-        renderInspector();
-        return;
-    }
-    const representative = currentData.pages[basePage.representativePageIndex];
-    const key = renderUnitKey(representative, basePage.representativePageIndex);
-    area.areaIndices.forEach(areaIndex => {
-        if (name && name !== area.proposedFlowName) decisions.flowNameByArea.set(`${key}#${areaIndex}`, name);
-        else decisions.flowNameByArea.delete(`${key}#${areaIndex}`);
-    });
-    render(currentData);
-}
-
-// Event delegation for page-group toggle
-document.getElementById("template-groups").addEventListener("click", (e) => {
+function dropTargetAt(e) {
+    if (!dragged || !currentViewModel) return null;
     const target = /** @type {HTMLElement} */ (e.target);
-    const inspect = /** @type {HTMLElement|null} */ (target.closest("[data-action='inspect-template'], [data-action='inspect-page']"));
-    if (inspect) {
-        inspectItem(inspect.dataset.action === "inspect-page" ? "page" : "template", inspect.dataset.key ?? "");
-        return;
+    const li = /** @type {HTMLElement|null} */ (target.closest?.(".template-groups > li"));
+    if (!li) return null;
+    if (dragged.kind === "template") {
+        if (li.classList.contains("new-template")) return li;
+        return Number(li.dataset.groupIndex) !== dragged.groupIndex && li.dataset.groupIndex != null ? li : null;
     }
-    const fixToggle = /** @type {HTMLElement|null} */ (target.closest("[data-action='toggle-fix']"));
-    if (fixToggle) {
-        const group = currentViewModel?.templateGroups[Number(fixToggle.dataset.groupIndex)];
-        if (group?.locked) unlockGroup(group);
-        else if (group) fixGroup(group);
-        return;
-    }
-    const useComputed = /** @type {HTMLElement|null} */ (target.closest("[data-action='use-computed']"));
-    if (useComputed) {
-        const basePage = currentBasePageByPage.get(Number(useComputed.dataset.pageIndex))?.basePage;
-        if (basePage) useComputedRepresentative(basePage);
-        return;
-    }
-    if (target.closest(".pg-handle")) return;
-    const row = /** @type {HTMLElement|null} */ (target.closest("[data-action='toggle-preview']"));
-    if (!row) return;
-    togglePageCards(row);
-});
-
-/**
- * @param {HTMLElement} rowEl
- */
-function togglePageCards(rowEl) {
-    const pageGroupEl = /** @type {HTMLElement} */ (rowEl.closest(".page-group"));
-    const preview = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-cards"));
-    setPageGroupOpen(pageGroupEl, !preview.classList.contains("open"));
-}
-
-/**
- * Populates a .pg-cards container with page card elements.
- * @param {HTMLElement} preview
- * @param {number[]} indices
- */
-function buildPageCards(preview, indices) {
-    preview.innerHTML = "";
-    indices.forEach(pi => {
-        preview.appendChild(buildPageCard(pi));
-    });
-}
-
-/**
- * @param {Set<string>} keys
- * @returns {void}
- */
-function reopenPageGroups(keys) {
-    document.querySelectorAll(".page-group").forEach(pgEl => {
-        const groupEl = /** @type {HTMLElement} */ (pgEl);
-        const key = groupEl.dataset.pageGroupKey ?? "";
-        if (!keys.has(key)) return;
-        if (!groupEl.querySelector(".pg-cards.open")) setPageGroupOpen(groupEl, true);
-    });
-}
-
-/**
- * @param {HTMLElement} pageGroupEl
- * @returns {number[]}
- */
-function pageGroupIndices(pageGroupEl) {
-    if (!currentViewModel) return [];
-    const key = pageGroupEl.dataset.pageGroupKey ?? "";
-    return currentViewModel.pageGroupByKey[key]?.pageIndices ?? [];
-}
-
-/**
- * @returns {void}
- */
-function refreshOpenPageGroups() {
-    uiState.openPageGroups.forEach(key => refreshOpenPageCardsByKey(key));
-}
-
-/**
- * @param {string} key
- * @returns {void}
- */
-function refreshOpenPageCardsByKey(key) {
-    if (!currentViewModel) return;
-    const indices = currentViewModel.pageGroupByKey[key]?.pageIndices;
-    if (!indices) return;
-    document.querySelectorAll(".page-group").forEach(pgEl => {
-        const groupEl = /** @type {HTMLElement} */ (pgEl);
-        if ((groupEl.dataset.pageGroupKey ?? "") !== key) return;
-        const preview = /** @type {HTMLElement|null} */ (groupEl.querySelector(".pg-cards.open"));
-        if (preview) buildPageCards(preview, indices);
-    });
-}
-
-/**
- * @param {HTMLElement} pageGroupEl
- * @param {boolean} open
- * @returns {void}
- */
-function setPageGroupOpen(pageGroupEl, open) {
-    const preview = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-cards"));
-    const icon = /** @type {HTMLElement} */ (pageGroupEl.querySelector(".pg-expand-icon"));
-    const key = pageGroupEl.dataset.pageGroupKey ?? "";
-    const indices = pageGroupIndices(pageGroupEl);
-
-    preview.classList.toggle("open", open);
-    if (open) uiState.openPageGroups.add(key);
-    else uiState.openPageGroups.delete(key);
-    icon.textContent = open ? "▼" : "▶";
-
-    if (open) buildPageCards(preview, indices);
-}
-
-/**
- * @param {LayoutData} data
- * @param {LayoutAnalysis|null} previousAnalysis
- * @returns {LayoutAnalysis}
- */
-function ensureAnalysis(data, previousAnalysis) {
-    if (currentData === data && previousAnalysis != null) return previousAnalysis;
-    return {
-        similarity: buildSimilarity(data),
-        pageBaseTemplateAreaDrafts: buildBaseTemplateAreaDrafts(data.pages, PROXIMITY_GAP_MM),
-    };
-}
-
-/**
- * @param {LayoutData} data
- * @param {LayoutAnalysis} analysis
- * @param {Settings} activeSettings
- * @param {LockedGroup[]} lockedGroups
- * @returns {ViewModel}
- */
-function buildViewModel(data, analysis, activeSettings, lockedGroups) {
-    const {templateLevel, pageLevel} = analysis.similarity;
-    const templateGroups = computeTemplateGroups(data, templateLevel, pageLevel.matrix, activeSettings, lockedGroups);
-    /** @type {Record<string, PageGroup>} */
-    const pageGroupByKey = {};
-    const pageGroupKeys = new Set();
-
-    templateGroups.forEach(group => {
-        group.pageGroups.forEach(pageGroup => {
-            pageGroupKeys.add(pageGroup.key);
-            pageGroupByKey[pageGroup.key] = pageGroup;
-        });
-    });
-
-    return {templateLevel, pageLevel, templateGroups, pageGroupByKey, pageGroupKeys};
-}
-
-/**
- * @param {UiState} previousState
- * @param {ViewModel} viewModel
- * @param {boolean} dataChanged
- * @returns {UiState}
- */
-function reconcileUiState(previousState, viewModel, dataChanged) {
-    if (dataChanged) return {openPageGroups: new Set(), areaSelection: null, inspected: null};
-    const inspected = previousState.inspected;
-    const inspectedExists = inspected?.kind === "page"
-        ? viewModel.pageGroupKeys.has(inspected.key)
-        : viewModel.templateGroups.some(group => group.key === inspected?.key);
-    return {
-        openPageGroups: new Set(
-            [...previousState.openPageGroups].filter(key => viewModel.pageGroupKeys.has(key))
-        ),
-        areaSelection: previousState.areaSelection,
-        inspected: inspectedExists ? inspected : null,
-    };
-}
-
-/** @returns {Decisions} */
-function emptyDecisions() {
-    return {pinnedRepresentatives: [], areaGroupsByPage: new Map(), lockedGroups: [], baseTemplateNames: [], basePageNames: [], flowNameByArea: new Map(), positionByDraft: new Map()};
-}
-
-/**
- * Area drafts of every page: the user's area groups where the page has them, otherwise the
- * computed proximity grouping.
- * @param {LayoutData} data
- * @param {LayoutAnalysis} analysis
- * @param {Decisions} decisions
- * @returns {BaseTemplateAreaDraft[][]}
- */
-function effectiveAreaDrafts(data, analysis, decisions) {
-    return data.pages.map((page, pageIndex) => {
-        const manual = decisions.areaGroupsByPage.get(renderUnitKey(page, pageIndex));
-        return manual ? draftsFromAreaGroups(page.areas, manual) : (analysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []);
-    });
-}
-
-/**
- * Merges the drafts that contain any of the selected areas into one draft.
- * @param {number[][]} areaGroups
- * @param {Set<number>} selected
- * @returns {number[][]}
- */
-function mergeAreaGroups(areaGroups, selected) {
-    const touched = areaGroups.filter(group => group.some(areaIndex => selected.has(areaIndex)));
-    const untouched = areaGroups.filter(group => !touched.includes(group));
-    return [...untouched, touched.flat()];
-}
-
-/**
- * Takes the selected areas out of their drafts, each into a draft of its own.
- * @param {number[][]} areaGroups
- * @param {Set<number>} selected
- * @returns {number[][]}
- */
-function splitAreaGroups(areaGroups, selected) {
-    const remaining = areaGroups
-        .map(group => group.filter(areaIndex => !selected.has(areaIndex)))
-        .filter(group => group.length);
-    return [...remaining, ...[...selected].map(areaIndex => [areaIndex])];
-}
-
-/**
- * What merge and split would do with the selection: merging needs areas of at least two drafts,
- * splitting needs a selected area that shares its draft with another area.
- * @param {BaseTemplateAreaDraft[]} drafts
- * @param {Set<number>} selected
- * @returns {{canMerge: boolean, canSplit: boolean}}
- */
-function describeAreaSelection(drafts, selected) {
-    const touched = drafts.filter(draft => draft.areaIndices.some(areaIndex => selected.has(areaIndex)));
-    return {
-        canMerge: touched.length >= 2,
-        canSplit: touched.some(draft => draft.areaIndices.length > 1),
-    };
-}
-
-/**
- * Applies a merge or split of the selected areas of a page and stores the result as the page's
- * manual area groups. Every occurrence of the same page (shared by several templates) changes.
- * @param {number} pageIndex
- * @param {"merge"|"split"} operation
- */
-function editAreaGroups(pageIndex, operation) {
-    const selection = uiState.areaSelection;
-    if (!currentData || !selection || selection.pageIndex !== pageIndex || !selection.areaIndices.size) return;
-    const page = currentData.pages[pageIndex];
-    const groups = (currentAreaDrafts[pageIndex] ?? []).map(draft => [...draft.areaIndices]);
-    const edited = operation === "merge"
-        ? mergeAreaGroups(groups, selection.areaIndices)
-        : splitAreaGroups(groups, selection.areaIndices);
-    const key = renderUnitKey(page, pageIndex);
-    if (sameAreaGroups(edited, (currentAnalysis.pageBaseTemplateAreaDrafts[pageIndex] ?? []).map(draft => draft.areaIndices))) {
-        decisions.areaGroupsByPage.delete(key); // back to the computed grouping: no decision needed
-    } else {
-        decisions.areaGroupsByPage.set(key, edited);
-    }
-    uiState.areaSelection = null;
-    render(currentData);
-}
-
-/**
- * @param {number[][]} a
- * @param {number[][]} b
- * @returns {boolean} whether both group the same areas together, in any order
- */
-function sameAreaGroups(a, b) {
-    /** @param {number[][]} groups */
-    const normalize = groups => groups.map(group => [...group].sort((x, y) => x - y).join(",")).sort().join("|");
-    return normalize(a) === normalize(b);
-}
-
-/**
- * Drops the user's area groups of a page, so the computed grouping applies again.
- * @param {number} pageIndex
- */
-function resetAreaGroups(pageIndex) {
-    if (!currentData) return;
-    decisions.areaGroupsByPage.delete(renderUnitKey(currentData.pages[pageIndex], pageIndex));
-    uiState.areaSelection = null;
-    render(currentData);
-}
-
-/**
- * Makes the page the representative of its base page as a manual decision (a pin). This also
- * works for the computed representative, to keep it when the computation changes. Picking the
- * pinned representative again removes the pins of the group, so the computed one applies again.
- * @param {BaseTemplatePageModel} basePage
- * @param {number} pageIndex
- */
-function setRepresentative(basePage, pageIndex) {
-    const unpin = basePage.representativeIsManual && basePage.representativePageIndex === pageIndex;
-    unpinGroup(basePage);
-    if (!unpin) decisions.pinnedRepresentatives.push(pageIndex);
-    if (currentData) render(currentData);
-}
-
-/**
- * Takes the computed representative of a base page: removes the pins of its group.
- * @param {BaseTemplatePageModel} basePage
- */
-function useComputedRepresentative(basePage) {
-    unpinGroup(basePage);
-    if (currentData) render(currentData);
-}
-
-/** @param {BaseTemplatePageModel} basePage */
-function unpinGroup(basePage) {
-    decisions.pinnedRepresentatives = decisions.pinnedRepresentatives.filter(pageIndex => !basePage.baseAreaByArea.has(pageIndex));
-}
-
-/**
- * Counts the manual decisions and those that differ from what the computation proposes now: a
- * pinned representative other than the computed one, a pin not used because an earlier pin is in
- * the same group, and area groups that differ from the computed grouping.
- * @returns {{manual: number, differing: number}}
- */
-function describeDecisions() {
-    let differing = decisions.areaGroupsByPage.size + decisions.positionByDraft.size
-        + currentViewModel.templateGroups.filter(group => group.locked && !group.matchesComputed).length;
-    currentBaseTemplates.forEach(baseTemplate => baseTemplate.pages.forEach(basePage => {
-        if (basePage.representativeIsManual && basePage.representativePageIndex !== basePage.computedRepresentativePageIndex) differing++;
-        differing += basePage.unusedPins.length;
-    }));
-    const names = decisions.baseTemplateNames.length + decisions.basePageNames.length + new Set(decisions.flowNameByArea.values()).size;
-    return {manual: decisions.pinnedRepresentatives.length + decisions.areaGroupsByPage.size + decisions.lockedGroups.length + names + decisions.positionByDraft.size, differing};
-}
-
-/**
- * Fixes a computed template group as it is, with its page groups.
- * @param {TemplateGroup} group
- */
-function fixGroup(group) {
-    decisions.lockedGroups.push({templateIds: [...group.templateIds], pageGroups: group.pageGroups.map(pageGroup => [...pageGroup.pageIndices])});
-    if (currentData) render(currentData);
-}
-
-/**
- * Releases a fixed template group: its templates are grouped by threshold and strategy again.
- * Asks first when the computation groups them differently, as fixing again would not bring the
- * group back.
- * @param {TemplateGroup} group
- */
-function unlockGroup(group) {
-    if (!group.matchesComputed && !confirm("Release this fixed group? Threshold and strategy group its templates or pages differently, so fixing again will not bring this group back.")) return;
-    decisions.lockedGroups = decisions.lockedGroups.filter(locked => locked !== group.locked);
-    if (currentData) render(currentData);
-}
-
-/**
- * Replaces the decisions fixing the given groups (computed groups have none) with new fixed groups.
- * @param {TemplateGroup[]} groups
- * @param {LockedGroup[]} lockedGroups
- */
-function replaceLockedGroups(groups, lockedGroups) {
-    const old = new Set(groups.map(group => group.locked).filter(Boolean));
-    decisions.lockedGroups = decisions.lockedGroups.filter(locked => !old.has(locked))
-        .concat(lockedGroups.filter(locked => locked.templateIds.length));
-}
-
-/**
- * Adds pages to page groups: each to the page group most similar to it (average over its pages)
- * when that reaches the threshold, otherwise to a new page group of its own.
- * @param {number[][]} pageGroups modified in place
- * @param {number[]} pageIndices
- * @returns {number[][]}
- */
-function placePages(pageGroups, pageIndices) {
-    const matrix = /** @type {ViewModel} */ (currentViewModel).pageLevel.matrix;
-    pageIndices.forEach(pageIndex => {
-        let best = null, bestScore = -Infinity;
-        pageGroups.forEach(pageGroup => {
-            const score = pageGroup.reduce((sum, other) => sum + (matrix[pageIndex]?.[other] ?? 0), 0) / pageGroup.length;
-            if (score > bestScore) { bestScore = score; best = pageGroup; }
-        });
-        if (best && bestScore >= settings.groupThreshold) best.push(pageIndex);
-        else pageGroups.push([pageIndex]);
-    });
-    return pageGroups;
-}
-
-/**
- * Moves a template, with all its pages, to another base template, or to a new one of its own when
- * `to` is null. Both groups become fixed groups, so threshold and strategy no longer change them;
- * the moved pages join the most similar base pages of the target.
- * @param {string} templateId
- * @param {TemplateGroup} from
- * @param {TemplateGroup|null} to
- */
-function moveTemplate(templateId, from, to) {
-    if (!currentData || from === to) return;
-    const template = currentData.templates.find(t => t.templateId === templateId);
-    if (!template) return;
-    const moved = new Set(template.pageIndices);
-    const fromLocked = {
-        templateIds: from.templateIds.filter(id => id !== templateId),
-        pageGroups: from.pageGroups.map(pageGroup => pageGroup.pageIndices.filter(pageIndex => !moved.has(pageIndex))).filter(pageGroup => pageGroup.length),
-    };
-    const toLocked = to
-        ? {templateIds: [...to.templateIds, templateId], pageGroups: placePages(to.pageGroups.map(pageGroup => [...pageGroup.pageIndices]), template.pageIndices)}
-        : {templateIds: [templateId], pageGroups: placePages([], template.pageIndices)};
-    replaceLockedGroups(to ? [from, to] : [from], [fromLocked, toLocked]);
-    const name = template.templateName ?? templateId;
-    render(currentData);
-    setStatus(to ? `Moved ${name} to another base template; both groups are fixed now.` : `Moved ${name} to a new base template; both groups are fixed now.`, "ok");
-}
-
-/**
- * Moves a page to another base page of its base template, or to a new base page when `to` is
- * null. The template group becomes a fixed group with these page groups.
- * @param {number} pageIndex
- * @param {TemplateGroup} group
- * @param {PageGroup|null} to
- */
-function movePage(pageIndex, group, to) {
-    if (!currentData) return;
-    const pageGroups = group.pageGroups.map(pageGroup => pageGroup.pageIndices.filter(other => other !== pageIndex));
-    if (to) pageGroups[group.pageGroups.indexOf(to)].push(pageIndex);
-    else pageGroups.push([pageIndex]);
-    replaceLockedGroups([group], [{templateIds: [...group.templateIds], pageGroups: pageGroups.filter(pageGroup => pageGroup.length)}]);
-    render(currentData);
-    setStatus(`Moved ${pageName(currentData.pages[pageIndex])} to ${to ? "another" : "a new"} base page; the group is fixed now.`, "ok");
-}
-
-/**
- * Moves a base page before or after another one of its base template. The template group becomes a
- * fixed group with this order.
- * @param {TemplateGroup} group
- * @param {PageGroup} moved
- * @param {PageGroup} target
- * @param {boolean} after
- */
-function reorderBasePage(group, moved, target, after) {
-    if (!currentData || moved === target) return;
-    const order = group.pageGroups.filter(pageGroup => pageGroup !== moved);
-    order.splice(order.indexOf(target) + (after ? 1 : 0), 0, moved);
-    if (order.every((pageGroup, i) => pageGroup === group.pageGroups[i])) return;
-    replaceLockedGroups([group], [{templateIds: [...group.templateIds], pageGroups: order.map(pageGroup => [...pageGroup.pageIndices])}]);
-    render(currentData);
-    setStatus("Changed the order of the base pages; the group is fixed now.", "ok");
-}
-
-/** Discards every manual decision, so the whole proposal is computed again. */
-function recalculateAll() {
-    const {manual} = describeDecisions();
-    if (!currentData || !manual) return;
-    if (!confirm(`Discard all ${manual} manual decision(s) (fixed groups, pinned representatives, merged/split areas, names, positions) and use the computed proposal?`)) return;
-    decisions = emptyDecisions();
-    uiState.areaSelection = null;
-    render(currentData);
-}
-
-/**
- * @param {LayoutData} data
- * @returns {Similarity}
- */
-function buildSimilarity(data) {
-    const pageMatrix = buildSymmetricMatrix(data.pages.length, (i, j) => pageSimilarity(data.pages[i].areas, data.pages[j].areas));
-    const templateLevel = {templates: data.templates, matrix: []};
-    templateLevel.matrix = buildSymmetricMatrix(data.templates.length, (i, j) =>
-        templateSimilarity(data.templates[i].pageIndices, data.templates[j].pageIndices, pageMatrix)
-    );
-    return {
-        pageLevel: {matrix: pageMatrix},
-        templateLevel,
-    };
-}
-
-/**
- * @param {PageEntry[]} pages
- * @param {number} groupingGap
- * @returns {BaseTemplateAreaDraft[][]}
- */
-function buildBaseTemplateAreaDrafts(pages, groupingGap) {
-    return pages.map(page => groupByProximity(page.areas, groupingGap));
-}
-
-/**
- * @param {PageEntry[]} pages
- * @returns {TemplateEntry[]}
- */
-function deriveTemplates(pages) {
-    /** @type {Map<string, number[]>} */
-    const templatePages = new Map();
-    pages.forEach((page, pageIndex) => {
-        const key = page.templateId ?? `orphan:${page.pageId}`;
-        if (!templatePages.has(key)) templatePages.set(key, []);
-        templatePages.get(key).push(pageIndex);
-    });
-    return [...templatePages.entries()].map(([key, pageIndices]) => {
-        const sortedPageIndices = [...pageIndices].sort((a, b) => {
-            const pageA = pages[a];
-            const pageB = pages[b];
-            return templatePageOrder(pageA) - templatePageOrder(pageB) || a - b;
-        });
-        const first = pages[sortedPageIndices[0]];
-        const isOrphan = first.templateId == null;
-        return {
-            templateId: first.templateId ?? key,
-            templateName: isOrphan
-                ? `Orphan: ${first.pageName ?? first.pageId ?? "Unknown"}`
-                : (first.templateName ?? first.templateId ?? key),
-            pageIndices: sortedPageIndices,
-        };
-    });
-}
-
-/**
- * @param {number} size
- * @param {(i: number, j: number) => number} scoreFn
- * @returns {number[][]}
- */
-function buildSymmetricMatrix(size, scoreFn) {
-    /** @type {number[][]} */
-    const matrix = [];
-    for (let i = 0; i < size; i++) {
-        matrix[i] = [];
-        for (let j = 0; j < size; j++) {
-            if (i === j) matrix[i][j] = 1;
-            else if (j < i) matrix[i][j] = matrix[j][i];
-            else matrix[i][j] = roundTo(scoreFn(i, j), 3);
+    if (Number(li.dataset.groupIndex) !== dragged.groupIndex) return null;
+    if (dragged.kind === "basePage") {
+        // Anywhere over the base template: the gap between base pages nearest to the pointer.
+        const rows = /** @type {HTMLElement[]} */ ([...li.querySelectorAll(".page-group")]);
+        const key = dragged.pageGroupKey;
+        const from = rows.findIndex(row => row.dataset.pageGroupKey === key);
+        let gap = 0, distance = Infinity;
+        for (let i = 0; i <= rows.length; i++) {
+            const y = i < rows.length ? rows[i].getBoundingClientRect().top : rows[rows.length - 1].getBoundingClientRect().bottom;
+            if (Math.abs(e.clientY - y) < distance) { distance = Math.abs(e.clientY - y); gap = i; }
         }
+        if (gap === from || gap === from + 1) return null; // the order would not change
+        dropAfter = gap === rows.length;
+        return rows[dropAfter ? rows.length - 1 : gap];
     }
-    return matrix;
+    const zone = /** @type {HTMLElement|null} */ (target.closest(".new-page"));
+    if (zone) return zone;
+    const pageGroupEl = /** @type {HTMLElement|null} */ (target.closest(".page-group"));
+    const pageGroup = pageGroupEl ? currentViewModel.pageGroupByKey[pageGroupEl.dataset.pageGroupKey ?? ""] : null;
+    const pageIndex = dragged.pageIndex;
+    return pageGroup && !pageGroup.pageIndices.includes(pageIndex) ? pageGroupEl : null;
 }
 
-/**
- * @param {string[]} templateIds
- * @returns {string}
- */
-function templateGroupKey(templateIds) {
-    return `tmpl:${[...templateIds].sort().join("|")}`;
+function endDrag() {
+    dragged = null;
+    setDropTarget(null);
+    templateGroupsEl.querySelectorAll(".drop-zone").forEach(zone => zone.remove());
+    templateGroupsEl.querySelectorAll(".dragging-source").forEach(el => el.classList.remove("dragging-source"));
 }
 
-/**
- * @param {LayoutData} data
- * @param {number[]} pageIndices
- * @returns {string}
- */
-function pageGroupKey(data, pageIndices) {
-    return `pg:${pageIndices.map(i => renderUnitKey(data.pages[i], i)).sort().join("|")}`;
-}
+// ─── 15. Helpers ─────────────────────────────────────────────────────────────────────────────────
+//
+// Small formatting and utility functions.
 
 /**
- * @param {PageEntry} page
- * @param {number} pageIndex
- * @returns {string}
+ * @param {() => void} fn
+ * @param {number} ms
+ * @returns {() => void}
  */
-function renderUnitKey(page, pageIndex) {
-    if (page.pageId != null) return `page:${page.pageId}`;
-    if (page.templateId != null) return `virtual:${page.templateId}:${pageIndex}`;
-    return `index:${pageIndex}`;
-}
-
-/**
- * @param {PageEntry} page
- * @returns {number}
- */
-function templatePageOrder(page) {
-    return page.templatePageIndex ?? Number.MAX_SAFE_INTEGER;
-}
-
-/**
- * Automatic area grouping, a vertical sweep: areas whose Y ranges overlap or are within the
- * proximity gap of each other end up in the same base template area draft.
- * @param {AreaEntry[]} areas
- * @param {number} groupingGap
- * @returns {BaseTemplateAreaDraft[]}
- */
-function groupByProximity(areas, groupingGap) {
-    if (!areas.length) return [];
-    const sortedIndices = areas.map((_, i) => i).sort((a, b) => areas[a].y - areas[b].y || areas[a].x - areas[b].x);
-    /** @type {number[][]} */
-    const groupedIndices = [];
-    let current = [sortedIndices[0]];
-    let curY2 = areas[sortedIndices[0]].y + areas[sortedIndices[0]].h;
-    sortedIndices.slice(1).forEach(idx => {
-        const area = areas[idx];
-        if (area.y <= curY2 + groupingGap) {
-            current.push(idx);
-            curY2 = Math.max(curY2, area.y + area.h);
-        } else {
-            groupedIndices.push(current);
-            current = [idx];
-            curY2 = area.y + area.h;
-        }
-    });
-    groupedIndices.push(current);
-    return draftsFromAreaGroups(areas, groupedIndices);
-}
-
-/**
- * Builds area drafts from groups of area indices (computed or edited by the user), ordered top
- * to bottom, then left to right. Each draft spans the bounding box of its areas.
- * @param {AreaEntry[]} areas
- * @param {number[][]} areaGroups
- * @returns {BaseTemplateAreaDraft[]}
- */
-function draftsFromAreaGroups(areas, areaGroups) {
-    return areaGroups
-        .filter(group => group.length)
-        .map(group => [...group].sort((a, b) => a - b))
-        .map(areaIndices => {
-            const subset = areaIndices.map(index => areas[index]);
-            const x = Math.min(...subset.map(area => area.x));
-            const y = Math.min(...subset.map(area => area.y));
-            return {areaIndices, x, y, x2: Math.max(...subset.map(area => area.x + area.w)), y2: Math.max(...subset.map(area => area.y + area.h))};
-        })
-        .sort((a, b) => a.y - b.y || a.x - b.x)
-        .map(({areaIndices, x, y, x2, y2}, draftIndex) => {
-            const areaName = areaIndices.map(idx => areas[idx].areaName).find(Boolean);
-            const previewSource = areaIndices.map(idx => areas[idx].contentPreview).find(Boolean);
-            return {
-                areaIndices,
-                position: {
-                    x: roundTo(x, 2),
-                    y: roundTo(y, 2),
-                    w: roundTo(x2 - x, 2),
-                    h: roundTo(y2 - y, 2),
-                },
-                name: areaName || parseFlowNameFromPreview(previewSource) || `Area ${draftIndex + 1}`,
-                areaName: areaName || '',
-            };
-        });
-}
-
-/**
- * Compare two pages by greedy bipartite matching on area geometry.
- * Each area is described by (x, width) normalized to page reference width and
- * height with a log-ratio so a 3x difference scores about 1.0.
- * @param {AreaEntry[]} areasA
- * @param {AreaEntry[]} areasB
- * @param {number} [matchThreshold]
- * @returns {number}
- */
-function pageSimilarity(areasA, areasB, matchThreshold = 0.5) {
-    if (!areasA.length || !areasB.length) return 0;
-
-    /** @type {{distance: number, indexA: number, indexB: number}[]} */
-    const areaMatches = [];
-    areasA.forEach((areaA, indexA) => {
-        areasB.forEach((areaB, indexB) => {
-            areaMatches.push({distance: geometryDistance(areaA, areaB, false), indexA, indexB});
-        });
-    });
-    areaMatches.sort((a, b) => a.distance - b.distance);
-
-    const matchedA = new Set();
-    const matchedB = new Set();
-    let total = 0;
-    areaMatches.forEach(match => {
-        if (matchedA.has(match.indexA) || matchedB.has(match.indexB)) return;
-        matchedA.add(match.indexA);
-        matchedB.add(match.indexB);
-        total += Math.max(0, 1 - match.distance / matchThreshold);
-    });
-    const slots = Math.max(areasA.length, areasB.length);
-    return slots > 0 ? total / slots : 0;
-}
-
-/**
- * Compare two templates by positional page matching (page 1<->1, page 2<->2, ...).
- * Unmatched pages contribute 0, penalizing different template lengths proportionally.
- * @param {number[]} pagesA
- * @param {number[]} pagesB
- * @param {number[][]} pageMatrix
- * @returns {number}
- */
-function templateSimilarity(pagesA, pagesB, pageMatrix) {
-    const maxLen = Math.max(pagesA.length, pagesB.length);
-    if (maxLen === 0) return 0;
-    let total = 0;
-    for (let i = 0; i < Math.min(pagesA.length, pagesB.length); i++)
-        total += pageMatrix[pagesA[i]]?.[pagesB[i]] ?? 0;
-    return total / maxLen;
+function debounce(fn, ms) {
+    /** @type {ReturnType<typeof setTimeout>|undefined} */
+    let timer;
+    return () => { clearTimeout(timer); timer = setTimeout(fn, ms); };
 }
 
 /**
@@ -4145,220 +4264,6 @@ function sliderStepDecimals(slider) {
     if (!step || step === "any") return 0;
     const dot = step.indexOf(".");
     return dot >= 0 ? step.length - dot - 1 : 0;
-}
-
-/**
- * @param {LayoutData} data
- * @param {TemplateLevel} templateLevel
- * @param {number[][]} pageMatrix
- * @param {Settings} activeSettings
- * @param {LockedGroup[]} lockedGroups
- * @returns {TemplateGroup[]}
- */
-function computeTemplateGroups(data, templateLevel, pageMatrix, activeSettings, lockedGroups) {
-    const templates = templateLevel.templates;
-    /** @type {Map<string, number>} */
-    const indexById = new Map(templates.map((template, i) => [template.templateId, i]));
-    /** @type {{templateIndices: number[], locked: LockedGroup|null}[]} */
-    const groups = lockedGroups
-        .map(locked => ({
-            templateIndices: /** @type {number[]} */ (locked.templateIds.map(id => indexById.get(id)).filter(i => i != null)).sort((a, b) => a - b),
-            locked,
-        }))
-        .filter(group => group.templateIndices.length);
-    // Templates outside the fixed groups are grouped among themselves.
-    const lockedIndices = new Set(groups.flatMap(group => group.templateIndices));
-    const free = templates.map((_, i) => i).filter(i => !lockedIndices.has(i));
-    groupPages(free, templateLevel.matrix, activeSettings).forEach(templateIndices => groups.push({templateIndices, locked: null}));
-    groups.sort((a, b) => a.templateIndices[0] - b.templateIndices[0]);
-
-    // Which groups the computation alone would form, to show where fixed groups differ.
-    const computedKeys = new Set(lockedGroups.length
-        ? groupPages(templates.map((_, i) => i), templateLevel.matrix, activeSettings)
-            .map(templateIndices => templateGroupKey(templateIndices.map(i => templates[i].templateId)))
-        : []);
-
-    return groups.map(({templateIndices, locked}) => {
-        const key = templateGroupKey(templateIndices.map(i => templates[i].templateId));
-        const pageGroups = buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, locked?.pageGroups ?? []);
-        let matchesComputed = !locked || computedKeys.has(key);
-        if (locked && matchesComputed) {
-            // The same templates; are their pages also grouped and ordered as computed?
-            const order = (/** @type {PageGroup[]} */ list) => list.map(pageGroup => pageGroup.key).join("|");
-            matchesComputed = order(pageGroups) === order(buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, []));
-        }
-        return {
-            key,
-            templateIds: templateIndices.map(i => templates[i].templateId),
-            templateNames: templateIndices.map(i => templates[i].templateName ?? templates[i].templateId),
-            pageGroups,
-            locked,
-            matchesComputed,
-        };
-    });
-}
-
-/**
- * @param {LayoutData} data
- * @param {number[]} templateIndices
- * @param {TemplateLevel} templateLevel
- * @param {number[][]} pageMatrix
- * @param {Settings} activeSettings
- * @param {number[][]} lockedPageGroups fixed page groups in base page order (pages of other templates
- *   are ignored); the remaining pages are grouped among themselves and follow them
- * @returns {PageGroup[]}
- */
-function buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, lockedPageGroups) {
-    const pageIndices = templateIndices
-        .flatMap(templateIndex => templateLevel.templates[templateIndex].pageIndices)
-        .sort((a, b) => a - b);
-    const own = new Set(pageIndices);
-    const locked = lockedPageGroups
-        .map(group => group.filter(pageIndex => own.has(pageIndex)))
-        .filter(group => group.length);
-    const lockedPages = new Set(locked.flat());
-    const free = pageIndices.filter(pageIndex => !lockedPages.has(pageIndex));
-    /** @param {number[]} pg */
-    const sorted = pg => [...pg].sort((a, b) => a - b);
-    // Fixed page groups keep their order (the order of the base pages); the others follow, by first page.
-    return [
-        ...locked.map(pg => ({pageIndices: sorted(pg), locked: true})),
-        ...groupPages(free, pageMatrix, activeSettings).map(pg => ({pageIndices: sorted(pg), locked: false}))
-            .sort((a, b) => a.pageIndices[0] - b.pageIndices[0]),
-    ].map(({pageIndices: pg, locked: isLocked}) => ({key: pageGroupKey(data, pg), pageIndices: pg, locked: isLocked}));
-}
-
-/**
- * Agglomerative grouping that always merges the two most similar groups first, until no pair of
- * groups reaches the threshold. The similarity of two groups depends on the linkage strategy:
- * - single:   the best pair of members (loose)
- * - average:  the average of all member pairs (default)
- * - complete: the worst pair of members (strict)
- * The result does not depend on the order of `indices` except for ties, which go to the earlier
- * groups. Members and groups are returned in `indices` order.
- * @param {number[]} indices
- * @param {number[][]} matrix
- * @param {Settings} activeSettings
- * @returns {number[][]}
- */
-function groupPages(indices, matrix, activeSettings) {
-    const {groupStrategy, groupThreshold} = activeSettings;
-    const count = indices.length;
-    /** @type {(number[]|null)[]} */
-    const groups = indices.map(i => [i]);
-    // linkage[a][b]: similarity between groups a and b, updated in place when groups merge.
-    const linkage = indices.map(a => Float64Array.from(indices, b => matrix[a]?.[b] ?? 0));
-
-    for (;;) {
-        let bestA = -1, bestB = -1, best = -Infinity;
-        for (let a = 0; a < count; a++) {
-            if (!groups[a]) continue;
-            const row = linkage[a];
-            for (let b = a + 1; b < count; b++) {
-                if (groups[b] && row[b] > best) { best = row[b]; bestA = a; bestB = b; }
-            }
-        }
-        if (bestA < 0 || best < groupThreshold) break;
-
-        const groupA = /** @type {number[]} */ (groups[bestA]);
-        const groupB = /** @type {number[]} */ (groups[bestB]);
-        for (let k = 0; k < count; k++) {
-            if (!groups[k] || k === bestA || k === bestB) continue;
-            const scoreA = linkage[bestA][k], scoreB = linkage[bestB][k];
-            const merged =
-                groupStrategy === "single"   ? Math.max(scoreA, scoreB) :
-                groupStrategy === "complete" ? Math.min(scoreA, scoreB) :
-                (scoreA * groupA.length + scoreB * groupB.length) / (groupA.length + groupB.length);
-            linkage[bestA][k] = merged;
-            linkage[k][bestA] = merged;
-        }
-        groupA.push(...groupB);
-        groups[bestB] = null;
-    }
-
-    const positionOf = new Map(indices.map((index, position) => [index, position]));
-    /** @param {number} x @param {number} y */
-    const byPosition = (x, y) => /** @type {number} */ (positionOf.get(x)) - /** @type {number} */ (positionOf.get(y));
-    return /** @type {number[][]} */ (groups.filter(Boolean))
-        .map(group => group.sort(byPosition))
-        .sort((x, y) => byPosition(x[0], y[0]));
-}
-
-/**
- * @param {number[]} pageGroup
- * @param {number[][]} matrix
- * @returns {number|null}
- */
-function minPairScore(pageGroup, matrix) {
-    if (pageGroup.length < 2) return null;
-    let min = 1;
-    for (let i = 0; i < pageGroup.length; i++)
-        for (let j = i + 1; j < pageGroup.length; j++)
-            min = Math.min(min, matrix[pageGroup[i]]?.[pageGroup[j]] ?? 0);
-    return min;
-}
-
-/**
- * @param {number|null} score
- * @returns {string}
- */
-function cohesionClass(score) {
-    if (score === null) return "cohesion-solo";
-    if (score >= 0.75) return "cohesion-high";
-    if (score >= 0.50) return "cohesion-mid";
-    return "cohesion-low";
-}
-
-/**
- * @param {string} tag
- * @param {Record<string, string|number>} attrs
- * @returns {SVGElement}
- */
-function svgEl(tag, attrs) {
-    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
-    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, String(v)));
-    return el;
-}
-
-/**
- * @param {string} text
- * @returns {SVGTitleElement}
- */
-function svgTitle(text) {
-    const title = /** @type {SVGTitleElement} */ (document.createElementNS("http://www.w3.org/2000/svg", "title"));
-    title.textContent = text;
-    return title;
-}
-
-/**
- * @param {number} mm
- * @param {number} scale
- * @returns {number}
- */
-function svgPos(mm, scale) {
-    return Math.round((mm * scale + PAD) * 10) / 10;
-}
-
-/**
- * @param {number} mm
- * @param {number} scale
- * @returns {number}
- */
-function svgDim(mm, scale) {
-    return Math.round(mm * scale * 10) / 10;
-}
-
-/**
- * Label for an area: its name when available, otherwise the first content preview chunk.
- * @param {AreaEntry} area
- * @returns {string}
- */
-function areaLabel(area) {
-    if (area.areaName) return area.areaName.slice(0, 40);
-    const preview = area.contentPreview;
-    if (!preview) return "";
-    const firstChunk = preview.split(";")[0];
-    return firstChunk.slice(0, 40);
 }
 
 /**
@@ -4417,6 +4322,189 @@ function pageCardTooltip(page) {
 function formatMm(value) {
     return Number.isInteger(value) ? String(value) : String(roundTo(value, 2));
 }
+
+// ─── 16. Event wiring and startup ────────────────────────────────────────────────────────────────
+//
+// Event listeners and the initial state, in the order they run when the page loads.
+
+document.getElementById("open-file")?.addEventListener("click", () => fileInput.click());
+
+fileInput.addEventListener("change", () => {
+    const [file] = /** @type {FileList} */ (fileInput.files);
+    if (file) loadFile(file);
+});
+
+saveCsvBtn.addEventListener("click", () => { saveCsv(); });
+
+recalculateAllBtn.addEventListener("click", () => recalculateAll());
+
+templateGroupsEl.addEventListener("mouseover", e => highlightTemplatePages(e, true));
+
+templateGroupsEl.addEventListener("mouseout", e => highlightTemplatePages(e, false));
+
+templateGroupsEl.addEventListener("dragstart", e => {
+    const target = /** @type {HTMLElement} */ (e.target);
+    const chip = /** @type {HTMLElement|null} */ (target.closest?.(".template-tag, .page-tag, .pg-handle"));
+    const li = /** @type {HTMLElement|null} */ (chip?.closest("li"));
+    const group = currentViewModel?.templateGroups[Number(li?.dataset.groupIndex)];
+    if (!chip || !li || !group || !e.dataTransfer) return;
+    const groupIndex = Number(li.dataset.groupIndex);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", chip.textContent ?? "");
+    if (chip.classList.contains("pg-handle")) {
+        const pageGroupEl = /** @type {HTMLElement} */ (chip.closest(".page-group"));
+        dragged = {kind: "basePage", pageGroupKey: pageGroupEl.dataset.pageGroupKey ?? "", groupIndex};
+        requestAnimationFrame(() => pageGroupEl.classList.add("dragging-source"));
+        return;
+    }
+    if (chip.classList.contains("template-tag")) {
+        dragged = {kind: "template", templateId: chip.dataset.templateId ?? "", groupIndex};
+        // A new base template only makes sense when the template does not stand alone already.
+        if (group.templateIds.length > 1) templateGroupsEl.appendChild(createDropZone("new-template", "Drop here for a new base template", "li"));
+    } else {
+        const pageIndex = Number(chip.dataset.pageIndex);
+        dragged = {kind: "page", pageIndex, groupIndex};
+        const own = group.pageGroups.find(pageGroup => pageGroup.pageIndices.includes(pageIndex));
+        if (own && own.pageIndices.length > 1) li.querySelector(".page-groups")?.appendChild(createDropZone("new-page", "Drop here for a new base page", "div"));
+    }
+    // Dim the source after the browser has taken its drag image.
+    requestAnimationFrame(() => chip.classList.add("dragging-source"));
+});
+
+templateGroupsEl.addEventListener("dragover", e => {
+    if (!dragged) return;
+    const el = dropTargetAt(e);
+    if (el && dragged.kind === "basePage") {
+        setDropTarget(el, dropAfter ? "drop-after" : "drop-before");
+    } else {
+        setDropTarget(el);
+    }
+    if (!el || !e.dataTransfer) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+});
+
+templateGroupsEl.addEventListener("drop", e => {
+    if (!dragged || !currentViewModel) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const el = dropTargetAt(e);
+    const item = dragged;
+    const after = dropAfter;
+    const groups = currentViewModel.templateGroups;
+    const from = groups[item.groupIndex];
+    endDrag();
+    if (!el || !from) return;
+    if (item.kind === "basePage") {
+        const moved = currentViewModel.pageGroupByKey[item.pageGroupKey];
+        const target = currentViewModel.pageGroupByKey[el.dataset.pageGroupKey ?? ""];
+        if (moved && target) reorderBasePage(from, moved, target, after);
+    } else if (item.kind === "template") {
+        moveTemplate(item.templateId, from, el.classList.contains("new-template") ? null : groups[Number(el.dataset.groupIndex)]);
+    } else {
+        movePage(item.pageIndex, from, el.classList.contains("new-page") ? null : currentViewModel.pageGroupByKey[el.dataset.pageGroupKey ?? ""] ?? null);
+    }
+});
+
+templateGroupsEl.addEventListener("dragend", endDrag);
+
+document.body.addEventListener("dragover", e => {
+    // Moving a template or page: not droppable outside its targets, and not a file.
+    if (dragged) { setDropTarget(null); return; }
+    e.preventDefault();
+    document.body.classList.add("drag-over");
+});
+
+document.body.addEventListener("dragleave", e => {
+    if (e.relatedTarget == null) document.body.classList.remove("drag-over");
+});
+
+document.body.addEventListener("drop", e => {
+    e.preventDefault();
+    if (dragged) return;
+    document.body.classList.remove("drag-over");
+    const file = e.dataTransfer?.files[0];
+    if (!file) return;
+    // Show the dropped file in the file input too (setting files does not fire "change").
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    fileInput.files = transfer.files;
+    loadFile(file);
+});
+
+document.getElementById("card-size").addEventListener("input", (e) => {
+    settings.canvasW = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLOutputElement} */ (document.getElementById("card-size-out")).value = String(settings.canvasW);
+    scheduleRefreshCards();
+});
+
+document.getElementById("threshold").addEventListener("input", (e) => {
+    settings.groupThreshold = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
+    /** @type {HTMLOutputElement} */ (document.getElementById("threshold-out")).value = settings.groupThreshold.toFixed(2);
+    scheduleRender();
+});
+
+document.getElementById("group-strategy").addEventListener("change", (e) => {
+    settings.groupStrategy = /** @type {"single"|"average"|"complete"} */ (/** @type {HTMLSelectElement} */ (e.target).value);
+    if (currentData) render(currentData);
+});
+
+document.querySelectorAll("input[type='range']").forEach(input => {
+    input.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const slider = /** @type {HTMLInputElement} */ (e.currentTarget);
+        const min = slider.min === "" ? 0 : parseFloat(slider.min);
+        const max = slider.max === "" ? 100 : parseFloat(slider.max);
+        const step = slider.step === "" || slider.step === "any" ? 1 : parseFloat(slider.step);
+        const current = parseFloat(slider.value);
+        const direction = e.deltaY < 0 ? 1 : -1;
+        const next = Math.min(max, Math.max(min, current + direction * step));
+        slider.value = String(roundTo(next, sliderStepDecimals(slider)));
+        slider.dispatchEvent(new Event("input", {bubbles: true}));
+    }, {passive: false});
+});
+
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && uiState.areaSelection) {
+        uiState.areaSelection = null;
+        refreshOpenPageGroups();
+        renderInspector();
+    }
+});
+
+toggleInspectorBtn.addEventListener("click", () => setInspectorHidden(!document.body.classList.contains("inspector-hidden")));
+
+setInspectorHidden((() => { try { return localStorage.getItem(INSPECTOR_HIDDEN_KEY) === "1"; } catch { return false; } })());
+
+renderInspector();
+
+// Event delegation for page-group toggle
+document.getElementById("template-groups").addEventListener("click", (e) => {
+    const target = /** @type {HTMLElement} */ (e.target);
+    const inspect = /** @type {HTMLElement|null} */ (target.closest("[data-action='inspect-template'], [data-action='inspect-page']"));
+    if (inspect) {
+        inspectItem(inspect.dataset.action === "inspect-page" ? "page" : "template", inspect.dataset.key ?? "");
+        return;
+    }
+    const fixToggle = /** @type {HTMLElement|null} */ (target.closest("[data-action='toggle-fix']"));
+    if (fixToggle) {
+        const group = currentViewModel?.templateGroups[Number(fixToggle.dataset.groupIndex)];
+        if (group?.locked) unlockGroup(group);
+        else if (group) fixGroup(group);
+        return;
+    }
+    const useComputed = /** @type {HTMLElement|null} */ (target.closest("[data-action='use-computed']"));
+    if (useComputed) {
+        const basePage = currentBasePageByPage.get(Number(useComputed.dataset.pageIndex))?.basePage;
+        if (basePage) useComputedRepresentative(basePage);
+        return;
+    }
+    if (target.closest(".pg-handle")) return;
+    const row = /** @type {HTMLElement|null} */ (target.closest("[data-action='toggle-preview']"));
+    if (!row) return;
+    togglePageCards(row);
+});
 </script>
 </body>
 </html>
