@@ -263,6 +263,7 @@ class InspireBaseTemplateBuilderTest {
             name("Page 1")
             addArea("Body") {
                 flowToNextPage(true)
+                dynamicHeight(true)
                 position {
                     left(10.millimeters())
                     top(20.millimeters())
@@ -283,6 +284,7 @@ class InspireBaseTemplateBuilderTest {
         flowAreaStub["Name"].stringValue().shouldBeEqualTo("BodyArea")
         val flowArea = result["FlowArea"].last { it["Id"].stringValue() == flowAreaId }
         flowArea["FlowingToNextPage"].stringValue().shouldBeEqualTo("True")
+        flowArea["DynamicHeight"].stringValue().shouldBeEqualTo("True")
         flowArea["Pos"]["X"].stringValue().shouldBeEqualTo(10.millimeters().toMeters().toString())
         flowArea["Pos"]["Y"].stringValue().shouldBeEqualTo(20.millimeters().toMeters().toString())
         flowArea["Size"]["X"].stringValue().shouldBeEqualTo(180.millimeters().toMeters().toString())

@@ -49,7 +49,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
                 }
             }
             is HttpResult.Failure -> {
-                logger.error("Failed to get cloud version: {}", result.error)
+                logger.error("Failed to get cloud version: HTTP {} - {}", result.error.status, result.error.error)
                 null
             }
             is HttpResult.Exception -> {
@@ -200,7 +200,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
     }
 
     fun downloadFile(source: IcmPath) = downloadFile(source.toString())
-    fun downloadFile(source: String): HttpResult<ByteArray, String> {
+    fun downloadFile(source: String): HttpResult<ByteArray, StringErrorWithStatus> {
         logger.debug("Downloading file {}", source)
         val body = buildJsonObject {
             put("pipelineName", "readFile")
@@ -253,12 +253,12 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
         return httpClient.newCall(request).executeRetrying(
             delayMs = evolveConfig.apiRetryDelayMs,
             successDecoder = { it.readBytes() },
-            failureDecoder = { it },
+            failureDecoder = ::StringErrorWithStatus,
         )
     }
 
     fun fileExists(path: IcmPath) = fileExists(path.toString())
-    fun fileExists(path: String): HttpResult<Boolean, String> {
+    fun fileExists(path: String): HttpResult<Boolean, StringErrorWithStatus> {
         logger.debug("Checking whether file {} exists", path)
         val body = buildJsonObject {
             put("pipelineName", "exists")
@@ -309,10 +309,10 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
         val result = httpClient.newCall(request).executeRetrying(
             delayMs = evolveConfig.apiRetryDelayMs,
             successDecoder = { true },
-            failureDecoder = { it },
+            failureDecoder = ::StringErrorWithStatus,
         )
 
-        if (result is HttpResult.Failure && isResourceMissingError(result.error)) {
+        if (result is HttpResult.Failure && isResourceMissingError(result.error.error)) {
             return HttpResult.Success(false)
         }
         return result
@@ -339,13 +339,13 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
     private fun Request.Builder.readStringRetrying(
         maxRetries: Int = 3,
         delayMs: Long = evolveConfig.apiRetryDelayMs,
-    ): HttpResult<String, String> {
+    ): HttpResult<String, StringErrorWithStatus> {
         return httpClient.newCall(this.build())
             .executeRetrying(
                 maxRetries = maxRetries,
                 delayMs = delayMs,
                 successDecoder = { it.reader().readText() },
-                failureDecoder = { it }
+                failureDecoder = ::StringErrorWithStatus
             )
     }
 
@@ -359,7 +359,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
                 maxRetries = maxRetries,
                 delayMs = delayMs,
                 successDecoder = { if (T::class == Unit::class) Unit as T else json.decodeFromStream<T>(it) },
-                failureDecoder = { json.decodeFromString<E>(it)}
+                failureDecoder = { _, body -> json.decodeFromString<E>(body) }
             )
     }
 
@@ -367,7 +367,7 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
         maxRetries: Int = 3,
         delayMs: Long,
         successDecoder: (InputStream) -> T,
-        failureDecoder: (String) -> E,
+        failureDecoder: (status: Int, body: String) -> E,
     ): HttpResult<T, E> {
         var lastError: HttpResult<T, E>? = null
         repeat(maxRetries) { attempt ->
@@ -382,9 +382,9 @@ class CaApiClient(private val migConfig: MigConfig, private val httpClient: OkHt
                     try {
                         val body = response.body.string()
                         logger.error("Attempt {}/{} failed: {} {} - {}", attempt + 1, maxRetries, response.code, response.message, body)
-                        val jsonBody = failureDecoder(body)
-                        lastError = HttpResult.Failure(jsonBody)
-                        if (!response.code.isRetryable()) return HttpResult.Failure(jsonBody)
+                        val error = failureDecoder(response.code, body)
+                        lastError = HttpResult.Failure(error)
+                        if (!response.code.isRetryable()) return HttpResult.Failure(error)
                     } catch (e: Exception) {
                         logger.error("Error while parsing response: {} {} {}", response.code, response.message, e.toString())
                         lastError = HttpResult.Exception(e)
@@ -412,6 +412,8 @@ sealed interface HttpResult<T, E> {
     data class Failure<T, E>(val error: E) : HttpResult<T, E>
     data class Exception<T, E>(val cause: Throwable) : HttpResult<T, E>
 }
+
+data class StringErrorWithStatus(val status: Int, val error: String)
 
 @Serializable
 enum class ObjectType {

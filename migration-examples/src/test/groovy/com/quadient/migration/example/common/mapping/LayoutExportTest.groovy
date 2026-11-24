@@ -2,6 +2,7 @@ package com.quadient.migration.example.common.mapping
 
 import com.quadient.migration.api.Migration
 import com.quadient.migration.api.dto.migrationmodel.*
+import com.quadient.migration.api.dto.migrationmodel.builder.BaseTemplateBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.DocumentObjectBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.ImageBuilder
 import com.quadient.migration.api.dto.migrationmodel.builder.documentcontent.AreaBuilder
@@ -50,12 +51,12 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
-            full tmpl,,full page,,Standard,,test flow2,,false,0,0mm,0mm,0mm,0mm,,,
-            full tmpl,,full page,,Standard,,test flow3,,true,1,0mm,0mm,0mm,0mm,,,
-            full tmpl,,full page,,Standard,,,,false,2,0mm,0mm,0mm,0mm,,,
-            full tmpl,,full page,,Standard,,test flow5,,false,3,0mm,0mm,0mm,0mm,,,
-            ,,unreferenced page,,Standard,,test flow,,true,0,0mm,0mm,0mm,0mm,,,
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,dynamicHeight,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            full tmpl,,full page,,Standard,,test flow2,,false,false,0,0mm,0mm,0mm,0mm,,,
+            full tmpl,,full page,,Standard,,test flow3,,true,false,1,0mm,0mm,0mm,0mm,,,
+            full tmpl,,full page,,Standard,,,,false,false,2,0mm,0mm,0mm,0mm,,,
+            full tmpl,,full page,,Standard,,test flow5,,false,false,3,0mm,0mm,0mm,0mm,,,
+            ,,unreferenced page,,Standard,,test flow,,true,false,0,0mm,0mm,0mm,0mm,,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -73,10 +74,10 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
-            tmpl with areas,,,,Standard,,Address Content,,false,0,0mm,0mm,0mm,0mm,,,
-            tmpl with areas,,,,Standard,,,,true,1,0mm,0mm,0mm,0mm,,,
-            tmpl with areas,,,,Standard,,Footer,,false,2,0mm,0mm,0mm,0mm,,,
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,dynamicHeight,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            tmpl with areas,,,,Standard,,Address Content,,false,false,0,0mm,0mm,0mm,0mm,,,
+            tmpl with areas,,,,Standard,,,,true,false,1,0mm,0mm,0mm,0mm,,,
+            tmpl with areas,,,,Standard,,Footer,,false,false,2,0mm,0mm,0mm,0mm,,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -99,8 +100,8 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
-            tmpl with base,,page with own base,,Standard,\$G1,test flow,,false,0,0mm,0mm,0mm,0mm,,,
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,dynamicHeight,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            tmpl with base,,page with own base,,Standard,\$G1,test flow,,false,false,0,0mm,0mm,0mm,0mm,,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -125,10 +126,10 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
-            bt-1,Base template 1,page-1,Page 1,Base,,address,,false,0,1cm,1cm,190mm,20mm,210mm,297mm,
-            bt-1,Base template 1,page-1,Page 1,Base,,Area 2,Body,true,1,1cm,30mm,190mm,50mm,210mm,297mm,
-            bt-1,Base template 1,page-2,Page 2,Base,,Area 1,,false,0,0mm,0mm,210mm,99mm,210mm,99mm,
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,dynamicHeight,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            bt-1,Base template 1,page-1,Page 1,Base,,address,,false,false,0,1cm,1cm,190mm,20mm,210mm,297mm,
+            bt-1,Base template 1,page-1,Page 1,Base,,Area 2,Body,true,false,1,1cm,30mm,190mm,50mm,210mm,297mm,
+            bt-1,Base template 1,page-2,Page 2,Base,,Area 1,,false,false,0,0mm,0mm,210mm,99mm,210mm,99mm,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -156,8 +157,8 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
-            ,,page with preview,,Standard,,test flow,,false,0,0mm,0mm,0mm,0mm,,,docRef: Block One;imageRef: Image One;docRef: Block Two;(+2 more)
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,dynamicHeight,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            ,,page with preview,,Standard,,test flow,,false,false,0,0mm,0mm,0mm,0mm,,,docRef: Block One;imageRef: Image One;docRef: Block Two;(+2 more)
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -187,8 +188,8 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
-            selected tmpl,,selected page,,Standard,,selected flow,,false,0,0mm,0mm,0mm,0mm,,,
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,dynamicHeight,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            selected tmpl,,selected page,,Standard,,selected flow,,false,false,0,0mm,0mm,0mm,0mm,,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -214,8 +215,8 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
-            bt-1,Base template 1,page-1,Page 1,Base,,address,,false,0,1cm,1cm,190mm,20mm,210mm,297mm,
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,dynamicHeight,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            bt-1,Base template 1,page-1,Page 1,Base,,address,,false,false,0,1cm,1cm,190mm,20mm,210mm,297mm,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -233,10 +234,10 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
-            named tmpl,,,,Standard,,flow,Header,false,0,0mm,0mm,0mm,0mm,,,
-            named tmpl,,,,Standard,,,,false,1,0mm,0mm,0mm,0mm,,,
-            named tmpl,,,,Standard,,,"Body, main",false,2,0mm,0mm,0mm,0mm,,,
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,dynamicHeight,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            named tmpl,,,,Standard,,flow,Header,false,false,0,0mm,0mm,0mm,0mm,,,
+            named tmpl,,,,Standard,,,,false,false,1,0mm,0mm,0mm,0mm,,,
+            named tmpl,,,,Standard,,,"Body, main",false,false,2,0mm,0mm,0mm,0mm,,,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }
@@ -255,9 +256,37 @@ class LayoutExportTest {
         LayoutExport.run(migration, mappingFile)
 
         def expected = """\
-            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
-            tmpl,,,,Standard,,no position flow,,false,0,,,,,,,
-            tmpl,,,,Standard,,positioned flow,,false,1,0mm,0mm,0mm,0mm,,,
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,dynamicHeight,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            tmpl,,,,Standard,,no position flow,,false,false,0,,,,,,,
+            tmpl,,,,Standard,,positioned flow,,false,false,1,0mm,0mm,0mm,0mm,,,
+            """.stripIndent()
+        Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
+    }
+
+    @Test
+    void exportIncludesDynamicHeight() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+        when(migration.mappingRepository.getAreaMapping(any())).thenReturn(new MappingItem.Area(null, [:], [:]))
+        def dynamicArea = new AreaBuilder().interactiveFlowName("dynamic flow").dynamicHeight(true).build()
+        when((migration.documentObjectRepository as DocumentObjectRepository).list(any())).thenReturn([
+            new DocumentObjectBuilder("tmpl", DocumentObjectType.Template).content([dynamicArea]).build(),
+        ])
+        def baseTemplate = new BaseTemplateBuilder("bt-1")
+                .name("Base template 1")
+                .addPage(new BaseTemplateBuilder.Page()
+                        .name("Page 1")
+                        .pageWidth(Size.ofMillimeters(210))
+                        .pageHeight(Size.ofMillimeters(297))
+                        .addArea(new BaseTemplateBuilder.Area("Body").dynamicHeight(true)))
+                .build()
+        when(migration.baseTemplateRepository.listAll()).thenReturn([baseTemplate])
+
+        LayoutExport.run(migration, mappingFile)
+
+        def expected = """\
+            templateId,templateName,pageId,pageName,type,baseTemplateTargetId,interactiveFlowName,areaName,flowToNextPage,dynamicHeight,areaIndex,x,y,width,height,pageWidth,pageHeight,contentPreview (read-only)
+            tmpl,,,,Standard,,dynamic flow,,false,true,0,,,,,,,
+            bt-1,Base template 1,page-1,Page 1,Base,,Body,,false,true,0,,,,,210mm,297mm,
             """.stripIndent()
         Assertions.assertEquals(expected, mappingFile.toFile().text.replaceAll("\\r\\n|\\r", "\n"))
     }

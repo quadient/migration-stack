@@ -33,6 +33,7 @@ class FlowAreaImplTest extends Specification {
                 <BorderStyleId></BorderStyleId>
                 <FlowingToNextPage>False</FlowingToNextPage>
                 <BorderType>Content</BorderType>
+                <DynamicHeight>False</DynamicHeight>
          """)
     }
 
@@ -49,6 +50,7 @@ class FlowAreaImplTest extends Specification {
                 .setBorderStyle(borderStyle)
                 .setBorderType(CONTENT_WITH_LINE_GAB)
                 .setFlowToNextPage(true)
+                .setDynamicHeight(true)
                 .setRotation(180d)
                 .setSkew(15.5d)
                 .setFlip(true)
@@ -76,6 +78,7 @@ class FlowAreaImplTest extends Specification {
                 <BorderStyleId>SR_2</BorderStyleId>
                 <FlowingToNextPage>True</FlowingToNextPage>
                 <BorderType>ContentWithLineGap</BorderType>
+                <DynamicHeight>True</DynamicHeight>
          """)
     }
 

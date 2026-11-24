@@ -49,6 +49,7 @@ static void run(Migration migration, Path path) {
             Mapping.displayHeader("interactiveFlowName", false),
             Mapping.displayHeader("areaName", false),
             Mapping.displayHeader("flowToNextPage", false),
+            Mapping.displayHeader("dynamicHeight", false),
             Mapping.displayHeader("areaIndex", false),
             Mapping.displayHeader("x", false),
             Mapping.displayHeader("y", false),
@@ -113,6 +114,7 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     builder.append(Csv.serialize(area.interactiveFlowName) + ",")
     builder.append(Csv.serialize(area.name) + ",")
     builder.append(Csv.serialize(area.flowToNextPage) + ",")
+    builder.append(Csv.serialize(area.dynamicHeight) + ",")
     builder.append(Csv.serialize(idx) + ",")
     builder.append(Csv.serialize(area.position?.x) + ",")
     builder.append(Csv.serialize(area.position?.y) + ",")
@@ -140,6 +142,7 @@ static String buildBaseTemplateArea(BaseTemplate baseTemplate, String pageId, Ba
     builder.append(Csv.serialize(area.interactiveFlowName) + ",")
     builder.append(Csv.serialize(area.name) + ",")
     builder.append(Csv.serialize(area.flowToNextPage) + ",")
+    builder.append(Csv.serialize(area.dynamicHeight) + ",")
     builder.append(Csv.serialize(idx) + ",")
     builder.append(Csv.serialize(area.position?.x) + ",")
     builder.append(Csv.serialize(area.position?.y) + ",")

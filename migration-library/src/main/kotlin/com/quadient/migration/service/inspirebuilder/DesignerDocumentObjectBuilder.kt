@@ -437,6 +437,7 @@ class DesignerDocumentObjectBuilder(
             page.addFlowArea().setPosX(position.x.toMeters()).setPosY(position.y.toMeters())
                 .setWidth(position.width.toMeters()).setHeight(position.height.toMeters()).setFlow(sectionAreaFlow)
                 .setFlowToNextPage(areaModel.flowToNextPage)
+                .setDynamicHeight(areaModel.dynamicHeight)
                 .also { area -> areaModel.name?.takeIf { it.isNotBlank() }?.let { area.setName(it) } }
         }
     }

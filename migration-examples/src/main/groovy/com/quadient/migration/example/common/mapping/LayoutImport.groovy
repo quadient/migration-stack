@@ -69,6 +69,10 @@ static void run(Migration migration, Path path) {
         def flowToNextPage = Csv.deserialize(values.get("flowToNextPage"), Boolean.class)
         areaMapping.flowToNextPage[areaIndex] = flowToNextPage ?: false
 
+        if (columnNames.contains("dynamicHeight")) {
+            areaMapping.dynamicHeight[areaIndex] = Csv.deserialize(values.get("dynamicHeight"), Boolean.class) ?: false
+        }
+
         if (columnNames.contains("areaName")) {
             areaMapping.areaNames[areaIndex] = Csv.deserialize(values.get("areaName"), String.class)
         }
@@ -125,11 +129,13 @@ private static void assignAreaToBaseTemplateDraft(Map<String, BaseTemplateDraft>
     def height = Csv.deserialize(values.get("height"), Size.class)
     def position = (x != null && y != null && width != null && height != null) ? new Position(x, y, width, height) : null
     def flowToNextPage = Csv.deserialize(values.get("flowToNextPage"), Boolean.class) ?: false
+    def dynamicHeight = Csv.deserialize(values.get("dynamicHeight"), Boolean.class) ?: false
     def areaName = Csv.deserialize(values.get("areaName"), String.class)
 
     pageDraft.areasByIndex[areaIndex] = new BaseTemplateBuilder.Area(interactiveFlowName)
             .position(position)
             .flowToNextPage(flowToNextPage)
+            .dynamicHeight(dynamicHeight)
             .name(areaName)
 }
 

@@ -12,6 +12,8 @@ public interface FlowArea extends LayoutObject<FlowArea> {
 
     FlowArea setBorderType(BorderType type);
 
+    FlowArea setDynamicHeight(boolean dynamicHeight);
+
     enum BorderType {
         CONTENT_ONLY,
         CONTENT_WITH_LINE_GAB,

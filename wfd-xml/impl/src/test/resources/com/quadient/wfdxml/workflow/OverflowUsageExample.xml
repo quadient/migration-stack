@@ -685,6 +685,7 @@
                 <BorderStyleId></BorderStyleId>
                 <FlowingToNextPage>True</FlowingToNextPage>
                 <BorderType>Content</BorderType>
+                <DynamicHeight>False</DynamicHeight>
             </FlowArea>
             <Data>
                 <Id>Def.Data</Id>

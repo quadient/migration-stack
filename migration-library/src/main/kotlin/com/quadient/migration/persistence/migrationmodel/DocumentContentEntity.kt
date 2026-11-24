@@ -121,6 +121,7 @@ data class AreaEntity(
     val interactiveFlowName: String?,
     val flowToNextPage: Boolean = false,
     val name: String? = null,
+    val dynamicHeight: Boolean = false,
 ) : DocumentContentEntity
 
 @Serializable

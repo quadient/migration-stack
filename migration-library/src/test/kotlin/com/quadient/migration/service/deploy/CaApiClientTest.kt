@@ -473,6 +473,33 @@ class CaApiClientTest {
         }
     }
 
+    @Test
+    fun `downloadFile returns Failure with HTTP status and raw body`() {
+        mockFailureResponse(404, "File not found")
+
+        val result = subject.downloadFile("icm://path/to/file.jpg")
+
+        (result as HttpResult.Failure).error.shouldBeEqualTo(StringErrorWithStatus(404, "File not found"))
+    }
+
+    @Test
+    fun `fileExists returns false when the resource does not exist`() {
+        mockFailureResponse(400, """{"stepName":"Resource Exists","errors":[{"errorDetail":"The resource does not exist."}]}""")
+
+        val result = subject.fileExists("icm://path/to/file.jpg")
+
+        (result as HttpResult.Success).response.shouldBeEqualTo(false)
+    }
+
+    @Test
+    fun `fileExists returns Failure with HTTP status and raw body on other errors`() {
+        mockFailureResponse(403, "Forbidden")
+
+        val result = subject.fileExists("icm://path/to/file.jpg")
+
+        (result as HttpResult.Failure).error.shouldBeEqualTo(StringErrorWithStatus(403, "Forbidden"))
+    }
+
     @Nested
     inner class RetryTests {
         private val errorBody = """{"status":503,"title":"Service Unavailable","code":0,"detail":""}"""
@@ -498,6 +525,20 @@ class CaApiClientTest {
             val result = subject.uploadResource(IcmPath.from("icm://path/to/file.jpg"), byteArrayOf())
 
             result.shouldBeOfInstance<HttpResult.Failure<*, *>>()
+            verify(exactly = 3) { mockCall.execute() }
+        }
+
+        @Test
+        fun `downloadFile exhausts retries on repeated 5xx and returns status and body of last attempt`() {
+            every { mockCall.execute() } returnsMany listOf(
+                buildResponse(503, "first"),
+                buildResponse(503, "second"),
+                buildResponse(502, "last"),
+            )
+
+            val result = subject.downloadFile("icm://path/to/file.jpg")
+
+            (result as HttpResult.Failure).error.shouldBeEqualTo(StringErrorWithStatus(502, "last"))
             verify(exactly = 3) { mockCall.execute() }
         }
 
