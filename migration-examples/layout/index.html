@@ -1181,6 +1181,8 @@ const PAGE_REF_MM = 210;
 
 /** Areas closer than this vertically are proposed as one base area. */
 const PROXIMITY_GAP_MM = 5.3;
+/** The smallest width or height (mm) resizing with the keys leaves a base area. */
+const MIN_AREA_SIZE_MM = 1;
 
 const PAD = 10;
 
@@ -2732,23 +2734,27 @@ function stepHistory(forward) {
 }
 
 /**
- * Moves the base area of the selected areas with an arrow key: 1 mm, 10 mm with Shift, 0.1 mm
- * with Ctrl. Presses in a row are one undo step.
+ * Moves the base area of the selected areas with an arrow key, or with Ctrl resizes it from its
+ * top-left corner (→/↓ wider/taller, ←/↑ narrower/shorter): by 1 mm, by 10 mm with Shift. Presses
+ * in a row are one undo step.
  * @param {KeyboardEvent} e
- * @returns {boolean} the key moved a base area
+ * @returns {boolean} the key moved or resized a base area
  */
 function nudgeSelectedBaseArea(e) {
     if (!currentData || !uiState.areaSelection || e.altKey || e.metaKey) return false;
     const {areas} = baseAreasOfSelection(uiState.areaSelection.pageIndex, uiState.areaSelection.areaIndices);
     if (areas.length !== 1) return false;
-    const step = e.shiftKey ? 10 : e.ctrlKey ? 0.1 : 1;
+    const step = e.shiftKey ? 10 : 1;
     const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
     const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
     if (!dx && !dy) return false;
     const area = areas[0];
     const {x, y, w, h} = area.position;
-    nextEditKey = "nudge:" + area.positionKey;
-    setBaseAreaPosition(area, {x: roundTo(Math.max(0, x + dx), 2), y: roundTo(Math.max(0, y + dy), 2), w, h});
+    const resize = e.ctrlKey;
+    nextEditKey = (resize ? "resize:" : "nudge:") + area.positionKey;
+    setBaseAreaPosition(area, resize
+        ? {x, y, w: roundTo(Math.max(MIN_AREA_SIZE_MM, w + dx), 2), h: roundTo(Math.max(MIN_AREA_SIZE_MM, h + dy), 2)}
+        : {x: roundTo(Math.max(0, x + dx), 2), y: roundTo(Math.max(0, y + dy), 2), w, h});
     return true;
 }
 
