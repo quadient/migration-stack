@@ -347,6 +347,18 @@
             border-color: #2f7de1;
         }
 
+        .insp-field select {
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #fff;
+            font: inherit;
+        }
+
+        .insp-field select.edited {
+            border-color: #2f7de1;
+        }
+
         .insp-reset {
             width: 26px;
             height: 26px;
@@ -1114,6 +1126,8 @@
  * @property {BaseAreaModel[]} areas
  * @property {Map<number, (number|null)[]>} baseAreaByArea for every page of the group: the base
  *   area index each of its areas maps to
+ * @property {Map<number, (number|null)[]>} proposedBaseAreaByArea the same by position only,
+ *   without the user's assignments
  */
 
 /**
@@ -1172,6 +1186,9 @@
  * @property {NameDecision[]} basePageNames
  * @property {Map<string, string>} flowNameByArea "pageKey#areaIndex" (see renderUnitKey) -> the
  *   interactive flow name the user gave the base area made from this area
+ * @property {Map<string, string>} assignmentByArea "pageKey#areaIndex" of an area of a page that is
+ *   not the representative -> the base area (its positionKey, see draftKey) the user put it in
+ *   instead of the one its position proposes
  * @property {Map<string, AreaProperties>} areaPropertiesByDraft "pageKey#areaIndices" (see draftKey) ->
  *   the area name and flags the user gave the base area made from these areas of a representative
  * @property {Map<string, Position>} positionByDraft "pageKey#areaIndices" (see draftKey) -> the
@@ -2362,10 +2379,25 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions, identity) {
             baseDrafts.forEach((draft, baseIndex) => draft.areaIndices.forEach(areaIndex => { representativeMapping[areaIndex] = baseIndex; }));
             /** @type {Map<number, (number|null)[]>} */
             const baseAreaByArea = new Map();
+            /** @type {Map<number, (number|null)[]>} */
+            const proposedBaseAreaByArea = new Map();
             pageGroup.pageIndices.forEach(pageIndex => {
-                baseAreaByArea.set(pageIndex, pageIndex === representativePageIndex
-                    ? representativeMapping
-                    : mapAreasToBaseAreas(data.pages[pageIndex].areas, baseDrafts));
+                if (pageIndex === representativePageIndex) {
+                    baseAreaByArea.set(pageIndex, representativeMapping);
+                    proposedBaseAreaByArea.set(pageIndex, representativeMapping);
+                    return;
+                }
+                // The other pages' areas go to the base area their position proposes, unless the
+                // user put them into another one (an assignment to a base area that still exists).
+                const page = data.pages[pageIndex];
+                const pageKey = renderUnitKey(page, pageIndex);
+                const proposed = mapAreasToBaseAreas(page.areas, baseDrafts);
+                proposedBaseAreaByArea.set(pageIndex, proposed);
+                baseAreaByArea.set(pageIndex, proposed.map((baseIndex, areaIndex) => {
+                    const target = decisions.assignmentByArea.get(`${pageKey}#${areaIndex}`);
+                    const assigned = target == null ? -1 : baseDrafts.findIndex(draft => draftKey(representativeKey, draft.areaIndices) === target);
+                    return assigned >= 0 ? assigned : baseIndex;
+                }));
             });
 
             const loadedPage = pageByPageGroup.get(pageGroup);
@@ -2411,6 +2443,7 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions, identity) {
                     };
                 }),
                 baseAreaByArea,
+                proposedBaseAreaByArea,
             };
         });
         // A loaded base template keeps its id and name (see assignLoadedIdentity); otherwise the
@@ -2594,7 +2627,7 @@ function setFlowName(baseTemplate, basePage, area, value) {
 
 /** @returns {Decisions} */
 function emptyDecisions() {
-    return {pinnedRepresentatives: [], areaGroupsByPage: new Map(), lockedGroups: [], baseTemplateNames: [], basePageNames: [], flowNameByArea: new Map(), positionByDraft: new Map(), areaPropertiesByDraft: new Map()};
+    return {pinnedRepresentatives: [], areaGroupsByPage: new Map(), lockedGroups: [], baseTemplateNames: [], basePageNames: [], flowNameByArea: new Map(), positionByDraft: new Map(), areaPropertiesByDraft: new Map(), assignmentByArea: new Map()};
 }
 
 /**
@@ -2667,14 +2700,14 @@ function unpinGroup(basePage) {
  * @returns {{manual: number, differing: number}}
  */
 function describeDecisions() {
-    let differing = decisions.areaGroupsByPage.size + decisions.positionByDraft.size + decisions.areaPropertiesByDraft.size
+    let differing = decisions.areaGroupsByPage.size + decisions.positionByDraft.size + decisions.areaPropertiesByDraft.size + decisions.assignmentByArea.size
         + currentViewModel.templateGroups.filter(group => group.locked && !group.matchesComputed).length;
     currentBaseTemplates.forEach(baseTemplate => baseTemplate.pages.forEach(basePage => {
         if (basePage.representativeIsManual && basePage.representativePageIndex !== basePage.computedRepresentativePageIndex) differing++;
         differing += basePage.unusedPins.length;
     }));
     const names = decisions.baseTemplateNames.length + decisions.basePageNames.length + new Set(decisions.flowNameByArea.values()).size;
-    return {manual: decisions.pinnedRepresentatives.length + decisions.areaGroupsByPage.size + decisions.lockedGroups.length + names + decisions.positionByDraft.size + decisions.areaPropertiesByDraft.size, differing};
+    return {manual: decisions.pinnedRepresentatives.length + decisions.areaGroupsByPage.size + decisions.lockedGroups.length + names + decisions.positionByDraft.size + decisions.areaPropertiesByDraft.size + decisions.assignmentByArea.size, differing};
 }
 
 /**
@@ -2852,7 +2885,9 @@ function stepHistory(forward) {
  */
 function nudgeSelectedBaseArea(e) {
     if (!currentData || !uiState.areaSelection || e.altKey || e.metaKey) return false;
-    const {areas} = baseAreasOfSelection(uiState.areaSelection.pageIndex, uiState.areaSelection.areaIndices);
+    const {pageIndex} = uiState.areaSelection;
+    if (currentBasePageByPage.get(pageIndex)?.basePage.representativePageIndex !== pageIndex) return false;
+    const {areas} = baseAreasOfSelection(pageIndex, uiState.areaSelection.areaIndices);
     if (areas.length !== 1) return false;
     const step = e.shiftKey ? 10 : 1;
     const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
@@ -2868,11 +2903,48 @@ function nudgeSelectedBaseArea(e) {
     return true;
 }
 
+/**
+ * Puts areas of a page that is not the representative into a base area; for an area whose position
+ * proposes that base area anyway (or with null) the assignment is removed.
+ * @param {BaseTemplatePageModel} basePage
+ * @param {number} pageIndex
+ * @param {number[]} areaIndices
+ * @param {number|null} baseIndex
+ */
+function assignAreas(basePage, pageIndex, areaIndices, baseIndex) {
+    if (!currentData) return;
+    const pageKey = renderUnitKey(currentData.pages[pageIndex], pageIndex);
+    const proposed = basePage.proposedBaseAreaByArea.get(pageIndex) ?? [];
+    const target = baseIndex == null ? null : basePage.areas[baseIndex];
+    areaIndices.forEach(areaIndex => {
+        const key = `${pageKey}#${areaIndex}`;
+        if (!target || proposed[areaIndex] === baseIndex) decisions.assignmentByArea.delete(key);
+        else decisions.assignmentByArea.set(key, target.positionKey);
+    });
+    render(currentData);
+}
+
+/**
+ * The keys of the assignments of a page's areas.
+ * @param {number} pageIndex
+ * @returns {string[]}
+ */
+function pageAssignments(pageIndex) {
+    const prefix = renderUnitKey(currentData.pages[pageIndex], pageIndex) + "#";
+    return [...decisions.assignmentByArea.keys()].filter(key => key.startsWith(prefix));
+}
+
+/** @param {number} pageIndex */
+function resetAssignments(pageIndex) {
+    pageAssignments(pageIndex).forEach(key => decisions.assignmentByArea.delete(key));
+    if (currentData) render(currentData);
+}
+
 /** Discards every manual decision, so the whole proposal is computed again. */
 function recalculateAll() {
     const {manual} = describeDecisions();
     if (!currentData || !manual) return;
-    if (!confirm(`Discard all ${manual} manual decision(s) (frozen groups, pinned representatives, merged/split areas, names, positions, area settings) and use the computed proposal?`)) return;
+    if (!confirm(`Discard all ${manual} manual decision(s) (frozen groups, pinned representatives, merged/split areas, names, positions, area settings, reassigned areas) and use the computed proposal?`)) return;
     decisions = emptyDecisions();
     uiState.areaSelection = null;
     render(currentData);
@@ -3034,10 +3106,13 @@ function restoreFromLoaded(data, loaded, analysis) {
         if (!sameAreaGroups(groups, computed)) decisions.areaGroupsByPage.set(renderUnitKey(page, representative), groups);
         // A base area whose position differs from the bounding box of its areas was moved or
         // resized by the user: keep its position.
+        /** @type {Map<object, string>} loaded base area -> key of the draft it was made from */
+        const draftKeyByLoadedArea = new Map();
         draftsFromAreaGroups(page.areas, groups).forEach(draft => {
             const flowName = page.areas[draft.areaIndices[0]].interactiveFlowName.trim();
             const loadedArea = flowName ? basePage.areas.find(area => area.flowName === flowName) : null;
             if (!loadedArea) return;
+            draftKeyByLoadedArea.set(loadedArea, draftKey(renderUnitKey(page, representative), draft.areaIndices));
             const differs = /** @type {(keyof Position)[]} */ (["x", "y", "w", "h"])
                 .some(side => Math.abs(loadedArea.position[side] - draft.position[side]) > 0.01);
             if (differs) {
@@ -3053,6 +3128,20 @@ function restoreFromLoaded(data, loaded, analysis) {
             if (loadedArea.flowToNextPage !== draftAreas.some(area => area.flowToNextPage)) properties.flowToNextPage = loadedArea.flowToNextPage;
             if (loadedArea.dynamicHeight !== draftAreas.some(area => area.dynamicHeight)) properties.dynamicHeight = loadedArea.dynamicHeight;
             if (Object.keys(properties).length) decisions.areaPropertiesByDraft.set(draftKey(renderUnitKey(page, representative), draft.areaIndices), properties);
+        });
+        // An area of another page whose flow name puts it into another base area than its position
+        // proposes was put there by the user: keep that assignment.
+        const loadedDrafts = /** @type {BaseTemplateAreaDraft[]} */ (basePage.areas.map(area => ({position: area.position, areaIndices: [], name: "", areaName: ""})));
+        pageIndices.filter(pageIndex => pageIndex !== representative).forEach(pageIndex => {
+            const follower = data.pages[pageIndex];
+            const byPosition = mapAreasToBaseAreas(follower.areas, loadedDrafts);
+            follower.areas.forEach((area, areaIndex) => {
+                const flowName = area.interactiveFlowName.trim();
+                const loadedIndex = flowName ? basePage.areas.findIndex(loaded => loaded.flowName === flowName) : -1;
+                if (loadedIndex < 0 || loadedIndex === byPosition[areaIndex]) return;
+                const target = draftKeyByLoadedArea.get(basePage.areas[loadedIndex]);
+                if (target) decisions.assignmentByArea.set(`${renderUnitKey(follower, pageIndex)}#${areaIndex}`, target);
+            });
         });
     });
 
@@ -3988,9 +4077,9 @@ function buildPageCard(pageIndex) {
     }
     wrap.appendChild(header);
 
-    // Only the representative's areas can be merged or split: its area groups define the base
-    // areas, the other pages' areas just go to the base area they lie in.
-    const selectedAreas = isRepresentative && uiState.areaSelection?.pageIndex === pageIndex
+    // Areas can be selected on every page: on the representative to merge or split them (its area
+    // groups define the base areas), on the other pages to put them into another base area.
+    const selectedAreas = uiState.areaSelection?.pageIndex === pageIndex
         ? uiState.areaSelection.areaIndices
         : new Set();
     const svg = buildPageSvg(
@@ -3999,7 +4088,7 @@ function buildPageCard(pageIndex) {
         base?.basePage.baseAreaByArea.get(pageIndex) ?? [],
         isRepresentative,
         selectedAreas,
-        isRepresentative ? (areaIndex, additive) => selectArea(pageIndex, areaIndex, additive) : null,
+        base ? (areaIndex, additive) => selectArea(pageIndex, areaIndex, additive) : null,
     );
     if (svg) wrap.appendChild(svg);
     wrap.appendChild(isRepresentative ? buildAreaActions(pageIndex, selectedAreas) : buildFollowerFooter(pageIndex));
@@ -4019,12 +4108,23 @@ function buildFollowerFooter(pageIndex) {
     const info = document.createElement("span");
     info.className = "hint";
     const hasEdits = decisions.areaGroupsByPage.has(renderUnitKey(currentData.pages[pageIndex], pageIndex));
-    info.textContent = hasEdits ? "Area edits kept, not used" : "Areas follow the ★ page";
-    info.title = hasEdits
+    const assigned = pageAssignments(pageIndex).length;
+    const selected = uiState.areaSelection?.pageIndex === pageIndex ? uiState.areaSelection.areaIndices.size : 0;
+    info.textContent = selected ? `${selected} selected`
+        : assigned ? `${assigned} reassigned`
+        : hasEdits ? "Area edits kept, not used" : "Areas follow the ★ page";
+    info.title = hasEdits && !assigned
         ? "You merged or split areas of this page while it was the representative. They apply again when it becomes the representative."
-        : "Each area goes to the base area (dashed frame) it lies in. Merge and split areas on the representative page.";
+        : "Each area goes to the base area (dashed frame) it lies in. To put an area into another base area, select it and choose the base area in the inspector.";
     footer.appendChild(info);
-    if (hasEdits) {
+    if (assigned) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "Reset";
+        button.title = "Put every area of this page back into the base area its position proposes.";
+        button.addEventListener("click", () => resetAssignments(pageIndex));
+        footer.appendChild(button);
+    } else if (hasEdits) {
         const button = document.createElement("button");
         button.type = "button";
         button.textContent = "Reset";
@@ -4436,7 +4536,9 @@ function renderInspector() {
     inspectorEl.innerHTML = "";
 
     if (currentData && uiState.areaSelection) {
-        renderAreaInspector(uiState.areaSelection.pageIndex, uiState.areaSelection.areaIndices);
+        const {pageIndex, areaIndices} = uiState.areaSelection;
+        if (currentBasePageByPage.get(pageIndex)?.basePage.representativePageIndex === pageIndex) renderAreaInspector(pageIndex, areaIndices);
+        else renderAssignmentInspector(pageIndex, areaIndices);
         return;
     }
     const inspected = uiState.inspected;
@@ -4477,6 +4579,58 @@ function renderPageInspector(baseTemplate, basePage) {
             onChange: value => setBasePageName(basePage, value),
         }),
     );
+}
+
+/**
+ * Areas selected on a page that is not the representative: the base area they go to, which the
+ * user can change.
+ * @param {number} pageIndex
+ * @param {Set<number>} selected
+ */
+function renderAssignmentInspector(pageIndex, selected) {
+    const base = currentBasePageByPage.get(pageIndex);
+    if (!base || !base.basePage.areas.length) return;
+    const {basePage} = base;
+    const current = basePage.baseAreaByArea.get(pageIndex) ?? [];
+    const proposed = basePage.proposedBaseAreaByArea.get(pageIndex) ?? [];
+    const areaIndices = [...selected];
+    const targets = new Set(areaIndices.map(areaIndex => current[areaIndex]));
+    const proposedTargets = new Set(areaIndices.map(areaIndex => proposed[areaIndex]));
+    const edited = areaIndices.some(areaIndex => current[areaIndex] !== proposed[areaIndex]);
+
+    const row = document.createElement("label");
+    row.className = "insp-row insp-field";
+    const labelEl = document.createElement("span");
+    labelEl.className = "insp-label";
+    labelEl.textContent = "Base area";
+    const select = document.createElement("select");
+    select.classList.toggle("edited", edited);
+    select.title = edited ? "Chosen by you." : "Proposed by position: the base area the area lies in.";
+    if (targets.size > 1) {
+        const mixed = document.createElement("option");
+        mixed.textContent = "(several)";
+        mixed.value = "";
+        mixed.disabled = true;
+        mixed.selected = true;
+        select.appendChild(mixed);
+    }
+    basePage.areas.forEach((area, baseIndex) => {
+        const option = document.createElement("option");
+        option.value = String(baseIndex);
+        option.textContent = area.flowName + (proposedTargets.size === 1 && proposedTargets.has(baseIndex) ? "  (by position)" : "");
+        option.selected = targets.size === 1 && targets.has(baseIndex);
+        select.appendChild(option);
+    });
+    select.addEventListener("change", () => assignAreas(basePage, pageIndex, areaIndices, Number(select.value)));
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "icon-btn insp-reset";
+    reset.textContent = "↺";
+    reset.title = "Back to the base area proposed by position";
+    reset.disabled = !edited;
+    reset.addEventListener("click", e => { e.preventDefault(); assignAreas(basePage, pageIndex, areaIndices, null); });
+    row.append(labelEl, select, reset);
+    inspectorEl.append(inspectorKind(areaIndices.length > 1 ? `${areaIndices.length} areas` : "Area"), row);
 }
 
 /**
