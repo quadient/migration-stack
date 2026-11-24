@@ -2693,7 +2693,7 @@ function fixGroup(group) {
  * @param {TemplateGroup} group
  */
 function unlockGroup(group) {
-    if (!group.matchesComputed && !confirm("Release this fixed group? Threshold and strategy group its templates or pages differently, so fixing again will not bring this group back.")) return;
+    if (!group.matchesComputed && !confirm("Unfreeze this group? Threshold and strategy group its templates or pages differently, so freezing it again will not bring this group back.")) return;
     decisions.lockedGroups = decisions.lockedGroups.filter(locked => locked !== group.locked);
     if (currentData) render(currentData);
 }
@@ -2753,7 +2753,7 @@ function moveTemplate(templateId, from, to) {
     replaceLockedGroups(to ? [from, to] : [from], [fromLocked, toLocked]);
     const name = template.templateName ?? templateId;
     render(currentData);
-    setStatus(to ? `Moved ${name} to another base template; both groups are fixed now.` : `Moved ${name} to a new base template; both groups are fixed now.`, "ok");
+    setStatus(to ? `Moved ${name} to another base template; both groups are frozen now.` : `Moved ${name} to a new base template; both groups are frozen now.`, "ok");
 }
 
 /**
@@ -2770,7 +2770,7 @@ function movePage(pageIndex, group, to) {
     else pageGroups.push([pageIndex]);
     replaceLockedGroups([group], [{templateIds: [...group.templateIds], pageGroups: pageGroups.filter(pageGroup => pageGroup.length)}]);
     render(currentData);
-    setStatus(`Moved ${pageName(currentData.pages[pageIndex])} to ${to ? "another" : "a new"} base page; the group is fixed now.`, "ok");
+    setStatus(`Moved ${pageName(currentData.pages[pageIndex])} to ${to ? "another" : "a new"} base page; the group is frozen now.`, "ok");
 }
 
 /**
@@ -2788,7 +2788,7 @@ function reorderBasePage(group, moved, target, after) {
     if (order.every((pageGroup, i) => pageGroup === group.pageGroups[i])) return;
     replaceLockedGroups([group], [{templateIds: [...group.templateIds], pageGroups: order.map(pageGroup => [...pageGroup.pageIndices])}]);
     render(currentData);
-    setStatus("Changed the order of the base pages; the group is fixed now.", "ok");
+    setStatus("Changed the order of the base pages; the group is frozen now.", "ok");
 }
 
 /**
@@ -2872,7 +2872,7 @@ function nudgeSelectedBaseArea(e) {
 function recalculateAll() {
     const {manual} = describeDecisions();
     if (!currentData || !manual) return;
-    if (!confirm(`Discard all ${manual} manual decision(s) (fixed groups, pinned representatives, merged/split areas, names, positions, area settings) and use the computed proposal?`)) return;
+    if (!confirm(`Discard all ${manual} manual decision(s) (frozen groups, pinned representatives, merged/split areas, names, positions, area settings) and use the computed proposal?`)) return;
     decisions = emptyDecisions();
     uiState.areaSelection = null;
     render(currentData);
@@ -3475,10 +3475,10 @@ function renderTemplateBadges(group) {
 }
 
 /**
- * The fix toggle of a template group. A computed group shows a faint "fix": clicking it makes the
- * group a decision that threshold and strategy no longer change. A fixed group (fixed here or
- * loaded from the file) shows "fixed", highlighted when the computation would group its templates
- * differently; clicking it releases the group.
+ * The freeze toggle of a template group. A computed group shows a faint "freeze": clicking it makes
+ * the group a decision that threshold and strategy no longer change (a fixed group in the code). A
+ * frozen group (frozen here, by a move, or loaded from the file) shows "frozen", highlighted when
+ * the computation would group its templates differently; clicking it unfreezes the group.
  * @param {TemplateGroup} group
  * @param {number} groupIndex
  * @returns {string}
@@ -3486,13 +3486,13 @@ function renderTemplateBadges(group) {
 function renderLockMark(group, groupIndex) {
     if (!group.locked) {
         return `<button type="button" class="lock-mark unfixed" data-action="toggle-fix" data-group-index="${groupIndex}" `
-            + `title="Computed group: threshold and strategy may change it.\nClick to fix it as it is.">fix</button>`;
+            + `title="Computed group: threshold and strategy may change it.\nClick to freeze it as it is.">freeze</button>`;
     }
     const title = (group.matchesComputed
-        ? "Fixed group; the computation forms the same group."
-        : "Fixed group; threshold and strategy would group these templates or their pages differently, or order the base pages differently.")
-        + "\nThe threshold and strategy do not change it. Click to release it and group its templates as computed.";
-    return `<button type="button" class="lock-mark${group.matchesComputed ? "" : " differs"}" data-action="toggle-fix" data-group-index="${groupIndex}" title="${htmlEsc(title)}">fixed</button>`;
+        ? "Frozen group; the computation forms the same group."
+        : "Frozen group; threshold and strategy would group these templates or their pages differently, or order the base pages differently.")
+        + "\nThe threshold and strategy do not change it. Click to unfreeze it and group its templates as computed.";
+    return `<button type="button" class="lock-mark${group.matchesComputed ? "" : " differs"}" data-action="toggle-fix" data-group-index="${groupIndex}" title="${htmlEsc(title)}">frozen</button>`;
 }
 
 /**
