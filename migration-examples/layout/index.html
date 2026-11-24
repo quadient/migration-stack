@@ -232,6 +232,12 @@
             color: var(--fg);
         }
 
+        .icon-btn:disabled {
+            color: #ccc;
+            background: none;
+            cursor: default;
+        }
+
         .icon-btn.active {
             color: #2f7de1;
         }
@@ -829,6 +835,8 @@
         </select>
     </label>
     <button id="recalculate-all" disabled>Recalculate all</button>
+    <button id="undo" class="icon-btn" disabled title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h7a3 3 0 0 1 0 6H7"/><path d="M6 4 3.5 6.5 6 9"/></svg></button>
+    <button id="redo" class="icon-btn" disabled title="Redo (Ctrl+Y or Ctrl+Shift+Z)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 6.5h-7a3 3 0 0 0 0 6H9"/><path d="M10 4l2.5 2.5L10 9"/></svg></button>
     <div class="toolbar-sep"></div>
     <input type="file" id="file" accept=".csv"/>
     <button id="open-file" title="Open a layout CSV (or drop it on the page)">Open CSV…</button>
@@ -1174,6 +1182,21 @@ let uiState = {
     inspected: null,
 };
 
+/**
+ * Undo history: earlier states of the decisions (undo) and states undone (redo). Cleared when a
+ * file is loaded.
+ * @type {Decisions[]}
+ */
+let undoStack = [];
+/** @type {Decisions[]} */
+let redoStack = [];
+/** A copy of the decisions as last rendered, and its JSON, to see whether an edit changed them. */
+let lastDecisions = emptyDecisions();
+let lastDecisionsJson = "";
+/** Edits with the same key in a row (nudging one base area) are undone as one step. */
+let nextEditKey = "";
+let lastEdit = {key: "", time: 0};
+
 const statusEl = /** @type {HTMLElement} */ (document.getElementById("status"));
 
 const fileInput = /** @type {HTMLInputElement} */ (document.getElementById("file"));
@@ -1193,6 +1216,8 @@ let loadedIdentity = emptyIdentity();
 const saveCsvBtn = /** @type {HTMLButtonElement} */ (document.getElementById("save-csv"));
 
 const recalculateAllBtn = /** @type {HTMLButtonElement} */ (document.getElementById("recalculate-all"));
+const undoBtn = /** @type {HTMLButtonElement} */ (document.getElementById("undo"));
+const redoBtn = /** @type {HTMLButtonElement} */ (document.getElementById("redo"));
 
 const templateGroupsEl = /** @type {HTMLElement} */ (document.getElementById("template-groups"));
 
@@ -2577,6 +2602,79 @@ function reorderBasePage(group, moved, target, after) {
     setStatus("Changed the order of the base pages; the group is fixed now.", "ok");
 }
 
+/**
+ * @param {Decisions} value
+ * @returns {string}
+ */
+function decisionsJson(value) {
+    return JSON.stringify(value, (_, v) => v instanceof Map ? [...v] : v);
+}
+
+/**
+ * Called by render: when the decisions changed since the last render, the earlier state becomes an
+ * undo step (one step for edits with the same key in a row) and the redo states are dropped.
+ * @param {boolean} dataChanged a new file: the history starts anew
+ */
+function recordDecisions(dataChanged) {
+    const json = decisionsJson(decisions);
+    if (dataChanged) {
+        undoStack = [];
+        redoStack = [];
+        lastEdit = {key: "", time: 0};
+    } else if (json !== lastDecisionsJson) {
+        const now = Date.now();
+        const sameEdit = nextEditKey !== "" && nextEditKey === lastEdit.key && now - lastEdit.time < 1500;
+        if (!sameEdit) {
+            undoStack.push(lastDecisions);
+            if (undoStack.length > 200) undoStack.shift();
+        }
+        redoStack = [];
+        lastEdit = {key: nextEditKey, time: now};
+    }
+    nextEditKey = "";
+    lastDecisions = structuredClone(decisions);
+    lastDecisionsJson = json;
+}
+
+/**
+ * Brings back the decisions of the previous (undo) or the undone (redo) state.
+ * @param {boolean} forward redo instead of undo
+ */
+function stepHistory(forward) {
+    const from = forward ? redoStack : undoStack;
+    const to = forward ? undoStack : redoStack;
+    const state = from.pop();
+    if (!currentData || !state) return;
+    to.push(lastDecisions);
+    decisions = state;
+    lastDecisions = structuredClone(state);
+    lastDecisionsJson = decisionsJson(state);
+    lastEdit = {key: "", time: 0};
+    render(currentData);
+    setStatus(forward ? "Redone." : "Undone.", "ok");
+}
+
+/**
+ * Moves the base area of the selected areas with an arrow key: 1 mm, 10 mm with Shift, 0.1 mm
+ * with Ctrl. Presses in a row are one undo step.
+ * @param {KeyboardEvent} e
+ * @returns {boolean} the key moved a base area
+ */
+function nudgeSelectedBaseArea(e) {
+    if (!currentData || !uiState.areaSelection || e.altKey || e.metaKey) return false;
+    const {areas} = baseAreasOfSelection(uiState.areaSelection.pageIndex, uiState.areaSelection.areaIndices);
+    if (areas.length !== 1) return false;
+    const step = e.shiftKey ? 10 : e.ctrlKey ? 0.1 : 1;
+    const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+    const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+    if (!dx && !dy) return false;
+    const area = areas[0];
+    const {x, y, w, h} = area.position;
+    nextEditKey = "nudge:" + area.positionKey;
+    setBaseAreaPosition(area, {x: roundTo(Math.max(0, x + dx), 2), y: roundTo(Math.max(0, y + dy), 2), w, h});
+    return true;
+}
+
 /** Discards every manual decision, so the whole proposal is computed again. */
 function recalculateAll() {
     const {manual} = describeDecisions();
@@ -3074,6 +3172,8 @@ function renderDecisionSummary() {
     recalculateAllBtn.disabled = manual === 0;
     recalculateAllBtn.textContent = manual ? `Recalculate all (${manual})` : "Recalculate all";
     recalculateAllBtn.classList.toggle("differs", differing > 0);
+    undoBtn.disabled = !undoStack.length;
+    redoBtn.disabled = !redoStack.length;
     recalculateAllBtn.title = manual
         ? `${manual} manual decision(s), ${differing} of them differ from what the computation proposes now.\n`
             + "Click to discard all of them and use the computed proposal."
@@ -3110,6 +3210,7 @@ function render(data, loaded = []) {
         loadedIdentity = restored.identity;
         report = restored.report;
     }
+    recordDecisions(dataChanged);
     currentViewModel = buildViewModel(data, currentAnalysis, settings, decisions.lockedGroups);
     uiState = reconcileUiState(uiState, currentViewModel, dataChanged);
     currentAreaDrafts = effectiveAreaDrafts(data, currentAnalysis, decisions);
@@ -4130,22 +4231,33 @@ function renderPageInspector(baseTemplate, basePage) {
 }
 
 /**
+ * The base page of a page and the base areas its selected areas belong to.
+ * @param {number} pageIndex
+ * @param {Set<number>} selected
+ * @returns {{base: {baseTemplate: BaseTemplateModel, basePage: BaseTemplatePageModel}|undefined, areas: BaseAreaModel[]}}
+ */
+function baseAreasOfSelection(pageIndex, selected) {
+    const base = currentBasePageByPage.get(pageIndex);
+    const byArea = base?.basePage.baseAreaByArea.get(pageIndex);
+    const indices = [...new Set([...selected].map(areaIndex => byArea?.[areaIndex]))].filter(index => index != null);
+    return {base, areas: base ? indices.map(index => base.basePage.areas[/** @type {number} */ (index)]) : []};
+}
+
+/**
  * The base area of the selected areas. Editing needs areas of one base area; with several base
  * areas selected the fields are disabled.
  * @param {number} pageIndex
  * @param {Set<number>} selected
  */
 function renderAreaInspector(pageIndex, selected) {
-    const base = currentBasePageByPage.get(pageIndex);
-    const baseIndices = [...new Set([...selected].map(areaIndex => base?.basePage.baseAreaByArea.get(pageIndex)?.[areaIndex]))]
-        .filter(index => index != null);
-    if (!base || !baseIndices.length) return;
-    if (baseIndices.length > 1) {
+    const {base, areas} = baseAreasOfSelection(pageIndex, selected);
+    if (!base || !areas.length) return;
+    if (areas.length > 1) {
         // Several base areas: nothing to edit until the selection is one base area.
-        inspectorEl.append(inspectorKind(`${baseIndices.length} base areas`));
+        inspectorEl.append(inspectorKind(`${areas.length} base areas`));
         return;
     }
-    const area = base.basePage.areas[/** @type {number} */ (baseIndices[0])];
+    const area = areas[0];
     inspectorEl.append(
         inspectorKind("Base area"),
         inspectorTextField("Flow name", {
@@ -4338,6 +4450,10 @@ saveCsvBtn.addEventListener("click", () => { saveCsv(); });
 
 recalculateAllBtn.addEventListener("click", () => recalculateAll());
 
+undoBtn.addEventListener("click", () => stepHistory(false));
+
+redoBtn.addEventListener("click", () => stepHistory(true));
+
 templateGroupsEl.addEventListener("mouseover", e => highlightTemplatePages(e, true));
 
 templateGroupsEl.addEventListener("mouseout", e => highlightTemplatePages(e, false));
@@ -4466,6 +4582,19 @@ document.querySelectorAll("input[type='range']").forEach(input => {
 });
 
 document.addEventListener("keydown", e => {
+    // Keys typed into a field (or used by a slider) belong to it.
+    const typing = e.target instanceof HTMLElement && e.target.closest("input, select, textarea, [contenteditable]");
+    if (typing) return;
+    const key = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (key === "z" || key === "y")) {
+        e.preventDefault();
+        stepHistory(key === "y" || e.shiftKey);
+        return;
+    }
+    if (e.key.startsWith("Arrow") && nudgeSelectedBaseArea(e)) {
+        e.preventDefault();
+        return;
+    }
     if (e.key === "Escape" && uiState.areaSelection) {
         uiState.areaSelection = null;
         refreshOpenPageGroups();
