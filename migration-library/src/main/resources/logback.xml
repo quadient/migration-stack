@@ -12,6 +12,8 @@
         </encoder>
     </appender>
 
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+
     <root level="trace">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="FILE" />

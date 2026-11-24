@@ -21,6 +21,7 @@ export type DbConfig = {
     dbName: string;
     user: string;
     password: string;
+    idleTimeoutMs?: number;
 };
 
 export type InspireConfig = {

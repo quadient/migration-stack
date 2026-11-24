@@ -9,6 +9,7 @@ import com.quadient.migration.data.Deployed
 import com.quadient.migration.service.deploy.utility.ResourceType
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
@@ -28,7 +29,7 @@ class V18MigrationTest {
         PostgreSQLContainer(POSTGRES_CONTAINER).use { postgres ->
             postgres.start()
 
-            Database.connect(
+            TransactionManager.defaultDatabase = Database.connect(
                 url = postgres.jdbcUrl,
                 driver = "org.postgresql.Driver",
                 user = postgres.username,

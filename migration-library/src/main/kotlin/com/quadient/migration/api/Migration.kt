@@ -38,15 +38,19 @@ import com.quadient.migration.service.inspirebuilder.InspireVariableStructureBui
 import com.quadient.migration.service.ipsclient.IpsService
 import com.quadient.migration.service.ipsclient.Version
 import com.quadient.migration.service.ipsclient.display
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import okhttp3.OkHttpClient
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.koin.core.KoinApplication
 import org.koin.dsl.bind
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 import com.quadient.migration.tools.logger
 import org.koin.plugin.module.dsl.single
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
@@ -157,18 +161,15 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
 
 
     init {
-        Database.connect(
-            url = config.dbConfig.connectionString(),
-            driver = "org.postgresql.Driver",
-            user = config.dbConfig.user,
-            password = config.dbConfig.password
-        )
+        val sharedDatabase = sharedDatabases.computeIfAbsent(config.dbConfig, ::SharedDatabase)
 
         Flyway.configure()
-            .dataSource(config.dbConfig.connectionString(), config.dbConfig.user, config.dbConfig.password)
+            .dataSource(sharedDatabase.dataSource)
             .locations("classpath:com/quadient/migration/persistence/upgrade")
             .load()
             .migrate()
+
+        TransactionManager.defaultDatabase = sharedDatabase.database
 
         repositories.add(variableRepository)
         repositories.add(documentObjectRepository)
@@ -212,6 +213,22 @@ class Migration(val config: MigConfig, val projectConfig: ProjectConfig) {
 
         logger.debug("Migration initialized")
     }
+
+    companion object {
+        private val sharedDatabases = ConcurrentHashMap<DbConfig, SharedDatabase>()
+    }
+}
+
+private class SharedDatabase(dbConfig: DbConfig) {
+    val dataSource = HikariDataSource(HikariConfig().apply {
+        jdbcUrl = dbConfig.connectionString()
+        driverClassName = "org.postgresql.Driver"
+        username = dbConfig.user
+        password = dbConfig.password
+        minimumIdle = 0
+        idleTimeout = dbConfig.idleTimeoutMs
+    })
+    val database = Database.connect(dataSource)
 }
 
 @JvmInline

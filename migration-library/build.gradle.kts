@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.postgresql)
     implementation(libs.flyway.core)
     implementation(libs.flyway.database.postgresql)
+    implementation(libs.hikaricp)
 
     // exposed
     implementation(libs.exposed.core)

@@ -31,6 +31,7 @@
     <logger name="Exposed" level="DEBUG" additivity="false">
         <appender-ref ref="FILE"/>
     </logger>
+    <logger name="com.zaxxer.hikari" level="WARN"/>
 
     <root level="DEBUG">
         <appender-ref ref="STDOUT"/>
