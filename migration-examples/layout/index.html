@@ -138,6 +138,48 @@
             outline-offset: -12px;
         }
 
+        /* Moving templates and pages between groups by drag and drop. Drop targets show only while
+           dragging. */
+        .template-tag[draggable="true"], .page-tag[draggable="true"] {
+            cursor: grab;
+        }
+
+        .dragging-source {
+            opacity: 0.4;
+        }
+
+        .template-groups > li.drop-target {
+            border-color: #2f7de1;
+            box-shadow: 0 0 0 2px #dbe8f8;
+        }
+
+        .page-group.drop-target > .pg-row {
+            background: #e8f0fb;
+        }
+
+        .drop-zone {
+            margin: 6px 14px;
+            padding: 8px;
+            border: 1px dashed #bbb;
+            border-radius: 6px;
+            color: var(--muted);
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .template-groups > li.drop-zone {
+            margin: 0 0 14px;
+            padding: 14px;
+            border: 1px dashed #bbb;
+            border-radius: 10px;
+        }
+
+        .drop-zone.drop-target, .template-groups > li.drop-zone.drop-target {
+            border: 1px solid #2f7de1;
+            background: #e8f0fb;
+            color: var(--fg);
+        }
+
         /* Inspector: a full-height sidebar on the right; the page makes room for it when open. */
         :root {
             --inspector-width: 360px;
@@ -478,6 +520,33 @@
 
         .cohesion-solo {
             background: #d1d5db;
+        }
+
+        /* Drag handle to reorder the base pages; an empty placeholder keeps the rows aligned. */
+        .pg-handle {
+            width: 10px;
+            flex-shrink: 0;
+            margin-right: -4px;
+            color: #bbb;
+            font-size: 13px;
+            line-height: 22px;
+            text-align: center;
+        }
+
+        .pg-handle[draggable="true"] {
+            cursor: grab;
+        }
+
+        .pg-handle[draggable="true"]:hover {
+            color: var(--fg);
+        }
+
+        .page-group.drop-before > .pg-row {
+            box-shadow: inset 0 2px 0 #2f7de1;
+        }
+
+        .page-group.drop-after > .pg-row {
+            box-shadow: inset 0 -2px 0 #2f7de1;
         }
 
         .pg-expand-icon {
@@ -952,8 +1021,8 @@
 /**
  * @typedef {Object} LockedGroup
  * @property {string[]} templateIds
- * @property {number[][]} pageGroups fixed page groups; pages of the templates in none of them are
- *   grouped among themselves
+ * @property {number[][]} pageGroups fixed page groups, in the order of the base pages; pages of the
+ *   templates in none of them are grouped among themselves
  */
 
 /**
@@ -978,7 +1047,7 @@
  * @property {string[]} templateNames
  * @property {PageGroup[]} pageGroups - sorted page clusters with stable membership-based keys
  * @property {LockedGroup|null} locked the decision fixing this group, null when computed
- * @property {boolean} matchesComputed the computation alone would form the same group
+ * @property {boolean} matchesComputed the computation alone would form the same group with the same page groups
  */
 
 /**
@@ -1964,7 +2033,13 @@ function lockedGroupsFromLoaded(data, identity) {
             /** @type {number[]} */ (group.pagesByBasePage.get(loaded.basePage)).push(pageIndex);
         });
     });
-    return [...byBaseTemplate.values()].map(({templateIds, pagesByBasePage}) => ({templateIds, pageGroups: [...pagesByBasePage.values()]}));
+    // Base pages in the order of the file (the Base rows), which is their order in the base template.
+    return [...byBaseTemplate.entries()].map(([baseTemplate, {templateIds, pagesByBasePage}]) => ({
+        templateIds,
+        pageGroups: [...pagesByBasePage.entries()]
+            .sort(([a], [b]) => baseTemplate.pages.indexOf(a) - baseTemplate.pages.indexOf(b))
+            .map(([, pageIndices]) => pageIndices),
+    }));
 }
 
 /**
@@ -2203,7 +2278,152 @@ const templateGroupsEl = /** @type {HTMLElement} */ (document.getElementById("te
 templateGroupsEl.addEventListener("mouseover", e => highlightTemplatePages(e, true));
 templateGroupsEl.addEventListener("mouseout", e => highlightTemplatePages(e, false));
 
+/**
+ * The template or page being dragged to another group, null when none (or a file is dragged).
+ * @type {{kind: "template", templateId: string, groupIndex: number} | {kind: "page", pageIndex: number, groupIndex: number} | {kind: "basePage", pageGroupKey: string, groupIndex: number} | null}
+ */
+let dragged = null;
+/** @type {HTMLElement|null} */
+let dropTargetEl = null;
+/** Where a reordered base page goes relative to the drop target. */
+let dropAfter = false;
+
+/**
+ * @param {HTMLElement|null} el
+ * @param {string} className "drop-target", or "drop-before"/"drop-after" for an insertion line
+ */
+function setDropTarget(el, className = "drop-target") {
+    dropTargetEl?.classList.remove("drop-target", "drop-before", "drop-after");
+    dropTargetEl = el;
+    el?.classList.add(className);
+}
+
+/**
+ * @param {string} className
+ * @param {string} text
+ * @param {"li"|"div"} tag
+ * @returns {HTMLElement}
+ */
+function createDropZone(className, text, tag) {
+    const zone = document.createElement(tag);
+    zone.className = "drop-zone " + className;
+    zone.textContent = text;
+    return zone;
+}
+
+templateGroupsEl.addEventListener("dragstart", e => {
+    const target = /** @type {HTMLElement} */ (e.target);
+    const chip = /** @type {HTMLElement|null} */ (target.closest?.(".template-tag, .page-tag, .pg-handle"));
+    const li = /** @type {HTMLElement|null} */ (chip?.closest("li"));
+    const group = currentViewModel?.templateGroups[Number(li?.dataset.groupIndex)];
+    if (!chip || !li || !group || !e.dataTransfer) return;
+    const groupIndex = Number(li.dataset.groupIndex);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", chip.textContent ?? "");
+    if (chip.classList.contains("pg-handle")) {
+        const pageGroupEl = /** @type {HTMLElement} */ (chip.closest(".page-group"));
+        dragged = {kind: "basePage", pageGroupKey: pageGroupEl.dataset.pageGroupKey ?? "", groupIndex};
+        requestAnimationFrame(() => pageGroupEl.classList.add("dragging-source"));
+        return;
+    }
+    if (chip.classList.contains("template-tag")) {
+        dragged = {kind: "template", templateId: chip.dataset.templateId ?? "", groupIndex};
+        // A new base template only makes sense when the template does not stand alone already.
+        if (group.templateIds.length > 1) templateGroupsEl.appendChild(createDropZone("new-template", "Drop here for a new base template", "li"));
+    } else {
+        const pageIndex = Number(chip.dataset.pageIndex);
+        dragged = {kind: "page", pageIndex, groupIndex};
+        const own = group.pageGroups.find(pageGroup => pageGroup.pageIndices.includes(pageIndex));
+        if (own && own.pageIndices.length > 1) li.querySelector(".page-groups")?.appendChild(createDropZone("new-page", "Drop here for a new base page", "div"));
+    }
+    // Dim the source after the browser has taken its drag image.
+    requestAnimationFrame(() => chip.classList.add("dragging-source"));
+});
+
+/**
+ * The element the dragged item would go to at this event, or null when it cannot be dropped here.
+ * @param {DragEvent} e
+ * @returns {HTMLElement|null}
+ */
+function dropTargetAt(e) {
+    if (!dragged || !currentViewModel) return null;
+    const target = /** @type {HTMLElement} */ (e.target);
+    const li = /** @type {HTMLElement|null} */ (target.closest?.(".template-groups > li"));
+    if (!li) return null;
+    if (dragged.kind === "template") {
+        if (li.classList.contains("new-template")) return li;
+        return Number(li.dataset.groupIndex) !== dragged.groupIndex && li.dataset.groupIndex != null ? li : null;
+    }
+    if (Number(li.dataset.groupIndex) !== dragged.groupIndex) return null;
+    if (dragged.kind === "basePage") {
+        // Anywhere over the base template: the gap between base pages nearest to the pointer.
+        const rows = /** @type {HTMLElement[]} */ ([...li.querySelectorAll(".page-group")]);
+        const key = dragged.pageGroupKey;
+        const from = rows.findIndex(row => row.dataset.pageGroupKey === key);
+        let gap = 0, distance = Infinity;
+        for (let i = 0; i <= rows.length; i++) {
+            const y = i < rows.length ? rows[i].getBoundingClientRect().top : rows[rows.length - 1].getBoundingClientRect().bottom;
+            if (Math.abs(e.clientY - y) < distance) { distance = Math.abs(e.clientY - y); gap = i; }
+        }
+        if (gap === from || gap === from + 1) return null; // the order would not change
+        dropAfter = gap === rows.length;
+        return rows[dropAfter ? rows.length - 1 : gap];
+    }
+    const zone = /** @type {HTMLElement|null} */ (target.closest(".new-page"));
+    if (zone) return zone;
+    const pageGroupEl = /** @type {HTMLElement|null} */ (target.closest(".page-group"));
+    const pageGroup = pageGroupEl ? currentViewModel.pageGroupByKey[pageGroupEl.dataset.pageGroupKey ?? ""] : null;
+    const pageIndex = dragged.pageIndex;
+    return pageGroup && !pageGroup.pageIndices.includes(pageIndex) ? pageGroupEl : null;
+}
+
+templateGroupsEl.addEventListener("dragover", e => {
+    if (!dragged) return;
+    const el = dropTargetAt(e);
+    if (el && dragged.kind === "basePage") {
+        setDropTarget(el, dropAfter ? "drop-after" : "drop-before");
+    } else {
+        setDropTarget(el);
+    }
+    if (!el || !e.dataTransfer) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+});
+
+templateGroupsEl.addEventListener("drop", e => {
+    if (!dragged || !currentViewModel) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const el = dropTargetAt(e);
+    const item = dragged;
+    const after = dropAfter;
+    const groups = currentViewModel.templateGroups;
+    const from = groups[item.groupIndex];
+    endDrag();
+    if (!el || !from) return;
+    if (item.kind === "basePage") {
+        const moved = currentViewModel.pageGroupByKey[item.pageGroupKey];
+        const target = currentViewModel.pageGroupByKey[el.dataset.pageGroupKey ?? ""];
+        if (moved && target) reorderBasePage(from, moved, target, after);
+    } else if (item.kind === "template") {
+        moveTemplate(item.templateId, from, el.classList.contains("new-template") ? null : groups[Number(el.dataset.groupIndex)]);
+    } else {
+        movePage(item.pageIndex, from, el.classList.contains("new-page") ? null : currentViewModel.pageGroupByKey[el.dataset.pageGroupKey ?? ""] ?? null);
+    }
+});
+
+function endDrag() {
+    dragged = null;
+    setDropTarget(null);
+    templateGroupsEl.querySelectorAll(".drop-zone").forEach(zone => zone.remove());
+    templateGroupsEl.querySelectorAll(".dragging-source").forEach(el => el.classList.remove("dragging-source"));
+}
+templateGroupsEl.addEventListener("dragend", endDrag);
+
 document.body.addEventListener("dragover", e => {
+    // Moving a template or page: not droppable outside its targets, and not a file.
+    if (dragged) { setDropTarget(null); return; }
     e.preventDefault();
     document.body.classList.add("drag-over");
 });
@@ -2212,6 +2432,7 @@ document.body.addEventListener("dragleave", e => {
 });
 document.body.addEventListener("drop", e => {
     e.preventDefault();
+    if (dragged) return;
     document.body.classList.remove("drag-over");
     const file = e.dataTransfer?.files[0];
     if (!file) return;
@@ -2482,6 +2703,7 @@ function renderTemplateGroups(data) {
     templateGroups.forEach((group, groupIndex) => {
         const li = document.createElement("li");
         li.dataset.groupKey = group.key;
+        li.dataset.groupIndex = String(groupIndex);
         li.innerHTML = renderTemplateGroupItem(group, groupIndex, data);
 
         li.querySelectorAll(".page-group").forEach((pgEl, ci) => {
@@ -2496,7 +2718,8 @@ function renderTemplateGroups(data) {
  * @returns {string}
  */
 function renderTemplateBadges(group) {
-    return group.templateIds.map((id, idx) => `<span class="template-tag" data-template-id="${htmlEsc(id)}">${htmlEsc(group.templateNames[idx] ?? id)}</span>`).join("");
+    return group.templateIds.map((id, idx) => `<span class="template-tag" draggable="true" data-template-id="${htmlEsc(id)}" `
+        + `title="Drag onto another base template to move this template there">${htmlEsc(group.templateNames[idx] ?? id)}</span>`).join("");
 }
 
 /**
@@ -2515,7 +2738,7 @@ function renderLockMark(group, groupIndex) {
     }
     const title = (group.matchesComputed
         ? "Fixed group; the computation forms the same group."
-        : "Fixed group; threshold and strategy would group these templates differently.")
+        : "Fixed group; threshold and strategy would group these templates or their pages differently, or order the base pages differently.")
         + "\nThe threshold and strategy do not change it. Click to release it and group its templates as computed.";
     return `<button type="button" class="lock-mark${group.matchesComputed ? "" : " differs"}" data-action="toggle-fix" data-group-index="${groupIndex}" title="${htmlEsc(title)}">fixed</button>`;
 }
@@ -2605,9 +2828,10 @@ function renderSimilarityHint(pageIndex) {
 /**
  * @param {PageGroup} pageGroup
  * @param {LayoutData} data
+ * @param {boolean} reorderable the base template has more base pages, so this one gets a drag handle
  * @returns {string}
  */
-function renderPageGroupRow(pageGroup, data) {
+function renderPageGroupRow(pageGroup, data, reorderable) {
     const {pageLevel} = /** @type {ViewModel} */ (currentViewModel);
     const cohesion = minPairScore(pageGroup.pageIndices, pageLevel.matrix);
     const cohesionTitle = cohesion !== null ? `Cohesion (least similar pair): ${cohesion.toFixed(2)}` : "Single page";
@@ -2619,13 +2843,17 @@ function renderPageGroupRow(pageGroup, data) {
         : "";
     return `<div class="page-group">`
         + `<div class="pg-row" data-action="toggle-preview">`
+        + (reorderable
+            ? `<span class="pg-handle" draggable="true" title="Drag to change the order of the base pages">&#8801;</span>`
+            : `<span class="pg-handle"></span>`)
         + `<span class="pg-expand-icon">&#9654;</span>`
         + `<span class="pg-head">${nameHtml}`
         + `<span class="pg-cohesion" title="${cohesionTitle}"><span class="cohesion-dot ${cohesionClass(cohesion)}"></span>`
         + (cohesion !== null ? `<span class="hint">${cohesion.toFixed(2)}</span>` : "")
         + `</span></span>`
         + `<span class="page-labels">${pageGroup.pageIndices.map(pi =>
-            `<span class="page-tag" data-template-id="${htmlEsc(data.pages[pi].templateId ?? "")}" title="${htmlEsc(pageTagTooltip(data.pages[pi]))}">`
+            `<span class="page-tag" draggable="true" data-page-index="${pi}" data-template-id="${htmlEsc(data.pages[pi].templateId ?? "")}" `
+            + `title="${htmlEsc(pageTagTooltip(data.pages[pi]) + "\nDrag onto another base page of this base template to move the page there")}">`
             + `${representativeMark(pi)}${htmlEsc(pageTagLabel(data.pages[pi]))}${areaEditMark(pi)} ${renderSimilarityHint(pi)}</span>`
         ).join("")}</span>`
         + `</div>`
@@ -2707,7 +2935,7 @@ function areaEditMark(pageIndex) {
  */
 function renderTemplateGroupItem(group, groupIndex, data) {
     const pageGroupsHtml = group.pageGroups
-        .map(pageGroup => renderPageGroupRow(pageGroup, data))
+        .map(pageGroup => renderPageGroupRow(pageGroup, data, group.pageGroups.length > 1))
         .join("");
     const baseTemplate = currentBaseTemplates[groupIndex];
     const firstRepresentative = baseTemplate?.pages[0] ? data.pages[baseTemplate.pages[0].representativePageIndex] : null;
@@ -3248,6 +3476,7 @@ document.getElementById("template-groups").addEventListener("click", (e) => {
         if (basePage) useComputedRepresentative(basePage);
         return;
     }
+    if (target.closest(".pg-handle")) return;
     const row = /** @type {HTMLElement|null} */ (target.closest("[data-action='toggle-preview']"));
     if (!row) return;
     togglePageCards(row);
@@ -3564,9 +3793,102 @@ function fixGroup(group) {
  * @param {TemplateGroup} group
  */
 function unlockGroup(group) {
-    if (!group.matchesComputed && !confirm("Release this fixed group? Threshold and strategy group its templates differently, so fixing again will not bring this group back.")) return;
+    if (!group.matchesComputed && !confirm("Release this fixed group? Threshold and strategy group its templates or pages differently, so fixing again will not bring this group back.")) return;
     decisions.lockedGroups = decisions.lockedGroups.filter(locked => locked !== group.locked);
     if (currentData) render(currentData);
+}
+
+/**
+ * Replaces the decisions fixing the given groups (computed groups have none) with new fixed groups.
+ * @param {TemplateGroup[]} groups
+ * @param {LockedGroup[]} lockedGroups
+ */
+function replaceLockedGroups(groups, lockedGroups) {
+    const old = new Set(groups.map(group => group.locked).filter(Boolean));
+    decisions.lockedGroups = decisions.lockedGroups.filter(locked => !old.has(locked))
+        .concat(lockedGroups.filter(locked => locked.templateIds.length));
+}
+
+/**
+ * Adds pages to page groups: each to the page group most similar to it (average over its pages)
+ * when that reaches the threshold, otherwise to a new page group of its own.
+ * @param {number[][]} pageGroups modified in place
+ * @param {number[]} pageIndices
+ * @returns {number[][]}
+ */
+function placePages(pageGroups, pageIndices) {
+    const matrix = /** @type {ViewModel} */ (currentViewModel).pageLevel.matrix;
+    pageIndices.forEach(pageIndex => {
+        let best = null, bestScore = -Infinity;
+        pageGroups.forEach(pageGroup => {
+            const score = pageGroup.reduce((sum, other) => sum + (matrix[pageIndex]?.[other] ?? 0), 0) / pageGroup.length;
+            if (score > bestScore) { bestScore = score; best = pageGroup; }
+        });
+        if (best && bestScore >= settings.groupThreshold) best.push(pageIndex);
+        else pageGroups.push([pageIndex]);
+    });
+    return pageGroups;
+}
+
+/**
+ * Moves a template, with all its pages, to another base template, or to a new one of its own when
+ * `to` is null. Both groups become fixed groups, so threshold and strategy no longer change them;
+ * the moved pages join the most similar base pages of the target.
+ * @param {string} templateId
+ * @param {TemplateGroup} from
+ * @param {TemplateGroup|null} to
+ */
+function moveTemplate(templateId, from, to) {
+    if (!currentData || from === to) return;
+    const template = currentData.templates.find(t => t.templateId === templateId);
+    if (!template) return;
+    const moved = new Set(template.pageIndices);
+    const fromLocked = {
+        templateIds: from.templateIds.filter(id => id !== templateId),
+        pageGroups: from.pageGroups.map(pageGroup => pageGroup.pageIndices.filter(pageIndex => !moved.has(pageIndex))).filter(pageGroup => pageGroup.length),
+    };
+    const toLocked = to
+        ? {templateIds: [...to.templateIds, templateId], pageGroups: placePages(to.pageGroups.map(pageGroup => [...pageGroup.pageIndices]), template.pageIndices)}
+        : {templateIds: [templateId], pageGroups: placePages([], template.pageIndices)};
+    replaceLockedGroups(to ? [from, to] : [from], [fromLocked, toLocked]);
+    const name = template.templateName ?? templateId;
+    render(currentData);
+    setStatus(to ? `Moved ${name} to another base template; both groups are fixed now.` : `Moved ${name} to a new base template; both groups are fixed now.`, "ok");
+}
+
+/**
+ * Moves a page to another base page of its base template, or to a new base page when `to` is
+ * null. The template group becomes a fixed group with these page groups.
+ * @param {number} pageIndex
+ * @param {TemplateGroup} group
+ * @param {PageGroup|null} to
+ */
+function movePage(pageIndex, group, to) {
+    if (!currentData) return;
+    const pageGroups = group.pageGroups.map(pageGroup => pageGroup.pageIndices.filter(other => other !== pageIndex));
+    if (to) pageGroups[group.pageGroups.indexOf(to)].push(pageIndex);
+    else pageGroups.push([pageIndex]);
+    replaceLockedGroups([group], [{templateIds: [...group.templateIds], pageGroups: pageGroups.filter(pageGroup => pageGroup.length)}]);
+    render(currentData);
+    setStatus(`Moved ${pageName(currentData.pages[pageIndex])} to ${to ? "another" : "a new"} base page; the group is fixed now.`, "ok");
+}
+
+/**
+ * Moves a base page before or after another one of its base template. The template group becomes a
+ * fixed group with this order.
+ * @param {TemplateGroup} group
+ * @param {PageGroup} moved
+ * @param {PageGroup} target
+ * @param {boolean} after
+ */
+function reorderBasePage(group, moved, target, after) {
+    if (!currentData || moved === target) return;
+    const order = group.pageGroups.filter(pageGroup => pageGroup !== moved);
+    order.splice(order.indexOf(target) + (after ? 1 : 0), 0, moved);
+    if (order.every((pageGroup, i) => pageGroup === group.pageGroups[i])) return;
+    replaceLockedGroups([group], [{templateIds: [...group.templateIds], pageGroups: order.map(pageGroup => [...pageGroup.pageIndices])}]);
+    render(currentData);
+    setStatus("Changed the order of the base pages; the group is fixed now.", "ok");
 }
 
 /** Discards every manual decision, so the whole proposal is computed again. */
@@ -3858,13 +4180,20 @@ function computeTemplateGroups(data, templateLevel, pageMatrix, activeSettings, 
 
     return groups.map(({templateIndices, locked}) => {
         const key = templateGroupKey(templateIndices.map(i => templates[i].templateId));
+        const pageGroups = buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, locked?.pageGroups ?? []);
+        let matchesComputed = !locked || computedKeys.has(key);
+        if (locked && matchesComputed) {
+            // The same templates; are their pages also grouped and ordered as computed?
+            const order = (/** @type {PageGroup[]} */ list) => list.map(pageGroup => pageGroup.key).join("|");
+            matchesComputed = order(pageGroups) === order(buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, []));
+        }
         return {
             key,
             templateIds: templateIndices.map(i => templates[i].templateId),
             templateNames: templateIndices.map(i => templates[i].templateName ?? templates[i].templateId),
-            pageGroups: buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, locked?.pageGroups ?? []),
+            pageGroups,
             locked,
-            matchesComputed: !locked || computedKeys.has(key),
+            matchesComputed,
         };
     });
 }
@@ -3875,8 +4204,8 @@ function computeTemplateGroups(data, templateLevel, pageMatrix, activeSettings, 
  * @param {TemplateLevel} templateLevel
  * @param {number[][]} pageMatrix
  * @param {Settings} activeSettings
- * @param {number[][]} lockedPageGroups fixed page groups (pages of other templates are ignored); the
- *   remaining pages are grouped among themselves
+ * @param {number[][]} lockedPageGroups fixed page groups in base page order (pages of other templates
+ *   are ignored); the remaining pages are grouped among themselves and follow them
  * @returns {PageGroup[]}
  */
 function buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatrix, activeSettings, lockedPageGroups) {
@@ -3889,13 +4218,14 @@ function buildTemplatePageGroups(data, templateIndices, templateLevel, pageMatri
         .filter(group => group.length);
     const lockedPages = new Set(locked.flat());
     const free = pageIndices.filter(pageIndex => !lockedPages.has(pageIndex));
+    /** @param {number[]} pg */
+    const sorted = pg => [...pg].sort((a, b) => a - b);
+    // Fixed page groups keep their order (the order of the base pages); the others follow, by first page.
     return [
-        ...locked.map(pg => ({pageIndices: pg, locked: true})),
-        ...groupPages(free, pageMatrix, activeSettings).map(pg => ({pageIndices: pg, locked: false})),
-    ]
-        .map(({pageIndices: pg, locked: isLocked}) => ({pageIndices: [...pg].sort((a, b) => a - b), locked: isLocked}))
-        .sort((a, b) => a.pageIndices[0] - b.pageIndices[0])
-        .map(({pageIndices: pg, locked: isLocked}) => ({key: pageGroupKey(data, pg), pageIndices: pg, locked: isLocked}));
+        ...locked.map(pg => ({pageIndices: sorted(pg), locked: true})),
+        ...groupPages(free, pageMatrix, activeSettings).map(pg => ({pageIndices: sorted(pg), locked: false}))
+            .sort((a, b) => a.pageIndices[0] - b.pageIndices[0]),
+    ].map(({pageIndices: pg, locked: isLocked}) => ({key: pageGroupKey(data, pg), pageIndices: pg, locked: isLocked}));
 }
 
 /**
