@@ -101,7 +101,7 @@
                 display: none;
             }
 
-            .toolbar-control input[type="range"] {
+            .zoom-control input[type="range"] {
                 width: 56px;
             }
         }
@@ -790,32 +790,105 @@
             border-color: #e0a800;
         }
 
-        .toolbar-control {
-            display: flex;
+        .toolbar-sep {
+            width: 1px;
+            height: 20px;
+            background: #ddd;
+            margin: 0 4px;
+        }
+
+        /* Proposal settings in a popover under their button. */
+        .popover-anchor {
+            position: relative;
+        }
+
+        #toggle-proposal {
+            display: inline-flex;
             align-items: center;
-            gap: 5px;
-            font-size: 12px;
+            gap: 6px;
+        }
+
+        #toggle-proposal[aria-expanded="true"] {
+            background: #eef4fc;
+            border-color: #6b9fd4;
+        }
+
+        #toggle-proposal .caret {
+            font-size: 9px;
             color: var(--muted);
         }
 
-        .toolbar-control input[type="range"] {
+        /* The number of manual decisions; gold when some differ from the computed proposal. */
+        .decision-badge {
+            min-width: 16px;
+            padding: 0 5px;
+            border-radius: 8px;
+            background: #e8e8e8;
+            color: var(--fg);
+            font-size: 11px;
+            line-height: 16px;
+            text-align: center;
+        }
+
+        .decision-badge.differs {
+            background: #e0a800;
+            color: #fff;
+        }
+
+        .popover {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 280px;
+            padding: 14px 16px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+            white-space: normal;
+        }
+
+        .popover[hidden] {
+            display: none;
+        }
+
+        .pop-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+        }
+
+        .pop-label {
+            width: 64px;
+            flex-shrink: 0;
+            color: var(--muted);
+        }
+
+        .pop-row input[type="range"] {
+            flex: 1;
+            min-width: 0;
             padding: 0;
             border: none;
             background: none;
             cursor: pointer;
-            width: 72px;
             accent-color: #6b9fd4;
         }
 
-        .toolbar-control output {
-            font-size: 12px;
+        .pop-row output {
+            min-width: 2.6em;
             color: #4a7ab5;
             font-weight: 600;
-            min-width: 2.8em;
+            text-align: right;
         }
 
-        .toolbar-control select {
-            padding: 3px 4px;
+        .pop-row select {
+            flex: 1;
+            padding: 4px 6px;
             border: 1px solid #ccc;
             border-radius: 6px;
             background: var(--bg);
@@ -823,11 +896,36 @@
             cursor: pointer;
         }
 
-        .toolbar-sep {
-            width: 1px;
-            height: 20px;
-            background: #ddd;
-            margin: 0 4px;
+        .pop-sep {
+            height: 1px;
+            background: var(--line);
+        }
+
+        .pop-summary {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .popover #recalculate-all {
+            align-self: flex-start;
+        }
+
+        /* Page card size: a small zoom slider next to the inspector toggle. */
+        .zoom-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--muted);
+        }
+
+        .zoom-control input[type="range"] {
+            width: 80px;
+            padding: 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+            accent-color: #6b9fd4;
         }
 
         code {
@@ -841,32 +939,42 @@
 <body>
 
 <div class="toolbar">
-    <label class="toolbar-control" title="Page card display size">
-        Page size: <input type="range" id="card-size" min="180" max="700" step="10" value="400"/>
-        <output id="card-size-out">400</output>
-    </label>
-    <div class="toolbar-sep"></div>
-    <label class="toolbar-control" title="Similarity threshold for grouping pages and templates">
-        Threshold: <input type="range" id="threshold" min="0.10" max="0.95" step="0.01" value="0.60"/>
-        <output id="threshold-out">0.60</output>
-    </label>
-    <label class="toolbar-control" title="Grouping linkage strategy">
-        Strategy:
-        <select id="group-strategy">
-            <option value="average" selected>Average</option>
-            <option value="single">Single (any pair)</option>
-            <option value="complete">Complete (all pairs)</option>
-        </select>
-    </label>
-    <button id="recalculate-all" disabled>Recalculate all</button>
-    <button id="undo" class="icon-btn" disabled title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h7a3 3 0 0 1 0 6H7"/><path d="M6 4 3.5 6.5 6 9"/></svg></button>
-    <button id="redo" class="icon-btn" disabled title="Redo (Ctrl+Y or Ctrl+Shift+Z)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 6.5h-7a3 3 0 0 0 0 6H9"/><path d="M10 4l2.5 2.5L10 9"/></svg></button>
-    <div class="toolbar-sep"></div>
     <input type="file" id="file" accept=".csv"/>
     <button id="open-file" title="Open a layout CSV (or drop it on the page)">Open CSV…</button>
     <span class="file-name" id="file-name"></span>
     <button id="save-csv" disabled title="Save the loaded CSV, optionally with edits, back to disk">Export</button>
+    <div class="toolbar-sep"></div>
+    <button id="undo" class="icon-btn" disabled title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h7a3 3 0 0 1 0 6H7"/><path d="M6 4 3.5 6.5 6 9"/></svg></button>
+    <button id="redo" class="icon-btn" disabled title="Redo (Ctrl+Y or Ctrl+Shift+Z)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 6.5h-7a3 3 0 0 0 0 6H9"/><path d="M10 4l2.5 2.5L10 9"/></svg></button>
+    <div class="toolbar-sep"></div>
+    <div class="popover-anchor">
+        <button id="toggle-proposal" aria-haspopup="true" aria-expanded="false" title="How the proposal is computed, and your decisions">
+            Proposal<span class="decision-badge" id="decision-badge" hidden></span><span class="caret">▾</span>
+        </button>
+        <div class="popover" id="proposal-popover" hidden>
+            <label class="pop-row" title="Similarity threshold for grouping pages and templates">
+                <span class="pop-label">Threshold</span>
+                <input type="range" id="threshold" min="0.10" max="0.95" step="0.01" value="0.60"/>
+                <output id="threshold-out">0.60</output>
+            </label>
+            <label class="pop-row" title="Grouping linkage strategy">
+                <span class="pop-label">Strategy</span>
+                <select id="group-strategy">
+                    <option value="average" selected>Average</option>
+                    <option value="single">Single (any pair)</option>
+                    <option value="complete">Complete (all pairs)</option>
+                </select>
+            </label>
+            <div class="pop-sep"></div>
+            <div class="pop-summary" id="decision-summary"></div>
+            <button id="recalculate-all" disabled>Recalculate all</button>
+        </div>
+    </div>
     <div class="status" id="status"></div>
+    <label class="zoom-control" title="Page card size">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10.4" y1="10.4" x2="14" y2="14"/></svg>
+        <input type="range" id="card-size" min="180" max="700" step="10" value="400"/>
+    </label>
     <button id="toggle-inspector" class="icon-btn" title="Show or hide the inspector"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><line x1="10" y1="2.5" x2="10" y2="13.5"/></svg></button>
 </div>
 
@@ -1259,6 +1367,8 @@ const saveCsvBtn = /** @type {HTMLButtonElement} */ (document.getElementById("sa
 
 const recalculateAllBtn = /** @type {HTMLButtonElement} */ (document.getElementById("recalculate-all"));
 const undoBtn = /** @type {HTMLButtonElement} */ (document.getElementById("undo"));
+const proposalBtn = /** @type {HTMLButtonElement} */ (document.getElementById("toggle-proposal"));
+const proposalPopover = /** @type {HTMLElement} */ (document.getElementById("proposal-popover"));
 const redoBtn = /** @type {HTMLButtonElement} */ (document.getElementById("redo"));
 
 const templateGroupsEl = /** @type {HTMLElement} */ (document.getElementById("template-groups"));
@@ -3277,6 +3387,15 @@ function renderDecisionSummary() {
         ? `${manual} manual decision(s), ${differing} of them differ from what the computation proposes now.\n`
             + "Click to discard all of them and use the computed proposal."
         : "No manual decisions: everything shown is computed.";
+    const summary = manual
+        ? `${manual} manual decision(s)${differing ? `, ${differing} differing from the computed proposal` : ""}.`
+        : "No manual decisions: everything shown is computed.";
+    /** @type {HTMLElement} */ (document.getElementById("decision-summary")).textContent = summary;
+    const badge = /** @type {HTMLElement} */ (document.getElementById("decision-badge"));
+    badge.hidden = manual === 0;
+    badge.textContent = String(manual);
+    badge.classList.toggle("differs", differing > 0);
+    badge.title = summary;
 }
 
 // Hovering a template chip highlights the pages of that template.
@@ -4592,6 +4711,20 @@ saveCsvBtn.addEventListener("click", () => { saveCsv(); });
 
 recalculateAllBtn.addEventListener("click", () => recalculateAll());
 
+/** @param {boolean} open */
+function setProposalOpen(open) {
+    proposalPopover.hidden = !open;
+    proposalBtn.setAttribute("aria-expanded", String(open));
+}
+proposalBtn.addEventListener("click", () => setProposalOpen(proposalPopover.hidden));
+// Closes on a click outside it or on Esc (also while one of its controls has the focus).
+document.addEventListener("mousedown", e => {
+    if (!proposalPopover.hidden && !/** @type {HTMLElement} */ (e.target).closest(".popover-anchor")) setProposalOpen(false);
+});
+proposalPopover.addEventListener("keydown", e => {
+    if (e.key === "Escape") { setProposalOpen(false); proposalBtn.focus(); }
+});
+
 undoBtn.addEventListener("click", () => stepHistory(false));
 
 redoBtn.addEventListener("click", () => stepHistory(true));
@@ -4693,7 +4826,6 @@ document.body.addEventListener("drop", e => {
 
 document.getElementById("card-size").addEventListener("input", (e) => {
     settings.canvasW = parseInt(/** @type {HTMLInputElement} */ (e.target).value);
-    /** @type {HTMLOutputElement} */ (document.getElementById("card-size-out")).value = String(settings.canvasW);
     scheduleRefreshCards();
 });
 
@@ -4735,6 +4867,10 @@ document.addEventListener("keydown", e => {
     }
     if (e.key.startsWith("Arrow") && nudgeSelectedBaseArea(e)) {
         e.preventDefault();
+        return;
+    }
+    if (e.key === "Escape" && !proposalPopover.hidden) {
+        setProposalOpen(false);
         return;
     }
     if (e.key === "Escape" && uiState.areaSelection) {
