@@ -352,6 +352,30 @@
             height: 26px;
         }
 
+        .insp-checks {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .insp-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .insp-check input {
+            margin: 0;
+            accent-color: #2f7de1;
+        }
+
+        /* A flag the user changed from the proposal; clicking it again goes back. */
+        .insp-check.edited {
+            color: #2f7de1;
+        }
+
         .name-link {
             cursor: pointer;
             border-radius: 3px;
@@ -937,6 +961,7 @@
  * @property {number} w
  * @property {number} h
  * @property {boolean} flowToNextPage
+ * @property {boolean} dynamicHeight
  * @property {string} interactiveFlowName
  * @property {string} areaName
  * @property {string} contentPreview
@@ -1006,9 +1031,22 @@
  * @property {Position} proposedPosition the bounding box of those areas
  * @property {boolean} positionEdited the position was set by the user
  * @property {string} positionKey key of the position decision (see draftKey)
- * @property {string} areaName
+ * @property {string} areaName the name of the flow area; empty: the deployment names it "<flowName>Area"
+ * @property {string} proposedAreaName the name of the first named area of the representative
  * @property {boolean} flowToNextPage
+ * @property {boolean} proposedFlowToNextPage set when any of the representative's areas flows to the next page
+ * @property {boolean} dynamicHeight
+ * @property {boolean} proposedDynamicHeight set when any of the representative's areas has a dynamic height
+ * @property {AreaProperties} propertiesEdited which properties the user set
  * @property {Position} position
+ */
+
+/**
+ * Properties of a base area set by the user, each only when it differs from the proposal.
+ * @typedef {Object} AreaProperties
+ * @property {string} [areaName]
+ * @property {boolean} [flowToNextPage]
+ * @property {boolean} [dynamicHeight]
  */
 
 /**
@@ -1026,6 +1064,8 @@
  * @property {NameDecision[]} basePageNames
  * @property {Map<string, string>} flowNameByArea "pageKey#areaIndex" (see renderUnitKey) -> the
  *   interactive flow name the user gave the base area made from this area
+ * @property {Map<string, AreaProperties>} areaPropertiesByDraft "pageKey#areaIndices" (see draftKey) ->
+ *   the area name and flags the user gave the base area made from these areas of a representative
  * @property {Map<string, Position>} positionByDraft "pageKey#areaIndices" (see draftKey) -> the
  *   position the user gave the base area made from these areas of a representative
  */
@@ -1096,7 +1136,7 @@
 /**
  * @typedef {Object} LoadedBasePage
  * @property {string} name
- * @property {{flowName: string, position: Position}[]} areas in areaIndex order
+ * @property {{flowName: string, position: Position, areaName: string, flowToNextPage: boolean, dynamicHeight: boolean}[]} areas in areaIndex order
  */
 
 /**
@@ -1531,6 +1571,7 @@ function buildLayoutData(doc) {
                 area: {
                     x, y, w, h,
                     flowToNextPage: col(row, 'flowToNextPage') === 'true',
+                    dynamicHeight: col(row, 'dynamicHeight') === 'true',
                     interactiveFlowName: col(row, 'interactiveFlowName') || '',
                     areaName: col(row, 'areaName') || '',
                     contentPreview: col(row, 'contentPreview') || '',
@@ -1540,7 +1581,7 @@ function buildLayoutData(doc) {
             };
         }).filter(a => a != null);
         rawAreasWithRow.sort((a, b) => a.areaIndex - b.areaIndex);
-        const rawAreas = /** @type {{x:number,y:number,w:number,h:number,flowToNextPage:boolean,interactiveFlowName:string,areaName:string,contentPreview:string}[]} */ (
+        const rawAreas = /** @type {{x:number,y:number,w:number,h:number,flowToNextPage:boolean,dynamicHeight:boolean,interactiveFlowName:string,areaName:string,contentPreview:string}[]} */ (
             rawAreasWithRow.map(a => a.area)
         );
 
@@ -2234,6 +2275,9 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions, identity) {
                 unusedPins: pins.slice(1),
                 areas: baseDrafts.map(draft => {
                     const draftAreas = draft.areaIndices.map(areaIndex => representative.areas[areaIndex]);
+                    const propertiesEdited = decisions.areaPropertiesByDraft.get(draftKey(representativeKey, draft.areaIndices)) ?? {};
+                    const proposedFlowToNextPage = draftAreas.some(area => area?.flowToNextPage);
+                    const proposedDynamicHeight = draftAreas.some(area => area?.dynamicHeight);
                     const edited = draft.areaIndices.map(editedFlowName).find(Boolean);
                     const proposedFlowName = chooseFlowName(draftAreas, draft, new Set());
                     return {
@@ -2244,8 +2288,13 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions, identity) {
                     proposedPosition: (areaDrafts[representativePageIndex] ?? []).find(d => d.areaIndices === draft.areaIndices)?.position ?? draft.position,
                     positionEdited: decisions.positionByDraft.has(draftKey(representativeKey, draft.areaIndices)),
                     positionKey: draftKey(representativeKey, draft.areaIndices),
-                    areaName: draft.areaName,
-                    flowToNextPage: draft.areaIndices.some(areaIndex => representative.areas[areaIndex]?.flowToNextPage),
+                    areaName: propertiesEdited.areaName ?? draft.areaName,
+                    proposedAreaName: draft.areaName,
+                    flowToNextPage: propertiesEdited.flowToNextPage ?? proposedFlowToNextPage,
+                    proposedFlowToNextPage,
+                    dynamicHeight: propertiesEdited.dynamicHeight ?? proposedDynamicHeight,
+                    proposedDynamicHeight,
+                    propertiesEdited,
                     position: draft.position,
                     };
                 }),
@@ -2345,6 +2394,34 @@ function setBaseAreaPosition(area, position) {
 }
 
 /**
+ * Sets one property of a base area; a value equal to the proposal (or undefined) removes it.
+ * @param {BaseAreaModel} area
+ * @param {keyof AreaProperties} property
+ * @param {string|boolean|undefined} value
+ */
+function setAreaProperty(area, property, value) {
+    const proposed = {areaName: area.proposedAreaName, flowToNextPage: area.proposedFlowToNextPage, dynamicHeight: area.proposedDynamicHeight}[property];
+    /** @type {Record<string, string|boolean>} */
+    const properties = {...decisions.areaPropertiesByDraft.get(area.positionKey)};
+    if (value === undefined || value === proposed) delete properties[property];
+    else properties[property] = value;
+    if (Object.keys(properties).length) decisions.areaPropertiesByDraft.set(area.positionKey, properties);
+    else decisions.areaPropertiesByDraft.delete(area.positionKey);
+    if (currentData) render(currentData);
+}
+
+/**
+ * @param {BaseAreaModel} area
+ * @param {string} value empty: back to the proposed name
+ */
+function setAreaName(area, value) {
+    const name = value ? inspireSafeName(value) : "";
+    // Without a proposed name the deployment's default counts as the proposal.
+    const isDefault = !area.proposedAreaName && name === `${area.flowName}Area`;
+    setAreaProperty(area, "areaName", name && !isDefault ? name : undefined);
+}
+
+/**
  * Replaces (or, with an empty value or the proposed one, removes) the user's name of a group.
  * @param {NameDecision[]} names
  * @param {NameDecision|null} current
@@ -2405,7 +2482,7 @@ function setFlowName(baseTemplate, basePage, area, value) {
 
 /** @returns {Decisions} */
 function emptyDecisions() {
-    return {pinnedRepresentatives: [], areaGroupsByPage: new Map(), lockedGroups: [], baseTemplateNames: [], basePageNames: [], flowNameByArea: new Map(), positionByDraft: new Map()};
+    return {pinnedRepresentatives: [], areaGroupsByPage: new Map(), lockedGroups: [], baseTemplateNames: [], basePageNames: [], flowNameByArea: new Map(), positionByDraft: new Map(), areaPropertiesByDraft: new Map()};
 }
 
 /**
@@ -2478,14 +2555,14 @@ function unpinGroup(basePage) {
  * @returns {{manual: number, differing: number}}
  */
 function describeDecisions() {
-    let differing = decisions.areaGroupsByPage.size + decisions.positionByDraft.size
+    let differing = decisions.areaGroupsByPage.size + decisions.positionByDraft.size + decisions.areaPropertiesByDraft.size
         + currentViewModel.templateGroups.filter(group => group.locked && !group.matchesComputed).length;
     currentBaseTemplates.forEach(baseTemplate => baseTemplate.pages.forEach(basePage => {
         if (basePage.representativeIsManual && basePage.representativePageIndex !== basePage.computedRepresentativePageIndex) differing++;
         differing += basePage.unusedPins.length;
     }));
     const names = decisions.baseTemplateNames.length + decisions.basePageNames.length + new Set(decisions.flowNameByArea.values()).size;
-    return {manual: decisions.pinnedRepresentatives.length + decisions.areaGroupsByPage.size + decisions.lockedGroups.length + names + decisions.positionByDraft.size, differing};
+    return {manual: decisions.pinnedRepresentatives.length + decisions.areaGroupsByPage.size + decisions.lockedGroups.length + names + decisions.positionByDraft.size + decisions.areaPropertiesByDraft.size, differing};
 }
 
 /**
@@ -2679,7 +2756,7 @@ function nudgeSelectedBaseArea(e) {
 function recalculateAll() {
     const {manual} = describeDecisions();
     if (!currentData || !manual) return;
-    if (!confirm(`Discard all ${manual} manual decision(s) (fixed groups, pinned representatives, merged/split areas, names, positions) and use the computed proposal?`)) return;
+    if (!confirm(`Discard all ${manual} manual decision(s) (fixed groups, pinned representatives, merged/split areas, names, positions, area settings) and use the computed proposal?`)) return;
     decisions = emptyDecisions();
     uiState.areaSelection = null;
     render(currentData);
@@ -2713,7 +2790,7 @@ function emptyIdentity() {
 function parseLoadedBaseTemplates(doc) {
     /** @param {string[]} row @param {string} name */
     const get = (row, name) => { const i = columnIndex(doc.headers, name); return i >= 0 ? (row[i] ?? "").trim() : ""; };
-    /** @type {Map<string, {id: string, name: string, pages: Map<string, {name: string, areas: {index: number, flowName: string, position: Position}[]}>}>} */
+    /** @type {Map<string, {id: string, name: string, pages: Map<string, {name: string, areas: {index: number, flowName: string, position: Position, areaName: string, flowToNextPage: boolean, dynamicHeight: boolean}[]}>}>} */
     const byId = new Map();
     doc.baseRows.forEach(row => {
         const id = get(row, "templateId");
@@ -2728,6 +2805,9 @@ function parseLoadedBaseTemplates(doc) {
             index: Number(get(row, "areaIndex")) || 0,
             flowName: get(row, "interactiveFlowName"),
             position: {x, y, w, h},
+            areaName: get(row, "areaName"),
+            flowToNextPage: get(row, "flowToNextPage") === "true",
+            dynamicHeight: get(row, "dynamicHeight") === "true",
         });
     });
     return [...byId.values()].map(template => ({
@@ -2735,7 +2815,7 @@ function parseLoadedBaseTemplates(doc) {
         name: template.name,
         pages: [...template.pages.values()].map(page => ({
             name: page.name,
-            areas: page.areas.sort((a, b) => a.index - b.index).map(({flowName, position}) => ({flowName, position})),
+            areas: page.areas.sort((a, b) => a.index - b.index).map(({index, ...area}) => area),
         })),
     }));
 }
@@ -2849,6 +2929,14 @@ function restoreFromLoaded(data, loaded, analysis) {
                 decisions.positionByDraft.set(draftKey(renderUnitKey(page, representative), draft.areaIndices),
                     {x: roundTo(p.x, 2), y: roundTo(p.y, 2), w: roundTo(p.w, 2), h: roundTo(p.h, 2)});
             }
+            // The same for the area name and flags that differ from what its areas propose.
+            const draftAreas = draft.areaIndices.map(areaIndex => page.areas[areaIndex]);
+            /** @type {AreaProperties} */
+            const properties = {};
+            if (loadedArea.areaName && loadedArea.areaName !== draft.areaName) properties.areaName = loadedArea.areaName;
+            if (loadedArea.flowToNextPage !== draftAreas.some(area => area.flowToNextPage)) properties.flowToNextPage = loadedArea.flowToNextPage;
+            if (loadedArea.dynamicHeight !== draftAreas.some(area => area.dynamicHeight)) properties.dynamicHeight = loadedArea.dynamicHeight;
+            if (Object.keys(properties).length) decisions.areaPropertiesByDraft.set(draftKey(renderUnitKey(page, representative), draft.areaIndices), properties);
         });
     });
 
@@ -3061,6 +3149,7 @@ function buildExportData(baseTemplates) {
             interactiveFlowName: area.flowName,
             areaName: area.areaName,
             flowToNextPage: String(area.flowToNextPage),
+            dynamicHeight: String(area.dynamicHeight),
             areaIndex: String(areaIndex),
             x: `${area.position.x}mm`,
             y: `${area.position.y}mm`,
@@ -3099,6 +3188,10 @@ async function saveCsv() {
     const flowNameIdx = ensureCsvColumn(headers, rows, "interactiveFlowName");
 
     const { baseRows, overridesByPageIndex } = buildExportData(currentBaseTemplates);
+    // Columns the base areas need that the file does not have yet (e.g. a file from an older export).
+    if (baseRows.some(row => row.areaName)) ensureCsvColumn(headers, rows, "areaName");
+    if (baseRows.some(row => row.flowToNextPage === "true")) ensureCsvColumn(headers, rows, "flowToNextPage");
+    if (baseRows.some(row => row.dynamicHeight === "true")) ensureCsvColumn(headers, rows, "dynamicHeight");
 
     currentData.pages.forEach((page, pageIndex) => {
         const override = overridesByPageIndex.get(pageIndex);
@@ -4109,6 +4202,37 @@ function inspectorTextField(label, {value, proposed, edited, disabled = false, o
 }
 
 /**
+ * A checkbox. Changed from the proposal, it is highlighted; clicking it again goes back.
+ * @param {string} label
+ * @param {boolean} checked
+ * @param {boolean} edited
+ * @param {(checked: boolean) => void} onChange
+ * @returns {HTMLElement}
+ */
+function inspectorCheck(label, checked, edited, onChange) {
+    const row = document.createElement("label");
+    row.className = "insp-check" + (edited ? " edited" : "");
+    row.title = edited ? "Set by you; click again to go back to the proposal." : "Proposed from the areas of the representative page.";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = checked;
+    input.addEventListener("change", () => onChange(input.checked));
+    row.append(input, document.createTextNode(label));
+    return row;
+}
+
+/**
+ * @param {HTMLElement[]} checks
+ * @returns {HTMLElement}
+ */
+function inspectorChecks(checks) {
+    const block = document.createElement("div");
+    block.className = "insp-checks";
+    block.append(...checks);
+    return block;
+}
+
+/**
  * @param {string} kind
  * @returns {HTMLElement}
  */
@@ -4266,6 +4390,18 @@ function renderAreaInspector(pageIndex, selected) {
             edited: area.flowNameSource === "edited",
             onChange: value => setFlowName(base.baseTemplate, base.basePage, area, value),
         }),
+        inspectorTextField("Area name", {
+            value: area.propertiesEdited.areaName ?? "",
+            proposed: area.proposedAreaName || `${area.flowName}Area`,
+            edited: area.propertiesEdited.areaName !== undefined,
+            onChange: value => setAreaName(area, value),
+        }),
+        inspectorChecks([
+            inspectorCheck("Flow to next page", area.flowToNextPage, area.propertiesEdited.flowToNextPage !== undefined,
+                checked => setAreaProperty(area, "flowToNextPage", checked)),
+            inspectorCheck("Dynamic height", area.dynamicHeight, area.propertiesEdited.dynamicHeight !== undefined,
+                checked => setAreaProperty(area, "dynamicHeight", checked)),
+        ]),
         inspectorPositionFields(area),
     );
 }
