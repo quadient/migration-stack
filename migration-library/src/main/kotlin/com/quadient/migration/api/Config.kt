@@ -84,7 +84,8 @@ data class DbConfig(
     val port: Int = 5432,
     val dbName: String = "migrationdb",
     val user: String = "migrationadmin",
-    val password: String = "password"
+    val password: String = "password",
+    val idleTimeoutMs: Long = 60_000L,
 ) {
     fun connectionString() = "jdbc:postgresql://$host:$port/$dbName?reWriteBatchedInserts=true"
 }

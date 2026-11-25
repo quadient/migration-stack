@@ -9,8 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Added
 
 - Dynamic height of flow areas
+- `idleTimeoutMs` option in `dbConfig` that sets how long an unused database connection stays open
 
 ### Changed
+
+- Database connections are pooled and reused across transactions and Migration instances instead of opening a new
+  connection for every transaction
 
 ### Fixed
 

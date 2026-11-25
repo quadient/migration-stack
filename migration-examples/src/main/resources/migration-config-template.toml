@@ -6,6 +6,7 @@ port = 5432
 dbName = "migrationdb"
 user = "migrationadmin"
 password = "password"
+# idleTimeoutMs = 60_000 # Optional, how long an unused database connection stays open
 
 [inspireConfig.ipsConfig]
 host = "localhost"
