@@ -280,6 +280,12 @@
             color: var(--muted);
         }
 
+        .insp-number input[readonly] {
+            background: var(--bg);
+            color: var(--muted);
+            cursor: default;
+        }
+
         .insp-number input {
             width: 100%;
             min-width: 0;
@@ -362,6 +368,44 @@
         .insp-reset {
             width: 26px;
             height: 26px;
+        }
+
+        /* Read-only content preview of the selected areas, as in the CSV. */
+        .insp-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .insp-content-area {
+            margin-top: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .insp-content-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .insp-content-list li {
+            padding: 4px 0;
+            border-bottom: 1px solid #f0f0f0;
+            overflow-wrap: anywhere;
+        }
+
+        .insp-content-list li:last-child {
+            border-bottom: none;
+        }
+
+        .insp-content-list .kind, .insp-content-list .none {
+            color: var(--muted);
         }
 
         .insp-checks {
@@ -1102,6 +1146,8 @@
  * A proposed base template: one per template group.
  * @typedef {Object} BaseTemplateModel
  * @property {string} id
+ * @property {string} proposedId the id without the user's edit: the loaded one, else made from the name
+ * @property {NameDecision|null} idDecision the user's id, when it applies
  * @property {string} name
  * @property {NameSource} nameSource
  * @property {string} proposedName the name without the user's edit (loaded or derived)
@@ -1183,6 +1229,7 @@
  * @property {LockedGroup[]} lockedGroups template groups fixed regardless of threshold and strategy
  *   (restored from a loaded file); the other templates are grouped among themselves
  * @property {NameDecision[]} baseTemplateNames
+ * @property {NameDecision[]} baseTemplateIds ids the user gave base templates (in the name field)
  * @property {NameDecision[]} basePageNames
  * @property {Map<string, string>} flowNameByArea "pageKey#areaIndex" (see renderUnitKey) -> the
  *   interactive flow name the user gave the base area made from this area
@@ -2341,18 +2388,22 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions, identity) {
     const pageMatrix = viewModel.pageLevel.matrix;
     /** @type {Set<string>} */
     const usedTemplateNames = new Set();
-    // New ids never reuse the id of a loaded base template, which may already exist in the DB.
-    const reservedIds = new Set(identity.baseTemplateIds);
-    let nextId = 1;
-    const newId = () => {
-        while (reservedIds.has(`bt-${nextId}`)) nextId++;
-        reservedIds.add(`bt-${nextId}`);
-        return `bt-${nextId}`;
-    };
     const {templateByGroup, pageByPageGroup} = assignLoadedIdentity(viewModel.templateGroups, identity);
-    const templateNameByGroup = assignNameDecisions(
-        viewModel.templateGroups.map(group => ({group, pageIndices: group.pageGroups.flatMap(pageGroup => pageGroup.pageIndices)})),
-        decisions.baseTemplateNames);
+    const templateGroupPages = viewModel.templateGroups.map(group => ({group, pageIndices: group.pageGroups.flatMap(pageGroup => pageGroup.pageIndices)}));
+    const templateNameByGroup = assignNameDecisions(templateGroupPages, decisions.baseTemplateNames);
+    const templateIdByGroup = assignNameDecisions(templateGroupPages, decisions.baseTemplateIds);
+    // A new base template's id is made from its name, so ids are unique across separate layout
+    // batches as the templates are. It never takes the id of a loaded base template (which may
+    // exist in the DB) or one the user gave.
+    const reservedIds = new Set([...identity.baseTemplateIds, ...[...templateIdByGroup.values()].map(decision => decision.name)]);
+    /** @param {string} name */
+    const newId = name => {
+        const base = baseTemplateIdFromName(name);
+        let id = base;
+        for (let n = 2; reservedIds.has(id); n++) id = `${base}-${n}`;
+        reservedIds.add(id);
+        return id;
+    };
     const pageNameByPageGroup = assignNameDecisions(
         viewModel.templateGroups.flatMap(group => group.pageGroups).map(group => ({group, pageIndices: group.pageIndices})),
         decisions.basePageNames);
@@ -2453,9 +2504,14 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions, identity) {
         const templateName = firstRepresentative?.templateName ?? templateGroup.templateNames[0];
         const templateNameDecision = templateNameByGroup.get(templateGroup) ?? null;
         const proposedTemplateName = loaded?.name ?? inspireSafeName(`${templateName}BaseTemplate`);
+        const name = uniqueName(templateNameDecision?.name ?? proposedTemplateName, usedTemplateNames);
+        const templateIdDecision = templateIdByGroup.get(templateGroup) ?? null;
+        const proposedId = loaded?.id ?? newId(name);
         return {
-            id: loaded?.id ?? newId(),
-            name: uniqueName(templateNameDecision?.name ?? proposedTemplateName, usedTemplateNames),
+            id: templateIdDecision?.name ?? proposedId,
+            proposedId,
+            idDecision: templateIdDecision,
+            name,
             nameSource: templateNameDecision ? "edited" : loaded ? "loaded" : "derived",
             proposedName: proposedTemplateName,
             nameDecision: templateNameDecision,
@@ -2463,6 +2519,16 @@ function buildBaseTemplates(data, viewModel, areaDrafts, decisions, identity) {
             pages,
         };
     });
+}
+
+/**
+ * A base template id made from a name or typed by the user: letters, digits, ".", "_" and "-";
+ * anything else becomes "-".
+ * @param {string} name
+ * @returns {string}
+ */
+function baseTemplateIdFromName(name) {
+    return name.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "base-template";
 }
 
 /**
@@ -2592,6 +2658,27 @@ function setBaseTemplateName(baseTemplate, value) {
 }
 
 /**
+ * Gives a base template another id; an empty value, or the proposed one, goes back to it. An id
+ * of another base template (also one loaded from the file) is refused.
+ * @param {BaseTemplateModel} baseTemplate
+ * @param {string} value
+ */
+function setBaseTemplateId(baseTemplate, value) {
+    if (!currentData) return;
+    const id = value ? baseTemplateIdFromName(value) : "";
+    const takenByOther = currentBaseTemplates.some(other => other !== baseTemplate && other.id === id)
+        || (loadedIdentity.baseTemplateIds.has(id) && id !== baseTemplate.proposedId);
+    if (id && takenByOther) {
+        setStatus(`The id "${id}" is already used by another base template.`, "error");
+        renderInspector();
+        return;
+    }
+    const pageIndices = baseTemplate.pages.flatMap(page => [...page.baseAreaByArea.keys()]);
+    decisions.baseTemplateIds = updateNameDecisions(decisions.baseTemplateIds, baseTemplate.idDecision, pageIndices, id, baseTemplate.proposedId);
+    render(currentData);
+}
+
+/**
  * @param {BaseTemplatePageModel} basePage
  * @param {string} value
  */
@@ -2627,7 +2714,7 @@ function setFlowName(baseTemplate, basePage, area, value) {
 
 /** @returns {Decisions} */
 function emptyDecisions() {
-    return {pinnedRepresentatives: [], areaGroupsByPage: new Map(), lockedGroups: [], baseTemplateNames: [], basePageNames: [], flowNameByArea: new Map(), positionByDraft: new Map(), areaPropertiesByDraft: new Map(), assignmentByArea: new Map()};
+    return {pinnedRepresentatives: [], areaGroupsByPage: new Map(), lockedGroups: [], baseTemplateNames: [], baseTemplateIds: [], basePageNames: [], flowNameByArea: new Map(), positionByDraft: new Map(), areaPropertiesByDraft: new Map(), assignmentByArea: new Map()};
 }
 
 /**
@@ -2706,7 +2793,7 @@ function describeDecisions() {
         if (basePage.representativeIsManual && basePage.representativePageIndex !== basePage.computedRepresentativePageIndex) differing++;
         differing += basePage.unusedPins.length;
     }));
-    const names = decisions.baseTemplateNames.length + decisions.basePageNames.length + new Set(decisions.flowNameByArea.values()).size;
+    const names = decisions.baseTemplateNames.length + decisions.baseTemplateIds.length + decisions.basePageNames.length + new Set(decisions.flowNameByArea.values()).size;
     return {manual: decisions.pinnedRepresentatives.length + decisions.areaGroupsByPage.size + decisions.lockedGroups.length + names + decisions.positionByDraft.size + decisions.areaPropertiesByDraft.size + decisions.assignmentByArea.size, differing};
 }
 
@@ -3833,30 +3920,17 @@ function cohesionClass(score) {
 // area selection (merge/split) and the representative controls.
 
 /**
- * @param {AreaEntry} ar
- * @param {number} idx
- * @returns {string}
- */
-function areaTip(ar, idx) {
-    const name = areaLabel(ar) || `area_${idx}`;
-    return `${name}\nw ${ar.w}mm · h ${ar.h}mm · x ${ar.x}mm · y ${ar.y}mm`
-        + (ar.flowToNextPage ? " · [↓]" : "")
-        + (ar.interactiveFlowName ? ` · flow:${ar.interactiveFlowName}` : "");
-}
-
-/**
- * Draws a page: its areas and, as red frames, the base areas of its base page (on the
+ * Draws a page: its areas and, as dashed frames, the base areas of its base page (on the
  * representative they are made from its own areas, on other pages they are laid over them).
  * @param {PageEntry} page
  * @param {BaseAreaModel[]} baseAreas
  * @param {(number|null)[]} baseAreaByArea index of the base area each area of the page maps to
- * @param {boolean} isRepresentative the page defines its base page's areas
  * @param {Set<number>} selectedAreas indices of the selected areas, drawn highlighted
  * @param {((areaIndex: number|null, additive: boolean) => void)|null} onAreaClick called with null
  *   for clicks outside areas; null when the areas cannot be selected
  * @returns {SVGElement|null}
  */
-function buildPageSvg(page, baseAreas, baseAreaByArea, isRepresentative, selectedAreas, onAreaClick) {
+function buildPageSvg(page, baseAreas, baseAreaByArea, selectedAreas, onAreaClick) {
     const areas = page.areas;
     if (!areas.length) return null;
 
@@ -3865,7 +3939,6 @@ function buildPageSvg(page, baseAreas, baseAreaByArea, isRepresentative, selecte
     const scale = (settings.canvasW - 2 * PAD) / Math.max(maxX2, 210);
     const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
     const svg = svgEl("svg", {width: settings.canvasW, height: svgH, class: "page-svg" + (onAreaClick ? " selectable" : "")});
-    svg.appendChild(svgTitle(pageCardTooltip(page)));
     if (onAreaClick) {
         // Clicks on an area select it; clicks anywhere else on the drawing clear the selection.
         svg.addEventListener("click", e => {
@@ -3876,10 +3949,7 @@ function buildPageSvg(page, baseAreas, baseAreaByArea, isRepresentative, selecte
     }
 
     /** @param {number} baseIndex */
-    const baseAreaTip = baseIndex => {
-        const {flowName, position: p} = baseAreas[baseIndex];
-        return `Base area ${flowName}\nw ${p.w}mm · h ${p.h}mm · x ${p.x}mm · y ${p.y}mm`;
-    };
+    const baseAreaTip = baseIndex => `Base area ${baseAreas[baseIndex].flowName}`;
 
     /** @param {number|null|undefined} baseIndex */
     const baseAreaColor = baseIndex => baseIndex == null ? NO_BASE_AREA_COLOR : BASE_AREA_COLORS[baseIndex % BASE_AREA_COLORS.length];
@@ -3929,16 +3999,9 @@ function buildPageSvg(page, baseAreas, baseAreaByArea, isRepresentative, selecte
         const rx = svgPos(a.x, scale), ry = svgPos(a.y, scale),
             rw = svgDim(a.w, scale), rh = svgDim(a.h, scale);
 
-        const overlapping = areas
-            .map((o, oi) => ({o, oi}))
-            .filter(({o, oi}) => oi !== i
-                && o.x < a.x + a.w && o.x + o.w > a.x
-                && o.y < a.y + a.h && o.y + o.h > a.y)
-            .sort((m, n) => (m.o.w * m.o.h) - (n.o.w * n.o.h));
-
+        // Short: what the area is and where it goes; select it to see the rest in the inspector.
         const baseIndex = baseAreaByArea[i];
-        const baseLine = baseIndex != null ? (isRepresentative ? "" : "Goes to: ") + baseAreaTip(baseIndex) + "\n\n" : "";
-        const tip = baseLine + [areaTip(a, i), ...overlapping.map(({o, oi}) => areaTip(o, oi))].join("\n\n");
+        const tip = (areaLabel(a) || `area_${i}`) + (baseIndex != null ? `\n→ ${baseAreaTip(baseIndex)}` : "");
 
         const rect = svgEl("rect", {
             x: rx, y: ry, width: rw, height: rh,
@@ -3948,7 +4011,7 @@ function buildPageSvg(page, baseAreas, baseAreaByArea, isRepresentative, selecte
             class: "area-rect",
             "data-area-index": i,
         });
-        rect.appendChild(svgTitle(tip + (onAreaClick ? "\n\nClick to select, Ctrl/Shift+click to add to or remove from the selection." : "")));
+        rect.appendChild(svgTitle(tip));
         svg.appendChild(rect);
         if (isSelected) drawSelectionMark(svg, rx, ry, rw, rh);
 
@@ -4086,7 +4149,6 @@ function buildPageCard(pageIndex) {
         page,
         base?.basePage.areas ?? [],
         base?.basePage.baseAreaByArea.get(pageIndex) ?? [],
-        isRepresentative,
         selectedAreas,
         base ? (areaIndex, additive) => selectArea(pageIndex, areaIndex, additive) : null,
     );
@@ -4427,6 +4489,60 @@ function inspectorTextField(label, {value, proposed, edited, disabled = false, o
 }
 
 /**
+ * The content preview of areas of a page (read-only, as the CSV has it): one line per content
+ * item, e.g. "par: Dear …" or "docRef: Footer"; with several areas, each under its label.
+ * @param {number} pageIndex
+ * @param {Iterable<number>} areaIndices
+ * @returns {HTMLElement}
+ */
+function inspectorContent(pageIndex, areaIndices) {
+    const page = currentData.pages[pageIndex];
+    const indices = [...areaIndices].sort((a, b) => a - b);
+    const block = document.createElement("div");
+    block.className = "insp-content";
+    const label = document.createElement("span");
+    label.className = "insp-label";
+    label.textContent = "Content";
+    block.appendChild(label);
+    indices.forEach(areaIndex => {
+        const area = page.areas[areaIndex];
+        if (indices.length > 1) {
+            const head = document.createElement("div");
+            head.className = "insp-content-area";
+            // Not the first content line (that follows right below), but the area's name and flow.
+            const flowName = area.interactiveFlowName.trim();
+            head.textContent = (area.areaName || `Area ${areaIndex + 1}`) + (flowName ? ` · ${flowName}` : "");
+            block.appendChild(head);
+        }
+        const list = document.createElement("ul");
+        list.className = "insp-content-list";
+        const items = area.contentPreview.split(";").map(item => item.trim()).filter(Boolean);
+        if (!items.length) {
+            const none = document.createElement("li");
+            none.className = "none";
+            none.textContent = "No content preview";
+            list.appendChild(none);
+        }
+        items.forEach(item => {
+            const li = document.createElement("li");
+            const colon = item.indexOf(": ");
+            // "par: …", "docRef: …": the kind of content in grey, then the text.
+            if (colon > 0 && colon < 12) {
+                const kind = document.createElement("span");
+                kind.className = "kind";
+                kind.textContent = item.slice(0, colon + 1) + " ";
+                li.append(kind, item.slice(colon + 2));
+            } else {
+                li.textContent = item;
+            }
+            list.appendChild(li);
+        });
+        block.appendChild(list);
+    });
+    return block;
+}
+
+/**
  * A checkbox. Changed from the proposal, it is highlighted; clicking it again goes back.
  * @param {string} label
  * @param {boolean} checked
@@ -4523,6 +4639,23 @@ function inspectorPositionFields(area) {
         field.append(caption, input);
         grid.appendChild(field);
     });
+    // Where the base area ends, to line up neighbouring base areas.
+    /** @type {[string, number, string][]} */
+    const ends = [["Right", area.position.x + area.position.w, "X + Width"], ["Bottom", area.position.y + area.position.h, "Y + Height"]];
+    ends.forEach(([name, value, how]) => {
+        const field = document.createElement("label");
+        field.className = "insp-number";
+        const caption = document.createElement("span");
+        caption.textContent = name;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.readOnly = true;
+        input.tabIndex = -1;
+        input.value = formatMm(roundTo(value, 2));
+        input.title = `${how}: where the base area ends (read-only)`;
+        field.append(caption, input);
+        grid.appendChild(field);
+    });
     block.append(head, grid);
     return block;
 }
@@ -4561,6 +4694,12 @@ function renderTemplateInspector(baseTemplate) {
             proposed: baseTemplate.proposedName,
             edited: baseTemplate.nameSource === "edited",
             onChange: value => setBaseTemplateName(baseTemplate, value),
+        }),
+        inspectorTextField("Id", {
+            value: baseTemplate.idDecision ? baseTemplate.id : "",
+            proposed: baseTemplate.proposedId,
+            edited: baseTemplate.idDecision != null,
+            onChange: value => setBaseTemplateId(baseTemplate, value),
         }),
     );
 }
@@ -4630,7 +4769,7 @@ function renderAssignmentInspector(pageIndex, selected) {
     reset.disabled = !edited;
     reset.addEventListener("click", e => { e.preventDefault(); assignAreas(basePage, pageIndex, areaIndices, null); });
     row.append(labelEl, select, reset);
-    inspectorEl.append(inspectorKind(areaIndices.length > 1 ? `${areaIndices.length} areas` : "Area"), row);
+    inspectorEl.append(inspectorKind(areaIndices.length > 1 ? `${areaIndices.length} areas` : "Area"), row, inspectorContent(pageIndex, selected));
 }
 
 /**
@@ -4657,7 +4796,7 @@ function renderAreaInspector(pageIndex, selected) {
     if (!base || !areas.length) return;
     if (areas.length > 1) {
         // Several base areas: nothing to edit until the selection is one base area.
-        inspectorEl.append(inspectorKind(`${areas.length} base areas`));
+        inspectorEl.append(inspectorKind(`${areas.length} base areas`), inspectorContent(pageIndex, selected));
         return;
     }
     const area = areas[0];
@@ -4682,6 +4821,7 @@ function renderAreaInspector(pageIndex, selected) {
                 checked => setAreaProperty(area, "dynamicHeight", checked)),
         ]),
         inspectorPositionFields(area),
+        inspectorContent(pageIndex, selected),
     );
 }
 
