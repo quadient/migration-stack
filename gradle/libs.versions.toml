@@ -73,7 +73,6 @@ flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
-exposed-crypt = { module = "org.jetbrains.exposed:exposed-crypt", version.ref = "exposed" }
 exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
 exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
