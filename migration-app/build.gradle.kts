@@ -28,7 +28,7 @@ dependencyCheck {
 }
 
 group = "com.quadient.migration"
-version = "17.0.33"
+version = "17.0.34"
 
 application {
     mainClass = "com.quadient.migration.ApplicationKt"
@@ -87,21 +87,11 @@ dependencies {
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
 
+    // CVE fix, ktor pulls in a vulnerable netty version
+    implementation(platform("io.netty:netty-bom:4.2.21.Final"))
+
     constraints {
         implementation(libs.kotlin.reflect)
-        val nettyVersion = "4.2.18.Final"
-        implementation("io.netty:netty-handler:${nettyVersion}")
-        implementation("io.netty:netty-codec:${nettyVersion}")
-        implementation("io.netty:netty-codec-http2:${nettyVersion}")
-        implementation("io.netty:netty-codec-http3:${nettyVersion}")
-        implementation("io.netty:netty-transport-native-kqueue:${nettyVersion}")
-        implementation("io.netty:netty-transport-native-epoll:${nettyVersion}")
-        implementation("io.netty:netty-tcnative:${nettyVersion}")
-        implementation("io.netty:netty-tcnative-boringssl-static:${nettyVersion}")
-        
-        implementation("com.fasterxml.jackson.core:jackson-databind:2.21.5")
-        implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.21.5")
-        implementation("org.apache.logging.log4j:log4j-api:2.26.1")
     }
 }
 

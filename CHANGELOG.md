@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [17.0.34] - 2026-11-25
+
+### Added
+
 - Dynamic height of flow areas
 - `idleTimeoutMs` option in `dbConfig` that sets how long an unused database connection stays open
 
@@ -561,7 +569,8 @@ path.
 
 - This CHANGELOG file
 
-[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.33...HEAD
+[unreleased]: https://github.com/quadient/migration-stack/compare/v17.0.34...HEAD
+[17.0.34]: https://github.com/quadient/migration-stack/compare/v17.0.33...v17.0.34
 [17.0.33]: https://github.com/quadient/migration-stack/compare/v17.0.32...v17.0.33
 [17.0.32]: https://github.com/quadient/migration-stack/compare/v17.0.31...v17.0.32
 [17.0.31]: https://github.com/quadient/migration-stack/compare/v17.0.30...v17.0.31
