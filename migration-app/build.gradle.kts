@@ -28,7 +28,7 @@ dependencyCheck {
 }
 
 group = "com.quadient.migration"
-version = "17.0.33"
+version = "17.0.34"
 
 application {
     mainClass = "com.quadient.migration.ApplicationKt"
