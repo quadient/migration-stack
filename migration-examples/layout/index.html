@@ -280,6 +280,16 @@
             color: var(--muted);
         }
 
+        .insp-note {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .insp-note.warn {
+            color: #b42318;
+        }
+
         .insp-number input[readonly] {
             background: var(--bg);
             color: var(--muted);
@@ -493,12 +503,33 @@
             line-height: 18px;
         }
 
+        /* The templates / pages of a base template / base page: behind a separator, a label and the
+           tags, which wrap under each other, not under the label. */
+        .tg-templates, .page-labels {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            flex: 1;
+            padding-left: 10px;
+            border-left: 1px solid #ddd;
+        }
+
         .tg-templates {
+            min-width: 240px;
+        }
+
+        /* The separator runs the full height of the row, also when the base page name is taller. */
+        .page-labels {
+            align-self: stretch;
+        }
+
+        .tag-list {
             display: flex;
             flex-wrap: wrap;
+            align-items: center;
             gap: 4px;
             flex: 1;
-            min-width: 240px;
+            min-width: 0;
         }
 
         .template-tag:hover {
@@ -512,8 +543,27 @@
         }
 
         .tg-name {
+            font-size: 12px;
             font-weight: 600;
             flex-shrink: 0;
+        }
+
+        /* "Base template" / "Base page" before a name, so newcomers see what each container is. */
+        .kind-label {
+            flex-shrink: 0;
+            font-size: 10px;
+            font-weight: normal;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+        }
+
+        .tg-title > .kind-label {
+            margin-right: -6px;
+        }
+
+        .tg-templates > .kind-label, .page-labels > .kind-label {
+            line-height: 20px;
         }
 
         .template-tag {
@@ -560,21 +610,31 @@
 
         .pg-head {
             display: flex;
-            align-items: center;
-            gap: 8px;
-            width: 200px;
+            flex-direction: column;
+            align-items: flex-start;
+            width: 220px;
             flex-shrink: 0;
             min-width: 0;
             font-size: 13px;
             line-height: 22px;
         }
 
+        .pg-head-top {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            line-height: 20px;
+        }
+
+        /* The name on its own line, shortened with "…" when long (the inspector shows it whole). */
         .pg-name {
+            font-size: 12px;
             font-weight: 500;
+            max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            min-width: 0;
+            line-height: 18px;
         }
 
         .pg-cohesion {
@@ -643,13 +703,6 @@
             flex-shrink: 0;
         }
 
-        .page-labels {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            align-items: center;
-            flex: 1;
-        }
 
         .page-tag {
             background: #f0f0f0;
@@ -1355,6 +1408,15 @@ const PAGE_REF_MM = 210;
 const PROXIMITY_GAP_MM = 5.3;
 /** The smallest width or height (mm) resizing with the keys leaves a base area. */
 const MIN_AREA_SIZE_MM = 1;
+/** Share of an area a base area must cover to compete on fit for it (see mapAreasToBaseAreas). */
+const MOSTLY_COVERED = 0.5;
+/** Smallest drawn height (mm) of a 0 mm area with a dynamic height, which is drawn stretched. */
+const DYNAMIC_AREA_MIN_DRAWN_MM = 10;
+/** Drawn height (px) of a 0 mm area without a dynamic height: a thin bar that can still be clicked. */
+const ZERO_HEIGHT_BAR_PX = 4;
+/** Color of an area that has no size (0 mm high without a dynamic height). */
+const NO_SIZE_COLOR = "#d33";
+let svgDefCounter = 0;
 
 const PAD = 10;
 
@@ -1737,7 +1799,8 @@ function buildLayoutData(doc) {
             const x = parseSizeMm(col(row, 'x'));
             const y = parseSizeMm(col(row, 'y'));
             const w = parseSizeMm(col(row, 'width'));
-            const h = parseSizeMm(col(row, 'height'));
+            // An empty height is 0: a dynamic-height area grows with its content (as LayoutImport reads it).
+            const h = col(row, 'height').trim() ? parseSizeMm(col(row, 'height')) : 0;
             if (x == null || y == null || w == null || h == null) return null;
             const areaIndex = Number(col(row, 'areaIndex').trim());
             if (Number.isNaN(areaIndex)) {
@@ -2313,29 +2376,41 @@ function defaultRepresentative(pageIndices, pageMatrix) {
 
 /**
  * Maps every area of a page to the base area it lies in: the one covering the largest part of
- * it, or, when it overlaps none, the geometrically closest one. Every standard area therefore
+ * it, or, when it overlaps none, the geometrically closest one. Of the base areas covering at least
+ * MOSTLY_COVERED of it, the one it fills most (the tightest) wins. Every standard area therefore
  * ends up in an existing flow of the base template.
  * @param {AreaEntry[]} areas
  * @param {BaseTemplateAreaDraft[]} baseDrafts
  * @returns {(number|null)[]} base area index per area; null only when there are no base areas
  */
 function mapAreasToBaseAreas(areas, baseDrafts) {
-    return areas.map(area => {
+    // A 0 mm high base area grows with its content: it reaches down to the next base area below.
+    const basePositions = baseDrafts.map(base => base.position);
+    const reach = basePositions.map(p => p.h > 0 ? p : {...p, h: drawnHeight(p, true, basePositions, Infinity)});
+    return areas.map(original => {
         if (!baseDrafts.length) return null;
-        let best = 0, bestCoverage = 0, bestDistance = Infinity;
-        baseDrafts.forEach((base, baseIndex) => {
-            const p = base.position;
+        // A 0 mm high area counts as a thin line, so it is still covered by the base area it lies in.
+        const area = original.h > 0 ? original : {...original, h: 0.01};
+        const candidates = baseDrafts.map((base, baseIndex) => {
+            const p = reach[baseIndex];
             const overlapW = Math.min(area.x + area.w, p.x + p.w) - Math.max(area.x, p.x);
             const overlapH = Math.min(area.y + area.h, p.y + p.h) - Math.max(area.y, p.y);
-            const coverage = overlapW > 0 && overlapH > 0 ? (overlapW * overlapH) / Math.max(area.w * area.h, 0.01) : 0;
-            const distance = geometryDistance(area, p, true);
-            if (coverage > bestCoverage || (coverage === bestCoverage && coverage === 0 && distance < bestDistance)) {
-                best = baseIndex;
-                bestCoverage = coverage;
-                bestDistance = distance;
-            }
+            const overlap = overlapW > 0 && overlapH > 0 ? overlapW * overlapH : 0;
+            return {
+                baseIndex,
+                coverage: overlap / Math.max(area.w * area.h, 0.01),
+                // How much of the base area the area fills: the tighter, the better it fits.
+                fit: overlap / Math.max(p.w * p.h, 0.01),
+                distance: geometryDistance(original, base.position, true),
+            };
         });
-        return best;
+        // Base areas covering most of the area compete on fit: a base area split off from a larger
+        // one around it (or nested in it) wins over the larger one, though that covers more.
+        const mostly = candidates.filter(c => c.coverage >= MOSTLY_COVERED);
+        if (mostly.length) return mostly.reduce((a, b) => b.fit > a.fit ? b : a).baseIndex;
+        const overlapping = candidates.filter(c => c.coverage > 0);
+        if (overlapping.length) return overlapping.reduce((a, b) => b.coverage > a.coverage ? b : a).baseIndex;
+        return candidates.reduce((a, b) => b.distance < a.distance ? b : a).baseIndex;
     });
 }
 
@@ -2985,7 +3060,7 @@ function nudgeSelectedBaseArea(e) {
     const resize = e.ctrlKey;
     nextEditKey = (resize ? "resize:" : "nudge:") + area.positionKey;
     setBaseAreaPosition(area, resize
-        ? {x, y, w: roundTo(Math.max(MIN_AREA_SIZE_MM, w + dx), 2), h: roundTo(Math.max(MIN_AREA_SIZE_MM, h + dy), 2)}
+        ? {x, y, w: dx ? roundTo(Math.max(MIN_AREA_SIZE_MM, w + dx), 2) : w, h: dy ? roundTo(Math.max(MIN_AREA_SIZE_MM, h + dy), 2) : h}
         : {x: roundTo(Math.max(0, x + dx), 2), y: roundTo(Math.max(0, y + dy), 2), w, h});
     return true;
 }
@@ -3074,7 +3149,8 @@ function parseLoadedBaseTemplates(doc) {
         const template = /** @type {NonNullable<ReturnType<typeof byId.get>>} */ (byId.get(id));
         const pageKey = get(row, "pageId") || id;
         if (!template.pages.has(pageKey)) template.pages.set(pageKey, {name: get(row, "pageName") || pageKey, areas: []});
-        const [x, y, w, h] = ["x", "y", "width", "height"].map(name => parseSizeMm(get(row, name)));
+        const [x, y, w] = ["x", "y", "width"].map(name => parseSizeMm(get(row, name)));
+        const h = get(row, "height") ? parseSizeMm(get(row, "height")) : 0;
         if (x == null || y == null || w == null || h == null) return;
         /** @type {NonNullable<ReturnType<typeof template.pages.get>>} */ (template.pages.get(pageKey)).areas.push({
             index: Number(get(row, "areaIndex")) || 0,
@@ -3775,18 +3851,38 @@ function renderPageGroupRow(pageGroup, data, reorderable) {
             ? `<span class="pg-handle" draggable="true" title="Drag to change the order of the base pages">&#8801;</span>`
             : `<span class="pg-handle"></span>`)
         + `<span class="pg-expand-icon">&#9654;</span>`
-        + `<span class="pg-head">${nameHtml}`
+        // The label and the cohesion on the first line, the whole name below it (wrapped when long).
+        + `<span class="pg-head"><span class="pg-head-top"><span class="kind-label">Base page</span>`
         + `<span class="pg-cohesion" title="${cohesionTitle}"><span class="cohesion-dot ${cohesionClass(cohesion)}"></span>`
         + (cohesion !== null ? `<span class="hint">${cohesion.toFixed(2)}</span>` : "")
-        + `</span></span>`
-        + `<span class="page-labels">${pageGroup.pageIndices.map(pi =>
+        + `</span></span>${nameHtml}</span>`
+        + `<span class="page-labels"><span class="kind-label" title="Pages of the templates that use this base page">Pages:</span><span class="tag-list">${displayOrder(pageGroup.pageIndices).map(pi =>
             `<span class="page-tag" draggable="true" data-page-index="${pi}" data-template-id="${htmlEsc(data.pages[pi].templateId ?? "")}" `
             + `title="${htmlEsc(pageTagTooltip(data.pages[pi]) + "\nDrag onto another base page of this base template to move the page there")}">`
             + `${representativeMark(pi)}${htmlEsc(pageTagLabel(data.pages[pi]))}${areaEditMark(pi)} ${renderSimilarityHint(pi)}</span>`
-        ).join("")}</span>`
+        ).join("")}</span></span>`
         + `</div>`
         + `<div class="pg-cards"></div>`
         + `</div>`;
+}
+
+/**
+ * The order in which a base page shows its pages (tags and cards): the computed representative
+ * first, then the others from the most to the least similar to it. It follows the computed
+ * representative, not a pinned one, so pinning another page does not reorder the cards. Display
+ * only: the page group keeps its own order.
+ * @param {number[]} pageIndices
+ * @returns {number[]}
+ */
+function displayOrder(pageIndices) {
+    const basePage = currentBasePageByPage.get(pageIndices[0])?.basePage;
+    const matrix = currentViewModel?.pageLevel.matrix;
+    if (!basePage || !matrix) return pageIndices;
+    const first = basePage.computedRepresentativePageIndex;
+    if (!pageIndices.includes(first)) return pageIndices;
+    const similarity = (/** @type {number} */ pageIndex) => pageIndex === first ? Infinity : matrix[pageIndex][first];
+    // Array.prototype.sort is stable: equally similar pages keep their order.
+    return [...pageIndices].sort((a, b) => similarity(b) - similarity(a));
 }
 
 /**
@@ -3872,10 +3968,12 @@ function renderTemplateGroupItem(group, groupIndex, data) {
         : "the first template of the group";
     return `<div class="tg-header">`
         + `<div class="tg-title">`
+        + `<span class="kind-label">Base template</span>`
         + (baseTemplate ? renderName(baseTemplate.name, baseTemplate.nameSource, source,
             "tg-name" + (uiState.inspected?.kind === "template" && uiState.inspected.key === group.key ? " inspected" : ""),
             `data-action="inspect-template" data-key="${htmlEsc(group.key)}"`) : "")
-        + `<span class="tg-templates" title="Templates of this base template">${renderTemplateBadges(group)}</span>`
+        + `<span class="tg-templates" title="Templates of this base template"><span class="kind-label">Templates:</span>`
+        + `<span class="tag-list">${renderTemplateBadges(group)}</span></span>`
         + `<span class="tg-side">${renderClosestGroupHint(groupIndex)}${renderLockMark(group, groupIndex)}</span>`
         + `</div>`
         + `</div>`
@@ -3935,7 +4033,12 @@ function buildPageSvg(page, baseAreas, baseAreaByArea, selectedAreas, onAreaClic
     if (!areas.length) return null;
 
     const maxX2 = Math.max(...areas.map(a => a.x + a.w), ...baseAreas.map(b => b.position.x + b.position.w));
-    const maxY2 = Math.max(...areas.map(a => a.y + a.h), ...baseAreas.map(b => b.position.y + b.position.h));
+    // 0 mm areas with a dynamic height are drawn stretched (see drawnHeight); the drawing grows with them.
+    const pageBottom = page.pageSize?.h ?? Math.max(297, ...areas.map(a => a.y + a.h), ...baseAreas.map(b => b.position.y + b.position.h));
+    const areaHeights = areas.map(a => drawnHeight(a, a.dynamicHeight, areas, pageBottom));
+    const basePositions = baseAreas.map(b => b.position);
+    const baseHeights = baseAreas.map(b => drawnHeight(b.position, b.dynamicHeight, basePositions, pageBottom));
+    const maxY2 = Math.max(...areas.map((a, i) => a.y + areaHeights[i]), ...baseAreas.map((b, i) => b.position.y + baseHeights[i]));
     const scale = (settings.canvasW - 2 * PAD) / Math.max(maxX2, 210);
     const svgH = Math.ceil(maxY2 * scale + 2 * PAD);
     const svg = svgEl("svg", {width: settings.canvasW, height: svgH, class: "page-svg" + (onAreaClick ? " selectable" : "")});
@@ -3951,15 +4054,27 @@ function buildPageSvg(page, baseAreas, baseAreaByArea, selectedAreas, onAreaClic
     /** @param {number} baseIndex */
     const baseAreaTip = baseIndex => `Base area ${baseAreas[baseIndex].flowName}`;
 
+    // A stretched area fades out downwards: its end is not known, it grows with its content.
+    const fadeId = `fade-${++svgDefCounter}`;
+    const defs = svgEl("defs", {});
+    defs.innerHTML = `<linearGradient id="${fadeId}-g" x1="0" y1="0" x2="0" y2="1">`
+        + `<stop offset="0.35" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0.1"/></linearGradient>`
+        + `<mask id="${fadeId}" maskContentUnits="objectBoundingBox"><rect width="1" height="1" fill="url(#${fadeId}-g)"/></mask>`;
+    svg.appendChild(defs);
+    const fadeMask = `url(#${fadeId})`;
+    const drawnBaseAreas = baseAreas.map((b, i) => ({position: {...b.position, h: baseHeights[i]}}));
+
     /** @param {number|null|undefined} baseIndex */
     const baseAreaColor = baseIndex => baseIndex == null ? NO_BASE_AREA_COLOR : BASE_AREA_COLORS[baseIndex % BASE_AREA_COLORS.length];
 
     baseAreas.forEach((baseArea, baseIndex) => {
-        const p = baseArea.position;
-        const color = baseAreaColor(baseIndex);
+        const p = drawnBaseAreas[baseIndex].position;
+        const stretched = baseArea.position.h === 0 && baseArea.dynamicHeight;
+        const noSize = baseArea.position.h === 0 && !baseArea.dynamicHeight;
+        const color = noSize ? NO_SIZE_COLOR : baseAreaColor(baseIndex);
         // The frame stands a little outside the areas, so it does not coincide with their borders;
         // towards a neighbouring base area it stands at most halfway, so the two frames do not cross.
-        const gap = frameGaps(baseAreas, baseIndex, scale);
+        const gap = frameGaps(drawnBaseAreas, baseIndex, scale);
         const gx = svgPos(p.x, scale) - gap.left, gy = svgPos(p.y, scale) - gap.top,
             gw = svgDim(p.w, scale) + gap.left + gap.right, gh = svgDim(p.h, scale) + gap.top + gap.bottom;
 
@@ -3975,6 +4090,7 @@ function buildPageSvg(page, baseAreas, baseAreaByArea, selectedAreas, onAreaClic
             fill: "none", stroke: color, "stroke-width": 1.3, "stroke-dasharray": "5,3",
             "pointer-events": "none"
         });
+        if (stretched) border.setAttribute("mask", fadeMask);
         svg.appendChild(border);
 
         // The label goes above the frame; when another base area is right above, there is no room
@@ -3985,19 +4101,21 @@ function buildPageSvg(page, baseAreas, baseAreaByArea, selectedAreas, onAreaClic
             "text-anchor": labelInside ? "end" : "start",
             "font-size": 7, fill: color, "font-weight": "bold", "pointer-events": "none"
         });
-        label.textContent = baseArea.flowName.length > 28 ? baseArea.flowName.slice(0, 28) : baseArea.flowName;
+        label.textContent = (baseArea.flowName.length > 28 ? baseArea.flowName.slice(0, 28) : baseArea.flowName) + (baseArea.dynamicHeight ? " ↕" : "");
         svg.appendChild(label);
     });
 
     // Larger areas first, so smaller (often overlapping or nested) areas stay on top and clickable.
-    const drawOrder = areas.map((_, i) => i).sort((m, n) => (areas[n].w * areas[n].h) - (areas[m].w * areas[m].h));
+    const drawOrder = areas.map((_, i) => i).sort((m, n) => (areas[n].w * areaHeights[n]) - (areas[m].w * areaHeights[m]));
     drawOrder.forEach(i => {
         const a = areas[i];
-        const color = baseAreaColor(baseAreaByArea[i]);
+        const stretched = a.h === 0 && a.dynamicHeight;
+        const noSize = a.h === 0 && !a.dynamicHeight;
+        const color = noSize ? NO_SIZE_COLOR : baseAreaColor(baseAreaByArea[i]);
         const isSelected = selectedAreas.has(i);
         const isRoot = a.containedIn == null;
         const rx = svgPos(a.x, scale), ry = svgPos(a.y, scale),
-            rw = svgDim(a.w, scale), rh = svgDim(a.h, scale);
+            rw = svgDim(a.w, scale), rh = noSize ? ZERO_HEIGHT_BAR_PX : svgDim(areaHeights[i], scale);
 
         // Short: what the area is and where it goes; select it to see the rest in the inspector.
         const baseIndex = baseAreaByArea[i];
@@ -4007,11 +4125,12 @@ function buildPageSvg(page, baseAreas, baseAreaByArea, selectedAreas, onAreaClic
             x: rx, y: ry, width: rw, height: rh,
             fill: color, "fill-opacity": "0.25", stroke: color,
             "stroke-width": isRoot ? "1.2" : "1",
-            "stroke-dasharray": isRoot ? "none" : "3,2",
+            "stroke-dasharray": isRoot && !stretched && !noSize ? "none" : "3,2",
             class: "area-rect",
             "data-area-index": i,
         });
-        rect.appendChild(svgTitle(tip));
+        if (stretched) rect.setAttribute("mask", fadeMask);
+        rect.appendChild(svgTitle(tip + (stretched ? "\nDynamic height: grows with its content" : noSize ? "\nHeight 0 mm without a dynamic height: no size" : "")));
         svg.appendChild(rect);
         if (isSelected) drawSelectionMark(svg, rx, ry, rw, rh);
 
@@ -4021,16 +4140,39 @@ function buildPageSvg(page, baseAreas, baseAreaByArea, selectedAreas, onAreaClic
             txt.textContent = name.length > 28 ? name.slice(-28) : name;
             svg.appendChild(txt);
         }
+        if (a.dynamicHeight && rw > 12) {
+            const mark = svgEl("text", {x: rx + rw - 2, y: ry + 9, "text-anchor": "end", "font-size": 8, fill: color, "font-weight": "bold", "pointer-events": "none"});
+            mark.textContent = "↕";
+            svg.appendChild(mark);
+        }
     });
 
     return svg;
 }
 
 /**
+ * The height (mm) an area is drawn with. A 0 mm area with a dynamic height grows with its content,
+ * so it is drawn down to the next area below it, or to the page bottom; the position itself stays
+ * 0. Without a dynamic height a 0 mm area has no size (drawn as a thin bar, see ZERO_HEIGHT_BAR_PX).
+ * @param {{x: number, y: number, w: number, h: number}} rect
+ * @param {boolean} dynamicHeight
+ * @param {{x: number, y: number, w: number, h: number}[]} others the areas of the same drawing
+ * @param {number} pageBottom
+ * @returns {number}
+ */
+function drawnHeight(rect, dynamicHeight, others, pageBottom) {
+    if (rect.h > 0 || !dynamicHeight) return rect.h;
+    const below = others
+        .filter(other => other !== rect && other.y > rect.y && other.x < rect.x + rect.w && other.x + other.w > rect.x)
+        .map(other => other.y);
+    return Math.max(DYNAMIC_AREA_MIN_DRAWN_MM, Math.min(pageBottom, ...below) - rect.y);
+}
+
+/**
  * How far (px) a base area's frame stands outside its areas on each side: FRAME_GAP, but at most
  * half the distance to a neighbouring base area on that side, so adjacent frames meet instead of
  * crossing. Base areas that overlap the frame's area do not limit it.
- * @param {BaseAreaModel[]} baseAreas
+ * @param {{position: Position}[]} baseAreas
  * @param {number} baseIndex
  * @param {number} scale px per mm
  * @returns {{top: number, right: number, bottom: number, left: number}}
@@ -4288,7 +4430,7 @@ function togglePageCards(rowEl) {
  */
 function buildPageCards(preview, indices) {
     preview.innerHTML = "";
-    indices.forEach(pi => {
+    displayOrder(indices).forEach(pi => {
         preview.appendChild(buildPageCard(pi));
     });
 }
@@ -4629,8 +4771,9 @@ function inspectorPositionFields(area) {
         });
         input.addEventListener("change", () => {
             const value = Number(input.value);
-            if (input.value.trim() === "" || !Number.isFinite(value) || value < 0 || ((side === "w" || side === "h") && value === 0)) {
-                setStatus(`${name} must be ${side === "w" || side === "h" ? "greater than 0" : "0 or more"} mm.`, "error");
+            // A height of 0 is allowed: with a dynamic height the area grows with its content.
+            if (input.value.trim() === "" || !Number.isFinite(value) || value < 0 || (side === "w" && value === 0)) {
+                setStatus(`${name} must be ${side === "w" ? "greater than 0" : "0 or more"} mm.`, "error");
                 input.value = formatMm(area.position[side]);
                 return;
             }
@@ -4657,6 +4800,14 @@ function inspectorPositionFields(area) {
         grid.appendChild(field);
     });
     block.append(head, grid);
+    if (area.position.h === 0) {
+        const note = document.createElement("div");
+        note.className = "insp-note" + (area.dynamicHeight ? "" : " warn");
+        note.textContent = area.dynamicHeight
+            ? "Height 0: the area grows with its content (dynamic height). It is drawn down to the next area or the page bottom."
+            : "Height 0 without a dynamic height: the area has no size. Check Dynamic height or give it a height.";
+        block.appendChild(note);
+    }
     return block;
 }
 

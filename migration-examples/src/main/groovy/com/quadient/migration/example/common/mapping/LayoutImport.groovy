@@ -126,7 +126,8 @@ private static void assignAreaToBaseTemplateDraft(Map<String, BaseTemplateDraft>
     def x = Csv.deserialize(values.get("x"), Size.class)
     def y = Csv.deserialize(values.get("y"), Size.class)
     def width = Csv.deserialize(values.get("width"), Size.class)
-    def height = Csv.deserialize(values.get("height"), Size.class)
+    // An empty height is 0, not a missing position: a dynamic-height area grows with its content.
+    def height = Csv.deserialize(values.get("height"), Size.class) ?: Size.ofMillimeters(0)
     def position = (x != null && y != null && width != null && height != null) ? new Position(x, y, width, height) : null
     def flowToNextPage = Csv.deserialize(values.get("flowToNextPage"), Boolean.class) ?: false
     def dynamicHeight = Csv.deserialize(values.get("dynamicHeight"), Boolean.class) ?: false

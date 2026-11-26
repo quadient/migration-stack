@@ -274,6 +274,29 @@ class LayoutImportTest {
     }
 
     @Test
+    void importTreatsMissingBaseAreaHeightAsZero() {
+        Path mappingFile = Paths.get(dir.path, "testProject.csv")
+
+        when(migration.baseTemplateRepository.find("G1")).thenReturn(null)
+        when(migration.mappingRepository.getBaseTemplateMapping("G1")).thenReturn(new MappingItem.BaseTemplate(null, null, [], null))
+
+        def input = """\
+            templateId,templateName,pageId,pageName,pageWidth,pageHeight,areaIndex,interactiveFlowName,flowToNextPage,dynamicHeight,x,y,width,height,type,baseTemplateTargetId,contentPreview
+            G1,Base template 1,G1-P1,Page group 1,210mm,297mm,0,G1-P1.Area1,false,true,1cm,1cm,190mm,,Base,,
+            """.stripIndent()
+        mappingFile.toFile().write(input)
+
+        LayoutImport.run(migration, mappingFile)
+
+        def created = new BaseTemplatePage("Page group 1", Size.ofMillimeters(210), Size.ofMillimeters(297), [
+            new BaseTemplateArea("G1-P1.Area1", new Position(Size.ofCentimeters(1), Size.ofCentimeters(1), Size.ofMillimeters(190), Size.ofMillimeters(0)), false, null, true),
+        ])
+        verify(migration.mappingRepository).upsertBatch([
+            "G1": new MappingItem.BaseTemplate("Base template 1", null, [created], null)
+        ])
+    }
+
+    @Test
     void importUpdatesExistingBaseTemplateMappingButKeepsItsOtherFields() {
         Path mappingFile = Paths.get(dir.path, "testProject.csv")
 
