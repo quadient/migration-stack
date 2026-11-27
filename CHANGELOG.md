@@ -10,7 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Changed
 
+- Reworked the layout mapping HTML: base templates, base pages and their areas can now be edited manually, including
+  their grouping, positions and other properties
+- Layout mapping HTML respects the existing base templates in the loaded mapping file, so the round trip between the
+  HTML and the database (export, edit, import and export again) works in both directions
+
 ### Fixed
+
+- Layout mapping no longer drops a base template area with an empty height. The height is imported as 0 mm, so the
+  area can grow with its content when dynamic height is set
 
 ## [17.0.34] - 2026-11-25
 
