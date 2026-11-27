@@ -33,4 +33,15 @@ class CsvTest {
                 }
             }
     }
+
+    @TestFactory
+    Collection<DynamicTest> serializeRoundTrip() {
+        return ["plain", "with,comma", "with \"quote\"", "a\"b", "\"", "both \"quoted\", and comma", ""]
+            .collect { value ->
+                DynamicTest.dynamicTest("serialize [${value}]") {
+                    def line = Csv.serialize(value) + ",next"
+                    Assertions.assertEquals([value, "next"], Csv.split(line))
+                }
+            }
+    }
 }

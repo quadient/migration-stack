@@ -124,7 +124,9 @@ static String buildArea(Migration migration, Number idx, Area area, DocumentObje
     builder.append(Csv.serialize(pageOptions?.width) + ",")
     builder.append(Csv.serialize(pageOptions?.height) + ",")
 
-    builder.append(Csv.serialize(migration.previewProvider.buildDocumentContentListPreview(area.content)))
+    // The preview is read-only and LayoutImport reads the file line by line, so keep it on one line
+    def preview = migration.previewProvider.buildDocumentContentListPreview(area.content)
+    builder.append(Csv.serialize(preview?.replaceAll(/[\r\n]+/, " ")))
 
     return builder.toString()
 }
