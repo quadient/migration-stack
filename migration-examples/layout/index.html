@@ -299,6 +299,9 @@
         body {
             font-family: var(--q-font-body);
             font-size: 14px;
+            /* Quicksand is rarely installed and its fallback Calibri runs small: render whichever
+               font is used with the x-height of Segoe UI, which the sizes below were chosen for. */
+            font-size-adjust: 0.5;
             line-height: 1.4;
             margin: 24px;
             color: var(--fg);
