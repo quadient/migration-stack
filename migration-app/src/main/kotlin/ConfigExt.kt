@@ -19,6 +19,7 @@ fun ApplicationConfig.getLibsDir() = tryGetString("libs-dir") ?: "libs"
 fun ApplicationConfig.getFeDir() = tryGetString("fe-dir") ?: "web"
 fun ApplicationConfig.getAppDataDir() = tryGetString("app-data-dir") ?: Path("data", "app").toString()
 fun ApplicationConfig.getModulesDataDir() = tryGetString("modules-data-dir") ?: Path("data", "modules").toString()
+fun ApplicationConfig.getConfigsDir() = tryGetString("configs-dir") ?: Path(getAppDataDir(), "configs").toString()
 fun ApplicationConfig.loadGradleOnlyModules() = tryGetString("load-gradle-only-modules")?.toBoolean() ?: false
 fun ApplicationConfig.getScriptInputTimeout(): Duration =
     (tryGetString("script-input-timeout-seconds")?.toLongOrNull() ?: 600).seconds

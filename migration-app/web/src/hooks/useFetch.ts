@@ -40,6 +40,16 @@ export function useFetch<T>(url: string, requestInit?: RequestInit, refreshKey?:
                 if (cancelled) {
                     return;
                 }
+                if (!result.ok) {
+                    result.text().then((text) => {
+                        if (cancelled) {
+                            return;
+                        }
+                        setStatus("error");
+                        setError(new Error(text || `Request failed with status ${result.status}`));
+                    });
+                    return;
+                }
                 result
                     .json()
                     .then((json) => {

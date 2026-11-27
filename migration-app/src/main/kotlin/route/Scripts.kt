@@ -10,7 +10,6 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import kotlinx.coroutines.sync.Semaphore
 import kotlinx.serialization.Serializable
 import org.koin.ktor.ext.inject
 import java.util.UUID
@@ -24,7 +23,7 @@ fun Application.scriptsModule() {
     val pendingAnswers by inject<PendingAnswers>()
     val inputTimeout = environment.config.getScriptInputTimeout()
 
-    val semaphore = Semaphore(1)
+    val runLock by inject<RunLock>()
 
     routing {
         route("/api/scripts") {
@@ -48,7 +47,7 @@ fun Application.scriptsModule() {
                         }
                     }
 
-                    semaphore.withPermitOrElse(onUnavailable = {
+                    runLock.withPermitOrElse(onUnavailable = {
                         call.respondText(
                             "Another script module is currently running, please try again later.",
                             status = HttpStatusCode.TooManyRequests
@@ -111,7 +110,7 @@ fun Application.scriptsModule() {
                         return@post
                     }
 
-                    semaphore.withPermitOrElse(onUnavailable = {
+                    runLock.withPermitOrElse(onUnavailable = {
                         call.respondText(
                             "Another script module is currently running, please try again later.",
                             status = HttpStatusCode.TooManyRequests

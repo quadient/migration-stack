@@ -1,4 +1,5 @@
 import { Label } from "@/components/ui/label.tsx";
+import { fieldRow } from "@/dialogs/settings/formLayout.ts";
 import { Input } from "@/components/ui/input.tsx";
 import {
     type DbConfig,
@@ -58,12 +59,12 @@ export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormPr
                     <CardTitle>Storage</CardTitle>
                     <CardDescription>Configuration of Storage for binary files </CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-6">
-                    <div className="grid gap-3">
+                <CardContent className="grid gap-4">
+                    <div className={fieldRow}>
                         <Label>Root Path</Label>
                         <Input
                             value={migrationConfig.storageRoot ?? ""}
-                            onChange={(e) => updateMigrationConfig("storageRoot", e.target.value)}
+                            onChange={(e) => updateMigrationConfig("storageRoot", e.target.value || undefined)}
                         />
                     </div>
                 </CardContent>
@@ -73,15 +74,15 @@ export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormPr
                     <CardTitle>Database</CardTitle>
                     <CardDescription>Database connection configuration</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-6">
-                    <div className="grid gap-3">
+                <CardContent className="grid gap-4">
+                    <div className={fieldRow}>
                         <Label>Host</Label>
                         <Input
                             value={migrationConfig.dbConfig.host}
                             onChange={(e) => updateDbConfig("host", e.target.value)}
                         />
                     </div>
-                    <div className="grid gap-3">
+                    <div className={fieldRow}>
                         <Label>Port</Label>
                         <Input
                             type="number"
@@ -89,26 +90,39 @@ export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormPr
                             onChange={(e) => updateDbConfig("port", Number(e.target.value))}
                         />
                     </div>
-                    <div className="grid gap-3">
+                    <div className={fieldRow}>
                         <Label>Name</Label>
                         <Input
                             value={migrationConfig.dbConfig.dbName}
                             onChange={(e) => updateDbConfig("dbName", e.target.value)}
                         />
                     </div>
-                    <div className="grid gap-3">
+                    <div className={fieldRow}>
                         <Label>User</Label>
                         <Input
                             value={migrationConfig.dbConfig.user}
                             onChange={(e) => updateDbConfig("user", e.target.value)}
                         />
                     </div>
-                    <div className="grid gap-3">
+                    <div className={fieldRow}>
                         <Label>Password</Label>
                         <Input
                             type="password"
                             value={migrationConfig.dbConfig.password}
                             onChange={(e) => updateDbConfig("password", e.target.value)}
+                        />
+                    </div>
+                    <div className={fieldRow}>
+                        <Label>Idle connection timeout (ms)</Label>
+                        <Input
+                            type="number"
+                            value={migrationConfig.dbConfig.idleTimeoutMs ?? ""}
+                            onChange={(e) =>
+                                updateDbConfig(
+                                    "idleTimeoutMs",
+                                    e.target.value === "" ? undefined : Number(e.target.value),
+                                )
+                            }
                         />
                     </div>
                 </CardContent>
@@ -118,15 +132,15 @@ export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormPr
                     <CardTitle>Inspire Production Server</CardTitle>
                     <CardDescription>Inspire Production Server configuration</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-6">
-                    <div className="grid gap-3">
+                <CardContent className="grid gap-4">
+                    <div className={fieldRow}>
                         <Label>Host</Label>
                         <Input
                             value={migrationConfig.inspireConfig.ipsConfig.host}
                             onChange={(e) => updateIpsConfig("host", e.target.value)}
                         />
                     </div>
-                    <div className="grid gap-3">
+                    <div className={fieldRow}>
                         <Label>Port</Label>
                         <Input
                             type="number"
@@ -134,7 +148,7 @@ export function ConnectionSettingsForm({ settings, setSettings }: SettingsFormPr
                             onChange={(e) => updateIpsConfig("port", Number(e.target.value))}
                         />
                     </div>
-                    <div className="grid gap-3">
+                    <div className={fieldRow}>
                         <Label>Timeout (seconds)</Label>
                         <Input
                             type="number"

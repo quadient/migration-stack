@@ -7,6 +7,8 @@ export type Settings = {
     projectConfig: ProjectConfig;
     migrationConfig: MigrationConfig;
     sourceFormat?: string;
+    activeProjectConfig: string;
+    activeMigrationConfig: string;
 };
 
 export type MigrationConfig = {
@@ -82,3 +84,14 @@ export type PathsConfig = {
 
 export const inspireOutputOptions = ["Designer", "Interactive", "Evolve"] as const;
 export type InspireOutput = (typeof inspireOutputOptions)[number];
+
+export type ConfigKind = "project" | "migration";
+
+export type ConfigsResponse = {
+    projectConfigs: string[];
+    migrationConfigs: string[];
+    projectTemplates: string[];
+    migrationTemplates: string[];
+    activeProjectConfig: string;
+    activeMigrationConfig: string;
+};

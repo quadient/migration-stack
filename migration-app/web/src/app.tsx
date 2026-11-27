@@ -4,7 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip.tsx";
 import { ThemeToggle } from "@/common/ThemeToggle.tsx";
 import { ViewToggle } from "@/common/ViewToggle.tsx";
 import SettingsDialog from "@/dialogs/settings/SettingsDialog.tsx";
-import type { Settings } from "@/dialogs/settings/settingsTypes.ts";
+import type { ConfigsResponse, Settings } from "@/dialogs/settings/settingsTypes.ts";
+import { ConfigSelector } from "@/common/ConfigSelector.tsx";
+import { SourceFormatSelector } from "@/common/SourceFormatSelector.tsx";
+import { errorMessage } from "@/common/configApi.ts";
 import InputRequestDialog from "@/dialogs/input/InputRequestDialog.tsx";
 import { useFetch } from "@/hooks/useFetch.ts";
 import { useView } from "@/hooks/useView.ts";
@@ -18,11 +21,51 @@ export default function App() {
     const modulesResult = useFetch<ModuleMetadata[]>("/api/scripts");
     const jobsResult = useFetch<Job[]>("/api/job/list");
     const settingsResult = useFetch<Settings>("/api/settings");
+    const configsResult = useFetch<ConfigsResponse>("/api/configs");
+
+    const runInProgress = jobsResult.status === "ok" && jobsResult.data.some((job) => job.status === "RUNNING");
+    const refetchAfterConfigChange = () => {
+        configsResult.refetch();
+        settingsResult.refetch();
+        jobsResult.refetch();
+    };
 
     const headerActions = (
         <>
             <ThemeToggle />
             <ViewToggle view={view} onViewChange={setView} />
+            {configsResult.status === "ok" && (
+                <>
+                    <ConfigSelector
+                        label="Project"
+                        kind="project"
+                        names={configsResult.data.projectConfigs}
+                        templates={configsResult.data.projectTemplates}
+                        active={configsResult.data.activeProjectConfig}
+                        disabled={runInProgress}
+                        onChanged={refetchAfterConfigChange}
+                    />
+                    <ConfigSelector
+                        label="Migration"
+                        kind="migration"
+                        names={configsResult.data.migrationConfigs}
+                        templates={configsResult.data.migrationTemplates}
+                        active={configsResult.data.activeMigrationConfig}
+                        disabled={runInProgress}
+                        onChanged={refetchAfterConfigChange}
+                    />
+                </>
+            )}
+            {settingsResult.status === "ok" && (
+                <SourceFormatSelector
+                    formats={getSourceFormats(modulesResult) ?? []}
+                    active={settingsResult.data.sourceFormat}
+                    onChanged={settingsResult.refetch}
+                />
+            )}
+            {settingsResult.status === "error" && (
+                <span className="text-sm text-destructive">{errorMessage(settingsResult.error)}</span>
+            )}
             {settingsResult.status === "ok" && (
                 <SettingsDialog
                     loadedSettings={settingsResult.data}
@@ -34,7 +77,6 @@ export default function App() {
                             Settings
                         </Button>
                     }
-                    sourceFormats={getSourceFormats(modulesResult)}
                 />
             )}
         </>

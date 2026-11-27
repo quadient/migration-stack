@@ -4,16 +4,15 @@ import com.github.ajalt.clikt.command.main
 import com.quadient.migration.api.Migration
 import com.quadient.migration.cli.migrationApp
 import com.quadient.migration.dto.StatisticsResponse
+import com.quadient.migration.route.configsModule
 import com.quadient.migration.route.jobInputModule
 import com.quadient.migration.route.jobModule
 import com.quadient.migration.route.rootModule
 import com.quadient.migration.route.scriptsModule
-import com.quadient.migration.service.Settings
 import com.quadient.migration.service.SettingsService
 import io.ktor.serialization.jackson3.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.koin.ktor.ext.inject
@@ -37,20 +36,6 @@ fun Application.module() {
 
     routing {
         route("/api") {
-            route("/settings") {
-                get {
-                    log.debug("Received request to get settings")
-                    call.respond(settingsService.getSettings())
-                }
-
-                post {
-                    log.debug("Received request to save settings")
-                    val settings = call.receive<Settings>()
-                    settingsService.setSettings(settings)
-                    call.respondText("Settings saved successfully")
-                }
-            }
-
             route("/statistics") {
                 get {
                     val settings = settingsService.getSettings()
@@ -71,6 +56,7 @@ fun Application.module() {
         }
     }
 
+    configsModule()
     jobModule()
     jobInputModule()
     scriptsModule()

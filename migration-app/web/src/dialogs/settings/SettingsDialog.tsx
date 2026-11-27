@@ -17,98 +17,148 @@ import { Button } from "@/components/ui/button.tsx";
 import { parse } from "toml";
 import { ProjectSettingsForm } from "@/dialogs/settings/ProjectSettingsForm.tsx";
 import { ConnectionSettingsForm } from "@/dialogs/settings/ConnectionSettingsForm.tsx";
-import { AdvancedSettingsForm } from "@/dialogs/settings/AdvancedSettingsForm.tsx";
+import { ProjectDetailsForm } from "@/dialogs/settings/ProjectDetailsForm.tsx";
 import { Upload } from "lucide-react";
+import { errorMessage, fetchSettings } from "@/common/configApi.ts";
 
 type SettingsDialogProps = {
     trigger: ReactNode;
-    sourceFormats: string[] | undefined;
     loadedSettings: Settings;
     setLoadedSettings: (value: ((prev: Settings) => Settings) | Settings) => void;
     onSaved: () => void;
 };
 
-export default function SettingsDialog({
-    trigger,
-    sourceFormats,
-    loadedSettings,
-    setLoadedSettings,
-    onSaved,
-}: SettingsDialogProps) {
+export default function SettingsDialog({ trigger, loadedSettings, setLoadedSettings, onSaved }: SettingsDialogProps) {
     const [open, setOpen] = useState(false);
     const [settings, setSettings] = useState(loadedSettings);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const [importResult, setImportResult] = useState<ImportResult | null>(null);
+    const [contextValid, setContextValid] = useState(true);
+
+    // Reloads the config files, so Save does not revert edits made to them since the page loaded.
+    // Without fresh settings, Save is disabled so it cannot overwrite the files with stale values.
+    const openWithFreshSettings = async () => {
+        let fresh = loadedSettings;
+        let error: string | null = null;
+        try {
+            fresh = await fetchSettings();
+            setLoadedSettings(fresh);
+        } catch (e) {
+            error = `Could not reload settings, Save is disabled: ${errorMessage(e)}`;
+        }
+        setSettings(fresh);
+        setLoadError(error);
+        setSaveError(null);
+        setImportResult(null);
+        setContextValid(true);
+        setOpen(true);
+    };
 
     return (
-        <Dialog modal open={open} onOpenChange={setOpen}>
+        <Dialog modal open={open} onOpenChange={(isOpen) => (isOpen ? openWithFreshSettings() : setOpen(false))}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
+            <DialogContent className="sm:max-w-5xl">
                 <DialogHeader>
                     <DialogTitle>Settings</DialogTitle>
                     <DialogDescription className="text-muted-foreground">
-                        Configure project and connection settings
+                        Project config and migration config are separate files, saved together
                     </DialogDescription>
                 </DialogHeader>
-                <>
-                    <Tabs defaultValue="project">
-                        <TabsList>
-                            <TabsTrigger value="project">Project</TabsTrigger>
-                            <TabsTrigger value="connections">Connections</TabsTrigger>
-                            <TabsTrigger value="advanced">Advanced</TabsTrigger>
-                        </TabsList>
-                        <ScrollArea className="h-125 pr-4">
-                            <TabsContent value="project">
-                                <ProjectSettingsForm
+                <Tabs defaultValue="project">
+                    <TabsList>
+                        <TabsTrigger value="project">Project config</TabsTrigger>
+                        <TabsTrigger value="migration">Migration config</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="project" forceMount className="data-[state=inactive]:hidden">
+                        <ConfigFileName name={`${settings.activeProjectConfig}-project-config.toml`} />
+                        <ScrollArea className="h-[60vh] pr-4">
+                            <div className="grid gap-6">
+                                <ProjectSettingsForm settings={settings} setSettings={setSettings} />
+                                <ProjectDetailsForm
                                     settings={settings}
                                     setSettings={setSettings}
-                                    sourceFormats={sourceFormats}
+                                    onContextValidityChange={setContextValid}
                                 />
-                            </TabsContent>
-                            <TabsContent value="connections">
-                                <ConnectionSettingsForm settings={settings} setSettings={setSettings} />
-                            </TabsContent>
-                            <TabsContent value="advanced">
-                                <AdvancedSettingsForm settings={settings} setSettings={setSettings} />
-                            </TabsContent>
+                            </div>
                         </ScrollArea>
-                    </Tabs>
-                    <DialogFooter className="flex mt-6 sm:justify-between">
-                        <FileUploadButton settings={settings} setSettings={setSettings} />
-                        <div className="flex gap-4">
-                            <DialogClose asChild>
-                                <Button variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button
-                                type={"submit"}
-                                onClick={() => {
+                    </TabsContent>
+                    <TabsContent value="migration" forceMount className="data-[state=inactive]:hidden">
+                        <ConfigFileName name={`${settings.activeMigrationConfig}-migration-config.toml`} />
+                        <ScrollArea className="h-[60vh] pr-4">
+                            <ConnectionSettingsForm settings={settings} setSettings={setSettings} />
+                        </ScrollArea>
+                    </TabsContent>
+                </Tabs>
+                {importResult && (
+                    <p className={`mt-4 text-sm ${importResult.ok ? "text-muted-foreground" : "text-destructive"}`}>
+                        {importResult.message}
+                    </p>
+                )}
+                {loadError && <p className="mt-4 text-sm text-destructive">{loadError}</p>}
+                {saveError && <p className="mt-4 text-sm text-destructive">{saveError}</p>}
+                {!contextValid && (
+                    <p className="mt-4 text-sm text-destructive">
+                        Context is not valid JSON (Project config → Context). Fix it to save.
+                    </p>
+                )}
+                <DialogFooter className="flex mt-6 sm:justify-between">
+                    <FileUploadButton
+                        settings={settings}
+                        setSettings={setSettings}
+                        onResult={(result) => {
+                            setImportResult(result);
+                            if (result.ok) setContextValid(true);
+                        }}
+                    />
+                    <div className="flex gap-4">
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button
+                            disabled={!contextValid || loadError !== null}
+                            onClick={async () => {
+                                try {
+                                    await onSaveChanges(settings, setLoadedSettings, onSaved);
                                     setOpen(false);
-                                    return onSaveChanges(settings, setLoadedSettings, onSaved);
-                                }}
-                            >
-                                Save Changes
-                            </Button>
-                        </div>
-                    </DialogFooter>
-                </>
+                                } catch (e) {
+                                    setSaveError(errorMessage(e));
+                                }
+                            }}
+                        >
+                            Save Changes
+                        </Button>
+                    </div>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
 }
 
+type ImportResult = { ok: boolean; message: string };
+
+function ConfigFileName({ name }: { name: string }) {
+    return <p className="mb-3 font-mono text-xs text-muted-foreground">{name}</p>;
+}
+
 function FileUploadButton({
     settings,
     setSettings,
+    onResult,
 }: {
     settings: Settings;
     setSettings: (value: ((prev: Settings) => Settings) | Settings) => void;
+    onResult: (result: ImportResult) => void;
 }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+        e.target.value = "";
         if (!file) return;
 
         if (!file.name.endsWith(".toml")) {
-            console.error(`File '${file.name}' is not a .toml file.`);
+            onResult({ ok: false, message: `Import failed: '${file.name}' is not a .toml file` });
             return;
         }
 
@@ -117,15 +167,17 @@ function FileUploadButton({
             const parsedFileContent = parse(fileContent);
             const configType = detectConfigType(parsedFileContent, settings);
             if (!configType) {
-                console.error("No matching fields found.");
+                onResult({ ok: false, message: `Import failed: '${file.name}' has no known settings fields` });
                 return;
             }
 
             const wrappedFileContent = { [configType]: parsedFileContent } as Partial<Settings>;
 
             setSettings((prev) => deepMerge(prev, wrappedFileContent));
+            const target = configType === "projectConfig" ? "project config" : "migration config";
+            onResult({ ok: true, message: `Imported '${file.name}' into the ${target}. Save to write it.` });
         } catch (err) {
-            console.error("Error parsing .toml file:", err);
+            onResult({ ok: false, message: `Import failed: ${errorMessage(err)}` });
         }
     };
 
@@ -153,7 +205,7 @@ async function onSaveChanges(
         body: JSON.stringify(settings),
     });
     if (!response.ok) {
-        throw new Error("Failed to save settings");
+        throw new Error((await response.text()) || "Failed to save settings");
     } else {
         setLoadedSettings(settings);
         onSaved();
