@@ -71,6 +71,7 @@ dependencies {
 
     implementation(libs.jackson.databind)
     implementation(libs.jackson.module.kotlin)
+    implementation(libs.jackson.dataformat.toml)
 
     // Update only after ktor migrates to kotlinx-serialization 1.9.0
     implementation(libs.kotlinx.datetime)
@@ -112,7 +113,7 @@ tasks {
     }
 
     buildFatJar {
-        finalizedBy("buildFrontend", "copyScripts", "copyScriptResources", "copyDist")
+        finalizedBy("buildFrontend", "copyScripts", "copyScriptResources", "copyConfigTemplates", "copyDist")
     }
 
     register<Sync>("copyScripts") {
@@ -128,6 +129,13 @@ tasks {
             include("exampleResources/**")
         }
         into("$workDir/resources")
+    }
+
+    register<Sync>("copyConfigTemplates") {
+        from("${rootProject.rootDir.parent}/migration-examples/src/main/resources") {
+            include("project-config-template.toml", "migration-config-template.toml")
+        }
+        into("$workDir/data/app/configs")
     }
 
     register<Copy>("copyDist") {
@@ -177,6 +185,9 @@ tasks {
         destinationDirectory = File(distDir)
         group = "distribution"
 
-        dependsOn("buildFatJar", "copyDist", "copyScripts", "copyScriptResources", "buildFrontend", "copyFrontend")
+        dependsOn(
+            "buildFatJar", "copyDist", "copyScripts", "copyScriptResources", "copyConfigTemplates",
+            "buildFrontend", "copyFrontend",
+        )
     }
 }

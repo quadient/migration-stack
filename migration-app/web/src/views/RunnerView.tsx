@@ -112,12 +112,12 @@ export default function RunnerView({ modulesResult, jobsResult, settingsResult, 
                 onResizingChange={onSidebarResizingChange}
             />
             <SidebarInset className="h-svh">
-                <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+                <header className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b px-4 py-1">
                     <MobileSidebarTrigger />
-                    <div className="border-l-4 border-q-orange pl-2 font-heading font-bold">
+                    <div className="shrink-0 border-l-4 border-q-orange pl-2 font-heading font-bold">
                         Asset Migration Console
                     </div>
-                    <div className="ml-auto flex items-center gap-2">{headerActions}</div>
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{headerActions}</div>
                 </header>
                 {selectedModule && jobsResult.status === "ok" ? (
                     <ModuleDetailSection

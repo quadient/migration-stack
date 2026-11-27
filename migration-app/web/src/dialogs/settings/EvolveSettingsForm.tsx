@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label.tsx";
+import { fieldRow } from "@/dialogs/settings/formLayout.ts";
 import { Input } from "@/components/ui/input.tsx";
 import { SettingsCombobox } from "@/dialogs/settings/SettingsCombobox.tsx";
 import { type EvolveConfig, holderTypeOptions, type SettingsFormProps } from "@/dialogs/settings/settingsTypes.ts";
@@ -53,7 +54,7 @@ export function EvolveSettingsForm({ settings, setSettings }: SettingsFormProps)
                 <CardTitle>Evolve</CardTitle>
                 <CardDescription>Content Author API connection and workflow configuration</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-6">
+            <CardContent className="grid gap-4">
                 <SettingsField
                     label="Company URL"
                     value={evolveConfig.companyUrl}
@@ -80,7 +81,7 @@ export function EvolveSettingsForm({ settings, setSettings }: SettingsFormProps)
                     onChange={updateOptionalNumber("apiRetryDelayMs")}
                 />
                 <SettingsField label="Holder" value={evolveConfig.holder} onChange={updateRequired("holder")} />
-                <div className="grid gap-3">
+                <div className={fieldRow}>
                     <Label>Holder type</Label>
                     <SettingsCombobox
                         currentValue={evolveConfig.holderType}
@@ -154,7 +155,7 @@ type SettingsFieldProps = {
 
 function SettingsField({ label, value, onChange, type = "text", placeholder }: SettingsFieldProps) {
     return (
-        <div className="grid gap-3">
+        <div className={fieldRow}>
             <Label>{label}</Label>
             <Input
                 type={type}

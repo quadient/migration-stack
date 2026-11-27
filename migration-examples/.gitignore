@@ -12,5 +12,6 @@ deploy/
 
 src/main/resources/active-project-config
 src/main/resources/migration-config.toml
+src/main/resources/*migration-config.toml
 src/main/resources/project-config.toml
 src/main/resources/*project-config.toml

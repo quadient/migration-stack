@@ -24,9 +24,9 @@ export default function DashboardView({
         <div className="grid grid-rows-[auto_1fr] min-h-screen max-h-screen px-[15%]">
             <div>
                 <header className="pt-8">
-                    <div className="flex justify-between items-center">
-                        <div className="text-xl font-bold tracking-tight">Asset Migration Console</div>
-                        <div className="flex items-center gap-2">{headerActions}</div>
+                    <div className="flex justify-between items-center gap-4">
+                        <div className="shrink-0 text-xl font-bold tracking-tight">Asset Migration Console</div>
+                        <div className="flex flex-wrap items-center justify-end gap-2">{headerActions}</div>
                     </div>
                     <div className="text-muted-foreground">Trigger processes for asset migration and deployment</div>
                 </header>

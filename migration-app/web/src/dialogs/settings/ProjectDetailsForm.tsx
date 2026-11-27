@@ -1,9 +1,15 @@
 import { type ProjectConfig, type SettingsFormProps } from "@/dialogs/settings/settingsTypes.ts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label.tsx";
+import { fieldRow } from "@/dialogs/settings/formLayout.ts";
+import { DraftTextField } from "@/dialogs/settings/DraftTextField.tsx";
 import { Input } from "@/components/ui/input.tsx";
 
-export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProps) {
+export function ProjectDetailsForm({
+    settings,
+    setSettings,
+    onContextValidityChange,
+}: SettingsFormProps & { onContextValidityChange: (valid: boolean) => void }) {
     const updateSettings = (key: keyof ProjectConfig, value: string | undefined) => {
         setSettings((prev) => ({ ...prev, projectConfig: { ...prev.projectConfig, [key]: value } }));
     };
@@ -15,42 +21,34 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                     <CardTitle>Default Values</CardTitle>
                     <CardDescription>Configure default values</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-6">
-                    <div className="grid gap-3">
+                <CardContent className="grid gap-4">
+                    <div className={fieldRow}>
                         <Label>Target folder</Label>
                         <Input
                             value={settings.projectConfig.defaultTargetFolder ?? ""}
                             onChange={(e) => updateSettings("defaultTargetFolder", e.target.value || undefined)}
                         />
                     </div>
-                    <div className="grid gap-3">
-                        <div className="grid gap-3">
-                            <Label>Variable structure ID</Label>
-                            <Input
-                                value={settings.projectConfig.defaultVariableStructure ?? ""}
-                                onChange={(e) =>
-                                    updateSettings("defaultVariableStructure", e.target.value || undefined)
-                                }
-                            />
-                        </div>
+                    <div className={fieldRow}>
+                        <Label>Variable structure ID</Label>
+                        <Input
+                            value={settings.projectConfig.defaultVariableStructure ?? ""}
+                            onChange={(e) => updateSettings("defaultVariableStructure", e.target.value || undefined)}
+                        />
                     </div>
-                    <div className="grid gap-3">
-                        <div className="grid gap-3">
-                            <Label>Style definition path</Label>
-                            <Input
-                                value={settings.projectConfig.styleDefinitionPath ?? ""}
-                                onChange={(e) => updateSettings("styleDefinitionPath", e.target.value || undefined)}
-                            />
-                        </div>
+                    <div className={fieldRow}>
+                        <Label>Style definition path</Label>
+                        <Input
+                            value={settings.projectConfig.styleDefinitionPath ?? ""}
+                            onChange={(e) => updateSettings("styleDefinitionPath", e.target.value || undefined)}
+                        />
                     </div>
-                    <div className="grid gap-3">
-                        <div className="grid gap-3">
-                            <Label>Language</Label>
-                            <Input
-                                value={settings.projectConfig.defaultLanguage ?? ""}
-                                onChange={(e) => updateSettings("defaultLanguage", e.target.value || undefined)}
-                            />
-                        </div>
+                    <div className={fieldRow}>
+                        <Label>Language</Label>
+                        <Input
+                            value={settings.projectConfig.defaultLanguage ?? ""}
+                            onChange={(e) => updateSettings("defaultLanguage", e.target.value || undefined)}
+                        />
                     </div>
                 </CardContent>
             </Card>
@@ -59,8 +57,8 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                     <CardTitle>Paths</CardTitle>
                     <CardDescription>Override default paths in content manager</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-6">
-                    <div className="grid gap-3">
+                <CardContent className="grid gap-4">
+                    <div className={fieldRow}>
                         <Label>Images</Label>
                         <Input
                             value={settings.projectConfig.paths.images ?? ""}
@@ -78,7 +76,7 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                             }
                         />
                     </div>
-                    <div className="grid gap-3">
+                    <div className={fieldRow}>
                         <Label>Fonts</Label>
                         <Input
                             value={settings.projectConfig.paths.fonts ?? ""}
@@ -96,7 +94,7 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                             }
                         />
                     </div>
-                    <div className="grid gap-3">
+                    <div className={fieldRow}>
                         <Label>Documents</Label>
                         <Input
                             value={settings.projectConfig.paths.documents ?? ""}
@@ -114,7 +112,7 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                             }
                         />
                     </div>
-                    <div className="grid gap-3">
+                    <div className={fieldRow}>
                         <Label>Attachments</Label>
                         <Input
                             value={settings.projectConfig.paths.attachments ?? ""}
@@ -139,8 +137,8 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                     <CardTitle>Partial migration</CardTitle>
                     <CardDescription>Migrate only a subset of the project</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-6">
-                    <div className="grid gap-3">
+                <CardContent className="grid gap-4">
+                    <div className={fieldRow}>
                         <Label>Sub project id</Label>
                         <Input
                             value={settings.projectConfig.subProjectId ?? ""}
@@ -155,9 +153,7 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                             }
                         />
                     </div>
-                </CardContent>
-                <CardContent className="grid gap-6">
-                    <div className="grid gap-3">
+                    <div className={fieldRow}>
                         <Label>Selected document objects file path</Label>
                         <Input
                             value={settings.projectConfig.selectedDocumentObjectsFile ?? ""}
@@ -172,26 +168,18 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                             }
                         />
                     </div>
-                </CardContent>
-                <CardContent className="grid gap-6">
-                    <div className="grid gap-3">
+                    <div className={fieldRow}>
                         <Label>Selected document objects</Label>
-                        <Input
-                            value={settings.projectConfig.selectedDocumentObjects ?? ""}
-                            onChange={(e) => {
-                                const value = (e.target.value ?? "")
-                                    .split(",")
-                                    .map((s) => s.trim())
-                                    .filter((s) => s.length > 0);
-
+                        <DraftTextField
+                            value={settings.projectConfig.selectedDocumentObjects}
+                            format={(list) => list?.join(", ") ?? ""}
+                            parse={parseList}
+                            onCommit={(list) =>
                                 setSettings((prev) => ({
                                     ...prev,
-                                    projectConfig: {
-                                        ...prev.projectConfig,
-                                        selectedDocumentObjects: value.length > 0 ? value : undefined,
-                                    },
-                                }));
-                            }}
+                                    projectConfig: { ...prev.projectConfig, selectedDocumentObjects: list },
+                                }))
+                            }
                         />
                     </div>
                 </CardContent>
@@ -202,33 +190,34 @@ export function AdvancedSettingsForm({ settings, setSettings }: SettingsFormProp
                     <CardDescription>Custom values map for parse modules</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid gap-3">
-                        <Input
-                            value={JSON.stringify(settings.projectConfig.context)}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                let parsed: Record<string, unknown> = {};
-                                try {
-                                    parsed = (value.trim() === "" ? {} : JSON.parse(value)) as Record<string, unknown>;
-                                    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-                                        console.warn("Invalid context value", value);
-                                        return;
-                                    }
-                                    setSettings((prev) => ({
-                                        ...prev,
-                                        projectConfig: {
-                                            ...prev.projectConfig,
-                                            context: parsed,
-                                        },
-                                    }));
-                                } catch (err) {
-                                    console.warn("Invalid context value", value, err);
-                                }
-                            }}
-                        />
-                    </div>
+                    <DraftTextField
+                        multiline
+                        value={settings.projectConfig.context}
+                        format={(context) => JSON.stringify(context, null, 2)}
+                        parse={parseContext}
+                        onValidityChange={onContextValidityChange}
+                        onCommit={(context) =>
+                            setSettings((prev) => ({ ...prev, projectConfig: { ...prev.projectConfig, context } }))
+                        }
+                    />
                 </CardContent>
             </Card>
         </div>
     );
+}
+
+function parseList(text: string): string[] | undefined {
+    const items = text
+        .split(",")
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+    return items.length > 0 ? items : undefined;
+}
+
+function parseContext(text: string): Record<string, unknown> {
+    const parsed: unknown = text.trim() === "" ? {} : JSON.parse(text);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        throw new Error("Context must be a JSON object");
+    }
+    return parsed as Record<string, unknown>;
 }
